@@ -1,0 +1,74 @@
+{
+  "name": "@antelopejs/core",
+  "version": "0.0.1",
+  "description": "Modular Node.js framework with interface-based architecture for building extensible applications",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AntelopeJS/antelopejs.git"
+  },
+  "license": "Apache-2.0",
+  "bin": {
+    "ajs": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "packageManager": "pnpm@10.6.5",
+  "keywords": [
+    "antelopejs",
+    "framework",
+    "typescript",
+    "modular"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepack": "pnpm run build",
+    "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "format": "prettier --write .",
+    "test": "echo \"No test specified\""
+  },
+  "antelopeJs": {
+    "exportsPath": "dist/interfaces",
+    "imports": [
+      "core@beta"
+    ]
+  },
+  "dependencies": {
+    "async-exit-hook": "^2.0.1",
+    "boxen": "^8.0.1",
+    "chalk": "^4.1.2",
+    "cli-progress": "^3.12.0",
+    "commander": "^13.1.0",
+    "figlet": "^1.8.0",
+    "inly": "^5.0.1",
+    "inquirer": "^12.5.2",
+    "mocha": "^11.1.0",
+    "ora": "^8.2.0",
+    "os": "^0.1.2",
+    "reflect-metadata": "^0.2.2",
+    "semver": "^7.7.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.25.0",
+    "@release-it/conventional-changelog": "^10.0.1",
+    "@types/async-exit-hook": "^2.0.2",
+    "@types/cli-progress": "^3.11.6",
+    "@types/figlet": "^1.7.0",
+    "@types/inquirer": "^9.0.7",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.14.1",
+    "@types/semver": "^7.7.0",
+    "eslint": "^9.25.0",
+    "eslint-config-prettier": "^10.1.2",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-prettier": "^5.2.6",
+    "globals": "^16.0.0",
+    "prettier": "^3.5.3",
+    "release-it": "^19.0.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.30.1"
+  }
+}

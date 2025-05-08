@@ -1,0 +1,92 @@
+import { Option } from 'commander';
+import { readFile, stat, writeFile } from 'fs/promises';
+import path from 'path';
+import { homedir } from 'os';
+import { AntelopeConfig } from '../common/config';
+import { mkdirSync } from 'fs';
+import { ModulePackageJson } from '../common/manifest';
+import { warning } from '../utils/cli-ui';
+import chalk from 'chalk';
+
+// Definition of the default git repository
+export const DEFAULT_GIT_REPO = 'git@github.com:AntelopeJS/interfaces.git';
+
+// Utility function to display warning for non-default git repositories
+export async function displayNonDefaultGitWarning(gitUrl: string) {
+  if (gitUrl !== DEFAULT_GIT_REPO) {
+    console.log(chalk.yellow.bold('⚠️  WARNING: Using non-default git repository ⚠️'));
+    warning(
+      'You are using a non-official git repository for interfaces. These interfaces may not adhere to community quality standards or best practices.',
+    );
+    // Wait for 3 seconds to ensure the user sees the warning
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    console.log(''); // Add a blank line after the warning
+  }
+}
+
+export namespace Options {
+  export const project = new Option('-p, --project <path>', 'Path to AntelopeJS project')
+    .default(path.resolve(process.cwd()))
+    .env('ANTELOPEJS_PROJECT')
+    .argParser((val) => path.resolve(val));
+  export const module = new Option('-m, --module <path>', 'Path to AntelopeJS module')
+    .default(path.resolve(process.cwd()))
+    .env('ANTELOPEJS_MODULE')
+    .argParser((val) => path.resolve(val));
+  export const git = new Option('-g, --git <url>', 'URL to git interfaces').env('ANTELOPEJS_GIT');
+}
+
+export async function writeConfig(project: string, data: Partial<AntelopeConfig>): Promise<void> {
+  const configPath = path.join(project, 'antelope.json');
+  await writeFile(configPath, JSON.stringify(data, null, '\t'));
+}
+
+export async function readConfig(project: string): Promise<AntelopeConfig | undefined> {
+  const configPath = path.join(project, 'antelope.json');
+  if (!(await stat(configPath).catch((err) => (err.code !== 'ENOENT' ? Promise.reject(err) : false)))) {
+    return undefined;
+  }
+  return JSON.parse((await readFile(configPath)).toString());
+}
+
+export async function writeModuleManifest(module: string, data: ModulePackageJson): Promise<void> {
+  const configPath = path.join(module, 'package.json');
+  await writeFile(configPath, JSON.stringify(data, null, '\t'));
+}
+
+export async function readModuleManifest(module: string): Promise<ModulePackageJson | undefined> {
+  const configPath = path.join(module, 'package.json');
+  if (!(await stat(configPath).catch((err) => (err.code !== 'ENOENT' ? Promise.reject(err) : false)))) {
+    return undefined;
+  }
+  return JSON.parse((await readFile(configPath)).toString());
+}
+
+export interface UserConfig {
+  git: string;
+  packageManager: string;
+}
+
+export function getDefaultUserConfig(): UserConfig {
+  return {
+    git: DEFAULT_GIT_REPO,
+    packageManager: 'pnpm',
+  };
+}
+
+export async function writeUserConfig(data: UserConfig): Promise<void> {
+  const folderPath = path.join(homedir(), '.antelopejs');
+  const configPath = path.join(folderPath, 'config.json');
+  if (!(await stat(folderPath).catch(() => false))) {
+    mkdirSync(folderPath, { recursive: true });
+  }
+  await writeFile(configPath, JSON.stringify(data, null, '\t'));
+}
+
+export async function readUserConfig(): Promise<UserConfig> {
+  const configPath = path.join(homedir(), '.antelopejs', 'config.json');
+  if (!(await stat(configPath).catch(() => false))) {
+    return getDefaultUserConfig();
+  }
+  return JSON.parse((await readFile(configPath)).toString());
+}

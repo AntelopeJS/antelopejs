@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - feat/*
+      - fix/*
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    env:
+      COREPACK_DEFAULT_TO_LATEST: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm i -g --force corepack && corepack enable
+      - run: npm i -g @antelopejs/core
+      - run: pnpm install
+      - run: pnpm prepack
+      - run: pnpm lint
+      - run: pnpm test
+      - name: Publish
+        run: pnpx pkg-pr-new publish --compact --no-template --pnpm
