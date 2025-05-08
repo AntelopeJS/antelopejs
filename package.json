@@ -4,15 +4,18 @@
   "description": "Modular Node.js framework with interface-based architecture for building extensible applications",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AntelopeJS/antelopejs.git"
+    "url": "git+https://github.com/AntelopeJS/antelopejs.git"
   },
   "license": "Apache-2.0",
   "bin": {
-    "ajs": "./dist/cli/index.js"
+    "ajs": "dist/cli/index.js"
   },
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "packageManager": "pnpm@10.6.5",
   "keywords": [
     "antelopejs",
