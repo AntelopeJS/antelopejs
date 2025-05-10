@@ -314,15 +314,21 @@ export async function removeInterface(module: string, name: string, version: str
 
 export async function copyTemplate(template: Template, distPath: string) {
   await mkdirSync(distPath, { recursive: true });
-  await ExecuteCMD(`git clone ${template.repository} .`, {
+  await ExecuteCMD('git init', {
     cwd: distPath,
   });
 
-  if (template.branch) {
-    await ExecuteCMD(`git checkout ${template.branch}`, {
-      cwd: distPath,
-    });
-  }
+  await ExecuteCMD(`git remote add origin ${template.repository}`, {
+    cwd: distPath,
+  });
+
+  await ExecuteCMD('git fetch', {
+    cwd: distPath,
+  });
+
+  await ExecuteCMD(`git reset --hard origin/${template.branch}`, {
+    cwd: distPath,
+  });
 
   rmSync(path.join(distPath, '.git'), { recursive: true, force: true });
 }
