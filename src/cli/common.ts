@@ -9,7 +9,7 @@ import { warning } from '../utils/cli-ui';
 import chalk from 'chalk';
 
 // Definition of the default git repository
-export const DEFAULT_GIT_REPO = 'git@github.com:AntelopeJS/interfaces.git';
+export const DEFAULT_GIT_REPO = 'https://github.com/AntelopeJS/interfaces.git';
 
 // Utility function to display warning for non-default git repositories
 export async function displayNonDefaultGitWarning(gitUrl: string) {
