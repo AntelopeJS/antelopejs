@@ -139,8 +139,8 @@ export default function () {
 // Module source handlers
 
 handlers.set('npm', async (module) => {
-  const m = module.match(/^([^@]+)(?:@(.+))?$/);
-  assert(m, `Invalid npm module format: '${module}'. Use name[@version]`);
+  const m = module.match(/^(.+?)(?:@(.*))?$/);
+  assert(m, `Invalid npm module format: '${module}'. Use <name>@<version>, <name>version or <name>`);
   let [, name, version] = m;
   if (!version) {
     info(`Fetching latest version for ${chalk.bold(name)}...`);
