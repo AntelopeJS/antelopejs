@@ -178,6 +178,7 @@ handlers.set('local', async (module, options) => {
       source: {
         type: 'local',
         path: path.relative(options.project, modulePath) || '.',
+        installCommand: ['npx tsc'],
       },
     },
   ];
@@ -192,6 +193,7 @@ handlers.set('dir', async (module, options) => {
       source: {
         type: 'local-folder',
         path: path.relative(options.project, folderPath) || '.',
+        installCommand: ['npx tsc'],
       },
     },
   ];
