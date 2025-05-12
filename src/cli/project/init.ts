@@ -50,23 +50,6 @@ export default function () {
           message: 'What would you like to name your project?',
           default: path.basename(project),
         },
-        {
-          type: 'input',
-          name: 'version',
-          message: 'What version would you like to start with?',
-          default: '0.0.1',
-        },
-        {
-          type: 'input',
-          name: 'description',
-          message: 'Please provide a brief description of your project:',
-          default: `AntelopeJS project created on ${new Date().toLocaleDateString()}`,
-        },
-        {
-          type: 'input',
-          name: 'author',
-          message: 'Who are the author(s) of this project?',
-        },
       ]);
 
       // Create project configuration
@@ -140,8 +123,8 @@ export default function () {
         `Your AntelopeJS project ${chalk.green.bold(answers.name)} has been successfully initialized!\n\n` +
           `${chalk.dim('To get started, run:')}\n` +
           `${project !== '.' ? chalk.cyan(`cd ${project}`) + '\n' : ''}` +
-          `${chalk.cyan('npm install')} ${chalk.dim('(or pnpm install or yarn install)')} \n` +
-          `${chalk.cyan('ajs project run')}`,
+          `${chalk.cyan('npm install')} ${chalk.dim('(or pnpm i or yarn)')} \n` +
+          `${chalk.cyan('npm run dev')} ${chalk.dim('(or pnpm dev or yarn dev)')}`,
         '🚀 Project Created',
         { borderColor: 'green' },
       );
