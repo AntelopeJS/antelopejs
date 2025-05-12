@@ -50,23 +50,6 @@ export default function () {
           message: 'What would you like to name your project?',
           default: path.basename(project),
         },
-        {
-          type: 'input',
-          name: 'version',
-          message: 'What version would you like to start with?',
-          default: '0.0.1',
-        },
-        {
-          type: 'input',
-          name: 'description',
-          message: 'Please provide a brief description of your project:',
-          default: `AntelopeJS project created on ${new Date().toLocaleDateString()}`,
-        },
-        {
-          type: 'input',
-          name: 'author',
-          message: 'Who are the author(s) of this project?',
-        },
       ]);
 
       // Create project configuration
