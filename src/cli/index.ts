@@ -19,10 +19,7 @@ const runCLI = async () => {
   try {
     // Display fancy banner when no arguments are passed
     if (process.argv.length <= 2) {
-      console.clear();
       displayBanner('AntelopeJS');
-      // Wait a moment to let the user see the banner
-      await sleep(500);
     }
 
     const program = new Command()
@@ -67,7 +64,6 @@ process.on('SIGINT', () => {
 runCLI().catch((err) => {
   // Only show error messages for errors other than ExitPromptError
   if (err && typeof err === 'object' && 'name' in err && err.name !== 'ExitPromptError') {
-    console.clear();
     console.error(chalk.red('Error:'), err.message || err);
     process.exit(1);
   }

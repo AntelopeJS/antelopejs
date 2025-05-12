@@ -144,9 +144,11 @@ handlers.set('npm', async (module) => {
   let [, name, version] = m;
   if (!version) {
     info(`Fetching latest version for ${chalk.bold(name)}...`);
-    const [output, err] = await ExecuteCMD(`npm view ${name} version`, {});
-    assert(!err, err);
-    version = parsePackageInfoOutput(output);
+    const result = await ExecuteCMD(`npm view ${name} version`, {});
+    if (result.code !== 0) {
+      throw new Error(`Failed to fetch version: ${result.stderr}`);
+    }
+    version = parsePackageInfoOutput(result.stdout);
     success(`Using version ${version}`);
   }
   return [name, version];

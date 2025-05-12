@@ -65,9 +65,6 @@ export default function () {
       console.log('');
       info(`Starting AntelopeJS project`);
 
-      // Wait for visual feedback
-      await sleep(1000);
-
       try {
         if (options.inspect) {
           // Run in a separate process with inspect flag

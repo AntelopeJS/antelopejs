@@ -63,14 +63,13 @@ export class Module {
 
   public async construct(config: any): Promise<void> {
     if (this.state !== ModuleState.loaded) {
-      Logging.Info(`Module ${this.id} already constructed`);
+      Logging.inline.Debug(`Module ${this.id} already constructed`);
       return;
     }
-    Logging.Info(`Attempting to load module ${this.id} from ${this.manifest.folder}`);
     await import(this.manifest.folder)
       .then((mod) => {
         this.object = mod;
-        Logging.Info(`Successfully loaded module ${this.id}`);
+        Logging.inline.Info(`Successfully loaded module ${this.id}`);
       })
       .catch((err) => {
         Logging.Error(`Failed to load module ${this.id}`, err);

@@ -47,10 +47,10 @@ export default function LoadModule(
   cache: ModuleCache,
   source: ModuleSource,
 ): Promise<ModuleManifest[]> {
-  Logging.Info(`LoadModule called for type ${source.type}`);
+  Logging.inline.Info(`LoadModule called for type ${source.type}`);
   const type = knownTypes.get(source.type);
   if (type) {
-    Logging.Info(`Found loader for type ${source.type}`);
+    Logging.inline.Info(`Found loader for type ${source.type}`);
 
     // If the path is not absolute, resolve it relative to the project folder
     if (type.loaderIdentifier === 'path') {
@@ -62,7 +62,7 @@ export default function LoadModule(
 
     return type.loader(cache, source);
   }
-  Logging.Info(`No loader found for type ${source.type}`);
+  Logging.inline.Info(`No loader found for type ${source.type}`);
   return new Promise<ModuleManifest[]>((resolve) => {
     let waitingList = waiting.get(source.type);
     if (!waitingList) {

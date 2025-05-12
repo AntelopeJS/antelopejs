@@ -43,9 +43,9 @@ async function moveInterfaceFilesToRoot(
 
     // Copy interface files to temp directory
     const cpToTempCommand = `cp -R ${interfaceFolderPath}/* ${tmpPath}/`;
-    const [_, cpToTempErr] = await ExecuteCMD(cpToTempCommand, {});
+    const cpResult = await ExecuteCMD(cpToTempCommand, {});
 
-    if (cpToTempErr) {
+    if (cpResult.code !== 0) {
       return false;
     }
 
@@ -60,9 +60,9 @@ async function moveInterfaceFilesToRoot(
 
     // Move files from temp directory to output root
     const mvFromTempCommand = `cp -R ${tmpPath}/* ${outputPath}/ && rm -rf ${tmpPath}`;
-    const [__, mvFromTempErr] = await ExecuteCMD(mvFromTempCommand, {});
+    const mvResult = await ExecuteCMD(mvFromTempCommand, {});
 
-    if (mvFromTempErr) {
+    if (mvResult.code !== 0) {
       return false;
     }
 
@@ -147,11 +147,11 @@ export default function () {
           `--outDir ${outputPath}`,
         ].join(' ');
 
-        const [_, err] = await ExecuteCMD(tscCommand, { cwd: options.module });
+        const result = await ExecuteCMD(tscCommand, { cwd: options.module });
 
-        if (err) {
+        if (result.code !== 0) {
           await spinner.fail('Failed to generate declarations');
-          error(err);
+          error(result.stderr);
           return;
         }
 

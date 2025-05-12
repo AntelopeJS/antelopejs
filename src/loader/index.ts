@@ -308,16 +308,16 @@ export class ModuleManager {
 
     // Get modules ready
     const modulePromises = manifest.sources.map(async (source) => {
-      Logging.Info(`Loading module ${source.id}`);
+      Logging.inline.Info(`Loading module ${source.id}`);
       try {
-        Logging.Info(`Starting LoadModule for ${source.id}`);
+        Logging.inline.Info(`Starting LoadModule for ${source.id}`);
         const createdModules = await LoadModule(this.projectFolder, this.cache, source)
           .then((modulesManifest) => {
-            Logging.Info(`Module manifest loaded for ${source.id}`);
+            Logging.inline.Info(`Module manifest loaded for ${source.id}`);
             return modulesManifest.map((moduleManifest) => new Module(moduleManifest));
           })
           .then((modules) => {
-            Logging.Info(`Modules created for ${source.id}`);
+            Logging.inline.Info(`Modules created for ${source.id}`);
             for (const module of modules) {
               manifest.configs[module.id] = manifest.configs[source.id];
             }
@@ -340,7 +340,7 @@ export class ModuleManager {
     const moduleResults = await Promise.all(modulePromises);
     const moduleList = moduleResults.flat();
 
-    Logging.Info(`Loading exports`);
+    Logging.inline.Info(`Loading exports`);
 
     await this.core.ref.manifest.loadExports();
     await Promise.all(moduleList.map((module) => module.ref.manifest.loadExports()));
@@ -358,7 +358,7 @@ export class ModuleManager {
     this.rebuildInterfaceSources(moduleList);
     this.rebuildModuleAssociations(moduleList);
 
-    Logging.Info(`Constructing modules`);
+    Logging.inline.Info(`Constructing modules`);
     this.resolverDetour.attach();
     await Promise.all(
       moduleList.map(({ ref, config }) =>
@@ -371,7 +371,7 @@ export class ModuleManager {
         }),
       ),
     );
-    Logging.Info(`Done loading`);
+    Logging.inline.Info(`Done loading`);
   }
 
   public startModules() {

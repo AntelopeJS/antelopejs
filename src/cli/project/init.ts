@@ -21,7 +21,6 @@ export default function () {
       // Check if project already exists
       const spinner = new Spinner('Checking project path');
       await spinner.start();
-      await sleep(500); // Small delay for visual effect
 
       if (await readConfig(project)) {
         await spinner.fail(`Project already exists at ${chalk.bold(project)}`);
@@ -64,7 +63,6 @@ export default function () {
       }
 
       await writeConfig(project, answers);
-      await sleep(700); // Small delay for visual effect
       await configSpinner.succeed('Project configuration created successfully');
 
       console.log('');

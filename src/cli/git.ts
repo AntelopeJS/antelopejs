@@ -7,17 +7,32 @@ import fs, { cpSync, mkdirSync, readdirSync, rmSync } from 'fs';
 import { getInstallPackagesCommand } from '../utils/package-manager';
 
 async function setupGit(cachePath: string, git: string, folderName: string, branch?: string) {
-  await ExecuteCMD(
+  const result = await ExecuteCMD(
     `git clone --filter=blob:none --no-checkout --depth 1 --sparse ${branch ? `--branch ${branch}` : ''} ${git} ${folderName}`,
     {
       cwd: cachePath,
     },
   );
 
-  await ExecuteCMD('git sparse-checkout add manifest.json --skip-checks', {
+  if (result.code !== 0) {
+    throw new Error(`Failed to clone repository: ${result.stderr}`);
+  }
+
+  const sparseResult = await ExecuteCMD('git sparse-checkout add manifest.json --skip-checks', {
     cwd: path.join(cachePath, folderName),
   });
-  await ExecuteCMD('git checkout', { cwd: path.join(cachePath, folderName) });
+
+  if (sparseResult.code !== 0) {
+    throw new Error(`Failed to setup sparse checkout: ${sparseResult.stderr}`);
+  }
+
+  const checkoutResult = await ExecuteCMD('git checkout', { 
+    cwd: path.join(cachePath, folderName) 
+  });
+
+  if (checkoutResult.code !== 0) {
+    throw new Error(`Failed to checkout: ${checkoutResult.stderr}`);
+  }
 }
 
 async function loadGit(git: string, requirePull: boolean, branch?: string): Promise<string> {

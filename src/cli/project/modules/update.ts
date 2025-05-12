@@ -4,6 +4,7 @@ import { LoadConfig } from '../../../common/config';
 import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import { ModuleSourcePackage } from '../../../common/downloader/package';
+import { parsePackageInfoOutput } from '../../../utils/package-manager';
 import { error as errorUI, warning, info, success } from '../../../utils/cli-ui';
 
 interface UpdateOptions {
@@ -79,15 +80,11 @@ export default function () {
         info(`${chalk.bold(module)}: Checking for updates...`);
 
         try {
-          const [output, err] = await ExecuteCMD(`npm view ${module} version`, {});
-
-          if (err) {
-            errorUI(chalk.red`${chalk.bold(module)}: Error checking version: ${err}`);
-            skipped.push(module);
-            continue;
+          const result = await ExecuteCMD(`npm view ${module} version`, {});
+          if (result.code !== 0) {
+            throw new Error(`Failed to fetch version: ${result.stderr}`);
           }
-
-          const latestVersion = output.replace('\n', '');
+          const latestVersion = parsePackageInfoOutput(result.stdout);
           const currentVersion = (moduleInfo.source as ModuleSourcePackage).version;
 
           if (currentVersion === latestVersion) {
@@ -97,13 +94,19 @@ export default function () {
           }
 
           if (!options.dryRun) {
-            env.modules[module] = latestVersion;
+            env.modules[module] = {
+              ...moduleInfo,
+              source: {
+                ...(moduleInfo.source as ModuleSourcePackage),
+                version: latestVersion
+              } as ModuleSourcePackage
+            };
             updated.push(`${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`);
           } else {
             updated.push(`${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`);
           }
         } catch (err) {
-          errorUI(chalk.red`${chalk.bold(module)}: Error: ${err}`);
+          errorUI(chalk.red`${chalk.bold(module)}: Error: ${err instanceof Error ? err.message : String(err)}`);
           skipped.push(module);
         }
       }

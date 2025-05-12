@@ -41,14 +41,14 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
     throw error;
   }
   if (source.installCommand) {
-    Logging.Info(`Running install commands for ${formattedPath}`);
+    Logging.inline.Debug(`Running install commands for ${formattedPath}`);
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
-        Logging.Info(`Executing command: ${command}`);
+        Logging.inline.Debug(`Executing command: ${command}`);
         await ExecuteCMD(command, { cwd: formattedPath }, true);
       }
     } else {
-      Logging.Info(`Executing command: ${source.installCommand}`);
+      Logging.inline.Debug(`Executing command: ${source.installCommand}`);
       await ExecuteCMD(source.installCommand, { cwd: formattedPath }, true);
     }
   }
