@@ -7,6 +7,7 @@ import inquirer from 'inquirer';
 import { existsSync, readdirSync } from 'fs';
 import { moduleImportAddCommand } from './imports/add';
 import { Spinner, displayBox, info, error, warning } from '../../utils/cli-ui';
+import { execSync } from 'child_process';
 
 interface InitOptions {
   git?: string;
@@ -120,12 +121,41 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
       }
     }
 
+    // Ask about initializing git repository
+    console.log('');
+    const { initGit } = await inquirer.prompt<{ initGit: boolean }>([
+      {
+        type: 'confirm',
+        name: 'initGit',
+        message: 'Initialize a git repository in the module?',
+        default: true,
+      },
+    ]);
+
+    if (initGit) {
+      const gitInitSpinner = new Spinner('Initializing git repository');
+      await gitInitSpinner.start();
+
+      try {
+        execSync('git init', { cwd: path.resolve(modulePath), stdio: 'ignore' });
+        await gitInitSpinner.succeed('Git repository initialized');
+      } catch (gitErr) {
+        await gitInitSpinner.fail('Failed to initialize git repository');
+        warning('Could not initialize git repository. You can do it manually later.');
+
+        if (gitErr instanceof Error) {
+          warning(gitErr.message);
+        }
+      }
+    }
+
     // Display success message
     console.log('');
     await displayBox(
       `Your AntelopeJS module has been successfully created!\n\n` +
         `Template: ${chalk.green(template.name)}\n` +
-        `Location: ${chalk.cyan(path.resolve(modulePath))}`,
+        `Location: ${chalk.cyan(path.resolve(modulePath))}` +
+        (initGit ? `\nGit Repository: ${chalk.green('Initialized')}` : ''),
       '🎉 Module Created',
       { borderColor: 'green' },
     );
