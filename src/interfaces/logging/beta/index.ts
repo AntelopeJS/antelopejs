@@ -71,59 +71,59 @@ export namespace Logging {
     Write(Level.DEBUG, 'main', ...args);
   }
 
-	/**
-	 * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
-	 * 
+  /**
+   * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
+   *
    * Usage:
    * Logging.inline.Info('Hello');
    * Logging.inline.Info('World');
-	 */
-	export namespace inline {
+   */
+  export namespace inline {
     /**
      * Write arguments to the inline log channel at the ERROR level.
-     * 
+     *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-		export function Error(...args: any[]): void {
-			Write(Level.ERROR, 'inline', ...args);
-		}
+    export function Error(...args: any[]): void {
+      Write(Level.ERROR, 'inline', ...args);
+    }
 
     /**
      * Write arguments to the inline log channel at the WARN level.
-     * 
+     *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-		export function Warn(...args: any[]): void {
-			Write(Level.WARN, 'inline', ...args);
-		}
+    export function Warn(...args: any[]): void {
+      Write(Level.WARN, 'inline', ...args);
+    }
 
     /**
      * Write arguments to the inline log channel at the INFO level.
-     * 
+     *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-		export function Info(...args: any[]): void {
-			Write(Level.INFO, 'inline', ...args);
-		}
+    export function Info(...args: any[]): void {
+      Write(Level.INFO, 'inline', ...args);
+    }
 
     /**
      * Write arguments to the inline log channel at the DEBUG level.
-     * 
+     *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-		export function Debug(...args: any[]): void {
-			Write(Level.DEBUG, 'inline', ...args);
-		}
+    export function Debug(...args: any[]): void {
+      Write(Level.DEBUG, 'inline', ...args);
+    }
 
     /**
      * Write arguments to the inline log channel at the TRACE level.
-     * 
+     *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-		export function Trace(...args: any[]): void {
-			Write(Level.TRACE, 'inline', ...args);
-		}
-	}
+    export function Trace(...args: any[]): void {
+      Write(Level.TRACE, 'inline', ...args);
+    }
+  }
 
   /**
    * Write arguments to the main log channel at the TRACE level.

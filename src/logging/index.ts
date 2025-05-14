@@ -173,7 +173,7 @@ const originalStderrWrite = process.stderr.write;
 
 let wasLastMessageInline = false;
 
-process.stderr.write = function(chunk: any, ...args: any[]): boolean {
+process.stderr.write = function (chunk: any, ...args: any[]): boolean {
   if (typeof chunk === 'string') {
     handleNodeWarning(chunk);
     return true;
@@ -229,7 +229,10 @@ function handleLog(logging: AntelopeLogging, log: Log, isVerbose = false, forceI
   }
 
   if (forceInline) {
-    const cleanMessage = message.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const cleanMessage = message
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (!wasLastMessageInline) {
       process.stdout.write('\n');
     }

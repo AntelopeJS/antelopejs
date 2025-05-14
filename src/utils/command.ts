@@ -13,7 +13,7 @@ export function ExecuteCMD(command: string, options: ExecOptions, logging: boole
       const result: CommandResult = {
         stdout,
         stderr,
-        code: err ? err.code || 1 : 0
+        code: err ? err.code || 1 : 0,
       };
 
       if (err) {
@@ -31,13 +31,15 @@ export function ExecuteCMD(command: string, options: ExecOptions, logging: boole
         Logging.inline.Debug(`Executing command: ${data.trim()}`);
       });
       child.stderr?.on('data', (data: string) => {
-        if (!data.includes('MaxListenersExceededWarning') &&
-            !data.includes('Update available') &&
-            !data.includes('Already up to date') &&
-            !data.includes('Already on') &&
-            !data.includes('Your branch is up to date') &&
-            !data.includes('Lockfile is up to date') &&
-            !data.includes('Scope: all')) {
+        if (
+          !data.includes('MaxListenersExceededWarning') &&
+          !data.includes('Update available') &&
+          !data.includes('Already up to date') &&
+          !data.includes('Already on') &&
+          !data.includes('Your branch is up to date') &&
+          !data.includes('Lockfile is up to date') &&
+          !data.includes('Scope: all')
+        ) {
           Logging.Error(data.trim());
         }
       });
