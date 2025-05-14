@@ -73,7 +73,7 @@ const variables: Record<string, (log: Log, param: string) => string> = {
 
   // Process chalk styling tags in format strings
   chalk: (_, param: string) => {
-    return param.replace(/.([a-zA-Z]+)(?:(.*))?/g, (match: string, prop: string, param: string) => {
+    return param.replace(/.([a-zA-Z]+)(.*)?/g, (match: string, prop: string, param: string) => {
       let chalkResult = chalk[<keyof typeof chalk>prop];
       if (!chalkResult) {
         return match;
@@ -132,9 +132,11 @@ function formatDate(date: Date, format = 'yyyy-MM-dd HH:mm:ss'): string {
  * Sets up the AntelopeJS project logging based on the provided configuration
  * Registers event listeners for log events and processes them according to settings
  *
+ * Errors are always displayed, regardless of the logging configuration.
+ *
  * @param config - The project configuration containing logging settings
  */
-function setupProcessHandlers(): void {
+function setupProcessHandlers(config: AntelopeProjectEnvConfigStrict): void {
   process.on('uncaughtException', (error: Error) => {
     originalStderrWrite.call(process.stderr, `\r\x1b[K${error.message}\n`);
     process.exit(1);
@@ -146,8 +148,9 @@ function setupProcessHandlers(): void {
   });
 
   process.on('warning', (warning: Error) => {
-    // Ignore MaxListenersExceededWarning
-    if (warning.name === 'MaxListenersExceededWarning') {
+    const logging = mergeDeep({}, defaultConfigLogging, config.logging);
+
+    if (warning.name === 'MaxListenersExceededWarning' || !logging.enabled) {
       return;
     }
     originalStderrWrite.call(process.stderr, `\r\x1b[K${warning.message}\n`);
@@ -302,7 +305,7 @@ export default function setupAntelopeProjectLogging(config: AntelopeProjectEnvCo
     return;
   }
 
-  setupProcessHandlers();
+  setupProcessHandlers(config);
 
   eventLog.register((log: Log) => {
     const forceInline = log.channel === 'inline';
