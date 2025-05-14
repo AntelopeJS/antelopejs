@@ -73,7 +73,7 @@ const variables: Record<string, (log: Log, param: string) => string> = {
 
   // Process chalk styling tags in format strings
   chalk: (_, param: string) => {
-    return param.replace(/.([a-zA-Z]+)(?:((.*)))?/g, (match: string, prop: string, param: string) => {
+    return param.replace(/.([a-zA-Z]+)(?:(.*))?/g, (match: string, prop: string, param: string) => {
       let chalkResult = chalk[<keyof typeof chalk>prop];
       if (!chalkResult) {
         return match;
