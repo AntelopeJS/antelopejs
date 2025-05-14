@@ -187,10 +187,9 @@ process.stderr.write = function (chunk: any, ...args: any[]): boolean {
  *
  * @param logging - The resolved logging configuration
  * @param log - The log event to process
- * @param isVerbose - Whether verbose mode is enabled
  * @param forceInline - Whether to force inline display
  */
-function handleLog(logging: AntelopeLogging, log: Log, isVerbose = false, forceInline = false): void {
+function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): void {
   const module = logging.moduleTracking.enabled ? GetResponsibleModule() : undefined;
 
   // Apply module filtering logic
@@ -307,6 +306,6 @@ export default function setupAntelopeProjectLogging(config: AntelopeProjectEnvCo
 
   eventLog.register((log: Log) => {
     const forceInline = log.channel === 'inline';
-    handleLog(logging, log, false, forceInline);
+    handleLog(logging, log, forceInline);
   });
 }
