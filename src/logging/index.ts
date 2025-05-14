@@ -162,14 +162,14 @@ function handleNodeWarning(message: string): void {
   const cleanMessage = message
     .replace(/\(node:\d+\)\s+/g, '')
     .replace(/\(Use.*\)/g, '')
-    .replace(/\[WriteStream\]/g, '')
+    .replace(/\[WriteStream]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
   originalStderrWrite.call(process.stderr, `\r\x1b[K${cleanMessage}`);
 }
 
-const originalStderrWrite = process.stderr.write;
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
 let wasLastMessageInline = false;
 
