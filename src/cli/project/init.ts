@@ -5,7 +5,7 @@ import path from 'path';
 import { readConfig, writeConfig } from '../common';
 import { handlers, projectModulesAddCommand } from './modules/add';
 import { moduleInitCommand } from '../module/init';
-import { Spinner, displayBox, info, sleep, warning } from '../../utils/cli-ui';
+import { Spinner, displayBox, info, warning } from '../../utils/cli-ui';
 import { mkdir, stat } from 'fs/promises';
 
 export default function () {
