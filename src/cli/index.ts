@@ -8,7 +8,7 @@ import { join } from 'path';
 import cmdProject from './project';
 import cmdModule from './module';
 import cmdConfig from './config';
-import { displayBanner, sleep } from '../utils/cli-ui';
+import { displayBanner } from '../utils/cli-ui';
 
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));

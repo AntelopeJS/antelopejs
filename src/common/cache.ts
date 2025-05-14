@@ -67,7 +67,7 @@ export class ModuleCache {
   }
 
   /**
-   * Check whether or not the installed version of a module satisfies the given SemVer constraint.
+   * Check whether the installed version of a module satisfies the given SemVer constraint.
    *
    * @param module - ID of the module.
    * @param version - Semantic Versioning constraint.

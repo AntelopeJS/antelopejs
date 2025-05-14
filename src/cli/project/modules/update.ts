@@ -98,8 +98,8 @@ export default function () {
               ...moduleInfo,
               source: {
                 ...(moduleInfo.source as ModuleSourcePackage),
-                version: latestVersion
-              } as ModuleSourcePackage
+                version: latestVersion,
+              } as ModuleSourcePackage,
             };
             updated.push(`${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`);
           } else {

@@ -54,7 +54,6 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
       newVersion = 'git:' + newActiveCommit;
       doInstall = true;
     }
-
   }
   if (doInstall && source.installCommand) {
     Logging.inline.Info(`Running install commands for ${name}`);

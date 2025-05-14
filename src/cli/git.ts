@@ -26,8 +26,8 @@ async function setupGit(cachePath: string, git: string, folderName: string, bran
     throw new Error(`Failed to setup sparse checkout: ${sparseResult.stderr}`);
   }
 
-  const checkoutResult = await ExecuteCMD('git checkout', { 
-    cwd: path.join(cachePath, folderName) 
+  const checkoutResult = await ExecuteCMD('git checkout', {
+    cwd: path.join(cachePath, folderName),
   });
 
   if (checkoutResult.code !== 0) {

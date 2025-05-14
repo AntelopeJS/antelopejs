@@ -73,7 +73,7 @@ const variables: Record<string, (log: Log, param: string) => string> = {
 
   // Process chalk styling tags in format strings
   chalk: (_, param: string) => {
-    return param.replace(/.([a-zA-Z]+)(?:((.*)))?/g, (match: string, prop: string, param: string) => {
+    return param.replace(/.([a-zA-Z]+)(?:(.*))?/g, (match: string, prop: string, param: string) => {
       let chalkResult = chalk[<keyof typeof chalk>prop];
       if (!chalkResult) {
         return match;
@@ -162,18 +162,18 @@ function handleNodeWarning(message: string): void {
   const cleanMessage = message
     .replace(/\(node:\d+\)\s+/g, '')
     .replace(/\(Use.*\)/g, '')
-    .replace(/\[WriteStream\]/g, '')
+    .replace(/\[WriteStream]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
   originalStderrWrite.call(process.stderr, `\r\x1b[K${cleanMessage}`);
 }
 
-const originalStderrWrite = process.stderr.write;
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
 let wasLastMessageInline = false;
 
-process.stderr.write = function(chunk: any, ...args: any[]): boolean {
+process.stderr.write = function (chunk: any, ...args: any[]): boolean {
   if (typeof chunk === 'string') {
     handleNodeWarning(chunk);
     return true;
@@ -187,10 +187,9 @@ process.stderr.write = function(chunk: any, ...args: any[]): boolean {
  *
  * @param logging - The resolved logging configuration
  * @param log - The log event to process
- * @param isVerbose - Whether verbose mode is enabled
  * @param forceInline - Whether to force inline display
  */
-function handleLog(logging: AntelopeLogging, log: Log, isVerbose = false, forceInline = false): void {
+function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): void {
   const module = logging.moduleTracking.enabled ? GetResponsibleModule() : undefined;
 
   // Apply module filtering logic
@@ -229,7 +228,10 @@ function handleLog(logging: AntelopeLogging, log: Log, isVerbose = false, forceI
   }
 
   if (forceInline) {
-    const cleanMessage = message.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const cleanMessage = message
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (!wasLastMessageInline) {
       process.stdout.write('\n');
     }
@@ -304,6 +306,6 @@ export default function setupAntelopeProjectLogging(config: AntelopeProjectEnvCo
 
   eventLog.register((log: Log) => {
     const forceInline = log.channel === 'inline';
-    handleLog(logging, log, false, forceInline);
+    handleLog(logging, log, forceInline);
   });
 }

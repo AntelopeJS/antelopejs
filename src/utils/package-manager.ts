@@ -9,7 +9,7 @@ const VALID_PACKAGE_MANAGERS = ['npm', 'yarn', 'pnpm'];
  * Get the appropriate command to install specific packages
  * @param packages List of packages to install
  * @param isDev Whether to install as development dependencies
- * @returns The full install command
+ * @returns The full installation command
  */
 export async function getInstallPackagesCommand(packages: string[] = [], isDev = false): Promise<string> {
   const { packageManager } = await readUserConfig();
