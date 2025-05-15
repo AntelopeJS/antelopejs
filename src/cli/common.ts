@@ -38,7 +38,7 @@ export namespace Options {
 
 export async function writeConfig(project: string, data: Partial<AntelopeConfig>): Promise<void> {
   const configPath = path.join(project, 'antelope.json');
-  await writeFile(configPath, JSON.stringify(data, null, '\t'));
+  await writeFile(configPath, JSON.stringify(data, null, '    '));
 }
 
 export async function readConfig(project: string): Promise<AntelopeConfig | undefined> {
@@ -51,7 +51,7 @@ export async function readConfig(project: string): Promise<AntelopeConfig | unde
 
 export async function writeModuleManifest(module: string, data: ModulePackageJson): Promise<void> {
   const configPath = path.join(module, 'package.json');
-  await writeFile(configPath, JSON.stringify(data, null, '\t'));
+  await writeFile(configPath, JSON.stringify(data, null, '    '));
 }
 
 export async function readModuleManifest(module: string): Promise<ModulePackageJson | undefined> {
@@ -80,7 +80,7 @@ export async function writeUserConfig(data: UserConfig): Promise<void> {
   if (!(await stat(folderPath).catch(() => false))) {
     mkdirSync(folderPath, { recursive: true });
   }
-  await writeFile(configPath, JSON.stringify(data, null, '\t'));
+  await writeFile(configPath, JSON.stringify(data, null, '    '));
 }
 
 export async function readUserConfig(): Promise<UserConfig> {
