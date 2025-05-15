@@ -339,6 +339,7 @@ export class ModuleManager {
 
     const moduleResults = await Promise.all(modulePromises);
     const moduleList = moduleResults.flat();
+    Logging.Info(`Modules loaded`);
 
     Logging.inline.Info(`Loading exports`);
 
@@ -347,10 +348,12 @@ export class ModuleManager {
 
     moduleList.reduce((map, entry) => {
       if (map.has(entry.ref.id)) {
-        console.error(`Detected module id collision (name in package.json): ${entry.ref.id}`);
+        Logging.Error(`Detected module id collision (name in package.json): ${entry.ref.id}`);
       }
       return map.set(entry.ref.id, entry);
     }, this.loadedModules);
+
+    Logging.Info(`Exports loaded`);
 
     // Set max listeners to default
     EventEmitter.defaultMaxListeners = 10;
@@ -371,7 +374,7 @@ export class ModuleManager {
         }),
       ),
     );
-    Logging.inline.Info(`Done loading`);
+    Logging.Info(`Done loading`);
   }
 
   public startModules() {
