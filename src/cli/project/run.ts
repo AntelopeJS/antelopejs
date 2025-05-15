@@ -51,7 +51,7 @@ export default function () {
         `Environment: ${chalk.cyan(options.env || 'default')}\n` +
           `Watch mode: ${options.watch ? chalk.green('enabled') : chalk.gray('disabled')}\n` +
           `Inspector: ${options.inspect ? chalk.green(options.inspect === true ? '127.0.0.1:9229' : options.inspect) : chalk.gray('disabled')}`,
-        '🚀 Launch Configuration',
+        ' Launch Configuration',
         { padding: 1 },
       );
 
