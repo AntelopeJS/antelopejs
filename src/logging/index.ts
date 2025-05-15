@@ -157,28 +157,13 @@ function setupProcessHandlers(config: AntelopeProjectEnvConfigStrict): void {
   });
 }
 
-/**
- * Handles Node.js warning messages by cleaning and displaying them inline
- * @param message - The warning message to handle
- */
-function handleNodeWarning(message: string): void {
-  const cleanMessage = message
-    .replace(/\(node:\d+\)\s+/g, '')
-    .replace(/\(Use.*\)/g, '')
-    .replace(/\[WriteStream]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  originalStderrWrite.call(process.stderr, `\r\x1b[K${cleanMessage}`);
-}
-
 const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
 let wasLastMessageInline = false;
 
 process.stderr.write = function (chunk: any, ...args: any[]): boolean {
   if (typeof chunk === 'string') {
-    handleNodeWarning(chunk);
+    originalStderrWrite.call(process.stderr, `${chunk}`);
     return true;
   }
   return (originalStderrWrite as any).apply(process.stderr, [chunk, ...args]);
