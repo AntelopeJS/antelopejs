@@ -5,7 +5,9 @@ import startAntelope, { LaunchOptions } from '../..';
 import { Spinner, displayBox, info, warning, error, sleep } from '../../utils/cli-ui';
 import { fork } from 'child_process';
 import path from 'path';
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs';
+import { unlinkSync, writeFileSync } from 'fs';
+import fs from 'fs';
+import { ModuleCache } from '../../common/cache';
 
 interface RunOptions extends LaunchOptions {
   project: string;
@@ -86,13 +88,8 @@ export default function () {
           `;
 
           // Create a temporary runner file
-          const tmpDir = path.resolve(options.project, '.antelope/tmp');
-          const runnerPath = path.resolve(tmpDir, `antelope-runner-${Date.now()}.js`);
-
-          // Ensure tmp directory exists
-          if (!existsSync(tmpDir)) {
-            mkdirSync(tmpDir, { recursive: true });
-          }
+          const tmpDir = await ModuleCache.getTemp();
+          const runnerPath = path.join(tmpDir, `antelope-runner-${Date.now()}.js`);
 
           // Write the runner script to a file
           writeFileSync(runnerPath, runnerScript);
@@ -123,6 +120,12 @@ export default function () {
 
           await sleep(1000);
           unlinkSync(runnerPath);
+          // Clean up temporary directory
+          try {
+            await fs.promises.rm(tmpDir, { recursive: true, force: true });
+          } catch {
+            // Ignore errors during cleanup
+          }
         } else {
           // Run in the current process as before
           await startAntelope(options.project, options.env, options);
