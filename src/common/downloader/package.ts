@@ -55,7 +55,7 @@ RegisterLoader('package', 'package', async (cache: ModuleCache, source: ModuleSo
     folder = await cache.transfer(tmpPackage, source.package, manifest.version);
 
     Logging.inline.Info(`Installing dependencies for ${source.package}@${source.version}`);
-    const installCmd = await getInstallCommand();
+    const installCmd = await getInstallCommand(folder);
     await ExecuteCMD(installCmd, { cwd: folder }, true); // TODO: check err
   }
   Logging.inline.Info(`Successfully loaded ${source.package}@${source.version}`);

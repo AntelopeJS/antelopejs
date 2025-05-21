@@ -8,6 +8,7 @@ import { existsSync, readdirSync } from 'fs';
 import { moduleImportAddCommand } from './imports/add';
 import { Spinner, displayBox, info, error, warning } from '../../utils/cli-ui';
 import { execSync } from 'child_process';
+import { savePackageManagerToPackageJson } from '../package-manager';
 
 interface InitOptions {
   git?: string;
@@ -142,6 +143,26 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
       }
     }
 
+    // Ask about package manager
+    console.log('');
+    const { packageManager } = await inquirer.prompt<{ packageManager: string }>([
+      {
+        type: 'list',
+        name: 'packageManager',
+        message: 'Which package manager would you like to use?',
+        choices: [
+          { name: 'npm', value: 'npm' },
+          { name: 'yarn', value: 'yarn' },
+          { name: 'pnpm', value: 'pnpm' },
+        ],
+        default: 'npm',
+      },
+    ]);
+
+    // Save the package manager to package.json
+    const packageJsonPath = path.resolve(modulePath);
+    savePackageManagerToPackageJson(packageManager, packageJsonPath);
+
     // Ask about initializing git repository
     console.log('');
     const { initGit } = await inquirer.prompt<{ initGit: boolean }>([
@@ -175,7 +196,8 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
     await displayBox(
       `Your AntelopeJS module has been successfully created!\n\n` +
         `Template: ${chalk.green(template.name)}\n` +
-        `Location: ${chalk.cyan(path.resolve(modulePath))}` +
+        `Location: ${chalk.cyan(path.resolve(modulePath))}\n` +
+        `Package Manager: ${chalk.green(packageManager)}` +
         (initGit ? `\nGit Repository: ${chalk.green('Initialized')}` : ''),
       '🎉 Module Created',
       { borderColor: 'green' },

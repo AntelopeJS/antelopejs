@@ -3,8 +3,7 @@ import { Command } from 'commander';
 import { writeUserConfig, readUserConfig, DEFAULT_GIT_REPO, displayNonDefaultGitWarning } from '../common';
 import { displayBox, error, success, keyValue } from '../../utils/cli-ui';
 
-const VALID_KEYS = ['git', 'packageManager'];
-const VALID_PACKAGE_MANAGERS = ['npm', 'yarn', 'pnpm'];
+const VALID_KEYS = ['git'];
 
 export default function () {
   return new Command('set')
@@ -18,13 +17,6 @@ export default function () {
       if (!VALID_KEYS.includes(key)) {
         error(`Invalid configuration key: ${chalk.bold(key)}`);
         console.log(`Valid keys are: ${VALID_KEYS.map((k) => chalk.cyan(k)).join(', ')}`);
-        return;
-      }
-
-      // Validate package manager value
-      if (key === 'packageManager' && !VALID_PACKAGE_MANAGERS.includes(value)) {
-        error(`Invalid package manager: ${chalk.bold(value)}`);
-        console.log(`Valid package managers are: ${VALID_PACKAGE_MANAGERS.map((k) => chalk.cyan(k)).join(', ')}`);
         return;
       }
 
@@ -45,16 +37,8 @@ export default function () {
       // Display success message
       success(`Configuration updated successfully`);
 
-      // Show the before and after values in a nice box
-      await displayBox(
-        `${keyValue('Setting', chalk.cyan(key))}\n` +
-          `${keyValue('Old value', chalk.dim(oldValue || 'Not set'))}\n` +
-          `${keyValue('New value', chalk.green(value))}`,
-        '✓ Configuration Updated',
-        {
-          borderColor: 'green',
-          padding: 1,
-        },
-      );
+      // Show the change in a nicely formatted box
+      const formattedChange = `${keyValue(key, chalk.dim(`${oldValue} → `) + chalk.green(value))}`;
+      await displayBox(formattedChange, '📝 Configuration Changed', { padding: 1, borderColor: 'green' });
     });
 }
