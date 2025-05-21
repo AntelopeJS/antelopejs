@@ -14,20 +14,20 @@ const VALID_PACKAGE_MANAGERS = ['npm', 'yarn', 'pnpm'];
 export async function getInstallPackagesCommand(packages: string[] = [], isDev = false): Promise<string> {
   const { packageManager } = await readUserConfig();
 
-  // Ensure packageManager is valid, default to pnpm if not
-  const validPackageManager = VALID_PACKAGE_MANAGERS.includes(packageManager) ? packageManager : 'pnpm';
+  // Ensure packageManager is valid, default to npm if not
+  const validPackageManager = VALID_PACKAGE_MANAGERS.includes(packageManager) ? packageManager : 'npm';
 
   const packageList = packages.join(' ');
   const devFlag = isDev ? '-D' : '';
 
   switch (validPackageManager) {
-    case 'npm':
-      return `npm install ${isDev ? '--save-dev' : '--save'} ${packageList} -C . --lockfile-dir .`.trim();
+    case 'pnpm':
+      return `pnpm install ${devFlag} ${packageList} -C . --lockfile-dir .`.trim();
     case 'yarn':
       return `yarn add ${devFlag} ${packageList} -C . --lockfile-dir .`.trim();
-    case 'pnpm':
+    case 'npm':
     default:
-      return `pnpm add ${devFlag} ${packageList} -C . --lockfile-dir .`.trim();
+      return `npm install ${isDev ? '--save-dev' : '--save'} ${packageList} -C . --lockfile-dir .`.trim();
   }
 }
 
@@ -38,17 +38,17 @@ export async function getInstallPackagesCommand(packages: string[] = [], isDev =
 export async function getInstallCommand(): Promise<string> {
   const { packageManager } = await readUserConfig();
 
-  // Ensure packageManager is valid, default to pnpm if not
-  const validPackageManager = VALID_PACKAGE_MANAGERS.includes(packageManager) ? packageManager : 'pnpm';
+  // Ensure packageManager is valid, default to npm if not
+  const validPackageManager = VALID_PACKAGE_MANAGERS.includes(packageManager) ? packageManager : 'npm';
 
   switch (validPackageManager) {
-    case 'npm':
-      return 'npm install';
+    case 'pnpm':
+      return 'pnpm install';
     case 'yarn':
       return 'yarn';
-    case 'pnpm':
+    case 'npm':
     default:
-      return 'pnpm install';
+      return 'npm install';
   }
 }
 
