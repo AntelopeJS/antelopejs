@@ -4,7 +4,7 @@ import { ExecuteCMD } from '../utils/command';
 import path from 'path';
 import { stat } from 'fs/promises';
 import fs, { cpSync, mkdirSync, readdirSync, rmSync } from 'fs';
-import { getInstallPackagesCommand } from '../utils/package-manager';
+import { getInstallPackagesCommand } from './package-manager';
 
 async function setupGit(cachePath: string, git: string, folderName: string, branch?: string) {
   const result = await ExecuteCMD(
@@ -258,22 +258,6 @@ export async function installInterfaces(
     });
   }
 
-  // Install packages needed by all interfaces
-  const allPackages = new Set<string>();
-  for (const { interfaceInfo, version } of allDependencies) {
-    const dependencies = interfaceInfo.manifest.dependencies[version];
-    for (const package_ of dependencies.packages) {
-      allPackages.add(package_);
-    }
-  }
-
-  if (allPackages.size > 0) {
-    const installCmd = await getInstallPackagesCommand(Array.from(allPackages), true);
-    await ExecuteCMD(installCmd, {
-      cwd: module,
-    });
-  }
-
   // Copy interface files
   for (const { interfaceInfo, version } of allDependencies) {
     const files = interfaceInfo.manifest.files[version];
@@ -297,6 +281,14 @@ export async function installInterfaces(
     }
 
     cpSync(path.join(folderPath, version), interfacePath, { recursive: true });
+
+    const dependencies = interfaceInfo.manifest.dependencies[version];
+    if (dependencies.packages.length > 0) {
+      const installCmd = await getInstallPackagesCommand(dependencies.packages, true);
+      await ExecuteCMD(installCmd, {
+        cwd: interfacePath,
+      });
+    }
   }
 }
 

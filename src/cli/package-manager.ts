@@ -1,4 +1,4 @@
-import { readUserConfig } from '../cli/common';
+import { readUserConfig } from './common';
 
 /**
  * Valid package manager options
@@ -22,12 +22,12 @@ export async function getInstallPackagesCommand(packages: string[] = [], isDev =
 
   switch (validPackageManager) {
     case 'npm':
-      return `npm install ${isDev ? '--save-dev' : '--save'} ${packageList}`.trim();
+      return `npm install ${isDev ? '--save-dev' : '--save'} ${packageList} -C . --lockfile-dir .`.trim();
     case 'yarn':
-      return `yarn add ${devFlag} ${packageList}`.trim();
+      return `yarn add ${devFlag} ${packageList} -C . --lockfile-dir .`.trim();
     case 'pnpm':
     default:
-      return `pnpm add ${devFlag} ${packageList}`.trim();
+      return `pnpm add ${devFlag} ${packageList} -C . --lockfile-dir .`.trim();
   }
 }
 

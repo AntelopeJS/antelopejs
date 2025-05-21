@@ -6,7 +6,7 @@ import { Logging } from '../../interfaces/logging/beta';
 // @ts-ignore
 import inly from 'inly';
 import { ExecuteCMD } from '../../utils/command';
-import { getInstallCommand } from '../../utils/package-manager';
+import { getInstallCommand } from '../../cli/package-manager';
 import { ModuleManifest, ModulePackageJson } from '../manifest';
 function Extract(from: string, to: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {

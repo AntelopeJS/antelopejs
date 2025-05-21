@@ -4,7 +4,7 @@ import { LoadConfig } from '../../../common/config';
 import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import { ModuleSourcePackage } from '../../../common/downloader/package';
-import { parsePackageInfoOutput } from '../../../utils/package-manager';
+import { parsePackageInfoOutput } from '../../package-manager';
 import { error as errorUI, warning, info, success } from '../../../utils/cli-ui';
 
 interface UpdateOptions {
