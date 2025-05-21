@@ -65,6 +65,7 @@ export interface Template {
   description: string;
   repository: string;
   branch: string;
+  interfaces: string[];
 }
 
 export async function loadManifestFromGit(git: string): Promise<GitManifest> {

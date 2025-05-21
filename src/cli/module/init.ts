@@ -90,9 +90,32 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
     // Load and select interfaces
     console.log('');
     const interfacesInfo = await loadInterfacesFromGit(git, gitManifest.starredInterfaces);
-    const interfaceCount = Object.keys(interfacesInfo).length;
 
-    if (interfaceCount === 0) {
+    const [selectableInterfaces, nonSelectableInterfaces] = Object.values(interfacesInfo).reduce(
+      ([match, noMatch], interfaceInfo) => {
+        const formattedItem = {
+          name: `${chalk.cyan(interfaceInfo.name)} - ${chalk.dim(interfaceInfo.manifest.description)}`,
+          value: interfaceInfo.name,
+        };
+        if (!template.interfaces.includes(interfaceInfo.name)) {
+          match.push(formattedItem);
+        } else {
+          noMatch.push(formattedItem);
+        }
+        return [match, noMatch];
+      },
+      [[], []] as { name: string; value: string }[][],
+    );
+
+    if (nonSelectableInterfaces.length) {
+      console.log('');
+      console.log(chalk.bold('Already imported interfaces from template:'));
+      nonSelectableInterfaces.forEach((interfaceInfo) => {
+        console.log(`  • ${chalk.cyan(interfaceInfo.name)}`);
+      });
+    }
+
+    if (selectableInterfaces.length === 0) {
       warning('No interfaces available for import');
     } else {
       // Prompt for interface selection
@@ -102,10 +125,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
           type: 'checkbox',
           name: 'interfaces',
           message: 'Select interfaces to import into your module',
-          choices: Object.values(interfacesInfo).map((interfaceInfo) => ({
-            name: `${chalk.cyan(interfaceInfo.name)} - ${chalk.dim(interfaceInfo.manifest.description)}`,
-            value: interfaceInfo.name,
-          })),
+          choices: selectableInterfaces,
         },
       ]);
 
