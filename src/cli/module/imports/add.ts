@@ -15,7 +15,7 @@ import { error, warning, info, success, ProgressBar } from '../../../utils/cli-u
 interface AddOptions {
   git?: string;
   module: string;
-  optionnal: boolean;
+  optional: boolean;
 }
 
 // Type for tracking added interfaces
@@ -91,7 +91,7 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
     // Check if this interface is already imported
     let alreadyExists = false;
     if (moduleManifest.antelopeJs) {
-      const importArray = options.optionnal
+      const importArray = options.optional
         ? moduleManifest.antelopeJs.importsOptional || []
         : moduleManifest.antelopeJs.imports || [];
 
@@ -107,7 +107,7 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
     const importObj: ModuleImport = options.git ? { name: importName, git: options.git } : importName;
 
     // Add to list of pending imports
-    pendingImports.push({ importName, importObj, isOptional: options.optionnal });
+    pendingImports.push({ importName, importObj, isOptional: options.optional });
     added.push({ name: interfaceName, version });
 
     // Add to the list of interfaces to install

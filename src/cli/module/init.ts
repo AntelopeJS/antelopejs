@@ -113,7 +113,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
         // Import selected interfaces
         await moduleImportAddCommand(interfaces, {
           git: options.git || undefined,
-          optionnal: false,
+          optional: false,
           module: path.join(modulePath),
         });
       } else {
