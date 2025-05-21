@@ -90,6 +90,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
     // Load and select interfaces
     console.log('');
     const interfacesInfo = await loadInterfacesFromGit(git, gitManifest.starredInterfaces);
+    const templateInterfaces = template.interfaces || [];
 
     const [selectableInterfaces, nonSelectableInterfaces] = Object.values(interfacesInfo).reduce(
       ([match, noMatch], interfaceInfo) => {
@@ -97,7 +98,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
           name: `${chalk.cyan(interfaceInfo.name)} - ${chalk.dim(interfaceInfo.manifest.description)}`,
           value: interfaceInfo.name,
         };
-        if (!template.interfaces.includes(interfaceInfo.name)) {
+        if (!templateInterfaces.includes(interfaceInfo.name)) {
           match.push(formattedItem);
         } else {
           noMatch.push(formattedItem);
