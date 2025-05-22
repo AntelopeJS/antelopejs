@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import { UserConfig, readUserConfig } from '../common';
 import { displayBox, error, keyValue } from '../../utils/cli-ui';
 
-const VALID_KEYS = ['git', 'packageManager'];
+const VALID_KEYS = ['git'];
 
 export default function () {
   return new Command('get')

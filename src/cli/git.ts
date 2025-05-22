@@ -284,7 +284,7 @@ export async function installInterfaces(
 
     const dependencies = interfaceInfo.manifest.dependencies[version];
     if (dependencies.packages.length > 0) {
-      const installCmd = await getInstallPackagesCommand(dependencies.packages, true);
+      const installCmd = await getInstallPackagesCommand(dependencies.packages, true, interfacePath);
       await ExecuteCMD(installCmd, {
         cwd: interfacePath,
       });
