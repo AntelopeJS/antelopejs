@@ -8,7 +8,7 @@ import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import inquirer from 'inquirer';
 import { displayBox, error, info, success } from '../../../utils/cli-ui';
-import { parsePackageInfoOutput } from '../../../utils/package-manager';
+import { parsePackageInfoOutput } from '../../package-manager';
 
 interface AddOptions {
   mode: string;
@@ -129,7 +129,7 @@ export default function () {
     .description(`Add modules to your project\n` + `Import modules from npm, git, or local directories.`)
     .argument('<modules...>', 'Modules to add (format depends on --mode)')
     .addOption(
-      new Option('-m, --mode <mode>', 'Source type for the modules').choices([...handlers.keys()]).default('npm'),
+      new Option('-m, --mode <mode>', 'Source type for the modules').choices([...handlers.keys()]).default('package'),
     )
     .addOption(Options.project)
     .addOption(new Option('-e, --env <environment>', 'Environment to add modules to').env('ANTELOPEJS_LAUNCH_ENV'))
@@ -138,7 +138,7 @@ export default function () {
 
 // Module source handlers
 
-handlers.set('npm', async (module) => {
+handlers.set('package', async (module) => {
   const m = module.match(/^(.+?)(?:@(.*))?$/);
   assert(m, `Invalid npm module format: '${module}'. Use <name>@<version>, <name>version or <name>`);
   let [, name, version] = m;
