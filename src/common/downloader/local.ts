@@ -10,6 +10,7 @@ import { Logging } from '../../interfaces/logging/beta';
 export interface ModuleSourceLocal extends ModuleSource {
   type: 'local';
   path: string;
+  main?: string;
   watchDir?: string | string[];
   installCommand?: string | string[];
 }
