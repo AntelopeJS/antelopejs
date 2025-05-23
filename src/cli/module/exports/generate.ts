@@ -113,7 +113,7 @@ export default function () {
 
       const exportPath = manifest.antelopeJs.exportsPath;
       const tsConfigFile = path.join(options.module, 'tsconfig.json');
-      const outputPath = path.join(options.module, '.antelope', 'output');
+      const outputPath = path.join(options.module, 'output');
       const tmpPath = path.join(options.module, '.antelope', 'tmp');
 
       info(`Generating TypeScript declarations for ${chalk.cyan(exportPath)}`);
