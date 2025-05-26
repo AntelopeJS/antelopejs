@@ -58,41 +58,53 @@ export namespace Options {
   export const git = new Option('-g, --git <url>', 'URL to git interfaces').env('ANTELOPEJS_GIT');
 }
 
+async function writeJsonFile(filePath: string, data: unknown): Promise<void> {
+  const indentation = await detectIndentation(filePath);
+  await writeFile(filePath, JSON.stringify(data, null, indentation));
+}
+
+async function readJsonFile<T>(filePath: string): Promise<T | undefined> {
+  if (!(await stat(filePath).catch((err) => (err.code !== 'ENOENT' ? Promise.reject(err) : false)))) {
+    return undefined;
+  }
+  return JSON.parse((await readFile(filePath)).toString());
+}
+
+/*
+ * AntelopeJS configuration
+ */
 export async function writeConfig(project: string, data: Partial<AntelopeConfig>): Promise<void> {
   const configPath = path.join(project, 'antelope.json');
-  const indentation = await detectIndentation(configPath);
-  await writeFile(configPath, JSON.stringify(data, null, indentation));
+  await writeJsonFile(configPath, data);
 }
 
 export async function readConfig(project: string): Promise<AntelopeConfig | undefined> {
-  const configPath = path.join(project, 'antelope.json');
-  if (!(await stat(configPath).catch((err) => (err.code !== 'ENOENT' ? Promise.reject(err) : false)))) {
-    return undefined;
-  }
-  return JSON.parse((await readFile(configPath)).toString());
+  return readJsonFile<AntelopeConfig>(path.join(project, 'antelope.json'));
 }
 
+/*
+ * Node package configuration
+ */
 export async function writeModuleManifest(module: string, data: ModulePackageJson): Promise<void> {
-  const configPath = path.join(module, 'package.json');
-  const indentation = await detectIndentation(configPath);
-  await writeFile(configPath, JSON.stringify(data, null, indentation));
+  await writeJsonFile(path.join(module, 'package.json'), data);
 }
 
 export async function readModuleManifest(module: string): Promise<ModulePackageJson | undefined> {
-  const configPath = path.join(module, 'package.json');
-  if (!(await stat(configPath).catch((err) => (err.code !== 'ENOENT' ? Promise.reject(err) : false)))) {
-    return undefined;
-  }
-  return JSON.parse((await readFile(configPath)).toString());
+  return readJsonFile<ModulePackageJson>(path.join(module, 'package.json'));
 }
 
+/*
+ * User configuration
+ */
 export interface UserConfig {
   git: string;
+  packageManager: string;
 }
 
 export function getDefaultUserConfig(): UserConfig {
   return {
     git: DEFAULT_GIT_REPO,
+    packageManager: 'pnpm',
   };
 }
 
@@ -102,8 +114,7 @@ export async function writeUserConfig(data: UserConfig): Promise<void> {
   if (!(await stat(folderPath).catch(() => false))) {
     mkdirSync(folderPath, { recursive: true });
   }
-  const indentation = await detectIndentation(configPath);
-  await writeFile(configPath, JSON.stringify(data, null, indentation));
+  await writeJsonFile(configPath, data);
 }
 
 export async function readUserConfig(): Promise<UserConfig> {
@@ -111,5 +122,6 @@ export async function readUserConfig(): Promise<UserConfig> {
   if (!(await stat(configPath).catch(() => false))) {
     return getDefaultUserConfig();
   }
-  return JSON.parse((await readFile(configPath)).toString());
+  const config = await readJsonFile<UserConfig>(configPath);
+  return config ?? getDefaultUserConfig();
 }
