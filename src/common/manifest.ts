@@ -3,7 +3,7 @@ import { ModuleSource } from './downloader';
 import { lstat, readdir } from 'fs/promises';
 import { Logging } from '../interfaces/logging/beta';
 
-export type ModuleImport = string | { name: string; git?: string };
+export type ModuleImport = string | { name: string; git?: string; skipInstall?: boolean };
 
 export function mapModuleImport(moduleImport: ModuleImport): string {
   return typeof moduleImport === 'object' ? moduleImport.name : moduleImport;
