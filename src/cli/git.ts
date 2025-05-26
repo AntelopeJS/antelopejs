@@ -35,7 +35,7 @@ async function setupGit(cachePath: string, git: string, folderName: string, bran
   }
 }
 
-async function loadGit(git: string, requirePull: boolean, branch?: string): Promise<string> {
+async function loadGit(git: string, branch?: string): Promise<string> {
   const folderName = git.replace(/[^a-zA-Z0-9_]/g, '_');
   const cachePath = path.join(homedir(), '.antelopejs', 'cache');
 
@@ -47,10 +47,8 @@ async function loadGit(git: string, requirePull: boolean, branch?: string): Prom
 
   if (!(await stat(folderPath).catch(() => false))) {
     await setupGit(cachePath, git, folderName, branch);
-  } else if (requirePull) {
-    await ExecuteCMD('git pull', { cwd: folderPath });
   } else {
-    ExecuteCMD('git pull', { cwd: folderPath });
+    await ExecuteCMD('git pull', { cwd: folderPath });
   }
 
   return folderPath;
@@ -69,7 +67,7 @@ export interface Template {
 }
 
 export async function loadManifestFromGit(git: string): Promise<GitManifest> {
-  const folderPath = await loadGit(git, false);
+  const folderPath = await loadGit(git);
   const manifestPath = path.join(folderPath, 'manifest.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   return manifest;
@@ -124,7 +122,7 @@ async function getInterfaceInfo(gitPath: string, interface_: string): Promise<In
 }
 
 export async function loadInterfaceFromGit(git: string, interface_: string): Promise<InterfaceInfo | undefined> {
-  const folderPath = await loadGit(git, true);
+  const folderPath = await loadGit(git);
 
   await ExecuteCMD(`git sparse-checkout add interfaces/${interface_}/manifest.json --skip-checks`, {
     cwd: folderPath,
@@ -136,7 +134,7 @@ export async function loadInterfaceFromGit(git: string, interface_: string): Pro
 }
 
 export async function loadInterfacesFromGit(git: string, interfaces: string[]): Promise<Record<string, InterfaceInfo>> {
-  const folderPath = await loadGit(git, true);
+  const folderPath = await loadGit(git);
 
   const sparseCheckoutPaths = interfaces.map((interface_) => `interfaces/${interface_}/manifest.json`).join(' ');
 
@@ -241,7 +239,7 @@ export async function installInterfaces(
         `${interfacePathBase}/${version}.d.ts`,
       );
     } else if (files.type === 'git' && files.remote) {
-      const gitPath = await loadGit(files.remote, true, files.branch);
+      const gitPath = await loadGit(files.remote, files.branch);
 
       if (!gitOperations[gitPath]) {
         gitOperations[gitPath] = { path: gitPath, checkoutPaths: [] };
@@ -266,7 +264,7 @@ export async function installInterfaces(
     if (files.type === 'local') {
       folderPath = interfaceInfo.folderPath;
     } else if (files.type === 'git' && files.remote) {
-      const gitPath = await loadGit(files.remote, false, files.branch);
+      const gitPath = await loadGit(files.remote, files.branch);
       folderPath = path.join(gitPath, files.path);
     } else {
       throw new Error('Invalid interface files type');
