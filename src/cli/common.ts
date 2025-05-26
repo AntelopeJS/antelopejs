@@ -60,7 +60,7 @@ export namespace Options {
 
 async function writeJsonFile(filePath: string, data: unknown): Promise<void> {
   const indentation = await detectIndentation(filePath);
-  await writeFile(filePath, JSON.stringify(data, null, indentation));
+  await writeFile(filePath, JSON.stringify(data, null, indentation) + '\n');
 }
 
 async function readJsonFile<T>(filePath: string): Promise<T | undefined> {
