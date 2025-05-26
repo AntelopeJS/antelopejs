@@ -8,6 +8,28 @@ import { ModulePackageJson } from '../common/manifest';
 import { warning } from '../utils/cli-ui';
 import chalk from 'chalk';
 
+const DEFAULT_INDENTATION = '  ';
+
+/**
+ * Detects the indentation character from a file
+ * @param filePath Path to the file
+ * @returns The detected indentation character or default (2 spaces)
+ */
+export async function detectIndentation(filePath: string): Promise<string> {
+  try {
+    const content = (await readFile(filePath)).toString();
+    const match = content.match(/\n([\t ]+)/);
+
+    if (match && match[1]) {
+      const firstChar = match[1][0];
+      return firstChar === '\t' ? '\t' : '  ';
+    }
+  } catch {
+    //
+  }
+  return DEFAULT_INDENTATION;
+}
+
 // Definition of the default git repository
 export const DEFAULT_GIT_REPO = 'https://github.com/AntelopeJS/interfaces.git';
 
@@ -38,7 +60,8 @@ export namespace Options {
 
 export async function writeConfig(project: string, data: Partial<AntelopeConfig>): Promise<void> {
   const configPath = path.join(project, 'antelope.json');
-  await writeFile(configPath, JSON.stringify(data, null, '    '));
+  const indentation = await detectIndentation(configPath);
+  await writeFile(configPath, JSON.stringify(data, null, indentation));
 }
 
 export async function readConfig(project: string): Promise<AntelopeConfig | undefined> {
@@ -51,7 +74,8 @@ export async function readConfig(project: string): Promise<AntelopeConfig | unde
 
 export async function writeModuleManifest(module: string, data: ModulePackageJson): Promise<void> {
   const configPath = path.join(module, 'package.json');
-  await writeFile(configPath, JSON.stringify(data, null, '    '));
+  const indentation = await detectIndentation(configPath);
+  await writeFile(configPath, JSON.stringify(data, null, indentation));
 }
 
 export async function readModuleManifest(module: string): Promise<ModulePackageJson | undefined> {
@@ -78,7 +102,8 @@ export async function writeUserConfig(data: UserConfig): Promise<void> {
   if (!(await stat(folderPath).catch(() => false))) {
     mkdirSync(folderPath, { recursive: true });
   }
-  await writeFile(configPath, JSON.stringify(data, null, '    '));
+  const indentation = await detectIndentation(configPath);
+  await writeFile(configPath, JSON.stringify(data, null, indentation));
 }
 
 export async function readUserConfig(): Promise<UserConfig> {

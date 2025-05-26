@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { satisfies } from 'semver';
+import { detectIndentation } from '../cli/common';
 
 /**
  * Module Cache management
@@ -38,9 +39,11 @@ export class ModuleCache {
       return;
     }
     this.saving = true;
-    setTimeout(() => {
+    setTimeout(async () => {
       this.saving = false;
-      fs.writeFile(join(this.path, 'manifest.json'), JSON.stringify(this.manifest));
+      const manifestPath = join(this.path, 'manifest.json');
+      const indentation = await detectIndentation(manifestPath);
+      fs.writeFile(manifestPath, JSON.stringify(this.manifest, null, indentation));
     }, 1);
   }
 
