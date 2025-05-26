@@ -137,6 +137,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
           git: options.git || undefined,
           optional: false,
           module: path.join(modulePath),
+          skipInstall: false,
         });
       } else {
         info('No interfaces selected for import');
