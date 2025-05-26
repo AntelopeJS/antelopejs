@@ -16,6 +16,10 @@ interface AddOptions {
   env?: string;
 }
 
+interface ModuleConfig {
+  config?: Record<string, any>;
+}
+
 export const handlers = new Map<
   string,
   (module: string, options: AddOptions) => Promise<[string, AntelopeModuleSourceConfig | string]>
@@ -174,6 +178,17 @@ handlers.set('local', async (module, options) => {
   const packagePath = path.join(modulePath, 'package.json');
   assert((await stat(packagePath)).isFile(), `No package.json found in '${module}'`);
   const info = JSON.parse((await readFile(packagePath)).toString());
+
+  let moduleConfig: ModuleConfig = {};
+  const moduleConfigPath = path.join(modulePath, 'module_config_default.json');
+  try {
+    if ((await stat(moduleConfigPath)).isFile()) {
+      moduleConfig = JSON.parse((await readFile(moduleConfigPath)).toString());
+    }
+  } catch {
+    // Ignore if module.config.json doesn't exist
+  }
+
   return [
     info.name,
     {
@@ -182,6 +197,7 @@ handlers.set('local', async (module, options) => {
         path: path.relative(options.project, modulePath) || '.',
         installCommand: ['npx tsc'],
       },
+      config: moduleConfig.config || {},
     },
   ];
 });
