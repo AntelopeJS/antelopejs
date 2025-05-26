@@ -8,6 +8,7 @@ interface UpdateOptions {
   module: string;
   selectedInterfaces?: string[];
   dryRun: boolean;
+  skipInstall: boolean;
 }
 
 export default function () {
@@ -18,6 +19,7 @@ export default function () {
     .argument('[interfaces...]', 'Specific interfaces to update (default: all)')
     .addOption(Options.module)
     .addOption(new Option('--dry-run', 'Show what would be updated without making changes').default(false))
+    .addOption(new Option('-s, --skip-install', 'Skip installation of interface files during update').default(false))
     .action(async (selectedInterfaces: string[], options: UpdateOptions) => {
       const moduleManifest = await readModuleManifest(options.module);
       if (!moduleManifest) {
@@ -63,10 +65,12 @@ export default function () {
       }
 
       const interfacesParsed = interfaces.map((interface_) => {
-        const [name, git] =
-          typeof interface_ === 'object' ? [interface_.name, interface_.git] : [interface_, undefined];
+        const [name, git, skipInstall] =
+          typeof interface_ === 'object'
+            ? [interface_.name, interface_.git, interface_.skipInstall]
+            : [interface_, undefined, undefined];
         const m = name.match(/^([^@]+)(?:@(.+))?$/);
-        return { raw: name, name: m && m[1], version: m && m[2], git };
+        return { raw: name, name: m && m[1], version: m && m[2], git, skipInstall };
       });
 
       const malformedInterface = interfacesParsed.find((interface_) => !interface_.name || !interface_.version);
@@ -132,11 +136,13 @@ export default function () {
             progressBar.update(processedCount, { title: `Queuing update for ${name}@${version}` });
 
             if (!options.dryRun) {
-              // Add to batches instead of processing individually
-              toRemove.push({ name: interfaceInfo.name, version });
-              toInstall.push({ interfaceInfo, version });
+              const shouldSkipInstall = interface_.skipInstall || options.skipInstall;
+              if (!shouldSkipInstall) {
+                toRemove.push({ name: interfaceInfo.name, version });
+                toInstall.push({ interfaceInfo, version });
+              }
             }
-            updated.push(`${name}@${version}`);
+            updated.push(`${name}@${version}${interface_.skipInstall || options.skipInstall ? ' (skip-install)' : ''}`);
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : String(err);
             errorMessages.push(`Failed to update ${chalk.bold(`${name}@${version}`)}: ${errorMessage}`);

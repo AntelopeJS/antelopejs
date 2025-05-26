@@ -54,7 +54,9 @@ export default function () {
           const importName = typeof importItem === 'string' ? importItem : importItem.name;
           const gitSource =
             typeof importItem === 'string' ? '' : importItem.git ? ` (from ${chalk.cyan(importItem.git)})` : '';
-          content += `  ${chalk.green('•')} ${chalk.bold(importName)}${gitSource}\n`;
+          const skipInstallFlag =
+            typeof importItem === 'object' && importItem.skipInstall ? ` ${chalk.magenta('[skip-install]')}` : '';
+          content += `  ${chalk.green('•')} ${chalk.bold(importName)}${gitSource}${skipInstallFlag}\n`;
 
           // Show override if exists and verbose mode is on
           if (options.verbose && importOverrides && Array.isArray(importOverrides)) {
@@ -79,7 +81,9 @@ export default function () {
           const importName = typeof importItem === 'string' ? importItem : importItem.name;
           const gitSource =
             typeof importItem === 'string' ? '' : importItem.git ? ` (from ${chalk.cyan(importItem.git)})` : '';
-          content += `  ${chalk.yellow('•')} ${chalk.bold(importName)}${gitSource}\n`;
+          const skipInstallFlag =
+            typeof importItem === 'object' && importItem.skipInstall ? ` ${chalk.magenta('[skip-install]')}` : '';
+          content += `  ${chalk.yellow('•')} ${chalk.bold(importName)}${gitSource}${skipInstallFlag}\n`;
 
           // Show override if exists and verbose mode is on
           if (options.verbose && importOverrides && Array.isArray(importOverrides)) {

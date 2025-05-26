@@ -16,6 +16,7 @@ interface AddOptions {
   git?: string;
   module: string;
   optional: boolean;
+  skipInstall: boolean;
 }
 
 // Type for tracking added interfaces
@@ -104,7 +105,11 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
     }
 
     // Create the import object with git config if provided
-    const importObj: ModuleImport = options.git ? { name: importName, git: options.git } : importName;
+    const importObj: ModuleImport = options.git
+      ? { name: importName, git: options.git, ...(options.skipInstall && { skipInstall: true }) }
+      : options.skipInstall
+        ? { name: importName, skipInstall: true }
+        : importName;
 
     // Add to list of pending imports
     pendingImports.push({ importName, importObj, isOptional: options.optional });
@@ -117,8 +122,8 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
   // Complete the progress bar
   importProgress.update(interfaces.length, { title: 'Installing interfaces' });
 
-  // Install all interfaces at once
-  if (interfacesToInstall.length > 0) {
+  // Install all interfaces at once (unless skipInstall is set)
+  if (interfacesToInstall.length > 0 && !options.skipInstall) {
     await installInterfaces(git, options.module, interfacesToInstall);
   }
 
@@ -166,7 +171,8 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
 
   // Summary
   if (added.length > 0) {
-    success(chalk.green`Successfully added ${added.length} interface(s):`);
+    const actionText = options.skipInstall ? 'added (without installation)' : 'added';
+    success(chalk.green`Successfully ${actionText} ${added.length} interface(s):`);
     for (const imp of added) {
       info(`  • ${chalk.bold(imp.name)}@${imp.version}`);
     }
@@ -185,7 +191,8 @@ export default function () {
     .description(`Add interfaces to your module\n` + `Imports interfaces from other modules that your module will use.`)
     .addOption(Options.module)
     .addOption(Options.git)
-    .addOption(new Option('-o, --optionnal', 'Mark imports as optional').default(false))
+    .addOption(new Option('-o, --optional', 'Mark imports as optional').default(false))
+    .addOption(new Option('-s, --skip-install', 'Skip installation of the interface files').default(false))
     .argument('<interfaces...>', 'Interfaces to add (format: interface@version)')
     .action(moduleImportAddCommand);
 }
