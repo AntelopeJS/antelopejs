@@ -18,7 +18,6 @@ const DEFAULT_INDENTATION = '  ';
 export async function detectIndentation(filePath: string): Promise<string> {
   try {
     const content = (await readFile(filePath)).toString();
-    JSON.parse(content);
     const match = content.match(/\n([\t ]+)/);
 
     if (match && match[1]) {
