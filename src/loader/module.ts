@@ -66,7 +66,7 @@ export class Module {
       Logging.inline.Debug(`Module ${this.id} already constructed`);
       return;
     }
-    await import(this.manifest.folder)
+    await import(this.manifest.main)
       .then((mod) => {
         this.object = mod;
         Logging.inline.Info(`Successfully loaded module ${this.id}`);
