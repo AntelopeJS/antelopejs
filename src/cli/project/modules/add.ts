@@ -9,6 +9,7 @@ import { ExecuteCMD } from '../../../utils/command';
 import inquirer from 'inquirer';
 import { displayBox, error, info, success } from '../../../utils/cli-ui';
 import { parsePackageInfoOutput } from '../../package-manager';
+import { ModulePackageJson } from '../../../common/manifest';
 
 interface AddOptions {
   mode: string;
@@ -177,29 +178,35 @@ handlers.set('local', async (module, options) => {
   assert((await stat(modulePath)).isDirectory(), `Path '${module}' is not a directory`);
   const packagePath = path.join(modulePath, 'package.json');
   assert((await stat(packagePath)).isFile(), `No package.json found in '${module}'`);
-  const info = JSON.parse((await readFile(packagePath)).toString());
+  const info = JSON.parse((await readFile(packagePath)).toString()) as ModulePackageJson;
 
   let moduleConfig: ModuleConfig = {};
-  const moduleConfigPath = path.join(modulePath, 'module_config_default.json');
+  const moduleConfigPath = path.join(modulePath, 'antelope.module.json');
   try {
     if ((await stat(moduleConfigPath)).isFile()) {
       moduleConfig = JSON.parse((await readFile(moduleConfigPath)).toString());
     }
   } catch {
-    // Ignore if module.config.json doesn't exist
+    // Ignore if antelope.module.json doesn't exist
   }
 
-  return [
-    info.name,
-    {
-      source: {
-        type: 'local',
-        path: path.relative(options.project, modulePath) || '.',
-        installCommand: ['npx tsc'],
-      },
-      config: moduleConfig.config || {},
+  if (!moduleConfig.config && info.antelopeJs?.config && Object.keys(info.antelopeJs.config).length > 0) {
+    moduleConfig = { config: info.antelopeJs.config };
+  }
+
+  const moduleConfigResult = {
+    source: {
+      type: 'local',
+      path: path.relative(options.project, modulePath) || '.',
+      installCommand: ['npx tsc'],
     },
-  ];
+  };
+
+  if (moduleConfig.config && Object.keys(moduleConfig.config).length > 0) {
+    Object.assign(moduleConfigResult, { config: moduleConfig.config });
+  }
+
+  return [info.name, moduleConfigResult];
 });
 
 handlers.set('dir', async (module, options) => {
