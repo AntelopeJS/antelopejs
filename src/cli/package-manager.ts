@@ -127,12 +127,12 @@ export async function getInstallCommand(directory: string = '.'): Promise<string
 
   switch (validPackageManager) {
     case 'pnpm':
-      return 'pnpm install';
+      return 'pnpm install --prod --ignore-workspace';
     case 'yarn':
-      return 'yarn';
+      return 'yarn install --production';
     case 'npm':
     default:
-      return 'npm install';
+      return 'npm install --omit=dev';
   }
 }
 
