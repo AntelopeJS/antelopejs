@@ -7,13 +7,17 @@ import { AntelopeModuleSourceConfig, LoadConfig } from '../../../common/config';
 import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import inquirer from 'inquirer';
-import { displayBox, error, info, success } from '../../../utils/cli-ui';
+import { displayBox, error, info, success, warning } from '../../../utils/cli-ui';
 import { parsePackageInfoOutput } from '../../package-manager';
+import { ModuleCache } from '../../../common/cache';
+import { GetLoaderIdentifier } from '../../../common/downloader';
+import LoadModule from '../../../common/downloader';
 
 interface AddOptions {
   mode: string;
   project: string;
   env?: string;
+  ignoreCache?: boolean;
 }
 
 export const handlers = new Map<
@@ -38,7 +42,10 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
     }),
   );
 
-  // Filter out fhandlersconfig
+  // Filter out failed handlers
+  sources = sources.filter((source): source is [string, AntelopeModuleSourceConfig] => source !== null);
+
+  // Get correct environment config
   const config = await readConfig(options.project);
   if (!config) {
     error(`No project configuration found at: ${chalk.bold(options.project)}`);
@@ -46,7 +53,6 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
     return;
   }
 
-  // Get correct environment config
   const env =
     options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
   if (!env) {
@@ -63,6 +69,10 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   // Track successful additions
   const added: string[] = [];
   const skipped: string[] = [];
+
+  // Initialize module cache
+  const cache = new ModuleCache(path.join(options.project, '.antelope', 'cache'));
+  await cache.load();
 
   for (const source of sources) {
     if (!source) continue;
@@ -89,6 +99,21 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
 
       info(`Using name ${chalk.bold(newName)} instead of ${moduleName}`);
       moduleName = newName;
+    }
+
+    // Download module to cache
+    if (typeof moduleConfig === 'object' && moduleConfig !== null && 'source' in moduleConfig) {
+      const loaderIdentifier = GetLoaderIdentifier(moduleConfig.source);
+      if (loaderIdentifier) {
+        info(`Downloading module ${chalk.bold(moduleName)} to cache...`);
+        try {
+          await LoadModule(options.project, cache, moduleConfig.source);
+          success(`Successfully downloaded module ${chalk.bold(moduleName)} to cache`);
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          warning(`Failed to download module ${chalk.bold(moduleName)} to cache: ${errorMessage}`);
+        }
+      }
     }
 
     env.modules[moduleName] = moduleConfig;
@@ -151,7 +176,16 @@ handlers.set('package', async (module) => {
     version = parsePackageInfoOutput(result.stdout);
     success(`Using version ${version}`);
   }
-  return [name, version];
+  return [
+    name,
+    {
+      source: {
+        type: 'package',
+        package: name,
+        version: version,
+      },
+    },
+  ];
 });
 
 handlers.set('git', async (module) => {
