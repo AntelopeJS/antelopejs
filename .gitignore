@@ -298,3 +298,4 @@ antelope.*.json
 
 # pnpm lock file (uncomment if you prefer to not commit)
 # pnpm-lock.yaml
+/.idea/
