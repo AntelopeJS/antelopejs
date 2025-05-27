@@ -1,9 +1,11 @@
 node_modules
 tmp
 dist
-.antelope/cache
+.antelope
+output
 coverage
 .git
 *.log
 **/*.min.js
-pnpm-lock.yaml 
+pnpm-lock.yaml
+.github
