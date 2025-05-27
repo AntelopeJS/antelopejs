@@ -17,10 +17,7 @@ export function ExecuteCMD(command: string, options: ExecOptions, logging: boole
       };
 
       if (err) {
-        if (logging) {
-          Logging.Error(`Command failed: ${command}`, err);
-        }
-        return reject(result);
+        return reject(result.stderr);
       }
 
       resolve(result);
@@ -29,19 +26,6 @@ export function ExecuteCMD(command: string, options: ExecOptions, logging: boole
     if (logging) {
       child.stdout?.on('data', (data: string) => {
         Logging.inline.Debug(`Executing command: ${data.trim()}`);
-      });
-      child.stderr?.on('data', (data: string) => {
-        if (
-          !data.includes('MaxListenersExceededWarning') &&
-          !data.includes('Update available') &&
-          !data.includes('Already up to date') &&
-          !data.includes('Already on') &&
-          !data.includes('Your branch is up to date') &&
-          !data.includes('Lockfile is up to date') &&
-          !data.includes('Scope: all')
-        ) {
-          Logging.Error(data.trim());
-        }
       });
     }
   });
