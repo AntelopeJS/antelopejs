@@ -29,6 +29,8 @@ export interface ModulePackageJson {
     paths?: Record<string, string[]>;
 
     moduleAliases?: Record<string, string>;
+
+    config?: Record<string, any>;
   };
 
   _moduleAliases?: Record<string, string>;
