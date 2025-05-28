@@ -39,6 +39,7 @@
     ]
   },
   "dependencies": {
+    "@types/proper-lockfile": "^4.1.4",
     "async-exit-hook": "^2.0.1",
     "boxen": "^8.0.1",
     "chalk": "^4.1.2",
@@ -50,6 +51,7 @@
     "mocha": "^11.1.0",
     "ora": "^8.2.0",
     "os": "^0.1.2",
+    "proper-lockfile": "^4.1.2",
     "reflect-metadata": "^0.2.2",
     "semver": "^7.7.1"
   },

@@ -52,6 +52,28 @@ export const defaultConfigLogging: AntelopeLogging = {
 };
 
 /**
+ * Serializes a value for logging, handling objects, arrays, and other types appropriately
+ * @param value - The value to serialize
+ * @returns A string representation of the value
+ */
+function serializeLogValue(value: any): string {
+  if (value === null) return 'null';
+  if (value === undefined) return 'undefined';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value instanceof Error) return `${value.name}: ${value.message}`;
+  if (value instanceof Date) return value.toISOString();
+
+  // For objects and arrays, use JSON.stringify with proper formatting
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    // Fallback for circular references or other serialization issues
+    return String(value);
+  }
+}
+
+/**
  * Formatter variable handlers that process template variables in log format strings
  */
 const variables: Record<string, (log: Log, param: string) => string> = {
@@ -69,7 +91,7 @@ const variables: Record<string, (log: Log, param: string) => string> = {
   },
 
   // Replace {{ARGS}} with the log message arguments
-  ARGS: (log: Log) => log.args.map((arg) => '' + arg).join(' '),
+  ARGS: (log: Log) => log.args.map((arg) => serializeLogValue(arg)).join(' '),
 
   // Process chalk styling tags in format strings
   chalk: (_, param: string) => {

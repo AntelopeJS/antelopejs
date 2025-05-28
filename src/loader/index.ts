@@ -326,7 +326,7 @@ export class ModuleManager {
           .catch((err) => {
             Logging.Error(`Failed to load module ${source.id}:`);
             Logging.Error(err);
-            throw err;
+            process.exit(1);
           });
 
         return createdModules.map((ref) => ({ ref, config: manifest.configs[ref.id] || {} }));

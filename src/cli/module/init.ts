@@ -8,7 +8,8 @@ import { existsSync, readdirSync } from 'fs';
 import { moduleImportAddCommand } from './imports/add';
 import { Spinner, displayBox, info, error, warning } from '../../utils/cli-ui';
 import { execSync } from 'child_process';
-import { savePackageManagerToPackageJson } from '../package-manager';
+import { getInstallCommand, savePackageManagerToPackageJson } from '../../utils/package-manager';
+import { ExecuteCMD } from '../../utils/command';
 
 interface InitOptions {
   git?: string;
@@ -164,6 +165,13 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
     const packageJsonPath = path.resolve(modulePath);
     savePackageManagerToPackageJson(packageManager, packageJsonPath);
 
+    // Execute install command
+    const installSpinner = new Spinner('Installing dependencies');
+    await installSpinner.start();
+    const installCmd = await getInstallCommand(packageJsonPath, false);
+    await ExecuteCMD(installCmd, { cwd: packageJsonPath });
+    await installSpinner.succeed('Dependencies installed');
+
     // Ask about initializing git repository
     console.log('');
     const { initGit } = await inquirer.prompt<{ initGit: boolean }>([
@@ -204,7 +212,11 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
       { borderColor: 'green' },
     );
   } catch (err) {
-    await gitSpinner.fail('Failed to load templates');
+    await gitSpinner.fail('Failed to initialize your module');
+    if (fromProject) {
+      // When called from project init, re-throw the error so it can be handled there
+      throw err;
+    }
     if (err instanceof Error) {
       error(err.message);
     } else {

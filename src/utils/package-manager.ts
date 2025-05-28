@@ -120,19 +120,20 @@ export async function getInstallPackagesCommand(
 /**
  * Get the appropriate command to install dependencies from package.json
  * @param directory The directory to check for local package.json
+ * @param isProduction Whether to install production dependencies
  * @returns The install command
  */
-export async function getInstallCommand(directory: string = '.'): Promise<string> {
+export async function getInstallCommand(directory: string = '.', isProduction = true): Promise<string> {
   const validPackageManager = (await getModulePackageManager(directory)) || DEFAULT_PACKAGE_MANAGER;
 
   switch (validPackageManager) {
     case 'pnpm':
-      return 'pnpm install';
+      return `pnpm install ${isProduction ? '--prod' : ''} --ignore-workspace`;
     case 'yarn':
-      return 'yarn';
+      return `yarn install ${isProduction ? '--production' : ''}`;
     case 'npm':
     default:
-      return 'npm install';
+      return `npm install ${isProduction ? '--omit=dev' : ''}`;
   }
 }
 

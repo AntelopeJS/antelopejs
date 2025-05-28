@@ -5,7 +5,7 @@ import path from 'path';
 import { readConfig, writeConfig } from '../common';
 import { handlers, projectModulesAddCommand } from './modules/add';
 import { moduleInitCommand } from '../module/init';
-import { Spinner, displayBox, info, warning } from '../../utils/cli-ui';
+import { Spinner, displayBox, error, info, warning } from '../../utils/cli-ui';
 import { mkdir, stat } from 'fs/promises';
 
 export default function () {
@@ -68,6 +68,7 @@ export default function () {
       console.log('');
 
       // Ask about app module
+      let moduleInitialized = false;
       const { blmodule } = await inquirer.prompt<{ blmodule: boolean }>([
         {
           type: 'confirm',
@@ -110,19 +111,34 @@ export default function () {
         ]);
 
         if (init) {
-          await moduleInitCommand(project, {}, true);
-          await projectModulesAddCommand(['.'], { mode: 'local', project });
+          try {
+            await moduleInitCommand(project, {}, true);
+            await projectModulesAddCommand(['.'], { mode: 'local', project });
+            moduleInitialized = true;
+          } catch (err) {
+            console.log('');
+            if (err instanceof Error) {
+              error(`Failed to create module: ${err.message}`);
+            } else {
+              error(`Failed to create module: ${String(err)}`);
+            }
+            error('Project creation stopped due to module initialization failure.');
+            return;
+          }
         }
       }
 
       // Display success message
       console.log('');
+      const command = moduleInitialized
+        ? `${chalk.cyan('npm run dev')} ${chalk.dim('(or pnpm dev or yarn dev)')}`
+        : `${chalk.cyan('ajs project run')} ${chalk.dim('(or npx @antelopejs/core project run)')}`;
+
       await displayBox(
         `Your AntelopeJS project ${chalk.green.bold(answers.name)} has been successfully initialized!\n\n` +
           `${chalk.dim('To get started, run:')}\n` +
           `${project !== '.' ? chalk.cyan(`cd ${project}`) + '\n' : ''}` +
-          `${chalk.cyan('npm install')} ${chalk.dim('(or pnpm i or yarn)')} \n` +
-          `${chalk.cyan('npm run dev')} ${chalk.dim('(or pnpm dev or yarn dev)')}`,
+          command,
         '🚀 Project Created',
         { borderColor: 'green' },
       );

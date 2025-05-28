@@ -80,7 +80,6 @@ export async function TestModule(moduleFolder = '.') {
     await moduleManager.init(legacyModuleList);
   } catch (err) {
     Logging.Error('Error during module manager initialization', err);
-    console.error(err);
     return;
   }
 

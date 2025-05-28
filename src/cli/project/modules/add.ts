@@ -8,11 +8,10 @@ import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import inquirer from 'inquirer';
 import { displayBox, error, info, success, warning } from '../../../utils/cli-ui';
-import { parsePackageInfoOutput } from '../../package-manager';
 import { ModulePackageJson } from '../../../common/manifest';
+import { parsePackageInfoOutput } from '../../../utils/package-manager';
 import { ModuleCache } from '../../../common/cache';
-import { GetLoaderIdentifier } from '../../../common/downloader';
-import LoadModule from '../../../common/downloader';
+import LoadModule, { GetLoaderIdentifier } from '../../../common/downloader';
 
 interface AddOptions {
   mode: string;
