@@ -1,6 +1,6 @@
 import path from 'path';
 import { ModuleSource } from './downloader';
-import { lstat, readdir } from 'fs/promises';
+import { lstat, readdir, readFile } from 'fs/promises';
 import { Logging } from '../interfaces/logging/beta';
 
 export type ModuleImport = string | { name: string; git?: string; skipInstall?: boolean };
@@ -37,7 +37,7 @@ export interface ModulePackageJson {
 }
 
 export class ModuleManifest {
-  public readonly name: string;
+  public name: string;
   public version: string;
   public readonly folder: string;
   public readonly main: string;
@@ -56,16 +56,48 @@ export class ModuleManifest {
 
   public srcAliases?: Array<{ alias: string; replace: string }>;
 
-  private static readManifest(folder: string) {
-    try {
-      return require(path.join(folder, 'package.json'));
-    } catch {
-      Logging.Error(`Missing package.json in '${folder}'`);
+  private static async readManifest(folder: string): Promise<ModulePackageJson> {
+    const paths = {
+      packageJson: path.join(folder, 'package.json'),
+      dedicatedJson: path.join(folder, 'antelope.module.json'),
+    };
+
+    const readJsonFile = async (filePath: string, errorMessage: string): Promise<ModulePackageJson | undefined> => {
+      try {
+        return JSON.parse((await readFile(filePath)).toString());
+      } catch {
+        Logging.Info(errorMessage);
+        return undefined;
+      }
+    };
+
+    const readResult = await readJsonFile(paths.packageJson, `Missing package.json in '${folder}'`);
+    const packageJson = readResult ?? {
+      name: path.basename(folder),
+      version: '0.0.0',
+    };
+
+    const dedicatedJson = await readJsonFile(paths.dedicatedJson, `No antelope.module.json found in '${folder}'`);
+
+    if (dedicatedJson) {
+      const { antelopeJs: dedicatedAntelopeJs, ...dedicatedRest } = dedicatedJson;
       return {
-        name: folder,
-        version: '0.0.0',
+        ...packageJson,
+        ...dedicatedRest,
+        antelopeJs: {
+          imports: [],
+          importsOptional: [],
+          ...packageJson.antelopeJs,
+          ...dedicatedAntelopeJs,
+        },
+        _moduleAliases: {
+          ...packageJson._moduleAliases,
+          ...dedicatedJson._moduleAliases,
+        },
       };
     }
+
+    return packageJson;
   }
 
   constructor(
@@ -73,7 +105,10 @@ export class ModuleManifest {
     public readonly source: ModuleSource,
   ) {
     this.folder = path.resolve(folder);
-    this.manifest = ModuleManifest.readManifest(this.folder);
+    this.manifest = {
+      name: path.basename(folder),
+      version: '0.0.0',
+    };
     this.name = this.manifest.name;
     this.version = this.manifest.version;
     this.exportsPath = path.join(this.folder, this.manifest.antelopeJs?.exportsPath || 'interfaces');
@@ -105,6 +140,19 @@ export class ModuleManifest {
         })),
       ];
     }
+  }
+
+  public async init() {
+    this.manifest = await ModuleManifest.readManifest(this.folder);
+    this.name = this.manifest.name;
+    this.version = this.manifest.version;
+    this.exportsPath = path.join(this.folder, this.manifest.antelopeJs?.exportsPath || 'interfaces');
+    this.imports = this.manifest.antelopeJs?.imports?.map(mapModuleImport) ?? [];
+    await this.loadExports();
+  }
+
+  public async reload() {
+    await this.init();
   }
 
   public async loadExports() {
@@ -142,13 +190,5 @@ export class ModuleManifest {
         }
       }
     }
-  }
-
-  public async reload() {
-    this.manifest = ModuleManifest.readManifest(this.folder);
-    this.version = this.manifest.version;
-    this.exportsPath = path.join(this.folder, this.manifest.antelopeJs?.exportsPath || 'interfaces');
-    this.imports = this.manifest.antelopeJs?.imports.map(mapModuleImport) ?? [];
-    await this.loadExports();
   }
 }
