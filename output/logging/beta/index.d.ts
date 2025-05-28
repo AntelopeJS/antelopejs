@@ -57,6 +57,45 @@ export declare namespace Logging {
      */
     function Debug(...args: any[]): void;
     /**
+     * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
+     *
+     * Usage:
+     * Logging.inline.Info('Hello');
+     * Logging.inline.Info('World');
+     */
+    namespace inline {
+        /**
+         * Write arguments to the inline log channel at the ERROR level.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        function Error(...args: any[]): void;
+        /**
+         * Write arguments to the inline log channel at the WARN level.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        function Warn(...args: any[]): void;
+        /**
+         * Write arguments to the inline log channel at the INFO level.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        function Info(...args: any[]): void;
+        /**
+         * Write arguments to the inline log channel at the DEBUG level.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        function Debug(...args: any[]): void;
+        /**
+         * Write arguments to the inline log channel at the TRACE level.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        function Trace(...args: any[]): void;
+    }
+    /**
      * Write arguments to the main log channel at the TRACE level.
      *
      * Use for highly detailed tracing information, typically only enabled during

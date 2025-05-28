@@ -17,7 +17,7 @@ export function ExecuteCMD(command: string, options: ExecOptions, logging: boole
       };
 
       if (err) {
-        return reject(result.stderr);
+        return reject(result.stderr || result.stdout);
       }
 
       resolve(result);

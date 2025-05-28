@@ -121,7 +121,7 @@ export declare const GetModuleInfo: (module: string) => Promise<ModuleInfo>;
  * @param configuration Module configuration including source information
  * @param autostart Whether to automatically start the module after loading (default: false)
  */
-export declare const LoadModule: (module: string, configuration: ModuleDefinition, autostart?: boolean | undefined) => Promise<void>;
+export declare const LoadModule: (module: string, configuration: ModuleDefinition, autostart?: boolean | undefined) => Promise<string[]>;
 /**
  * Start a loaded but inactive module.
  *
