@@ -5,6 +5,7 @@ import path from 'path';
 import { stat } from 'fs/promises';
 import fs, { cpSync, mkdirSync, readdirSync, rmSync } from 'fs';
 import { getInstallPackagesCommand } from '../utils/package-manager';
+import { acquireLock } from '../utils/lock';
 
 async function setupGit(cachePath: string, git: string, folderName: string, branch?: string) {
   const result = await ExecuteCMD(
@@ -67,10 +68,15 @@ export interface Template {
 }
 
 export async function loadManifestFromGit(git: string): Promise<GitManifest> {
-  const folderPath = await loadGit(git);
-  const manifestPath = path.join(folderPath, 'manifest.json');
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  return manifest;
+  const releaseLock = await acquireLock(`git-${git}`);
+  try {
+    const folderPath = await loadGit(git);
+    const manifestPath = path.join(folderPath, 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    return manifest;
+  } finally {
+    await releaseLock();
+  }
 }
 
 export interface InterfaceInfo {
@@ -122,34 +128,44 @@ async function getInterfaceInfo(gitPath: string, interface_: string): Promise<In
 }
 
 export async function loadInterfaceFromGit(git: string, interface_: string): Promise<InterfaceInfo | undefined> {
-  const folderPath = await loadGit(git);
+  const releaseLock = await acquireLock(`git-${git}`);
+  try {
+    const folderPath = await loadGit(git);
 
-  await ExecuteCMD(`git sparse-checkout add interfaces/${interface_}/manifest.json --skip-checks`, {
-    cwd: folderPath,
-  });
+    await ExecuteCMD(`git sparse-checkout add interfaces/${interface_}/manifest.json --skip-checks`, {
+      cwd: folderPath,
+    });
 
-  const interfaceInfo = await getInterfaceInfo(folderPath, interface_);
+    const interfaceInfo = await getInterfaceInfo(folderPath, interface_);
 
-  return interfaceInfo;
+    return interfaceInfo;
+  } finally {
+    await releaseLock();
+  }
 }
 
 export async function loadInterfacesFromGit(git: string, interfaces: string[]): Promise<Record<string, InterfaceInfo>> {
-  const folderPath = await loadGit(git);
+  const releaseLock = await acquireLock(`git-${git}`);
+  try {
+    const folderPath = await loadGit(git);
 
-  const sparseCheckoutPaths = interfaces.map((interface_) => `interfaces/${interface_}/manifest.json`).join(' ');
+    const sparseCheckoutPaths = interfaces.map((interface_) => `interfaces/${interface_}/manifest.json`).join(' ');
 
-  await ExecuteCMD(`git sparse-checkout add ${sparseCheckoutPaths} --skip-checks`, { cwd: folderPath });
+    await ExecuteCMD(`git sparse-checkout add ${sparseCheckoutPaths} --skip-checks`, { cwd: folderPath });
 
-  const interfacesInfo: Record<string, InterfaceInfo> = {};
+    const interfacesInfo: Record<string, InterfaceInfo> = {};
 
-  for (const interface_ of interfaces) {
-    const interfaceInfo = await getInterfaceInfo(folderPath, interface_);
-    if (interfaceInfo) {
-      interfacesInfo[interface_] = interfaceInfo;
+    for (const interface_ of interfaces) {
+      const interfaceInfo = await getInterfaceInfo(folderPath, interface_);
+      if (interfaceInfo) {
+        interfacesInfo[interface_] = interfaceInfo;
+      }
     }
-  }
 
-  return interfacesInfo;
+    return interfacesInfo;
+  } finally {
+    await releaseLock();
+  }
 }
 
 export async function installInterfaces(
@@ -239,21 +255,32 @@ export async function installInterfaces(
         `${interfacePathBase}/${version}.d.ts`,
       );
     } else if (files.type === 'git' && files.remote) {
-      const gitPath = await loadGit(files.remote, files.branch);
+      const releaseLock = await acquireLock(`git-${files.remote}`);
+      try {
+        const gitPath = await loadGit(files.remote, files.branch);
 
-      if (!gitOperations[gitPath]) {
-        gitOperations[gitPath] = { path: gitPath, checkoutPaths: [] };
+        if (!gitOperations[gitPath]) {
+          gitOperations[gitPath] = { path: gitPath, checkoutPaths: [] };
+        }
+
+        gitOperations[gitPath].checkoutPaths.push(`${files.path}/${version}`, `${files.path}/${version}.d.ts`);
+      } finally {
+        await releaseLock();
       }
-
-      gitOperations[gitPath].checkoutPaths.push(`${files.path}/${version}`, `${files.path}/${version}.d.ts`);
     }
   }
 
-  // Execute git operations in batches
+  // Execute git operations in batches with locking
   for (const gitOp of Object.values(gitOperations)) {
-    await ExecuteCMD(`git sparse-checkout add ${gitOp.checkoutPaths.join(' ')} --skip-checks`, {
-      cwd: gitOp.path,
-    });
+    const folderName = path.basename(gitOp.path);
+    const releaseLock = await acquireLock(`git-${folderName}`);
+    try {
+      await ExecuteCMD(`git sparse-checkout add ${gitOp.checkoutPaths.join(' ')} --skip-checks`, {
+        cwd: gitOp.path,
+      });
+    } finally {
+      await releaseLock();
+    }
   }
 
   // Copy interface files
@@ -264,8 +291,13 @@ export async function installInterfaces(
     if (files.type === 'local') {
       folderPath = interfaceInfo.folderPath;
     } else if (files.type === 'git' && files.remote) {
-      const gitPath = await loadGit(files.remote, files.branch);
-      folderPath = path.join(gitPath, files.path);
+      const releaseLock = await acquireLock(`git-${files.remote}`);
+      try {
+        const gitPath = await loadGit(files.remote, files.branch);
+        folderPath = path.join(gitPath, files.path);
+      } finally {
+        await releaseLock();
+      }
     } else {
       throw new Error('Invalid interface files type');
     }
