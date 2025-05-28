@@ -255,7 +255,7 @@ export async function installInterfaces(
         `${interfacePathBase}/${version}.d.ts`,
       );
     } else if (files.type === 'git' && files.remote) {
-      const releaseLock = await acquireLock(`git-${git}`);
+      const releaseLock = await acquireLock(`git-${files.remote}`);
       try {
         const gitPath = await loadGit(files.remote, files.branch);
 
@@ -272,7 +272,8 @@ export async function installInterfaces(
 
   // Execute git operations in batches with locking
   for (const gitOp of Object.values(gitOperations)) {
-    const releaseLock = await acquireLock(`git-${git}`);
+    const folderName = path.basename(gitOp.path);
+    const releaseLock = await acquireLock(`git-${folderName}`);
     try {
       await ExecuteCMD(`git sparse-checkout add ${gitOp.checkoutPaths.join(' ')} --skip-checks`, {
         cwd: gitOp.path,
@@ -290,7 +291,7 @@ export async function installInterfaces(
     if (files.type === 'local') {
       folderPath = interfaceInfo.folderPath;
     } else if (files.type === 'git' && files.remote) {
-      const releaseLock = await acquireLock(`git-${git}`);
+      const releaseLock = await acquireLock(`git-${files.remote}`);
       try {
         const gitPath = await loadGit(files.remote, files.branch);
         folderPath = path.join(gitPath, files.path);
