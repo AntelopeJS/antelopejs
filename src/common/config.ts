@@ -58,7 +58,14 @@ export interface AntelopeProjectRootConfig {
 
 export type AntelopeConfig = AntelopeProjectRootConfig & AntelopeProjectEnvConfig;
 
-async function readConfigFile(configFile: string): Promise<any> {
+interface ConfigFile {
+  config?: Record<string, unknown>;
+  antelopeJs?: {
+    config?: Record<string, unknown>;
+  };
+}
+
+async function readConfigFile(configFile: string): Promise<unknown> {
   const st = await stat(configFile).catch(() => {});
   if (!st || !st.isFile()) return;
   return JSON.parse((await readFile(configFile)).toString());
@@ -112,8 +119,6 @@ function recursiveMerge(target: Record<any, any>, source: Record<any, any>) {
       const tVal = target[key];
       if (typeof tVal === 'object' && typeof sVal === 'object') {
         if (Array.isArray(tVal) && Array.isArray(sVal)) {
-          // TODO: explicit merge behavior
-          // tVal.push(...sVal);
           target[key] = sVal;
         } else {
           recursiveMerge(tVal, sVal);
@@ -160,6 +165,58 @@ function processTemplates(object: Record<string, any>, argnames: string[], argva
   }
 }
 
+async function loadConfigFile(filePath: string): Promise<ConfigFile | null> {
+  try {
+    if ((await stat(filePath)).isFile()) {
+      Logging.inline.Info(`Found config file at ${filePath}`);
+      const content = JSON.parse((await readFile(filePath)).toString()) as ConfigFile;
+      Logging.inline.Info(`Content of config file: ${JSON.stringify(content)}`);
+      return content;
+    }
+    Logging.inline.Info(`No config file found at ${filePath}`);
+    return null;
+  } catch (err) {
+    Logging.Warn(`Failed to load config file from ${filePath}`, err);
+    return null;
+  }
+}
+
+export async function loadModuleConfig(
+  modulePath: string,
+): Promise<{ config: Record<string, unknown>; warnings: string[] }> {
+  const warnings: string[] = [];
+  let moduleConfig: ConfigFile = {};
+
+  Logging.inline.Info(`Loading module config from ${modulePath}`);
+
+  const moduleJsonContent = await loadConfigFile(path.join(modulePath, 'antelope.module.json'));
+  const packageJsonContent = await loadConfigFile(path.join(modulePath, 'package.json'));
+
+  if (moduleJsonContent && Object.keys(moduleJsonContent).length > 0) {
+    moduleConfig = moduleJsonContent;
+  } else if (packageJsonContent?.antelopeJs?.config && Object.keys(packageJsonContent.antelopeJs.config).length > 0) {
+    moduleConfig = packageJsonContent;
+  } else {
+    warnings.push(`Module ${modulePath} has no config in antelope.module.json or package.json.`);
+    return { config: {}, warnings };
+  }
+
+  if (
+    moduleJsonContent &&
+    Object.keys(moduleJsonContent).length > 0 &&
+    packageJsonContent &&
+    Object.keys(packageJsonContent).length > 0
+  ) {
+    warnings.push(
+      `Module ${modulePath} has config in both files. Using both, with antelope.module.json taking precedence.`,
+    );
+  }
+
+  recursiveMerge(moduleConfig, moduleConfig.antelopeJs?.config ?? {});
+
+  return { config: moduleConfig.config || {}, warnings };
+}
+
 export async function LoadConfig(antelopeFolder: string, env: string): Promise<AntelopeProjectEnvConfigStrict> {
   const mainConfig = (await readConfigFile(path.join(antelopeFolder, 'antelope.json'))) as AntelopeConfig;
 
@@ -170,6 +227,21 @@ export async function LoadConfig(antelopeFolder: string, env: string): Promise<A
     envOverrides: mainConfig.envOverrides ?? {},
   };
   expandModules(result.modules);
+
+  // Load module configurations
+  for (const [_, moduleConfig] of Object.entries(result.modules)) {
+    if (typeof moduleConfig === 'object' && 'source' in moduleConfig) {
+      const source = moduleConfig.source as ModuleSource & { path?: string };
+      if (source.type === 'local' && source.path) {
+        const modulePath = path.join(antelopeFolder, source.path);
+        const { config, warnings } = await loadModuleConfig(modulePath);
+        warnings.forEach((warning) => Logging.Warn(warning));
+        if (Object.keys(config).length > 0) {
+          recursiveMerge((moduleConfig as AntelopeModuleSourceConfig).config, config);
+        }
+      }
+    }
+  }
 
   const fileList = await readdir(antelopeFolder);
   for (const fileName of fileList) {
@@ -215,6 +287,8 @@ export async function LoadConfig(antelopeFolder: string, env: string): Promise<A
       [[], []] as [string[], any[]],
     ),
   );
+
+  recursiveMerge(result, mainConfig);
 
   return result as AntelopeProjectEnvConfigStrict;
 }

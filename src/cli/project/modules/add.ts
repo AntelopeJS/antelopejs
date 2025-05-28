@@ -3,7 +3,7 @@ import assert from 'assert';
 import { Command, Option } from 'commander';
 import { readFile, stat } from 'fs/promises';
 import path from 'path';
-import { AntelopeModuleSourceConfig, LoadConfig } from '../../../common/config';
+import { AntelopeModuleSourceConfig, LoadConfig, loadModuleConfig } from '../../../common/config';
 import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import inquirer from 'inquirer';
@@ -12,16 +12,14 @@ import { parsePackageInfoOutput } from '../../package-manager';
 import { ModulePackageJson } from '../../../common/manifest';
 import { ModuleCache } from '../../../common/cache';
 import LoadModule, { GetLoaderIdentifier } from '../../../common/downloader';
+import Logging from '../../../interfaces/logging/beta';
+import setupAntelopeProjectLogging from '../../../logging';
 
 interface AddOptions {
   mode: string;
   project: string;
   env?: string;
   ignoreCache?: boolean;
-}
-
-interface ModuleConfig {
-  config?: Record<string, any>;
 }
 
 export const handlers = new Map<
@@ -33,12 +31,26 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   console.log(''); // Add spacing for better readability
   info(`Adding modules to your project...`);
 
+  // Get project config and setup logging
+  const config = await readConfig(options.project);
+  if (!config) {
+    error(`No project configuration found at: ${chalk.bold(options.project)}`);
+    console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
+    return;
+  }
+
+  const antelopeConfig = await LoadConfig(options.project, options.env || 'default');
+  setupAntelopeProjectLogging(antelopeConfig);
+
+  Logging.inline.Info('Initializing logging for module addition');
+  Logging.inline.Info(`Project path: ${options.project}`);
+  Logging.inline.Info(`Environment: ${options.env || 'default'}`);
+
   let sources = await Promise.all(
     modules.map((module) => {
-      console.log(
-        // eslint-disable-next-line max-len
-        `Adding ${chalk.bold(options.mode === 'local' || options.mode === 'dir' ? path.join(options.project, module) : module)} using ${options.mode} mode`,
-      );
+      const modulePath = options.mode === 'local' || options.mode === 'dir' ? path.join(options.project, module) : module;
+      Logging.inline.Info(`Processing module: ${modulePath}`);
+      console.log(`Adding ${chalk.bold(modulePath)} using ${options.mode} mode`);
       return handlers.get(options.mode)!(module, options).catch((err) => {
         error(`Failed to add module "${module}": ${err.message || err}`);
         return null;
@@ -50,13 +62,6 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   sources = sources.filter((source): source is [string, AntelopeModuleSourceConfig] => source !== null);
 
   // Get correct environment config
-  const config = await readConfig(options.project);
-  if (!config) {
-    error(`No project configuration found at: ${chalk.bold(options.project)}`);
-    console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
-    return;
-  }
-
   const env =
     options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
   if (!env) {
@@ -67,8 +72,6 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   if (!env.modules) {
     env.modules = {};
   }
-
-  const antelopeConfig = await LoadConfig(options.project, options.env || 'default');
 
   // Track successful additions
   const added: string[] = [];
@@ -208,24 +211,18 @@ handlers.set('git', async (module) => {
 
 handlers.set('local', async (module, options) => {
   const modulePath = path.join(options.project, module);
+  Logging.inline.Info(`Loading local module from: ${modulePath}`);
+
   assert((await stat(modulePath)).isDirectory(), `Path '${module}' is not a directory`);
   const packagePath = path.join(modulePath, 'package.json');
   assert((await stat(packagePath)).isFile(), `No package.json found in '${module}'`);
+
   const info = JSON.parse((await readFile(packagePath)).toString()) as ModulePackageJson;
+  Logging.inline.Info(`Package info: ${JSON.stringify(info)}`);
 
-  let moduleConfig: ModuleConfig = {};
-  const moduleConfigPath = path.join(modulePath, 'antelope.module.json');
-  try {
-    if ((await stat(moduleConfigPath)).isFile()) {
-      moduleConfig = JSON.parse((await readFile(moduleConfigPath)).toString());
-    }
-  } catch {
-    // Ignore if antelope.module.json doesn't exist
-  }
-
-  if (!moduleConfig.config && info.antelopeJs?.config && Object.keys(info.antelopeJs.config).length > 0) {
-    moduleConfig = { config: info.antelopeJs.config };
-  }
+  const { config: moduleConfig, warnings } = await loadModuleConfig(modulePath);
+  Logging.inline.Info(`Loaded module config: ${JSON.stringify(moduleConfig)}`);
+  warnings.forEach((warning) => Logging.Warn(warning));
 
   const moduleConfigResult = {
     source: {
@@ -235,10 +232,14 @@ handlers.set('local', async (module, options) => {
     },
   };
 
-  if (moduleConfig.config && Object.keys(moduleConfig.config).length > 0) {
-    Object.assign(moduleConfigResult, { config: moduleConfig.config });
+  if (Object.keys(moduleConfig).length > 0) {
+    Logging.inline.Info(`Adding config to module: ${JSON.stringify(moduleConfig)}`);
+    Object.assign(moduleConfigResult, { config: moduleConfig });
+  } else {
+    Logging.inline.Info('No config found for module');
   }
 
+  Logging.inline.Info(`Final module config result: ${JSON.stringify(moduleConfigResult)}`);
   return [info.name, moduleConfigResult];
 });
 
