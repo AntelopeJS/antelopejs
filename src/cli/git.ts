@@ -4,7 +4,7 @@ import { ExecuteCMD } from '../utils/command';
 import path from 'path';
 import { stat } from 'fs/promises';
 import fs, { cpSync, mkdirSync, readdirSync, rmSync } from 'fs';
-import { getInstallPackagesCommand } from './package-manager';
+import { getInstallPackagesCommand } from '../utils/package-manager';
 
 async function setupGit(cachePath: string, git: string, folderName: string, branch?: string) {
   const result = await ExecuteCMD(
