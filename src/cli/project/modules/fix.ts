@@ -8,7 +8,6 @@ import path from 'path';
 import { ModuleManifest } from '../../../common/manifest';
 import inquirer from 'inquirer';
 import { loadInterfaceFromGit } from '../../git';
-import { projectModulesRemoveCommand } from './remove';
 import { projectModulesAddCommand } from './add';
 import { error, warning, info, success } from '../../../utils/cli-ui';
 
@@ -20,7 +19,6 @@ interface FixOptions {
 
 interface ConfigAnalyze {
   unresolvedImports: string[];
-  unusedModulesExports: ModuleManifest[];
 }
 
 async function analyzeConfig(
@@ -53,12 +51,7 @@ async function analyzeConfig(
   // Find imports that don't have a corresponding export
   const unresolvedImports = imports.filter((imp) => !modules.find((module) => module.exports[imp]));
 
-  // Find modules that don't export anything used by other modules
-  const unusedModulesExports = modules.filter(
-    (module) => !Object.keys(module.exports).find((exp) => imports.includes(exp)) && module.source.type !== 'none',
-  );
-
-  return { unresolvedImports, unusedModulesExports };
+  return { unresolvedImports };
 }
 
 export default function () {
@@ -105,7 +98,7 @@ export default function () {
         info(chalk.bold`\nAnalyzing environment: ${env}`);
 
         const config = await LoadConfig(options.project, env);
-        const { unresolvedImports, unusedModulesExports } = await analyzeConfig(options.project, cache, config);
+        const { unresolvedImports } = await analyzeConfig(options.project, cache, config);
 
         // Handle unresolved imports
         if (unresolvedImports.length > 0) {
@@ -174,43 +167,6 @@ export default function () {
           }
         } else {
           success(chalk.green`✓ No unresolved imports found`);
-        }
-
-        // Handle unused modules
-        if (unusedModulesExports.length > 0) {
-          warning(chalk.yellow`\nFound ${unusedModulesExports.length} unused modules:`);
-
-          for (const module of unusedModulesExports) {
-            info(`  ${chalk.yellow('•')} ${chalk.bold(module.name)}`);
-
-            // Ask user for confirmation
-            const { shouldRemove } = await inquirer.prompt<{ shouldRemove: boolean }>([
-              {
-                type: 'confirm',
-                name: 'shouldRemove',
-                message: `Remove this unused module? (All exports are unused)`,
-                default: false,
-              },
-            ]);
-
-            if (shouldRemove) {
-              try {
-                await projectModulesRemoveCommand([module.name], {
-                  project: options.project,
-                  env,
-                  force: true,
-                });
-
-                removedModules.push(`${module.name} (environment: ${env})`);
-              } catch (err) {
-                error(chalk.red`    Failed to remove module: ${err}`);
-              }
-            } else {
-              info(`    ${chalk.dim('↳')} Keeping module`);
-            }
-          }
-        } else {
-          success(chalk.green`✓ No unused modules found`);
         }
       }
 
