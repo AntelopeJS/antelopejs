@@ -5,8 +5,7 @@ import startAntelope, { LaunchOptions } from '../..';
 import { Spinner, displayBox, info, warning, error, sleep } from '../../utils/cli-ui';
 import { fork } from 'child_process';
 import path from 'path';
-import { unlinkSync, writeFileSync } from 'fs';
-import fs from 'fs';
+import fs, { unlinkSync, writeFileSync } from 'fs';
 import { ModuleCache } from '../../common/cache';
 
 interface RunOptions extends LaunchOptions {

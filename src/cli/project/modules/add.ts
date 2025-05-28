@@ -48,7 +48,8 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
 
   let sources = await Promise.all(
     modules.map((module) => {
-      const modulePath = options.mode === 'local' || options.mode === 'dir' ? path.join(options.project, module) : module;
+      const modulePath =
+        options.mode === 'local' || options.mode === 'dir' ? path.join(options.project, module) : module;
       Logging.inline.Info(`Processing module: ${modulePath}`);
       console.log(`Adding ${chalk.bold(modulePath)} using ${options.mode} mode`);
       return handlers.get(options.mode)!(module, options).catch((err) => {

@@ -78,7 +78,7 @@ export class ModuleManifest {
     this.version = this.manifest.version;
     this.exportsPath = path.join(this.folder, this.manifest.antelopeJs?.exportsPath || 'interfaces');
     this.imports = this.manifest.antelopeJs?.imports?.map(mapModuleImport) ?? [];
-    this.main = typeof (<any>source).main === 'string' ? path.join(this.folder, (<any>source).main!) : this.folder;
+    this.main = typeof (<any>source).main === 'string' ? path.join(this.folder, (<any>source).main) : this.folder;
 
     this.baseUrl = path.join(this.folder, this.manifest.antelopeJs?.baseUrl ?? '');
     if (this.manifest.antelopeJs?.paths) {
