@@ -8,7 +8,7 @@ import { existsSync, readdirSync } from 'fs';
 import { moduleImportAddCommand } from './imports/add';
 import { Spinner, displayBox, info, error, warning } from '../../utils/cli-ui';
 import { execSync } from 'child_process';
-import { savePackageManagerToPackageJson } from '../package-manager';
+import { savePackageManagerToPackageJson } from '../../utils/package-manager';
 
 interface InitOptions {
   git?: string;
