@@ -97,7 +97,7 @@ export default function () {
           : ['default'];
 
       // Track changes made
-      const addedModules: string[] = [];
+      const addedModules: Record<string, string[]> = {};
       const removedModules: string[] = [];
 
       // Process each environment
@@ -112,8 +112,6 @@ export default function () {
           warning(chalk.yellow`Found ${unresolvedImports.length} unresolved imports:`);
 
           for (const imp of unresolvedImports) {
-            info(`  ${chalk.yellow('•')} ${chalk.bold(imp)}`);
-
             const m = imp.match(/^([^@]+)(?:@(.+))?$/);
             if (!m || !m[1] || !m[2]) {
               warning(`    ${chalk.yellow('↳')} Malformed interface name, skipping`);
@@ -123,7 +121,13 @@ export default function () {
             // Look for modules implementing this interface
             const interfaceInfo = await loadInterfaceFromGit(git, m[1]);
 
-            if (interfaceInfo && interfaceInfo.manifest.modules.length > 0) {
+            // Prepare choice for user to select a module
+            const choices = [...(interfaceInfo?.manifest.modules.map((module) => module.name) || [])];
+            const alreadyAddedModule = choices.find((choice) => addedModules[choice]);
+
+            if (interfaceInfo && choices.length > 0 && !alreadyAddedModule) {
+              info(`  ${chalk.yellow('•')} ${chalk.bold(imp)}`);
+
               // Suggest modules that implement this interface
               info(`    ${chalk.blue('↳')} Available modules that implement this interface:`);
               interfaceInfo.manifest.modules.forEach((mod, i) => {
@@ -131,8 +135,6 @@ export default function () {
               });
 
               // Ask user to select a module
-              const choices = [...interfaceInfo.manifest.modules.map((module) => module.name)];
-
               const { moduleName } = await inquirer.prompt<{ moduleName: string }>([
                 {
                   type: 'list',
@@ -159,11 +161,13 @@ export default function () {
                     env,
                   });
 
-                  addedModules.push(`${moduleName} (for ${imp})`);
+                  addedModules[moduleName] = [imp];
                 }
               } else {
                 warning(`    ${chalk.yellow('↳')} No modules found implementing this interface in repository ${git}`);
               }
+            } else if (alreadyAddedModule) {
+              addedModules[alreadyAddedModule].push(imp);
             } else {
               warning(`    ${chalk.yellow('↳')} No modules found implementing this interface in repository ${git}`);
             }
@@ -213,10 +217,10 @@ export default function () {
       // Summary of changes
       info(chalk.blue.bold`\nDependency analysis summary:`);
 
-      if (addedModules.length > 0) {
-        success(chalk.green`Added ${addedModules.length} module(s):`);
-        addedModules.forEach((name) => {
-          info(`  ${chalk.green('•')} ${name}`);
+      if (Object.keys(addedModules).length > 0) {
+        success(chalk.green`Added ${Object.keys(addedModules).length} module(s):`);
+        Object.entries(addedModules).forEach(([imp, modules]) => {
+          info(`  ${chalk.green('•')} ${imp} for : ${modules.join(', ')}`);
         });
       }
 
@@ -227,7 +231,7 @@ export default function () {
         });
       }
 
-      if (addedModules.length === 0 && removedModules.length === 0) {
+      if (Object.keys(addedModules).length === 0 && removedModules.length === 0) {
         success(chalk.green`No changes were made. Your project dependencies are already optimized!`);
       }
 
