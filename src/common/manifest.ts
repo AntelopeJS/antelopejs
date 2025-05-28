@@ -80,19 +80,14 @@ export class ModuleManifest {
     const dedicatedJson = await readJsonFile(paths.dedicatedJson, `No antelope.module.json found in '${folder}'`);
 
     if (dedicatedJson) {
-      const { antelopeJs: dedicatedAntelopeJs, ...dedicatedRest } = dedicatedJson;
       return {
         ...packageJson,
-        ...dedicatedRest,
+        ...dedicatedJson,
         antelopeJs: {
           imports: [],
           importsOptional: [],
           ...packageJson.antelopeJs,
-          ...dedicatedAntelopeJs,
-        },
-        _moduleAliases: {
-          ...packageJson._moduleAliases,
-          ...dedicatedJson._moduleAliases,
+          ...dedicatedJson,
         },
       };
     }
