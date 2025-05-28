@@ -8,7 +8,7 @@ import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import inquirer from 'inquirer';
 import { displayBox, error, info, success, warning } from '../../../utils/cli-ui';
-import { parsePackageInfoOutput } from '../../package-manager';
+import { parsePackageInfoOutput } from '../../../utils/package-manager';
 import { ModuleCache } from '../../../common/cache';
 import LoadModule, { GetLoaderIdentifier } from '../../../common/downloader';
 
