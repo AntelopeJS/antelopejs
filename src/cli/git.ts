@@ -68,8 +68,7 @@ export interface Template {
 }
 
 export async function loadManifestFromGit(git: string): Promise<GitManifest> {
-  const folderName = git.replace(/[^a-zA-Z0-9_]/g, '_');
-  const releaseLock = await acquireLock(`git-${folderName}`);
+  const releaseLock = await acquireLock(`git-${git}`);
   try {
     const folderPath = await loadGit(git);
     const manifestPath = path.join(folderPath, 'manifest.json');
@@ -129,8 +128,7 @@ async function getInterfaceInfo(gitPath: string, interface_: string): Promise<In
 }
 
 export async function loadInterfaceFromGit(git: string, interface_: string): Promise<InterfaceInfo | undefined> {
-  const folderName = git.replace(/[^a-zA-Z0-9_]/g, '_');
-  const releaseLock = await acquireLock(`git-${folderName}`);
+  const releaseLock = await acquireLock(`git-${git}`);
   try {
     const folderPath = await loadGit(git);
 
@@ -147,8 +145,7 @@ export async function loadInterfaceFromGit(git: string, interface_: string): Pro
 }
 
 export async function loadInterfacesFromGit(git: string, interfaces: string[]): Promise<Record<string, InterfaceInfo>> {
-  const folderName = git.replace(/[^a-zA-Z0-9_]/g, '_');
-  const releaseLock = await acquireLock(`git-${folderName}`);
+  const releaseLock = await acquireLock(`git-${git}`);
   try {
     const folderPath = await loadGit(git);
 
@@ -258,8 +255,7 @@ export async function installInterfaces(
         `${interfacePathBase}/${version}.d.ts`,
       );
     } else if (files.type === 'git' && files.remote) {
-      const folderName = files.remote.replace(/[^a-zA-Z0-9_]/g, '_');
-      const releaseLock = await acquireLock(`git-${folderName}`);
+      const releaseLock = await acquireLock(`git-${git}`);
       try {
         const gitPath = await loadGit(files.remote, files.branch);
 
@@ -276,8 +272,7 @@ export async function installInterfaces(
 
   // Execute git operations in batches with locking
   for (const gitOp of Object.values(gitOperations)) {
-    const folderName = path.basename(gitOp.path);
-    const releaseLock = await acquireLock(`git-${folderName}`);
+    const releaseLock = await acquireLock(`git-${git}`);
     try {
       await ExecuteCMD(`git sparse-checkout add ${gitOp.checkoutPaths.join(' ')} --skip-checks`, {
         cwd: gitOp.path,
@@ -295,8 +290,7 @@ export async function installInterfaces(
     if (files.type === 'local') {
       folderPath = interfaceInfo.folderPath;
     } else if (files.type === 'git' && files.remote) {
-      const folderName = files.remote.replace(/[^a-zA-Z0-9_]/g, '_');
-      const releaseLock = await acquireLock(`git-${folderName}`);
+      const releaseLock = await acquireLock(`git-${git}`);
       try {
         const gitPath = await loadGit(files.remote, files.branch);
         folderPath = path.join(gitPath, files.path);

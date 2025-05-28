@@ -5,7 +5,8 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 const LOCK_DIR = path.join(homedir(), '.antelopejs', 'locks');
 
 export async function acquireLock(lockName: string, timeoutMs: number = 30000): Promise<() => Promise<void>> {
-  const lockFile = path.join(LOCK_DIR, `${lockName}.lock`);
+  const sanitizedLockName = lockName.replace(/[^a-zA-Z0-9_]/g, '_');
+  const lockFile = path.join(LOCK_DIR, `${sanitizedLockName}.lock`);
 
   // Ensure the lock file exists
   if (!existsSync(lockFile)) {
