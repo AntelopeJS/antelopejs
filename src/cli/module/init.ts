@@ -166,8 +166,11 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
     savePackageManagerToPackageJson(packageManager, packageJsonPath);
 
     // Execute install command
+    const installSpinner = new Spinner('Installing dependencies');
+    await installSpinner.start();
     const installCmd = await getInstallCommand(packageJsonPath, false);
-    await ExecuteCMD(installCmd, { cwd: packageJsonPath }, true);
+    await ExecuteCMD(installCmd, { cwd: packageJsonPath });
+    await installSpinner.succeed('Dependencies installed');
 
     // Ask about initializing git repository
     console.log('');
