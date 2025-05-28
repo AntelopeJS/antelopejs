@@ -204,7 +204,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
       { borderColor: 'green' },
     );
   } catch (err) {
-    await gitSpinner.fail('Failed to load templates');
+    await gitSpinner.fail('Failed to initialize your module');
     if (err instanceof Error) {
       error(err.message);
     } else {
