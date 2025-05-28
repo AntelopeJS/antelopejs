@@ -5,7 +5,7 @@ import path from 'path';
 import { readConfig, writeConfig } from '../common';
 import { handlers, projectModulesAddCommand } from './modules/add';
 import { moduleInitCommand } from '../module/init';
-import { Spinner, displayBox, info, warning } from '../../utils/cli-ui';
+import { Spinner, displayBox, error, info, warning } from '../../utils/cli-ui';
 import { mkdir, stat } from 'fs/promises';
 
 export default function () {
@@ -111,9 +111,20 @@ export default function () {
         ]);
 
         if (init) {
-          await moduleInitCommand(project, {}, true);
-          await projectModulesAddCommand(['.'], { mode: 'local', project });
-          moduleInitialized = true;
+          try {
+            await moduleInitCommand(project, {}, true);
+            await projectModulesAddCommand(['.'], { mode: 'local', project });
+            moduleInitialized = true;
+          } catch (err) {
+            console.log('');
+            if (err instanceof Error) {
+              error(`Failed to create module: ${err.message}`);
+            } else {
+              error(`Failed to create module: ${String(err)}`);
+            }
+            error('Project creation stopped due to module initialization failure.');
+            return;
+          }
         }
       }
 

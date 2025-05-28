@@ -213,6 +213,10 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
     );
   } catch (err) {
     await gitSpinner.fail('Failed to initialize your module');
+    if (fromProject) {
+      // When called from project init, re-throw the error so it can be handled there
+      throw err;
+    }
     if (err instanceof Error) {
       error(err.message);
     } else {
