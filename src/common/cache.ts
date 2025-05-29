@@ -3,9 +3,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { satisfies } from 'semver';
 import { detectIndentation } from '../cli/common';
-import { existsSync, accessSync, constants } from 'fs';
 import { mkdir, rm } from 'fs/promises';
-import { Logging } from '../interfaces/logging/beta';
 
 /**
  * Module Cache management
@@ -85,28 +83,6 @@ export class ModuleCache {
   }
 
   /**
-   * Handle errors when creating a folder.
-   *
-   * @param path - Path of the folder.
-   * @param err - Error object.
-   */
-  private async onGetFolderError(path: string, err?: Error) {
-    Logging.Error(`Failed to create cache folder: ${path}`);
-    Logging.Error(`Parent directory exists: ${existsSync(this.path)}`);
-    if (err) {
-      Logging.Error(`Error: ${err.message}`);
-      Logging.Error(`Stack: ${err.stack}`);
-    }
-    try {
-      accessSync(this.path, constants.R_OK | constants.W_OK);
-      Logging.Error(`Parent directory is accessible`);
-    } catch (err) {
-      Logging.Error(`Parent directory is not accessible: ${err instanceof Error ? err.message : String(err)}`);
-    }
-    process.exit(1);
-  }
-
-  /**
    * Get path of a module in this cache, clearing and creating it if not specified.
    *
    * @param module - ID of the module.
@@ -117,45 +93,13 @@ export class ModuleCache {
    */
   public async getFolder(module: string, noClean?: boolean, noCreate?: boolean): Promise<string> {
     const path = join(this.path, module);
-    try {
-      if (!noClean) {
-        await rm(path, { recursive: true }).catch(() => {});
-      }
-      if (!noCreate) {
-        await mkdir(path, { recursive: true });
-      }
-      if (!existsSync(path) && !noCreate) {
-        await this.onGetFolderError(path);
-      }
-      return path;
-    } catch (err) {
-      await this.onGetFolderError(path, err as Error);
+    if (!noClean) {
+      await rm(path, { recursive: true }).catch(() => {});
+    }
+    if (!noCreate) {
+      await mkdir(path, { recursive: true });
     }
     return path;
-  }
-
-  /**
-   * Check whether the given module exists in this cache.
-   *
-   * @param module - ID of the module.
-   *
-   * @returns True if the module exists.
-   */
-  public async ensureModuleExists(module: string): Promise<boolean> {
-    const modulePath = join(this.path, module);
-    try {
-      await fs.access(modulePath);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  public async verifyModule(module: string, version: string): Promise<boolean> {
-    if (!this.hasVersion(module, version)) {
-      return false;
-    }
-    return this.ensureModuleExists(module);
   }
 
   /**
