@@ -36,10 +36,6 @@ pnpm add @antelopejs/core
 To create a new project with the CLI:
 
 ```bash
-# Using npx
-npx @antelopejs/core project init <project-name>
-
-# Or if installed globally
 ajs project init <project-name>
 ```
 

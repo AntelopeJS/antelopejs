@@ -68,7 +68,6 @@ export default function () {
       console.log('');
 
       // Ask about app module
-      let moduleInitialized = false;
       const { blmodule } = await inquirer.prompt<{ blmodule: boolean }>([
         {
           type: 'confirm',
@@ -114,7 +113,6 @@ export default function () {
           try {
             await moduleInitCommand(project, {}, true);
             await projectModulesAddCommand(['.'], { mode: 'local', project });
-            moduleInitialized = true;
           } catch (err) {
             console.log('');
             if (err instanceof Error) {
@@ -130,15 +128,12 @@ export default function () {
 
       // Display success message
       console.log('');
-      const command = moduleInitialized
-        ? `${chalk.cyan('npm run dev')} ${chalk.dim('(or pnpm dev or yarn dev)')}`
-        : `${chalk.cyan('ajs project run')} ${chalk.dim('(or npx @antelopejs/core project run)')}`;
-
       await displayBox(
         `Your AntelopeJS project ${chalk.green.bold(answers.name)} has been successfully initialized!\n\n` +
           `${chalk.dim('To get started, run:')}\n` +
           `${project !== '.' ? chalk.cyan(`cd ${project}`) + '\n' : ''}` +
-          command,
+          `${chalk.cyan('ajs project module fix')}\n` +
+          `${chalk.cyan('ajs project run -w')}`,
         '🚀 Project Created',
         { borderColor: 'green' },
       );
