@@ -2,6 +2,7 @@ import path from 'path';
 import { ModuleSource } from './downloader';
 import { readFileSync, existsSync } from 'fs';
 import { lstat, readdir } from 'fs/promises';
+import { Logging } from '../interfaces/logging/beta';
 
 export type ModuleImport = string | { name: string; git?: string; skipInstall?: boolean };
 
@@ -67,6 +68,12 @@ export class ModuleManifest {
     const packageJson = JSON.parse(readFileSync(packageJsonPath).toString());
 
     if (existsSync(dedicatedJsonPath)) {
+      if (packageJson.antelopeJs) {
+        Logging.Warn(
+          // eslint-disable-next-line max-len
+          `Warning: Both package.json and antelope.module.json contain AntelopeJS configuration in '${folder}'. Only the dedicated antelope.module.json configuration will be used.`,
+        );
+      }
       const dedicatedJson = JSON.parse(readFileSync(dedicatedJsonPath).toString());
       return {
         ...packageJson,
