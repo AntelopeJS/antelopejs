@@ -13,7 +13,6 @@ import { parsePackageInfoOutput } from '../../../utils/package-manager';
 import { ModuleCache } from '../../../common/cache';
 import LoadModule, { GetLoaderIdentifier } from '../../../common/downloader';
 import Logging from '../../../interfaces/logging/beta';
-import setupAntelopeProjectLogging from '../../../logging';
 
 interface AddOptions {
   mode: string;
@@ -40,17 +39,11 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   }
 
   const antelopeConfig = await LoadConfig(options.project, options.env || 'default');
-  setupAntelopeProjectLogging(antelopeConfig);
-
-  Logging.inline.Info('Initializing logging for module addition');
-  Logging.inline.Info(`Project path: ${options.project}`);
-  Logging.inline.Info(`Environment: ${options.env || 'default'}`);
 
   let sources = await Promise.all(
     modules.map((module) => {
       const modulePath =
         options.mode === 'local' || options.mode === 'dir' ? path.join(options.project, module) : module;
-      Logging.inline.Info(`Processing module: ${modulePath}`);
       console.log(`Adding ${chalk.bold(modulePath)} using ${options.mode} mode`);
       return handlers.get(options.mode)!(module, options).catch((err) => {
         error(`Failed to add module "${module}": ${err.message || err}`);
@@ -212,17 +205,14 @@ handlers.set('git', async (module) => {
 
 handlers.set('local', async (module, options) => {
   const modulePath = path.join(options.project, module);
-  Logging.inline.Info(`Loading local module from: ${modulePath}`);
 
   assert((await stat(modulePath)).isDirectory(), `Path '${module}' is not a directory`);
   const packagePath = path.join(modulePath, 'package.json');
   assert((await stat(packagePath)).isFile(), `No package.json found in '${module}'`);
 
   const info = JSON.parse((await readFile(packagePath)).toString()) as ModulePackageJson;
-  Logging.inline.Info(`Package info: ${JSON.stringify(info)}`);
 
   const { config: moduleConfig, warnings } = await loadModuleConfig(modulePath);
-  Logging.inline.Info(`Loaded module config: ${JSON.stringify(moduleConfig)}`);
   warnings.forEach((warning) => Logging.Warn(warning));
 
   const moduleConfigResult = {
@@ -234,13 +224,9 @@ handlers.set('local', async (module, options) => {
   };
 
   if (Object.keys(moduleConfig).length > 0) {
-    Logging.inline.Info(`Adding config to module: ${JSON.stringify(moduleConfig)}`);
     Object.assign(moduleConfigResult, { config: moduleConfig });
-  } else {
-    Logging.inline.Info('No config found for module');
   }
 
-  Logging.inline.Info(`Final module config result: ${JSON.stringify(moduleConfigResult)}`);
   return [info.name, moduleConfigResult];
 });
 
