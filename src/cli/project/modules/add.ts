@@ -6,7 +6,6 @@ import path from 'path';
 import { AntelopeModuleSourceConfig, LoadConfig } from '../../../common/config';
 import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
-import inquirer from 'inquirer';
 import { displayBox, error, info, success, warning } from '../../../utils/cli-ui';
 import { ModulePackageJson } from '../../../common/manifest';
 import { parsePackageInfoOutput } from '../../../utils/package-manager';
@@ -74,34 +73,18 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   const cache = new ModuleCache(path.join(options.project, '.antelope', 'cache'));
   await cache.load();
 
-  for (const source of sources) {
-    if (!source) continue;
+  // Prepare module loading tasks for parallel execution
+  const moduleLoadingTasks = sources.map(async (source) => {
+    if (!source) return null;
 
     let [moduleName, moduleConfig] = source;
 
     // Check if module already exists
     if (antelopeConfig.modules[moduleName]) {
-      const { confirm } = await inquirer.prompt<{ confirm: boolean }>([
-        {
-          type: 'confirm',
-          name: 'confirm',
-          message: `Module ${chalk.yellow(moduleName)} already exists. Add with a different name?`,
-        },
-      ]);
-
-      if (!confirm) {
-        skipped.push(moduleName);
-        continue;
-      }
-
-      // Create unique name
-      const newName = `${moduleName}-${Object.keys(env.modules).filter((key) => key.startsWith(moduleName)).length}`;
-
-      info(`Using name ${chalk.bold(newName)} instead of ${moduleName}`);
-      moduleName = newName;
+      return { moduleName, moduleConfig, skipped: true };
     }
 
-    // Download module to cache
+    // Download module to cache if needed
     if (typeof moduleConfig === 'object' && moduleConfig !== null && 'source' in moduleConfig) {
       const loaderIdentifier = GetLoaderIdentifier(moduleConfig.source);
       if (loaderIdentifier) {
@@ -122,8 +105,24 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
       }
     }
 
-    env.modules[moduleName] = moduleConfig;
-    added.push(moduleName);
+    return { moduleName, moduleConfig, skipped: false };
+  });
+
+  // Execute all module loading tasks in parallel
+  const moduleResults = await Promise.all(moduleLoadingTasks);
+
+  // Process results and update config
+  for (const result of moduleResults) {
+    if (!result) continue;
+
+    const { moduleName, moduleConfig, skipped: wasSkipped } = result;
+
+    if (wasSkipped) {
+      skipped.push(moduleName);
+    } else {
+      env.modules[moduleName] = moduleConfig;
+      added.push(moduleName);
+    }
   }
 
   // Save the updated config
@@ -174,13 +173,11 @@ handlers.set('package', async (module) => {
   assert(m, `Invalid npm module format: '${module}'. Use <name>@<version>, <name>version or <name>`);
   let [, name, version] = m;
   if (!version) {
-    info(`Fetching latest version for ${chalk.bold(name)}...`);
     const result = await ExecuteCMD(`npm view ${name} version`, {});
     if (result.code !== 0) {
       throw new Error(`Failed to fetch version: ${result.stderr}`);
     }
     version = parsePackageInfoOutput(result.stdout);
-    success(`Using version ${version}`);
   }
   return [
     name,

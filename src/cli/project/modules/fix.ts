@@ -21,6 +21,15 @@ interface ConfigAnalyze {
   unresolvedImports: string[];
 }
 
+// Interface for tracking modules to be installed
+interface ModuleToInstall {
+  loaderIdentifier: string;
+  mode: string;
+  moduleName: string;
+  imports: string[];
+  env: string;
+}
+
 async function analyzeConfig(
   projectFolder: string,
   cache: ModuleCache,
@@ -93,7 +102,10 @@ export default function () {
       const addedModules: Record<string, string[]> = {};
       const removedModules: string[] = [];
 
-      // Process each environment
+      // Collect all modules to install across all environments
+      const modulesToInstall: ModuleToInstall[] = [];
+
+      // First pass: Analyze all environments and collect user selections
       for (const env of envs) {
         info(chalk.bold`\nAnalyzing environment: ${env}`);
 
@@ -116,9 +128,9 @@ export default function () {
 
             // Prepare choice for user to select a module
             const choices = [...(interfaceInfo?.manifest.modules.map((module) => module.name) || [])];
-            const alreadyAddedModule = choices.find((choice) => addedModules[choice]);
+            const alreadySelectedModule = modulesToInstall.find((module) => choices.includes(module.moduleName));
 
-            if (interfaceInfo && choices.length > 0 && !alreadyAddedModule) {
+            if (interfaceInfo && choices.length > 0 && !alreadySelectedModule) {
               info(`  ${chalk.yellow('•')} ${chalk.bold(imp)}`);
 
               // Suggest modules that implement this interface
@@ -146,11 +158,14 @@ export default function () {
                 const loaderIdentifier = GetLoaderIdentifier(source);
 
                 if (loaderIdentifier) {
-                  success(`    ${chalk.green('↳')} Adding module: ${chalk.bold(moduleName)}`);
+                  success(`    ${chalk.green('↳')} Selected module: ${chalk.bold(moduleName)} for ${imp}`);
 
-                  await projectModulesAddCommand([loaderIdentifier], {
+                  // Add to modules to install
+                  modulesToInstall.push({
+                    loaderIdentifier,
                     mode,
-                    project: options.project,
+                    moduleName,
+                    imports: [imp],
                     env,
                   });
 
@@ -159,8 +174,10 @@ export default function () {
               } else {
                 warning(`    ${chalk.yellow('↳')} No modules found implementing this interface in repository ${git}`);
               }
-            } else if (alreadyAddedModule) {
-              addedModules[alreadyAddedModule].push(imp);
+            } else if (alreadySelectedModule) {
+              // Module already selected for another import, just track the import
+              alreadySelectedModule.imports.push(imp);
+              addedModules[alreadySelectedModule.moduleName].push(imp);
             } else {
               warning(`    ${chalk.yellow('↳')} No modules found implementing this interface in repository ${git}`);
             }
@@ -170,13 +187,51 @@ export default function () {
         }
       }
 
+      // Second pass: Install all selected modules sequentially by environment
+      if (modulesToInstall.length > 0) {
+        info(chalk.blue.bold`\nInstalling selected modules...`);
+
+        // Group modules by environment and mode for installation
+        const modulesByEnvAndMode = modulesToInstall.reduce(
+          (acc, module) => {
+            const key = `${module.env}:${module.mode}`;
+            if (!acc[key]) {
+              acc[key] = [];
+            }
+            acc[key].push(module);
+            return acc;
+          },
+          {} as Record<string, ModuleToInstall[]>,
+        );
+
+        // Install modules for each environment/mode combination sequentially
+        for (const [key, modules] of Object.entries(modulesByEnvAndMode)) {
+          const [env, mode] = key.split(':');
+          const loaderIdentifiers = modules.map((m) => m.loaderIdentifier);
+
+          info(chalk.blue`Installing ${modules.length} module(s) for environment ${env} (mode: ${mode})...`);
+
+          try {
+            await projectModulesAddCommand(loaderIdentifiers, {
+              mode,
+              project: options.project,
+              env,
+            });
+
+            success(chalk.green`Successfully installed modules for environment ${env} (mode: ${mode})`);
+          } catch (err) {
+            error(chalk.red`Failed to install modules for environment ${env} (mode: ${mode}): ${err}`);
+          }
+        }
+      }
+
       // Summary of changes
       info(chalk.blue.bold`\nDependency analysis summary:`);
 
       if (Object.keys(addedModules).length > 0) {
         success(chalk.green`Added ${Object.keys(addedModules).length} module(s):`);
-        Object.entries(addedModules).forEach(([imp, modules]) => {
-          info(`  ${chalk.green('•')} ${imp} for : ${modules.join(', ')}`);
+        Object.entries(addedModules).forEach(([moduleName, imports]) => {
+          info(`  ${chalk.green('•')} ${moduleName} for: ${imports.join(', ')}`);
         });
       }
 
