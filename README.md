@@ -20,15 +20,7 @@ AntelopeJS addresses common framework challenges through its unique approach:
 ## Installation
 
 ```bash
-# Install globally
 npm install -g @antelopejs/core
-
-# Install in a project
-npm install @antelopejs/core
-# or using yarn
-yarn add @antelopejs/core
-# or using pnpm
-pnpm add @antelopejs/core
 ```
 
 ## Getting Started
