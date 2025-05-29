@@ -29,7 +29,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   console.log(''); // Add spacing for better readability
   info(`Adding modules to your project...`);
 
-  // Get project config and setup logging
+  // Get project config
   const config = await readConfig(options.project);
   if (!config) {
     error(`No project configuration found at: ${chalk.bold(options.project)}`);
