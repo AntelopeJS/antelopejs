@@ -1,5 +1,6 @@
 import path from 'path';
 import { ModuleSource } from './downloader';
+import { readFileSync, existsSync } from 'fs';
 import { lstat, readdir } from 'fs/promises';
 import { Logging } from '../interfaces/logging/beta';
 
@@ -29,6 +30,8 @@ export interface ModulePackageJson {
     paths?: Record<string, string[]>;
 
     moduleAliases?: Record<string, string>;
+
+    defaultConfig?: Record<string, unknown>;
   };
 
   _moduleAliases?: Record<string, string>;
@@ -46,7 +49,7 @@ export class ModuleManifest {
     values: string[];
   }[] = [];
 
-  private manifest: ModulePackageJson;
+  public manifest: ModulePackageJson;
   public exportsPath: string;
 
   public exports: Record<string, string> = {};
@@ -54,16 +57,31 @@ export class ModuleManifest {
 
   public srcAliases?: Array<{ alias: string; replace: string }>;
 
-  private static readManifest(folder: string) {
-    try {
-      return require(path.join(folder, 'package.json'));
-    } catch {
-      Logging.Error(`Missing package.json in '${folder}'`);
+  public static readManifest(folder: string): ModulePackageJson {
+    const packageJsonPath = path.join(folder, 'package.json');
+    const dedicatedJsonPath = path.join(folder, 'antelope.module.json');
+
+    if (!existsSync(packageJsonPath)) {
+      throw new Error(`Missing package.json in '${folder}'`);
+    }
+
+    const packageJson = JSON.parse(readFileSync(packageJsonPath).toString());
+
+    if (existsSync(dedicatedJsonPath)) {
+      if (packageJson.antelopeJs) {
+        Logging.Warn(
+          // eslint-disable-next-line max-len
+          `Warning: Both package.json and antelope.module.json contain AntelopeJS configuration in '${folder}'. Only the dedicated antelope.module.json configuration will be used.`,
+        );
+      }
+      const dedicatedJson = JSON.parse(readFileSync(dedicatedJsonPath).toString());
       return {
-        name: folder,
-        version: '0.0.0',
+        ...packageJson,
+        antelopeJs: dedicatedJson,
       };
     }
+
+    return packageJson;
   }
 
   constructor(
@@ -76,7 +94,7 @@ export class ModuleManifest {
     this.version = this.manifest.version;
     this.exportsPath = path.join(this.folder, this.manifest.antelopeJs?.exportsPath || 'interfaces');
     this.imports = this.manifest.antelopeJs?.imports?.map(mapModuleImport) ?? [];
-    this.main = typeof (<any>source).main === 'string' ? path.join(this.folder, (<any>source).main!) : this.folder;
+    this.main = typeof (<any>source).main === 'string' ? path.join(this.folder, (<any>source).main) : this.folder;
 
     this.baseUrl = path.join(this.folder, this.manifest.antelopeJs?.baseUrl ?? '');
     if (this.manifest.antelopeJs?.paths) {

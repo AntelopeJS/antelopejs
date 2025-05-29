@@ -58,7 +58,7 @@ export interface AntelopeProjectRootConfig {
 
 export type AntelopeConfig = AntelopeProjectRootConfig & AntelopeProjectEnvConfig;
 
-async function readConfigFile(configFile: string): Promise<any> {
+async function readConfigFile(configFile: string): Promise<unknown> {
   const st = await stat(configFile).catch(() => {});
   if (!st || !st.isFile()) return;
   return JSON.parse((await readFile(configFile)).toString());
@@ -112,8 +112,6 @@ function recursiveMerge(target: Record<any, any>, source: Record<any, any>) {
       const tVal = target[key];
       if (typeof tVal === 'object' && typeof sVal === 'object') {
         if (Array.isArray(tVal) && Array.isArray(sVal)) {
-          // TODO: explicit merge behavior
-          // tVal.push(...sVal);
           target[key] = sVal;
         } else {
           recursiveMerge(tVal, sVal);

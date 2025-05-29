@@ -8,6 +8,7 @@ import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import inquirer from 'inquirer';
 import { displayBox, error, info, success, warning } from '../../../utils/cli-ui';
+import { ModulePackageJson } from '../../../common/manifest';
 import { parsePackageInfoOutput } from '../../../utils/package-manager';
 import { ModuleCache } from '../../../common/cache';
 import LoadModule, { GetLoaderIdentifier } from '../../../common/downloader';
@@ -28,12 +29,21 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   console.log(''); // Add spacing for better readability
   info(`Adding modules to your project...`);
 
+  // Get project config
+  const config = await readConfig(options.project);
+  if (!config) {
+    error(`No project configuration found at: ${chalk.bold(options.project)}`);
+    console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
+    return;
+  }
+
+  const antelopeConfig = await LoadConfig(options.project, options.env || 'default');
+
   let sources = await Promise.all(
     modules.map((module) => {
-      console.log(
-        // eslint-disable-next-line max-len
-        `Adding ${chalk.bold(options.mode === 'local' || options.mode === 'dir' ? path.join(options.project, module) : module)} using ${options.mode} mode`,
-      );
+      const modulePath =
+        options.mode === 'local' || options.mode === 'dir' ? path.join(options.project, module) : module;
+      console.log(`Adding ${chalk.bold(modulePath)} using ${options.mode} mode`);
       return handlers.get(options.mode)!(module, options).catch((err) => {
         error(`Failed to add module "${module}": ${err.message || err}`);
         return null;
@@ -45,13 +55,6 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   sources = sources.filter((source): source is [string, AntelopeModuleSourceConfig] => source !== null);
 
   // Get correct environment config
-  const config = await readConfig(options.project);
-  if (!config) {
-    error(`No project configuration found at: ${chalk.bold(options.project)}`);
-    console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
-    return;
-  }
-
   const env =
     options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
   if (!env) {
@@ -62,8 +65,6 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   if (!env.modules) {
     env.modules = {};
   }
-
-  const antelopeConfig = await LoadConfig(options.project, options.env || 'default');
 
   // Track successful additions
   const added: string[] = [];
@@ -106,7 +107,13 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
       if (loaderIdentifier) {
         info(`Downloading module ${chalk.bold(moduleName)} to cache...`);
         try {
-          await LoadModule(options.project, cache, moduleConfig.source);
+          const moduleManifests = await LoadModule(options.project, cache, moduleConfig.source);
+          if (moduleManifests.length > 0) {
+            const manifest = moduleManifests[0];
+            if (manifest.manifest.antelopeJs?.defaultConfig) {
+              moduleConfig.config = manifest.manifest.antelopeJs.defaultConfig;
+            }
+          }
           success(`Successfully downloaded module ${chalk.bold(moduleName)} to cache`);
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -203,10 +210,13 @@ handlers.set('git', async (module) => {
 
 handlers.set('local', async (module, options) => {
   const modulePath = path.join(options.project, module);
+
   assert((await stat(modulePath)).isDirectory(), `Path '${module}' is not a directory`);
   const packagePath = path.join(modulePath, 'package.json');
   assert((await stat(packagePath)).isFile(), `No package.json found in '${module}'`);
-  const info = JSON.parse((await readFile(packagePath)).toString());
+
+  const info = JSON.parse((await readFile(packagePath)).toString()) as ModulePackageJson;
+
   return [
     info.name,
     {

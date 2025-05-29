@@ -3,6 +3,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { satisfies } from 'semver';
 import { detectIndentation } from '../cli/common';
+import { mkdir, rm } from 'fs/promises';
 
 /**
  * Module Cache management
@@ -93,10 +94,10 @@ export class ModuleCache {
   public async getFolder(module: string, noClean?: boolean, noCreate?: boolean): Promise<string> {
     const path = join(this.path, module);
     if (!noClean) {
-      await fs.rm(path, { recursive: true }).catch(() => {});
+      await rm(path, { recursive: true }).catch(() => {});
     }
     if (!noCreate) {
-      await fs.mkdir(path, { recursive: true });
+      await mkdir(path, { recursive: true });
     }
     return path;
   }
