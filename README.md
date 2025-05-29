@@ -20,15 +20,7 @@ AntelopeJS addresses common framework challenges through its unique approach:
 ## Installation
 
 ```bash
-# Install globally
 npm install -g @antelopejs/core
-
-# Install in a project
-npm install @antelopejs/core
-# or using yarn
-yarn add @antelopejs/core
-# or using pnpm
-pnpm add @antelopejs/core
 ```
 
 ## Getting Started
@@ -36,10 +28,6 @@ pnpm add @antelopejs/core
 To create a new project with the CLI:
 
 ```bash
-# Using npx
-npx @antelopejs/core project init <project-name>
-
-# Or if installed globally
 ajs project init <project-name>
 ```
 
