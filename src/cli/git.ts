@@ -304,13 +304,23 @@ export async function installInterfaces(
 
     const antelopePath = path.join(module, '.antelope');
     const interfacesPath = path.join(antelopePath, 'interfaces.d');
-    const interfacePath = path.join(interfacesPath, interfaceInfo.name, version);
 
+    // Determine source and destination paths
+    const isDirectory = await stat(path.join(folderPath, version)).catch(() => false);
+    const interfacePath = isDirectory
+      ? path.join(interfacesPath, interfaceInfo.name, version)
+      : path.join(interfacesPath, interfaceInfo.name);
+
+    // Ensure destination directory exists
     if (!(await stat(interfacePath).catch(() => false))) {
       mkdirSync(interfacePath, { recursive: true });
     }
 
-    cpSync(path.join(folderPath, version), interfacePath, { recursive: true });
+    // Copy files
+    const sourcePath = isDirectory ? path.join(folderPath, version) : path.join(folderPath, `${version}.d.ts`);
+    const destPath = isDirectory ? interfacePath : path.join(interfacePath, `${version}.d.ts`);
+
+    cpSync(sourcePath, destPath, isDirectory ? { recursive: true } : {});
 
     const dependencies = interfaceInfo.manifest.dependencies[version];
     if (dependencies.packages.length > 0) {
