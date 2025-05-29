@@ -3,7 +3,7 @@ import assert from 'assert';
 import { Command, Option } from 'commander';
 import { readFile, stat } from 'fs/promises';
 import path from 'path';
-import { AntelopeModuleSourceConfig, LoadConfig, loadModuleConfig } from '../../../common/config';
+import { AntelopeModuleSourceConfig, LoadConfig } from '../../../common/config';
 import { Options, readConfig, writeConfig } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import inquirer from 'inquirer';
@@ -12,7 +12,6 @@ import { ModulePackageJson } from '../../../common/manifest';
 import { parsePackageInfoOutput } from '../../../utils/package-manager';
 import { ModuleCache } from '../../../common/cache';
 import LoadModule, { GetLoaderIdentifier } from '../../../common/downloader';
-import Logging from '../../../interfaces/logging/beta';
 
 interface AddOptions {
   mode: string;
@@ -108,7 +107,13 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
       if (loaderIdentifier) {
         info(`Downloading module ${chalk.bold(moduleName)} to cache...`);
         try {
-          await LoadModule(options.project, cache, moduleConfig.source);
+          const moduleManifests = await LoadModule(options.project, cache, moduleConfig.source);
+          if (moduleManifests.length > 0) {
+            const manifest = moduleManifests[0];
+            if (manifest.manifest.antelopeJs?.defaultConfig) {
+              moduleConfig.config = manifest.manifest.antelopeJs.defaultConfig;
+            }
+          }
           success(`Successfully downloaded module ${chalk.bold(moduleName)} to cache`);
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -212,22 +217,16 @@ handlers.set('local', async (module, options) => {
 
   const info = JSON.parse((await readFile(packagePath)).toString()) as ModulePackageJson;
 
-  const { config: moduleConfig, warnings } = await loadModuleConfig(modulePath);
-  warnings.forEach((warning) => Logging.Warn(warning));
-
-  const moduleConfigResult = {
-    source: {
-      type: 'local',
-      path: path.relative(options.project, modulePath) || '.',
-      installCommand: ['npx tsc'],
+  return [
+    info.name,
+    {
+      source: {
+        type: 'local',
+        path: path.relative(options.project, modulePath) || '.',
+        installCommand: ['npx tsc'],
+      },
     },
-  };
-
-  if (Object.keys(moduleConfig).length > 0) {
-    Object.assign(moduleConfigResult, { config: moduleConfig });
-  }
-
-  return [info.name, moduleConfigResult];
+  ];
 });
 
 handlers.set('dir', async (module, options) => {

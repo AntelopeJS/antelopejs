@@ -1,8 +1,7 @@
 import path from 'path';
 import { ModuleSource } from './downloader';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { lstat, readdir } from 'fs/promises';
-import { Logging } from '../interfaces/logging/beta';
 
 export type ModuleImport = string | { name: string; git?: string; skipInstall?: boolean };
 
@@ -31,7 +30,7 @@ export interface ModulePackageJson {
 
     moduleAliases?: Record<string, string>;
 
-    config?: Record<string, any>;
+    defaultConfig?: Record<string, unknown>;
   };
 
   _moduleAliases?: Record<string, string>;
@@ -49,7 +48,7 @@ export class ModuleManifest {
     values: string[];
   }[] = [];
 
-  private manifest: ModulePackageJson;
+  public manifest: ModulePackageJson;
   public exportsPath: string;
 
   public exports: Record<string, string> = {};
@@ -57,39 +56,21 @@ export class ModuleManifest {
 
   public srcAliases?: Array<{ alias: string; replace: string }>;
 
-  private static readManifest(folder: string): ModulePackageJson {
-    const paths = {
-      packageJson: path.join(folder, 'package.json'),
-      dedicatedJson: path.join(folder, 'antelope.module.json'),
-    };
+  public static readManifest(folder: string): ModulePackageJson {
+    const packageJsonPath = path.join(folder, 'package.json');
+    const dedicatedJsonPath = path.join(folder, 'antelope.module.json');
 
-    const readJsonFile = (filePath: string, errorMessage: string): ModulePackageJson | undefined => {
-      try {
-        return JSON.parse(readFileSync(filePath).toString());
-      } catch {
-        Logging.Info(errorMessage);
-        return undefined;
-      }
-    };
+    if (!existsSync(packageJsonPath)) {
+      throw new Error(`Missing package.json in '${folder}'`);
+    }
 
-    const readResult = readJsonFile(paths.packageJson, `Missing package.json in '${folder}'`);
-    const packageJson = readResult ?? {
-      name: path.basename(folder),
-      version: '0.0.0',
-    };
+    const packageJson = JSON.parse(readFileSync(packageJsonPath).toString());
 
-    const dedicatedJson = readJsonFile(paths.dedicatedJson, `No antelope.module.json found in '${folder}'`);
-
-    if (dedicatedJson) {
+    if (existsSync(dedicatedJsonPath)) {
+      const dedicatedJson = JSON.parse(readFileSync(dedicatedJsonPath).toString());
       return {
         ...packageJson,
-        ...dedicatedJson,
-        antelopeJs: {
-          imports: [],
-          importsOptional: [],
-          ...packageJson.antelopeJs,
-          ...dedicatedJson,
-        },
+        antelopeJs: dedicatedJson,
       };
     }
 
