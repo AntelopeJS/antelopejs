@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/AntelopeJS/antelopejs/compare/v0.1.0...v0.1.1) (2025-05-30)
+
+### Bug Fixes
+
+* **loader:** don't git pull if repository set to commit ([e60bea3](https://github.com/AntelopeJS/antelopejs/commit/e60bea30f4db82e38213176a44072d5c216de4cd))
+* **loader:** git fetch before checkout when updating git module ([863c890](https://github.com/AntelopeJS/antelopejs/commit/863c8902fcd2bde9d4d416d43a3494f995f2c815))
+
 ## [0.1.0](https://github.com/AntelopeJS/antelopejs/compare/v0.0.2...v0.1.0) (2025-05-29)
 
 ### Features

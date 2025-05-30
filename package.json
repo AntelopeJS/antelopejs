@@ -1,6 +1,6 @@
 {
   "name": "@antelopejs/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Modular Node.js framework with interface-based architecture for building extensible applications",
   "repository": {
     "type": "git",
