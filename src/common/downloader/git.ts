@@ -44,7 +44,9 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
     if (source.commit || source.branch) {
       await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder }, true);
     }
-    await ExecuteCMD('git pull', { cwd: folder }, true);
+    if (!source.commit) {
+      await ExecuteCMD('git pull', { cwd: folder }, true);
+    }
     const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder }, true);
     if (result.code !== 0) {
       throw new Error(`Failed to get commit hash: ${result.stderr}`);
