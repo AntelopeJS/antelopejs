@@ -42,6 +42,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
   } else {
     Logging.inline.Info(`Repository already cached, updating...`);
     if (source.commit || source.branch) {
+      await ExecuteCMD(`git fetch`, { cwd: folder }, true);
       await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder }, true);
     }
     if (!source.commit) {
