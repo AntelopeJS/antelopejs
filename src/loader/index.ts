@@ -323,11 +323,12 @@ export class ModuleManager {
             }
             return modules;
           })
-          .catch((err) => {
-            Logging.Error(`Failed to load module ${source.id}:`);
-            Logging.Error(err);
-            process.exit(1);
-          });
+            .catch((err) => {
+              Logging.Error(`Failed to load module ${source.id}:`);
+              Logging.Error(err);
+              process.exit(1);
+              return [] as Module[]; // ensure consistent return type
+            });
 
         return createdModules.map((ref) => ({ ref, config: manifest.configs[ref.id] || {} }));
       } catch (err) {
