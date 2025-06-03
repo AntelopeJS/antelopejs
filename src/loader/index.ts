@@ -235,9 +235,7 @@ export class ModuleManager {
     }
   }
 
-  public async init(manifest: LegacyModuleList): Promise<void> {
-    await this.cache.load();
-
+  private setupModuleInterface(manifest: LegacyModuleList) {
     coreInterfaceBeta.ImplementInterface(moduleInterfaceBeta, {
       ListModules: async () => [...this.loadedModules.keys()],
       GetModuleInfo: async (module: string) => {
@@ -302,11 +300,9 @@ export class ModuleManager {
         await this.reloadModule(moduleId);
       },
     });
+  }
 
-    // Set a high default max listeners since we don't know exact module count yet
-    EventEmitter.defaultMaxListeners = this.concurrency;
-
-    // Get modules ready
+  private async downloadModules(manifest: LegacyModuleList): Promise<LoadedModule[]> {
     const modulePromises = manifest.sources.map(async (source) => {
       Logging.inline.Info(`Loading module ${source.id}`);
       try {
@@ -340,27 +336,31 @@ export class ModuleManager {
     const moduleResults = await Promise.all(modulePromises);
     const moduleList = moduleResults.flat();
     Logging.Info(`Modules loaded`);
+    return moduleList;
+  }
 
+  private async loadModuleExports(moduleList: LoadedModule[]): Promise<void> {
     Logging.inline.Info(`Loading exports`);
-
     await this.core.ref.manifest.loadExports();
     await Promise.all(moduleList.map((module) => module.ref.manifest.loadExports()));
+    Logging.Info(`Exports loaded`);
+  }
 
+  private checkModuleCollisions(moduleList: LoadedModule[]) {
     moduleList.reduce((map, entry) => {
       if (map.has(entry.ref.id)) {
         Logging.Error(`Detected module id collision (name in package.json): ${entry.ref.id}`);
       }
       return map.set(entry.ref.id, entry);
     }, this.loadedModules);
+  }
 
-    Logging.Info(`Exports loaded`);
-
-    // Set max listeners to default
-    EventEmitter.defaultMaxListeners = 10;
-
+  private associateModules(moduleList: LoadedModule[]) {
     this.rebuildInterfaceSources(moduleList);
     this.rebuildModuleAssociations(moduleList);
+  }
 
+  private async constructModules(moduleList: LoadedModule[]): Promise<void> {
     Logging.inline.Info(`Constructing modules`);
     this.resolverDetour.attach();
     await Promise.all(
@@ -375,6 +375,19 @@ export class ModuleManager {
       ),
     );
     Logging.Info(`Done loading`);
+  }
+
+  public async init(manifest: LegacyModuleList): Promise<void> {
+    await this.cache.load();
+    this.setupModuleInterface(manifest);
+
+    EventEmitter.defaultMaxListeners = this.concurrency;
+    const moduleList = await this.downloadModules(manifest);
+    await this.loadModuleExports(moduleList);
+    this.checkModuleCollisions(moduleList);
+    EventEmitter.defaultMaxListeners = 10;
+    this.associateModules(moduleList);
+    await this.constructModules(moduleList);
   }
 
   public startModules() {
