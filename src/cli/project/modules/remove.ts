@@ -3,6 +3,7 @@ import { Command, Option } from 'commander';
 import { Options, readConfig, writeConfig } from '../../common';
 import { LoadConfig } from '../../../common/config';
 import { error, warning, info, success } from '../../../utils/cli-ui';
+import { selectEnvironment } from '../../../utils/module';
 
 interface RemoveOptions {
   project: string;
@@ -20,8 +21,7 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
     return;
   }
 
-  const env =
-    options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
+  const env = selectEnvironment(config, options.env);
   if (!env) {
     error(chalk.red`Environment ${options.env || 'default'} not found in project config`);
     return;

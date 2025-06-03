@@ -10,6 +10,7 @@ import inquirer from 'inquirer';
 import { loadInterfaceFromGit } from '../../git';
 import { projectModulesAddCommand } from './add';
 import { error, warning, info, success } from '../../../utils/cli-ui';
+import { parseInterfaceRef } from '../../../utils/module';
 
 interface FixOptions {
   project: string;
@@ -117,14 +118,14 @@ export default function () {
           warning(chalk.yellow`Found ${unresolvedImports.length} unresolved imports:`);
 
           for (const imp of unresolvedImports) {
-            const m = imp.match(/^([^@]+)(?:@(.+))?$/);
-            if (!m || !m[1] || !m[2]) {
+            const ref = parseInterfaceRef(imp);
+            if (!ref?.name || !ref.version) {
               warning(`    ${chalk.yellow('↳')} Malformed interface name, skipping`);
               continue;
             }
 
             // Look for modules implementing this interface
-            const interfaceInfo = await loadInterfaceFromGit(git, m[1]);
+            const interfaceInfo = await loadInterfaceFromGit(git, ref.name);
 
             // Prepare choice for user to select a module
             const choices = [...(interfaceInfo?.manifest.modules.map((module) => module.name) || [])];

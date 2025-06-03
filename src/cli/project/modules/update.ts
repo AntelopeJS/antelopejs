@@ -6,6 +6,7 @@ import { ExecuteCMD } from '../../../utils/command';
 import { ModuleSourcePackage } from '../../../common/downloader/package';
 import { parsePackageInfoOutput } from '../../../utils/package-manager';
 import { error as errorUI, warning, info, success } from '../../../utils/cli-ui';
+import { selectEnvironment } from '../../../utils/module';
 
 interface UpdateOptions {
   project: string;
@@ -30,7 +31,7 @@ export default function () {
         return;
       }
 
-      const env = options.env ? config?.environments && config?.environments[options.env] : config;
+      const env = selectEnvironment(config, options.env);
       if (!env) {
         errorUI(chalk.red`Environment ${options.env || 'default'} not found in project config`);
         return;
