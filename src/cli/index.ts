@@ -62,10 +62,11 @@ process.on('SIGINT', () => {
 
 // Run the CLI
 runCLI().catch((err) => {
-  // Only show error messages for errors other than ExitPromptError
-  if (err && typeof err === 'object' && 'name' in err && err.name !== 'ExitPromptError') {
-    console.error(chalk.red('Error:'), err.message || err);
-    process.exit(1);
+  // Don't show error messages for ExitPromptError
+  if (err && typeof err === 'object' && 'name' in err && err.name === 'ExitPromptError') {
+    process.exit(0);
   }
-  process.exit(0);
+
+  console.error(chalk.red('Error:'), err.message || err);
+  process.exit(1);
 });
