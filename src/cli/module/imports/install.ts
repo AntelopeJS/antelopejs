@@ -4,7 +4,7 @@ import { Options, readModuleManifest, readUserConfig } from '../../common';
 import { installInterfaces, loadInterfacesFromGit } from '../../git';
 import { mapModuleImport } from '../../../common/manifest';
 import { error, warning, info, success, ProgressBar } from '../../../utils/cli-ui';
-import { readdirSync, existsSync } from 'fs';
+import { existsSync } from 'fs';
 import path from 'path';
 
 interface InstallOptions {
@@ -48,39 +48,15 @@ export default function () {
       // Check what interfaces already exist in .antelope/interfaces.d
       const antelopePath = path.join(options.module, '.antelope');
       const interfacesPath = path.join(antelopePath, 'interfaces.d');
-      const existingInterfaces = new Set<string>();
-
-      if (existsSync(interfacesPath)) {
-        try {
-          const interfaceDirs = readdirSync(interfacesPath);
-          for (const interfaceDir of interfaceDirs) {
-            const interfaceVersionsPath = path.join(interfacesPath, interfaceDir);
-            if (existsSync(interfaceVersionsPath)) {
-              try {
-                const versions = readdirSync(interfaceVersionsPath);
-                for (const version of versions) {
-                  // Handle both directory-based versions and .d.ts files
-                  if (version.endsWith('.d.ts')) {
-                    const versionNumber = version.replace('.d.ts', '');
-                    existingInterfaces.add(`${interfaceDir}@${versionNumber}`);
-                  } else {
-                    existingInterfaces.add(`${interfaceDir}@${version}`);
-                  }
-                }
-              } catch {
-                // Skip if we can't read versions for this interface
-              }
-            }
-          }
-        } catch {
-          // Skip if we can't read the interfaces directory
-        }
-      }
 
       // Filter out interfaces that already exist
       const missingInterfaces = allInterfaces.filter((interface_) => {
-        const interfaceKey = `${interface_.name}@${interface_.version}`;
-        return !existingInterfaces.has(interfaceKey);
+        const interfaceDir = path.join(interfacesPath, interface_.name);
+        const versionPath = path.join(interfaceDir, interface_.version);
+        const versionFile = path.join(interfaceDir, `${interface_.version}.d.ts`);
+
+        // Check if interface exists as either a directory or a .d.ts file
+        return !existsSync(versionPath) && !existsSync(versionFile);
       });
 
       if (missingInterfaces.length === 0) {
