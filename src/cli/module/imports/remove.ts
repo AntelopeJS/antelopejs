@@ -4,6 +4,7 @@ import { Options, readModuleManifest, writeModuleManifest } from '../../common';
 import { removeInterface } from '../../git';
 import { mapModuleImport } from '../../../common/manifest';
 import { error, warning, info, success } from '../../../utils/cli-ui';
+import { ensureModuleImports, parseInterfaceRef } from '../../../utils/module';
 
 interface RemoveOptions {
   module: string;
@@ -25,18 +26,12 @@ export default function () {
         return;
       }
 
-      if (!moduleManifest.antelopeJs) {
-        moduleManifest.antelopeJs = { imports: [], importsOptional: [] };
-      } else if (!moduleManifest.antelopeJs.imports) {
-        moduleManifest.antelopeJs.imports = [];
-      } else if (!moduleManifest.antelopeJs.importsOptional) {
-        moduleManifest.antelopeJs.importsOptional = [];
-      }
+      const antelope = ensureModuleImports(moduleManifest);
 
-      const interfacesParsed = interfaces.map((interface_) => {
-        const m = interface_.match(/^([^@]+)(?:@(.+))?$/);
-        return { raw: interface_, name: m && m[1], version: m && m[2] };
-      });
+      const interfacesParsed = interfaces.map((interface_) => ({
+        raw: interface_,
+        ...parseInterfaceRef(interface_),
+      }));
 
       const malformedInterface = interfacesParsed.find((interface_) => !interface_.name || !interface_.version);
       if (malformedInterface) {
@@ -48,8 +43,8 @@ export default function () {
       // Check if all interfaces exist in the module
       const missingInterfaces = interfacesParsed.filter(
         (interface_) =>
-          !moduleManifest.antelopeJs?.imports.map(mapModuleImport).includes(interface_.raw) &&
-          !moduleManifest.antelopeJs?.importsOptional.map(mapModuleImport).includes(interface_.raw),
+          !antelope.imports.map(mapModuleImport).includes(interface_.raw) &&
+          !antelope.importsOptional.map(mapModuleImport).includes(interface_.raw),
       );
 
       if (missingInterfaces.length > 0) {
@@ -82,8 +77,8 @@ export default function () {
         try {
           await removeInterface(options.module, name, version);
 
-          const importsOptional = moduleManifest.antelopeJs.importsOptional;
-          const imports = moduleManifest.antelopeJs.imports;
+          const importsOptional = antelope.importsOptional;
+          const imports = antelope.imports;
           const optIndex = importsOptional.map(mapModuleImport).indexOf(interface_.raw);
           if (optIndex !== -1) {
             importsOptional.splice(optIndex, 1);

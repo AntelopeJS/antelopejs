@@ -4,6 +4,7 @@ import { Options, readConfig, writeConfig } from '../../common';
 import { defaultConfigLogging } from '../../../logging';
 import inquirer from 'inquirer';
 import { displayBox, error, info, success, warning } from '../../../utils/cli-ui';
+import { selectEnvironment } from '../../../utils/module';
 
 interface SetOptions {
   project: string;
@@ -70,8 +71,7 @@ export default function () {
       }
 
       const projectName = config.name;
-      const env =
-        options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
+      const env = selectEnvironment(config, options.env);
 
       if (!env) {
         error(`Environment ${options.env || 'default'} not found in project config`);
