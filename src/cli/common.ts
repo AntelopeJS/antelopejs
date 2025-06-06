@@ -108,8 +108,20 @@ export function getDefaultUserConfig(): UserConfig {
   };
 }
 
+/**
+ * Get the configuration directory path.
+ * Uses ANTELOPEJS_CONFIG_DIR env var for testing, otherwise uses user's home directory.
+ */
+function getConfigDirectory(): string {
+  const testConfigDir = process.env.ANTELOPEJS_CONFIG_DIR;
+  if (testConfigDir) {
+    return testConfigDir;
+  }
+  return path.join(homedir(), '.antelopejs');
+}
+
 export async function writeUserConfig(data: UserConfig): Promise<void> {
-  const folderPath = path.join(homedir(), '.antelopejs');
+  const folderPath = getConfigDirectory();
   const configPath = path.join(folderPath, 'config.json');
   if (!(await stat(folderPath).catch(() => false))) {
     mkdirSync(folderPath, { recursive: true });
@@ -118,7 +130,7 @@ export async function writeUserConfig(data: UserConfig): Promise<void> {
 }
 
 export async function readUserConfig(): Promise<UserConfig> {
-  const configPath = path.join(homedir(), '.antelopejs', 'config.json');
+  const configPath = path.join(getConfigDirectory(), 'config.json');
   if (!(await stat(configPath).catch(() => false))) {
     return getDefaultUserConfig();
   }
