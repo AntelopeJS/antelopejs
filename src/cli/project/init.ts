@@ -39,9 +39,6 @@ export default function () {
       // Prompt for project details
       const answers = await inquirer.prompt<{
         name: string;
-        version: string;
-        description: string;
-        author: string;
       }>([
         {
           type: 'input',

@@ -49,9 +49,6 @@ export interface AntelopeProjectEnvConfigStrict {
 
 export interface AntelopeProjectRootConfig {
   name: string;
-  version: string;
-  description: string;
-  author: string;
 
   environments?: Record<string, AntelopeProjectEnvConfig>;
 }
