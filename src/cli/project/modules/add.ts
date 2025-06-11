@@ -11,6 +11,7 @@ import { ModulePackageJson } from '../../../common/manifest';
 import { parsePackageInfoOutput } from '../../../utils/package-manager';
 import { ModuleCache } from '../../../common/cache';
 import LoadModule, { GetLoaderIdentifier } from '../../../common/downloader';
+import { selectEnvironment } from '../../../utils/module';
 
 interface AddOptions {
   mode: string;
@@ -54,8 +55,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   sources = sources.filter((source): source is [string, AntelopeModuleSourceConfig] => source !== null);
 
   // Get correct environment config
-  const env =
-    options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
+  const env = selectEnvironment(config, options.env);
   if (!env) {
     error(`Environment ${options.env || 'default'} not found in project config`);
     return;

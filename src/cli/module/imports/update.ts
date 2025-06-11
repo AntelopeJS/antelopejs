@@ -3,6 +3,7 @@ import { Command, Option } from 'commander';
 import { Options, readModuleManifest, readUserConfig, writeModuleManifest } from '../../common';
 import { installInterfaces, loadInterfacesFromGit, removeInterface } from '../../git';
 import { error as errorUI, warning, info, success, ProgressBar } from '../../../utils/cli-ui';
+import { ensureModuleImports, parseInterfaceRef } from '../../../utils/module';
 
 interface UpdateOptions {
   module: string;
@@ -28,22 +29,16 @@ export default function () {
         return;
       }
 
-      if (!moduleManifest.antelopeJs) {
-        moduleManifest.antelopeJs = { imports: [], importsOptional: [] };
-      } else if (!moduleManifest.antelopeJs.imports) {
-        moduleManifest.antelopeJs.imports = [];
-      } else if (!moduleManifest.antelopeJs.importsOptional) {
-        moduleManifest.antelopeJs.importsOptional = [];
-      }
+      const antelope = ensureModuleImports(moduleManifest);
 
-      if (moduleManifest.antelopeJs.imports.length <= 0 && moduleManifest.antelopeJs.importsOptional.length <= 0) {
+      if (antelope.imports.length <= 0 && antelope.importsOptional.length <= 0) {
         errorUI(chalk.red`No imports found to update`);
         info(`Use 'ajs module imports add' to add interfaces first.`);
         return;
       }
 
       // Get all interfaces
-      const allInterfaces = [...moduleManifest.antelopeJs.imports, ...moduleManifest.antelopeJs.importsOptional];
+      const allInterfaces = [...antelope.imports, ...antelope.importsOptional];
 
       // Filter interfaces if specific ones were requested
       let interfaces = allInterfaces;
@@ -69,8 +64,7 @@ export default function () {
           typeof interface_ === 'object'
             ? [interface_.name, interface_.git, interface_.skipInstall]
             : [interface_, undefined, undefined];
-        const m = name.match(/^([^@]+)(?:@(.+))?$/);
-        return { raw: name, name: m && m[1], version: m && m[2], git, skipInstall };
+        return { raw: name, git, skipInstall, ...parseInterfaceRef(name) };
       });
 
       const malformedInterface = interfacesParsed.find((interface_) => !interface_.name || !interface_.version);

@@ -11,6 +11,7 @@ import { loadInterfaceFromGit, installInterfaces } from '../../git';
 import { mapModuleImport, ModuleImport } from '../../../common/manifest';
 import semver from 'semver';
 import { error, warning, info, success, ProgressBar } from '../../../utils/cli-ui';
+import { ensureModuleImports } from '../../../utils/module';
 
 interface AddOptions {
   git?: string;
@@ -137,25 +138,11 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
     return;
   }
 
-  // Initialize antelopeJs section if it doesn't exist
-  if (!moduleManifest.antelopeJs) {
-    moduleManifest.antelopeJs = {
-      imports: [],
-      importsOptional: [],
-    };
-  }
-
-  // Initialize imports arrays if they don't exist
-  if (!moduleManifest.antelopeJs.imports) {
-    moduleManifest.antelopeJs.imports = [];
-  }
-  if (!moduleManifest.antelopeJs.importsOptional) {
-    moduleManifest.antelopeJs.importsOptional = [];
-  }
+  const antelope = ensureModuleImports(moduleManifest);
 
   // Apply pending imports to the updated manifest
   for (const { importObj, isOptional } of pendingImports) {
-    const importArray = isOptional ? moduleManifest.antelopeJs.importsOptional : moduleManifest.antelopeJs.imports;
+    const importArray = isOptional ? antelope.importsOptional : antelope.imports;
 
     // Add import without checking again
     importArray.push(importObj);
