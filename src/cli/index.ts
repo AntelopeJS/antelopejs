@@ -9,14 +9,28 @@ import cmdProject from './project';
 import cmdModule from './module';
 import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
+import { warnIfOutdated } from '../utils/version-check';
+import setupAntelopeProjectLogging from '../logging';
+import { defaultConfigLogging } from '../logging';
 
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
 const version = packageJson.version;
 
+setupAntelopeProjectLogging({
+  logging: defaultConfigLogging,
+  modules: {},
+  cacheFolder: '.antelope/cache',
+  envOverrides: {},
+  disabledExports: [],
+});
+
 // Main CLI function
 const runCLI = async () => {
   try {
+    // Check for updates before anything else
+    await warnIfOutdated(version);
+
     // Display fancy banner when no arguments are passed
     if (process.argv.length <= 2) {
       displayBanner('AntelopeJS');
@@ -61,12 +75,7 @@ process.on('SIGINT', () => {
 });
 
 // Run the CLI
-runCLI().catch((err) => {
-  // Don't show error messages for ExitPromptError
-  if (err && typeof err === 'object' && 'name' in err && err.name === 'ExitPromptError') {
-    process.exit(0);
-  }
-
-  console.error(chalk.red('Error:'), err.message || err);
+runCLI().catch((error) => {
+  console.error('Error:', error);
   process.exit(1);
 });
