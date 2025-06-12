@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import { Options, readModuleManifest, writeModuleManifest } from '../../common';
 import { displayBox, error, success, keyValue } from '../../../utils/cli-ui';
+import path from 'path';
 
 interface SetOptions {
   module: string;
@@ -17,9 +18,12 @@ export default function () {
     .action(async (exportPath: string, options: SetOptions) => {
       console.log(''); // Add spacing for better readability
 
-      const manifest = await readModuleManifest(options.module);
+      const resolvedModulePath = path.resolve(options.module);
+      const resolvedExportPath = path.resolve(exportPath);
+
+      const manifest = await readModuleManifest(resolvedModulePath);
       if (!manifest) {
-        error(`No package.json found in ${chalk.bold(options.module)}`);
+        error(`No package.json found in ${chalk.bold(resolvedModulePath)}`);
         return;
       }
 
@@ -31,17 +35,17 @@ export default function () {
       }
 
       const oldPath = manifest.antelopeJs.exportsPath || '(not set)';
-      manifest.antelopeJs.exportsPath = exportPath;
-      await writeModuleManifest(options.module, manifest);
+      manifest.antelopeJs.exportsPath = resolvedExportPath;
+      await writeModuleManifest(resolvedModulePath, manifest);
 
       success(`Exports path updated successfully`);
 
       await displayBox(
-        keyValue('Module', chalk.cyan(options.module)) +
+        keyValue('Module', chalk.cyan(resolvedModulePath)) +
           '\n' +
           keyValue('Previous Path', chalk.dim(oldPath)) +
           '\n' +
-          keyValue('New Path', chalk.green(exportPath)),
+          keyValue('New Path', chalk.green(resolvedExportPath)),
         '🔄 Module Exports Updated',
         {
           padding: 1,
