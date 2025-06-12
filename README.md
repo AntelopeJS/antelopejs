@@ -1,10 +1,13 @@
 ![AntelopeJS](.github/social-card.png)
 
-# AntelopeJS
+<div align="center">
+    <h1>AntelopeJS</h1>
 
-[![npm version](https://img.shields.io/npm/v/@antelopejs/core.svg)](https://www.npmjs.com/package/@antelopejs/core)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+<a href="https://www.npmjs.com/package/@antelopejs/mongodb"><img src="https://img.shields.io/npm/v/@antelopejs/mongodb?style=for-the-badge&labelColor=518de1&color=08a017"></a>
+<a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-FF6F00?style=for-the-badge&labelColor=518de1"></a>
+<a href="https://antelopejs.com/"><img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Glastis/41ed1d98e6eaeaeefaa412c501c5dddd/raw" alt="AntelopeJS Docs"></a>
+<a href="https://discord.gg/C2G8QW63"><img src="https://img.shields.io/badge/Discord-Serveur-5865F2?style=for-the-badge&labelColor=518de1&logo=discord&logoColor=white"></a>
+</div>
 
 AntelopeJS is a production-ready TypeScript framework designed for developing high-performance, robust, and scalable Node.js applications. Its innovative interface-based architecture enables developers to create modular, extensible applications with clear separation of concerns.
 
