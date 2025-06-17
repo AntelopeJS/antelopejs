@@ -28,22 +28,28 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   console.log(''); // Add spacing for better readability
   info(`Adding modules to your project...`);
 
+  const resolvedProjectPath = path.resolve(options.project);
+
   // Get project config
-  const config = await readConfig(options.project);
+  const config = await readConfig(resolvedProjectPath);
   if (!config) {
-    error(`No project configuration found at: ${chalk.bold(options.project)}`);
+    error(`No project configuration found at: ${chalk.bold(resolvedProjectPath)}`);
     console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
     return;
   }
 
-  const antelopeConfig = await LoadConfig(options.project, options.env || 'default');
+  const antelopeConfig = await LoadConfig(resolvedProjectPath, options.env || 'default');
 
   let sources = await Promise.all(
     modules.map((module) => {
       const modulePath =
-        options.mode === 'local' || options.mode === 'dir' ? path.join(options.project, module) : module;
+        options.mode === 'local' || options.mode === 'dir'
+          ? path.isAbsolute(module)
+            ? module
+            : path.join(resolvedProjectPath, module)
+          : module;
       console.log(`Adding ${chalk.bold(modulePath)} using ${options.mode} mode`);
-      return handlers.get(options.mode)!(module, options).catch((err) => {
+      return handlers.get(options.mode)!(module, { ...options, project: resolvedProjectPath }).catch((err) => {
         error(`Failed to add module "${module}": ${err.message || err}`);
         return null;
       });
@@ -70,7 +76,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   const skipped: string[] = [];
 
   // Initialize module cache
-  const cache = new ModuleCache(path.join(options.project, '.antelope', 'cache'));
+  const cache = new ModuleCache(path.join(resolvedProjectPath, '.antelope', 'cache'));
   await cache.load();
 
   // Prepare module loading tasks for parallel execution
@@ -90,7 +96,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
       if (loaderIdentifier) {
         info(`Downloading module ${chalk.bold(moduleName)} to cache...`);
         try {
-          const moduleManifests = await LoadModule(options.project, cache, moduleConfig.source);
+          const moduleManifests = await LoadModule(resolvedProjectPath, cache, moduleConfig.source);
           if (moduleManifests.length > 0) {
             const manifest = moduleManifests[0];
             if (manifest.manifest.antelopeJs?.defaultConfig) {
@@ -126,7 +132,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   }
 
   // Save the updated config
-  await writeConfig(options.project, config);
+  await writeConfig(resolvedProjectPath, config);
 
   // Show results
   let resultContent = '';
@@ -206,10 +212,12 @@ handlers.set('git', async (module) => {
 });
 
 handlers.set('local', async (module, options) => {
-  const modulePath = path.join(options.project, module);
+  const resolvedModulePath = path.isAbsolute(module)
+    ? path.resolve(module)
+    : path.resolve(path.join(options.project, module));
 
-  assert((await stat(modulePath)).isDirectory(), `Path '${module}' is not a directory`);
-  const packagePath = path.join(modulePath, 'package.json');
+  assert((await stat(resolvedModulePath)).isDirectory(), `Path '${module}' is not a directory`);
+  const packagePath = path.join(resolvedModulePath, 'package.json');
   assert((await stat(packagePath)).isFile(), `No package.json found in '${module}'`);
 
   const info = JSON.parse((await readFile(packagePath)).toString()) as ModulePackageJson;
@@ -219,7 +227,7 @@ handlers.set('local', async (module, options) => {
     {
       source: {
         type: 'local',
-        path: path.relative(options.project, modulePath) || '.',
+        path: path.relative(options.project, resolvedModulePath) || '.',
         installCommand: ['npx tsc'],
       },
     },
@@ -227,14 +235,16 @@ handlers.set('local', async (module, options) => {
 });
 
 handlers.set('dir', async (module, options) => {
-  const folderPath = path.join(options.project, module);
-  assert((await stat(folderPath)).isDirectory(), `Path '${module}' is not a directory`);
+  const resolvedFolderPath = path.isAbsolute(module)
+    ? path.resolve(module)
+    : path.resolve(path.join(options.project, module));
+  assert((await stat(resolvedFolderPath)).isDirectory(), `Path '${module}' is not a directory`);
   return [
-    ':' + folderPath,
+    ':' + resolvedFolderPath,
     {
       source: {
         type: 'local-folder',
-        path: path.relative(options.project, folderPath) || '.',
+        path: path.relative(options.project, resolvedFolderPath) || '.',
         installCommand: ['npx tsc'],
       },
     },
