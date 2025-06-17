@@ -9,7 +9,7 @@ import cmdProject from './project';
 import cmdModule from './module';
 import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
-import { warnIfOutdated } from '../utils/version-check';
+import { warnIfOutdated } from './version-check';
 import setupAntelopeProjectLogging from '../logging';
 import { defaultConfigLogging } from '../logging';
 
