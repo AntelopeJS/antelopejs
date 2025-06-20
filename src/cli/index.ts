@@ -10,20 +10,10 @@ import cmdModule from './module';
 import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
 import { warnIfOutdated } from './version-check';
-import setupAntelopeProjectLogging from '../logging';
-import { defaultConfigLogging } from '../logging';
 
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
 const version = packageJson.version;
-
-setupAntelopeProjectLogging({
-  logging: defaultConfigLogging,
-  modules: {},
-  cacheFolder: '.antelope/cache',
-  envOverrides: {},
-  disabledExports: [],
-});
 
 // Main CLI function
 const runCLI = async () => {
