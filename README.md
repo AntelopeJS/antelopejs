@@ -3,7 +3,7 @@
 <div align="center">
     <h1>AntelopeJS</h1>
 
-<a href="https://www.npmjs.com/package/@antelopejs/mongodb"><img src="https://img.shields.io/npm/v/@antelopejs/mongodb?style=for-the-badge&labelColor=518de1&color=08a017"></a>
+<a href="https://www.npmjs.com/package/@antelopejs/core"><img src="https://img.shields.io/npm/v/@antelopejs/core?style=for-the-badge&labelColor=518de1&color=08a017"></a>
 <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-FF6F00?style=for-the-badge&labelColor=518de1"></a>
 <a href="https://antelopejs.com/"><img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Glastis/41ed1d98e6eaeaeefaa412c501c5dddd/raw" alt="AntelopeJS Docs"></a>
 <a href="https://discord.gg/C2G8QW63"><img src="https://img.shields.io/badge/-Discord-5865F2?style=for-the-badge&labelColor=5865F2&logo=discord&logoColor=white"></a>
