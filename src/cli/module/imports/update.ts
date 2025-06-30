@@ -132,22 +132,16 @@ export default function () {
             continue;
           }
 
-          try {
-            progressBar.update(processedCount, { title: `Queuing update for ${name}@${version}` });
+          progressBar.update(processedCount, { title: `Queuing update for ${name}@${version}` });
 
-            if (!options.dryRun) {
-              const shouldSkipInstall = interface_.skipInstall || options.skipInstall;
-              if (!shouldSkipInstall) {
-                toRemove.push({ name: interfaceInfo.name, version });
-                toInstall.push({ interfaceInfo, version });
-              }
+          if (!options.dryRun) {
+            const shouldSkipInstall = interface_.skipInstall || options.skipInstall;
+            if (!shouldSkipInstall) {
+              toRemove.push({ name: interfaceInfo.name, version });
+              toInstall.push({ interfaceInfo, version });
             }
-            updated.push(`${name}@${version}${interface_.skipInstall || options.skipInstall ? ' (skip-install)' : ''}`);
-          } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : String(err);
-            errorMessages.push(`Failed to update ${chalk.bold(`${name}@${version}`)}: ${errorMessage}`);
-            failed.push({ name: `${name}@${version}`, reason: 'Update failed' });
           }
+          updated.push(`${name}@${version}${interface_.skipInstall || options.skipInstall ? ' (skip-install)' : ''}`);
 
           processedCount++;
           progressBar.update(processedCount);
