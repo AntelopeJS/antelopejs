@@ -1,7 +1,7 @@
 <div align="center">
   <a href="https://antelopejs.com">
     <picture>
-      <img alt="Next.js logo" src=".github/social-card.png">
+      <img alt="AntelopeJS logo" src=".github/social-card.png">
     </picture>
   </a>
   <h1>AntelopeJS</h1>
