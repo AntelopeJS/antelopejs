@@ -18,17 +18,19 @@ export default function () {
     .action(async (project: string) => {
       console.log(''); // Add some spacing for better readability
 
+      const resolvedProjectPath = path.resolve(project);
+
       // Check if project already exists
       const spinner = new Spinner('Checking project path');
       await spinner.start();
 
-      if (await readConfig(project)) {
-        await spinner.fail(`Project already exists at ${chalk.bold(project)}`);
+      if (await readConfig(resolvedProjectPath)) {
+        await spinner.fail(`Project already exists at ${chalk.bold(resolvedProjectPath)}`);
         warning(chalk.yellow`Use a different directory or delete the existing project.`);
         return;
       }
 
-      await spinner.succeed(`Project path ${chalk.bold(project)} is available`);
+      await spinner.succeed(`Project path ${chalk.bold(resolvedProjectPath)} is available`);
 
       // Display welcome message
       console.log('');
@@ -44,7 +46,7 @@ export default function () {
           type: 'input',
           name: 'name',
           message: 'What would you like to name your project?',
-          default: path.basename(project),
+          default: path.basename(resolvedProjectPath),
         },
       ]);
 
@@ -53,13 +55,13 @@ export default function () {
       await configSpinner.start();
 
       // Create the project directory if it doesn't exist
-      const projectDirExists = await stat(project).catch(() => false);
+      const projectDirExists = await stat(resolvedProjectPath).catch(() => false);
       if (!projectDirExists) {
-        await mkdir(project, { recursive: true });
-        await configSpinner.update(`Created project directory at ${chalk.bold(project)}`);
+        await mkdir(resolvedProjectPath, { recursive: true });
+        await configSpinner.update(`Created project directory at ${chalk.bold(resolvedProjectPath)}`);
       }
 
-      await writeConfig(project, answers);
+      await writeConfig(resolvedProjectPath, answers);
       await configSpinner.succeed('Project configuration created successfully');
 
       console.log('');
@@ -95,7 +97,7 @@ export default function () {
           },
         ]);
 
-        await projectModulesAddCommand([module], { mode: source, project });
+        await projectModulesAddCommand([module], { mode: source, project: resolvedProjectPath });
       } else {
         const { init } = await inquirer.prompt<{ init: boolean }>([
           {
@@ -108,8 +110,8 @@ export default function () {
 
         if (init) {
           try {
-            await moduleInitCommand(project, {}, true);
-            await projectModulesAddCommand(['.'], { mode: 'local', project });
+            await moduleInitCommand(resolvedProjectPath, {}, true);
+            await projectModulesAddCommand(['.'], { mode: 'local', project: resolvedProjectPath });
           } catch (err) {
             console.log('');
             if (err instanceof Error) {
@@ -128,7 +130,7 @@ export default function () {
       await displayBox(
         `Your AntelopeJS project ${chalk.green.bold(answers.name)} has been successfully initialized!\n\n` +
           `${chalk.dim('To get started, run:')}\n` +
-          `${project !== '.' ? chalk.cyan(`cd ${project}`) + '\n' : ''}` +
+          `${resolvedProjectPath !== '.' ? chalk.cyan(`cd ${resolvedProjectPath}`) + '\n' : ''}` +
           `${chalk.cyan('ajs project modules fix')}\n` +
           `${chalk.cyan('ajs project run -w')}`,
         '🚀 Project Created',

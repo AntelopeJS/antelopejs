@@ -173,6 +173,8 @@ export async function installInterfaces(
   module: string,
   interfacesToInstall: { interfaceInfo: InterfaceInfo; version: string }[],
 ) {
+  const resolvedModulePath = path.resolve(module);
+
   // First collect all the dependencies to avoid redundant git operations
   const allDependencies: { interfaceInfo: InterfaceInfo; version: string }[] = [];
 
@@ -289,7 +291,7 @@ export async function installInterfaces(
     let folderPath = '';
 
     if (files.type === 'local') {
-      folderPath = interfaceInfo.folderPath;
+      folderPath = path.resolve(interfaceInfo.folderPath);
     } else if (files.type === 'git' && files.remote) {
       const releaseLock = await acquireLock(`git-${files.remote}`);
       try {
@@ -302,7 +304,7 @@ export async function installInterfaces(
       throw new Error('Invalid interface files type');
     }
 
-    const antelopePath = path.join(module, '.antelope');
+    const antelopePath = path.join(resolvedModulePath, '.antelope');
     const interfacesPath = path.join(antelopePath, 'interfaces.d');
 
     // Determine source and destination paths

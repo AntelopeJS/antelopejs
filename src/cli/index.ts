@@ -9,6 +9,7 @@ import cmdProject from './project';
 import cmdModule from './module';
 import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
+import { warnIfOutdated } from './version-check';
 
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
@@ -17,6 +18,9 @@ const version = packageJson.version;
 // Main CLI function
 const runCLI = async () => {
   try {
+    // Check for updates before anything else
+    await warnIfOutdated(version);
+
     // Display fancy banner when no arguments are passed
     if (process.argv.length <= 2) {
       displayBanner('AntelopeJS');

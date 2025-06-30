@@ -10,7 +10,7 @@
 <a href="https://github.com/AntelopeJS/antelopejs/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/core.svg?style=for-the-badge&labelColor=000000"></a>
 <a href="https://discord.gg/C2G8QW63"><img src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge" alt="Discord"></a>
 <a href="https://discord.gg/C2G8QW63"><img src="https://img.shields.io/badge/Docs-18181B?logo=Antelope.JS&style=for-the-badge" alt="Documentation"></a>
-
+  
 </div>
 
 AntelopeJS is a production-ready TypeScript framework designed for developing high-performance, robust, and scalable Node.js applications. Its innovative interface-based architecture enables developers to create modular, extensible applications with clear separation of concerns.
