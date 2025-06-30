@@ -11,7 +11,7 @@ import { loadInterfaceFromGit } from '../../git';
 import { projectModulesAddCommand } from './add';
 import { error, warning, info, success } from '../../../utils/cli-ui';
 
-interface FixOptions {
+interface InstallOptions {
   project: string;
   env?: string;
   git?: string;
@@ -64,14 +64,14 @@ async function analyzeConfig(
 }
 
 export default function () {
-  return new Command('fix')
+  return new Command('install')
     .description(
-      `Fix module dependencies in your project\n` + `Identifies and resolves missing or unused module dependencies`,
+      `Install module dependencies in your project\n` + `Identifies and resolves missing module dependencies`,
     )
     .addOption(Options.project)
     .addOption(Options.git)
     .addOption(new Option('-e, --env <environment>', 'Environment to analyze').env('ANTELOPEJS_LAUNCH_ENV'))
-    .action(async (options: FixOptions) => {
+    .action(async (options: InstallOptions) => {
       info(chalk.blue`Analyzing project dependencies...`);
 
       const baseConfig = await readConfig(options.project);

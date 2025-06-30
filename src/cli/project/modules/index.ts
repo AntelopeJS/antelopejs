@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import cmdAdd from './add';
 import cmdRemove from './remove';
 import cmdUpdate from './update';
-import cmdFix from './fix';
+import cmdInstall from './install';
 import cmdList from './list';
 
 export default function () {
@@ -12,6 +12,6 @@ export default function () {
     .addCommand(cmdAdd())
     .addCommand(cmdRemove())
     .addCommand(cmdUpdate())
-    .addCommand(cmdFix())
+    .addCommand(cmdInstall())
     .addCommand(cmdList());
 }

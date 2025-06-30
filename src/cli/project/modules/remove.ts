@@ -112,7 +112,7 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
     );
 
     if (remainingModules.length > 0) {
-      warning(chalk.yellow`Note: You may need to run 'ajs project modules fix' to resolve any broken dependencies`);
+      warning(chalk.yellow`Note: You may need to run 'ajs project modules install' to resolve any broken dependencies`);
     }
   }
 }
