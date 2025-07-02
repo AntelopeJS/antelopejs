@@ -57,6 +57,11 @@ async function addTestFolder(mocha: Mocha, folder: string, matcher: RegExp) {
   }
 }
 
+type TestConfig = AntelopeProjectEnvConfigStrict | {
+  setup: () => AntelopeProjectEnvConfigStrict | Promise<AntelopeProjectEnvConfigStrict>;
+  cleanup?: () => void | Promise<void>;
+}
+
 export async function TestModule(moduleFolder = '.') {
   const moduleRoot = path.resolve(moduleFolder);
 
@@ -69,32 +74,39 @@ export async function TestModule(moduleFolder = '.') {
   }
 
   const testProject = path.join(moduleRoot, testConfig.project);
-  const config: AntelopeProjectEnvConfigStrict = require(testProject);
-
-  setupAntelopeProjectLogging(config);
-
-  const moduleManager = new ModuleManager(moduleRoot, path.resolve(path.join(__dirname, '..')), config.cacheFolder);
-
-  const legacyModuleList = await ConvertConfig(config);
-  try {
-    await moduleManager.init(legacyModuleList);
-  } catch (err) {
-    Logging.Error('Error during module manager initialization', err);
-    return;
-  }
-
-  moduleManager.startModules();
-
-  const testFolder = path.join(moduleRoot, testConfig.folder);
-  const mocha = new Mocha();
-  await addTestFolder(mocha, testFolder, /\.js$/);
-
-  await new Promise((resolve) => mocha.run().on('end', resolve));
+  const rawconfig: TestConfig = require(testProject);
+  const config = "setup" in rawconfig ? await rawconfig.setup() : rawconfig;
 
   try {
-    await moduleManager.shutdown();
-  } catch (err) {
-    Logging.Error('Error during shutdown', err);
+    setupAntelopeProjectLogging(config);
+
+    const moduleManager = new ModuleManager(moduleRoot, path.resolve(path.join(__dirname, '..')), config.cacheFolder);
+
+    const legacyModuleList = await ConvertConfig(config);
+    try {
+      await moduleManager.init(legacyModuleList);
+    } catch (err) {
+      Logging.Error('Error during module manager initialization', err);
+      return;
+    }
+
+    moduleManager.startModules();
+
+    const testFolder = path.join(moduleRoot, testConfig.folder);
+    const mocha = new Mocha();
+    await addTestFolder(mocha, testFolder, /\.js$/);
+
+    await new Promise((resolve) => mocha.run().on('end', resolve));
+
+    try {
+      await moduleManager.shutdown();
+    } catch (err) {
+      Logging.Error('Error during shutdown', err);
+    }
+  } finally {
+    if ("cleanup" in rawconfig) {
+      await rawconfig.cleanup!();
+    }
   }
 }
 
