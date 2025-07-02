@@ -98,13 +98,11 @@ export async function readModuleManifest(module: string): Promise<ModulePackageJ
  */
 export interface UserConfig {
   git: string;
-  packageManager: string;
 }
 
 export function getDefaultUserConfig(): UserConfig {
   return {
     git: DEFAULT_GIT_REPO,
-    packageManager: 'pnpm',
   };
 }
 

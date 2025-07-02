@@ -131,7 +131,7 @@ export default function () {
         `Your AntelopeJS project ${chalk.green.bold(answers.name)} has been successfully initialized!\n\n` +
           `${chalk.dim('To get started, run:')}\n` +
           `${resolvedProjectPath !== '.' ? chalk.cyan(`cd ${resolvedProjectPath}`) + '\n' : ''}` +
-          `${chalk.cyan('ajs project modules fix')}\n` +
+          `${chalk.cyan('ajs project modules install')}\n` +
           `${chalk.cyan('ajs project run -w')}`,
         '🚀 Project Created',
         { borderColor: 'green' },
