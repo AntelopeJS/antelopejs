@@ -57,10 +57,12 @@ async function addTestFolder(mocha: Mocha, folder: string, matcher: RegExp) {
   }
 }
 
-type TestConfig = AntelopeProjectEnvConfigStrict | {
-  setup: () => AntelopeProjectEnvConfigStrict | Promise<AntelopeProjectEnvConfigStrict>;
-  cleanup?: () => void | Promise<void>;
-}
+type TestConfig =
+  | AntelopeProjectEnvConfigStrict
+  | {
+      setup: () => AntelopeProjectEnvConfigStrict | Promise<AntelopeProjectEnvConfigStrict>;
+      cleanup?: () => void | Promise<void>;
+    };
 
 export async function TestModule(moduleFolder = '.') {
   const moduleRoot = path.resolve(moduleFolder);
@@ -75,7 +77,7 @@ export async function TestModule(moduleFolder = '.') {
 
   const testProject = path.join(moduleRoot, testConfig.project);
   const rawconfig: TestConfig = require(testProject);
-  const config = "setup" in rawconfig ? await rawconfig.setup() : rawconfig;
+  const config = 'setup' in rawconfig ? await rawconfig.setup() : rawconfig;
 
   try {
     setupAntelopeProjectLogging(config);
@@ -104,7 +106,7 @@ export async function TestModule(moduleFolder = '.') {
       Logging.Error('Error during shutdown', err);
     }
   } finally {
-    if ("cleanup" in rawconfig) {
+    if ('cleanup' in rawconfig) {
       await rawconfig.cleanup!();
     }
   }
