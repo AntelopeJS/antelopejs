@@ -46,10 +46,114 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
   const errorMessages: string[] = [];
   const pendingImports: { importName: string; importObj: ModuleImport; isOptional: boolean }[] = [];
   const interfacesToInstall: { interfaceInfo: any; version: string }[] = [];
+  const addedDependencies: ImportItem[] = [];
+
+  // Track processed interfaces to avoid duplicates
+  const processedInterfaces = new Set<string>();
 
   // Setup progress bar
   const importProgress = new ProgressBar();
   importProgress.start(interfaces.length, 0, 'Importing interfaces');
+
+  // Helper function to process an interface and its dependencies
+  const processInterface = async (
+    interfaceName: string,
+    interfaceVersion?: string,
+    isOptional: boolean = false,
+    isDependency: boolean = false,
+  ) => {
+    const interfaceKey = `${interfaceName}@${interfaceVersion || 'latest'}`;
+
+    // Skip if already processed
+    if (processedInterfaces.has(interfaceKey)) {
+      return;
+    }
+
+    // Load interface from git
+    const interfaceInfo = await loadInterfaceFromGit(git, interfaceName);
+    if (!interfaceInfo) {
+      if (!isDependency) {
+        skipped.push({ name: `${interfaceName}@${interfaceVersion || 'latest'}`, reason: 'Interface not found' });
+      }
+      return;
+    }
+
+    // Determine version to use
+    let version = interfaceVersion;
+    if (!version) {
+      // Use latest version if none specified
+      version = interfaceInfo.manifest.versions.sort(semver.rcompare)[0];
+    } else if (!interfaceInfo.manifest.versions.includes(version)) {
+      const reason = `Version ${version} not found`;
+      if (!isDependency) {
+        errorMessages.push(
+          `${reason} for interface ${interfaceName}. Available versions: ${interfaceInfo.manifest.versions.map((v) => v).join(', ')}`,
+        );
+        skipped.push({ name: `${interfaceName}@${version}`, reason });
+      }
+      return;
+    }
+
+    // Update the interface key with the resolved version
+    const resolvedInterfaceKey = `${interfaceName}@${version}`;
+
+    // Skip if already processed with resolved version
+    if (processedInterfaces.has(resolvedInterfaceKey)) {
+      return;
+    }
+
+    processedInterfaces.add(resolvedInterfaceKey);
+
+    // Format the import name
+    const importName = `${interfaceName}@${version}`;
+
+    // Check if this interface is already imported
+    let alreadyExists = false;
+    if (moduleManifest && moduleManifest.antelopeJs) {
+      const importArray = isOptional
+        ? moduleManifest.antelopeJs.importsOptional || []
+        : moduleManifest.antelopeJs.imports || [];
+
+      alreadyExists = importArray.some((imp) => mapModuleImport(imp) === importName);
+    }
+
+    if (alreadyExists) {
+      if (!isDependency) {
+        skipped.push({ name: `${interfaceName}@${version}`, reason: 'Already imported' });
+      }
+      return;
+    }
+
+    // Create the import object with git config if provided
+    const importObj: ModuleImport = options.git
+      ? { name: importName, git: options.git, ...(options.skipInstall && { skipInstall: true }) }
+      : options.skipInstall
+        ? { name: importName, skipInstall: true }
+        : importName;
+
+    // Add to list of pending imports
+    pendingImports.push({ importName, importObj, isOptional });
+
+    if (!isDependency) {
+      added.push({ name: interfaceName, version });
+    } else {
+      addedDependencies.push({ name: interfaceName, version });
+    }
+
+    // Add to the list of interfaces to install
+    interfacesToInstall.push({ interfaceInfo, version });
+
+    // Process dependencies
+    const dependencies = interfaceInfo.manifest.dependencies[version];
+    if (dependencies && dependencies.interfaces && dependencies.interfaces.length > 0) {
+      for (const dependency of dependencies.interfaces) {
+        const [depName, depVersion] = dependency.split('@');
+        if (depName) {
+          await processInterface(depName, depVersion, isOptional, true);
+        }
+      }
+    }
+  };
 
   // Process each interface
   for (let i = 0; i < interfaces.length; i++) {
@@ -65,58 +169,7 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
       continue;
     }
 
-    // Load interface from git
-    const interfaceInfo = await loadInterfaceFromGit(git, interfaceName);
-    if (!interfaceInfo) {
-      skipped.push({ name: interfaceArg, reason: 'Interface not found' });
-      continue;
-    }
-
-    // Determine version to use
-    let version = interfaceVersion;
-    if (!version) {
-      // Use latest version if none specified
-      version = interfaceInfo.manifest.versions.sort(semver.rcompare)[0];
-    } else if (!interfaceInfo.manifest.versions.includes(version)) {
-      const reason = `Version ${version} not found`;
-      errorMessages.push(
-        `${reason} for interface ${interfaceName}. Available versions: ${interfaceInfo.manifest.versions.map((v) => v).join(', ')}`,
-      );
-      skipped.push({ name: interfaceArg, reason });
-      continue;
-    }
-
-    // Format the import name
-    const importName = `${interfaceName}@${version}`;
-
-    // Check if this interface is already imported
-    let alreadyExists = false;
-    if (moduleManifest.antelopeJs) {
-      const importArray = options.optional
-        ? moduleManifest.antelopeJs.importsOptional || []
-        : moduleManifest.antelopeJs.imports || [];
-
-      alreadyExists = importArray.some((imp) => mapModuleImport(imp) === importName);
-    }
-
-    if (alreadyExists) {
-      skipped.push({ name: interfaceArg, reason: 'Already imported' });
-      continue;
-    }
-
-    // Create the import object with git config if provided
-    const importObj: ModuleImport = options.git
-      ? { name: importName, git: options.git, ...(options.skipInstall && { skipInstall: true }) }
-      : options.skipInstall
-        ? { name: importName, skipInstall: true }
-        : importName;
-
-    // Add to list of pending imports
-    pendingImports.push({ importName, importObj, isOptional: options.optional });
-    added.push({ name: interfaceName, version });
-
-    // Add to the list of interfaces to install
-    interfacesToInstall.push({ interfaceInfo, version });
+    await processInterface(interfaceName, interfaceVersion, options.optional, false);
   }
 
   // Complete the progress bar
@@ -182,6 +235,14 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
     warning(chalk.yellow`Skipped ${skipped.length} interface(s):`);
     for (const item of skipped) {
       info(`  • ${chalk.bold(item.name)} - ${chalk.dim(item.reason)}`);
+    }
+  }
+
+  // Show information about dependencies that were automatically added
+  if (addedDependencies.length > 0) {
+    info(chalk.blue`Additionally added ${addedDependencies.length} dependency interface(s):`);
+    for (const dep of addedDependencies) {
+      info(`  • ${chalk.bold(dep.name)}@${dep.version} ${chalk.dim('(dependency)')}`);
     }
   }
 }
