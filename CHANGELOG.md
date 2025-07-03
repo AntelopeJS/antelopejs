@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.0](https://github.com/AntelopeJS/antelopejs/compare/v0.1.1...v0.2.0) (2025-07-03)
+
+### Features
+
+* **cli:** process interfaces dependencies on `module imports add` ([3df8da4](https://github.com/AntelopeJS/antelopejs/commit/3df8da4eb1681cb84e71f944d27c7ed06c9360fc))
+* **imports:** add install command to manage missing interfaces ([#31](https://github.com/AntelopeJS/antelopejs/issues/31)) ([9a8c328](https://github.com/AntelopeJS/antelopejs/commit/9a8c328d7485926f2d68d65f4e6cb1836f75658c))
+* setup & cleanup in test project configs ([5db4d34](https://github.com/AntelopeJS/antelopejs/commit/5db4d34800d687c1763bc5fc9b2fd8e1f7aa8a68))
+* warn user on outdated ajs ([#36](https://github.com/AntelopeJS/antelopejs/issues/36)) ([b163dde](https://github.com/AntelopeJS/antelopejs/commit/b163dde67b464443c0a270f6fa22211d68db2610))
+
+### Bug Fixes
+
+* **cli:** handle ExitPromptError gracefully in CLI error handling ([#25](https://github.com/AntelopeJS/antelopejs/issues/25)) ([559dd0e](https://github.com/AntelopeJS/antelopejs/commit/559dd0ed72c2fc2405aa2b83a4ed9cd29ba952a9))
+* **modules:** add list command to modules CLI ([#26](https://github.com/AntelopeJS/antelopejs/issues/26)) ([592721b](https://github.com/AntelopeJS/antelopejs/commit/592721b0de65bc52a43903d38aa9c6113d110aa1))
+* now absolute, relative and paths containing // should work with every command ([#34](https://github.com/AntelopeJS/antelopejs/issues/34)) ([90c9b0a](https://github.com/AntelopeJS/antelopejs/commit/90c9b0a239e40a970a9b75c0aaa1f9acb455b8fb))
+
+### Reverts
+
+* Revert "chore: use skip install for adding imports inside module initialization" ([7bfd954](https://github.com/AntelopeJS/antelopejs/commit/7bfd954cefb5cc41dd8bfcb1de1036e900856b77))
+
 ## [0.1.1](https://github.com/AntelopeJS/antelopejs/compare/v0.1.0...v0.1.1) (2025-05-30)
 
 ### Bug Fixes
