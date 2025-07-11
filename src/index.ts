@@ -64,7 +64,7 @@ type TestConfig =
       cleanup?: () => void | Promise<void>;
     };
 
-export async function TestModule(moduleFolder = '.') {
+export async function TestModule(moduleFolder = '.', files?: string[]) {
   const moduleRoot = path.resolve(moduleFolder);
 
   const pack = require(path.join(moduleRoot, 'package.json'));
@@ -96,7 +96,13 @@ export async function TestModule(moduleFolder = '.') {
 
     const testFolder = path.join(moduleRoot, testConfig.folder);
     const mocha = new Mocha();
-    await addTestFolder(mocha, testFolder, /\.js$/);
+    if (files) {
+      for (const file of files) {
+        mocha.addFile(file);
+      }
+    } else {
+      await addTestFolder(mocha, testFolder, /\.js$/);
+    }
 
     await new Promise((resolve) => mocha.run().on('end', resolve));
 
