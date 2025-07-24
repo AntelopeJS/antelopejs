@@ -31,8 +31,10 @@ export async function moduleTestCommand(modulePath = '.', options: TestOptions) 
   TestModule(resolvedPath, options.file);
 }
 
-const filesOption = new Option('-f, --file <path>', 'Specific test file to run')
-    .argParser((val, prev: string[]) => [...(prev ?? []), path.resolve(val)]);
+const filesOption = new Option('-f, --file <path>', 'Specific test file to run').argParser((val, prev: string[]) => [
+  ...(prev ?? []),
+  path.resolve(val),
+]);
 
 export default function () {
   return new Command('test')

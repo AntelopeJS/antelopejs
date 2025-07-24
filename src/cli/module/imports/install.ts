@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { Options, readModuleManifest, readUserConfig } from '../../common';
-import { installInterfaces, loadInterfacesFromGit } from '../../git';
+import { installInterfaces, InterfaceInfo, loadInterfacesFromGit } from '../../git';
 import { mapModuleImport } from '../../../common/manifest';
 import { error, warning, info, success, ProgressBar } from '../../../utils/cli-ui';
 import { existsSync } from 'fs';
@@ -72,7 +72,7 @@ export default function () {
 
       // Install missing interfaces
       const userConfig = await readUserConfig();
-      const interfacesToInstall: { interfaceInfo: any; version: string }[] = [];
+      const interfacesToInstall: { interfaceInfo: InterfaceInfo; version: string }[] = [];
       const failed: { name: string; reason: string }[] = [];
       const installed: string[] = [];
 
@@ -136,7 +136,7 @@ export default function () {
 
           // Add successfully installed interfaces to the installed list
           interfacesToInstall.forEach(({ interfaceInfo, version }) => {
-            installed.push(`${interfaceInfo.manifest.name}@${version}`);
+            installed.push(`${interfaceInfo.name}@${version}`);
           });
 
           // Clear the array for the next git repository
