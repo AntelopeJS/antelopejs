@@ -387,6 +387,24 @@ type InterfaceToImpl<T> = T extends infer P
     }
   : never;
 
+function implement(decl: Record<string, any>, impl: Record<string, any>) {
+  for (const key in decl) {
+    if (key in impl) {
+      const val = decl[key];
+      if (val instanceof RegisteringProxy) {
+        val.onRegister(impl[key].register);
+        val.onUnregister(impl[key].unregister);
+      } else if (typeof val === 'function' && val.proxy instanceof AsyncProxy) {
+        (<AsyncProxy>val.proxy).onCall(impl[key]);
+      } else if (val instanceof AsyncProxy) {
+        val.onCall(impl[key]);
+      } else if (!(val instanceof EventProxy)) {
+        implement(val, impl[key]);
+      }
+    }
+  }
+}
+
 /**
  * Implements an interface with the provided implementation.
  *
@@ -397,27 +415,32 @@ type InterfaceToImpl<T> = T extends infer P
  * @param implementation The implementation of the interface
  * @returns An object containing the declaration and implementation
  */
-export async function ImplementInterface<T, T2 = InterfaceToImpl<Awaited<T>>>(
+export function ImplementInterface<T extends Record<string, unknown>, T2 extends InterfaceToImpl<T>>(
   declaration: T,
+  implementation: T2,
+): { declaration: T; implementation: T2 };
+
+/**
+ * @deprecated Please use the non-async version of this function.
+ */
+export function ImplementInterface<T extends Record<string, unknown>, T2 extends InterfaceToImpl<T>>(
+  declaration: T | Promise<T>,
   implementation: T2 | Promise<T2>,
-): Promise<{ declaration: Awaited<T>; implementation: T2 }> {
-  const decl = await declaration;
-  const impl = (await implementation) as Record<string, any>;
-  for (const key in decl) {
-    if (key in impl) {
-      const val = decl[key];
-      if (val instanceof RegisteringProxy) {
-        val.onRegister(impl[key].register);
-        val.onUnregister(impl[key].unregister);
-      } else if (typeof val === 'function' && (<any>val).proxy instanceof AsyncProxy) {
-        (<AsyncProxy>(<any>val).proxy).onCall(impl[key]);
-      } else if (val instanceof AsyncProxy) {
-        val.onCall(impl[key]);
-      } else if (!(val instanceof EventProxy)) {
-        ImplementInterface(val, impl[key]);
-      }
-    }
+): Promise<{ declaration: Awaited<T>; implementation: T2 }>;
+
+export function ImplementInterface<T extends Record<string, any>, T2 extends Record<string, any>>(
+  declaration: T | Promise<T>,
+  implementation: T2 | Promise<T2>,
+): { declaration: T; implementation: T2 } | Promise<{ declaration: T; implementation: T2 }> {
+  if (declaration instanceof Promise || implementation instanceof Promise) {
+    return Promise.all([declaration, implementation]).then(([decl, impl]) => {
+      implement(decl, impl);
+      return { declaration: decl, implementation: impl as T2 };
+    });
   }
+  const decl = declaration;
+  const impl = implementation as Record<string, any>;
+  implement(decl, impl);
   return { declaration: decl, implementation: impl as T2 };
 }
 
