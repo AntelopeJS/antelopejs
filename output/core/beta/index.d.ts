@@ -171,7 +171,14 @@ type InterfaceToImpl<T> = T extends infer P ? {
  * @param implementation The implementation of the interface
  * @returns An object containing the declaration and implementation
  */
-export declare function ImplementInterface<T, T2 = InterfaceToImpl<Awaited<T>>>(declaration: T, implementation: T2 | Promise<T2>): Promise<{
+export declare function ImplementInterface<T extends Record<string, unknown>, T2 extends InterfaceToImpl<T>>(declaration: T, implementation: T2): {
+    declaration: T;
+    implementation: T2;
+};
+/**
+ * @deprecated Please use the non-async version of this function.
+ */
+export declare function ImplementInterface<T extends Record<string, unknown>, T2 extends InterfaceToImpl<T>>(declaration: T | Promise<T>, implementation: T2 | Promise<T2>): Promise<{
     declaration: Awaited<T>;
     implementation: T2;
 }>;
