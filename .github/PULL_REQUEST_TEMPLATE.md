@@ -28,3 +28,4 @@
 
 - [ ] I have linked an issue or discussion.
 - [ ] I have updated the documentation accordingly.
+- [ ] I have run `ajs module exports generate` and committed any updated interface files.
