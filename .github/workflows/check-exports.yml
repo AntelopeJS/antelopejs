@@ -1,0 +1,60 @@
+name: Check Exports Generation
+
+on:
+  push:
+    branches:
+      - main
+      - feat/*
+      - fix/*
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-exports:
+    runs-on: ubuntu-latest
+    env:
+      COREPACK_DEFAULT_TO_LATEST: 0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable corepack and install AntelopeJS CLI
+        run: |
+          npm i -g --force corepack && corepack enable
+          npm i -g @antelopejs/core
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Generate exports
+        run: ajs module exports generate
+
+      - name: Check for uncommitted changes
+        run: |
+          # Check if there are any changes in the working directory
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "❌ ERROR: Found uncommitted changes after running 'ajs module exports generate'"
+            echo ""
+            echo "The following files have changes:"
+            git status --porcelain
+            echo ""
+            echo "🔧 To fix this issue:"
+            echo "1. Run 'ajs module exports generate' locally"
+            echo "2. Commit the generated changes"
+            echo "3. Push your changes"
+            echo ""
+            echo "This ensures that the generated export files are always up to date."
+            exit 1
+          else
+            echo "✅ SUCCESS: No changes detected after running 'ajs module exports generate'"
+            echo "The generated exports are up to date!"
+          fi
