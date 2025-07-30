@@ -10,10 +10,39 @@ import cmdModule from './module';
 import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
 import { warnIfOutdated } from './version-check';
+import { setVerboseSections, VERBOSE_SECTIONS, VerboseSection } from '../logging';
 
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
 const version = packageJson.version;
+
+/**
+ * Parse the verbose sections from the --verbose option
+ * All sections are enabled by default
+ * @param verboseOption - The value of the --verbose option
+ * @returns The list of sections to enable
+ */
+function parseVerboseSections(verboseOption?: string): VerboseSection[] | undefined {
+  if (!verboseOption) {
+    return undefined;
+  }
+
+  const sections = verboseOption
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  const validSections = Object.values(VERBOSE_SECTIONS);
+  const invalidSections = sections.filter((section) => !validSections.includes(section as VerboseSection));
+
+  if (invalidSections.length > 0) {
+    throw new Error(
+      `Sections verbose invalides: ${invalidSections.join(', ')}. Sections valides: ${validSections.join(', ')}`,
+    );
+  }
+
+  return sections as VerboseSection[];
+}
 
 // Main CLI function
 const runCLI = async () => {
@@ -41,6 +70,12 @@ const runCLI = async () => {
           `  $ ajs project run --watch         Run with auto-reload`,
       )
       .version(version, '-v, --version', 'Display CLI version number')
+      .option(
+        '--verbose [sections]',
+        `Enable verbose logging for specific sections (comma-separated). ` +
+          `Sections: ${Object.values(VERBOSE_SECTIONS).join(', ')}. ` +
+          `Default: all sections enabled. Example: --verbose=cmd,git,package`,
+      )
       .addCommand(cmdProject())
       .addCommand(cmdModule())
       .addCommand(cmdConfig())
@@ -48,6 +83,13 @@ const runCLI = async () => {
 
     // Parse arguments
     await program.parseAsync();
+
+    // Configure verbose logging based on the option
+    const options = program.opts();
+    if (options.verbose !== undefined) {
+      const sections = parseVerboseSections(options.verbose);
+      setVerboseSections(sections);
+    }
   } catch (error) {
     // Check if the error is ExitPromptError from inquirer (thrown when Ctrl+C is pressed)
     if (error && typeof error === 'object' && 'name' in error && error.name === 'ExitPromptError') {

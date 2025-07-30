@@ -2,6 +2,7 @@ import { RegisterLoader, ModuleSource } from '.';
 import { ModuleCache } from '../cache';
 import path from 'path';
 import { Logging } from '../../interfaces/logging/beta';
+import { VERBOSE_SECTIONS } from '../../logging';
 
 // @ts-ignore
 import inly from 'inly';
@@ -23,17 +24,17 @@ export interface ModuleSourcePackage extends ModuleSource {
 }
 
 RegisterLoader('package', 'package', async (cache: ModuleCache, source: ModuleSourcePackage) => {
-  Logging.inline.Info(`Loading package: ${source.package}@${source.version}`);
+  Logging.Verbose(VERBOSE_SECTIONS.PACKAGE, `Loading package: ${source.package}@${source.version}`);
 
   let folder: string;
   let manifest: ModulePackageJson;
   // TODO: cleaner cache code?
   if (!source.ignoreCache && cache.hasVersion(source.package, source.version)) {
-    Logging.inline.Info(`Using cached version of ${source.package}@${source.version}`);
+    Logging.Verbose(VERBOSE_SECTIONS.CACHE, `Using cached version of ${source.package}@${source.version}`);
     folder = await cache.getFolder(source.package, true, true);
     manifest = require(path.join(folder, 'package.json'));
   } else {
-    Logging.inline.Info(`Downloading package ${source.package}@${source.version}`);
+    Logging.Verbose(VERBOSE_SECTIONS.PACKAGE, `Downloading package ${source.package}@${source.version}`);
     const tmp = await ModuleCache.getTemp();
     const result = await ExecuteCMD(`npm pack ${source.package}@${source.version}`, { cwd: tmp }, true);
     if (result.code !== 0) {
@@ -42,7 +43,7 @@ RegisterLoader('package', 'package', async (cache: ModuleCache, source: ModuleSo
     const filename = result.stdout.trim();
 
     try {
-      Logging.inline.Info(`Extracting ${filename} for ${source.package}@${source.version}`);
+      Logging.Verbose(VERBOSE_SECTIONS.PACKAGE, `Extracting ${filename} for ${source.package}@${source.version}`);
       await Extract(`${tmp}/${filename}`, tmp);
     } catch (e) {
       Logging.Error(`Failed to extract package ${source.package}@${source.version}:`, e);
@@ -51,13 +52,13 @@ RegisterLoader('package', 'package', async (cache: ModuleCache, source: ModuleSo
     const tmpPackage = path.join(tmp, 'package');
     manifest = require(path.join(tmpPackage, 'package.json'));
 
-    Logging.inline.Info(`Transferring ${source.package}@${source.version} to cache`);
+    Logging.Verbose(VERBOSE_SECTIONS.CACHE, `Transferring ${source.package}@${source.version} to cache`);
     folder = await cache.transfer(tmpPackage, source.package, manifest.version);
 
-    Logging.inline.Info(`Installing dependencies for ${source.package}@${source.version}`);
+    Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Installing dependencies for ${source.package}@${source.version}`);
     const installCmd = await getInstallCommand(folder);
     await ExecuteCMD(installCmd, { cwd: folder }, true); // TODO: check err
   }
-  Logging.inline.Info(`Successfully loaded ${source.package}@${source.version}`);
+  Logging.Verbose(VERBOSE_SECTIONS.PACKAGE, `Successfully loaded ${source.package}@${source.version}`);
   return [new ModuleManifest(folder, source)];
 });

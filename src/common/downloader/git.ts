@@ -3,6 +3,7 @@ import { ExecuteCMD } from '../../utils/command';
 import { ModuleCache } from '../cache';
 import { ModuleManifest } from '../manifest';
 import { Logging } from '../../interfaces/logging/beta';
+import { VERBOSE_SECTIONS } from '../../logging';
 
 export interface ModuleSourceGit extends ModuleSource {
   type: 'git';
@@ -17,19 +18,19 @@ function urlToFile(url: string): string {
 }
 
 RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceGit) => {
-  Logging.inline.Info(`Git loader called for ${source.remote}`);
+  Logging.Verbose(VERBOSE_SECTIONS.GIT, `Git loader called for ${source.remote}`);
   const name = urlToFile(source.remote);
-  Logging.inline.Info(`Starting Git module load for ${name}`);
+  Logging.Verbose(VERBOSE_SECTIONS.GIT, `Starting Git module load for ${name}`);
   const cacheVersion = cache.getVersion(name);
   let doInstall = false;
   const folder = await cache.getFolder(name, true, true);
   let newVersion = '';
   if (source.ignoreCache || !cacheVersion?.startsWith('git:')) {
-    Logging.inline.Info(`Cloning repository ${source.remote}`);
+    Logging.Verbose(VERBOSE_SECTIONS.GIT, `Cloning repository ${source.remote}`);
     await cache.getFolder(name, false, true);
     await ExecuteCMD(`git clone ${source.remote} ${name}`, { cwd: cache.path }, true);
     if (source.commit || source.branch) {
-      Logging.inline.Info(`Checking out ${source.commit || source.branch}`);
+      Logging.Verbose(VERBOSE_SECTIONS.GIT, `Checking out ${source.commit || source.branch}`);
       await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder }, true);
     }
     const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder }, true);
@@ -40,7 +41,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
     newVersion = 'git:' + newActiveCommit;
     doInstall = true;
   } else {
-    Logging.inline.Info(`Repository already cached, updating...`);
+    Logging.Verbose(VERBOSE_SECTIONS.GIT, `Repository already cached, updating...`);
     if (source.commit || source.branch) {
       await ExecuteCMD(`git fetch`, { cwd: folder }, true);
       await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder }, true);
@@ -59,18 +60,18 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
     }
   }
   if (doInstall && source.installCommand) {
-    Logging.inline.Info(`Running install commands for ${name}`);
+    Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${name}`);
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
-        Logging.inline.Debug(`Executing command: ${command}`);
+        Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
         await ExecuteCMD(command, { cwd: folder }, true);
       }
     } else {
-      Logging.inline.Debug(`Executing command: ${source.installCommand}`);
+      Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
       await ExecuteCMD(source.installCommand, { cwd: folder }, true);
     }
   }
-  Logging.inline.Info(`Git module load completed for ${name}`);
+  Logging.Verbose(VERBOSE_SECTIONS.GIT, `Git module load completed for ${name}`);
   if (newVersion) {
     cache.setVersion(name, newVersion);
   }

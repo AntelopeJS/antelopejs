@@ -19,6 +19,7 @@ import { ModuleSourceLocal } from '../common/downloader/local';
 import assert from 'assert';
 import { ModuleManifest } from '../common/manifest';
 import { Logging } from '../interfaces/logging/beta';
+import { VERBOSE_SECTIONS } from '../logging';
 import EventEmitter from 'events';
 
 type ModuleResolver = (request: string, parent: any, isMain: boolean, options: any) => string;
@@ -308,16 +309,16 @@ export class ModuleManager {
 
     // Get modules ready
     const modulePromises = manifest.sources.map(async (source) => {
-      Logging.inline.Info(`Loading module ${source.id}`);
+      Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Loading module ${source.id}`);
       try {
-        Logging.inline.Info(`Starting LoadModule for ${source.id}`);
+        Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Starting LoadModule for ${source.id}`);
         const createdModules = await LoadModule(this.projectFolder, this.cache, source)
           .then((modulesManifest) => {
-            Logging.inline.Info(`Module manifest loaded for ${source.id}`);
+            Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Module manifest loaded for ${source.id}`);
             return modulesManifest.map((moduleManifest) => new Module(moduleManifest));
           })
           .then((modules) => {
-            Logging.inline.Info(`Modules created for ${source.id}`);
+            Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Modules created for ${source.id}`);
             for (const module of modules) {
               manifest.configs[module.id] = manifest.configs[source.id];
             }
@@ -341,7 +342,7 @@ export class ModuleManager {
     const moduleList = moduleResults.flat();
     Logging.Info(`Modules loaded`);
 
-    Logging.inline.Info(`Loading exports`);
+    Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Loading exports`);
 
     await this.core.ref.manifest.loadExports();
     await Promise.all(moduleList.map((module) => module.ref.manifest.loadExports()));
@@ -361,7 +362,7 @@ export class ModuleManager {
     this.rebuildInterfaceSources(moduleList);
     this.rebuildModuleAssociations(moduleList);
 
-    Logging.inline.Info(`Constructing modules`);
+    Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Constructing modules`);
     this.resolverDetour.attach();
     await Promise.all(
       moduleList.map(({ ref, config }) =>

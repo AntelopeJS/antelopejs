@@ -6,6 +6,7 @@ import { ModuleManifest } from '../manifest';
 import { ModuleCache } from '../cache';
 import os from 'node:os';
 import { Logging } from '../../interfaces/logging/beta';
+import { VERBOSE_SECTIONS } from '../../logging';
 
 export interface ModuleSourceLocal extends ModuleSource {
   type: 'local';
@@ -42,14 +43,14 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
     throw error;
   }
   if (source.installCommand) {
-    Logging.inline.Debug(`Running install commands for ${formattedPath}`);
+    Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${formattedPath}`);
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
-        Logging.inline.Debug(`Executing command: ${command}`);
+        Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
         await ExecuteCMD(command, { cwd: formattedPath }, true);
       }
     } else {
-      Logging.inline.Debug(`Executing command: ${source.installCommand}`);
+      Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
       await ExecuteCMD(source.installCommand, { cwd: formattedPath }, true);
     }
   }

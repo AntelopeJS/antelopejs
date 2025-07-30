@@ -1,5 +1,6 @@
 import { exec, ExecOptions } from 'child_process';
 import { Logging } from '../interfaces/logging/beta';
+import { VERBOSE_SECTIONS } from '../logging';
 
 export interface CommandResult {
   stdout: string;
@@ -25,7 +26,7 @@ export function ExecuteCMD(command: string, options: ExecOptions, logging: boole
 
     if (logging) {
       child.stdout?.on('data', (data: string) => {
-        Logging.inline.Debug(`Executing command: ${data.trim()}`);
+        Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${data.trim()}`);
       });
     }
   });

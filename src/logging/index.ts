@@ -7,6 +7,50 @@ import { GetResponsibleModule } from '../interfaces/core/beta';
 import { Logging } from '../interfaces/logging/beta';
 
 /**
+ * Logical sections for verbose logging
+ */
+export const VERBOSE_SECTIONS = {
+  CMD: 'cmd',
+  GIT: 'git',
+  PACKAGE: 'package',
+  INIT: 'init',
+  INSTALL: 'install',
+  PROJECT: 'project',
+  MODULE: 'module',
+  CONFIG: 'config',
+  LOADER: 'loader',
+  CACHE: 'cache',
+} as const;
+
+export type VerboseSection = (typeof VERBOSE_SECTIONS)[keyof typeof VERBOSE_SECTIONS];
+
+/**
+ * Active sections for verbose logging
+ */
+let activeVerboseSections: Set<VerboseSection> = new Set(Object.values(VERBOSE_SECTIONS));
+
+/**
+ * Configure the active sections for verbose logging
+ * @param sections - The sections to enable, or undefined to enable all sections
+ */
+export function setVerboseSections(sections?: VerboseSection[]): void {
+  if (!sections || sections.length === 0) {
+    activeVerboseSections = new Set(Object.values(VERBOSE_SECTIONS));
+  } else {
+    activeVerboseSections = new Set(sections);
+  }
+}
+
+/**
+ * Check if a section is active for verbose logging
+ * @param section - The section to check
+ * @returns true if the section is active
+ */
+export function isVerboseSectionActive(section: VerboseSection): boolean {
+  return activeVerboseSections.has(section);
+}
+
+/**
  * Type for chalk functions that take a parameter string
  */
 type ChalkFunction = (param: string) => Chalk;

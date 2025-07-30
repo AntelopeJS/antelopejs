@@ -1,4 +1,5 @@
 import eventLog from './listener';
+import { isVerboseSectionActive, VerboseSection } from '../../../logging';
 
 /**
  * Provides a structured logging system with multiple severity levels and channels.
@@ -72,6 +73,31 @@ export namespace Logging {
   }
 
   /**
+   * Write arguments to the main log channel at the TRACE level.
+   *
+   * Use for highly detailed tracing information, typically only enabled during
+   * intensive debugging sessions.
+   *
+   * @param args - Values to log, which can be of any type and will be serialized appropriately
+   */
+  export function Trace(...args: any[]): void {
+    Write(Level.TRACE, 'main', ...args);
+  }
+
+  /**
+   * Write arguments to the verbose log channel if the specified section is active.
+   * This function only logs if the section is enabled via the --verbose option.
+   *
+   * @param section - The logical section this log belongs to (e.g., 'cmd', 'git', 'package')
+   * @param args - Values to log, which can be of any type and will be serialized appropriately
+   */
+  export function Verbose(section: VerboseSection, ...args: any[]): void {
+    if (isVerboseSectionActive(section)) {
+      Write(Level.INFO, 'verbose', ...args);
+    }
+  }
+
+  /**
    * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
    *
    * Usage:
@@ -123,18 +149,6 @@ export namespace Logging {
     export function Trace(...args: any[]): void {
       Write(Level.TRACE, 'inline', ...args);
     }
-  }
-
-  /**
-   * Write arguments to the main log channel at the TRACE level.
-   *
-   * Use for highly detailed tracing information, typically only enabled during
-   * intensive debugging sessions.
-   *
-   * @param args - Values to log, which can be of any type and will be serialized appropriately
-   */
-  export function Trace(...args: any[]): void {
-    Write(Level.TRACE, 'main', ...args);
   }
 
   /**
