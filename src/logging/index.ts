@@ -27,7 +27,7 @@ export type VerboseSection = (typeof VERBOSE_SECTIONS)[keyof typeof VERBOSE_SECT
 /**
  * Active sections for verbose logging
  */
-let activeVerboseSections: Set<VerboseSection> = new Set(Object.values(VERBOSE_SECTIONS));
+let activeVerboseSections: Set<VerboseSection> = new Set();
 
 /**
  * Configure the active sections for verbose logging
@@ -292,6 +292,11 @@ function truncateMessage(message: string, maxWidth: number): string {
  * @param forceInline - Whether to force inline display
  */
 function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): void {
+  // Skip verbose logs if no verbose sections are active
+  if (log.channel === 'verbose' && activeVerboseSections.size === 0) {
+    return;
+  }
+
   const module = logging.moduleTracking.enabled ? GetResponsibleModule() : undefined;
 
   if (shouldSkipModule(logging, module)) {

@@ -44,9 +44,40 @@ function parseVerboseSections(verboseOption?: string): VerboseSection[] | undefi
   return sections as VerboseSection[];
 }
 
+function parseVerboseOptionEarly(): string | undefined {
+  const args = process.argv.slice(2);
+  const verboseIndex = args.findIndex((arg) => arg.startsWith('--verbose'));
+
+  if (verboseIndex === -1) {
+    return undefined;
+  }
+
+  const verboseArg = args[verboseIndex];
+  if (verboseArg === '--verbose') {
+    if (verboseIndex + 1 < args.length && !args[verboseIndex + 1].startsWith('-')) {
+      return args[verboseIndex + 1];
+    }
+    return '';
+  }
+
+  const equalIndex = verboseArg.indexOf('=');
+  if (equalIndex !== -1) {
+    return verboseArg.substring(equalIndex + 1);
+  }
+
+  return undefined;
+}
+
 // Main CLI function
 const runCLI = async () => {
   try {
+    // Configure verbose logging early based on command line arguments
+    const verboseOption = parseVerboseOptionEarly();
+    if (verboseOption !== undefined) {
+      const sections = parseVerboseSections(verboseOption);
+      setVerboseSections(sections);
+    }
+
     // Check for updates before anything else
     await warnIfOutdated(version);
 
@@ -83,13 +114,6 @@ const runCLI = async () => {
 
     // Parse arguments
     await program.parseAsync();
-
-    // Configure verbose logging based on the option
-    const options = program.opts();
-    if (options.verbose !== undefined) {
-      const sections = parseVerboseSections(options.verbose);
-      setVerboseSections(sections);
-    }
   } catch (error) {
     // Check if the error is ExitPromptError from inquirer (thrown when Ctrl+C is pressed)
     if (error && typeof error === 'object' && 'name' in error && error.name === 'ExitPromptError') {
