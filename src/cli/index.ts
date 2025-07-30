@@ -102,7 +102,7 @@ const runCLI = async () => {
       )
       .version(version, '-v, --version', 'Display CLI version number')
       .option(
-        '--verbose [sections]',
+        '--verbose[=sections]',
         `Enable verbose logging for specific sections (comma-separated). ` +
           `Sections: ${Object.values(VERBOSE_SECTIONS).join(', ')}. ` +
           `Default: all sections enabled. Example: --verbose=cmd,git,package`,
