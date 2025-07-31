@@ -90,3 +90,25 @@ export function stringVisualWidth(str: string): number {
     return acc + 1;
   }, 0);
 }
+
+const ESC = '\\u001B';
+const BEL = '\\u0007';
+
+export function colorEscapeSequenceRegex(): RegExp {
+  return new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
+}
+
+export function terminalTitleSequenceRegex(): RegExp {
+  return new RegExp(`${ESC}\\].*?${BEL}`, 'g');
+}
+
+export function miscTerminalSequenceRegex(): RegExp {
+  return new RegExp(`${ESC}\\].*?(?=${ESC}\\[|$)`, 'g');
+}
+
+export function stripAnsi(str: string): string {
+  return str
+    .replace(colorEscapeSequenceRegex(), '')
+    .replace(terminalTitleSequenceRegex(), '')
+    .replace(miscTerminalSequenceRegex(), '');
+}
