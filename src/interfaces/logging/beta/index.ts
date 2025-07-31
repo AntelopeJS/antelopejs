@@ -1,5 +1,5 @@
 import eventLog from './listener';
-import { isVerboseSectionActive, VerboseSection } from '../../../logging';
+import { VerboseSection } from '../../../logging';
 
 /**
  * Provides a structured logging system with multiple severity levels and channels.
@@ -85,16 +85,14 @@ export namespace Logging {
   }
 
   /**
-   * Write arguments to the verbose log channel if the specified section is active.
-   * This function only logs if the section is enabled via the --verbose option.
+   * Write arguments to the verbose log channel for the specified section.
+   * The channel will be filtered based on the --verbose option configuration.
    *
    * @param section - The logical section this log belongs to (e.g., 'cmd', 'git', 'package')
    * @param args - Values to log, which can be of any type and will be serialized appropriately
    */
   export function Verbose(section: VerboseSection, ...args: any[]): void {
-    if (isVerboseSectionActive(section)) {
-      Write(Level.INFO, 'verbose', ...args);
-    }
+    Write(Level.INFO, `verbose:${section}`, ...args);
   }
 
   /**

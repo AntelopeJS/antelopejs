@@ -43,15 +43,6 @@ export function setVerboseSections(sections?: VerboseSection[]): void {
 }
 
 /**
- * Check if a section is active for verbose logging
- * @param section - The section to check
- * @returns true if the section is active
- */
-export function isVerboseSectionActive(section: VerboseSection): boolean {
-  return activeVerboseSections.has(section);
-}
-
-/**
  * Mapping of log level IDs to human-readable names
  */
 export const levelNames: Record<number, string> = {
@@ -274,8 +265,15 @@ function truncateMessage(message: string, maxWidth: number): string {
  */
 function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): void {
   // Skip verbose logs if no verbose sections are active
-  if (log.channel === 'verbose' && activeVerboseSections.size === 0) {
+  if (log.channel.startsWith('verbose:') && activeVerboseSections.size === 0) {
     return;
+  }
+
+  if (log.channel.startsWith('verbose:')) {
+    const section = log.channel.substring(8);
+    if (!activeVerboseSections.has(section as VerboseSection)) {
+      return;
+    }
   }
 
   const module = logging.moduleTracking.enabled ? GetResponsibleModule() : undefined;
