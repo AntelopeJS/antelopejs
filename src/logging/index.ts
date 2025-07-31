@@ -5,7 +5,7 @@ import eventLog, { Log } from '../interfaces/logging/beta/listener';
 import { mergeDeep } from '../utils/object';
 import { GetResponsibleModule } from '../interfaces/core/beta';
 import { Logging } from '../interfaces/logging/beta';
-import { getLevelInfo, getColoredText } from './utils';
+import { getLevelInfo, getColoredText, isTerminalOutput } from './utils';
 
 /**
  * Logical sections for verbose logging
@@ -225,11 +225,17 @@ function formatLogMessageWithRightAlignedDate(logging: AntelopeLogging, log: Log
   }
 
   const dateStr = formatDate(new Date(log.time), logging.dateFormat || defaultConfigLogging.dateFormat || '');
-  const terminalWidth = process.stdout.columns || 80;
-  const paddingLength = terminalWidth - messageWithLevel.length - dateStr.length - 2;
-  const padding = ' '.repeat(Math.max(0, paddingLength));
 
-  return `${messageWithLevel}${padding}${chalk.gray(`[${dateStr}]`)}`;
+  // Si on est dans un terminal, aligner la date à droite
+  if (isTerminalOutput()) {
+    const terminalWidth = process.stdout.columns || 80;
+    const paddingLength = terminalWidth - messageWithLevel.length - dateStr.length - 2;
+    const padding = ' '.repeat(Math.max(0, paddingLength));
+    return `${messageWithLevel}${padding}${chalk.gray(`[${dateStr}]`)}`;
+  } else {
+    // Si on écrit dans un fichier, mettre la date au début
+    return `${chalk.gray(`[${dateStr}]`)} ${messageWithLevel}`;
+  }
 }
 
 const NEWLINE = '\n';
