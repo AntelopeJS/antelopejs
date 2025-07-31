@@ -1,10 +1,11 @@
 /* eslint-disable max-len */
-import chalk, { Chalk } from 'chalk';
+import chalk from 'chalk';
 import { AntelopeLogging, AntelopeProjectEnvConfigStrict } from '../common/config';
 import eventLog, { Log } from '../interfaces/logging/beta/listener';
 import { mergeDeep } from '../utils/object';
 import { GetResponsibleModule } from '../interfaces/core/beta';
 import { Logging } from '../interfaces/logging/beta';
+import { getLevelInfo, getColoredText } from './utils';
 
 /**
  * Logical sections for verbose logging
@@ -49,11 +50,6 @@ export function setVerboseSections(sections?: VerboseSection[]): void {
 export function isVerboseSectionActive(section: VerboseSection): boolean {
   return activeVerboseSections.has(section);
 }
-
-/**
- * Type for chalk functions that take a parameter string
- */
-type ChalkFunction = (param: string) => Chalk;
 
 /**
  * Mapping of log level IDs to human-readable names
@@ -116,41 +112,6 @@ function serializeLogValue(value: any): string {
     return String(value);
   }
 }
-
-/**
- * Formatter variable handlers that process template variables in log format strings
- */
-const variables: Record<string, (log: Log, param: string) => string> = {
-  // Replace {{LEVEL_NAME}} with the human-readable level name
-  LEVEL_NAME: (log: Log) => levelNames[log.levelId] || log.levelId.toFixed(0),
-
-  // Replace {{DATE}} with the formatted timestamp
-  DATE: (log: Log, param: string) => {
-    const date = new Date(log.time);
-    // Get the date format from the param or the config
-    const format = param || defaultConfigLogging.dateFormat || '';
-
-    // Support different date format patterns
-    return formatDate(date, format);
-  },
-
-  // Replace {{ARGS}} with the log message arguments
-  ARGS: (log: Log) => log.args.map((arg) => serializeLogValue(arg)).join(' '),
-
-  // Process chalk styling tags in format strings
-  chalk: (_, param: string) => {
-    return param.replace(/.([a-zA-Z]+)(.*)?/g, (match: string, prop: string, param: string) => {
-      let chalkResult = chalk[<keyof typeof chalk>prop];
-      if (!chalkResult) {
-        return match;
-      }
-      if (param) {
-        chalkResult = (<ChalkFunction>chalkResult).call(chalkResult, param);
-      }
-      return (<any>chalkResult)._styler.openAll;
-    });
-  },
-};
 
 /**
  * Formats a date according to the specified format string
@@ -251,22 +212,24 @@ function shouldSkipModule(logging: AntelopeLogging, module?: string): boolean {
   return false;
 }
 
-function formatLogMessage(logging: AntelopeLogging, log: Log, module?: string): string {
-  const format =
-    (logging?.formatter && (logging.formatter[log.levelId] || logging.formatter.default)) || '{{LEVEL_NAME}}: {{ARGS}}';
+function formatLogMessageWithRightAlignedDate(logging: AntelopeLogging, log: Log, module?: string): string {
+  const levelInfo = getLevelInfo(log.levelId as Logging.Level);
+  const message = log.args.map((arg) => serializeLogValue(arg)).join(' ');
+  const levelText = `[${levelInfo.name}]`;
+  const coloredLevel = getColoredText(levelText, levelInfo.color);
 
-  const configuredDateFormat = logging.dateFormat || defaultConfigLogging.dateFormat || '';
-
-  let message = format.replace(/{{([a-zA-Z_]+)(.*?)}}/g, (_, name: string, paramStr: string) => {
-    const effectiveParam = name === 'DATE' && !paramStr ? configuredDateFormat : paramStr;
-    return variables[name] ? variables[name](log, effectiveParam) : `{{${name}${paramStr}}}`;
-  });
+  let messageWithLevel = `${coloredLevel} ${message}`;
 
   if (logging.moduleTracking.enabled && module) {
-    message = `(${module}) ${message}`;
+    messageWithLevel = `(${module}) ${messageWithLevel}`;
   }
 
-  return message;
+  const dateStr = formatDate(new Date(log.time), logging.dateFormat || defaultConfigLogging.dateFormat || '');
+  const terminalWidth = process.stdout.columns || 80;
+  const paddingLength = terminalWidth - messageWithLevel.length - dateStr.length - 2;
+  const padding = ' '.repeat(Math.max(0, paddingLength));
+
+  return `${messageWithLevel}${padding}${chalk.gray(`[${dateStr}]`)}`;
 }
 
 const NEWLINE = '\n';
@@ -303,7 +266,7 @@ function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): voi
     return;
   }
 
-  let message = formatLogMessage(logging, log, module);
+  let message = formatLogMessageWithRightAlignedDate(logging, log, module);
   const write_function =
     log.levelId === Logging.Level.ERROR.valueOf()
       ? (chunk: any, ...args: any[]) => process.stderr.write(chunk, ...args)

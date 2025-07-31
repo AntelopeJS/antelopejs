@@ -11,6 +11,8 @@ import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
 import { warnIfOutdated } from './version-check';
 import { setVerboseSections, VERBOSE_SECTIONS, VerboseSection } from '../logging';
+import setupAntelopeProjectLogging from '../logging';
+import { defaultConfigLogging } from '../logging';
 
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
@@ -77,6 +79,17 @@ const runCLI = async () => {
       const sections = parseVerboseSections(verboseOption);
       setVerboseSections(sections);
     }
+
+    // Initialize logging with default configuration
+    const defaultConfig = {
+      logging: defaultConfigLogging,
+      cacheFolder: '.antelopejs',
+      modules: {},
+      name: 'cli',
+      envOverrides: {},
+      disabledExports: [],
+    };
+    setupAntelopeProjectLogging(defaultConfig);
 
     // Check for updates before anything else
     await warnIfOutdated(version);
