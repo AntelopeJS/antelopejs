@@ -10,6 +10,14 @@ export interface CommandResult {
 
 export function ExecuteCMD(command: string, options: ExecOptions, logging: boolean = false): Promise<CommandResult> {
   return new Promise<CommandResult>((resolve, reject) => {
+    // Check if this is a recursive command (ajs command within ajs)
+    const isRecursiveCommand = command.includes('ajs ') || command.includes('ajs.exe');
+    
+    // Start spinner for command execution (unless recursive)
+    if (!isRecursiveCommand) {
+      Logging.StartCommand(`Executing: ${command}`);
+    }
+
     const child = exec(command, options, (err, stdout, stderr) => {
       const result: CommandResult = {
         stdout,
@@ -18,9 +26,15 @@ export function ExecuteCMD(command: string, options: ExecOptions, logging: boole
       };
 
       if (err) {
+        if (!isRecursiveCommand) {
+          Logging.FailCommand(`Failed: ${command}`);
+        }
         return reject(result.stderr || result.stdout);
       }
 
+      if (!isRecursiveCommand) {
+        Logging.EndCommand(`Completed: ${command}`);
+      }
       resolve(result);
     });
 

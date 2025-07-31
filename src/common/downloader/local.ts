@@ -44,6 +44,7 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
   }
   if (source.installCommand) {
     Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${formattedPath}`);
+    Logging.StartCommand(`Installing dependencies for ${formattedPath}`);
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
         Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
@@ -53,6 +54,7 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
       Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
       await ExecuteCMD(source.installCommand, { cwd: formattedPath }, true);
     }
+    Logging.EndCommand(`Dependencies installed for ${formattedPath}`);
   }
   return [new ModuleManifest(formattedPath, source)];
 });

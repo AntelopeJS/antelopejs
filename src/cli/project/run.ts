@@ -3,6 +3,7 @@ import { Command, Option } from 'commander';
 import { Options, readConfig } from '../common';
 import startAntelope, { LaunchOptions } from '../..';
 import { Spinner, displayBox, info, warning, error, sleep } from '../../utils/cli-ui';
+import { Logging } from '../../interfaces/logging/beta';
 import { fork } from 'child_process';
 import path from 'path';
 import fs, { unlinkSync, writeFileSync } from 'fs';
@@ -65,6 +66,7 @@ export default function () {
       // Start the project with a spinner
       console.log('');
       info(`Starting AntelopeJS project`);
+      Logging.StartCommand('Starting AntelopeJS project');
 
       try {
         if (options.inspect) {
@@ -129,7 +131,10 @@ export default function () {
           // Run in the current process as before
           await startAntelope(options.project, options.env, options);
         }
+
+        Logging.EndCommand('AntelopeJS project started successfully');
       } catch (err) {
+        Logging.FailCommand('Failed to start AntelopeJS project');
         if (err instanceof Error) {
           error(err.message);
         } else {

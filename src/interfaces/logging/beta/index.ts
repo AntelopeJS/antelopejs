@@ -96,6 +96,33 @@ export namespace Logging {
   }
 
   /**
+   * Start a command execution with a spinner
+   * @param command - The command being executed
+   * @param args - Additional arguments to log
+   */
+  export function StartCommand(command: string, ...args: any[]): void {
+    Write(Level.INFO, 'command:start', command, ...args);
+  }
+
+  /**
+   * End a command execution with success
+   * @param command - The command that was executed
+   * @param args - Additional arguments to log
+   */
+  export function EndCommand(command: string, ...args: any[]): void {
+    Write(Level.INFO, 'command:end', command, ...args);
+  }
+
+  /**
+   * End a command execution with failure
+   * @param command - The command that failed
+   * @param args - Additional arguments to log
+   */
+  export function FailCommand(command: string, ...args: any[]): void {
+    Write(Level.ERROR, 'command:fail', command, ...args);
+  }
+
+  /**
    * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
    *
    * Usage:
