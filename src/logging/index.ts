@@ -276,7 +276,6 @@ async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false
     }
   }
 
-  // Skip verbose logs when spinner is active to avoid interference
   const module = logging.moduleTracking.enabled ? GetResponsibleModule() : undefined;
 
   if (shouldSkipModule(logging, module)) {
@@ -289,9 +288,8 @@ async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false
       ? (chunk: any, ...args: any[]) => process.stderr.write(chunk, ...args)
       : (chunk: any, ...args: any[]) => process.stdout.write(chunk, ...args);
 
-  if (terminalDisplay.isSpinnerActive() && !terminalDisplay.isSpinnerPaused()) {
-    terminalDisplay.pauseSpinner();
-    await new Promise((resolve) => setTimeout(resolve, 1));
+  if (terminalDisplay.isSpinnerActive()) {
+    await terminalDisplay.pauseSpinner();
     write_function(OVERWRITE_CURRENT_LINE);
   }
 
@@ -315,7 +313,7 @@ async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false
     write_function(NEWLINE);
     wasLastMessageInline = false;
     if (terminalDisplay.isSpinnerActive() && terminalDisplay.isSpinnerPaused()) {
-      terminalDisplay.resumeSpinner();
+      await terminalDisplay.resumeSpinner();
     }
   }
 }

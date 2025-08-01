@@ -43,6 +43,15 @@ export class TerminalDisplay {
     return `${messageWithLevel}${padding}${chalk.gray(`[${dateStr}]`)}`;
   }
 
+  private formatSpinnerMessageWithRightAlignedDate(message: string): string {
+    const dateStr = this.formatDate(new Date());
+    const paddingRight = 6;
+    const paddingLength = this.terminalWidth - message.length - dateStr.length - paddingRight;
+    const padding = ' '.repeat(Math.max(0, paddingLength));
+
+    return `${message}${padding}${chalk.gray(`[${dateStr}]`)}`;
+  }
+
   private async renderPendingSpinnerUpdates(): Promise<void> {
     if (this.isRenderingSpinnerUpdates || !this.pendingSpinnerUpdates.length) return;
     this.isRenderingSpinnerUpdates = true;
@@ -59,7 +68,8 @@ export class TerminalDisplay {
         this.spinnerPaused = false;
       } else {
         this.activeCommands.delete(text);
-        await (type === 'end' ? this.currentSpinner?.succeed(text) : this.currentSpinner?.fail(text));
+        const formattedText = this.formatSpinnerMessageWithRightAlignedDate(text);
+        await (type === 'end' ? this.currentSpinner?.succeed(formattedText) : this.currentSpinner?.fail(formattedText));
         await stopCurrentSpinner();
         if (this.activeCommands.size) {
           const nextCommand = Array.from(this.activeCommands)[0];
@@ -76,18 +86,19 @@ export class TerminalDisplay {
     this.isRenderingSpinnerUpdates = false;
   }
 
-  public pauseSpinner(): void {
+  async pauseSpinner(): Promise<void> {
     if (this.currentSpinner && this.spinnerActive && !this.spinnerPaused) {
-      this.currentSpinner.stop();
       this.spinnerPaused = true;
+      await this.currentSpinner.stop();
     }
   }
 
-  public resumeSpinner(): void {
-    if (this.spinnerPaused && this.lastSpinnerText && this.spinnerActive) {
-      this.currentSpinner = new Spinner(this.lastSpinnerText);
-      this.currentSpinner.start();
+  async resumeSpinner(): Promise<void> {
+    if (this.spinnerPaused && this.lastSpinnerText) {
       this.spinnerPaused = false;
+      this.currentSpinner = new Spinner(this.lastSpinnerText);
+      await this.currentSpinner.start();
+      this.spinnerActive = true;
     }
   }
 
