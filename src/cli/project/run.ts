@@ -129,7 +129,6 @@ export default function () {
           // Run in the current process as before
           await startAntelope(options.project, options.env, options);
         }
-
       } catch (err) {
         if (err instanceof Error) {
           error(err.message);

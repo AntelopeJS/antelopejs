@@ -264,7 +264,7 @@ function truncateMessage(message: string, maxWidth: number): string {
  * @param log - The log event to process
  * @param forceInline - Whether to force inline display
  */
-function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): void {
+async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): Promise<void> {
   if (log.channel.startsWith('verbose:') && activeVerboseSections.size === 0) {
     return;
   }
@@ -289,10 +289,9 @@ function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): voi
       ? (chunk: any, ...args: any[]) => process.stderr.write(chunk, ...args)
       : (chunk: any, ...args: any[]) => process.stdout.write(chunk, ...args);
 
-  const wasSpinnerPaused = terminalDisplay.isSpinnerPaused();
-
-  if (terminalDisplay.isSpinnerActive() && !wasSpinnerPaused) {
+  if (terminalDisplay.isSpinnerActive() && !terminalDisplay.isSpinnerPaused()) {
     terminalDisplay.pauseSpinner();
+    await new Promise((resolve) => setTimeout(resolve, 1));
     write_function(OVERWRITE_CURRENT_LINE);
   }
 
@@ -315,7 +314,7 @@ function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): voi
   if (!forceInline) {
     write_function(NEWLINE);
     wasLastMessageInline = false;
-    if (terminalDisplay.isSpinnerActive() && !wasSpinnerPaused) {
+    if (terminalDisplay.isSpinnerActive() && terminalDisplay.isSpinnerPaused()) {
       terminalDisplay.resumeSpinner();
     }
   }
@@ -336,8 +335,8 @@ export default function setupAntelopeProjectLogging(config: AntelopeProjectEnvCo
 
   setupProcessHandlers(config);
 
-  eventLog.register((log: Log) => {
+  eventLog.register(async (log: Log) => {
     const forceInline = log.channel === 'inline';
-    handleLog(logging, log, forceInline);
+    await handleLog(logging, log, forceInline);
   });
 }
