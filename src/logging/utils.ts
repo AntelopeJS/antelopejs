@@ -37,8 +37,7 @@ export function getColoredText(text: string, color: string): string {
  * @returns true if output is to a terminal, false if to a file
  */
 export function isTerminalOutput(): boolean {
-  // Force terminal detection for better alignment
-  return true;
+  return process.stdout.isTTY && process.stderr.isTTY;
 }
 
 /**

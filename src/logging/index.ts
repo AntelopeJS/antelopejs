@@ -289,12 +289,10 @@ function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): voi
     return;
   }
 
-  // Skip verbose logs if no verbose sections are active
   if (log.channel.startsWith('verbose:') && activeVerboseSections.size === 0) {
     return;
   }
 
-  // Skip verbose logs for specific sections if not enabled
   if (log.channel.startsWith('verbose:')) {
     const section = log.channel.substring(8);
     if (!activeVerboseSections.has(section as VerboseSection)) {
