@@ -6,7 +6,7 @@ import { stat } from 'fs/promises';
 import fs, { cpSync, mkdirSync, readdirSync, rmSync } from 'fs';
 import { getInstallPackagesCommand } from '../utils/package-manager';
 import { acquireLock } from '../utils/lock';
-import { Logging } from '../interfaces/logging/beta';
+import { terminalDisplay } from '../logging/terminal-display';
 
 async function setupGit(cachePath: string, git: string, folderName: string, branch?: string) {
   const result = await ExecuteCMD(
@@ -278,11 +278,11 @@ export async function installInterfaces(
     const folderName = path.basename(gitOp.path);
     const releaseLock = await acquireLock(`git-${folderName}`);
     try {
-      Logging.StartCommand(`Updating git sparse-checkout for ${folderName}`);
+      await terminalDisplay.startSpinner(`Updating git sparse-checkout for ${folderName}`);
       await ExecuteCMD(`git sparse-checkout add ${gitOp.checkoutPaths.join(' ')} --skip-checks`, {
         cwd: gitOp.path,
       });
-      Logging.EndCommand(`Updated git sparse-checkout for ${folderName}`);
+      await terminalDisplay.stopSpinner(`Updated git sparse-checkout for ${folderName}`);
     } finally {
       await releaseLock();
     }
@@ -325,9 +325,9 @@ export async function installInterfaces(
     const sourcePath = isDirectory ? path.join(folderPath, version) : path.join(folderPath, `${version}.d.ts`);
     const destPath = isDirectory ? interfacePath : path.join(interfacePath, `${version}.d.ts`);
 
-    Logging.StartCommand(`Copying interface files for ${interfaceInfo.name}@${version}`);
+    await terminalDisplay.startSpinner(`Copying interface files for ${interfaceInfo.name}@${version}`);
     cpSync(sourcePath, destPath, isDirectory ? { recursive: true } : {});
-    Logging.EndCommand(`Copied interface files for ${interfaceInfo.name}@${version}`);
+    await terminalDisplay.stopSpinner(`Copied interface files for ${interfaceInfo.name}@${version}`);
 
     const dependencies = interfaceInfo.manifest.dependencies[version];
     if (dependencies.packages.length > 0) {

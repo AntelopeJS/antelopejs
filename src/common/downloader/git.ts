@@ -4,6 +4,7 @@ import { ModuleCache } from '../cache';
 import { ModuleManifest } from '../manifest';
 import { Logging } from '../../interfaces/logging/beta';
 import { VERBOSE_SECTIONS } from '../../logging';
+import { terminalDisplay } from '../../logging/terminal-display';
 
 export interface ModuleSourceGit extends ModuleSource {
   type: 'git';
@@ -61,7 +62,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
   }
   if (doInstall && source.installCommand) {
     Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${name}`);
-    Logging.StartCommand(`Installing dependencies for ${name}`);
+    await terminalDisplay.startSpinner(`Installing dependencies for ${name}`);
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
         Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
@@ -71,7 +72,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
       Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
       await ExecuteCMD(source.installCommand, { cwd: folder }, true);
     }
-    Logging.EndCommand(`Dependencies installed for ${name}`);
+    await terminalDisplay.stopSpinner(`Dependencies installed for ${name}`);
   }
   Logging.Verbose(VERBOSE_SECTIONS.GIT, `Git module load completed for ${name}`);
   if (newVersion) {

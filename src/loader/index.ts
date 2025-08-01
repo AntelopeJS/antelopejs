@@ -21,6 +21,7 @@ import { ModuleManifest } from '../common/manifest';
 import { Logging } from '../interfaces/logging/beta';
 import { VERBOSE_SECTIONS } from '../logging';
 import EventEmitter from 'events';
+import { terminalDisplay } from '../logging/terminal-display';
 
 type ModuleResolver = (request: string, parent: any, isMain: boolean, options: any) => string;
 class ModuleResolverDetour {
@@ -308,6 +309,7 @@ export class ModuleManager {
     EventEmitter.defaultMaxListeners = this.concurrency;
 
     // Get modules ready
+    await terminalDisplay.startSpinner(`Loading modules`);
     const modulePromises = manifest.sources.map(async (source) => {
       Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Loading module ${source.id}`);
       try {
@@ -340,8 +342,9 @@ export class ModuleManager {
 
     const moduleResults = await Promise.all(modulePromises);
     const moduleList = moduleResults.flat();
-    Logging.Info(`Modules loaded`);
+    await terminalDisplay.stopSpinner(`Modules loaded`);
 
+    await terminalDisplay.startSpinner(`Loading exports`);
     Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Loading exports`);
 
     await this.core.ref.manifest.loadExports();
@@ -354,7 +357,7 @@ export class ModuleManager {
       return map.set(entry.ref.id, entry);
     }, this.loadedModules);
 
-    Logging.Info(`Exports loaded`);
+    await terminalDisplay.stopSpinner(`Exports loaded`);
 
     // Set max listeners to default
     EventEmitter.defaultMaxListeners = 10;
@@ -362,6 +365,7 @@ export class ModuleManager {
     this.rebuildInterfaceSources(moduleList);
     this.rebuildModuleAssociations(moduleList);
 
+    await terminalDisplay.startSpinner(`Constructing modules`);
     Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Constructing modules`);
     this.resolverDetour.attach();
     await Promise.all(
@@ -375,7 +379,7 @@ export class ModuleManager {
         }),
       ),
     );
-    Logging.Info(`Done loading`);
+    await terminalDisplay.stopSpinner(`Done loading`);
   }
 
   public startModules() {

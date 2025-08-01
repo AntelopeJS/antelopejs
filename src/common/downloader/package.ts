@@ -57,9 +57,7 @@ RegisterLoader('package', 'package', async (cache: ModuleCache, source: ModuleSo
 
     Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Installing dependencies for ${source.package}@${source.version}`);
     const installCmd = await getInstallCommand(folder);
-    Logging.StartCommand(`Installing dependencies for ${source.package}@${source.version}`);
     await ExecuteCMD(installCmd, { cwd: folder }, true); // TODO: check err
-    Logging.EndCommand(`Dependencies installed for ${source.package}@${source.version}`);
   }
   Logging.Verbose(VERBOSE_SECTIONS.PACKAGE, `Successfully loaded ${source.package}@${source.version}`);
   return [new ModuleManifest(folder, source)];

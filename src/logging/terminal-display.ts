@@ -92,6 +92,9 @@ export class TerminalDisplay {
   }
 
   async startSpinner(text: string): Promise<void> {
+    if (this.spinnerActive) {
+      return;
+    }
     this.lastSpinnerText = text;
     this.pendingSpinnerUpdates.push({ text, type: 'start' });
     this.spinnerActive = true;
@@ -100,16 +103,22 @@ export class TerminalDisplay {
   }
 
   async stopSpinner(text?: string): Promise<void> {
+    if (!this.spinnerActive) {
+      return;
+    }
     this.lastSpinnerText = null;
-    this.pendingSpinnerUpdates.push({ text: text || 'Command completed', type: 'end' });
+    this.pendingSpinnerUpdates.push({ text: text || 'Task completed', type: 'end' });
     this.spinnerActive = false;
     this.spinnerPaused = false;
     await this.renderPendingSpinnerUpdates();
   }
 
   async failSpinner(text?: string): Promise<void> {
+    if (!this.spinnerActive) {
+      return;
+    }
     this.lastSpinnerText = null;
-    this.pendingSpinnerUpdates.push({ text: text || 'Command failed', type: 'fail' });
+    this.pendingSpinnerUpdates.push({ text: text || 'Task failed', type: 'fail' });
     this.spinnerActive = false;
     this.spinnerPaused = false;
     await this.renderPendingSpinnerUpdates();

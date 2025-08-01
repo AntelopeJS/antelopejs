@@ -1,6 +1,7 @@
 import { exec, ExecOptions } from 'child_process';
 import { Logging } from '../interfaces/logging/beta';
 import { VERBOSE_SECTIONS } from '../logging';
+import { terminalDisplay } from '../logging/terminal-display';
 
 export interface CommandResult {
   stdout: string;
@@ -8,17 +9,21 @@ export interface CommandResult {
   code: number;
 }
 
-export function ExecuteCMD(command: string, options: ExecOptions, logging: boolean = false): Promise<CommandResult> {
-  return new Promise<CommandResult>((resolve, reject) => {
-    // Check if this is a recursive command (ajs command within ajs)
-    const isRecursiveCommand = command.includes('ajs ') || command.includes('ajs.exe');
-    
-    // Start spinner for command execution (unless recursive)
-    if (!isRecursiveCommand) {
-      Logging.StartCommand(`Executing: ${command}`);
-    }
+export async function ExecuteCMD(
+  command: string,
+  options: ExecOptions,
+  logging: boolean = false,
+): Promise<CommandResult> {
+  // Check if this is a recursive command (ajs command within ajs)
+  const isRecursiveCommand = command.includes('ajs ') || command.includes('ajs.exe');
 
-    const child = exec(command, options, (err, stdout, stderr) => {
+  // Start spinner for command execution (unless recursive)
+  if (!isRecursiveCommand) {
+    await terminalDisplay.startSpinner(`Executing: ${command}`);
+  }
+
+  return new Promise<CommandResult>((resolve, reject) => {
+    const child = exec(command, options, async (err, stdout, stderr) => {
       const result: CommandResult = {
         stdout,
         stderr,
@@ -27,13 +32,13 @@ export function ExecuteCMD(command: string, options: ExecOptions, logging: boole
 
       if (err) {
         if (!isRecursiveCommand) {
-          Logging.FailCommand(`Failed: ${command}`);
+          await terminalDisplay.failSpinner(`Failed: ${command}`);
         }
         return reject(result.stderr || result.stdout);
       }
 
       if (!isRecursiveCommand) {
-        Logging.EndCommand(`Completed: ${command}`);
+        await terminalDisplay.stopSpinner(`Completed: ${command}`);
       }
       resolve(result);
     });

@@ -7,6 +7,7 @@ import { ModuleCache } from '../cache';
 import os from 'node:os';
 import { Logging } from '../../interfaces/logging/beta';
 import { VERBOSE_SECTIONS } from '../../logging';
+import { terminalDisplay } from '../../logging/terminal-display';
 
 export interface ModuleSourceLocal extends ModuleSource {
   type: 'local';
@@ -44,7 +45,7 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
   }
   if (source.installCommand) {
     Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${formattedPath}`);
-    Logging.StartCommand(`Installing dependencies for ${formattedPath}`);
+    await terminalDisplay.startSpinner(`Installing dependencies for ${formattedPath}`);
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
         Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
@@ -54,7 +55,7 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
       Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
       await ExecuteCMD(source.installCommand, { cwd: formattedPath }, true);
     }
-    Logging.EndCommand(`Dependencies installed for ${formattedPath}`);
+    await terminalDisplay.stopSpinner(`Dependencies installed for ${formattedPath}`);
   }
   return [new ModuleManifest(formattedPath, source)];
 });

@@ -6,7 +6,7 @@ import { mergeDeep } from '../utils/object';
 import { GetResponsibleModule } from '../interfaces/core/beta';
 import { Logging } from '../interfaces/logging/beta';
 import { getLevelInfo, getColoredText, isTerminalOutput, stripAnsi } from './utils';
-import { TerminalDisplay } from './terminal-display';
+import { terminalDisplay } from './terminal-display';
 
 /**
  * Logical sections for verbose logging
@@ -30,11 +30,6 @@ export type VerboseSection = (typeof VERBOSE_SECTIONS)[keyof typeof VERBOSE_SECT
  * Active sections for verbose logging
  */
 let activeVerboseSections: Set<VerboseSection> = new Set();
-
-/**
- * Terminal display instance for spinner management
- */
-const terminalDisplay = new TerminalDisplay();
 
 /**
  * Configure the active sections for verbose logging
@@ -270,25 +265,6 @@ function truncateMessage(message: string, maxWidth: number): string {
  * @param forceInline - Whether to force inline display
  */
 function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): void {
-  // Handle command channels for spinner management
-  if (log.channel === 'command:start') {
-    const command = log.args[0] || 'Executing command';
-    terminalDisplay.startSpinner(command);
-    return;
-  }
-
-  if (log.channel === 'command:end') {
-    const command = log.args[0] || 'Command completed';
-    terminalDisplay.stopSpinner(command);
-    return;
-  }
-
-  if (log.channel === 'command:fail') {
-    const command = log.args[0] || 'Command failed';
-    terminalDisplay.failSpinner(command);
-    return;
-  }
-
   if (log.channel.startsWith('verbose:') && activeVerboseSections.size === 0) {
     return;
   }
@@ -300,16 +276,7 @@ function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): voi
     }
   }
 
-  // Skip verbose logs when spinner is active to avoid interference, except for important git operations
-  if (log.channel.startsWith('verbose:') && terminalDisplay.isSpinnerActive()) {
-    // Allow git module completion logs to be displayed even when spinner is active
-    if (log.channel === 'verbose:git' && log.args[0]?.includes('Git module load completed')) {
-      // Continue to display this log
-    } else {
-      return;
-    }
-  }
-
+  // Skip verbose logs when spinner is active to avoid interference
   const module = logging.moduleTracking.enabled ? GetResponsibleModule() : undefined;
 
   if (shouldSkipModule(logging, module)) {
