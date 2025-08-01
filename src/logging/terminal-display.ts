@@ -122,51 +122,6 @@ export class TerminalDisplay {
   isSpinnerPaused(): boolean {
     return this.spinnerPaused;
   }
-
-  displayLog(log: Log): void {
-    const wasPaused = this.spinnerPaused;
-
-    if (this.spinnerActive && !this.spinnerPaused) {
-      this.pauseSpinner();
-    }
-
-    const formattedMessage = this.formatMessageWithRightAlignedDate(log);
-    const writeFunction =
-      (log.levelId as Logging.Level) === Logging.Level.ERROR
-        ? process.stderr.write.bind(process.stderr)
-        : process.stdout.write.bind(process.stdout);
-
-    writeFunction(formattedMessage + '\n');
-
-    if (this.spinnerActive && !wasPaused) {
-      this.resumeSpinner();
-    }
-  }
-
-  displayInlineLog(log: Log): void {
-    const wasPaused = this.spinnerPaused;
-
-    if (this.spinnerActive && !this.spinnerPaused) {
-      this.pauseSpinner();
-    }
-
-    const levelInfo = getLevelInfo(log.levelId as Logging.Level);
-    const message = this.serializeArgs(log.args);
-    const levelText = `[${levelInfo.name}]`;
-    const coloredLevel = getColoredText(levelText, levelInfo.color);
-    const formattedMessage = `${coloredLevel} ${message}`;
-
-    const writeFunction =
-      (log.levelId as Logging.Level) === Logging.Level.ERROR
-        ? process.stderr.write.bind(process.stderr)
-        : process.stdout.write.bind(process.stdout);
-
-    writeFunction('\r\x1b[K' + formattedMessage);
-
-    if (this.spinnerActive && !wasPaused) {
-      this.resumeSpinner();
-    }
-  }
 }
 
 export const terminalDisplay = new TerminalDisplay();
