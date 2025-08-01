@@ -14,13 +14,6 @@ export async function ExecuteCMD(
   options: ExecOptions,
   logging: boolean = false,
 ): Promise<CommandResult> {
-  // Check if this is a recursive command (ajs command within ajs)
-  const isRecursiveCommand = command.includes('ajs ') || command.includes('ajs.exe');
-
-  // Start spinner for command execution (unless recursive)
-  if (!isRecursiveCommand) {
-    await terminalDisplay.startSpinner(`Executing: ${command}`);
-  }
 
   return new Promise<CommandResult>((resolve, reject) => {
     const child = exec(command, options, async (err, stdout, stderr) => {
@@ -31,15 +24,9 @@ export async function ExecuteCMD(
       };
 
       if (err) {
-        if (!isRecursiveCommand) {
-          await terminalDisplay.failSpinner(`Failed: ${command}`);
-        }
         return reject(result.stderr || result.stdout);
       }
 
-      if (!isRecursiveCommand) {
-        await terminalDisplay.stopSpinner(`Completed: ${command}`);
-      }
       resolve(result);
     });
 
