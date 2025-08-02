@@ -29,12 +29,12 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
   if (source.ignoreCache || !cacheVersion?.startsWith('git:')) {
     Logging.Verbose(VERBOSE_SECTIONS.GIT, `Cloning repository ${source.remote}`);
     await cache.getFolder(name, false, true);
-    await ExecuteCMD(`git clone ${source.remote} ${name}`, { cwd: cache.path }, true);
+    await ExecuteCMD(`git clone ${source.remote} ${name}`, { cwd: cache.path });
     if (source.commit || source.branch) {
       Logging.Verbose(VERBOSE_SECTIONS.GIT, `Checking out ${source.commit || source.branch}`);
-      await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder }, true);
+      await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder });
     }
-    const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder }, true);
+    const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder });
     if (result.code !== 0) {
       throw new Error(`Failed to get commit hash: ${result.stderr}`);
     }
@@ -44,13 +44,13 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
   } else {
     Logging.Verbose(VERBOSE_SECTIONS.GIT, `Repository already cached, updating...`);
     if (source.commit || source.branch) {
-      await ExecuteCMD(`git fetch`, { cwd: folder }, true);
-      await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder }, true);
+      await ExecuteCMD(`git fetch`, { cwd: folder });
+      await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder });
     }
     if (!source.commit) {
-      await ExecuteCMD('git pull', { cwd: folder }, true);
+      await ExecuteCMD('git pull', { cwd: folder });
     }
-    const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder }, true);
+    const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder });
     if (result.code !== 0) {
       throw new Error(`Failed to get commit hash: ${result.stderr}`);
     }
@@ -66,11 +66,17 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
         Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
-        await ExecuteCMD(command, { cwd: folder }, true);
+        const result = await ExecuteCMD(command, { cwd: folder });
+        if (result.code !== 0) {
+          throw new Error(`Failed to install dependencies: ${result.stderr}`);
+        }
       }
     } else {
       Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
-      await ExecuteCMD(source.installCommand, { cwd: folder }, true);
+      const result = await ExecuteCMD(source.installCommand, { cwd: folder });
+      if (result.code !== 0) {
+        throw new Error(`Failed to install dependencies: ${result.stderr}`);
+      }
     }
     await terminalDisplay.stopSpinner(`Dependencies installed for ${name}`);
   }

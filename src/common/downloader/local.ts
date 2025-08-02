@@ -49,11 +49,17 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
         Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
-        await ExecuteCMD(command, { cwd: formattedPath }, true);
+        const result = await ExecuteCMD(command, { cwd: formattedPath });
+        if (result.code !== 0) {
+          throw new Error(`Failed to install dependencies: ${result.stderr}`);
+        }
       }
     } else {
       Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
-      await ExecuteCMD(source.installCommand, { cwd: formattedPath }, true);
+      const result = await ExecuteCMD(source.installCommand, { cwd: formattedPath });
+      if (result.code !== 0) {
+        throw new Error(`Failed to install dependencies: ${result.stderr}`);
+      }
     }
     await terminalDisplay.stopSpinner(`Dependencies installed for ${formattedPath}`);
   }

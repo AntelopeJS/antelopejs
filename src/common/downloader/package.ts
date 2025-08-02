@@ -36,7 +36,7 @@ RegisterLoader('package', 'package', async (cache: ModuleCache, source: ModuleSo
   } else {
     Logging.Verbose(VERBOSE_SECTIONS.PACKAGE, `Downloading package ${source.package}@${source.version}`);
     const tmp = await ModuleCache.getTemp();
-    const result = await ExecuteCMD(`npm pack ${source.package}@${source.version}`, { cwd: tmp }, true);
+    const result = await ExecuteCMD(`npm pack ${source.package}@${source.version}`, { cwd: tmp });
     if (result.code !== 0) {
       throw new Error(`Failed to pack npm package: ${result.stderr}`);
     }
@@ -57,7 +57,7 @@ RegisterLoader('package', 'package', async (cache: ModuleCache, source: ModuleSo
 
     Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Installing dependencies for ${source.package}@${source.version}`);
     const installCmd = await getInstallCommand(folder);
-    await ExecuteCMD(installCmd, { cwd: folder }, true); // TODO: check err
+    await ExecuteCMD(installCmd, { cwd: folder }); // TODO: check err
   }
   Logging.Verbose(VERBOSE_SECTIONS.PACKAGE, `Successfully loaded ${source.package}@${source.version}`);
   return [new ModuleManifest(folder, source)];

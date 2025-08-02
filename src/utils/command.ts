@@ -1,7 +1,6 @@
 import { exec, ExecOptions } from 'child_process';
 import { Logging } from '../interfaces/logging/beta';
 import { VERBOSE_SECTIONS } from '../logging';
-import { terminalDisplay } from '../logging/terminal-display';
 
 export interface CommandResult {
   stdout: string;
@@ -9,14 +8,9 @@ export interface CommandResult {
   code: number;
 }
 
-export async function ExecuteCMD(
-  command: string,
-  options: ExecOptions,
-  logging: boolean = false,
-): Promise<CommandResult> {
-
+export function ExecuteCMD(command: string, options: ExecOptions): Promise<CommandResult> {
   return new Promise<CommandResult>((resolve, reject) => {
-    const child = exec(command, options, async (err, stdout, stderr) => {
+    exec(command, options, (err, stdout, stderr) => {
       const result: CommandResult = {
         stdout,
         stderr,
@@ -24,16 +18,12 @@ export async function ExecuteCMD(
       };
 
       if (err) {
+        Logging.Error('Command execution failed:', command);
+        Logging.Error('Error message: ', result.stderr || result.stdout);
         return reject(result.stderr || result.stdout);
       }
-
       resolve(result);
     });
-
-    if (logging) {
-      child.stdout?.on('data', (data: string) => {
-        Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${data.trim()}`);
-      });
-    }
+    Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
   });
 }
