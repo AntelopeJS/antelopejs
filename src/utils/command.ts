@@ -19,8 +19,7 @@ export function ExecuteCMD(command: string, options: ExecOptions): Promise<Comma
 
       if (err) {
         Logging.Error('Command execution failed:', command);
-        Logging.Error('Error message: ', result.stderr || result.stdout);
-        return reject(result.stderr || result.stdout);
+        throw new Error(result.stderr || result.stdout);
       }
       resolve(result);
     });

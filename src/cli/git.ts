@@ -332,9 +332,12 @@ export async function installInterfaces(
     const dependencies = interfaceInfo.manifest.dependencies[version];
     if (dependencies.packages.length > 0) {
       const installCmd = await getInstallPackagesCommand(dependencies.packages, true, interfacePath);
-      await ExecuteCMD(installCmd, {
+      const installResult = await ExecuteCMD(installCmd, {
         cwd: interfacePath,
       });
+      if (installResult.code !== 0) {
+        throw new Error(`Failed to install packages for ${interfaceInfo.name}@${version}: ${installResult.stderr}`);
+      }
     }
   }
 }
