@@ -22,6 +22,7 @@ export const getLevelInfo = (() => {
         [Logging.Level.INFO]: { name: 'INFO', color: 'green' },
         [Logging.Level.DEBUG]: { name: 'DEBUG', color: 'blue' },
         [Logging.Level.TRACE]: { name: 'TRACE', color: 'magenta' },
+        [Logging.Level.NO_PREFIX]: { name: '', color: 'white' },
       };
     }
     return map[levelId] ?? { name: 'LOG', color: 'white' };

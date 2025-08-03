@@ -24,6 +24,8 @@ export namespace Logging {
     DEBUG = 10,
     /** Highly detailed tracing information */
     TRACE = 0,
+    /** Messages without prefix for direct display */
+    NO_PREFIX = -1,
   }
 
   /**

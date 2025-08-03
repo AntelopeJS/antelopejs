@@ -3,6 +3,7 @@ import figlet from 'figlet';
 import cliProgress from 'cli-progress';
 import type { Options as BoxenOptions } from 'boxen';
 import type { Ora } from 'ora';
+import Logging from '../interfaces/logging/beta';
 
 /**
  * Creates and manages a spinner with customizable text and success/error messages.
@@ -214,28 +215,28 @@ export function displayBanner(text: string, font?: figlet.Fonts): void {
  * Displays a success message with green coloring and a checkmark
  */
 export function success(message: string): void {
-  console.log(chalk.green(`✓ ${message}`));
+  Logging.Write(Logging.Level.NO_PREFIX, 'main', `${chalk.green.bold('✓')} ${message}`);
 }
 
 /**
  * Displays an error message with red coloring and an X
  */
 export function error(message: string): void {
-  console.log(chalk.red(`✗ ${message}`));
+  Logging.Write(Logging.Level.NO_PREFIX, 'main', `${chalk.red.bold('✗')} ${message}`);
 }
 
 /**
  * Displays a warning message with yellow coloring and a warning symbol
  */
 export function warning(message: string): void {
-  console.log(chalk.yellow(`⚠ ${message}`));
+  Logging.Write(Logging.Level.NO_PREFIX, 'main', `${chalk.yellow.bold('⚠')} ${message}`);
 }
 
 /**
  * Displays an info message with blue coloring and an info symbol
  */
 export function info(message: string): void {
-  console.log(chalk.blue(`ℹ ${message}`));
+  Logging.Write(Logging.Level.NO_PREFIX, 'main', `${chalk.blue.bold('ℹ')} ${message}`);
 }
 
 /**

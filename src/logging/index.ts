@@ -207,10 +207,16 @@ function shouldSkipModule(logging: AntelopeLogging, module?: string): boolean {
 function formatLogMessageWithRightAlignedDate(logging: AntelopeLogging, log: Log, module?: string): string {
   const levelInfo = getLevelInfo(log.levelId as Logging.Level);
   const message = log.args.map((arg) => serializeLogValue(arg)).join(' ');
-  const levelText = `[${levelInfo.name}]`;
-  const coloredLevel = getColoredText(levelText, levelInfo.color);
 
-  let messageWithLevel = `${coloredLevel} ${message}`;
+  let messageWithLevel: string;
+  if (log.levelId === Logging.Level.NO_PREFIX.valueOf()) {
+    messageWithLevel = message;
+  } else {
+    const levelText = `[${levelInfo.name}]`;
+    const coloredLevel = getColoredText(levelText, levelInfo.color);
+    messageWithLevel = `${coloredLevel} ${message}`;
+  }
+
   if (logging.moduleTracking.enabled && module) {
     messageWithLevel = `(${module}) ${messageWithLevel}`;
   }

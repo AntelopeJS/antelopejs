@@ -107,7 +107,7 @@ export default function () {
 
       // First pass: Analyze all environments and collect user selections
       for (const env of envs) {
-        info(chalk.bold`\nAnalyzing environment: ${env}`);
+        info(chalk.bold`Analyzing environment: ${env}`);
 
         const config = await LoadConfig(options.project, env);
         const { unresolvedImports } = await analyzeConfig(options.project, cache, config);
@@ -183,13 +183,13 @@ export default function () {
             }
           }
         } else {
-          success(chalk.green`✓ No unresolved imports found`);
+          success(chalk.green`No unresolved imports found`);
         }
       }
 
       // Second pass: Install all selected modules sequentially by environment
       if (modulesToInstall.length > 0) {
-        info(chalk.blue.bold`\nInstalling selected modules...`);
+        info(chalk.blue.bold`Installing selected modules...`);
 
         // Group modules by environment and mode for installation
         const modulesByEnvAndMode = modulesToInstall.reduce(
@@ -226,7 +226,7 @@ export default function () {
       }
 
       // Summary of changes
-      info(chalk.blue.bold`\nDependency analysis summary:`);
+      info(chalk.blue.bold`Dependency analysis summary:`);
 
       if (Object.keys(addedModules).length > 0) {
         success(chalk.green`Added ${Object.keys(addedModules).length} module(s):`);
@@ -246,6 +246,6 @@ export default function () {
         success(chalk.green`No changes were made. Your project dependencies are already optimized!`);
       }
 
-      info(chalk.blue`\nDependency analysis complete!`);
+      info(chalk.blue`Dependency analysis complete!`);
     });
 }
