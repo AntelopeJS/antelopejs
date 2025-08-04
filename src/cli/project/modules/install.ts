@@ -10,6 +10,7 @@ import inquirer from 'inquirer';
 import { loadInterfaceFromGit } from '../../git';
 import { projectModulesAddCommand } from './add';
 import { error, warning, info, success } from '../../../utils/cli-ui';
+import { terminalDisplay } from '../../../logging/terminal-display';
 
 interface InstallOptions {
   project: string;
@@ -189,6 +190,7 @@ export default function () {
 
       // Second pass: Install all selected modules sequentially by environment
       if (modulesToInstall.length > 0) {
+        await terminalDisplay.startSpinner(`Installing selected modules`);
         info(chalk.blue.bold`Installing selected modules...`);
 
         // Group modules by environment and mode for installation
@@ -223,6 +225,9 @@ export default function () {
             error(chalk.red`Failed to install modules for environment ${env} (mode: ${mode}): ${err}`);
           }
         }
+        await terminalDisplay.stopSpinner(
+          `Installed ${modulesToInstall.length} module${modulesToInstall.length === 1 ? '' : 's'}`,
+        );
       }
 
       // Summary of changes

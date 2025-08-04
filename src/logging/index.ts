@@ -270,58 +270,79 @@ function truncateMessage(message: string, maxWidth: number): string {
  * @param log - The log event to process
  * @param forceInline - Whether to force inline display
  */
-async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): Promise<void> {
-  if (log.channel.startsWith('verbose:') && activeVerboseSections.size === 0) {
-    return;
-  }
+function shouldSkipForVerbose(log: Log): boolean {
+  if (!log.channel.startsWith('verbose:')) return false;
+  const section = log.channel.substring(8) as VerboseSection;
+  return !activeVerboseSections.has(section);
+}
 
-  if (log.channel.startsWith('verbose:')) {
-    const section = log.channel.substring(8);
-    if (!activeVerboseSections.has(section as VerboseSection)) {
-      return;
-    }
-  }
+function shouldSkipForModule(logging: AntelopeLogging, module?: string): boolean {
+  if (!logging.moduleTracking.enabled) return false;
+  return shouldSkipModule(logging, module); // ta fonction existante
+}
 
-  const module = logging.moduleTracking.enabled ? GetResponsibleModule() : undefined;
+function buildMessage(logging: AntelopeLogging, log: Log, module?: string): string {
+  return formatLogMessageWithRightAlignedDate(logging, log, module);
+}
 
-  if (shouldSkipModule(logging, module)) {
-    return;
-  }
+function getWriter(log: Log): (chunk: any, ...args: any[]) => boolean {
+  return log.levelId === Logging.Level.ERROR.valueOf()
+    ? (c, ...a) => process.stderr.write(c, ...a)
+    : (c, ...a) => process.stdout.write(c, ...a);
+}
 
-  let message = formatLogMessageWithRightAlignedDate(logging, log, module);
-  const write_function =
-    log.levelId === Logging.Level.ERROR.valueOf()
-      ? (chunk: any, ...args: any[]) => process.stderr.write(chunk, ...args)
-      : (chunk: any, ...args: any[]) => process.stdout.write(chunk, ...args);
-
+async function pauseSpinnerIfNeeded(): Promise<void> {
   if (terminalDisplay.isSpinnerActive()) {
     await terminalDisplay.pauseSpinner();
-    write_function(OVERWRITE_CURRENT_LINE);
+    process.stdout.write(OVERWRITE_CURRENT_LINE);
   }
+}
 
+async function resumeSpinnerIfNeeded(): Promise<void> {
+  if (terminalDisplay.isSpinnerActive()) {
+    await terminalDisplay.resumeSpinner();
+  }
+}
+
+function formatInline(message: string): string {
+  return (
+    OVERWRITE_CURRENT_LINE +
+    truncateMessage(
+      message
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim(),
+      getTerminalWidth(),
+    ) +
+    '\r'
+  );
+}
+
+function writeMessage(writer: (chunk: any, ...args: any[]) => boolean, message: string, inline: boolean): void {
+  writer(message);
+  if (!inline) writer(NEWLINE);
+  wasLastMessageInline = inline;
+}
+
+async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): Promise<void> {
+  if (log.channel.startsWith('verbose:') && activeVerboseSections.size === 0) return;
+  if (shouldSkipForVerbose(log)) return;
+
+  const module = logging.moduleTracking.enabled ? GetResponsibleModule() : undefined;
+  if (shouldSkipForModule(logging, module)) return;
+
+  await pauseSpinnerIfNeeded();
   if (!forceInline && wasLastMessageInline) {
-    write_function(OVERWRITE_CURRENT_LINE);
+    process.stdout.write(OVERWRITE_CURRENT_LINE);
   }
 
-  if (forceInline) {
-    message = message
-      .replace(/[\r\n]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    write_function(OVERWRITE_CURRENT_LINE);
-    message = truncateMessage(message, getTerminalWidth());
-    wasLastMessageInline = true;
-  }
+  let message = buildMessage(logging, log, module);
+  const writer = getWriter(log);
 
-  write_function(message);
+  if (forceInline) message = formatInline(message);
+  writeMessage(writer, message, forceInline);
 
-  if (!forceInline) {
-    write_function(NEWLINE);
-    wasLastMessageInline = false;
-    if (terminalDisplay.isSpinnerActive() && terminalDisplay.isSpinnerPaused()) {
-      await terminalDisplay.resumeSpinner();
-    }
-  }
+  await resumeSpinnerIfNeeded();
 }
 
 /**

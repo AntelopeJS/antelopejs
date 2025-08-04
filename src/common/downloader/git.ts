@@ -28,12 +28,14 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
   let newVersion = '';
   if (source.ignoreCache || !cacheVersion?.startsWith('git:')) {
     Logging.Verbose(VERBOSE_SECTIONS.GIT, `Cloning repository ${source.remote}`);
+    await terminalDisplay.startSpinner(`Cloning ${source.remote}`);
     await cache.getFolder(name, false, true);
     await ExecuteCMD(`git clone ${source.remote} ${name}`, { cwd: cache.path });
     if (source.commit || source.branch) {
       Logging.Verbose(VERBOSE_SECTIONS.GIT, `Checking out ${source.commit || source.branch}`);
       await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder });
     }
+    await terminalDisplay.stopSpinner();
     const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder });
     if (result.code !== 0) {
       throw new Error(`Failed to get commit hash: ${result.stderr}`);
@@ -43,6 +45,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
     doInstall = true;
   } else {
     Logging.Verbose(VERBOSE_SECTIONS.GIT, `Repository already cached, updating...`);
+    await terminalDisplay.startSpinner(`Updating ${source.remote}`);
     if (source.commit || source.branch) {
       await ExecuteCMD(`git fetch`, { cwd: folder });
       await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder });
@@ -52,6 +55,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
     }
     const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder });
     if (result.code !== 0) {
+      await terminalDisplay.failSpinner(`Failed to get commit hash: ${result.stderr}`);
       throw new Error(`Failed to get commit hash: ${result.stderr}`);
     }
     const newActiveCommit = result.stdout.trim();
@@ -59,6 +63,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
       newVersion = 'git:' + newActiveCommit;
       doInstall = true;
     }
+    await terminalDisplay.stopSpinner();
   }
   if (doInstall && source.installCommand) {
     Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${name}`);
@@ -68,6 +73,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
         Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
         const result = await ExecuteCMD(command, { cwd: folder });
         if (result.code !== 0) {
+          await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
           throw new Error(`Failed to install dependencies: ${result.stderr}`);
         }
       }
@@ -75,6 +81,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
       Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
       const result = await ExecuteCMD(source.installCommand, { cwd: folder });
       if (result.code !== 0) {
+        await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
         throw new Error(`Failed to install dependencies: ${result.stderr}`);
       }
     }

@@ -51,6 +51,7 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
         Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
         const result = await ExecuteCMD(command, { cwd: formattedPath });
         if (result.code !== 0) {
+          await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
           throw new Error(`Failed to install dependencies: ${result.stderr}`);
         }
       }
@@ -58,6 +59,7 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
       Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
       const result = await ExecuteCMD(source.installCommand, { cwd: formattedPath });
       if (result.code !== 0) {
+        await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
         throw new Error(`Failed to install dependencies: ${result.stderr}`);
       }
     }

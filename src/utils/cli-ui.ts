@@ -2,33 +2,23 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import cliProgress from 'cli-progress';
 import type { Options as BoxenOptions } from 'boxen';
-import type { Ora } from 'ora';
 import Logging from '../interfaces/logging/beta';
 
 /**
- * Creates and manages a spinner with customizable text and success/error messages.
+ * Creates and manages a simple spinner with customizable text and success/error messages.
  */
 export class Spinner {
   private text: string;
-  private spinner: Ora | null = null;
-  private ora: any = null;
+  private isRunning = false;
+  private interval?: NodeJS.Timeout;
+  private spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  private currentCharIndex = 0;
 
   /**
    * Create a new spinner with the given text
    */
   constructor(text: string) {
     this.text = text;
-  }
-
-  /**
-   * Load the ora package dynamically
-   */
-  private async loadOra(): Promise<any> {
-    if (this.ora) return this.ora;
-
-    const dynamicImport = new Function('specifier', 'return import(specifier)');
-    this.ora = (await dynamicImport('ora')).default;
-    return this.ora;
   }
 
   /**
@@ -39,12 +29,21 @@ export class Spinner {
       this.text = text;
     }
 
-    const ora = await this.loadOra();
-    this.spinner = ora({
-      text: this.text,
-      color: 'blue',
-    });
-    this.spinner?.start();
+    if (this.isRunning) {
+      return this;
+    }
+
+    this.isRunning = true;
+    this.currentCharIndex = 0;
+
+    this.interval = setInterval(() => {
+      if (this.isRunning) {
+        const spinnerChar = this.spinnerChars[this.currentCharIndex];
+        process.stdout.write(`\r${spinnerChar} ${this.text}`);
+        this.currentCharIndex = (this.currentCharIndex + 1) % this.spinnerChars.length;
+      }
+    }, 80);
+
     return this;
   }
 
@@ -53,9 +52,6 @@ export class Spinner {
    */
   update(text: string): Spinner {
     this.text = text;
-    if (this.spinner) {
-      this.spinner.text = text;
-    }
     return this;
   }
 
@@ -63,70 +59,55 @@ export class Spinner {
    * Stop the spinner with a success message
    */
   async succeed(text?: string): Promise<void> {
-    if (!this.spinner) {
-      const ora = await this.loadOra();
-      this.spinner = ora({
-        text: text || this.text,
-        color: 'blue',
-      });
-    }
-    this.spinner?.succeed(text || this.text);
-    this.spinner = null;
+    await this.stop();
+    const message = text || this.text;
+    process.stdout.write(`\r${chalk.green('✓')} ${message}\n`);
   }
 
   /**
    * Stop the spinner with an error message
    */
   async fail(text?: string): Promise<void> {
-    if (!this.spinner) {
-      const ora = await this.loadOra();
-      this.spinner = ora({
-        text: text || this.text,
-        color: 'blue',
-      });
-    }
-    this.spinner?.fail(text || this.text);
-    this.spinner = null;
+    await this.stop();
+    const message = text || this.text;
+    process.stdout.write(`\r${chalk.red('✗')} ${message}\n`);
   }
 
   /**
    * Stop the spinner with an info message
    */
   async info(text?: string): Promise<void> {
-    if (!this.spinner) {
-      const ora = await this.loadOra();
-      this.spinner = ora({
-        text: text || this.text,
-        color: 'blue',
-      });
-    }
-    this.spinner?.info(text || this.text);
-    this.spinner = null;
+    await this.stop();
+    const message = text || this.text;
+    process.stdout.write(`\r${chalk.blue('ℹ')} ${message}\n`);
   }
 
   /**
    * Stop the spinner with a warning message
    */
   async warn(text?: string): Promise<void> {
-    if (!this.spinner) {
-      const ora = await this.loadOra();
-      this.spinner = ora({
-        text: text || this.text,
-        color: 'blue',
-      });
-    }
-    this.spinner?.warn(text || this.text);
-    this.spinner = null;
+    await this.stop();
+    const message = text || this.text;
+    process.stdout.write(`\r${chalk.yellow('⚠')} ${message}\n`);
   }
 
   /**
    * Stop the spinner without any status
    */
   async stop(): Promise<void> {
-    if (this.spinner) {
-      this.spinner.stop();
-      this.spinner = null;
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = undefined;
     }
+    this.isRunning = false;
+    process.stdout.write('\r\x1b[K'); // Clear the line
+  }
+
+  /**
+   * Clear the spinner (alias for stop)
+   */
+  async clear(): Promise<void> {
+    await this.stop();
   }
 }
 
@@ -190,7 +171,7 @@ export class ProgressBar {
  */
 export async function displayBox(message: string, title?: string, options?: BoxenOptions): Promise<void> {
   const dynamicImport = new Function('specifier', 'return import(specifier)');
-  const boxen = (await dynamicImport('boxen')).default;
+  const boxen = (await dynamicImport('boxen')).default as (input: string, options?: BoxenOptions) => string;
   const defaultOptions: BoxenOptions = {
     padding: 1,
     margin: 1,
