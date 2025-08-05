@@ -208,7 +208,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
         `Location: ${chalk.cyan(path.resolve(modulePath))}\n` +
         `Package Manager: ${chalk.green(packageManager)}` +
         (initGit ? `\nGit Repository: ${chalk.green('Initialized')}` : ''),
-      '🎉 Module Created',
+      '\u{f12e}  Module Created',
       { borderColor: 'green' },
     );
   } catch (err) {

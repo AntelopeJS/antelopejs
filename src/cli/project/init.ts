@@ -133,7 +133,7 @@ export default function () {
           `${resolvedProjectPath !== '.' ? chalk.cyan(`cd ${resolvedProjectPath}`) + '\n' : ''}` +
           `${chalk.cyan('ajs project modules install')}\n` +
           `${chalk.cyan('ajs project run -w')}`,
-        '🚀 Project Created',
+        '\u{f135}  Project Created',
         { borderColor: 'green' },
       );
     });

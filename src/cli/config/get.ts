@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { UserConfig, readUserConfig } from '../common';
-import { displayBox, error, keyValue } from '../../utils/cli-ui';
+import { displayBox, error, keyValue, warning } from '../../utils/cli-ui';
 
 const VALID_KEYS = ['git'];
 
@@ -17,7 +17,7 @@ export default function () {
       // Validate the configuration key
       if (!VALID_KEYS.includes(key)) {
         error(`Invalid configuration key: ${chalk.bold(key)}`);
-        console.log(`Valid keys are: ${VALID_KEYS.map((k) => chalk.cyan(k)).join(', ')}`);
+        warning(`Valid keys are: ${VALID_KEYS.map((k) => chalk.cyan(k)).join(', ')}`);
         return;
       }
 

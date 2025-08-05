@@ -2,7 +2,7 @@ import { AntelopeProjectEnvConfigStrict, LoadConfig } from './common/config';
 import { LegacyModuleList, ModuleManager } from './loader';
 import exitHook from 'async-exit-hook';
 import path from 'path';
-import setupAntelopeProjectLogging from './logging';
+import { setupAntelopeProjectLogging } from './logging';
 import { Logging } from './interfaces/logging/beta';
 import assert from 'assert';
 import Mocha from 'mocha';

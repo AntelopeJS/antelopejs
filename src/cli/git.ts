@@ -6,6 +6,7 @@ import { stat } from 'fs/promises';
 import fs, { cpSync, mkdirSync, readdirSync, rmSync } from 'fs';
 import { getInstallPackagesCommand } from '../utils/package-manager';
 import { acquireLock } from '../utils/lock';
+import { terminalDisplay } from '../logging/terminal-display';
 
 async function setupGit(cachePath: string, git: string, folderName: string, branch?: string) {
   const result = await ExecuteCMD(
@@ -277,15 +278,18 @@ export async function installInterfaces(
     const folderName = path.basename(gitOp.path);
     const releaseLock = await acquireLock(`git-${folderName}`);
     try {
+      await terminalDisplay.startSpinner(`Updating git sparse-checkout for ${folderName}`);
       await ExecuteCMD(`git sparse-checkout add ${gitOp.checkoutPaths.join(' ')} --skip-checks`, {
         cwd: gitOp.path,
       });
+      await terminalDisplay.stopSpinner(`Updated git sparse-checkout for ${folderName}`);
     } finally {
       await releaseLock();
     }
   }
 
   // Copy interface files
+  await terminalDisplay.startSpinner(`Copying interface files`);
   for (const { interfaceInfo, version } of allDependencies) {
     const files = interfaceInfo.manifest.files[version];
     let folderPath = '';
@@ -322,16 +326,23 @@ export async function installInterfaces(
     const sourcePath = isDirectory ? path.join(folderPath, version) : path.join(folderPath, `${version}.d.ts`);
     const destPath = isDirectory ? interfacePath : path.join(interfacePath, `${version}.d.ts`);
 
+    await terminalDisplay.startSpinner(`Copying interface files for ${interfaceInfo.name}@${version}`);
     cpSync(sourcePath, destPath, isDirectory ? { recursive: true } : {});
+    await terminalDisplay.stopSpinner(`Copied interface files for ${interfaceInfo.name}@${version}`);
 
     const dependencies = interfaceInfo.manifest.dependencies[version];
     if (dependencies.packages.length > 0) {
       const installCmd = await getInstallPackagesCommand(dependencies.packages, true, interfacePath);
-      await ExecuteCMD(installCmd, {
+      const installResult = await ExecuteCMD(installCmd, {
         cwd: interfacePath,
       });
+      if (installResult.code !== 0) {
+        await terminalDisplay.failSpinner(`Failed to install packages for ${interfaceInfo.name}@${version}`);
+        throw new Error(`Failed to install packages for ${interfaceInfo.name}@${version}: ${installResult.stderr}`);
+      }
     }
   }
+  await terminalDisplay.stopSpinner(`Copied interface files`);
 }
 
 // Keep the original function for backward compatibility, but refactor to use the new implementation

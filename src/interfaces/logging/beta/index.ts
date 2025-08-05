@@ -1,4 +1,5 @@
 import eventLog from './listener';
+import { VerboseSection } from '../../../logging';
 
 /**
  * Provides a structured logging system with multiple severity levels and channels.
@@ -23,6 +24,8 @@ export namespace Logging {
     DEBUG = 10,
     /** Highly detailed tracing information */
     TRACE = 0,
+    /** Messages without prefix for direct display */
+    NO_PREFIX = -1,
   }
 
   /**
@@ -69,6 +72,29 @@ export namespace Logging {
    */
   export function Debug(...args: any[]): void {
     Write(Level.DEBUG, 'main', ...args);
+  }
+
+  /**
+   * Write arguments to the main log channel at the TRACE level.
+   *
+   * Use for highly detailed tracing information, typically only enabled during
+   * intensive debugging sessions.
+   *
+   * @param args - Values to log, which can be of any type and will be serialized appropriately
+   */
+  export function Trace(...args: any[]): void {
+    Write(Level.TRACE, 'main', ...args);
+  }
+
+  /**
+   * Write arguments to the verbose log channel for the specified section.
+   * The channel will be filtered based on the --verbose option configuration.
+   *
+   * @param section - The logical section this log belongs to (e.g., 'cmd', 'git', 'package')
+   * @param args - Values to log, which can be of any type and will be serialized appropriately
+   */
+  export function Verbose(section: VerboseSection, ...args: any[]): void {
+    Write(Level.INFO, `verbose:${section}`, ...args);
   }
 
   /**
@@ -123,18 +149,6 @@ export namespace Logging {
     export function Trace(...args: any[]): void {
       Write(Level.TRACE, 'inline', ...args);
     }
-  }
-
-  /**
-   * Write arguments to the main log channel at the TRACE level.
-   *
-   * Use for highly detailed tracing information, typically only enabled during
-   * intensive debugging sessions.
-   *
-   * @param args - Values to log, which can be of any type and will be serialized appropriately
-   */
-  export function Trace(...args: any[]): void {
-    Write(Level.TRACE, 'main', ...args);
   }
 
   /**

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { info, warning } from '../utils/cli-ui';
+import { info, warning } from './cli-ui';
 import chalk from 'chalk';
 
 /**
