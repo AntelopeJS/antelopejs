@@ -2,14 +2,34 @@ import { Spinner } from '../utils/cli-ui';
 
 class TerminalDisplay {
   private currentSpinner?: Spinner;
-  private currentSpinnerText: string | null = null;
+  private currentSpinnerTexts: string[] = [];
   private spinnerActive = false;
+
+  private updateSpinnerText(): void {
+    if (this.currentSpinnerTexts.length > 0) {
+      const lastText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+      if (this.currentSpinner && this.spinnerActive) {
+        this.currentSpinner.update(lastText);
+      }
+    } else {
+      this.destroySpinner();
+    }
+  }
+
+  private destroySpinner(): void {
+    if (this.currentSpinner) {
+      this.currentSpinner.stop();
+      delete this.currentSpinner;
+      this.spinnerActive = false;
+      this.clearSpinnerLine();
+    }
+  }
 
   async cleanSpinner(): Promise<void> {
     if (this.currentSpinner) {
       await this.currentSpinner.stop();
       delete this.currentSpinner;
-      this.currentSpinnerText = null;
+      this.currentSpinnerTexts = [];
       this.spinnerActive = false;
       await this.clearSpinnerLine();
     }
@@ -23,39 +43,48 @@ class TerminalDisplay {
   }
 
   async resumeSpinner(): Promise<void> {
-    if (this.currentSpinner && this.spinnerActive) {
-      await this.currentSpinner.start(this.currentSpinnerText ?? '');
+    if (this.currentSpinner && this.spinnerActive && this.currentSpinnerTexts.length > 0) {
+      const lastText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+      await this.currentSpinner.start(lastText);
     }
   }
 
   async startSpinner(text: string): Promise<void> {
-    if (this.spinnerActive) {
-      this.currentSpinner?.update(text);
+    this.currentSpinnerTexts.push(text);
+
+    if (!this.spinnerActive) {
+      this.spinnerActive = true;
+      this.currentSpinner = new Spinner(text);
+      await this.currentSpinner.start();
+    } else {
+      this.updateSpinnerText();
     }
-    this.spinnerActive = true;
-    this.currentSpinnerText = text;
-    this.currentSpinner = new Spinner(text);
-    await this.currentSpinner.start();
   }
 
   async stopSpinner(text?: string): Promise<void> {
     if (!this.spinnerActive || !this.currentSpinner) return;
+
     if (text) {
       await this.currentSpinner.succeed(text);
     } else {
       await this.currentSpinner.stop();
     }
-    await this.cleanSpinner();
+
+    this.currentSpinnerTexts.pop();
+    this.updateSpinnerText();
   }
 
   async failSpinner(text?: string): Promise<void> {
     if (!this.spinnerActive || !this.currentSpinner) return;
+
     if (text) {
       await this.currentSpinner.fail(text);
     } else {
       await this.currentSpinner.stop();
     }
-    await this.cleanSpinner();
+
+    this.currentSpinnerTexts.pop();
+    this.updateSpinnerText();
   }
 
   isSpinnerActive(): boolean {
