@@ -3,7 +3,7 @@ import figlet from 'figlet';
 import cliProgress from 'cli-progress';
 import type { Options as BoxenOptions } from 'boxen';
 import Logging from '../interfaces/logging/beta';
-import { formatLogMessageWithRightAlignedDate } from '../logging/utils';
+import { formatLogMessageWithRightAlignedDate, isTerminalOutput } from '../logging/utils';
 import { AntelopeLogging } from '../common/config';
 
 const clearLine = () => process.stdout.write('\r\x1b[K');
@@ -24,6 +24,7 @@ export class Spinner {
   private isRunning = false;
   private interval?: NodeJS.Timeout;
   private currentCharIndex = 0;
+  private isTerminal = isTerminalOutput();
 
   /**
    * Create a new spinner with the given text
@@ -46,6 +47,10 @@ export class Spinner {
 
     this.isRunning = true;
     this.currentCharIndex = 0;
+
+    if (!this.isTerminal) {
+      return this;
+    }
 
     this.interval = setInterval(() => {
       if (this.isRunning) {
@@ -70,7 +75,7 @@ export class Spinner {
    * Log text above the spinner without stopping it
    */
   log(stream: NodeJS.WriteStream, message: string): Spinner {
-    if (this.isRunning) {
+    if (this.isRunning && this.isTerminal) {
       clearLine();
       stream.write(message + '\n');
       const spinnerChar = spinnerChars[this.currentCharIndex];
@@ -98,7 +103,11 @@ export class Spinner {
     };
 
     const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
-    process.stdout.write(`\r${formattedMessage}\n`);
+    if (this.isTerminal) {
+      process.stdout.write(`\r${formattedMessage}\n`);
+    } else {
+      console.log(formattedMessage);
+    }
   }
 
   /**
@@ -118,7 +127,11 @@ export class Spinner {
     };
 
     const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
-    process.stdout.write(`\r${formattedMessage}\n`);
+    if (this.isTerminal) {
+      process.stdout.write(`\r${formattedMessage}\n`);
+    } else {
+      console.log(formattedMessage);
+    }
   }
 
   /**
@@ -138,7 +151,11 @@ export class Spinner {
     };
 
     const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
-    process.stdout.write(`\r${formattedMessage}\n`);
+    if (this.isTerminal) {
+      process.stdout.write(`\r${formattedMessage}\n`);
+    } else {
+      console.log(formattedMessage);
+    }
   }
 
   /**
@@ -158,7 +175,11 @@ export class Spinner {
     };
 
     const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
-    process.stdout.write(`\r${formattedMessage}\n`);
+    if (this.isTerminal) {
+      process.stdout.write(`\r${formattedMessage}\n`);
+    } else {
+      console.log(formattedMessage);
+    }
   }
 
   /**
@@ -169,7 +190,9 @@ export class Spinner {
       clearInterval(this.interval);
       this.interval = undefined;
     }
-    clearLine();
+    if (this.isTerminal) {
+      clearLine();
+    }
   }
 
   /**
@@ -181,7 +204,9 @@ export class Spinner {
       this.interval = undefined;
     }
     this.isRunning = false;
-    clearLine();
+    if (this.isTerminal) {
+      clearLine();
+    }
   }
 
   /**

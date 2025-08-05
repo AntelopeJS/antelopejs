@@ -219,7 +219,9 @@ export default function () {
           const [env, mode] = key.split(':');
           const loaderIdentifiers = modules.map((m) => m.loaderIdentifier);
 
-          info(chalk.blue`Installing ${modules.length} module(s) for environment ${env} (mode: ${mode})...`);
+          info(
+            chalk.blue`Installing ${modules.length} module${modules.length === 1 ? '' : 's'} for environment ${env} (mode: ${mode})...`,
+          );
 
           try {
             await projectModulesAddCommand(loaderIdentifiers, {
