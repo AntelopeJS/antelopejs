@@ -11,7 +11,7 @@ import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
 import { warnIfOutdated } from './version-check';
 import { setVerboseSections, VERBOSE_SECTIONS, VerboseSection } from '../logging';
-import setupAntelopeProjectLogging from '../logging';
+import { setupAntelopeProjectLogging } from '../logging';
 import { defaultConfigLogging } from '../logging';
 
 // Read version from package.json
