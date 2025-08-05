@@ -56,6 +56,21 @@ export class Spinner {
   }
 
   /**
+   * Log text above the spinner without stopping it
+   */
+  log(stream: NodeJS.WriteStream, message: string): Spinner {
+    if (this.isRunning) {
+      process.stdout.write('\r\x1b[K');
+      stream.write(message + '\n');
+      const spinnerChar = this.spinnerChars[this.currentCharIndex];
+      process.stdout.write(`${spinnerChar} ${this.text}`);
+    } else {
+      stream.write(message + '\n');
+    }
+    return this;
+  }
+
+  /**
    * Stop the spinner with a success message
    */
   async succeed(text?: string): Promise<void> {
@@ -89,6 +104,17 @@ export class Spinner {
     await this.stop();
     const message = text || this.text;
     process.stdout.write(`\r${chalk.yellow('⚠')} ${message}\n`);
+  }
+
+  /**
+   * Pause the spinner temporarily (can be resumed)
+   */
+  async pause(): Promise<void> {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = undefined;
+    }
+    process.stdout.write('\r\x1b[K'); // Clear the line
   }
 
   /**

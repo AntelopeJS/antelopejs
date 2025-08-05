@@ -3,12 +3,11 @@ import { Spinner } from '../utils/cli-ui';
 class TerminalDisplay {
   private currentSpinner?: Spinner;
   private currentSpinnerTexts: string[] = [];
-  private spinnerActive = false;
 
   private updateSpinnerText(): void {
     if (this.currentSpinnerTexts.length > 0) {
       const lastText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
-      if (this.currentSpinner && this.spinnerActive) {
+      if (this.currentSpinner) {
         this.currentSpinner.update(lastText);
       }
     } else {
@@ -20,8 +19,14 @@ class TerminalDisplay {
     if (this.currentSpinner) {
       this.currentSpinner.stop();
       delete this.currentSpinner;
-      this.spinnerActive = false;
+      this.currentSpinner = undefined;
       this.clearSpinnerLine();
+    }
+  }
+
+  log(message: string): void {
+    if (this.currentSpinner) {
+      this.currentSpinner.log(process.stdout, message);
     }
   }
 
@@ -30,20 +35,19 @@ class TerminalDisplay {
       await this.currentSpinner.stop();
       delete this.currentSpinner;
       this.currentSpinnerTexts = [];
-      this.spinnerActive = false;
       await this.clearSpinnerLine();
     }
   }
 
   async pauseSpinner(): Promise<void> {
-    if (this.currentSpinner && this.spinnerActive) {
-      await this.currentSpinner.stop();
+    if (this.currentSpinner) {
+      await this.currentSpinner.pause();
       await this.clearSpinnerLine();
     }
   }
 
   async resumeSpinner(): Promise<void> {
-    if (this.currentSpinner && this.spinnerActive && this.currentSpinnerTexts.length > 0) {
+    if (this.currentSpinner && this.currentSpinnerTexts.length > 0) {
       const lastText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
       await this.currentSpinner.start(lastText);
     }
@@ -52,8 +56,7 @@ class TerminalDisplay {
   async startSpinner(text: string): Promise<void> {
     this.currentSpinnerTexts.push(text);
 
-    if (!this.spinnerActive) {
-      this.spinnerActive = true;
+    if (!this.currentSpinner) {
       this.currentSpinner = new Spinner(text);
       await this.currentSpinner.start();
     } else {
@@ -62,7 +65,7 @@ class TerminalDisplay {
   }
 
   async stopSpinner(text?: string): Promise<void> {
-    if (!this.spinnerActive || !this.currentSpinner) return;
+    if (!this.currentSpinner) return;
 
     if (text) {
       await this.currentSpinner.succeed(text);
@@ -75,7 +78,7 @@ class TerminalDisplay {
   }
 
   async failSpinner(text?: string): Promise<void> {
-    if (!this.spinnerActive || !this.currentSpinner) return;
+    if (!this.currentSpinner) return;
 
     if (text) {
       await this.currentSpinner.fail(text);
@@ -88,11 +91,11 @@ class TerminalDisplay {
   }
 
   isSpinnerActive(): boolean {
-    return this.spinnerActive;
+    return !!this.currentSpinner;
   }
 
   async clearSpinnerLine(): Promise<void> {
-    if (this.spinnerActive && this.currentSpinner) {
+    if (this.currentSpinner) {
       process.stdout.write('\r\x1b[K');
       process.stderr.write('\r\x1b[K');
     }

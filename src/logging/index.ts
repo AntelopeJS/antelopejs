@@ -285,10 +285,8 @@ function buildMessage(logging: AntelopeLogging, log: Log, module?: string): stri
   return formatLogMessageWithRightAlignedDate(logging, log, module);
 }
 
-function getWriter(log: Log): (chunk: any, ...args: any[]) => boolean {
-  return log.levelId === Logging.Level.ERROR.valueOf()
-    ? (c, ...a) => process.stderr.write(c, ...a)
-    : (c, ...a) => process.stdout.write(c, ...a);
+function getStream(log: Log): NodeJS.WriteStream {
+  return log.levelId === Logging.Level.ERROR.valueOf() ? process.stderr : process.stdout;
 }
 
 async function pauseSpinnerIfNeeded(): Promise<void> {
@@ -318,10 +316,13 @@ function formatInline(message: string): string {
   );
 }
 
-function writeMessage(writer: (chunk: any, ...args: any[]) => boolean, message: string, inline: boolean): void {
-  writer(message);
-  if (!inline) writer(NEWLINE);
-  wasLastMessageInline = inline;
+function writeMessage(stream: NodeJS.WriteStream, message: string, inline: boolean): void {
+  if (terminalDisplay.isSpinnerActive()) {
+    terminalDisplay.log(message);
+  } else {
+    stream.write(message);
+    if (!inline) stream.write(NEWLINE);
+  }
 }
 
 async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): Promise<void> {
@@ -331,18 +332,13 @@ async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false
   const module = logging.moduleTracking.enabled ? GetResponsibleModule() : undefined;
   if (shouldSkipForModule(logging, module)) return;
 
-  await pauseSpinnerIfNeeded();
   if (!forceInline && wasLastMessageInline) {
     process.stdout.write(OVERWRITE_CURRENT_LINE);
   }
 
   let message = buildMessage(logging, log, module);
-  const writer = getWriter(log);
-
   if (forceInline) message = formatInline(message);
-  writeMessage(writer, message, forceInline);
-
-  await resumeSpinnerIfNeeded();
+  writeMessage(getStream(log), message, forceInline);
 }
 
 /**
