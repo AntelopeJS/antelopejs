@@ -35,11 +35,12 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
       Logging.Verbose(VERBOSE_SECTIONS.GIT, `Checking out ${source.commit || source.branch}`);
       await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder });
     }
-    await terminalDisplay.stopSpinner();
     const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder });
     if (result.code !== 0) {
+      await terminalDisplay.failSpinner(`Failed to get commit hash: ${result.stderr}`);
       throw new Error(`Failed to get commit hash: ${result.stderr}`);
     }
+    await terminalDisplay.stopSpinner(`Cloned ${source.remote}`);
     const newActiveCommit = result.stdout.trim();
     newVersion = 'git:' + newActiveCommit;
     doInstall = true;
@@ -63,7 +64,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
       newVersion = 'git:' + newActiveCommit;
       doInstall = true;
     }
-    await terminalDisplay.stopSpinner();
+    await terminalDisplay.stopSpinner(`Updated ${source.remote}`);
   }
   if (doInstall && source.installCommand) {
     Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${name}`);

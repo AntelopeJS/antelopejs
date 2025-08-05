@@ -108,6 +108,7 @@ export default function () {
       // First pass: Analyze all environments and collect user selections
       for (const env of envs) {
         info(chalk.bold`Analyzing environment: ${env}`);
+        await terminalDisplay.startSpinner(`Analyzing environment: ${env}`);
 
         const config = await LoadConfig(options.project, env);
         let unresolvedImports: string[] = [];
@@ -115,11 +116,11 @@ export default function () {
           const { unresolvedImports: unresolvedImportsTmp } = await analyzeConfig(options.project, cache, config);
           unresolvedImports = unresolvedImportsTmp;
         } catch (err) {
-          error(chalk.red`Error analyzing config: ${err}`);
+          await terminalDisplay.failSpinner(`Error analyzing config: ${err}`);
           await new Promise((resolve) => setTimeout(resolve, 10));
           process.exit(1);
         }
-
+        await terminalDisplay.stopSpinner(`Analyzed environment: ${env}`);
         // Handle unresolved imports
         if (unresolvedImports.length > 0) {
           warning(chalk.yellow`Found ${unresolvedImports.length} unresolved imports:`);

@@ -4,6 +4,8 @@ import cliProgress from 'cli-progress';
 import type { Options as BoxenOptions } from 'boxen';
 import Logging from '../interfaces/logging/beta';
 
+const clearLine = () => process.stdout.write('\r\x1b[K');
+const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 /**
  * Creates and manages a simple spinner with customizable text and success/error messages.
  */
@@ -11,7 +13,6 @@ export class Spinner {
   private text: string;
   private isRunning = false;
   private interval?: NodeJS.Timeout;
-  private spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   private currentCharIndex = 0;
 
   /**
@@ -38,9 +39,9 @@ export class Spinner {
 
     this.interval = setInterval(() => {
       if (this.isRunning) {
-        const spinnerChar = this.spinnerChars[this.currentCharIndex];
+        const spinnerChar = spinnerChars[this.currentCharIndex];
         process.stdout.write(`\r${spinnerChar} ${this.text}`);
-        this.currentCharIndex = (this.currentCharIndex + 1) % this.spinnerChars.length;
+        this.currentCharIndex = (this.currentCharIndex + 1) % spinnerChars.length;
       }
     }, 80);
 
@@ -60,9 +61,9 @@ export class Spinner {
    */
   log(stream: NodeJS.WriteStream, message: string): Spinner {
     if (this.isRunning) {
-      process.stdout.write('\r\x1b[K');
+      clearLine();
       stream.write(message + '\n');
-      const spinnerChar = this.spinnerChars[this.currentCharIndex];
+      const spinnerChar = spinnerChars[this.currentCharIndex];
       process.stdout.write(`${spinnerChar} ${this.text}`);
     } else {
       stream.write(message + '\n');
@@ -74,6 +75,8 @@ export class Spinner {
    * Stop the spinner with a success message
    */
   async succeed(text?: string): Promise<void> {
+    if (!this.isRunning) return;
+
     await this.stop();
     const message = text || this.text;
     process.stdout.write(`\r${chalk.green('✓')} ${message}\n`);
@@ -83,6 +86,8 @@ export class Spinner {
    * Stop the spinner with an error message
    */
   async fail(text?: string): Promise<void> {
+    if (!this.isRunning) return;
+
     await this.stop();
     const message = text || this.text;
     process.stdout.write(`\r${chalk.red('✗')} ${message}\n`);
@@ -92,6 +97,8 @@ export class Spinner {
    * Stop the spinner with an info message
    */
   async info(text?: string): Promise<void> {
+    if (!this.isRunning) return;
+
     await this.stop();
     const message = text || this.text;
     process.stdout.write(`\r${chalk.blue('ℹ')} ${message}\n`);
@@ -101,6 +108,8 @@ export class Spinner {
    * Stop the spinner with a warning message
    */
   async warn(text?: string): Promise<void> {
+    if (!this.isRunning) return;
+
     await this.stop();
     const message = text || this.text;
     process.stdout.write(`\r${chalk.yellow('⚠')} ${message}\n`);
@@ -114,7 +123,7 @@ export class Spinner {
       clearInterval(this.interval);
       this.interval = undefined;
     }
-    process.stdout.write('\r\x1b[K'); // Clear the line
+    clearLine();
   }
 
   /**
@@ -126,7 +135,7 @@ export class Spinner {
       this.interval = undefined;
     }
     this.isRunning = false;
-    process.stdout.write('\r\x1b[K'); // Clear the line
+    clearLine();
   }
 
   /**

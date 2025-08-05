@@ -3,6 +3,7 @@ import { Spinner } from '../utils/cli-ui';
 class TerminalDisplay {
   private currentSpinner?: Spinner;
   private currentSpinnerTexts: string[] = [];
+  private lastMessage: string = '';
 
   private updateSpinnerText(): void {
     if (this.currentSpinnerTexts.length > 0) {
@@ -18,7 +19,6 @@ class TerminalDisplay {
   private destroySpinner(): void {
     if (this.currentSpinner) {
       this.currentSpinner.stop();
-      delete this.currentSpinner;
       this.currentSpinner = undefined;
       this.clearSpinnerLine();
     }
@@ -33,28 +33,15 @@ class TerminalDisplay {
   async cleanSpinner(): Promise<void> {
     if (this.currentSpinner) {
       await this.currentSpinner.stop();
-      delete this.currentSpinner;
+      this.currentSpinner = undefined;
       this.currentSpinnerTexts = [];
       await this.clearSpinnerLine();
     }
   }
 
-  async pauseSpinner(): Promise<void> {
-    if (this.currentSpinner) {
-      await this.currentSpinner.pause();
-      await this.clearSpinnerLine();
-    }
-  }
-
-  async resumeSpinner(): Promise<void> {
-    if (this.currentSpinner && this.currentSpinnerTexts.length > 0) {
-      const lastText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
-      await this.currentSpinner.start(lastText);
-    }
-  }
-
   async startSpinner(text: string): Promise<void> {
     this.currentSpinnerTexts.push(text);
+    this.lastMessage = text;
 
     if (!this.currentSpinner) {
       this.currentSpinner = new Spinner(text);
@@ -65,29 +52,46 @@ class TerminalDisplay {
   }
 
   async stopSpinner(text?: string): Promise<void> {
-    if (!this.currentSpinner) return;
+    if (!this.currentSpinner || this.currentSpinnerTexts.length === 0) return;
+
+    const currentText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+    const displayText = text || currentText;
 
     if (text) {
-      await this.currentSpinner.succeed(text);
+      await this.currentSpinner.succeed(displayText);
+      this.currentSpinner = undefined;
     } else {
       await this.currentSpinner.stop();
     }
 
     this.currentSpinnerTexts.pop();
-    this.updateSpinnerText();
+
+    if (this.currentSpinnerTexts.length > 0) {
+      const nextText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+      this.currentSpinner = new Spinner(nextText);
+      await this.currentSpinner.start();
+    } else {
+      this.destroySpinner();
+    }
   }
 
   async failSpinner(text?: string): Promise<void> {
-    if (!this.currentSpinner) return;
+    if (!this.currentSpinner || this.currentSpinnerTexts.length === 0) return;
 
-    if (text) {
-      await this.currentSpinner.fail(text);
-    } else {
-      await this.currentSpinner.stop();
-    }
+    const currentText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+    const displayText = text || currentText;
 
+    await this.currentSpinner.fail(displayText);
+    this.currentSpinner = undefined;
     this.currentSpinnerTexts.pop();
-    this.updateSpinnerText();
+
+    if (this.currentSpinnerTexts.length > 0) {
+      const nextText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+      this.currentSpinner = new Spinner(nextText);
+      await this.currentSpinner.start();
+    } else {
+      this.destroySpinner();
+    }
   }
 
   isSpinnerActive(): boolean {
@@ -97,7 +101,6 @@ class TerminalDisplay {
   async clearSpinnerLine(): Promise<void> {
     if (this.currentSpinner) {
       process.stdout.write('\r\x1b[K');
-      process.stderr.write('\r\x1b[K');
     }
   }
 }
