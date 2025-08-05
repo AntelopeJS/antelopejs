@@ -289,6 +289,7 @@ export async function installInterfaces(
   }
 
   // Copy interface files
+  await terminalDisplay.startSpinner(`Copying interface files`);
   for (const { interfaceInfo, version } of allDependencies) {
     const files = interfaceInfo.manifest.files[version];
     let folderPath = '';
@@ -336,10 +337,12 @@ export async function installInterfaces(
         cwd: interfacePath,
       });
       if (installResult.code !== 0) {
+        await terminalDisplay.failSpinner(`Failed to install packages for ${interfaceInfo.name}@${version}`);
         throw new Error(`Failed to install packages for ${interfaceInfo.name}@${version}: ${installResult.stderr}`);
       }
     }
   }
+  await terminalDisplay.stopSpinner(`Copied interface files`);
 }
 
 // Keep the original function for backward compatibility, but refactor to use the new implementation
