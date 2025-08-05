@@ -289,19 +289,6 @@ function getStream(log: Log): NodeJS.WriteStream {
   return log.levelId === Logging.Level.ERROR.valueOf() ? process.stderr : process.stdout;
 }
 
-async function pauseSpinnerIfNeeded(): Promise<void> {
-  if (terminalDisplay.isSpinnerActive()) {
-    await terminalDisplay.pauseSpinner();
-    process.stdout.write(OVERWRITE_CURRENT_LINE);
-  }
-}
-
-async function resumeSpinnerIfNeeded(): Promise<void> {
-  if (terminalDisplay.isSpinnerActive()) {
-    await terminalDisplay.resumeSpinner();
-  }
-}
-
 function formatInline(message: string): string {
   return (
     OVERWRITE_CURRENT_LINE +
