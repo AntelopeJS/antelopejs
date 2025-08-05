@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { Command, Option } from 'commander';
 import { LoadConfig } from '../../../common/config';
 import { Options, readConfig } from '../../common';
-import { displayBox, error, info, keyValue } from '../../../utils/cli-ui';
+import { displayBox, error, info, keyValue, warning } from '../../../utils/cli-ui';
 import { ModuleSourcePackage } from '../../../common/downloader/package';
 import { ModuleSourceGit } from '../../../common/downloader/git';
 import { ModuleSourceLocal } from '../../../common/downloader/local';
@@ -27,7 +27,7 @@ export default function () {
       const config = await readConfig(options.project);
       if (!config) {
         error(`No project configuration found at: ${chalk.bold(options.project)}`);
-        console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
+        warning(`Make sure you're in an AntelopeJS project or use the --project option.`);
         return;
       }
 

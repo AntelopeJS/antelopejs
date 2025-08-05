@@ -4,7 +4,7 @@ import { Options, readConfig } from '../../common';
 import { LoadConfig } from '../../../common/config';
 import { defaultConfigLogging, levelNames } from '../../../logging';
 import { mergeDeep } from '../../../utils/object';
-import { displayBox, header, error, keyValue } from '../../../utils/cli-ui';
+import { displayBox, header, error, keyValue, warning } from '../../../utils/cli-ui';
 
 interface ShowOptions {
   project: string;
@@ -25,7 +25,7 @@ export default function () {
       const config = await readConfig(options.project);
       if (!config) {
         error(`No project configuration found at: ${chalk.bold(options.project)}`);
-        console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
+        warning(`Make sure you're in an AntelopeJS project or use the --project option.`);
         return;
       }
 

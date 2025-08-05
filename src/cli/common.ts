@@ -36,7 +36,7 @@ export const DEFAULT_GIT_REPO = 'https://github.com/AntelopeJS/interfaces.git';
 // Utility function to display warning for non-default git repositories
 export async function displayNonDefaultGitWarning(gitUrl: string) {
   if (gitUrl !== DEFAULT_GIT_REPO) {
-    console.log(chalk.yellow.bold('⚠️  WARNING: Using non-default git repository ⚠️'));
+    warning(chalk.yellow.bold(' WARNING: Using non-default git repository ⚠️'));
     warning(
       'You are using a non-official git repository for interfaces. These interfaces may not adhere to community quality standards or best practices.',
     );

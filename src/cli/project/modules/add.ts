@@ -34,7 +34,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   const config = await readConfig(resolvedProjectPath);
   if (!config) {
     error(`No project configuration found at: ${chalk.bold(resolvedProjectPath)}`);
-    console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
+    warning(`Make sure you're in an AntelopeJS project or use the --project option.`);
     return;
   }
 
@@ -48,7 +48,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
             ? module
             : path.join(resolvedProjectPath, module)
           : module;
-      console.log(`Adding ${chalk.bold(modulePath)} using ${options.mode} mode`);
+      info(`Adding ${chalk.bold(modulePath)} using ${options.mode} mode`);
       return handlers.get(options.mode)!(module, { ...options, project: resolvedProjectPath }).catch((err) => {
         error(`Failed to add module "${module}": ${err.message || err}`);
         return null;
