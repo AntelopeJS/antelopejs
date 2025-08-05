@@ -42,8 +42,7 @@ async function analyzeConfig(
         .filter((module) => 'source' in module)
         .map((module) =>
           LoadModule(projectFolder, cache, module.source).catch((err) => {
-            error(chalk.red`Error loading module: ${err}`);
-            return [];
+            throw new Error(`Error loading module ${JSON.stringify(module.source)}: ${err}`);
           }),
         ),
     )
@@ -111,7 +110,15 @@ export default function () {
         info(chalk.bold`Analyzing environment: ${env}`);
 
         const config = await LoadConfig(options.project, env);
-        const { unresolvedImports } = await analyzeConfig(options.project, cache, config);
+        let unresolvedImports: string[] = [];
+        try {
+          const { unresolvedImports: unresolvedImportsTmp } = await analyzeConfig(options.project, cache, config);
+          unresolvedImports = unresolvedImportsTmp;
+        } catch (err) {
+          error(chalk.red`Error analyzing config: ${err}`);
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          process.exit(1);
+        }
 
         // Handle unresolved imports
         if (unresolvedImports.length > 0) {
