@@ -1,11 +1,10 @@
 /* eslint-disable max-len */
-import chalk from 'chalk';
 import { AntelopeLogging, AntelopeProjectEnvConfigStrict } from '../common/config';
 import eventLog, { Log } from '../interfaces/logging/beta/listener';
 import { mergeDeep } from '../utils/object';
 import { GetResponsibleModule } from '../interfaces/core/beta';
 import { Logging } from '../interfaces/logging/beta';
-import { getLevelInfo, getColoredText, isTerminalOutput, stripAnsi } from './utils';
+import { formatLogMessageWithRightAlignedDate, NEWLINE, OVERWRITE_CURRENT_LINE } from './utils';
 import { terminalDisplay } from './terminal-display';
 
 /**
@@ -83,68 +82,32 @@ export const defaultConfigLogging: AntelopeLogging = {
   dateFormat: 'yyyy-MM-dd HH:mm:ss',
 };
 
-/**
- * Serializes a value for logging, handling objects, arrays, and other types appropriately
- * @param value - The value to serialize
- * @returns A string representation of the value
- */
-function serializeLogValue(value: any): string {
-  if (value === null) return 'null';
-  if (value === undefined) return 'undefined';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (value instanceof Error) return `${value.name}: ${value.message}`;
-  if (value instanceof Date) return value.toISOString();
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
-  // For objects and arrays, use JSON.stringify with proper formatting
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    // Fallback for circular references or other serialization issues
-    return String(value);
+let wasLastMessageInline = false;
+
+process.stderr.write = function (chunk: any, ...args: any[]): boolean {
+  if (typeof chunk === 'string') {
+    originalStderrWrite.call(process.stderr, `${chunk}`);
+    return true;
   }
-}
+  return (originalStderrWrite as any).apply(process.stderr, [chunk, ...args]);
+};
 
-/**
- * Formats a date according to the specified format string
- * Supports common format patterns like yyyy-MM-dd HH:mm:ss
- *
- * @param date - The date to format
- * @param format - The format string
- * @returns The formatted date string
- */
-function formatDate(date: Date, format = 'yyyy-MM-dd HH:mm:ss'): string {
-  // Default to ISO format if no format provided
-  if (!format) {
-    return date.toISOString();
+function shouldSkipModule(logging: AntelopeLogging, module?: string): boolean {
+  if (!logging.moduleTracking.enabled || !module) {
+    return false;
   }
 
-  const padZero = (num: number, length = 2) => String(num).padStart(length, '0');
-
-  // Format replacements
-  const replacements: Record<string, string> = {
-    yyyy: String(date.getFullYear()),
-    MM: padZero(date.getMonth() + 1),
-    dd: padZero(date.getDate()),
-    HH: padZero(date.getHours()),
-    mm: padZero(date.getMinutes()),
-    ss: padZero(date.getSeconds()),
-    SSS: padZero(date.getMilliseconds(), 3),
-    yy: String(date.getFullYear()).slice(-2),
-    M: String(date.getMonth() + 1),
-    d: String(date.getDate()),
-    H: String(date.getHours()),
-    m: String(date.getMinutes()),
-    s: String(date.getSeconds()),
-  };
-
-  // Replace patterns in the format string
-  let result = format;
-  for (const [pattern, value] of Object.entries(replacements)) {
-    result = result.replace(pattern, value);
+  if (logging.moduleTracking.excludes.length > 0) {
+    return logging.moduleTracking.excludes.includes(module);
   }
 
-  return result;
+  if (logging.moduleTracking.includes.length > 0) {
+    return !logging.moduleTracking.includes.includes(module);
+  }
+
+  return false;
 }
 
 /**
@@ -176,81 +139,6 @@ function setupProcessHandlers(config: AntelopeProjectEnvConfigStrict): void {
   });
 }
 
-const originalStderrWrite = process.stderr.write.bind(process.stderr);
-
-let wasLastMessageInline = false;
-
-process.stderr.write = function (chunk: any, ...args: any[]): boolean {
-  if (typeof chunk === 'string') {
-    originalStderrWrite.call(process.stderr, `${chunk}`);
-    return true;
-  }
-  return (originalStderrWrite as any).apply(process.stderr, [chunk, ...args]);
-};
-
-function shouldSkipModule(logging: AntelopeLogging, module?: string): boolean {
-  if (!logging.moduleTracking.enabled || !module) {
-    return false;
-  }
-
-  if (logging.moduleTracking.excludes.length > 0) {
-    return logging.moduleTracking.excludes.includes(module);
-  }
-
-  if (logging.moduleTracking.includes.length > 0) {
-    return !logging.moduleTracking.includes.includes(module);
-  }
-
-  return false;
-}
-
-function formatLogMessageWithRightAlignedDate(logging: AntelopeLogging, log: Log, module?: string): string {
-  const levelInfo = getLevelInfo(log.levelId as Logging.Level);
-  const message = log.args.map((arg) => serializeLogValue(arg)).join(' ');
-
-  let messageWithLevel: string;
-  if (log.levelId === Logging.Level.NO_PREFIX.valueOf()) {
-    messageWithLevel = message;
-  } else {
-    const levelText = `[${levelInfo.name}]`;
-    const coloredLevel = getColoredText(levelText, levelInfo.color);
-    messageWithLevel = `${coloredLevel} ${message}`;
-  }
-
-  if (logging.moduleTracking.enabled && module) {
-    messageWithLevel = `(${module}) ${messageWithLevel}`;
-  }
-
-  const dateStr = formatDate(new Date(log.time), logging.dateFormat || defaultConfigLogging.dateFormat || '');
-  const dateText = chalk.gray(`[${dateStr}]`);
-
-  if (!isTerminalOutput()) {
-    return `${dateText} ${messageWithLevel}`;
-  }
-
-  const terminalWidth = process.stdout.columns || 80;
-  const dateWidth = stripAnsi(dateText).length;
-  const minGap = 2;
-  const lines = messageWithLevel.split('\n');
-
-  const dateStart = terminalWidth - dateWidth;
-
-  return lines
-    .map((line, idx) => {
-      const plainLine = stripAnsi(line);
-      if (idx === lines.length - 1) {
-        const padding = Math.max(0, dateStart - plainLine.length - minGap);
-        return line + ' '.repeat(padding) + dateText;
-      } else {
-        return line;
-      }
-    })
-    .join('\n');
-}
-
-const NEWLINE = '\n';
-const OVERWRITE_CURRENT_LINE = '\r\x1b[K';
-
 function getTerminalWidth(): number {
   return process.stdout.columns * 1.1 || 80;
 }
@@ -260,33 +148,6 @@ function truncateMessage(message: string, maxWidth: number): string {
     return message;
   }
   return message.slice(0, maxWidth - 3) + '...';
-}
-
-/**
- * Processes a log event according to the logging configuration
- * Applies module filtering, formats the message, and outputs it to console
- *
- * @param logging - The resolved logging configuration
- * @param log - The log event to process
- * @param forceInline - Whether to force inline display
- */
-function shouldSkipForVerbose(log: Log): boolean {
-  if (!log.channel.startsWith('verbose:')) return false;
-  const section = log.channel.substring(8) as VerboseSection;
-  return !activeVerboseSections.has(section);
-}
-
-function shouldSkipForModule(logging: AntelopeLogging, module?: string): boolean {
-  if (!logging.moduleTracking.enabled) return false;
-  return shouldSkipModule(logging, module); // ta fonction existante
-}
-
-function buildMessage(logging: AntelopeLogging, log: Log, module?: string): string {
-  return formatLogMessageWithRightAlignedDate(logging, log, module);
-}
-
-function getStream(log: Log): NodeJS.WriteStream {
-  return log.levelId === Logging.Level.ERROR.valueOf() ? process.stderr : process.stdout;
 }
 
 function formatInline(message: string): string {
@@ -312,6 +173,21 @@ function writeMessage(stream: NodeJS.WriteStream, message: string, inline: boole
   }
 }
 
+function shouldSkipForVerbose(log: Log): boolean {
+  if (!log.channel.startsWith('verbose:')) return false;
+  const section = log.channel.substring(8) as VerboseSection;
+  return !activeVerboseSections.has(section);
+}
+
+function shouldSkipForModule(logging: AntelopeLogging, module?: string): boolean {
+  if (!logging.moduleTracking.enabled) return false;
+  return shouldSkipModule(logging, module);
+}
+
+function getStream(log: Log): NodeJS.WriteStream {
+  return log.levelId === Logging.Level.ERROR.valueOf() ? process.stderr : process.stdout;
+}
+
 async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false): Promise<void> {
   if (log.channel.startsWith('verbose:') && activeVerboseSections.size === 0) return;
   if (shouldSkipForVerbose(log)) return;
@@ -323,7 +199,7 @@ async function handleLog(logging: AntelopeLogging, log: Log, forceInline = false
     process.stdout.write(OVERWRITE_CURRENT_LINE);
   }
 
-  let message = buildMessage(logging, log, module);
+  let message = formatLogMessageWithRightAlignedDate(logging, log, module);
   if (forceInline) message = formatInline(message);
   writeMessage(getStream(log), message, forceInline);
 }

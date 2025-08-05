@@ -3,9 +3,19 @@ import figlet from 'figlet';
 import cliProgress from 'cli-progress';
 import type { Options as BoxenOptions } from 'boxen';
 import Logging from '../interfaces/logging/beta';
+import { formatLogMessageWithRightAlignedDate } from '../logging/utils';
+import { AntelopeLogging } from '../common/config';
 
 const clearLine = () => process.stdout.write('\r\x1b[K');
 const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+const defaultSpinnerLogging: AntelopeLogging = {
+  enabled: true,
+  moduleTracking: { enabled: false, includes: [], excludes: [] },
+  formatter: {},
+  dateFormat: 'yyyy-MM-dd HH:mm:ss',
+};
+
 /**
  * Creates and manages a simple spinner with customizable text and success/error messages.
  */
@@ -79,7 +89,16 @@ export class Spinner {
 
     await this.stop();
     const message = text || this.text;
-    process.stdout.write(`\r${chalk.green('✓')} ${message}\n`);
+
+    const log = {
+      time: Date.now(),
+      levelId: Logging.Level.NO_PREFIX.valueOf(),
+      channel: 'spinner',
+      args: [chalk.bold.green('✓'), message],
+    };
+
+    const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
+    process.stdout.write(`\r${formattedMessage}\n`);
   }
 
   /**
@@ -90,7 +109,16 @@ export class Spinner {
 
     await this.stop();
     const message = text || this.text;
-    process.stdout.write(`\r${chalk.red('✗')} ${message}\n`);
+
+    const log = {
+      time: Date.now(),
+      levelId: Logging.Level.NO_PREFIX.valueOf(),
+      channel: 'spinner',
+      args: [chalk.bold.red('✗'), chalk.red(message)],
+    };
+
+    const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
+    process.stdout.write(`\r${formattedMessage}\n`);
   }
 
   /**
@@ -101,7 +129,16 @@ export class Spinner {
 
     await this.stop();
     const message = text || this.text;
-    process.stdout.write(`\r${chalk.blue('ℹ')} ${message}\n`);
+
+    const log = {
+      time: Date.now(),
+      levelId: Logging.Level.NO_PREFIX.valueOf(),
+      channel: 'spinner',
+      args: [chalk.bold.blue('ℹ'), message],
+    };
+
+    const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
+    process.stdout.write(`\r${formattedMessage}\n`);
   }
 
   /**
@@ -112,7 +149,16 @@ export class Spinner {
 
     await this.stop();
     const message = text || this.text;
-    process.stdout.write(`\r${chalk.yellow('⚠')} ${message}\n`);
+
+    const log = {
+      time: Date.now(),
+      levelId: Logging.Level.NO_PREFIX.valueOf(),
+      channel: 'spinner',
+      args: [chalk.bold.yellow('⚠'), message],
+    };
+
+    const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
+    process.stdout.write(`\r${formattedMessage}\n`);
   }
 
   /**
