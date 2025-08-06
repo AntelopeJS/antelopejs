@@ -24,7 +24,7 @@
     "modular"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "prepack": "pnpm run build",
     "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
     "generate": "node dist/cli/index.js module exports generate",
