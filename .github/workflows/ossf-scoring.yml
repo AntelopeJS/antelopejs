@@ -1,0 +1,28 @@
+name: OpenSSF Scorecards
+
+on:
+    push:
+        branches:
+            - main
+            - feat/*
+            - fix/*
+            - test/*
+            - refactor/*
+            - build/*
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    analyze:
+        permissions:
+            actions: read
+            contents: read
+            id-token: write
+        runs-on: ubuntu-latest
+        steps:
+            - name: "OSSF Scorecard action"
+              uses: ossf/scorecard-action@v2.4.2
+              with:
+                  results_file: results.sarif
+                  results_format: sarif
