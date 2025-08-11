@@ -21,7 +21,9 @@ export declare namespace Logging {
         /** Detailed information useful for debugging */
         DEBUG = 10,
         /** Highly detailed tracing information */
-        TRACE = 0
+        TRACE = 0,
+        /** Messages without prefix for direct display */
+        NO_PREFIX = -1
     }
     /**
      * Write arguments to the main log channel at the ERROR level.
@@ -74,24 +76,6 @@ export declare namespace Logging {
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
     function Verbose(section: VerboseSection, ...args: any[]): void;
-    /**
-     * Start a command execution with a spinner
-     * @param command - The command being executed
-     * @param args - Additional arguments to log
-     */
-    function StartCommand(command: string, ...args: any[]): void;
-    /**
-     * End a command execution with success
-     * @param command - The command that was executed
-     * @param args - Additional arguments to log
-     */
-    function EndCommand(command: string, ...args: any[]): void;
-    /**
-     * End a command execution with failure
-     * @param command - The command that failed
-     * @param args - Additional arguments to log
-     */
-    function FailCommand(command: string, ...args: any[]): void;
     /**
      * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
      *
