@@ -27,6 +27,7 @@
     "build": "tsc",
     "prepack": "pnpm run build",
     "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
+    "changelog": "changelogen",
     "generate": "node dist/cli/index.js module exports generate",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
@@ -59,7 +60,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.25.0",
-    "@release-it/conventional-changelog": "^10.0.1",
     "@types/async-exit-hook": "^2.0.2",
     "@types/cli-progress": "^3.11.6",
     "@types/figlet": "^1.7.0",
@@ -67,6 +67,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.14.1",
     "@types/semver": "^7.7.0",
+    "changelogen": "^0.6.2",
     "eslint": "^9.25.0",
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-import": "^2.31.0",
