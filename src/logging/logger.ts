@@ -223,4 +223,4 @@ export default function setupAntelopeProjectLogging(config: AntelopeProjectEnvCo
     const forceInline = log.channel === 'inline';
     await handleLog(logging, log, forceInline);
   });
-} 
+}
