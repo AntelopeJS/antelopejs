@@ -59,6 +59,25 @@ export function stripAnsiCodes(str: string): string {
   return str.replace(ansiRegex, '');
 }
 
+const WIDE_RANGES = [
+  [0x1100, 0x115f], // Hangul Jamo
+  [0x2329, 0x232a], // Miscellaneous Technical
+  [0x2e80, 0x303e], // CJK Radicals Supplement
+  [0x3040, 0x3247], // Hiragana, Katakana, CJK
+  [0x3250, 0x4dbf], // CJK Unified Ideographs
+  [0x4e00, 0x9fff], // CJK Unified Ideographs
+  [0xf900, 0xfaff], // CJK Compatibility Ideographs
+  [0xfe30, 0xfe4f], // CJK Compatibility Forms
+  [0xff00, 0xffef], // Fullwidth ASCII
+  [0x1f300, 0x1f9ff], // Miscellaneous Symbols and Pictographs
+];
+
+const SINGLE_WIDE_CHARS = new Set(['✓', '•', 'ℹ', '⚠', '✗', '→', '←']);
+
+const LAST_ASCII = 0x7f;
+const NARROW_WIDTH = 1;
+const WIDE_WIDTH = 2;
+
 /**
  * Calculate the visual width of a string (without ANSI codes)
  * Handles Unicode characters that may have different visual widths
@@ -66,36 +85,15 @@ export function stripAnsiCodes(str: string): string {
  * @returns The visual width of the string
  */
 export function stringVisualWidth(str: string): number {
-  // Remove ANSI sequences first
   const ansiFree = stripAnsiCodes(str);
 
-  // Calculate visual width: ASCII chars = 1, most Unicode = 1, some special chars = 2
   return [...ansiFree].reduce((acc, c) => {
-    const code = c.charCodeAt(0);
-    // Characters that typically have double width in terminals
-    if (
-      code > 127 &&
-      ((code >= 0x1100 && code <= 0x115f) || // Hangul Jamo
-        (code >= 0x2329 && code <= 0x232a) || // Miscellaneous Technical
-        (code >= 0x2e80 && code <= 0x303e) || // CJK Radicals Supplement
-        (code >= 0x3040 && code <= 0x3247) || // Hiragana, Katakana, CJK
-        (code >= 0x3250 && code <= 0x4dbf) || // CJK Unified Ideographs
-        (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified Ideographs
-        (code >= 0xf900 && code <= 0xfaff) || // CJK Compatibility Ideographs
-        (code >= 0xfe30 && code <= 0xfe4f) || // CJK Compatibility Forms
-        (code >= 0xff00 && code <= 0xffef) || // Fullwidth ASCII
-        (code >= 0x1f300 && code <= 0x1f9ff) || // Miscellaneous Symbols and Pictographs
-        c === '✓' ||
-        c === '•' ||
-        c === 'ℹ' ||
-        c === '⚠' ||
-        c === '✗' ||
-        c === '→' ||
-        c === '←')
-    ) {
-      return acc + 2;
-    }
-    return acc + 1;
+    const cp = c.codePointAt(0)!;
+
+    const isWide =
+      cp > LAST_ASCII && (SINGLE_WIDE_CHARS.has(c) || WIDE_RANGES.some(([min, max]) => cp >= min && cp <= max));
+
+    return acc + (isWide ? WIDE_WIDTH : NARROW_WIDTH);
   }, 0);
 }
 
