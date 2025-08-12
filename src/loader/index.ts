@@ -326,8 +326,9 @@ export class ModuleManager {
             }
             return modules;
           })
-          .catch((err) => {
-            Logging.Error(`Failed to load module ${source.id}:`);
+          .catch(async (err) => {
+            await terminalDisplay.failSpinner(`Failed to load module ${source.id}`);
+            await terminalDisplay.cleanSpinner();
             Logging.Error(err);
             process.exit(1);
           });
