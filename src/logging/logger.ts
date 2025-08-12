@@ -6,6 +6,7 @@ import { GetResponsibleModule } from '../interfaces/core/beta';
 import { Logging } from '../interfaces/logging/beta';
 import { formatLogMessageWithRightAlignedDate, NEWLINE, OVERWRITE_CURRENT_LINE } from './utils';
 import { terminalDisplay } from './terminal-display';
+import { DEFAULT_TERMINAL_WIDTH } from './utils';
 
 /**
  * Logical sections for verbose logging
@@ -140,7 +141,7 @@ function setupProcessHandlers(config: AntelopeProjectEnvConfigStrict): void {
 }
 
 function getTerminalWidth(): number {
-  return process.stdout.columns * 1.1 || 80;
+  return process.stdout.columns * 1.1 || DEFAULT_TERMINAL_WIDTH;
 }
 
 function truncateMessage(message: string, maxWidth: number): string {

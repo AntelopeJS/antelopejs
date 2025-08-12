@@ -3,6 +3,8 @@ import { Logging } from '../interfaces/logging/beta';
 import { AntelopeLogging } from '../common/config';
 import { Log } from '../interfaces/logging/beta/listener';
 
+export const DEFAULT_TERMINAL_WIDTH = 80;
+
 const COLOR_FUNCTIONS: Record<string, (text: string) => string> = {
   red: chalk.red,
   yellow: chalk.yellow,
@@ -220,7 +222,7 @@ export function formatLogMessageWithRightAlignedDate(
     return `${dateText} ${messageWithLevel}`;
   }
 
-  const terminalWidth = process.stdout.columns || 80;
+  const terminalWidth = process.stdout.columns || DEFAULT_TERMINAL_WIDTH;
   const dateWidth = stripAnsi(dateText).length;
   const minGap = 2;
   const lines = messageWithLevel.split('\n');
