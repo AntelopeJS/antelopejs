@@ -113,8 +113,7 @@ export default function () {
         const config = await LoadConfig(options.project, env);
         let unresolvedImports: string[] = [];
         try {
-          const { unresolvedImports: unresolvedImportsTmp } = await analyzeConfig(options.project, cache, config);
-          unresolvedImports = unresolvedImportsTmp;
+          ({ unresolvedImports } = await analyzeConfig(options.project, cache, config));
         } catch (err) {
           await terminalDisplay.failSpinner(`Error analyzing config: ${err}`);
           await new Promise((resolve) => setTimeout(resolve, 10));
