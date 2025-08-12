@@ -9,6 +9,8 @@ import { AntelopeLogging } from '../common/config';
 const clearLine = () => process.stdout.write('\r\x1b[K');
 const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
+const SPINNER_INTERVAL_MS = 80;
+
 const defaultSpinnerLogging: AntelopeLogging = {
   enabled: true,
   moduleTracking: { enabled: false, includes: [], excludes: [] },
@@ -58,7 +60,7 @@ export class Spinner {
         process.stdout.write(`\r${spinnerChar} ${this.text}`);
         this.currentCharIndex = (this.currentCharIndex + 1) % spinnerChars.length;
       }
-    }, 80);
+    }, SPINNER_INTERVAL_MS);
 
     return this;
   }
