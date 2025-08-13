@@ -1,3 +1,4 @@
+import { VerboseSection } from '../../../logging';
 /**
  * Provides a structured logging system with multiple severity levels and channels.
  *
@@ -20,7 +21,9 @@ export declare namespace Logging {
         /** Detailed information useful for debugging */
         DEBUG = 10,
         /** Highly detailed tracing information */
-        TRACE = 0
+        TRACE = 0,
+        /** Messages without prefix for direct display */
+        NO_PREFIX = -1
     }
     /**
      * Write arguments to the main log channel at the ERROR level.
@@ -56,6 +59,23 @@ export declare namespace Logging {
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
     function Debug(...args: any[]): void;
+    /**
+     * Write arguments to the main log channel at the TRACE level.
+     *
+     * Use for highly detailed tracing information, typically only enabled during
+     * intensive debugging sessions.
+     *
+     * @param args - Values to log, which can be of any type and will be serialized appropriately
+     */
+    function Trace(...args: any[]): void;
+    /**
+     * Write arguments to the verbose log channel for the specified section.
+     * The channel will be filtered based on the --verbose option configuration.
+     *
+     * @param section - The logical section this log belongs to (e.g., 'cmd', 'git', 'package')
+     * @param args - Values to log, which can be of any type and will be serialized appropriately
+     */
+    function Verbose(section: VerboseSection, ...args: any[]): void;
     /**
      * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
      *
@@ -95,15 +115,6 @@ export declare namespace Logging {
          */
         function Trace(...args: any[]): void;
     }
-    /**
-     * Write arguments to the main log channel at the TRACE level.
-     *
-     * Use for highly detailed tracing information, typically only enabled during
-     * intensive debugging sessions.
-     *
-     * @param args - Values to log, which can be of any type and will be serialized appropriately
-     */
-    function Trace(...args: any[]): void;
     /**
      * Write arguments to the specified log channel at the given severity level.
      *

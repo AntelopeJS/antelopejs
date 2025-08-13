@@ -1,6 +1,7 @@
 import { ModuleCache } from '../cache';
 import { ModuleManifest } from '../manifest';
 import { Logging } from '../../interfaces/logging/beta';
+import { VERBOSE_SECTIONS } from '../../logging';
 import path from 'path';
 
 /**
@@ -47,10 +48,10 @@ export default function LoadModule(
   cache: ModuleCache,
   source: ModuleSource,
 ): Promise<ModuleManifest[]> {
-  Logging.inline.Info(`LoadModule called for type ${source.type}`);
+  Logging.Verbose(VERBOSE_SECTIONS.LOADER, `LoadModule called for type ${source.type}`);
   const type = knownTypes.get(source.type);
   if (type) {
-    Logging.inline.Info(`Found loader for type ${source.type}`);
+    Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Found loader for type ${source.type}`);
 
     // If the path is not absolute, resolve it relative to the project folder
     if (type.loaderIdentifier === 'path') {
@@ -62,7 +63,7 @@ export default function LoadModule(
 
     return type.loader(cache, source);
   }
-  Logging.inline.Info(`No loader found for type ${source.type}`);
+  Logging.Verbose(VERBOSE_SECTIONS.LOADER, `No loader found for type ${source.type}`);
   return new Promise<ModuleManifest[]>((resolve) => {
     let waitingList = waiting.get(source.type);
     if (!waitingList) {

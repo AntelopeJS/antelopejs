@@ -6,6 +6,8 @@ import { ModuleManifest } from '../manifest';
 import { ModuleCache } from '../cache';
 import os from 'node:os';
 import { Logging } from '../../interfaces/logging/beta';
+import { VERBOSE_SECTIONS } from '../../logging';
+import { terminalDisplay } from '../../logging/terminal-display';
 
 export interface ModuleSourceLocal extends ModuleSource {
   type: 'local';
@@ -42,16 +44,26 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
     throw error;
   }
   if (source.installCommand) {
-    Logging.inline.Debug(`Running install commands for ${formattedPath}`);
+    Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${formattedPath}`);
+    await terminalDisplay.startSpinner(`Installing dependencies for ${formattedPath}`);
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
-        Logging.inline.Debug(`Executing command: ${command}`);
-        await ExecuteCMD(command, { cwd: formattedPath }, true);
+        Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
+        const result = await ExecuteCMD(command, { cwd: formattedPath });
+        if (result.code !== 0) {
+          await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
+          throw new Error(`Failed to install dependencies: ${result.stderr}`);
+        }
       }
     } else {
-      Logging.inline.Debug(`Executing command: ${source.installCommand}`);
-      await ExecuteCMD(source.installCommand, { cwd: formattedPath }, true);
+      Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
+      const result = await ExecuteCMD(source.installCommand, { cwd: formattedPath });
+      if (result.code !== 0) {
+        await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
+        throw new Error(`Failed to install dependencies: ${result.stderr}`);
+      }
     }
+    await terminalDisplay.stopSpinner(`Dependencies installed for ${formattedPath}`);
   }
   return [new ModuleManifest(formattedPath, source)];
 });

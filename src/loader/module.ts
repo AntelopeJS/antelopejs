@@ -2,6 +2,7 @@ import { AsyncProxy } from '../interfaces/core/beta';
 import * as moduleInterface1 from '../interfaces/core/beta/modules';
 import { ModuleManifest } from '../common/manifest';
 import { Logging } from '../interfaces/logging/beta';
+import { VERBOSE_SECTIONS } from '../logging';
 
 /**
  * Module Interface exported by every module.
@@ -63,13 +64,13 @@ export class Module {
 
   public async construct(config: any): Promise<void> {
     if (this.state !== ModuleState.loaded) {
-      Logging.inline.Debug(`Module ${this.id} already constructed`);
+      Logging.Verbose(VERBOSE_SECTIONS.MODULE, `Module ${this.id} already constructed`);
       return;
     }
     await import(this.manifest.main)
       .then((mod) => {
         this.object = mod;
-        Logging.inline.Info(`Successfully loaded module ${this.id}`);
+        Logging.Verbose(VERBOSE_SECTIONS.MODULE, `Successfully loaded module ${this.id}`);
       })
       .catch((err) => {
         Logging.Error(`Failed to load module ${this.id}`, err);

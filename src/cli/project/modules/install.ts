@@ -10,6 +10,7 @@ import inquirer from 'inquirer';
 import { loadInterfaceFromGit } from '../../git';
 import { projectModulesAddCommand } from './add';
 import { error, warning, info, success } from '../../../utils/cli-ui';
+import { terminalDisplay } from '../../../logging/terminal-display';
 
 interface InstallOptions {
   project: string;
@@ -41,8 +42,7 @@ async function analyzeConfig(
         .filter((module) => 'source' in module)
         .map((module) =>
           LoadModule(projectFolder, cache, module.source).catch((err) => {
-            error(chalk.red`Error loading module: ${err}`);
-            return [];
+            throw new Error(`Error loading module ${JSON.stringify(module.source)}: ${err}`);
           }),
         ),
     )
@@ -107,11 +107,19 @@ export default function () {
 
       // First pass: Analyze all environments and collect user selections
       for (const env of envs) {
-        info(chalk.bold`\nAnalyzing environment: ${env}`);
+        info(chalk.bold`Analyzing environment: ${env}`);
+        await terminalDisplay.startSpinner(`Analyzing environment: ${env}`);
 
         const config = await LoadConfig(options.project, env);
-        const { unresolvedImports } = await analyzeConfig(options.project, cache, config);
-
+        let unresolvedImports: string[] = [];
+        try {
+          ({ unresolvedImports } = await analyzeConfig(options.project, cache, config));
+        } catch (err) {
+          await terminalDisplay.failSpinner(`Error analyzing config: ${err}`);
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          process.exit(1);
+        }
+        await terminalDisplay.stopSpinner(`Analyzed environment: ${env}`);
         // Handle unresolved imports
         if (unresolvedImports.length > 0) {
           warning(chalk.yellow`Found ${unresolvedImports.length} unresolved imports:`);
@@ -183,13 +191,14 @@ export default function () {
             }
           }
         } else {
-          success(chalk.green`✓ No unresolved imports found`);
+          success(chalk.green`No unresolved imports found`);
         }
       }
 
       // Second pass: Install all selected modules sequentially by environment
       if (modulesToInstall.length > 0) {
-        info(chalk.blue.bold`\nInstalling selected modules...`);
+        await terminalDisplay.startSpinner(`Installing selected modules`);
+        info(chalk.blue.bold`Installing selected modules...`);
 
         // Group modules by environment and mode for installation
         const modulesByEnvAndMode = modulesToInstall.reduce(
@@ -209,7 +218,9 @@ export default function () {
           const [env, mode] = key.split(':');
           const loaderIdentifiers = modules.map((m) => m.loaderIdentifier);
 
-          info(chalk.blue`Installing ${modules.length} module(s) for environment ${env} (mode: ${mode})...`);
+          info(
+            chalk.blue`Installing ${modules.length} module${modules.length === 1 ? '' : 's'} for environment ${env} (mode: ${mode})...`,
+          );
 
           try {
             await projectModulesAddCommand(loaderIdentifiers, {
@@ -223,10 +234,13 @@ export default function () {
             error(chalk.red`Failed to install modules for environment ${env} (mode: ${mode}): ${err}`);
           }
         }
+        await terminalDisplay.stopSpinner(
+          `Installed ${modulesToInstall.length} module${modulesToInstall.length === 1 ? '' : 's'}`,
+        );
       }
 
       // Summary of changes
-      info(chalk.blue.bold`\nDependency analysis summary:`);
+      info(chalk.blue.bold`Dependency analysis summary:`);
 
       if (Object.keys(addedModules).length > 0) {
         success(chalk.green`Added ${Object.keys(addedModules).length} module(s):`);
@@ -246,6 +260,6 @@ export default function () {
         success(chalk.green`No changes were made. Your project dependencies are already optimized!`);
       }
 
-      info(chalk.blue`\nDependency analysis complete!`);
+      info(chalk.blue`Dependency analysis complete!`);
     });
 }

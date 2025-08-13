@@ -2,32 +2,37 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import cliProgress from 'cli-progress';
 import type { Options as BoxenOptions } from 'boxen';
-import type { Ora } from 'ora';
+import Logging from '../interfaces/logging/beta';
+import { formatLogMessageWithRightAlignedDate, isTerminalOutput } from '../logging/utils';
+import { AntelopeLogging } from '../common/config';
+
+const clearLine = () => process.stdout.write('\r\x1b[K');
+const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+const SPINNER_INTERVAL_MS = 80;
+
+const defaultSpinnerLogging: AntelopeLogging = {
+  enabled: true,
+  moduleTracking: { enabled: false, includes: [], excludes: [] },
+  formatter: {},
+  dateFormat: 'yyyy-MM-dd HH:mm:ss',
+};
 
 /**
- * Creates and manages a spinner with customizable text and success/error messages.
+ * Creates and manages a simple spinner with customizable text and success/error messages.
  */
 export class Spinner {
   private text: string;
-  private spinner: Ora | null = null;
-  private ora: any = null;
+  private isRunning = false;
+  private interval?: NodeJS.Timeout;
+  private currentCharIndex = 0;
+  private isTerminal = isTerminalOutput();
 
   /**
    * Create a new spinner with the given text
    */
   constructor(text: string) {
     this.text = text;
-  }
-
-  /**
-   * Load the ora package dynamically
-   */
-  private async loadOra(): Promise<any> {
-    if (this.ora) return this.ora;
-
-    const dynamicImport = new Function('specifier', 'return import(specifier)');
-    this.ora = (await dynamicImport('ora')).default;
-    return this.ora;
   }
 
   /**
@@ -38,12 +43,25 @@ export class Spinner {
       this.text = text;
     }
 
-    const ora = await this.loadOra();
-    this.spinner = ora({
-      text: this.text,
-      color: 'blue',
-    });
-    this.spinner?.start();
+    if (this.isRunning) {
+      return this;
+    }
+
+    this.isRunning = true;
+    this.currentCharIndex = 0;
+
+    if (!this.isTerminal) {
+      return this;
+    }
+
+    this.interval = setInterval(() => {
+      if (this.isRunning) {
+        const spinnerChar = spinnerChars[this.currentCharIndex];
+        process.stdout.write(`\r${spinnerChar} ${this.text}`);
+        this.currentCharIndex = (this.currentCharIndex + 1) % spinnerChars.length;
+      }
+    }, SPINNER_INTERVAL_MS);
+
     return this;
   }
 
@@ -52,8 +70,20 @@ export class Spinner {
    */
   update(text: string): Spinner {
     this.text = text;
-    if (this.spinner) {
-      this.spinner.text = text;
+    return this;
+  }
+
+  /**
+   * Log text above the spinner without stopping it
+   */
+  log(stream: NodeJS.WriteStream, message: string): Spinner {
+    if (this.isRunning && this.isTerminal) {
+      clearLine();
+      stream.write(message + '\n');
+      const spinnerChar = spinnerChars[this.currentCharIndex];
+      process.stdout.write(`${spinnerChar} ${this.text}`);
+    } else {
+      stream.write(message + '\n');
     }
     return this;
   }
@@ -62,70 +92,130 @@ export class Spinner {
    * Stop the spinner with a success message
    */
   async succeed(text?: string): Promise<void> {
-    if (!this.spinner) {
-      const ora = await this.loadOra();
-      this.spinner = ora({
-        text: text || this.text,
-        color: 'blue',
-      });
+    if (!this.isRunning) return;
+
+    await this.stop();
+    const message = text || this.text;
+
+    const log = {
+      time: Date.now(),
+      levelId: Logging.Level.NO_PREFIX.valueOf(),
+      channel: 'spinner',
+      args: [chalk.bold.green('✓'), message],
+    };
+
+    const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
+    if (this.isTerminal) {
+      process.stdout.write(`\r${formattedMessage}\n`);
+    } else {
+      console.log(formattedMessage);
     }
-    this.spinner?.succeed(text || this.text);
-    this.spinner = null;
   }
 
   /**
    * Stop the spinner with an error message
    */
   async fail(text?: string): Promise<void> {
-    if (!this.spinner) {
-      const ora = await this.loadOra();
-      this.spinner = ora({
-        text: text || this.text,
-        color: 'blue',
-      });
+    if (!this.isRunning) return;
+
+    await this.stop();
+    const message = text || this.text;
+
+    const log = {
+      time: Date.now(),
+      levelId: Logging.Level.NO_PREFIX.valueOf(),
+      channel: 'spinner',
+      args: [chalk.bold.red('✗'), chalk.red(message)],
+    };
+
+    const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
+    if (this.isTerminal) {
+      process.stdout.write(`\r${formattedMessage}\n`);
+    } else {
+      console.log(formattedMessage);
     }
-    this.spinner?.fail(text || this.text);
-    this.spinner = null;
   }
 
   /**
    * Stop the spinner with an info message
    */
   async info(text?: string): Promise<void> {
-    if (!this.spinner) {
-      const ora = await this.loadOra();
-      this.spinner = ora({
-        text: text || this.text,
-        color: 'blue',
-      });
+    if (!this.isRunning) return;
+
+    await this.stop();
+    const message = text || this.text;
+
+    const log = {
+      time: Date.now(),
+      levelId: Logging.Level.NO_PREFIX.valueOf(),
+      channel: 'spinner',
+      args: [chalk.bold.blue('ℹ'), message],
+    };
+
+    const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
+    if (this.isTerminal) {
+      process.stdout.write(`\r${formattedMessage}\n`);
+    } else {
+      console.log(formattedMessage);
     }
-    this.spinner?.info(text || this.text);
-    this.spinner = null;
   }
 
   /**
    * Stop the spinner with a warning message
    */
   async warn(text?: string): Promise<void> {
-    if (!this.spinner) {
-      const ora = await this.loadOra();
-      this.spinner = ora({
-        text: text || this.text,
-        color: 'blue',
-      });
+    if (!this.isRunning) return;
+
+    await this.stop();
+    const message = text || this.text;
+
+    const log = {
+      time: Date.now(),
+      levelId: Logging.Level.NO_PREFIX.valueOf(),
+      channel: 'spinner',
+      args: [chalk.bold.yellow('⚠'), message],
+    };
+
+    const formattedMessage = formatLogMessageWithRightAlignedDate(defaultSpinnerLogging, log);
+    if (this.isTerminal) {
+      process.stdout.write(`\r${formattedMessage}\n`);
+    } else {
+      console.log(formattedMessage);
     }
-    this.spinner?.warn(text || this.text);
-    this.spinner = null;
+  }
+
+  /**
+   * Pause the spinner temporarily (can be resumed)
+   */
+  async pause(): Promise<void> {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = undefined;
+    }
+    if (this.isTerminal) {
+      clearLine();
+    }
   }
 
   /**
    * Stop the spinner without any status
    */
   async stop(): Promise<void> {
-    if (this.spinner) {
-      this.spinner.stop();
-      this.spinner = null;
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = undefined;
     }
+    this.isRunning = false;
+    if (this.isTerminal) {
+      clearLine();
+    }
+  }
+
+  /**
+   * Clear the spinner (alias for stop)
+   */
+  async clear(): Promise<void> {
+    await this.stop();
   }
 }
 
@@ -189,7 +279,7 @@ export class ProgressBar {
  */
 export async function displayBox(message: string, title?: string, options?: BoxenOptions): Promise<void> {
   const dynamicImport = new Function('specifier', 'return import(specifier)');
-  const boxen = (await dynamicImport('boxen')).default;
+  const boxen = (await dynamicImport('boxen')).default as (input: string, options?: BoxenOptions) => string;
   const defaultOptions: BoxenOptions = {
     padding: 1,
     margin: 1,
@@ -214,28 +304,28 @@ export function displayBanner(text: string, font?: figlet.Fonts): void {
  * Displays a success message with green coloring and a checkmark
  */
 export function success(message: string): void {
-  console.log(chalk.green(`✓ ${message}`));
+  Logging.Write(Logging.Level.NO_PREFIX, 'main', `${chalk.green.bold('✓')} ${message}`);
 }
 
 /**
  * Displays an error message with red coloring and an X
  */
 export function error(message: string): void {
-  console.log(chalk.red(`✗ ${message}`));
+  Logging.Write(Logging.Level.NO_PREFIX, 'main', `${chalk.red.bold('✗')} ${message}`);
 }
 
 /**
  * Displays a warning message with yellow coloring and a warning symbol
  */
 export function warning(message: string): void {
-  console.log(chalk.yellow(`⚠ ${message}`));
+  Logging.Write(Logging.Level.NO_PREFIX, 'main', `${chalk.yellow.bold('⚠')} ${message}`);
 }
 
 /**
  * Displays an info message with blue coloring and an info symbol
  */
 export function info(message: string): void {
-  console.log(chalk.blue(`ℹ ${message}`));
+  Logging.Write(Logging.Level.NO_PREFIX, 'main', `${chalk.blue.bold('ℹ')} ${message}`);
 }
 
 /**

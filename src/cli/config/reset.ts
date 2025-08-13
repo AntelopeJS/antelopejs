@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { getDefaultUserConfig, writeUserConfig, readUserConfig } from '../common';
-import { displayBox, success, keyValue } from '../../utils/cli-ui';
+import { displayBox, success, keyValue, info } from '../../utils/cli-ui';
 
 export default function () {
   return new Command('reset')
@@ -24,7 +24,7 @@ export default function () {
       );
 
       if (!hasChanges) {
-        console.log(chalk.blue(`ℹ Configuration is already at default values.`));
+        info(chalk.blue(`ℹ Configuration is already at default values.`));
         return;
       }
 

@@ -19,7 +19,9 @@ import { ModuleSourceLocal } from '../common/downloader/local';
 import assert from 'assert';
 import { ModuleManifest } from '../common/manifest';
 import { Logging } from '../interfaces/logging/beta';
+import { VERBOSE_SECTIONS } from '../logging';
 import EventEmitter from 'events';
+import { terminalDisplay } from '../logging/terminal-display';
 
 type ModuleResolver = (request: string, parent: any, isMain: boolean, options: any) => string;
 class ModuleResolverDetour {
@@ -307,24 +309,26 @@ export class ModuleManager {
     EventEmitter.defaultMaxListeners = this.concurrency;
 
     // Get modules ready
+    await terminalDisplay.startSpinner(`Loading modules`);
     const modulePromises = manifest.sources.map(async (source) => {
-      Logging.inline.Info(`Loading module ${source.id}`);
+      Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Loading module ${source.id}`);
       try {
-        Logging.inline.Info(`Starting LoadModule for ${source.id}`);
+        Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Starting LoadModule for ${source.id}`);
         const createdModules = await LoadModule(this.projectFolder, this.cache, source)
           .then((modulesManifest) => {
-            Logging.inline.Info(`Module manifest loaded for ${source.id}`);
+            Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Module manifest loaded for ${source.id}`);
             return modulesManifest.map((moduleManifest) => new Module(moduleManifest));
           })
           .then((modules) => {
-            Logging.inline.Info(`Modules created for ${source.id}`);
+            Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Modules created for ${source.id}`);
             for (const module of modules) {
               manifest.configs[module.id] = manifest.configs[source.id];
             }
             return modules;
           })
-          .catch((err) => {
-            Logging.Error(`Failed to load module ${source.id}:`);
+          .catch(async (err) => {
+            await terminalDisplay.failSpinner(`Failed to load module ${source.id}`);
+            await terminalDisplay.cleanSpinner();
             Logging.Error(err);
             process.exit(1);
           });
@@ -339,9 +343,10 @@ export class ModuleManager {
 
     const moduleResults = await Promise.all(modulePromises);
     const moduleList = moduleResults.flat();
-    Logging.Info(`Modules loaded`);
+    await terminalDisplay.stopSpinner(`Modules loaded`);
 
-    Logging.inline.Info(`Loading exports`);
+    await terminalDisplay.startSpinner(`Loading exports`);
+    Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Loading exports`);
 
     await this.core.ref.manifest.loadExports();
     await Promise.all(moduleList.map((module) => module.ref.manifest.loadExports()));
@@ -353,7 +358,7 @@ export class ModuleManager {
       return map.set(entry.ref.id, entry);
     }, this.loadedModules);
 
-    Logging.Info(`Exports loaded`);
+    await terminalDisplay.stopSpinner(`Exports loaded`);
 
     // Set max listeners to default
     EventEmitter.defaultMaxListeners = 10;
@@ -361,7 +366,8 @@ export class ModuleManager {
     this.rebuildInterfaceSources(moduleList);
     this.rebuildModuleAssociations(moduleList);
 
-    Logging.inline.Info(`Constructing modules`);
+    await terminalDisplay.startSpinner(`Constructing modules`);
+    Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Constructing modules`);
     this.resolverDetour.attach();
     await Promise.all(
       moduleList.map(({ ref, config }) =>
@@ -374,7 +380,7 @@ export class ModuleManager {
         }),
       ),
     );
-    Logging.Info(`Done loading`);
+    await terminalDisplay.stopSpinner(`Done loading`);
   }
 
   public startModules() {
