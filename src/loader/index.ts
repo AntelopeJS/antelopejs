@@ -372,6 +372,7 @@ export class ModuleManager {
     await Promise.all(
       moduleList.map(({ ref, config }) =>
         ref.construct(config.config).catch((err) => {
+          terminalDisplay.failSpinner(`Failed to construct module ${ref.id}`);
           Logging.Error(`Failed to construct module:`);
           Logging.Error(`  - ID: ${ref.id}`);
           Logging.Error(`  - Version: ${ref.version}`);
