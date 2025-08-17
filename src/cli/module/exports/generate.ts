@@ -1,13 +1,27 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
-import path, { basename } from 'path';
-import { mkdir, readdir, stat, rm, readFile } from 'fs/promises';
+import path from 'path';
+import { mkdir, stat, rm, readFile } from 'fs/promises';
 import { Options, readModuleManifest } from '../../common';
 import { ExecuteCMD } from '../../../utils/command';
 import { displayBox, error, warning, Spinner, info } from '../../../utils/cli-ui';
+import { ModuleCache } from '../../../common/cache';
 
 interface GenerateOptions {
   module: string;
+}
+
+type TsConfig = { compilerOptions?: { outDir?: string } };
+
+function isTsConfig(value: unknown): value is TsConfig {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const obj = value as { compilerOptions?: unknown };
+  if (obj.compilerOptions === undefined) {
+    return true;
+  }
+  return typeof obj.compilerOptions === 'object' && obj.compilerOptions !== null;
 }
 
 /**
@@ -16,10 +30,13 @@ interface GenerateOptions {
 async function readTsConfigOutDir(tsConfigPath: string): Promise<string | null> {
   try {
     const tsConfigContent = await readFile(tsConfigPath, 'utf8');
-    const tsConfig = JSON.parse(tsConfigContent);
-    return tsConfig.compilerOptions?.outDir || null;
+    const parsed: unknown = JSON.parse(tsConfigContent);
+    if (!isTsConfig(parsed)) {
+      return null;
+    }
+    return parsed.compilerOptions?.outDir || null;
   } catch (err) {
-    error(`Error reading tsconfig.json: ${err}`);
+    error(`Error reading tsconfig.json: ${String(err)}`);
     return null;
   }
 }
@@ -38,33 +55,19 @@ async function moveInterfaceFilesToRoot(
       return false;
     }
 
-    // First, create a temporary directory to store interface files
-    await mkdir(tmpPath, { recursive: true });
+    // Clean the entire output directory and recreate it
+    await rm(outputPath, { recursive: true, force: true }).catch(() => {});
+    await mkdir(outputPath, { recursive: true });
 
-    // Copy interface files to temp directory
-    const cpToTempCommand = `cp -R ${interfaceFolderPath}/* ${tmpPath}/`;
-    const cpResult = await ExecuteCMD(cpToTempCommand, {});
-
-    if (cpResult.code !== 0) {
+    // Copy interface files directly into the output root (including dotfiles)
+    const copyCommand = `cp -R ${interfaceFolderPath}/. ${outputPath}/`;
+    const copyResult = await ExecuteCMD(copyCommand, {});
+    if (copyResult.code !== 0) {
       return false;
     }
 
-    // Delete everything in the output directory except the temp folder
-    const entries = await readdir(outputPath);
-    for (const entry of entries) {
-      if (entry !== basename(tmpPath)) {
-        const entryPath = path.join(outputPath, entry);
-        await rm(entryPath, { recursive: true, force: true });
-      }
-    }
-
-    // Move files from temp directory to output root
-    const mvFromTempCommand = `cp -R ${tmpPath}/* ${outputPath}/ && rm -rf ${tmpPath}`;
-    const mvResult = await ExecuteCMD(mvFromTempCommand, {});
-
-    if (mvResult.code !== 0) {
-      return false;
-    }
+    // Cleanup temp directory
+    await rm(tmpPath, { recursive: true, force: true }).catch(() => {});
 
     return true;
   } catch {
@@ -83,7 +86,7 @@ async function cleanOutputDirectory(outputDir: string): Promise<boolean> {
     }
     return true;
   } catch (err) {
-    error(`Error cleaning output directory: ${err}`);
+    error(`Error cleaning output directory: ${String(err)}`);
     return false;
   }
 }
@@ -114,7 +117,7 @@ export default function () {
       const exportPath = manifest.antelopeJs.exportsPath;
       const tsConfigFile = path.join(options.module, 'tsconfig.json');
       const outputPath = path.join(options.module, 'output');
-      const tmpPath = path.join(options.module, '.antelope', 'tmp');
+      const tmpPath = await ModuleCache.getTemp();
 
       info(`Generating TypeScript declarations for ${chalk.cyan(exportPath)}`);
       info(`Output directory: ${chalk.cyan(outputPath)}`);
@@ -135,8 +138,6 @@ export default function () {
       await spinner.start();
 
       try {
-        // Run TypeScript compiler to generate declaration files
-        // Only compile files from the source directory and output to the exports path
         const tscCommand = [
           'npx tsc',
           '--emitDeclarationOnly',
@@ -144,7 +145,7 @@ export default function () {
           '--stripInternal',
           '--removeComments false',
           `--project ${tsConfigFile}`,
-          `--outDir ${outputPath}`,
+          `--outDir ${tmpPath}`,
         ].join(' ');
 
         const result = await ExecuteCMD(tscCommand, { cwd: options.module });
@@ -163,7 +164,7 @@ export default function () {
         }
 
         // Calculate the interface folder path
-        const interfaceFolderPath = path.join(outputPath, exportPath.replace(tsConfigOutDir, ''));
+        const interfaceFolderPath = path.join(tmpPath, exportPath.replace(tsConfigOutDir, ''));
 
         // Move interface files to root and clean up
         const moveResult = await moveInterfaceFilesToRoot(interfaceFolderPath, outputPath, tmpPath);
@@ -185,7 +186,7 @@ export default function () {
         );
       } catch (err) {
         await spinner.fail('Failed to generate declarations');
-        error(`${err}`);
+        error(`${String(err)}`);
 
         await displayBox(
           `Error running TypeScript compiler.\n\n` +
