@@ -76,8 +76,8 @@ export async function TestModule(moduleFolder = '.', files?: string[]) {
   }
 
   const testProject = path.join(moduleRoot, testConfig.project);
-  const rawconfig: TestConfig = require(testProject);
-  const config = 'setup' in rawconfig ? await rawconfig.setup() : rawconfig;
+  const raw_config: TestConfig = require(testProject);
+  const config = 'setup' in raw_config ? await raw_config.setup() : raw_config;
 
   try {
     setupAntelopeProjectLogging(config);
@@ -112,8 +112,8 @@ export async function TestModule(moduleFolder = '.', files?: string[]) {
       Logging.Error('Error during shutdown', err);
     }
   } finally {
-    if ('cleanup' in rawconfig) {
-      await rawconfig.cleanup!();
+    if ('cleanup' in raw_config) {
+      await raw_config.cleanup!();
     }
   }
 }

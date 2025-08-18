@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-To report a vulnerability, please privately report it via the Security tab on the GitHub repository. If that is impossible, feel free to send an email to **support@antelopejs.com** instead.
+To report a vulnerability, please privately report it via the Security tab on the GitHub repository. If that is impossible, feel free to email **support@antelopejs.com** instead.
 
 All security vulnerabilities will be promptly verified and addressed.
 

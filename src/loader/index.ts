@@ -187,18 +187,18 @@ export class ModuleManager {
   private createAssociations(ref: Module, config: LegacyModuleConfig) {
     const associations = new Map<string, Module>();
     const connections = new Map<string, InterfaceConnection[]>();
-    for (const iface of ref.manifest.imports) {
-      if (this.interfaceSources.has(iface)) {
-        associations.set(iface, this.interfaceSources.get(iface)!.ref);
-        connections.set(iface, [{ module: this.interfaceSources.get(iface)!.ref.id }]);
+    for (const imported_interface of ref.manifest.imports) {
+      if (this.interfaceSources.has(imported_interface)) {
+        associations.set(imported_interface, this.interfaceSources.get(imported_interface)!.ref);
+        connections.set(imported_interface, [{ module: this.interfaceSources.get(imported_interface)!.ref.id }]);
       }
     }
     if (config.importOverrides) {
-      for (const [iface, overrides] of config.importOverrides) {
-        const useable = overrides.filter(({ module }) => this.loadedModules.has(module));
-        connections.set(iface, useable);
-        if (useable.length > 0) {
-          associations.set(iface, this.loadedModules.get(useable[0].module)!.ref);
+      for (const [imported_interface, overrides] of config.importOverrides) {
+        const usable = overrides.filter(({ module }) => this.loadedModules.has(module));
+        connections.set(imported_interface, usable);
+        if (usable.length > 0) {
+          associations.set(imported_interface, this.loadedModules.get(usable[0].module)!.ref);
         }
       }
     }
@@ -246,8 +246,8 @@ export class ModuleManager {
         const loaded = this.loadedModules.get(module);
         assert(loaded);
         const importOverrides: Record<string, string[]> = {};
-        for (const [intf, connections] of loaded.config.importOverrides.entries()) {
-          importOverrides[intf] = connections.map((c) => c.module);
+        for (const [interface_index, connections] of loaded.config.importOverrides.entries()) {
+          importOverrides[interface_index] = connections.map((c) => c.module);
         }
         return {
           source: loaded.ref.manifest.source,

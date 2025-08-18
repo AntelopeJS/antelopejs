@@ -138,19 +138,19 @@ function runTemplateString(match: string, expr: string, argnames: string[], argv
   }
 }
 
-function processTemplates(object: Record<string, any>, argnames: string[], argvalues: any[]) {
+function processTemplates(object: Record<string, any>, arg_names: string[], arg_values: any[]) {
   for (const key of Object.keys(object)) {
     const value = object[key];
     if (typeof value === 'string') {
       if (value.match(/^\$\{([^}]+)\}$/)) {
-        object[key] = runTemplateString(value, value.substring(2, value.length - 1), argnames, argvalues);
+        object[key] = runTemplateString(value, value.substring(2, value.length - 1), arg_names, arg_values);
       } else {
         object[key] = value.replace(/\$\{([^}]+)\}/g, (match, expr) =>
-          runTemplateString(match, expr, argnames, argvalues),
+          runTemplateString(match, expr, arg_names, arg_values),
         );
       }
     } else if (typeof value === 'object') {
-      processTemplates(value, argnames, argvalues);
+      processTemplates(value, arg_names, arg_values);
     }
   }
 }

@@ -49,8 +49,8 @@ export default function () {
       let interfaces = allInterfaces;
       if (selectedInterfaces && selectedInterfaces.length > 0) {
         // If specific interfaces were requested, filter the list
-        interfaces = allInterfaces.filter((intf) => {
-          const interfaceName = typeof intf === 'object' ? intf.name : intf;
+        interfaces = allInterfaces.filter((imported_interface) => {
+          const interfaceName = typeof imported_interface === 'object' ? imported_interface.name : imported_interface;
           // Check if any of the selected interfaces match (by name or full name@version)
           return selectedInterfaces.some(
             (selected) => interfaceName === selected || interfaceName.startsWith(selected + '@'),
