@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { Command, Option } from 'commander';
 import { Options, readModuleManifest, readUserConfig, writeModuleManifest } from '../../common';
-import { installInterfaces, loadInterfacesFromGit, removeInterface } from '../../git';
+import { installInterfaces, loadInterfacesFromGit, removeInterface, createAjsSymlinks } from '../../git';
 import { error as errorUI, warning, info, success, ProgressBar } from '../../../utils/cli-ui';
 
 interface UpdateOptions {
@@ -202,6 +202,11 @@ export default function () {
         failed.forEach((item) => {
           info(`  ${chalk.yellow('•')} ${chalk.bold(item.name)} - ${chalk.dim(item.reason)}`);
         });
+      }
+
+      // Create @ajs symlinks after update (only if not dry run)
+      if (!options.dryRun) {
+        await createAjsSymlinks(options.module);
       }
     });
 }

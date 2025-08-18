@@ -3,10 +3,63 @@ import { ModuleSource } from '../common/downloader';
 import { ExecuteCMD } from '../utils/command';
 import path from 'path';
 import { stat } from 'fs/promises';
-import fs, { cpSync, mkdirSync, readdirSync, rmSync } from 'fs';
+import fs, { cpSync, mkdirSync, readdirSync, rmSync, symlinkSync, existsSync } from 'fs';
 import { getInstallPackagesCommand } from '../utils/package-manager';
 import { acquireLock } from '../utils/lock';
 import { terminalDisplay } from '../logging/terminal-display';
+
+function createSymlinksRecursive(sourcePath: string, targetPath: string) {
+  try {
+    const items = readdirSync(sourcePath);
+
+    for (const item of items) {
+      const sourceItemPath = path.join(sourcePath, item);
+      const targetItemPath = path.join(targetPath, item);
+      const stats = fs.statSync(sourceItemPath);
+
+      if (stats.isFile() && item.endsWith('.d.ts')) {
+        // Create symlink for .d.ts files
+        // Remove existing symlink if it exists
+        if (existsSync(targetItemPath)) {
+          rmSync(targetItemPath, { force: true });
+        }
+
+        symlinkSync(sourceItemPath, targetItemPath, 'file');
+      } else if (stats.isDirectory()) {
+        // Create directory in target if it doesn't exist
+        if (!existsSync(targetItemPath)) {
+          mkdirSync(targetItemPath, { recursive: true });
+        }
+
+        // Recursively process subdirectory
+        createSymlinksRecursive(sourceItemPath, targetItemPath);
+      }
+    }
+  } catch (error) {
+    console.warn(`Warning: Could not process directory ${sourcePath}: ${String(error)}`);
+  }
+}
+
+export async function createAjsSymlinks(modulePath: string) {
+  const resolvedModulePath = path.resolve(modulePath);
+  const antelopePath = path.join(resolvedModulePath, '.antelope');
+  const interfacesPath = path.join(antelopePath, 'interfaces.d');
+  const nodeModulesPath = path.join(resolvedModulePath, 'node_modules');
+  const ajsPath = path.join(nodeModulesPath, '@ajs');
+
+  // Check if .antelope/interfaces.d exists
+  if (!existsSync(interfacesPath)) {
+    return;
+  }
+
+  // Create node_modules/@ajs directory if it doesn't exist
+  if (!existsSync(ajsPath)) {
+    mkdirSync(ajsPath, { recursive: true });
+  }
+
+  // Recursively create symlinks for all .d.ts files
+  createSymlinksRecursive(interfacesPath, ajsPath);
+}
 
 async function setupGit(cachePath: string, git: string, folderName: string, branch?: string) {
   const result = await ExecuteCMD(

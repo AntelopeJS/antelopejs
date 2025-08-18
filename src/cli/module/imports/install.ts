@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { Options, readModuleManifest, readUserConfig } from '../../common';
-import { installInterfaces, InterfaceInfo, loadInterfacesFromGit } from '../../git';
+import { installInterfaces, InterfaceInfo, loadInterfacesFromGit, createAjsSymlinks } from '../../git';
 import { mapModuleImport } from '../../../common/manifest';
 import { error, warning, info, success, ProgressBar } from '../../../utils/cli-ui';
 import { existsSync } from 'fs';
@@ -166,5 +166,8 @@ export default function () {
       if (totalExisting > 0) {
         info(chalk.dim`${totalExisting} interface(s) were already installed and skipped`);
       }
+
+      // Create @ajs symlinks after installation
+      await createAjsSymlinks(options.module);
     });
 }
