@@ -86,7 +86,6 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-misused-promises': 'off',
       '@typescript-eslint/no-require-imports': 'off',
-      '@typescript-eslint/prefer-promise-reject-errors': 'off',
       '@typescript-eslint/no-redundant-type-constituents': 'off',
       'no-useless-escape': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
