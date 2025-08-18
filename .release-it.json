@@ -9,16 +9,7 @@
     "web": true
   },
   "hooks": {
-    "before:init": ["pnpm lint"]
-  },
-  "plugins": {
-    "@release-it/conventional-changelog": {
-      "preset": {
-        "name": "conventionalcommits"
-      },
-      "infile": "CHANGELOG.md",
-      "header": "# Changelog",
-      "ignoreRecommendedBump": true
-    }
+    "before:init": ["pnpm lint"],
+    "before:release": ["pnpm run changelog"]
   }
 }
