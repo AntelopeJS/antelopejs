@@ -2,8 +2,7 @@ import { RegisterLoader, ModuleSource } from '.';
 import { ExecuteCMD } from '../../utils/command';
 import { ModuleCache } from '../cache';
 import { ModuleManifest } from '../manifest';
-import { Logging } from '../../interfaces/logging/beta';
-import { VERBOSE_SECTIONS } from '../../logging';
+import { Logging, VERBOSE_SECTIONS } from '../../interfaces/logging/beta';
 import { terminalDisplay } from '../../logging/terminal-display';
 
 export interface ModuleSourceGit extends ModuleSource {

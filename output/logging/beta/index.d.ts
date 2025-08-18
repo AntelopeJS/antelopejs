@@ -1,4 +1,19 @@
-import { VerboseSection } from '../../../logging';
+/**
+ * Logical sections for verbose logging
+ */
+export declare const VERBOSE_SECTIONS: {
+    readonly CMD: "cmd";
+    readonly GIT: "git";
+    readonly PACKAGE: "package";
+    readonly INIT: "init";
+    readonly INSTALL: "install";
+    readonly PROJECT: "project";
+    readonly MODULE: "module";
+    readonly CONFIG: "config";
+    readonly LOADER: "loader";
+    readonly CACHE: "cache";
+};
+export type VerboseSection = (typeof VERBOSE_SECTIONS)[keyof typeof VERBOSE_SECTIONS];
 /**
  * Provides a structured logging system with multiple severity levels and channels.
  *

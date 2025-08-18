@@ -1,8 +1,7 @@
 import { AsyncProxy } from '../interfaces/core/beta';
 import * as moduleInterface1 from '../interfaces/core/beta/modules';
 import { ModuleManifest } from '../common/manifest';
-import { Logging } from '../interfaces/logging/beta';
-import { VERBOSE_SECTIONS } from '../logging';
+import { Logging, VERBOSE_SECTIONS } from '../interfaces/logging/beta';
 
 /**
  * Module Interface exported by every module.

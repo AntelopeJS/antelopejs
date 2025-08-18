@@ -18,8 +18,7 @@ import { createHash } from 'crypto';
 import { ModuleSourceLocal } from '../common/downloader/local';
 import assert from 'assert';
 import { ModuleManifest } from '../common/manifest';
-import { Logging } from '../interfaces/logging/beta';
-import { VERBOSE_SECTIONS } from '../logging';
+import { Logging, VERBOSE_SECTIONS } from '../interfaces/logging/beta';
 import EventEmitter from 'events';
 import { terminalDisplay } from '../logging/terminal-display';
 

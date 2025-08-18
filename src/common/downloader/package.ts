@@ -1,8 +1,7 @@
 import { RegisterLoader, ModuleSource } from '.';
 import { ModuleCache } from '../cache';
 import path from 'path';
-import { Logging } from '../../interfaces/logging/beta';
-import { VERBOSE_SECTIONS } from '../../logging';
+import { Logging, VERBOSE_SECTIONS } from '../../interfaces/logging/beta';
 
 // @ts-ignore
 import inly from 'inly';

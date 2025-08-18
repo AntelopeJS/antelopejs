@@ -1,6 +1,5 @@
 import { exec, ExecOptions } from 'child_process';
-import { Logging } from '../interfaces/logging/beta';
-import { VERBOSE_SECTIONS } from '../logging';
+import { Logging, VERBOSE_SECTIONS } from '../interfaces/logging/beta';
 
 export interface CommandResult {
   stdout: string;

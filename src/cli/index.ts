@@ -10,13 +10,8 @@ import cmdModule from './module';
 import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
 import { warnIfOutdated } from './version-check';
-import {
-  setVerboseSections,
-  VERBOSE_SECTIONS,
-  VerboseSection,
-  setupAntelopeProjectLogging,
-  defaultConfigLogging,
-} from '../logging';
+import { setVerboseSections, setupAntelopeProjectLogging, defaultConfigLogging } from '../logging';
+import { VERBOSE_SECTIONS, VerboseSection } from '../interfaces/logging/beta';
 
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
