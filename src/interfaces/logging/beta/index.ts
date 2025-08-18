@@ -1,5 +1,22 @@
 import eventLog from './listener';
-import { VerboseSection } from '../../../logging';
+
+/**
+ * Logical sections for verbose logging
+ */
+export const VERBOSE_SECTIONS = {
+  CMD: 'cmd',
+  GIT: 'git',
+  PACKAGE: 'package',
+  INIT: 'init',
+  INSTALL: 'install',
+  PROJECT: 'project',
+  MODULE: 'module',
+  CONFIG: 'config',
+  LOADER: 'loader',
+  CACHE: 'cache',
+} as const;
+
+export type VerboseSection = (typeof VERBOSE_SECTIONS)[keyof typeof VERBOSE_SECTIONS];
 
 /**
  * Provides a structured logging system with multiple severity levels and channels.

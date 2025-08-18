@@ -3,28 +3,9 @@ import { AntelopeLogging, AntelopeProjectEnvConfigStrict } from '../common/confi
 import eventLog, { Log } from '../interfaces/logging/beta/listener';
 import { mergeDeep } from '../utils/object';
 import { GetResponsibleModule } from '../interfaces/core/beta';
-import { Logging } from '../interfaces/logging/beta';
-import { formatLogMessageWithRightAlignedDate, NEWLINE, OVERWRITE_CURRENT_LINE } from './utils';
+import { Logging, VERBOSE_SECTIONS, VerboseSection } from '../interfaces/logging/beta';
+import { formatLogMessageWithRightAlignedDate, NEWLINE, OVERWRITE_CURRENT_LINE, DEFAULT_TERMINAL_WIDTH } from './utils';
 import { terminalDisplay } from './terminal-display';
-import { DEFAULT_TERMINAL_WIDTH } from './utils';
-
-/**
- * Logical sections for verbose logging
- */
-export const VERBOSE_SECTIONS = {
-  CMD: 'cmd',
-  GIT: 'git',
-  PACKAGE: 'package',
-  INIT: 'init',
-  INSTALL: 'install',
-  PROJECT: 'project',
-  MODULE: 'module',
-  CONFIG: 'config',
-  LOADER: 'loader',
-  CACHE: 'cache',
-} as const;
-
-export type VerboseSection = (typeof VERBOSE_SECTIONS)[keyof typeof VERBOSE_SECTIONS];
 
 /**
  * Active sections for verbose logging
