@@ -74,10 +74,9 @@ export function savePackageManagerToPackageJson(packageManager: string, director
 
   try {
     const packageJsonContent = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    const packageManagerWithVersion = getPackageManagerWithVersion(packageManager);
 
     // Add the packageManager field with specific version
-    packageJsonContent.packageManager = packageManagerWithVersion;
+    packageJsonContent.packageManager = getPackageManagerWithVersion(packageManager);
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJsonContent, null, 2));
 
     info(`Package manager set to ${chalk.cyan(packageManager)}`);

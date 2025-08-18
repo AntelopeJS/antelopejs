@@ -73,8 +73,7 @@ export async function loadManifestFromGit(git: string): Promise<GitManifest> {
   try {
     const folderPath = await loadGit(git);
     const manifestPath = path.join(folderPath, 'manifest.json');
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    return manifest;
+    return JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   } finally {
     await releaseLock();
   }
@@ -137,9 +136,7 @@ export async function loadInterfaceFromGit(git: string, interface_: string): Pro
       cwd: folderPath,
     });
 
-    const interfaceInfo = await getInterfaceInfo(folderPath, interface_);
-
-    return interfaceInfo;
+    return await getInterfaceInfo(folderPath, interface_);
   } finally {
     await releaseLock();
   }
