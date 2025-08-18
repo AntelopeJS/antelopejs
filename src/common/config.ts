@@ -122,16 +122,16 @@ function recursiveMerge(target: Record<any, any>, source: Record<any, any>) {
   }
 }
 
-function runTemplateString(match: string, expr: string, argnames: string[], argvalues: any[]) {
+function runTemplateString(match: string, expr: string, arg_names: string[], arg_values: any[]) {
   try {
     try {
-      return Function(...argnames, 'return ' + expr)(...argvalues);
+      return Function(...arg_names, 'return ' + expr)(...arg_values);
     } catch (e: any) {
       if (!e.toString().startsWith('SyntaxError:')) {
         return match;
       }
     }
-    return Function(...argnames, expr)(...argvalues);
+    return Function(...arg_names, expr)(...arg_values);
   } catch (e) {
     console.error(e);
     return match;
