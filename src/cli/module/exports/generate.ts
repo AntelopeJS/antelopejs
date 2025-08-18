@@ -62,11 +62,7 @@ async function moveInterfaceFilesToRoot(
     const mvFromTempCommand = `cp -R ${tmpPath}/* ${outputPath}/ && rm -rf ${tmpPath}`;
     const mvResult = await ExecuteCMD(mvFromTempCommand, {});
 
-    if (mvResult.code !== 0) {
-      return false;
-    }
-
-    return true;
+    return mvResult.code === 0;
   } catch {
     return false;
   }
