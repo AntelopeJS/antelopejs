@@ -375,8 +375,8 @@ type InterfaceImplType<T> =
     ? { register: P; unregister: (id: RID<P>) => void }
     : T extends EventProxy
       ? never
-      : T extends (...args: any[]) => any
-        ? T
+      : T extends (...args: infer A) => infer R
+        ? (...args: A) => Awaited<R> | R
         : T extends Record<string, any>
           ? InterfaceToImpl<T>
           : never;

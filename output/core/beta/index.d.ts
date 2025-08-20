@@ -157,7 +157,7 @@ export declare function InterfaceFunction<T extends Func = Func, R = Awaited<Ret
 type InterfaceImplType<T> = T extends RegisteringProxy<infer P> ? {
     register: P;
     unregister: (id: RID<P>) => void;
-} : T extends EventProxy ? never : T extends (...args: any[]) => any ? T : T extends Record<string, any> ? InterfaceToImpl<T> : never;
+} : T extends EventProxy ? never : T extends (...args: infer A) => infer R ? (...args: A) => Awaited<R> | R : T extends Record<string, any> ? InterfaceToImpl<T> : never;
 type InterfaceToImpl<T> = T extends infer P ? {
     [K in keyof P]?: InterfaceImplType<P[K]>;
 } : never;
