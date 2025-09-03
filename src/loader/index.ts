@@ -166,9 +166,10 @@ export class ModuleManager {
     this.projectFolder = projectFolder;
     this.cache = new ModuleCache(cacheFolder);
     this.core = {
-      ref: new Module(new ModuleManifest(antelopeFolder, { type: 'none' })),
+      ref: new Module(new ModuleManifest(antelopeFolder, { id: 'antelopejs', type: 'none' }, 'antelopejs')),
       config: { disabledExports: new Set(), importOverrides: new Map(), config: undefined },
     };
+    this.loadedModules.set('antelopejs', this.core);
     this.concurrency = concurrency;
   }
 
@@ -258,7 +259,10 @@ export class ModuleManager {
         };
       },
       LoadModule: async (moduleId: string, declaration: moduleInterfaceBeta.ModuleDefinition, autostart = false) => {
-        const moduleManifests = await LoadModule(this.projectFolder, this.cache, declaration.source);
+        const moduleManifests = await LoadModule(this.projectFolder, this.cache, {
+          ...declaration.source,
+          id: moduleId,
+        });
         manifest.configs[moduleId] = {
           config: declaration.config,
           disabledExports: new Set(declaration.disabledExports),

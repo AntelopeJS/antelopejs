@@ -91,5 +91,5 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
   if (newVersion) {
     cache.setVersion(name, newVersion);
   }
-  return [new ModuleManifest(folder, source)];
+  return [new ModuleManifest(folder, source, source.id)];
 });

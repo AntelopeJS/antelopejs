@@ -20,7 +20,7 @@ async function ConvertConfig(config: AntelopeProjectEnvConfigStrict): Promise<Le
   return {
     sources: Object.entries(config.modules)
       .filter(([, module]) => 'source' in module)
-      .map(([id, module]) => ({ id, ...module.source })),
+      .map(([id, module]) => ({ ...module.source, id })),
     configs: Object.entries(config.modules).reduce(
       (configs, [name, module]) => {
         configs[name] = {
