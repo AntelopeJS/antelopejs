@@ -93,13 +93,6 @@ class ModuleResolverDetour {
           assert(target, `Module ${module.id} tried to use un-imported interface ${name}@${version}`);
           return path.join(target.manifest.exportsPath, request.substring(5));
         }
-      } else if (request.startsWith('@ajs.raw/')) {
-        const ifMatch = request.match(/^@ajs.raw\/([^\/]+)\/([^@]+)@([^\/]+)(.*)/);
-        if (ifMatch) {
-          const [, id, name, version, file] = ifMatch;
-          const target = this.modulesRef.get(id)!.ref;
-          return path.join(target.manifest.exportsPath, name, version, file);
-        }
       } else if (module.manifest.srcAliases) {
         for (const { alias, replace } of module.manifest.srcAliases) {
           if (request.startsWith(alias)) {
@@ -123,6 +116,14 @@ class ModuleResolverDetour {
         }
       }
       // TODO: throw error if strict mode is on and we're requiring from interface to impl
+    }
+    if (request.startsWith('@ajs.raw/')) {
+      const ifMatch = request.match(/^@ajs.raw\/([^\/]+)\/([^@]+)@([^\/]+)(.*)/);
+      if (ifMatch) {
+        const [, id, name, version, file] = ifMatch;
+        const target = this.modulesRef.get(id)!.ref;
+        return path.join(target.manifest.exportsPath, name, version, file);
+      }
     }
   }
 }
