@@ -8,12 +8,14 @@ import assert from 'assert';
 import Mocha from 'mocha';
 import { readdir, stat } from 'fs/promises';
 import { Writable } from 'stream';
+import repl from 'repl';
 
 Writable.prototype.setMaxListeners(20);
 
 export interface LaunchOptions {
   watch?: boolean;
   concurrency?: number;
+  interactive?: boolean;
 }
 
 async function ConvertConfig(config: AntelopeProjectEnvConfigStrict): Promise<LegacyModuleList> {
@@ -143,6 +145,16 @@ export default async function (projectFolder = '.', env = 'default', options: La
   }
 
   moduleManager.startModules();
+
+  if (options.interactive) {
+	  const con = repl.start("> ");
+    con.context.moduleManager = moduleManager;
+    con.setupHistory('.debugger_history', () => {});
+    con.on("close", async () => {
+      await moduleManager.shutdown();
+      process.exit(0);
+    });
+  }
 
   exitHook(async (callback) => {
     try {
