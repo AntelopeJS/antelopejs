@@ -2,8 +2,10 @@ import { RegisterLoader, ModuleSource } from '.';
 import { ExecuteCMD } from '../../utils/command';
 import { ModuleCache } from '../cache';
 import { ModuleManifest } from '../manifest';
-import { Logging, VERBOSE_SECTIONS } from '../../interfaces/logging/beta';
+import { Logging } from '../../interfaces/logging/beta';
 import { terminalDisplay } from '../../logging/terminal-display';
+
+const Logger = new Logging.Channel('loader.git');
 
 export interface ModuleSourceGit extends ModuleSource {
   type: 'git';
@@ -18,20 +20,20 @@ function urlToFile(url: string): string {
 }
 
 RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceGit) => {
-  Logging.Verbose(VERBOSE_SECTIONS.GIT, `Git loader called for ${source.remote}`);
+  Logger.Debug(`Git loader called for ${source.remote}`);
   const name = urlToFile(source.remote);
-  Logging.Verbose(VERBOSE_SECTIONS.GIT, `Starting Git module load for ${name}`);
+  Logger.Trace(`Starting Git module load for ${name}`);
   const cacheVersion = cache.getVersion(name);
   let doInstall = false;
   const folder = await cache.getFolder(name, true, true);
   let newVersion = '';
   if (source.ignoreCache || !cacheVersion?.startsWith('git:')) {
-    Logging.Verbose(VERBOSE_SECTIONS.GIT, `Cloning repository ${source.remote}`);
+    Logger.Debug(`Cloning repository ${source.remote}`);
     await terminalDisplay.startSpinner(`Cloning ${source.remote}`);
     await cache.getFolder(name, false, true);
     await ExecuteCMD(`git clone ${source.remote} ${name}`, { cwd: cache.path });
     if (source.commit || source.branch) {
-      Logging.Verbose(VERBOSE_SECTIONS.GIT, `Checking out ${source.commit || source.branch}`);
+      Logger.Debug(`Checking out ${source.commit || source.branch}`);
       await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder });
     }
     const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder });
@@ -44,7 +46,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
     newVersion = 'git:' + newActiveCommit;
     doInstall = true;
   } else {
-    Logging.Verbose(VERBOSE_SECTIONS.GIT, `Repository already cached, updating...`);
+    Logger.Debug(`Repository already cached, updating...`);
     await terminalDisplay.startSpinner(`Updating ${source.remote}`);
     if (source.commit || source.branch) {
       await ExecuteCMD(`git fetch`, { cwd: folder });
@@ -66,11 +68,11 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
     await terminalDisplay.stopSpinner(`Updated ${source.remote}`);
   }
   if (doInstall && source.installCommand) {
-    Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${name}`);
+    Logger.Debug(`Running install commands for ${name}`);
     await terminalDisplay.startSpinner(`Installing dependencies for ${name}`);
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
-        Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
+        Logger.Debug(`Executing command: ${command}`);
         const result = await ExecuteCMD(command, { cwd: folder });
         if (result.code !== 0) {
           await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
@@ -78,7 +80,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
         }
       }
     } else {
-      Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
+      Logger.Debug(`Executing command: ${source.installCommand}`);
       const result = await ExecuteCMD(source.installCommand, { cwd: folder });
       if (result.code !== 0) {
         await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
@@ -87,7 +89,7 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
     }
     await terminalDisplay.stopSpinner(`Dependencies installed for ${name}`);
   }
-  Logging.Verbose(VERBOSE_SECTIONS.GIT, `Git module load completed for ${name}`);
+  Logger.Trace(`Git module load completed for ${name}`);
   if (newVersion) {
     cache.setVersion(name, newVersion);
   }
