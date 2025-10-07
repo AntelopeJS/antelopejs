@@ -147,10 +147,10 @@ export default async function (projectFolder = '.', env = 'default', options: La
   moduleManager.startModules();
 
   if (options.interactive) {
-	  const con = repl.start("> ");
+    const con = repl.start('> ');
     con.context.moduleManager = moduleManager;
     con.setupHistory('.debugger_history', () => {});
-    con.on("close", async () => {
+    con.on('close', async () => {
       await moduleManager.shutdown();
       process.exit(0);
     });
