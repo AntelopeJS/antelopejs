@@ -195,13 +195,12 @@ export namespace Logging {
    * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
    *
    * @deprecated
-   * 
+   *
    * Usage:
    * Logging.inline.Info('Hello');
    * Logging.inline.Info('World');
    */
   export namespace inline {
-
     /**
      * Write arguments to the inline log channel at the ERROR level.
      *

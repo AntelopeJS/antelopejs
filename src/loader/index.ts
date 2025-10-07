@@ -509,7 +509,8 @@ export class ModuleManager {
 
     for (const filePath of watchedDirs) {
       watch(filePath, (eventType, filename) => {
-        if (eventType === 'change' && filename) fileChange(path.join(filePath, filename)).catch(Logger.Error);
+        if (eventType === 'change' && filename)
+          fileChange(path.join(filePath, filename)).catch((err) => Logger.Error(err));
       });
     }
   }

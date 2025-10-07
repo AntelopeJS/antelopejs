@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { AntelopeLogging, AntelopeProjectEnvConfigStrict } from '../common/config';
+import { AntelopeLogging } from '../common/config';
 import eventLog, { Log } from '../interfaces/logging/beta/listener';
 import { mergeDeep } from '../utils/object';
 import { GetResponsibleModule } from '../interfaces/core/beta';
@@ -60,11 +60,11 @@ function getChannelFilter(channel: string) {
     return levelMap.warn;
   }
 
-  let match = 0;
+  let match = -1;
   let matchValue: number | string = levelMap.warn;
   for (const key of Object.keys(loggingConfig.channelFilter)) {
     if (key.endsWith('*')) {
-      if (channel.startsWith(key.substring(0, key.length - 1))) {
+      if (channel.startsWith(key.substring(0, key.length - 1)) && match < key.length - 1) {
         match = key.length - 1;
         matchValue = loggingConfig.channelFilter[key];
       }
@@ -88,7 +88,7 @@ function shouldIgnoreChannel(log: Log) {
   return filter > log.levelId;
 }
 
-function shouldIgnoreModule(log: Log) {
+function shouldIgnoreModule(_log: Log) {
   if (loggingConfig.moduleTracking.enabled) {
     const module = GetResponsibleModule() || '';
 
@@ -122,7 +122,7 @@ function handleLog(log: Log) {
 const channelFilters: Exclude<AntelopeLogging['channelFilter'], undefined> = {};
 export function addChannelFilter(channel: string, level: number) {
   channelFilters[channel] = level;
-  Object.keys(channelCache).forEach(key => delete channelCache[key]);
+  Object.keys(channelCache).forEach((key) => delete channelCache[key]);
   if (loggingConfig) {
     if (!loggingConfig.channelFilter) {
       loggingConfig.channelFilter = {};
@@ -144,7 +144,7 @@ export default function setupAntelopeProjectLogging(config?: AntelopeLogging): v
     return;
   }
 
-  const channelFiltersEntries = Object.entries(channelFilters)
+  const channelFiltersEntries = Object.entries(channelFilters);
   if (channelFiltersEntries.length > 0 && !loggingConfig.channelFilter) {
     loggingConfig.channelFilter = {};
   }
