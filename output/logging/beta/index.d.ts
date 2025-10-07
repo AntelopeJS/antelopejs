@@ -1,5 +1,6 @@
 /**
  * Logical sections for verbose logging
+ * @deprecated
  */
 export declare const VERBOSE_SECTIONS: {
     readonly CMD: "cmd";
@@ -13,6 +14,9 @@ export declare const VERBOSE_SECTIONS: {
     readonly LOADER: "loader";
     readonly CACHE: "cache";
 };
+/**
+ * @deprecated
+ */
 export type VerboseSection = (typeof VERBOSE_SECTIONS)[keyof typeof VERBOSE_SECTIONS];
 /**
  * Provides a structured logging system with multiple severity levels and channels.
@@ -40,6 +44,63 @@ export declare namespace Logging {
         /** Messages without prefix for direct display */
         NO_PREFIX = -1
     }
+    class Channel {
+        readonly channel: string;
+        constructor(channel: string);
+        /**
+         * Write arguments to the log channel at the ERROR level.
+         *
+         * Use for critical errors that may cause application failure or require immediate attention.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        Error(...args: any[]): void;
+        /**
+         * Write arguments to the log channel at the WARN level.
+         *
+         * Use for important issues that don't prevent the application from functioning
+         * but should be addressed.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        Warn(...args: any[]): void;
+        /**
+         * Write arguments to the log channel at the INFO level.
+         *
+         * Use for general application information and status updates that are useful
+         * for understanding the normal operation of the system.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        Info(...args: any[]): void;
+        /**
+         * Write arguments to the log channel at the DEBUG level.
+         *
+         * Use for detailed information useful for debugging and troubleshooting issues.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        Debug(...args: any[]): void;
+        /**
+         * Write arguments to the log channel at the TRACE level.
+         *
+         * Use for highly detailed tracing information, typically only enabled during
+         * intensive debugging sessions.
+         *
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        Trace(...args: any[]): void;
+        /**
+         * Write arguments to the log channel at the given severity level.
+         *
+         * This is the core logging function that all other logging functions ultimately call.
+         * It emits an event with the log entry that can be captured by registered listeners.
+         *
+         * @param levelId - Severity level of the log entry (use values from the Level enum)
+         * @param args - Values to log, which can be of any type and will be serialized appropriately
+         */
+        Write(levelId: number, ...args: any[]): void;
+    }
     /**
      * Write arguments to the main log channel at the ERROR level.
      *
@@ -47,7 +108,7 @@ export declare namespace Logging {
      *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-    function Error(...args: any[]): void;
+    const Error: (...args: any[]) => void;
     /**
      * Write arguments to the main log channel at the WARN level.
      *
@@ -56,7 +117,7 @@ export declare namespace Logging {
      *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-    function Warn(...args: any[]): void;
+    const Warn: (...args: any[]) => void;
     /**
      * Write arguments to the main log channel at the INFO level.
      *
@@ -65,7 +126,7 @@ export declare namespace Logging {
      *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-    function Info(...args: any[]): void;
+    const Info: (...args: any[]) => void;
     /**
      * Write arguments to the main log channel at the DEBUG level.
      *
@@ -73,7 +134,7 @@ export declare namespace Logging {
      *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-    function Debug(...args: any[]): void;
+    const Debug: (...args: any[]) => void;
     /**
      * Write arguments to the main log channel at the TRACE level.
      *
@@ -82,8 +143,9 @@ export declare namespace Logging {
      *
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
-    function Trace(...args: any[]): void;
+    const Trace: (...args: any[]) => void;
     /**
+     * @deprecated
      * Write arguments to the verbose log channel for the specified section.
      * The channel will be filtered based on the --verbose option configuration.
      *
@@ -93,6 +155,8 @@ export declare namespace Logging {
     function Verbose(section: VerboseSection, ...args: any[]): void;
     /**
      * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
+     *
+     * @deprecated
      *
      * Usage:
      * Logging.inline.Info('Hello');
@@ -104,31 +168,31 @@ export declare namespace Logging {
          *
          * @param args - Values to log, which can be of any type and will be serialized appropriately
          */
-        function Error(...args: any[]): void;
+        const Error: (...args: any[]) => void;
         /**
          * Write arguments to the inline log channel at the WARN level.
          *
          * @param args - Values to log, which can be of any type and will be serialized appropriately
          */
-        function Warn(...args: any[]): void;
+        const Warn: (...args: any[]) => void;
         /**
          * Write arguments to the inline log channel at the INFO level.
          *
          * @param args - Values to log, which can be of any type and will be serialized appropriately
          */
-        function Info(...args: any[]): void;
+        const Info: (...args: any[]) => void;
         /**
          * Write arguments to the inline log channel at the DEBUG level.
          *
          * @param args - Values to log, which can be of any type and will be serialized appropriately
          */
-        function Debug(...args: any[]): void;
+        const Debug: (...args: any[]) => void;
         /**
          * Write arguments to the inline log channel at the TRACE level.
          *
          * @param args - Values to log, which can be of any type and will be serialized appropriately
          */
-        function Trace(...args: any[]): void;
+        const Trace: (...args: any[]) => void;
     }
     /**
      * Write arguments to the specified log channel at the given severity level.
