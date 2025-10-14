@@ -12,6 +12,7 @@ interface RunOptions extends LaunchOptions {
   project: string;
   env?: string;
   inspect?: string | boolean;
+  interactive?: boolean;
 }
 
 export default function () {
@@ -29,6 +30,7 @@ export default function () {
     .addOption(new Option('-w, --watch', 'Watch for changes and automatically restart'))
     .addOption(new Option('-c, --concurrency <number>', 'Number of modules to load concurrently').argParser(parseInt))
     .addOption(new Option('--inspect [host:port]', 'Enable inspector on host:port (default: 127.0.0.1:9229)'))
+    .addOption(new Option('-i, --interactive', 'Run a REPL with the project'))
     .action(async (options: RunOptions) => {
       console.log(''); // Add spacing for readability
 
