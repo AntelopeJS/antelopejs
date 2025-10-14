@@ -38,7 +38,6 @@ export interface ModulePackageJson {
 }
 
 export class ModuleManifest {
-  public readonly name: string;
   public version: string;
   public readonly folder: string;
   public readonly main: string;
@@ -87,10 +86,10 @@ export class ModuleManifest {
   constructor(
     folder: string,
     public readonly source: ModuleSource,
+    public readonly name: string,
   ) {
     this.folder = path.resolve(folder);
     this.manifest = ModuleManifest.readManifest(this.folder);
-    this.name = this.manifest.name;
     this.version = this.manifest.version;
     this.exportsPath = path.join(this.folder, this.manifest.antelopeJs?.exportsPath || 'interfaces');
     this.imports = this.manifest.antelopeJs?.imports?.map(mapModuleImport) ?? [];

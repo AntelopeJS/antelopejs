@@ -38,10 +38,10 @@ async function analyzeConfig(
 ): Promise<ConfigAnalyze> {
   const modules = (
     await Promise.all(
-      Object.values(config.modules)
-        .filter((module) => 'source' in module)
-        .map((module) =>
-          LoadModule(projectFolder, cache, module.source).catch((err) => {
+      Object.entries(config.modules)
+        .filter(([_name, module]) => 'source' in module)
+        .map(([name, module]) =>
+          LoadModule(projectFolder, cache, { ...module.source, id: name }).catch((err) => {
             throw new Error(`Error loading module ${JSON.stringify(module.source)}: ${err}`);
           }),
         ),
@@ -49,7 +49,13 @@ async function analyzeConfig(
   ).flat();
 
   // Add core module
-  modules.push(new ModuleManifest(path.resolve(path.join(__dirname, '..', '..', '..', '..')), { type: 'none' }));
+  modules.push(
+    new ModuleManifest(
+      path.resolve(path.join(__dirname, '..', '..', '..', '..')),
+      { id: 'antelopejs', type: 'none' },
+      'antelopejs',
+    ),
+  );
 
   // Load all exports from modules
   await Promise.all(modules.map((module) => module.loadExports()));

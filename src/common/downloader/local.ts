@@ -64,7 +64,7 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
     }
     await terminalDisplay.stopSpinner(`Dependencies installed for ${formattedPath}`);
   }
-  return [new ModuleManifest(formattedPath, source)];
+  return [new ModuleManifest(formattedPath, source, source.id)];
 });
 
 export interface ModuleSourceLocalFolder extends ModuleSource {
@@ -77,7 +77,7 @@ RegisterLoader('local-folder', 'path', (_: ModuleCache, source: ModuleSourceLoca
   return readdir(searchPath).then((names) =>
     names.map((name) => {
       const folder = path.join(searchPath, name);
-      return new ModuleManifest(folder, { type: 'local', path: folder } as ModuleSourceLocal);
+      return new ModuleManifest(folder, { type: 'local', path: folder } as ModuleSourceLocal, `${source.id}-${name}`);
     }),
   );
 });
