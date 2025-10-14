@@ -293,6 +293,7 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
   Error.stackTraceLimit = oldLimit;
 
   let currentFound = '';
+  let lastInterface = '';
   let currentBestMatch = 0;
   for (let i = startFrame; i < trace.length; ++i) {
     const fileName = trace[i];
@@ -301,6 +302,7 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
     }
     for (const { dir, id, interfaceDir } of internal.moduleByFolder) {
       if (ignoreInterfaces && fileName.startsWith(interfaceDir)) {
+        lastInterface = id;
         currentFound = '';
         currentBestMatch = 0;
         break;
@@ -314,6 +316,7 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
       return currentFound;
     }
   }
+  return lastInterface;
 }
 
 /**
