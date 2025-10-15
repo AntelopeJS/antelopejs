@@ -139,6 +139,9 @@ export function addChannelFilter(channel: string, level: number) {
  */
 export default function setupAntelopeProjectLogging(config?: AntelopeLogging): void {
   loggingConfig = mergeDeep({}, defaultConfigLogging, config);
+  for (const key of Object.keys(channelCache)) {
+    delete channelCache[key];
+  }
 
   if (!loggingConfig.enabled) {
     return;
