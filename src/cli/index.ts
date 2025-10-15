@@ -10,85 +10,17 @@ import cmdModule from './module';
 import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
 import { warnIfOutdated } from './version-check';
-import { setVerboseSections, setupAntelopeProjectLogging, defaultConfigLogging } from '../logging';
-import { VERBOSE_SECTIONS, VerboseSection } from '../interfaces/logging/beta';
+import { setupAntelopeProjectLogging, defaultConfigLogging, addChannelFilter } from '../logging';
 
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
 const version = packageJson.version;
 
-/**
- * Parse the verbose sections from the --verbose option
- * All sections are enabled by default
- * @param verboseOption - The value of the --verbose option
- * @returns The list of sections to enable
- */
-function parseVerboseSections(verboseOption?: string): VerboseSection[] | undefined {
-  if (!verboseOption) {
-    return undefined;
-  }
-
-  const sections = verboseOption
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-
-  const validSections = Object.values(VERBOSE_SECTIONS);
-  const invalidSections = sections.filter((section) => !validSections.includes(section as VerboseSection));
-
-  if (invalidSections.length > 0) {
-    throw new Error(
-      `Sections verbose invalides: ${invalidSections.join(', ')}. Sections valides: ${validSections.join(', ')}`,
-    );
-  }
-
-  return sections as VerboseSection[];
-}
-
-function parseVerboseOptionEarly(): string | undefined {
-  const args = process.argv.slice(2);
-  const verboseIndex = args.findIndex((arg) => arg.startsWith('--verbose'));
-
-  if (verboseIndex === -1) {
-    return undefined;
-  }
-
-  const verboseArg = args[verboseIndex];
-  if (verboseArg === '--verbose') {
-    if (verboseIndex + 1 < args.length && !args[verboseIndex + 1].startsWith('-')) {
-      return args[verboseIndex + 1];
-    }
-    return '';
-  }
-
-  const equalIndex = verboseArg.indexOf('=');
-  if (equalIndex !== -1) {
-    return verboseArg.substring(equalIndex + 1);
-  }
-
-  return undefined;
-}
-
 // Main CLI function
 const runCLI = async () => {
   try {
-    // Configure verbose logging early based on command line arguments
-    const verboseOption = parseVerboseOptionEarly();
-    if (verboseOption !== undefined) {
-      const sections = parseVerboseSections(verboseOption);
-      setVerboseSections(sections);
-    }
-
     // Initialize logging with default configuration
-    const defaultConfig = {
-      logging: defaultConfigLogging,
-      cacheFolder: '.antelopejs',
-      modules: {},
-      name: 'cli',
-      envOverrides: {},
-      disabledExports: [],
-    };
-    setupAntelopeProjectLogging(defaultConfig);
+    setupAntelopeProjectLogging(defaultConfigLogging);
 
     // Check for updates before anything else
     await warnIfOutdated(version);
@@ -114,10 +46,8 @@ const runCLI = async () => {
       )
       .version(version, '-v, --version', 'Display CLI version number')
       .option(
-        '--verbose [=sections]',
-        `Enable verbose logging for specific sections (comma-separated). ` +
-          `Sections: ${Object.values(VERBOSE_SECTIONS).join(', ')}. ` +
-          `Default: all sections enabled. Example: --verbose=cmd,git,package`,
+        '--verbose [=cahnnels]',
+        `Enable verbose logging (TRACE level) for specific log channels (comma-separated).`,
       )
       .addCommand(cmdProject())
       .addCommand(cmdModule())
@@ -126,6 +56,13 @@ const runCLI = async () => {
 
     // Parse arguments
     await program.parseAsync();
+
+    const verbose = program.getOptionValue('verbose');
+    if (verbose) {
+      for (const channel of verbose.split(',')) {
+        addChannelFilter(channel, 0);
+      }
+    }
   } catch (error) {
     // Check if the error is ExitPromptError from inquirer (thrown when Ctrl+C is pressed)
     if (error && typeof error === 'object' && 'name' in error && error.name === 'ExitPromptError') {

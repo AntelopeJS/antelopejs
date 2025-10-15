@@ -1,7 +1,9 @@
 import { ModuleCache } from '../cache';
 import { ModuleManifest } from '../manifest';
-import { Logging, VERBOSE_SECTIONS } from '../../interfaces/logging/beta';
+import { Logging } from '../../interfaces/logging/beta';
 import path from 'path';
+
+const Logger = new Logging.Channel('loader.common');
 
 /**
  * Base Module Source. Instructs the Loader on how to acquire the module.
@@ -48,10 +50,10 @@ export default function LoadModule(
   cache: ModuleCache,
   source: ModuleSource,
 ): Promise<ModuleManifest[]> {
-  Logging.Verbose(VERBOSE_SECTIONS.LOADER, `LoadModule called for type ${source.type}`);
+  Logger.Debug(`LoadModule called for type ${source.type}`);
   const type = knownTypes.get(source.type);
   if (type) {
-    Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Found loader for type ${source.type}`);
+    Logger.Trace(`Found loader for type ${source.type}`);
 
     // If the path is not absolute, resolve it relative to the project folder
     if (type.loaderIdentifier === 'path') {
@@ -63,7 +65,7 @@ export default function LoadModule(
 
     return type.loader(cache, source);
   }
-  Logging.Verbose(VERBOSE_SECTIONS.LOADER, `No loader found for type ${source.type}`);
+  Logger.Info(`No loader found for type ${source.type}, adding to waitlist`);
   return new Promise<ModuleManifest[]>((resolve) => {
     let waitingList = waiting.get(source.type);
     if (!waitingList) {

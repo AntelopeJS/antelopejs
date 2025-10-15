@@ -1,5 +1,5 @@
 import { exec, ExecOptions } from 'child_process';
-import { Logging, VERBOSE_SECTIONS } from '../interfaces/logging/beta';
+import { Logging } from '../interfaces/logging/beta';
 
 export interface CommandResult {
   stdout: string;
@@ -22,6 +22,6 @@ export function ExecuteCMD(command: string, options: ExecOptions): Promise<Comma
       }
       resolve(result);
     });
-    Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
+    Logging.Trace(`Executing command: ${command}`);
   });
 }

@@ -18,9 +18,11 @@ import { createHash } from 'crypto';
 import { ModuleSourceLocal } from '../common/downloader/local';
 import assert from 'assert';
 import { ModuleManifest } from '../common/manifest';
-import { Logging, VERBOSE_SECTIONS } from '../interfaces/logging/beta';
+import { Logging } from '../interfaces/logging/beta';
 import EventEmitter from 'events';
 import { terminalDisplay } from '../logging/terminal-display';
+
+const Logger = new Logging.Channel('loader');
 
 type ModuleResolver = (request: string, parent: any, isMain: boolean, options: any) => string;
 class ModuleResolverDetour {
@@ -315,16 +317,16 @@ export class ModuleManager {
     // Get modules ready
     await terminalDisplay.startSpinner(`Loading modules`);
     const modulePromises = manifest.sources.map(async (source) => {
-      Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Loading module ${source.id}`);
+      Logger.Debug(`Loading module ${source.id}`);
       try {
-        Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Starting LoadModule for ${source.id}`);
+        Logger.Trace(`Starting LoadModule for ${source.id}`);
         const createdModules = await LoadModule(this.projectFolder, this.cache, source)
           .then((modulesManifest) => {
-            Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Module manifest loaded for ${source.id}`);
+            Logger.Trace(`Module manifest loaded for ${source.id}`);
             return modulesManifest.map((moduleManifest) => new Module(moduleManifest));
           })
           .then((modules) => {
-            Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Modules created for ${source.id}`);
+            Logger.Trace(`Modules created for ${source.id}`);
             for (const module of modules) {
               manifest.configs[module.id] = manifest.configs[source.id];
             }
@@ -333,14 +335,14 @@ export class ModuleManager {
           .catch(async (err) => {
             await terminalDisplay.failSpinner(`Failed to load module ${source.id}`);
             await terminalDisplay.cleanSpinner();
-            Logging.Error(err);
+            Logger.Error(err);
             process.exit(1);
           });
 
         return createdModules.map((ref) => ({ ref, config: manifest.configs[ref.id] || {} }));
       } catch (err) {
-        Logging.Error(`Unexpected error while loading module ${source.id}:`);
-        Logging.Error(err);
+        Logger.Error(`Unexpected error while loading module ${source.id}:`);
+        Logger.Error(err);
         throw err;
       }
     });
@@ -350,14 +352,14 @@ export class ModuleManager {
     await terminalDisplay.stopSpinner(`Modules loaded`);
 
     await terminalDisplay.startSpinner(`Loading exports`);
-    Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Loading exports`);
+    Logger.Trace(`Loading exports`);
 
     await this.core.ref.manifest.loadExports();
     await Promise.all(moduleList.map((module) => module.ref.manifest.loadExports()));
 
     moduleList.reduce((map, entry) => {
       if (map.has(entry.ref.id)) {
-        Logging.Error(`Detected module id collision (name in package.json): ${entry.ref.id}`);
+        Logger.Error(`Detected module id collision (name in package.json): ${entry.ref.id}`);
       }
       return map.set(entry.ref.id, entry);
     }, this.loadedModules);
@@ -371,15 +373,15 @@ export class ModuleManager {
     this.rebuildModuleAssociations(moduleList);
 
     await terminalDisplay.startSpinner(`Constructing modules`);
-    Logging.Verbose(VERBOSE_SECTIONS.LOADER, `Constructing modules`);
+    Logger.Trace(`Constructing modules`);
     this.resolverDetour.attach();
     await Promise.all(
       moduleList.map(({ ref, config }) =>
         ref.construct(config.config).catch((err) => {
-          Logging.Error(`Failed to construct module:`);
-          Logging.Error(`  - ID: ${ref.id}`);
-          Logging.Error(`  - Version: ${ref.version}`);
-          Logging.Error(`  - Error: ${err.message}`);
+          Logger.Error(`Failed to construct module:`);
+          Logger.Error(`  - ID: ${ref.id}`);
+          Logger.Error(`  - Version: ${ref.version}`);
+          Logger.Error(`  - Error: ${err.message}`);
           throw err;
         }),
       ),
@@ -483,7 +485,7 @@ export class ModuleManager {
               await this.reloadModule(id);
             }
           } catch (err) {
-            Logging.Error(err);
+            Logger.Error(err);
           }
           timer = undefined;
           toRefresh.clear();
@@ -512,7 +514,8 @@ export class ModuleManager {
 
     for (const filePath of watchedDirs) {
       watch(filePath, (eventType, filename) => {
-        if (eventType === 'change' && filename) fileChange(path.join(filePath, filename)).catch(Logging.Error);
+        if (eventType === 'change' && filename)
+          fileChange(path.join(filePath, filename)).catch((err) => Logger.Error(err));
       });
     }
   }

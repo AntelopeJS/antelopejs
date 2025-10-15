@@ -5,8 +5,10 @@ import { ExecuteCMD } from '../../utils/command';
 import { ModuleManifest } from '../manifest';
 import { ModuleCache } from '../cache';
 import os from 'node:os';
-import { Logging, VERBOSE_SECTIONS } from '../../interfaces/logging/beta';
+import { Logging } from '../../interfaces/logging/beta';
 import { terminalDisplay } from '../../logging/terminal-display';
+
+const Logger = new Logging.Channel('loader.local');
 
 export interface ModuleSourceLocal extends ModuleSource {
   type: 'local';
@@ -39,15 +41,15 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
   try {
     await access(formattedPath);
   } catch (error) {
-    Logging.Error(`Path does not exist or is not accessible: ${formattedPath}`);
+    Logger.Error(`Path does not exist or is not accessible: ${formattedPath}`);
     throw error;
   }
   if (source.installCommand) {
-    Logging.Verbose(VERBOSE_SECTIONS.INSTALL, `Running install commands for ${formattedPath}`);
+    Logger.Debug(`Running install commands for ${formattedPath}`);
     await terminalDisplay.startSpinner(`Installing dependencies for ${formattedPath}`);
     if (Array.isArray(source.installCommand)) {
       for (const command of source.installCommand) {
-        Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${command}`);
+        Logger.Debug(`Executing command: ${command}`);
         const result = await ExecuteCMD(command, { cwd: formattedPath });
         if (result.code !== 0) {
           await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
@@ -55,7 +57,7 @@ RegisterLoader('local', 'path', async (_: ModuleCache, source: ModuleSourceLocal
         }
       }
     } else {
-      Logging.Verbose(VERBOSE_SECTIONS.CMD, `Executing command: ${source.installCommand}`);
+      Logger.Debug(`Executing command: ${source.installCommand}`);
       const result = await ExecuteCMD(source.installCommand, { cwd: formattedPath });
       if (result.code !== 0) {
         await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);

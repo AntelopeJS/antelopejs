@@ -21,6 +21,7 @@ export type AntelopeModuleSourceConfig = ({ version: string } | { source: Module
 export interface AntelopeLogging {
   enabled: boolean;
   moduleTracking: { enabled: boolean; includes: string[]; excludes: string[] };
+  channelFilter?: Record<string, number | string>;
   formatter?: Record<string, string>;
   dateFormat?: string;
 }

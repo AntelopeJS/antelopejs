@@ -46,6 +46,25 @@ async function ConvertConfig(config: AntelopeProjectEnvConfigStrict): Promise<Le
   };
 }
 
+/**
+ * Registers event listeners for process events
+ */
+function setupProcessHandlers(): void {
+  process.on('uncaughtException', (error: Error) => {
+    Logging.Error(error.message);
+    process.exit(1);
+  });
+
+  process.on('unhandledRejection', (reason: any) => {
+    Logging.Error(reason);
+    process.exit(1);
+  });
+
+  process.on('warning', (warning: Error) => {
+    Logging.Warn(warning.message);
+  });
+}
+
 async function addTestFolder(mocha: Mocha, folder: string, matcher: RegExp) {
   const files = await readdir(folder);
   for (const file of files) {
@@ -53,7 +72,7 @@ async function addTestFolder(mocha: Mocha, folder: string, matcher: RegExp) {
     if ((await stat(filePath)).isDirectory()) {
       await addTestFolder(mocha, filePath, matcher);
     } else if (matcher.test(filePath)) {
-      console.log('adding test file', filePath);
+      Logging.Debug('Adding test file', filePath);
       mocha.addFile(filePath);
     }
   }
@@ -82,7 +101,8 @@ export async function TestModule(moduleFolder = '.', files?: string[]) {
   const config = 'setup' in rawconfig ? await rawconfig.setup() : rawconfig;
 
   try {
-    setupAntelopeProjectLogging(config);
+    setupAntelopeProjectLogging(config.logging);
+    setupProcessHandlers();
 
     const moduleManager = new ModuleManager(moduleRoot, path.resolve(path.join(__dirname, '..')), config.cacheFolder);
 
@@ -123,7 +143,8 @@ export async function TestModule(moduleFolder = '.', files?: string[]) {
 export default async function (projectFolder = '.', env = 'default', options: LaunchOptions = {}) {
   const config = await LoadConfig(projectFolder, env);
 
-  setupAntelopeProjectLogging(config);
+  setupAntelopeProjectLogging(config.logging);
+  setupProcessHandlers();
 
   const moduleManager = new ModuleManager(
     path.resolve(projectFolder),

@@ -1,7 +1,9 @@
 import { AsyncProxy } from '../interfaces/core/beta';
 import * as moduleInterface1 from '../interfaces/core/beta/modules';
 import { ModuleManifest } from '../common/manifest';
-import { Logging, VERBOSE_SECTIONS } from '../interfaces/logging/beta';
+import { Logging } from '../interfaces/logging/beta';
+
+const Logger = new Logging.Channel('loader.module');
 
 /**
  * Module Interface exported by every module.
@@ -57,22 +59,22 @@ export class Module {
     try {
       await this.manifest.reload();
     } catch (err) {
-      Logging.Error(err);
+      Logger.Error(err);
     }
   }
 
   public async construct(config: any): Promise<void> {
     if (this.state !== ModuleState.loaded) {
-      Logging.Verbose(VERBOSE_SECTIONS.MODULE, `Module ${this.id} already constructed`);
+      Logger.Info(`Module ${this.id} already constructed`);
       return;
     }
     await import(this.manifest.main)
       .then((mod) => {
         this.object = mod;
-        Logging.Verbose(VERBOSE_SECTIONS.MODULE, `Successfully loaded module ${this.id}`);
+        Logger.Debug(`Successfully loaded module ${this.id}`);
       })
       .catch((err) => {
-        Logging.Error(`Failed to load module ${this.id}`, err);
+        Logger.Error(`Failed to load module ${this.id}`, err);
         throw err;
       });
     if (this.object?.construct) {
@@ -116,7 +118,7 @@ export class Module {
       this.proxies.forEach((proxy) => proxy.detach());
       this.proxies.splice(0, this.proxies.length);
     } catch (err) {
-      Logging.Error(err);
+      Logger.Error(err);
     }
     moduleInterface1.Events.ModuleDestroyed.emit(this.id);
     this.state = ModuleState.loaded;
