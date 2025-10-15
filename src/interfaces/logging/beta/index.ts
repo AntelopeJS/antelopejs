@@ -1,28 +1,6 @@
 import eventLog from './listener';
 
 /**
- * Logical sections for verbose logging
- * @deprecated
- */
-export const VERBOSE_SECTIONS = {
-  CMD: 'cmd',
-  GIT: 'git',
-  PACKAGE: 'package',
-  INIT: 'init',
-  INSTALL: 'install',
-  PROJECT: 'project',
-  MODULE: 'module',
-  CONFIG: 'config',
-  LOADER: 'loader',
-  CACHE: 'cache',
-} as const;
-
-/**
- * @deprecated
- */
-export type VerboseSection = (typeof VERBOSE_SECTIONS)[keyof typeof VERBOSE_SECTIONS];
-
-/**
  * Provides a structured logging system with multiple severity levels and channels.
  *
  * The Logging namespace offers standardized functions for logging at different severity levels
@@ -129,7 +107,6 @@ export namespace Logging {
   }
 
   const MainChannel = new Channel('main');
-  const InlineChannel = new Channel('inline');
 
   /**
    * Write arguments to the main log channel at the ERROR level.
@@ -178,64 +155,6 @@ export namespace Logging {
    * @param args - Values to log, which can be of any type and will be serialized appropriately
    */
   export const Trace = MainChannel.Trace.bind(MainChannel);
-
-  /**
-   * @deprecated
-   * Write arguments to the verbose log channel for the specified section.
-   * The channel will be filtered based on the --verbose option configuration.
-   *
-   * @param section - The logical section this log belongs to (e.g., 'cmd', 'git', 'package')
-   * @param args - Values to log, which can be of any type and will be serialized appropriately
-   */
-  export function Verbose(section: VerboseSection, ...args: any[]): void {
-    Write(Level.TRACE, section, ...args);
-  }
-
-  /**
-   * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
-   *
-   * @deprecated
-   *
-   * Usage:
-   * Logging.inline.Info('Hello');
-   * Logging.inline.Info('World');
-   */
-  export namespace inline {
-    /**
-     * Write arguments to the inline log channel at the ERROR level.
-     *
-     * @param args - Values to log, which can be of any type and will be serialized appropriately
-     */
-    export const Error = InlineChannel.Error.bind(InlineChannel);
-
-    /**
-     * Write arguments to the inline log channel at the WARN level.
-     *
-     * @param args - Values to log, which can be of any type and will be serialized appropriately
-     */
-    export const Warn = InlineChannel.Warn.bind(InlineChannel);
-
-    /**
-     * Write arguments to the inline log channel at the INFO level.
-     *
-     * @param args - Values to log, which can be of any type and will be serialized appropriately
-     */
-    export const Info = InlineChannel.Info.bind(InlineChannel);
-
-    /**
-     * Write arguments to the inline log channel at the DEBUG level.
-     *
-     * @param args - Values to log, which can be of any type and will be serialized appropriately
-     */
-    export const Debug = InlineChannel.Debug.bind(InlineChannel);
-
-    /**
-     * Write arguments to the inline log channel at the TRACE level.
-     *
-     * @param args - Values to log, which can be of any type and will be serialized appropriately
-     */
-    export const Trace = InlineChannel.Trace.bind(InlineChannel);
-  }
 
   /**
    * Write arguments to the specified log channel at the given severity level.
