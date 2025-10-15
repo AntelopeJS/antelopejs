@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { Class } from './decorators';
+import Logging from '../../logging/beta';
 
 /**
  * Represents a connection to an interface implementation.
@@ -285,19 +286,29 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
   const oldLimit = Error.stackTraceLimit;
 
   Error.stackTraceLimit = Infinity;
-  Error.prepareStackTrace = (_, trace) => trace.map((site) => site.getFileName());
+  Error.prepareStackTrace = (_, trace) => trace;
   const errObj = {} as { stack: Array<string> };
   Error.captureStackTrace(errObj, GetResponsibleModule);
-  const trace = errObj.stack;
+  const trace = errObj.stack as unknown as NodeJS.CallSite[];
   Error.prepareStackTrace = oldHandler;
   Error.stackTraceLimit = oldLimit;
+
+  if (trace[trace.length - 1].getFileName() === 'node:internal/timers') {
+    const tracestr = trace
+      .filter((site) => !site.getFileName()?.startsWith('node:internal/'))
+      .map((site) => site.toString())
+      .join('\n    - ');
+    Logging.Error(
+      'GetResponsibleModule called from within an async context, this will break hot reloading!\n    - ' + tracestr,
+    );
+  }
 
   let currentFound = '';
   let lastInterface = '';
   let currentBestMatch = 0;
   for (let i = startFrame; i < trace.length; ++i) {
-    const fileName = trace[i];
-    if (!fileName || fileName.match(/[/\\]node_modules[/\\]/)) {
+    const fileName = trace[i].getFileName();
+    if (!fileName || fileName.startsWith('node:internal/') || fileName.match(/[/\\]node_modules[/\\]/)) {
       continue;
     }
     for (const { dir, id, interfaceDir } of internal.moduleByFolder) {
