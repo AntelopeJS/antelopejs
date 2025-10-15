@@ -1,24 +1,4 @@
 /**
- * Logical sections for verbose logging
- * @deprecated
- */
-export declare const VERBOSE_SECTIONS: {
-    readonly CMD: "cmd";
-    readonly GIT: "git";
-    readonly PACKAGE: "package";
-    readonly INIT: "init";
-    readonly INSTALL: "install";
-    readonly PROJECT: "project";
-    readonly MODULE: "module";
-    readonly CONFIG: "config";
-    readonly LOADER: "loader";
-    readonly CACHE: "cache";
-};
-/**
- * @deprecated
- */
-export type VerboseSection = (typeof VERBOSE_SECTIONS)[keyof typeof VERBOSE_SECTIONS];
-/**
  * Provides a structured logging system with multiple severity levels and channels.
  *
  * The Logging namespace offers standardized functions for logging at different severity levels
@@ -144,56 +124,6 @@ export declare namespace Logging {
      * @param args - Values to log, which can be of any type and will be serialized appropriately
      */
     const Trace: (...args: any[]) => void;
-    /**
-     * @deprecated
-     * Write arguments to the verbose log channel for the specified section.
-     * The channel will be filtered based on the --verbose option configuration.
-     *
-     * @param section - The logical section this log belongs to (e.g., 'cmd', 'git', 'package')
-     * @param args - Values to log, which can be of any type and will be serialized appropriately
-     */
-    function Verbose(section: VerboseSection, ...args: any[]): void;
-    /**
-     * This namespace is used to write logs on the same line as the previous log, overwriting the previous content.
-     *
-     * @deprecated
-     *
-     * Usage:
-     * Logging.inline.Info('Hello');
-     * Logging.inline.Info('World');
-     */
-    namespace inline {
-        /**
-         * Write arguments to the inline log channel at the ERROR level.
-         *
-         * @param args - Values to log, which can be of any type and will be serialized appropriately
-         */
-        const Error: (...args: any[]) => void;
-        /**
-         * Write arguments to the inline log channel at the WARN level.
-         *
-         * @param args - Values to log, which can be of any type and will be serialized appropriately
-         */
-        const Warn: (...args: any[]) => void;
-        /**
-         * Write arguments to the inline log channel at the INFO level.
-         *
-         * @param args - Values to log, which can be of any type and will be serialized appropriately
-         */
-        const Info: (...args: any[]) => void;
-        /**
-         * Write arguments to the inline log channel at the DEBUG level.
-         *
-         * @param args - Values to log, which can be of any type and will be serialized appropriately
-         */
-        const Debug: (...args: any[]) => void;
-        /**
-         * Write arguments to the inline log channel at the TRACE level.
-         *
-         * @param args - Values to log, which can be of any type and will be serialized appropriately
-         */
-        const Trace: (...args: any[]) => void;
-    }
     /**
      * Write arguments to the specified log channel at the given severity level.
      *
