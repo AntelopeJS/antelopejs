@@ -96,7 +96,10 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
       if (loaderIdentifier) {
         info(`Downloading module ${chalk.bold(moduleName)} to cache...`);
         try {
-          const moduleManifests = await LoadModule(resolvedProjectPath, cache, moduleConfig.source);
+          const moduleManifests = await LoadModule(resolvedProjectPath, cache, {
+            ...moduleConfig.source,
+            id: moduleName,
+          });
           if (moduleManifests.length > 0) {
             const manifest = moduleManifests[0];
             if (manifest.manifest.antelopeJs?.defaultConfig) {

@@ -95,13 +95,6 @@ class ModuleResolverDetour {
           assert(target, `Module ${module.id} tried to use un-imported interface ${name}@${version}`);
           return path.join(target.manifest.exportsPath, request.substring(5));
         }
-      } else if (request.startsWith('@ajs.raw/')) {
-        const ifMatch = request.match(/^@ajs.raw\/([^\/]+)\/([^@]+)@([^\/]+)(.*)/);
-        if (ifMatch) {
-          const [, id, name, version, file] = ifMatch;
-          const target = this.modulesRef.get(id)!.ref;
-          return path.join(target.manifest.exportsPath, name, version, file);
-        }
       } else if (module.manifest.srcAliases) {
         for (const { alias, replace } of module.manifest.srcAliases) {
           if (request.startsWith(alias)) {
@@ -125,6 +118,14 @@ class ModuleResolverDetour {
         }
       }
       // TODO: throw error if strict mode is on and we're requiring from interface to impl
+    }
+    if (request.startsWith('@ajs.raw/')) {
+      const ifMatch = request.match(/^@ajs.raw\/([^\/]+)\/([^@]+)@([^\/]+)(.*)/);
+      if (ifMatch) {
+        const [, id, name, version, file] = ifMatch;
+        const target = this.modulesRef.get(id)!.ref;
+        return path.join(target.manifest.exportsPath, name, version, file);
+      }
     }
   }
 }
@@ -168,9 +169,10 @@ export class ModuleManager {
     this.projectFolder = projectFolder;
     this.cache = new ModuleCache(cacheFolder);
     this.core = {
-      ref: new Module(new ModuleManifest(antelopeFolder, { type: 'none' })),
+      ref: new Module(new ModuleManifest(antelopeFolder, { id: 'antelopejs', type: 'none' }, 'antelopejs')),
       config: { disabledExports: new Set(), importOverrides: new Map(), config: undefined },
     };
+    this.loadedModules.set('antelopejs', this.core);
     this.concurrency = concurrency;
   }
 
@@ -260,7 +262,10 @@ export class ModuleManager {
         };
       },
       LoadModule: async (moduleId: string, declaration: moduleInterfaceBeta.ModuleDefinition, autostart = false) => {
-        const moduleManifests = await LoadModule(this.projectFolder, this.cache, declaration.source);
+        const moduleManifests = await LoadModule(this.projectFolder, this.cache, {
+          ...declaration.source,
+          id: moduleId,
+        });
         manifest.configs[moduleId] = {
           config: declaration.config,
           disabledExports: new Set(declaration.disabledExports),

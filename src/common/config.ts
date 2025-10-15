@@ -1,7 +1,11 @@
 import { stat, readFile, readdir } from 'fs/promises';
-import { ModuleSource } from './downloader';
 import path from 'path';
 import Logging from '../interfaces/logging/beta';
+
+export interface ModuleSource {
+  type: string;
+  ignoreCache?: boolean;
+}
 
 export type AntelopeModuleSourceConfig = ({ version: string } | { source: ModuleSource }) & {
   config?: any;

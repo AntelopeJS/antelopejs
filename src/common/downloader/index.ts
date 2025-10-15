@@ -9,6 +9,7 @@ const Logger = new Logging.Channel('loader.common');
  * Base Module Source. Instructs the Loader on how to acquire the module.
  */
 export interface ModuleSource {
+  id: string;
   type: string;
   ignoreCache?: boolean;
 }
@@ -79,7 +80,7 @@ export default function LoadModule(
   });
 }
 
-export function GetLoaderIdentifier(source: ModuleSource): any | undefined {
+export function GetLoaderIdentifier(source: { type: string }): any | undefined {
   const type = knownTypes.get(source.type);
   if (type) {
     return (source as any)[type.loaderIdentifier];

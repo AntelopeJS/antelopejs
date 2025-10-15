@@ -60,5 +60,5 @@ RegisterLoader('package', 'package', async (cache: ModuleCache, source: ModuleSo
     await ExecuteCMD(installCmd, { cwd: folder }); // TODO: check err
   }
   Logger.Debug(`Successfully loaded ${source.package}@${source.version}`);
-  return [new ModuleManifest(folder, source)];
+  return [new ModuleManifest(folder, source, source.id)];
 });
