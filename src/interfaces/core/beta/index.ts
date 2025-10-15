@@ -219,6 +219,9 @@ export class EventProxy<T extends EventFunction = EventFunction> {
    * @param func Handler
    */
   public register(func: T) {
+    if (this.registered.some((existing) => existing.func === func)) {
+      return;
+    }
     const module = GetResponsibleModule();
     this.registered.push({ module, func });
   }
