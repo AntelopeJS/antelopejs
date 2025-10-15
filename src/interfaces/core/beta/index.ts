@@ -293,16 +293,6 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
   Error.prepareStackTrace = oldHandler;
   Error.stackTraceLimit = oldLimit;
 
-  if (trace[trace.length - 1].getFileName() === 'node:internal/timers') {
-    const tracestr = trace
-      .filter((site) => !site.getFileName()?.startsWith('node:internal/'))
-      .map((site) => site.toString())
-      .join('\n    - ');
-    Logging.Error(
-      'GetResponsibleModule called from within an async context, this will break hot reloading!\n    - ' + tracestr,
-    );
-  }
-
   let currentFound = '';
   let lastInterface = '';
   let currentBestMatch = 0;
@@ -327,6 +317,17 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
       return currentFound;
     }
   }
+
+  if (trace[trace.length - 1].getFileName() === 'node:internal/timers') {
+    const tracestr = trace
+      .filter((site) => !site.getFileName()?.startsWith('node:internal/'))
+      .map((site) => site.toString())
+      .join('\n    - ');
+    Logging.Error(
+      'GetResponsibleModule called from within an async context, this will break hot reloading!\n    - ' + tracestr,
+    );
+  }
+
   return lastInterface;
 }
 
