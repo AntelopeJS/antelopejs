@@ -19,6 +19,20 @@ function urlToFile(url: string): string {
   return url.replace(/[^a-zA-Z0-9_]/g, '_');
 }
 
+async function commitAt(branch: string, cwd: string) {
+  const res = await ExecuteCMD(`git rev-parse ${branch}`, { cwd });
+  if (res.code !== 0) {
+    await terminalDisplay.failSpinner(`Failed to get commit hash for ${branch}: ${res.stderr}`);
+    throw new Error(`Failed to get commit hash for ${branch}: ${res.stderr}`);
+  }
+  return res.stdout.trim();
+}
+
+async function mainBranch(cwd: string) {
+  const res = await ExecuteCMD('git symbolic-ref refs/remotes/origin/HEAD', { cwd });
+  return res.stdout.split('/')[3].trim();
+}
+
 RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceGit) => {
   Logger.Debug(`Git loader called for ${source.remote}`);
   const name = urlToFile(source.remote);
@@ -27,42 +41,37 @@ RegisterLoader('git', 'remote', async (cache: ModuleCache, source: ModuleSourceG
   let doInstall = false;
   const folder = await cache.getFolder(name, true, true);
   let newVersion = '';
+  const branch = source.commit || source.branch;
   if (source.ignoreCache || !cacheVersion?.startsWith('git:')) {
     Logger.Debug(`Cloning repository ${source.remote}`);
     await terminalDisplay.startSpinner(`Cloning ${source.remote}`);
     await cache.getFolder(name, false, true);
     await ExecuteCMD(`git clone ${source.remote} ${name}`, { cwd: cache.path });
-    if (source.commit || source.branch) {
-      Logger.Debug(`Checking out ${source.commit || source.branch}`);
-      await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder });
-    }
-    const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder });
-    if (result.code !== 0) {
-      await terminalDisplay.failSpinner(`Failed to get commit hash: ${result.stderr}`);
-      throw new Error(`Failed to get commit hash: ${result.stderr}`);
+    if (branch) {
+      Logger.Debug(`Checking out ${branch}`);
+      await ExecuteCMD(`git checkout ${branch}`, { cwd: folder });
     }
     await terminalDisplay.stopSpinner(`Cloned ${source.remote}`);
-    const newActiveCommit = result.stdout.trim();
-    newVersion = 'git:' + newActiveCommit;
+    const newActiveCommit = await commitAt('HEAD', folder);
+    newVersion = `git:${branch ?? (await mainBranch(folder))}:${newActiveCommit}`;
     doInstall = true;
   } else {
+    const [, prevBranch, prevCommit] = cacheVersion.split(':');
     Logger.Debug(`Repository already cached, updating...`);
     await terminalDisplay.startSpinner(`Updating ${source.remote}`);
-    if (source.commit || source.branch) {
-      await ExecuteCMD(`git fetch`, { cwd: folder });
-      await ExecuteCMD(`git checkout ${source.commit || source.branch}`, { cwd: folder });
+    await ExecuteCMD(`git fetch`, { cwd: folder });
+    const newBranch = branch ?? (await mainBranch(folder));
+    if (prevBranch !== newBranch) {
+      Logger.Debug(`Checking out ${newBranch}`);
+      await ExecuteCMD(`git checkout ${newBranch}`, { cwd: folder });
     }
-    if (!source.commit) {
+    if (!source.commit && (await commitAt('origin/' + newBranch, folder)) !== prevCommit) {
+      Logger.Debug(`Pulling changes from origin/${newBranch}`);
       await ExecuteCMD('git pull', { cwd: folder });
     }
-    const result = await ExecuteCMD('git rev-parse HEAD', { cwd: folder });
-    if (result.code !== 0) {
-      await terminalDisplay.failSpinner(`Failed to get commit hash: ${result.stderr}`);
-      throw new Error(`Failed to get commit hash: ${result.stderr}`);
-    }
-    const newActiveCommit = result.stdout.trim();
-    if (newActiveCommit !== cacheVersion.substring(4)) {
-      newVersion = 'git:' + newActiveCommit;
+    const newActiveCommit = await commitAt('HEAD', folder);
+    if (newActiveCommit !== prevCommit) {
+      newVersion = `git:${newBranch}:${newActiveCommit}`;
       doInstall = true;
     }
     await terminalDisplay.stopSpinner(`Updated ${source.remote}`);
