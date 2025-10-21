@@ -153,6 +153,7 @@ export default function () {
         if (result.code !== 0) {
           await spinner.fail('Failed to generate declarations');
           error(result.stderr);
+          process.exitCode = 1;
           return;
         }
 
@@ -160,6 +161,7 @@ export default function () {
         const tsConfigOutDir = await readTsConfigOutDir(tsConfigFile);
         if (!tsConfigOutDir) {
           await spinner.fail('Could not determine outDir from tsconfig.json');
+          process.exitCode = 1;
           return;
         }
 
@@ -170,6 +172,7 @@ export default function () {
         const moveResult = await moveInterfaceFilesToRoot(interfaceFolderPath, outputPath, tmpPath);
         if (!moveResult) {
           await spinner.fail('Failed to finalize interface files');
+          process.exitCode = 1;
           return;
         }
 
@@ -197,6 +200,7 @@ export default function () {
             borderColor: 'red',
           },
         );
+        process.exitCode = 1;
       }
     });
 }

@@ -22,6 +22,7 @@ export default function () {
       if (!moduleManifest) {
         error(chalk.red`Failed to read package.json at ${options.module}`);
         info(`Make sure you're in a valid AntelopeJS module directory.`);
+        process.exitCode = 1;
         return;
       }
 
@@ -42,6 +43,7 @@ export default function () {
       if (malformedInterface) {
         error(chalk.red`Interface name malformed: ${chalk.bold(malformedInterface.raw)}`);
         info(`Use format: name@version (e.g., myInterface@1.0.0)`);
+        process.exitCode = 1;
         return;
       }
 
@@ -56,6 +58,7 @@ export default function () {
         if (missingInterfaces.length === interfaces.length) {
           error(chalk.red`None of the specified interfaces are imported in this module.`);
           info(`Use 'ajs module imports list' to see available interfaces.`);
+          process.exitCode = 1;
           return;
         }
 

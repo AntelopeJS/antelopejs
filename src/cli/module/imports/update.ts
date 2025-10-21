@@ -25,6 +25,7 @@ export default function () {
       if (!moduleManifest) {
         errorUI(chalk.red`Failed to read package.json at ${options.module}`);
         info(`Make sure you're in a valid AntelopeJS module directory.`);
+        process.exitCode = 1;
         return;
       }
 
@@ -77,6 +78,7 @@ export default function () {
       if (malformedInterface) {
         errorUI(chalk.red`Interface name malformed: ${chalk.bold(malformedInterface.raw)}`);
         info(`Use format: name@version (e.g., myInterface@1.0.0)`);
+        process.exitCode = 1;
         return;
       }
 
