@@ -24,6 +24,7 @@ export default function () {
       const manifest = await readModuleManifest(resolvedModulePath);
       if (!manifest) {
         error(`No package.json found in ${chalk.bold(resolvedModulePath)}`);
+        process.exitCode = 1;
         return;
       }
 

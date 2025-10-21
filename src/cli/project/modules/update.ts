@@ -27,12 +27,14 @@ export default function () {
       if (!config) {
         errorUI(chalk.red`No project configuration found at: ${options.project}`);
         info(`Make sure you're in an AntelopeJS project or use the --project option.`);
+        process.exitCode = 1;
         return;
       }
 
       const env = options.env ? config?.environments && config?.environments[options.env] : config;
       if (!env) {
         errorUI(chalk.red`Environment ${options.env || 'default'} not found in project config`);
+        process.exitCode = 1;
         return;
       }
 

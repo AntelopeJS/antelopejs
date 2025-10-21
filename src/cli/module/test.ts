@@ -23,6 +23,7 @@ export async function moduleTestCommand(modulePath = '.', options: TestOptions) 
     await moduleSpinner.fail(`Invalid module directory`);
     error(`Directory ${chalk.bold(resolvedPath)} does not contain a valid AntelopeJS module.`);
     info(`Make sure you're in a valid AntelopeJS module directory with package.json.`);
+    process.exitCode = 1;
     return;
   }
 

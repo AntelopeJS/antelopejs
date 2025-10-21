@@ -30,6 +30,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
   ) {
     dirSpinner.fail(`Directory is not empty`);
     error(`Directory ${chalk.bold(modulePath)} is not empty. Please use an empty directory.`);
+    process.exitCode = 1;
     return;
   }
 
@@ -73,6 +74,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
     const template = templates.find((template) => template.name === selectedTemplate);
     if (!template) {
       error(`Template ${chalk.bold(selectedTemplate)} does not exist`);
+      process.exitCode = 1;
       return;
     }
 
@@ -222,6 +224,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
     } else {
       error(`Unknown error: ${String(err)}`);
     }
+    process.exitCode = 1;
     return;
   }
 }

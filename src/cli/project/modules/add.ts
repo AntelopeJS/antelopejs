@@ -35,6 +35,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   if (!config) {
     error(`No project configuration found at: ${chalk.bold(resolvedProjectPath)}`);
     warning(`Make sure you're in an AntelopeJS project or use the --project option.`);
+    process.exitCode = 1;
     return;
   }
 
@@ -64,6 +65,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
     options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
   if (!env) {
     error(`Environment ${options.env || 'default'} not found in project config`);
+    process.exitCode = 1;
     return;
   }
 

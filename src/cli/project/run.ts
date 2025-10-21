@@ -42,6 +42,7 @@ export default function () {
       if (!config) {
         await checkSpinner.fail(`No project found at ${chalk.bold(options.project)}`);
         console.log(`Run ${chalk.cyan.bold(`ajs project init <project-name>`)} to create a new project.`);
+        process.exitCode = 1;
         return;
       }
 
@@ -137,7 +138,7 @@ export default function () {
         } else {
           error(`Unknown error: ${String(err)}`);
         }
-        process.exit(1);
+        process.exitCode = 1;
       }
     });
 }

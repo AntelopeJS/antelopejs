@@ -17,6 +17,7 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
   if (!config) {
     error(chalk.red`No project configuration found at: ${options.project}`);
     info(`Make sure you're in an AntelopeJS project or use the --project option.`);
+    process.exitCode = 1;
     return;
   }
 
@@ -24,11 +25,13 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
     options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
   if (!env) {
     error(chalk.red`Environment ${options.env || 'default'} not found in project config`);
+    process.exitCode = 1;
     return;
   }
 
   if (!env.modules || Object.keys(env.modules).length === 0) {
     error(chalk.red`No modules installed in this environment`);
+    process.exitCode = 1;
     return;
   }
 

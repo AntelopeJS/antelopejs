@@ -27,6 +27,7 @@ export default function () {
       if (await readConfig(resolvedProjectPath)) {
         await spinner.fail(`Project already exists at ${chalk.bold(resolvedProjectPath)}`);
         warning(chalk.yellow`Use a different directory or delete the existing project.`);
+        process.exitCode = 1;
         return;
       }
 
@@ -120,6 +121,7 @@ export default function () {
               error(`Failed to create module: ${String(err)}`);
             }
             error('Project creation stopped due to module initialization failure.');
+            process.exitCode = 1;
             return;
           }
         }

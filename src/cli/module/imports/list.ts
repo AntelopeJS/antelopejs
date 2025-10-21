@@ -26,12 +26,14 @@ export default function () {
       if (!moduleManifest) {
         error(`Failed to read package.json at ${chalk.bold(options.module)}`);
         console.log(`Make sure you're in a valid AntelopeJS module directory.`);
+        process.exitCode = 1;
         return;
       }
 
       if (!moduleManifest.antelopeJs) {
         warning(`No AntelopeJS configuration found in package.json`);
         console.log(`This doesn't appear to be an AntelopeJS module.`);
+        process.exitCode = 1;
         return;
       }
 

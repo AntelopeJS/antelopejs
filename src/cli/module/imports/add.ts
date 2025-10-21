@@ -37,6 +37,7 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
   if (!moduleManifest) {
     error(chalk.red`No package.json found in ${options.module}`);
     info(`Make sure you're in a valid AntelopeJS module directory.`);
+    process.exitCode = 1;
     return;
   }
 
@@ -187,6 +188,7 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
   moduleManifest = await readModuleManifest(options.module);
   if (!moduleManifest) {
     error(chalk.red`Failed to read module manifest after installation`);
+    process.exitCode = 1;
     return;
   }
 

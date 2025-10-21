@@ -66,6 +66,7 @@ export default function () {
       if (!config) {
         error(`No project configuration found at: ${chalk.bold(options.project)}`);
         console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
+        process.exitCode = 1;
         return;
       }
 
@@ -75,6 +76,7 @@ export default function () {
 
       if (!env) {
         error(`Environment ${options.env || 'default'} not found in project config`);
+        process.exitCode = 1;
         return;
       }
 

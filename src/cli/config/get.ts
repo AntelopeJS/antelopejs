@@ -18,6 +18,7 @@ export default function () {
       if (!VALID_KEYS.includes(key)) {
         error(`Invalid configuration key: ${chalk.bold(key)}`);
         warning(`Valid keys are: ${VALID_KEYS.map((k) => chalk.cyan(k)).join(', ')}`);
+        process.exitCode = 1;
         return;
       }
 
@@ -32,6 +33,7 @@ export default function () {
         });
       } else {
         error(`Configuration key not found: ${chalk.bold(key)}`);
+        process.exitCode = 1;
       }
     });
 }
