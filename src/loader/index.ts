@@ -472,6 +472,14 @@ export class ModuleManager {
     let timer: NodeJS.Timeout | undefined;
     const toRefresh = new Set<string>();
     const fileChange = async (filePath: string) => {
+      // Check if the file still exists
+      try {
+        accessSync(filePath);
+      } catch {
+        // File no longer exists (e.g., temporary file), skip it
+        return;
+      }
+
       if ((await stat(filePath)).isDirectory()) return;
       const newHash = await getFileHash(filePath);
       const [module, prevHash] = filesHash.get(filePath)!;
