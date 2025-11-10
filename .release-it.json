@@ -9,7 +9,11 @@
     "web": true
   },
   "hooks": {
-    "before:init": ["pnpm lint"],
-    "before:release": ["pnpm run changelog"]
+    "before:init": ["pnpm lint"]
+  },
+  "plugins": {
+    "release-it-changelogen": {
+      "disableVersion": true
+    }
   }
 }
