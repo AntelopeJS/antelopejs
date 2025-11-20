@@ -109,7 +109,7 @@ export default function () {
               ANTELOPE_ENV: options.env,
               ANTELOPE_WATCH: options.watch ? 'true' : 'false',
               ANTELOPE_CONCURRENCY: options.concurrency?.toString() || '',
-              ANTELOPE_VERBOSE: this.parent?.parent?.getOptionValue('verbose')?.join(',')
+              ANTELOPE_VERBOSE: this.parent?.parent?.getOptionValue('verbose')?.join(','),
             },
           });
 
