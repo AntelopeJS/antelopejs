@@ -11,6 +11,7 @@ import cmdConfig from './config';
 import { displayBanner } from '../utils/cli-ui';
 import { warnIfOutdated } from './version-check';
 import { setupAntelopeProjectLogging, defaultConfigLogging, addChannelFilter } from '../logging';
+import { Options } from './common';
 
 // Read version from package.json
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf8'));
@@ -45,10 +46,7 @@ const runCLI = async () => {
           `  $ ajs project run --watch         Run with auto-reload`,
       )
       .version(version, '-v, --version', 'Display CLI version number')
-      .option(
-        '--verbose [=cahnnels]',
-        `Enable verbose logging (TRACE level) for specific log channels (comma-separated).`,
-      )
+      .addOption(Options.verbose)
       .addCommand(cmdProject())
       .addCommand(cmdModule())
       .addCommand(cmdConfig())
@@ -59,9 +57,7 @@ const runCLI = async () => {
 
     const verbose = program.getOptionValue('verbose');
     if (verbose) {
-      for (const channel of verbose.split(',')) {
-        addChannelFilter(channel, 0);
-      }
+      verbose.forEach((channel: string) => addChannelFilter(channel, 0));
     }
   } catch (error) {
     // Check if the error is ExitPromptError from inquirer (thrown when Ctrl+C is pressed)

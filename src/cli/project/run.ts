@@ -13,6 +13,7 @@ interface RunOptions extends LaunchOptions {
   env?: string;
   inspect?: string | boolean;
   interactive?: boolean;
+  verbose?: string[];
 }
 
 export default function () {
@@ -22,6 +23,7 @@ export default function () {
         `Starts your application by loading and connecting all modules defined in your project.`,
     )
     .addOption(Options.project)
+    .addOption(Options.verbose)
     .addOption(
       new Option('-e, --env <environment>', 'Environment to use (development, production, etc.)').env(
         'ANTELOPEJS_LAUNCH_ENV',
@@ -31,7 +33,7 @@ export default function () {
     .addOption(new Option('-c, --concurrency <number>', 'Number of modules to load concurrently').argParser(parseInt))
     .addOption(new Option('--inspect [host:port]', 'Enable inspector on host:port (default: 127.0.0.1:9229)'))
     .addOption(new Option('-i, --interactive', 'Run a REPL with the project'))
-    .action(async (options: RunOptions) => {
+    .action(async function (options: RunOptions) {
       console.log(''); // Add spacing for readability
 
       // Check if project exists
@@ -81,7 +83,8 @@ export default function () {
               process.env.ANTELOPE_ENV,
               {
                 watch: process.env.ANTELOPE_WATCH === 'true',
-                concurrency: process.env.ANTELOPE_CONCURRENCY ? parseInt(process.env.ANTELOPE_CONCURRENCY, 10) : undefined
+                concurrency: process.env.ANTELOPE_CONCURRENCY ? parseInt(process.env.ANTELOPE_CONCURRENCY, 10) : undefined,
+                verbose: process.env.ANTELOPE_VERBOSE?.split(',') ?? undefined
               }
             ).catch(err => {
               console.error('Error running AntelopeJS:', err instanceof Error ? err.message : String(err));
@@ -106,6 +109,7 @@ export default function () {
               ANTELOPE_ENV: options.env,
               ANTELOPE_WATCH: options.watch ? 'true' : 'false',
               ANTELOPE_CONCURRENCY: options.concurrency?.toString() || '',
+              ANTELOPE_VERBOSE: this.parent?.parent?.getOptionValue('verbose')?.join(','),
             },
           });
 
