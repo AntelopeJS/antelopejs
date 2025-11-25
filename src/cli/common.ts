@@ -56,6 +56,12 @@ export namespace Options {
     .env('ANTELOPEJS_MODULE')
     .argParser((val) => path.resolve(val));
   export const git = new Option('-g, --git <url>', 'URL to git interfaces').env('ANTELOPEJS_GIT');
+  export const verbose = new Option(
+    '--verbose [=channels]',
+    'Enable verbose logging (TRACE level) for specific log channels (comma-separated).',
+  )
+    .env('ANTELOPEJS_VERBOSE')
+    .argParser((val) => val.replaceAll(/%/g, '*').split(','));
 }
 
 async function writeJsonFile(filePath: string, data: unknown): Promise<void> {

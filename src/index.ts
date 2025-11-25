@@ -2,7 +2,7 @@ import { AntelopeProjectEnvConfigStrict, LoadConfig } from './common/config';
 import { LegacyModuleList, ModuleManager } from './loader';
 import exitHook from 'async-exit-hook';
 import path from 'path';
-import { setupAntelopeProjectLogging } from './logging';
+import { addChannelFilter, setupAntelopeProjectLogging } from './logging';
 import { Logging } from './interfaces/logging/beta';
 import assert from 'assert';
 import Mocha from 'mocha';
@@ -16,6 +16,7 @@ export interface LaunchOptions {
   watch?: boolean;
   concurrency?: number;
   interactive?: boolean;
+  verbose?: string[];
 }
 
 async function ConvertConfig(config: AntelopeProjectEnvConfigStrict): Promise<LegacyModuleList> {
@@ -144,6 +145,9 @@ export default async function (projectFolder = '.', env = 'default', options: La
   const config = await LoadConfig(projectFolder, env);
 
   setupAntelopeProjectLogging(config.logging);
+  if (options.verbose) {
+    options.verbose.forEach((channel) => addChannelFilter(channel, 0));
+  }
   setupProcessHandlers();
 
   const moduleManager = new ModuleManager(
