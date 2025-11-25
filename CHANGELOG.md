@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.3.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v0.3.0...v0.3.1)
+
+### 🩹 Fixes
+
+- Verbose option on project run when using the inspect flag ([#51](https://github.com/AntelopeJS/antelopejs/pull/51))
+
+### 💅 Refactors
+
+- **cli:** Use hard links for package linking ([f06d064](https://github.com/AntelopeJS/antelopejs/commit/f06d064))
+
+### 🏡 Chore
+
+- Changelog ([f2b9eaf](https://github.com/AntelopeJS/antelopejs/commit/f2b9eaf))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.2.0...v0.3.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v0.2.0...v0.3.0)
