@@ -3,7 +3,7 @@ import { ModuleSource } from '../common/downloader';
 import { ExecuteCMD } from '../utils/command';
 import path from 'path';
 import { stat } from 'fs/promises';
-import fs, { cpSync, mkdirSync, readdirSync, rmSync, symlinkSync, existsSync } from 'fs';
+import fs, { cpSync, mkdirSync, readdirSync, rmSync, linkSync, existsSync } from 'fs';
 import { getInstallPackagesCommand } from '../utils/package-manager';
 import { acquireLock } from '../utils/lock';
 import { terminalDisplay } from '../logging/terminal-display';
@@ -24,7 +24,7 @@ function createSymlinksRecursive(sourcePath: string, targetPath: string) {
           rmSync(targetItemPath, { force: true });
         }
 
-        symlinkSync(sourceItemPath, targetItemPath, 'file');
+        linkSync(sourceItemPath, targetItemPath);
       } else if (stats.isDirectory()) {
         // Create directory in target if it doesn't exist
         if (!existsSync(targetItemPath)) {
