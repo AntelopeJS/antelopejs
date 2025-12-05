@@ -25,7 +25,7 @@
   ],
   "scripts": {
     "install-local": "tsc && npm install -g . --force",
-    "build": "rm -rf dist && tsc",
+    "build": "rimraf dist && tsc",
     "prepack": "pnpm run build",
     "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
     "generate": "node dist/cli/index.js module exports generate",
@@ -59,6 +59,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "rimraf": "^6.0.1",
     "@eslint/js": "^9.25.0",
     "@types/async-exit-hook": "^2.0.2",
     "@types/cli-progress": "^3.11.6",
