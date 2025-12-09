@@ -319,6 +319,10 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
     if (currentFound) {
       return currentFound;
     }
+    if (!trace[i].getFunctionName() && trace[i].getTypeName()) {
+      // This stack frame is outside of a function, we shouldn't search further.
+      break;
+    }
   }
 
   if (trace[trace.length - 1].getFileName() === 'node:internal/timers') {
