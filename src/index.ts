@@ -58,6 +58,11 @@ function setupProcessHandlers(): void {
 
   process.on('unhandledRejection', (reason: any) => {
     Logging.Error(reason);
+    if (reason instanceof AggregateError && reason.errors) {
+      for (const err of reason.errors) {
+        Logging.Error('  -', err);
+      }
+    }
     process.exit(1);
   });
 
