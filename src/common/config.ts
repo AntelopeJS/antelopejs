@@ -191,15 +191,22 @@ export async function LoadConfig(antelopeFolder: string, env: string): Promise<A
 
   for (const eVar in result.envOverrides) {
     if (eVar in process.env) {
-      try {
-        const keys = result.envOverrides[eVar].split('.');
-        let tmp = result as any;
-        for (let i = 0; i < keys.length - 1; ++i) {
-          tmp = tmp[keys[i]] = tmp[keys[i]] ?? {};
+      const override = (key: string, val: string) => {
+        try {
+          const keys = key.split('.');
+          let tmp = result as any;
+          for (let i = 0; i < keys.length - 1; ++i) {
+            tmp = tmp[keys[i]] = tmp[keys[i]] ?? {};
+          }
+          tmp[keys[keys.length - 1]] = val;
+        } catch (err) {
+          Logging.Warn(`Failed to override config variable ${key} using ${eVar}`, err);
         }
-        tmp[keys[keys.length - 1]] = process.env[eVar];
-      } catch (err) {
-        Logging.Warn(`Failed to override config variable ${eVar}`, err);
+      };
+      if (Array.isArray(result.envOverrides[eVar])) {
+        result.envOverrides[eVar].forEach((key) => override(key, process.env[eVar]!));
+      } else {
+        override(result.envOverrides[eVar], process.env[eVar]!);
       }
     }
   }
