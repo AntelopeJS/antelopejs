@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.3.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v0.3.1...v0.3.2)
+
+### 🚀 Enhancements
+
+- Support key arrays in config envOverrides ([#55](https://github.com/AntelopeJS/antelopejs/pull/55))
+
+### 🩹 Fixes
+
+- GetResponsibleModule with file root level calls ([5371551](https://github.com/AntelopeJS/antelopejs/commit/5371551))
+- Add execute permissions to CLI binary after build ([#53](https://github.com/AntelopeJS/antelopejs/pull/53))
+- Aggregate error without output ([#54](https://github.com/AntelopeJS/antelopejs/pull/54))
+
+### 📦 Build
+
+- Replace rm -rf with rimraf ([#52](https://github.com/AntelopeJS/antelopejs/pull/52))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+- Glastis ([@Glastis](https://github.com/Glastis))
+- Thomasims <thomas@antelopejs.com>
+
 ## v0.3.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v0.3.0...v0.3.1)
