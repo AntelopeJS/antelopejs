@@ -64,6 +64,7 @@ export default function () {
       if (missingInterfaces.length === 0) {
         success(chalk.green`All required interfaces are already installed`);
         info(`Found ${allInterfaces.length} interface(s) in package.json, all are present in .antelope/interfaces.d`);
+        await createAjsSymlinks(options.module);
         return;
       }
 
