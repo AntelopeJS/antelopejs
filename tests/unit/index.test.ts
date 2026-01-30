@@ -30,16 +30,6 @@ describe('src/index (startAntelope)', () => {
     });
   });
 
-  describe('LaunchOptions interface', () => {
-    it('should accept valid launch options', () => {
-      // This is more of a type check, but we can verify the function signature
-      const startAntelope = require('../../src/index').default;
-
-      // The function should accept (projectPath, env, options)
-      expect(startAntelope.length).to.be.at.least(0);
-    });
-  });
-
   describe('error handling', () => {
     it('should throw when project path does not exist', async () => {
       const { LoadConfig } = require('../../src/common/config');

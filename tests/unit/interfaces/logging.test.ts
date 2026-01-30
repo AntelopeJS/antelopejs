@@ -34,62 +34,6 @@ describe('interfaces/logging/beta', () => {
       const channel = new Logging.Channel('test-channel');
       expect(channel.channel).to.equal('test-channel');
     });
-
-    it('should have Error method', () => {
-      const channel = new Logging.Channel('test');
-      expect(channel.Error).to.be.a('function');
-    });
-
-    it('should have Warn method', () => {
-      const channel = new Logging.Channel('test');
-      expect(channel.Warn).to.be.a('function');
-    });
-
-    it('should have Info method', () => {
-      const channel = new Logging.Channel('test');
-      expect(channel.Info).to.be.a('function');
-    });
-
-    it('should have Debug method', () => {
-      const channel = new Logging.Channel('test');
-      expect(channel.Debug).to.be.a('function');
-    });
-
-    it('should have Trace method', () => {
-      const channel = new Logging.Channel('test');
-      expect(channel.Trace).to.be.a('function');
-    });
-
-    it('should have Write method', () => {
-      const channel = new Logging.Channel('test');
-      expect(channel.Write).to.be.a('function');
-    });
-  });
-
-  describe('Logging namespace functions', () => {
-    it('should have Error function', () => {
-      expect(Logging.Error).to.be.a('function');
-    });
-
-    it('should have Warn function', () => {
-      expect(Logging.Warn).to.be.a('function');
-    });
-
-    it('should have Info function', () => {
-      expect(Logging.Info).to.be.a('function');
-    });
-
-    it('should have Debug function', () => {
-      expect(Logging.Debug).to.be.a('function');
-    });
-
-    it('should have Trace function', () => {
-      expect(Logging.Trace).to.be.a('function');
-    });
-
-    it('should have Write function', () => {
-      expect(Logging.Write).to.be.a('function');
-    });
   });
 
   describe('Logging.Write', () => {

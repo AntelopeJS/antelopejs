@@ -1,21 +1,7 @@
 import { expect } from '../../helpers/setup';
-import { ExecuteCMD, CommandResult } from '../../../src/utils/command';
+import { ExecuteCMD } from '../../../src/utils/command';
 
 describe('utils/command', () => {
-  describe('CommandResult interface', () => {
-    it('should have stdout, stderr and code properties', () => {
-      const result: CommandResult = {
-        stdout: 'output',
-        stderr: 'error',
-        code: 0,
-      };
-
-      expect(result.stdout).to.equal('output');
-      expect(result.stderr).to.equal('error');
-      expect(result.code).to.equal(0);
-    });
-  });
-
   describe('ExecuteCMD', () => {
     it('should execute command and return stdout', async () => {
       const result = await ExecuteCMD('echo "test output"', {});
