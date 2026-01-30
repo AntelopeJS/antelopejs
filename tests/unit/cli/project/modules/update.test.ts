@@ -3,6 +3,8 @@ import * as fs from 'fs';
 import path from 'path';
 import * as cliUi from '../../../../../src/utils/cli-ui';
 import * as common from '../../../../../src/cli/common';
+import { createTempDir, cleanupDir, writeJson } from '../../../../helpers/integration';
+import proxyquire from 'proxyquire';
 
 describe('cli/project/modules/update', () => {
   const testDir = path.join(__dirname, '../../../../fixtures/test-project-modules-update-' + Date.now());
@@ -172,6 +174,386 @@ describe('cli/project/modules/update', () => {
       expect(command).to.exist;
       expect(command.name()).to.equal('update');
       expect(command.description()).to.include('npm');
+    });
+  });
+
+  describe('update action with proxyquire', () => {
+    let projectDir: string;
+    let originalExitCode: typeof process.exitCode;
+
+    beforeEach(async () => {
+      projectDir = await createTempDir('project-update-test');
+      await writeJson(path.join(projectDir, 'antelope.json'), {
+        name: 'test-project',
+        modules: {},
+      });
+      originalExitCode = process.exitCode;
+    });
+
+    afterEach(async () => {
+      await cleanupDir(projectDir);
+      process.exitCode = originalExitCode;
+    });
+
+    it('should report all modules up to date when no updates available', async () => {
+      const modules = {
+        'my-package': {
+          source: { type: 'package', package: 'my-package', version: '1.0.0' },
+        },
+      };
+
+      sinon.stub(common, 'readConfig').resolves({ name: 'test-project', modules });
+      sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '1.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('1.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir]);
+
+      expect(cliUi.success).to.have.been.calledWithMatch(sinon.match(/up to date/i));
+    });
+
+    it('should update module when new version is available', async () => {
+      const modules = {
+        'my-package': {
+          source: { type: 'package', package: 'my-package', version: '1.0.0' },
+        },
+      };
+
+      const config = { name: 'test-project', modules: { ...modules } };
+      sinon.stub(common, 'readConfig').resolves(config);
+      const writeConfigStub = sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '2.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('2.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir]);
+
+      expect(writeConfigStub).to.have.been.called;
+      expect(cliUi.success).to.have.been.calledWithMatch(sinon.match(/Updated/i));
+    });
+
+    it('should not write config in dry-run mode', async () => {
+      const modules = {
+        'my-package': {
+          source: { type: 'package', package: 'my-package', version: '1.0.0' },
+        },
+      };
+
+      sinon.stub(common, 'readConfig').resolves({ name: 'test-project', modules });
+      const writeConfigStub = sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '2.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('2.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir, '--dry-run']);
+
+      expect(writeConfigStub).to.not.have.been.called;
+      expect(cliUi.warning).to.have.been.calledWithMatch(sinon.match(/Dry run/i));
+    });
+
+    it('should skip non-npm modules', async () => {
+      const modules = {
+        'git-module': {
+          source: { type: 'git', remote: 'https://github.com/test/repo.git' },
+        },
+        'local-module': {
+          source: { type: 'local', path: './local' },
+        },
+      };
+
+      sinon.stub(common, 'readConfig').resolves({ name: 'test-project', modules });
+      sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '1.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('1.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir]);
+
+      expect(cliUi.error).to.have.been.calledWithMatch(sinon.match(/No npm modules/i));
+    });
+
+    it('should update only specified modules', async () => {
+      const modules = {
+        'module-one': {
+          source: { type: 'package', package: 'module-one', version: '1.0.0' },
+        },
+        'module-two': {
+          source: { type: 'package', package: 'module-two', version: '1.0.0' },
+        },
+      };
+
+      const config = { name: 'test-project', modules: { ...modules } };
+      sinon.stub(common, 'readConfig').resolves(config);
+      sinon.stub(common, 'writeConfig').resolves();
+
+      const executeCMDStub = sinon.stub();
+      executeCMDStub.withArgs('npm view module-one version', sinon.match.any).resolves({
+        code: 0,
+        stdout: '2.0.0\n',
+        stderr: '',
+      });
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: executeCMDStub,
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('2.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir, 'module-one']);
+
+      // Should only check module-one, not module-two
+      expect(executeCMDStub).to.have.been.calledOnce;
+      expect(executeCMDStub.firstCall.args[0]).to.include('module-one');
+    });
+
+    it('should handle npm version fetch error', async () => {
+      const modules = {
+        'my-package': {
+          source: { type: 'package', package: 'my-package', version: '1.0.0' },
+        },
+      };
+
+      sinon.stub(common, 'readConfig').resolves({ name: 'test-project', modules });
+      sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 1, stdout: '', stderr: 'npm ERR! 404' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns(''),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir]);
+
+      expect(cliUi.error).to.have.been.called;
+    });
+
+    it('should warn when specified module is not found in project', async () => {
+      const modules = {
+        'existing-module': {
+          source: { type: 'package', package: 'existing-module', version: '1.0.0' },
+        },
+      };
+
+      sinon.stub(common, 'readConfig').resolves({ name: 'test-project', modules });
+      sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '1.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('1.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir, 'non-existent-module']);
+
+      expect(cliUi.warning).to.have.been.calledWithMatch(sinon.match(/not found/i));
+    });
+
+    it('should handle environment not found error', async () => {
+      const config = {
+        name: 'test-project',
+        modules: {},
+        environments: {},
+      };
+
+      sinon.stub(common, 'readConfig').resolves(config);
+      sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules: {} }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '1.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('1.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir, '--env', 'nonexistent']);
+
+      expect(process.exitCode).to.equal(1);
+      expect(cliUi.error).to.have.been.called;
+    });
+
+    it('should error when no modules are installed in environment', async () => {
+      const config = { name: 'test-project', modules: {} };
+
+      sinon.stub(common, 'readConfig').resolves(config);
+      sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules: {} }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '1.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('1.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir]);
+
+      expect(cliUi.error).to.have.been.called;
+    });
+
+    it('should update modules from specific environment', async () => {
+      const envModules = {
+        'env-module': {
+          source: { type: 'package', package: 'env-module', version: '1.0.0' },
+        },
+      };
+
+      const config = {
+        name: 'test-project',
+        modules: {},
+        environments: {
+          production: { modules: { ...envModules } },
+        },
+      };
+      sinon.stub(common, 'readConfig').resolves(config);
+      const writeConfigStub = sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules: envModules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '2.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('2.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir, '--env', 'production']);
+
+      expect(writeConfigStub).to.have.been.called;
+      expect(cliUi.success).to.have.been.calledWithMatch(sinon.match(/Updated/i));
+    });
+
+    it('should skip modules that are not npm packages when specified', async () => {
+      const modules = {
+        'git-module': {
+          source: { type: 'git', remote: 'https://github.com/test/repo.git' },
+        },
+      };
+
+      sinon.stub(common, 'readConfig').resolves({ name: 'test-project', modules });
+      sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '1.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('1.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir, 'git-module']);
+
+      expect(cliUi.info).to.have.been.calledWithMatch(sinon.match(/Skipped.*not an npm package/i));
+    });
+
+    it('should show helpful guidance after successful update', async () => {
+      const modules = {
+        'my-package': {
+          source: { type: 'package', package: 'my-package', version: '1.0.0' },
+        },
+      };
+
+      const config = { name: 'test-project', modules: { ...modules } };
+      sinon.stub(common, 'readConfig').resolves(config);
+      sinon.stub(common, 'writeConfig').resolves();
+
+      const updateCommand = proxyquire.noCallThru()('../../../../../src/cli/project/modules/update', {
+        '../../../common/config': {
+          LoadConfig: sinon.stub().resolves({ modules }),
+        },
+        '../../../utils/command': {
+          ExecuteCMD: sinon.stub().resolves({ code: 0, stdout: '2.0.0\n', stderr: '' }),
+        },
+        '../../../utils/package-manager': {
+          parsePackageInfoOutput: sinon.stub().returns('2.0.0'),
+        },
+      }).default;
+
+      const command = updateCommand();
+      await command.parseAsync(['node', 'test', '--project', projectDir]);
+
+      expect(cliUi.info).to.have.been.calledWithMatch(sinon.match(/ajs project run/i));
     });
   });
 });
