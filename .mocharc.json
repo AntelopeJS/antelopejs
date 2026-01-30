@@ -1,0 +1,8 @@
+{
+  "require": ["ts-node/register", "tests/helpers/setup.ts", "tests/helpers/hooks.ts"],
+  "extensions": ["ts"],
+  "spec": "tests/**/*.test.ts",
+  "timeout": 10000,
+  "recursive": true,
+  "exit": true
+}

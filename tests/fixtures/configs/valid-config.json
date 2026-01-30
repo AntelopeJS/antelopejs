@@ -1,0 +1,23 @@
+{
+  "name": "test-project",
+  "cacheFolder": ".antelope/cache",
+  "modules": {
+    "test-module": {
+      "source": {
+        "type": "local",
+        "path": "./modules/test-module"
+      },
+      "config": {
+        "key": "value"
+      }
+    }
+  },
+  "logging": {
+    "enabled": true,
+    "moduleTracking": {
+      "enabled": false,
+      "includes": [],
+      "excludes": []
+    }
+  }
+}

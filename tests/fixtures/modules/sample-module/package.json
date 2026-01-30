@@ -1,0 +1,9 @@
+{
+  "name": "sample-module",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "antelopeJs": {
+    "exportsPath": "dist/interfaces",
+    "imports": ["core@beta"]
+  }
+}
