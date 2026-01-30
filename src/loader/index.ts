@@ -47,9 +47,11 @@ class ModuleResolverDetour {
   }
 
   detach() {
-    // TODO: don't break on multiple detours
-    this._M._resolveFilename = this.oldResolver;
-    this.oldResolver = undefined;
+    // Only restore if we actually attached
+    if (this.oldResolver) {
+      this._M._resolveFilename = this.oldResolver;
+      this.oldResolver = undefined;
+    }
   }
 
   private static exists(path: string) {
