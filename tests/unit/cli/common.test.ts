@@ -1,4 +1,4 @@
-import { expect } from '../../helpers/setup';
+import { expect, sinon } from '../../helpers/setup';
 import * as fs from 'fs';
 import * as fsp from 'fs/promises';
 import path from 'path';
@@ -12,7 +12,9 @@ import {
   readModuleManifest,
   getDefaultUserConfig,
   readUserConfig,
+  displayNonDefaultGitWarning,
 } from '../../../src/cli/common';
+import * as cliUi from '../../../src/utils/cli-ui';
 
 describe('cli/common', () => {
   const testDir = path.join(__dirname, '../../fixtures/test-cli-common-' + Date.now());
@@ -177,6 +179,43 @@ describe('cli/common', () => {
       const result = await readUserConfig();
 
       expect(result.git).to.be.a('string');
+    });
+  });
+
+  describe('displayNonDefaultGitWarning', () => {
+    let warningStub: sinon.SinonStub;
+    let consoleLogStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      warningStub = sinon.stub(cliUi, 'warning');
+      consoleLogStub = sinon.stub(console, 'log');
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it('should not display warning for default git repo', async () => {
+      await displayNonDefaultGitWarning(DEFAULT_GIT_REPO);
+
+      expect(warningStub).to.not.have.been.called;
+    });
+
+    it('should display warning for non-default git repo', async () => {
+      // Use a fake timer to speed up the test (avoid 3 second delay)
+      const clock = sinon.useFakeTimers();
+
+      const warningPromise = displayNonDefaultGitWarning('https://github.com/custom/repo.git');
+
+      // Fast-forward the timer
+      await clock.tickAsync(3000);
+
+      await warningPromise;
+
+      expect(warningStub).to.have.been.calledTwice;
+      expect(consoleLogStub).to.have.been.called;
+
+      clock.restore();
     });
   });
 });
