@@ -108,14 +108,16 @@ export function createMockInterfaceInfo(
     Object.assign(manifest, overrides.manifest);
   }
 
+  // Create base object without manifest override
+  const { manifest: _manifestOverride, ...restOverrides } = overrides || {};
+
   return {
     name,
     folderPath: `/mock/interfaces/${name}`,
     gitPath: '/mock/git',
-    manifest,
-    ...overrides,
+    ...restOverrides,
     // Ensure manifest is the computed one with any overrides applied
-    manifest: overrides?.manifest ? { ...manifest, ...overrides.manifest } : manifest,
+    manifest,
   };
 }
 

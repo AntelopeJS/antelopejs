@@ -1,5 +1,14 @@
 import { expect, sinon } from '../../../../helpers/setup';
 import * as cliUi from '../../../../../src/utils/cli-ui';
+import * as fsp from 'fs/promises';
+import path from 'path';
+import { createTempDir, cleanupDir, writeJson, readJson } from '../../../../helpers/integration';
+import {
+  createMockGitHelpers,
+  createMockInterfaceInfo,
+  createProxyquireGitModule,
+} from '../../../../helpers/mocks/git-helpers.mock';
+import proxyquire from 'proxyquire';
 
 describe('cli/module/imports/add', () => {
   beforeEach(() => {
@@ -154,6 +163,283 @@ describe('cli/module/imports/add', () => {
       const { moduleImportAddCommand } = require('../../../../../src/cli/module/imports/add');
 
       expect(moduleImportAddCommand.constructor.name).to.equal('AsyncFunction');
+    });
+  });
+
+  describe('moduleImportAddCommand action', () => {
+    let testDir: string;
+    let modulePath: string;
+    let originalExitCode: typeof process.exitCode;
+    let progressBarStartStub: sinon.SinonStub;
+    let progressBarUpdateStub: sinon.SinonStub;
+    let progressBarStopStub: sinon.SinonStub;
+
+    beforeEach(async () => {
+      testDir = await createTempDir('import-add-test');
+      modulePath = path.join(testDir, 'module');
+      await fsp.mkdir(modulePath, { recursive: true });
+
+      // Create a valid module with package.json
+      await writeJson(path.join(modulePath, 'package.json'), {
+        name: 'test-module',
+        version: '1.0.0',
+        antelopeJs: {
+          type: 'app',
+          imports: [],
+          importsOptional: [],
+        },
+      });
+
+      originalExitCode = process.exitCode;
+
+      // Stub ProgressBar methods
+      progressBarStartStub = sinon.stub(cliUi.ProgressBar.prototype, 'start');
+      progressBarUpdateStub = sinon.stub(cliUi.ProgressBar.prototype, 'update');
+      progressBarStopStub = sinon.stub(cliUi.ProgressBar.prototype, 'stop');
+    });
+
+    afterEach(async () => {
+      await cleanupDir(testDir);
+      process.exitCode = originalExitCode;
+      // Note: sinon.restore() is called by the parent afterEach
+    });
+
+    it('should add interface to module imports', async () => {
+      const mockGitHelpers = createMockGitHelpers();
+      const mockInterfaceInfo = createMockInterfaceInfo('logging', ['beta', '1.0']);
+
+      mockGitHelpers.loadInterfaceFromGit.resolves(mockInterfaceInfo);
+      mockGitHelpers.installInterfaces.resolves();
+
+      const { moduleImportAddCommand } = proxyquire.noCallThru()(
+        '../../../../../src/cli/module/imports/add',
+        {
+          '../../git': createProxyquireGitModule(mockGitHelpers),
+          '../../common': {
+            readUserConfig: sinon.stub().resolves({ git: 'https://github.com/test/interfaces.git' }),
+            displayNonDefaultGitWarning: sinon.stub().resolves(),
+            readModuleManifest: async (modPath: string) => {
+              return readJson(path.join(modPath, 'package.json'));
+            },
+            writeModuleManifest: async (modPath: string, manifest: any) => {
+              await writeJson(path.join(modPath, 'package.json'), manifest);
+            },
+            Options: { module: {}, git: {} },
+          },
+        },
+      );
+
+      await moduleImportAddCommand(['logging@beta'], {
+        module: modulePath,
+        optional: false,
+        skipInstall: true,
+      });
+
+      const pkg = await readJson<any>(path.join(modulePath, 'package.json'));
+      // With skipInstall: true, imports are stored as objects { name, skipInstall }
+      const hasImport = pkg.antelopeJs.imports.some(
+        (imp: string | { name: string }) =>
+          (typeof imp === 'string' ? imp : imp.name) === 'logging@beta',
+      );
+      expect(hasImport).to.be.true;
+    });
+
+    it('should handle interface not found', async () => {
+      const mockGitHelpers = createMockGitHelpers();
+      mockGitHelpers.loadInterfaceFromGit.resolves(undefined);
+      mockGitHelpers.installInterfaces.resolves();
+
+      const { moduleImportAddCommand } = proxyquire.noCallThru()(
+        '../../../../../src/cli/module/imports/add',
+        {
+          '../../git': createProxyquireGitModule(mockGitHelpers),
+          '../../common': {
+            readUserConfig: sinon.stub().resolves({ git: 'https://github.com/test/interfaces.git' }),
+            displayNonDefaultGitWarning: sinon.stub().resolves(),
+            readModuleManifest: async (modPath: string) => {
+              return readJson(path.join(modPath, 'package.json'));
+            },
+            writeModuleManifest: async (modPath: string, manifest: any) => {
+              await writeJson(path.join(modPath, 'package.json'), manifest);
+            },
+            Options: { module: {}, git: {} },
+          },
+        },
+      );
+
+      await moduleImportAddCommand(['nonexistent@beta'], {
+        module: modulePath,
+        optional: false,
+        skipInstall: true,
+      });
+
+      expect(cliUi.warning).to.have.been.called;
+    });
+
+    it('should add optional imports to importsOptional array', async () => {
+      const mockGitHelpers = createMockGitHelpers();
+      const mockInterfaceInfo = createMockInterfaceInfo('cache', ['beta']);
+
+      mockGitHelpers.loadInterfaceFromGit.resolves(mockInterfaceInfo);
+      mockGitHelpers.installInterfaces.resolves();
+
+      const { moduleImportAddCommand } = proxyquire.noCallThru()(
+        '../../../../../src/cli/module/imports/add',
+        {
+          '../../git': createProxyquireGitModule(mockGitHelpers),
+          '../../common': {
+            readUserConfig: sinon.stub().resolves({ git: 'https://github.com/test/interfaces.git' }),
+            displayNonDefaultGitWarning: sinon.stub().resolves(),
+            readModuleManifest: async (modPath: string) => {
+              return readJson(path.join(modPath, 'package.json'));
+            },
+            writeModuleManifest: async (modPath: string, manifest: any) => {
+              await writeJson(path.join(modPath, 'package.json'), manifest);
+            },
+            Options: { module: {}, git: {} },
+          },
+        },
+      );
+
+      await moduleImportAddCommand(['cache@beta'], {
+        module: modulePath,
+        optional: true,
+        skipInstall: true,
+      });
+
+      const pkg = await readJson<any>(path.join(modulePath, 'package.json'));
+      // With skipInstall: true, imports are stored as objects { name, skipInstall }
+      const hasOptionalImport = pkg.antelopeJs.importsOptional.some(
+        (imp: string | { name: string }) =>
+          (typeof imp === 'string' ? imp : imp.name) === 'cache@beta',
+      );
+      expect(hasOptionalImport).to.be.true;
+    });
+
+    it('should handle missing package.json', async () => {
+      const emptyDir = path.join(testDir, 'empty');
+      await fsp.mkdir(emptyDir, { recursive: true });
+
+      const mockGitHelpers = createMockGitHelpers();
+      mockGitHelpers.loadInterfaceFromGit.resolves(undefined);
+      mockGitHelpers.installInterfaces.resolves();
+
+      const { moduleImportAddCommand } = proxyquire.noCallThru()(
+        '../../../../../src/cli/module/imports/add',
+        {
+          '../../git': createProxyquireGitModule(mockGitHelpers),
+          '../../common': {
+            readUserConfig: sinon.stub().resolves({ git: 'https://github.com/test/interfaces.git' }),
+            displayNonDefaultGitWarning: sinon.stub().resolves(),
+            readModuleManifest: sinon.stub().resolves(undefined),
+            writeModuleManifest: sinon.stub().resolves(),
+            Options: { module: {}, git: {} },
+          },
+        },
+      );
+
+      await moduleImportAddCommand(['logging@beta'], {
+        module: emptyDir,
+        optional: false,
+        skipInstall: true,
+      });
+
+      expect(process.exitCode).to.equal(1);
+      expect(cliUi.error).to.have.been.called;
+    });
+
+    it('should skip already imported interfaces', async () => {
+      // Create module with existing import
+      await writeJson(path.join(modulePath, 'package.json'), {
+        name: 'test-module',
+        version: '1.0.0',
+        antelopeJs: {
+          type: 'app',
+          imports: ['logging@beta'],
+          importsOptional: [],
+        },
+      });
+
+      const mockGitHelpers = createMockGitHelpers();
+      const mockInterfaceInfo = createMockInterfaceInfo('logging', ['beta', '1.0']);
+
+      mockGitHelpers.loadInterfaceFromGit.resolves(mockInterfaceInfo);
+      mockGitHelpers.installInterfaces.resolves();
+
+      const { moduleImportAddCommand } = proxyquire.noCallThru()(
+        '../../../../../src/cli/module/imports/add',
+        {
+          '../../git': createProxyquireGitModule(mockGitHelpers),
+          '../../common': {
+            readUserConfig: sinon.stub().resolves({ git: 'https://github.com/test/interfaces.git' }),
+            displayNonDefaultGitWarning: sinon.stub().resolves(),
+            readModuleManifest: async (modPath: string) => {
+              return readJson(path.join(modPath, 'package.json'));
+            },
+            writeModuleManifest: async (modPath: string, manifest: any) => {
+              await writeJson(path.join(modPath, 'package.json'), manifest);
+            },
+            Options: { module: {}, git: {} },
+          },
+        },
+      );
+
+      await moduleImportAddCommand(['logging@beta'], {
+        module: modulePath,
+        optional: false,
+        skipInstall: true,
+      });
+
+      // Should report as skipped (already imported)
+      expect(cliUi.warning).to.have.been.called;
+
+      // Verify the import array still has only one entry (no duplicates)
+      const pkg = await readJson<any>(path.join(modulePath, 'package.json'));
+      const loggingImports = pkg.antelopeJs.imports.filter(
+        (imp: string | { name: string }) =>
+          (typeof imp === 'string' ? imp : imp.name) === 'logging@beta',
+      );
+      expect(loggingImports.length).to.equal(1);
+    });
+
+    it('should handle version not found', async () => {
+      const mockGitHelpers = createMockGitHelpers();
+      const mockInterfaceInfo = createMockInterfaceInfo('logging', ['beta', '1.0']);
+
+      mockGitHelpers.loadInterfaceFromGit.resolves(mockInterfaceInfo);
+      mockGitHelpers.installInterfaces.resolves();
+
+      const { moduleImportAddCommand } = proxyquire.noCallThru()(
+        '../../../../../src/cli/module/imports/add',
+        {
+          '../../git': createProxyquireGitModule(mockGitHelpers),
+          '../../common': {
+            readUserConfig: sinon.stub().resolves({ git: 'https://github.com/test/interfaces.git' }),
+            displayNonDefaultGitWarning: sinon.stub().resolves(),
+            readModuleManifest: async (modPath: string) => {
+              return readJson(path.join(modPath, 'package.json'));
+            },
+            writeModuleManifest: async (modPath: string, manifest: any) => {
+              await writeJson(path.join(modPath, 'package.json'), manifest);
+            },
+            Options: { module: {}, git: {} },
+          },
+        },
+      );
+
+      await moduleImportAddCommand(['logging@2.0'], {
+        module: modulePath,
+        optional: false,
+        skipInstall: true,
+      });
+
+      // Should report error about version not found
+      expect(cliUi.error).to.have.been.called;
+      expect(cliUi.warning).to.have.been.called;
+
+      // Verify the interface was not added
+      const pkg = await readJson<any>(path.join(modulePath, 'package.json'));
+      expect(pkg.antelopeJs.imports).to.not.include('logging@2.0');
     });
   });
 });
