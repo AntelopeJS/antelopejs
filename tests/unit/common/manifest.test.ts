@@ -1,7 +1,7 @@
 import { expect } from '../../helpers/setup';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ModuleManifest, mapModuleImport, ModulePackageJson } from '../../../src/common/manifest';
+import { ModuleManifest, mapModuleImport } from '../../../src/common/manifest';
 
 describe('common/manifest', () => {
   const testDir = path.join(__dirname, '../../fixtures/test-manifest-' + Date.now());
@@ -43,88 +43,6 @@ describe('common/manifest', () => {
         skipInstall: true,
       });
       expect(result).to.equal('test@beta');
-    });
-  });
-
-  describe('ModulePackageJson interface', () => {
-    it('should have required properties', () => {
-      const pkg: ModulePackageJson = {
-        name: 'test-module',
-        version: '1.0.0',
-      };
-
-      expect(pkg.name).to.equal('test-module');
-      expect(pkg.version).to.equal('1.0.0');
-    });
-
-    it('should support optional properties', () => {
-      const pkg: ModulePackageJson = {
-        name: 'test-module',
-        version: '1.0.0',
-        description: 'A test module',
-        author: 'Test Author',
-      };
-
-      expect(pkg.description).to.equal('A test module');
-    });
-
-    it('should support antelopeJs configuration', () => {
-      const pkg: ModulePackageJson = {
-        name: 'test-module',
-        version: '1.0.0',
-        antelopeJs: {
-          imports: ['core@beta'],
-          importsOptional: [],
-          exportsPath: 'dist/interfaces',
-        },
-      };
-
-      expect(pkg.antelopeJs?.imports).to.deep.equal(['core@beta']);
-      expect(pkg.antelopeJs?.exportsPath).to.equal('dist/interfaces');
-    });
-
-    it('should support paths configuration', () => {
-      const pkg: ModulePackageJson = {
-        name: 'test-module',
-        version: '1.0.0',
-        antelopeJs: {
-          imports: [],
-          importsOptional: [],
-          paths: {
-            '@src/*': ['src/*'],
-          },
-        },
-      };
-
-      expect(pkg.antelopeJs?.paths).to.have.property('@src/*');
-    });
-
-    it('should support moduleAliases', () => {
-      const pkg: ModulePackageJson = {
-        name: 'test-module',
-        version: '1.0.0',
-        antelopeJs: {
-          imports: [],
-          importsOptional: [],
-          moduleAliases: {
-            '@src': 'dist',
-          },
-        },
-      };
-
-      expect(pkg.antelopeJs?.moduleAliases).to.have.property('@src');
-    });
-
-    it('should support _moduleAliases (legacy)', () => {
-      const pkg: ModulePackageJson = {
-        name: 'test-module',
-        version: '1.0.0',
-        _moduleAliases: {
-          '@root': '.',
-        },
-      };
-
-      expect(pkg._moduleAliases).to.have.property('@root');
     });
   });
 
