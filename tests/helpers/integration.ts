@@ -26,6 +26,7 @@ export interface CLIOptions {
   cwd?: string;
   env?: Record<string, string>;
   timeout?: number;
+  stdin?: string;
 }
 
 /**
@@ -121,12 +122,30 @@ export async function createTestModule(name: string = 'test-module'): Promise<Te
  */
 export async function runCLI(args: string[], options: CLIOptions = {}): Promise<CLIResult> {
   return new Promise((resolve, reject) => {
-    const cliPath = path.join(__dirname, '../../src/cli/index.ts');
-    const child = spawn('npx', ['ts-node', cliPath, ...args], {
-      cwd: options.cwd || process.cwd(),
-      env: { ...process.env, ...options.env, FORCE_COLOR: '0' },
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    // Use compiled binary if available, fallback to ts-node
+    const distCli = path.join(__dirname, '../../dist/cli/index.js');
+    const srcCli = path.join(__dirname, '../../src/cli/index.ts');
+
+    let child;
+    if (fs.existsSync(distCli)) {
+      child = spawn('node', [distCli, ...args], {
+        cwd: options.cwd || process.cwd(),
+        env: { ...process.env, ...options.env, FORCE_COLOR: '0' },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+    } else {
+      child = spawn('npx', ['ts-node', srcCli, ...args], {
+        cwd: options.cwd || process.cwd(),
+        env: { ...process.env, ...options.env, FORCE_COLOR: '0' },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+    }
+
+    // Write stdin if provided
+    if (options.stdin) {
+      child.stdin.write(options.stdin);
+      child.stdin.end();
+    }
 
     let stdout = '';
     let stderr = '';
