@@ -98,7 +98,7 @@ export function createMockFs(structure: MockFileSystem): FsMockContext {
       isDirectory: () => content === null || typeof content === 'object',
       size: typeof content === 'string' ? content.length : 0,
       mtime: new Date(),
-    } as fs.Stats;
+    } as any;
   });
 
   const readdir = sinon.stub(fs, 'readdir').callsFake(async (dirPath: fs.PathLike) => {
