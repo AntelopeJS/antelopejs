@@ -1,0 +1,15 @@
+{
+  "check-coverage": false,
+  "lines": 80,
+  "functions": 75,
+  "branches": 70,
+  "statements": 80,
+  "reporter": ["text", "text-summary", "html"],
+  "all": true,
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "src/cli/index.ts",
+    "dist/**",
+    "tests/**"
+  ]
+}
