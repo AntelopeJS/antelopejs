@@ -42,6 +42,76 @@ describe('FileSystem', () => {
       await fs.rm('/test.txt');
       expect(await fs.exists('/test.txt')).to.be.false;
     });
+
+    it('should throw when reading missing file', async () => {
+      let caught: unknown;
+      try {
+        await fs.readFile('/missing.txt');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
+    });
+
+    it('should throw when listing a file path', async () => {
+      await fs.writeFile('/file.txt', 'content');
+      let caught: unknown;
+      try {
+        await fs.readdir('/file.txt');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
+    });
+
+    it('should create directory without recursive parents when path is new', async () => {
+      await fs.mkdir('/a/b', { recursive: false });
+      expect(await fs.exists('/a/b')).to.equal(true);
+    });
+
+    it('should handle rm force for missing paths', async () => {
+      await fs.rm('/missing', { force: true });
+      let caught: unknown;
+      try {
+        await fs.rm('/missing');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
+    });
+
+    it('should throw when removing non-empty directory without recursive', async () => {
+      await fs.mkdir('/dir', { recursive: true });
+      await fs.writeFile('/dir/a.txt', 'a');
+      let caught: unknown;
+      try {
+        await fs.rm('/dir');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
+    });
+
+    it('should throw on access for missing path', async () => {
+      let caught: unknown;
+      try {
+        await fs.access('/missing');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
+    });
+
+    it('should copy and rename files', async () => {
+      await fs.writeFile('/a.txt', 'a');
+      await fs.copyFile('/a.txt', '/b.txt');
+      const copied = await fs.readFileString('/b.txt');
+      expect(copied).to.equal('a');
+
+      await fs.rename('/b.txt', '/c.txt');
+      const renamed = await fs.readFileString('/c.txt');
+      expect(renamed).to.equal('a');
+    });
   });
 
   describe('NodeFileSystem', () => {
@@ -69,6 +139,14 @@ describe('FileSystem', () => {
       const content = await fs.readFileString(filePath);
 
       expect(content).to.equal('hello world');
+    });
+
+    it('should report existence correctly', async () => {
+      const filePath = path.join(tempDir, 'exists.txt');
+      expect(await fs.exists(filePath)).to.equal(false);
+      await fs.mkdir(tempDir, { recursive: true });
+      await fs.writeFile(filePath, 'ok');
+      expect(await fs.exists(filePath)).to.equal(true);
     });
   });
 });

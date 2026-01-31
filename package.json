@@ -35,7 +35,8 @@
     "format": "prettier --write .",
     "test": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'",
     "test:watch": "mocha --require ts-node/register --require test/setup.ts --watch --watch-extensions ts 'test/**/*.test.ts'",
-    "test:coverage": "c8 --check-coverage --lines 95 --functions 95 --branches 95 --statements 95 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'"
+    "test:coverage": "c8 --check-coverage --lines 95 --functions 95 --branches 95 --statements 95 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'",
+    "test:coverage:80": "c8 --check-coverage --lines 80 --functions 80 --branches 80 --statements 80 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'"
   },
   "antelopeJs": {
     "exportsPath": "dist/interfaces",

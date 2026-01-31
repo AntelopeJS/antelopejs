@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Logger, LogChannel } from '../../src/logging/logger';
+import { Logger } from '../../src/logging/logger';
 import { LogLevel, LogEntry } from '../../src/logging/log-formatter';
 
 describe('Logger', () => {
@@ -40,5 +40,42 @@ describe('Logger', () => {
       expect(capturedLogs).to.have.length(1);
       expect(capturedLogs[0].level).to.equal(LogLevel.WARN);
     });
+  });
+
+  it('can remove transports and set templates', () => {
+    const customLogger = new Logger();
+    const transport = (entry: LogEntry) => capturedLogs.push(entry);
+    customLogger.addTransport(transport);
+    customLogger.removeTransport(transport);
+    customLogger.setTemplate(LogLevel.INFO, 'INFO {{ARGS}}');
+    customLogger.setDateFormat('yyyy');
+
+    customLogger.info('hello');
+
+    expect(capturedLogs).to.have.length(0);
+  });
+
+  it('respects channel-specific levels', () => {
+    logger.setChannelLevel('special', LogLevel.ERROR);
+    const channel = logger.createChannel('special');
+
+    channel.warn('nope');
+    channel.error('ok');
+
+    expect(capturedLogs).to.have.length(1);
+    expect(capturedLogs[0].level).to.equal(LogLevel.ERROR);
+  });
+
+  it('filters by module includes/excludes when tracking enabled', () => {
+    logger.setModuleTracking(true);
+    logger.setModuleIncludes(['allowed']);
+    logger.setModuleExcludes(['blocked']);
+
+    logger.write(LogLevel.INFO, 'default', ['ok'], 'allowed');
+    logger.write(LogLevel.INFO, 'default', ['no'], 'blocked');
+    logger.write(LogLevel.INFO, 'default', ['no'], 'other');
+
+    expect(capturedLogs).to.have.length(1);
+    expect(capturedLogs[0].module).to.equal('allowed');
   });
 });
