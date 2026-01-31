@@ -1,198 +1,134 @@
-import { AntelopeProjectEnvConfigStrict, LoadConfig } from './common/config';
-import { LegacyModuleList, ModuleManager } from './loader';
-import exitHook from 'async-exit-hook';
+// Preload logging interfaces to avoid CJS circular dependency issues.
+import './interfaces/logging/beta';
 import path from 'path';
-import { addChannelFilter, setupAntelopeProjectLogging } from './logging';
-import { Logging } from './interfaces/logging/beta';
-import assert from 'assert';
-import Mocha from 'mocha';
-import { readdir, stat } from 'fs/promises';
-import { Writable } from 'stream';
-import repl from 'repl';
+import { ModuleManager, ModuleConfig } from './core/module-manager';
+import { ConfigLoader } from './core/config/config-loader';
+import { NodeFileSystem } from './core/filesystem';
+import { ModuleCache } from './core/module-cache';
+import { DownloaderRegistry } from './core/downloaders/registry';
+import { registerLocalDownloader } from './core/downloaders/local';
+import { registerLocalFolderDownloader } from './core/downloaders/local-folder';
+import { registerPackageDownloader } from './core/downloaders/package';
+import { registerGitDownloader } from './core/downloaders/git';
+import { ModuleManifest } from './core/module-manifest';
+import { LaunchOptions } from './types';
+import { FileWatcher } from './core/watch/file-watcher';
+import { HotReload } from './core/watch/hot-reload';
+import { ReplSession } from './core/repl/repl-session';
+import { TestContext } from './core/test/test-context';
+import { TestRunner } from './core/test/test-runner';
 
-Writable.prototype.setMaxListeners(20);
+export { ModuleManager } from './core/module-manager';
+export { Module } from './core/module';
+export { ModuleManifest } from './core/module-manifest';
+export { ConfigLoader } from './core/config/config-loader';
+export { DownloaderRegistry } from './core/downloaders/registry';
+export { ModuleCache } from './core/module-cache';
+export { LaunchOptions } from './types';
 
-export interface LaunchOptions {
-  watch?: boolean;
-  concurrency?: number;
-  interactive?: boolean;
-  verbose?: string[];
-}
+async function buildModuleConfigs(config: Record<string, any>): Promise<Array<{ manifest: ModuleManifest; config: ModuleConfig }>> {
+  const fs = new NodeFileSystem();
+  const cache = new ModuleCache(config.cacheFolder, fs);
+  await cache.load();
 
-async function ConvertConfig(config: AntelopeProjectEnvConfigStrict): Promise<LegacyModuleList> {
-  return {
-    sources: Object.entries(config.modules)
-      .filter(([, module]) => 'source' in module)
-      .map(([id, module]) => ({ ...module.source, id })),
-    configs: Object.entries(config.modules).reduce(
-      (configs, [name, module]) => {
-        configs[name] = {
-          config: module.config,
-          importOverrides: (module.importOverrides ?? []).reduce((prev, override) => {
-            if (!prev.has(override.interface)) {
-              prev.set(override.interface, []);
-            }
-            prev.get(override.interface)!.push({
-              module: override.source,
-              id: override.id,
-            });
-            return prev;
-          }, new Map<string, { id?: string; module: string }[]>()),
-          disabledExports: new Set(module.disabledExports),
-        };
-        return configs;
-      },
-      {} as Record<string, any>,
-    ),
-  };
-}
+  const registry = new DownloaderRegistry();
+  registerLocalDownloader(registry, { fs });
+  registerLocalFolderDownloader(registry, { fs });
+  registerPackageDownloader(registry, { fs });
+  registerGitDownloader(registry, { fs });
 
-/**
- * Registers event listeners for process events
- */
-function setupProcessHandlers(): void {
-  process.on('uncaughtException', (error: Error) => {
-    Logging.Error(error.message);
-    process.exit(1);
-  });
+  const modules: Array<{ manifest: ModuleManifest; config: ModuleConfig }> = [];
 
-  process.on('unhandledRejection', (reason: any) => {
-    Logging.Error(reason);
-    if (reason instanceof AggregateError && reason.errors) {
-      for (const err of reason.errors) {
-        Logging.Error('  -', err);
+  for (const [id, moduleConfig] of Object.entries(config.modules ?? {})) {
+    const entry = moduleConfig as any;
+    const source = { ...entry.source, id } as any;
+    const manifests = await registry.load(config.projectFolder, cache, source);
+
+    const overrides = new Map<string, Array<{ module: string; id?: string }>>();
+    if (entry.importOverrides) {
+      for (const override of entry.importOverrides) {
+        const list = overrides.get(override.interface) ?? [];
+        list.push({ module: override.source, id: override.id });
+        overrides.set(override.interface, list);
       }
     }
-    process.exit(1);
-  });
 
-  process.on('warning', (warning: Error) => {
-    Logging.Warn(warning.message);
-  });
+    for (const manifest of manifests) {
+      modules.push({
+        manifest,
+        config: {
+          config: entry.config,
+          disabledExports: new Set(entry.disabledExports ?? []),
+          importOverrides: overrides,
+        },
+      });
+    }
+  }
+
+  return modules;
 }
 
-async function addTestFolder(mocha: Mocha, folder: string, matcher: RegExp) {
-  const files = await readdir(folder);
-  for (const file of files) {
-    const filePath = path.join(folder, file);
-    if ((await stat(filePath)).isDirectory()) {
-      await addTestFolder(mocha, filePath, matcher);
-    } else if (matcher.test(filePath)) {
-      Logging.Debug('Adding test file', filePath);
-      mocha.addFile(filePath);
-    }
-  }
-}
+export async function launch(
+  projectFolder: string = '.',
+  env: string = 'default',
+  options: LaunchOptions = {}
+): Promise<ModuleManager> {
+  const fs = new NodeFileSystem();
+  const loader = new ConfigLoader(fs);
+  const loadedConfig = await loader.load(projectFolder, env);
 
-type TestConfig =
-  | AntelopeProjectEnvConfigStrict
-  | {
-      setup: () => AntelopeProjectEnvConfigStrict | Promise<AntelopeProjectEnvConfigStrict>;
-      cleanup?: () => void | Promise<void>;
-    };
+  const absoluteCache = path.isAbsolute(loadedConfig.cacheFolder)
+    ? loadedConfig.cacheFolder
+    : path.join(projectFolder, loadedConfig.cacheFolder);
 
-export async function TestModule(moduleFolder = '.', files?: string[]) {
-  const moduleRoot = path.resolve(moduleFolder);
+  const normalizedConfig = {
+    ...loadedConfig,
+    cacheFolder: absoluteCache,
+    projectFolder: path.resolve(projectFolder),
+  } as any;
 
-  const pack = require(path.join(moduleRoot, 'package.json'));
-  assert(pack, 'Missing package.json');
-  const testConfig = pack.antelopeJs?.test;
-  if (!testConfig) {
-    console.error('Missing AntelopeJS test config');
-    return;
-  }
-
-  const testProject = path.join(moduleRoot, testConfig.project);
-  const rawconfig: TestConfig = require(testProject);
-  const config = 'setup' in rawconfig ? await rawconfig.setup() : rawconfig;
-
-  try {
-    setupAntelopeProjectLogging(config.logging);
-    setupProcessHandlers();
-
-    const moduleManager = new ModuleManager(moduleRoot, path.resolve(path.join(__dirname, '..')), config.cacheFolder);
-
-    const legacyModuleList = await ConvertConfig(config);
-    try {
-      await moduleManager.init(legacyModuleList);
-    } catch (err) {
-      Logging.Error('Error during module manager initialization', err);
-      return;
-    }
-
-    moduleManager.startModules();
-
-    const testFolder = path.join(moduleRoot, testConfig.folder);
-    const mocha = new Mocha();
-    if (files) {
-      for (const file of files) {
-        mocha.addFile(file);
-      }
-    } else {
-      await addTestFolder(mocha, testFolder, /\.js$/);
-    }
-
-    await new Promise((resolve) => mocha.run().on('end', resolve));
-
-    try {
-      await moduleManager.shutdown();
-    } catch (err) {
-      Logging.Error('Error during shutdown', err);
-    }
-  } finally {
-    if ('cleanup' in rawconfig) {
-      await rawconfig.cleanup!();
-    }
-  }
-}
-
-export default async function (projectFolder = '.', env = 'default', options: LaunchOptions = {}) {
-  const config = await LoadConfig(projectFolder, env);
-
-  setupAntelopeProjectLogging(config.logging);
-  if (options.verbose) {
-    options.verbose.forEach((channel) => addChannelFilter(channel, 0));
-  }
-  setupProcessHandlers();
-
-  const moduleManager = new ModuleManager(
-    path.resolve(projectFolder),
-    path.resolve(path.join(__dirname, '..')),
-    path.join(projectFolder, config.cacheFolder),
-    options.concurrency,
-  );
-
-  const legacyModuleList = await ConvertConfig(config);
-  try {
-    await moduleManager.init(legacyModuleList);
-  } catch (err) {
-    Logging.Error('Error during module manager initialization', err);
-    process.exit(1);
-  }
+  const manager = new ModuleManager();
+  const modules = await buildModuleConfigs(normalizedConfig);
+  manager.addModules(modules);
+  await manager.constructAll();
+  manager.startAll();
 
   if (options.watch) {
-    await moduleManager.startWatcher().catch(Logging.Error);
-  }
+    const watcher = new FileWatcher(fs);
+    const hotReload = new HotReload(async (moduleId) => {
+      const mod = manager.getModule(moduleId);
+      if (!mod) return;
+      await mod.reload();
+      await mod.construct((manager as any).config?.config);
+      mod.start();
+    });
 
-  moduleManager.startModules();
+    for (const { module } of (manager as any).loaded?.values?.() ?? []) {
+      if ((module.manifest as any).source?.type === 'local') {
+        const watchDirs = Array.isArray((module.manifest as any).source.watchDir)
+          ? (module.manifest as any).source.watchDir
+          : (module.manifest as any).source.watchDir
+            ? [(module.manifest as any).source.watchDir]
+            : [''];
+        await watcher.scanModule(module.id, module.manifest.folder, watchDirs);
+      }
+    }
+
+    watcher.onModuleChanged((id) => hotReload.queue(id));
+  }
 
   if (options.interactive) {
-    const con = repl.start('> ');
-    con.context.moduleManager = moduleManager;
-    con.setupHistory('.debugger_history', () => {});
-    con.on('close', async () => {
-      await moduleManager.shutdown();
-      process.exit(0);
-    });
+    const repl = new ReplSession({ moduleManager: manager });
+    repl.start('> ');
   }
 
-  exitHook(async (callback) => {
-    try {
-      await moduleManager.shutdown();
-    } catch (err) {
-      Logging.Error('Error during shutdown', err);
-    } finally {
-      callback();
-    }
-  });
+  return manager;
 }
+
+export async function TestModule(moduleFolder: string = '.', files: string[] = []): Promise<number> {
+  const context = new TestContext({});
+  const runner = new TestRunner(context);
+  return runner.run(files);
+}
+
+export default launch;

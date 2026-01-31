@@ -1,159 +1,127 @@
-/* eslint-disable max-len */
-import { AntelopeLogging } from '../common/config';
-import eventLog, { Log } from '../interfaces/logging/beta/listener';
-import { mergeDeep } from '../utils/object';
-import { GetResponsibleModule } from '../interfaces/core/beta';
-import { Logging } from '../interfaces/logging/beta';
-import { formatLogMessageWithRightAlignedDate, NEWLINE } from './utils';
-import { terminalDisplay } from './terminal-display';
+import { LogFormatter, LogLevel, LogEntry } from './log-formatter';
+import { LogFilter } from './log-filter';
 
-/**
- * Mapping of log level IDs to human-readable names
- */
-export const levelNames: Record<number, string> = {
-  0: 'TRACE',
-  10: 'DEBUG',
-  20: 'INFO',
-  30: 'WARNING',
-  40: 'ERROR',
-};
+export type LogTransport = (entry: LogEntry, formatted: string) => void;
 
-/**
- * Mapping of log level string names to numeric level IDs
- */
-export const levelMap: Record<string, number> = {
-  trace: 0,
-  debug: 10,
-  info: 20,
-  warn: 30,
-  error: 40,
-};
+export class Logger {
+  private formatter = new LogFormatter();
+  private filter = new LogFilter();
+  private transports: LogTransport[] = [];
+  private defaultChannel = 'default';
 
-/**
- * Default logging configuration used when no custom configuration is provided
- */
-export const defaultConfigLogging: AntelopeLogging = {
-  enabled: true,
-  moduleTracking: { enabled: false, includes: [], excludes: [] },
-  formatter: {
-    '0': '{{chalk.gray}}[{{DATE}}] {{chalk.magenta}}{{chalk.bold}}[TRACE]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}', // TRACE
-    '10': '{{chalk.gray}}[{{DATE}}] {{chalk.blue}}{{chalk.bold}}[DEBUG]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}', // DEBUG
-    '20': '{{chalk.gray}}[{{DATE}}] {{chalk.green}}{{chalk.bold}}[INFO]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}', // INFO
-    '30': '{{chalk.gray}}[{{DATE}}] {{chalk.yellow}}{{chalk.bold}}[WARN]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}', // WARN
-    '40': '{{chalk.gray}}[{{DATE}}] {{chalk.red}}{{chalk.bold}}[ERROR]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}', // ERROR
-    default:
-      '{{chalk.gray}}[{{DATE}}] {{chalk.white}}{{chalk.bold}}[LOG]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}', // DEFAULT
-  },
-  dateFormat: 'yyyy-MM-dd HH:mm:ss',
-};
-
-function getStream(log: Log): NodeJS.WriteStream {
-  return log.levelId === Logging.Level.ERROR.valueOf() ? process.stderr : process.stdout;
-}
-
-let loggingConfig: AntelopeLogging;
-
-const channelCache: Record<string, number> = {};
-
-function getChannelFilter(channel: string) {
-  if (!loggingConfig.channelFilter) {
-    return levelMap.warn;
+  addTransport(transport: LogTransport): void {
+    this.transports.push(transport);
   }
 
-  let match = -1;
-  let matchValue: number | string = levelMap.warn;
-  for (const key of Object.keys(loggingConfig.channelFilter)) {
-    if (key.endsWith('*')) {
-      if (channel.startsWith(key.substring(0, key.length - 1)) && match < key.length - 1) {
-        match = key.length - 1;
-        matchValue = loggingConfig.channelFilter[key];
-      }
-    } else if (channel === key) {
-      matchValue = loggingConfig.channelFilter[key];
-      break;
+  removeTransport(transport: LogTransport): void {
+    const index = this.transports.indexOf(transport);
+    if (index !== -1) {
+      this.transports.splice(index, 1);
     }
   }
-  if (typeof matchValue === 'string') {
-    return matchValue.toLowerCase() in levelMap ? levelMap[matchValue.toLowerCase()] : levelMap.warn;
+
+  setMinLevel(level: LogLevel): void {
+    this.filter.setMinLevel(level);
   }
-  return matchValue;
-}
 
-function shouldIgnoreChannel(log: Log) {
-  let filter = channelCache[log.channel];
-  if (filter === undefined) {
-    filter = getChannelFilter(log.channel);
-    channelCache[log.channel] = filter;
+  setChannelLevel(channel: string, level: LogLevel): void {
+    this.filter.setChannelLevel(channel, level);
   }
-  return filter > log.levelId;
-}
 
-function shouldIgnoreModule(_log: Log) {
-  if (loggingConfig.moduleTracking.enabled) {
-    const module = GetResponsibleModule() || '';
+  setModuleTracking(enabled: boolean): void {
+    this.filter.setModuleTracking(enabled);
+  }
 
-    if (loggingConfig.moduleTracking.excludes.length > 0) {
-      return loggingConfig.moduleTracking.excludes.includes(module);
+  setModuleIncludes(modules: string[]): void {
+    this.filter.setModuleIncludes(modules);
+  }
+
+  setModuleExcludes(modules: string[]): void {
+    this.filter.setModuleExcludes(modules);
+  }
+
+  setTemplate(level: LogLevel, template: string): void {
+    this.formatter.setTemplate(level, template);
+  }
+
+  setDateFormat(format: string): void {
+    this.formatter.setDateFormat(format);
+  }
+
+  createChannel(name: string): LogChannel {
+    return new LogChannel(this, name);
+  }
+
+  error(...args: unknown[]): void {
+    this.log(LogLevel.ERROR, this.defaultChannel, args);
+  }
+
+  warn(...args: unknown[]): void {
+    this.log(LogLevel.WARN, this.defaultChannel, args);
+  }
+
+  info(...args: unknown[]): void {
+    this.log(LogLevel.INFO, this.defaultChannel, args);
+  }
+
+  debug(...args: unknown[]): void {
+    this.log(LogLevel.DEBUG, this.defaultChannel, args);
+  }
+
+  trace(...args: unknown[]): void {
+    this.log(LogLevel.TRACE, this.defaultChannel, args);
+  }
+
+  write(level: LogLevel, channel: string, args: unknown[], module?: string): void {
+    this.log(level, channel, args, module);
+  }
+
+  private log(level: LogLevel, channel: string, args: unknown[], module?: string): void {
+    const entry: LogEntry = {
+      level,
+      channel,
+      args,
+      time: new Date(),
+      module,
+    };
+
+    if (!this.filter.shouldLog(entry)) {
+      return;
     }
 
-    if (loggingConfig.moduleTracking.includes.length > 0) {
-      return !loggingConfig.moduleTracking.includes.includes(module);
+    const formatted = this.formatter.format(entry);
+
+    for (const transport of this.transports) {
+      transport(entry, formatted);
     }
   }
-  return false;
 }
 
-function handleLog(log: Log) {
-  if (shouldIgnoreChannel(log) || shouldIgnoreModule(log)) {
-    return;
+export class LogChannel {
+  constructor(
+    private logger: Logger,
+    private name: string
+  ) {}
+
+  error(...args: unknown[]): void {
+    this.logger.write(LogLevel.ERROR, this.name, args);
   }
 
-  const message = formatLogMessageWithRightAlignedDate(loggingConfig, log);
-  const stream = getStream(log);
+  warn(...args: unknown[]): void {
+    this.logger.write(LogLevel.WARN, this.name, args);
+  }
 
-  if (terminalDisplay.isSpinnerActive()) {
-    terminalDisplay.log(message);
-  } else {
-    stream.write(message);
-    stream.write(NEWLINE);
+  info(...args: unknown[]): void {
+    this.logger.write(LogLevel.INFO, this.name, args);
+  }
+
+  debug(...args: unknown[]): void {
+    this.logger.write(LogLevel.DEBUG, this.name, args);
+  }
+
+  trace(...args: unknown[]): void {
+    this.logger.write(LogLevel.TRACE, this.name, args);
   }
 }
 
-const channelFilters: Exclude<AntelopeLogging['channelFilter'], undefined> = {};
-export function addChannelFilter(channel: string, level: number) {
-  channelFilters[channel] = level;
-  Object.keys(channelCache).forEach((key) => delete channelCache[key]);
-  if (loggingConfig) {
-    if (!loggingConfig.channelFilter) {
-      loggingConfig.channelFilter = {};
-    }
-    loggingConfig.channelFilter[channel] = level;
-  }
-}
-
-/**
- * Sets up the AntelopeJS project logging based on the provided configuration
- * Registers event listeners for log events and processes them according to settings
- *
- * @param config - The project configuration containing logging settings
- */
-export default function setupAntelopeProjectLogging(config?: AntelopeLogging): void {
-  loggingConfig = mergeDeep({}, defaultConfigLogging, config);
-  for (const key of Object.keys(channelCache)) {
-    delete channelCache[key];
-  }
-
-  if (!loggingConfig.enabled) {
-    return;
-  }
-
-  const channelFiltersEntries = Object.entries(channelFilters);
-  if (channelFiltersEntries.length > 0 && !loggingConfig.channelFilter) {
-    loggingConfig.channelFilter = {};
-  }
-  for (const [channel, level] of channelFiltersEntries) {
-    loggingConfig.channelFilter![channel] = level;
-  }
-
-  eventLog.register(handleLog);
-}
+export { LogLevel, LogEntry } from './log-formatter';

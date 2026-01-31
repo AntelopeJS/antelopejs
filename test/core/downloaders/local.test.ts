@@ -1,0 +1,80 @@
+import { expect } from 'chai';
+import { DownloaderRegistry } from '../../../src/core/downloaders/registry';
+import { registerLocalDownloader } from '../../../src/core/downloaders/local';
+import { InMemoryFileSystem } from '../../../src/core/filesystem';
+import { ModuleCache } from '../../../src/core/module-cache';
+import { ModuleSourceLocal } from '../../../src/types';
+
+function createExecSpy() {
+  const calls: Array<{ command: string; cwd?: string }> = [];
+  const exec = async (command: string, options: { cwd?: string }) => {
+    calls.push({ command, cwd: options?.cwd });
+    return { stdout: '', stderr: '', code: 0 };
+  };
+  return { exec, calls };
+}
+
+describe('LocalDownloader', () => {
+  it('should load a local module manifest', async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile('/mod/package.json', JSON.stringify({ name: 'mod', version: '1.0.0' }));
+
+    const registry = new DownloaderRegistry();
+    const { exec } = createExecSpy();
+    registerLocalDownloader(registry, { fs, exec });
+
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const source: ModuleSourceLocal = { type: 'local', path: '/mod', id: 'mod' };
+    const result = await registry.load('/project', cache, source);
+
+    expect(result).to.have.length(1);
+    expect(result[0].manifest.name).to.equal('mod');
+  });
+
+  it('should run install commands when provided', async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile('/mod/package.json', JSON.stringify({ name: 'mod', version: '1.0.0' }));
+
+    const registry = new DownloaderRegistry();
+    const { exec, calls } = createExecSpy();
+    registerLocalDownloader(registry, { fs, exec });
+
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const source: ModuleSourceLocal = {
+      type: 'local',
+      path: '/mod',
+      id: 'mod',
+      installCommand: ['npm install', 'npm run build'],
+    };
+
+    await registry.load('/project', cache, source);
+
+    expect(calls).to.deep.equal([
+      { command: 'npm install', cwd: '/mod' },
+      { command: 'npm run build', cwd: '/mod' },
+    ]);
+  });
+
+  it('should throw if the path does not exist', async () => {
+    const fs = new InMemoryFileSystem();
+    const registry = new DownloaderRegistry();
+    const { exec } = createExecSpy();
+    registerLocalDownloader(registry, { fs, exec });
+
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const source: ModuleSourceLocal = { type: 'local', path: '/missing', id: 'missing' };
+
+    try {
+      await registry.load('/project', cache, source);
+      expect.fail('Expected loader to throw');
+    } catch (err) {
+      expect(err).to.be.instanceOf(Error);
+    }
+  });
+});

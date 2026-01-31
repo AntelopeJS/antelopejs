@@ -2,13 +2,48 @@ import path from 'path';
 import { homedir } from 'os';
 import lockfile from 'proper-lockfile';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
+
+export class AsyncLock {
+  private queue: Array<() => void> = [];
+  private locked = false;
+
+  async acquire<T>(fn: () => Promise<T>): Promise<T> {
+    await this.wait();
+
+    try {
+      return await fn();
+    } finally {
+      this.release();
+    }
+  }
+
+  private wait(): Promise<void> {
+    if (!this.locked) {
+      this.locked = true;
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      this.queue.push(resolve);
+    });
+  }
+
+  private release(): void {
+    const next = this.queue.shift();
+    if (next) {
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
 const LOCK_DIR = path.join(homedir(), '.antelopejs', 'locks');
 
 export async function acquireLock(lockName: string, timeoutMs: number = 30000): Promise<() => Promise<void>> {
   const sanitizedLockName = lockName.replace(/[^a-zA-Z0-9_]/g, '_');
   const lockFile = path.join(LOCK_DIR, `${sanitizedLockName}.lock`);
 
-  // Ensure the lock file exists
   if (!existsSync(lockFile)) {
     mkdirSync(LOCK_DIR, { recursive: true });
     writeFileSync(lockFile, '');
@@ -21,15 +56,14 @@ export async function acquireLock(lockName: string, timeoutMs: number = 30000): 
       minTimeout: 100,
       maxTimeout: 100,
     },
-    stale: timeoutMs, // Consider locks older than timeout as stale
+    stale: timeoutMs,
   });
 
-  // Return a function to release the lock
   return async () => {
     try {
       await lockfile.unlock(lockFile);
     } catch {
-      // Ignore errors when unlocking
+      // ignore
     }
   };
 }
