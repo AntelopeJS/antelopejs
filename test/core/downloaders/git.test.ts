@@ -56,4 +56,97 @@ describe('GitDownloader', () => {
     expect(cache.getVersion(cacheKey)).to.equal('git:main:abcdef');
     expect(execCalls.some((call) => call.command.startsWith('git clone'))).to.be.true;
   });
+
+  it('should update cached repository and run install commands', async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const remote = 'https://github.com/org/repo.git';
+    const cacheKey = sanitize(remote);
+    await cache.getFolder(cacheKey, true, false);
+    await fs.writeFile(`/cache/${cacheKey}/package.json`, JSON.stringify({ name: 'repo', version: '1.0.0' }));
+    cache.setVersion(cacheKey, 'git:main:oldcommit');
+
+    const execCalls: string[] = [];
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      execCalls.push(command);
+
+      if (command === 'git fetch') {
+        return { stdout: '', stderr: '', code: 0 };
+      }
+      if (command === 'git checkout develop') {
+        return { stdout: '', stderr: '', code: 0 };
+      }
+      if (command === 'git pull') {
+        return { stdout: '', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git rev-parse origin/develop')) {
+        return { stdout: 'newcommit', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git rev-parse HEAD')) {
+        return { stdout: 'newcommit', stderr: '', code: 0 };
+      }
+      if (command === 'npm install') {
+        return { stdout: '', stderr: '', code: 0 };
+      }
+
+      return { stdout: '', stderr: '', code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: 'git',
+      remote,
+      branch: 'develop',
+      installCommand: ['npm install'],
+    };
+
+    const result = await registry.load('/project', cache, source);
+
+    expect(result).to.have.length(1);
+    expect(cache.getVersion(cacheKey)).to.equal('git:develop:newcommit');
+    expect(execCalls).to.include('git fetch');
+    expect(execCalls).to.include('git checkout develop');
+    expect(execCalls).to.include('git pull');
+    expect(execCalls).to.include('npm install');
+  });
+
+  it('should throw when rev-parse fails', async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const exec = async (command: string, options: { cwd?: string }) => {
+      if (command.startsWith('git clone')) {
+        const parts = command.split(' ');
+        const folderName = parts[parts.length - 1];
+        const repoPath = `/cache/${folderName}`;
+        await fs.writeFile(`${repoPath}/package.json`, JSON.stringify({ name: 'repo', version: '1.0.0' }));
+        return { stdout: '', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git rev-parse')) {
+        return { stdout: '', stderr: 'fail', code: 1 };
+      }
+      return { stdout: '', stderr: '', code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: 'git',
+      remote: 'https://github.com/org/repo.git',
+      ignoreCache: true,
+    } as any;
+
+    try {
+      await registry.load('/project', cache, source);
+      expect.fail('Expected failure');
+    } catch (err) {
+      expect(err).to.be.instanceOf(Error);
+    }
+  });
 });

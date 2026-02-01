@@ -25,4 +25,23 @@ describe('LocalFolderDownloader', () => {
     const names = result.map((manifest) => manifest.name).sort();
     expect(names).to.deep.equal(['group-a', 'group-b']);
   });
+
+  it('should skip non-directory entries and use folder name when id is missing', async () => {
+    const fs = new InMemoryFileSystem();
+
+    await fs.writeFile('/mods/readme.txt', 'readme');
+    await fs.writeFile('/mods/modA/package.json', JSON.stringify({ name: 'modA', version: '1.0.0' }));
+
+    const registry = new DownloaderRegistry();
+    registerLocalFolderDownloader(registry, { fs });
+
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const source: ModuleSourceLocalFolder = { type: 'local-folder', path: '/mods' };
+    const result = await registry.load('/project', cache, source);
+
+    expect(result).to.have.length(1);
+    expect(result[0].manifest.name).to.equal('modA');
+  });
 });

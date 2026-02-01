@@ -33,6 +33,24 @@ describe('LocalDownloader', () => {
     expect(result[0].manifest.name).to.equal('mod');
   });
 
+  it('should use basename when id is missing', async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile('/mod/package.json', JSON.stringify({ name: 'mod', version: '1.0.0' }));
+
+    const registry = new DownloaderRegistry();
+    const { exec } = createExecSpy();
+    registerLocalDownloader(registry, { fs, exec });
+
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const source: ModuleSourceLocal = { type: 'local', path: '/mod' };
+    const result = await registry.load('/project', cache, source);
+
+    expect(result).to.have.length(1);
+    expect(result[0].manifest.name).to.equal('mod');
+  });
+
   it('should run install commands when provided', async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile('/mod/package.json', JSON.stringify({ name: 'mod', version: '1.0.0' }));
@@ -57,6 +75,31 @@ describe('LocalDownloader', () => {
       { command: 'npm install', cwd: '/mod' },
       { command: 'npm run build', cwd: '/mod' },
     ]);
+  });
+
+  it('should throw when install command fails', async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile('/mod/package.json', JSON.stringify({ name: 'mod', version: '1.0.0' }));
+
+    const registry = new DownloaderRegistry();
+    const exec = async (_command: string, _options: { cwd?: string }) => ({
+      stdout: '',
+      stderr: 'fail',
+      code: 1,
+    });
+    registerLocalDownloader(registry, { fs, exec });
+
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const source: ModuleSourceLocal = { type: 'local', path: '/mod', installCommand: 'npm install' };
+
+    try {
+      await registry.load('/project', cache, source);
+      expect.fail('Expected failure');
+    } catch (err) {
+      expect(err).to.be.instanceOf(Error);
+    }
   });
 
   it('should throw if the path does not exist', async () => {

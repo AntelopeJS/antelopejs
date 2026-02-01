@@ -35,6 +35,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   info(`Adding modules to your project...`);
 
   const resolvedProjectPath = path.resolve(options.project);
+  const envLabel = options.env || 'default';
 
   // Get project config
   const config = await readConfig(resolvedProjectPath);
@@ -47,7 +48,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
 
   const fs = new NodeFileSystem();
   const loader = new ConfigLoader(fs);
-  const antelopeConfig = await loader.load(resolvedProjectPath, options.env || 'default');
+  const antelopeConfig = await loader.load(resolvedProjectPath, envLabel);
 
   const registry = new DownloaderRegistry();
   registerLocalDownloader(registry, { fs, exec: ExecuteCMD });
@@ -78,7 +79,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
   const env =
     options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
   if (!env) {
-    error(`Environment ${options.env || 'default'} not found in project config`);
+    error(`Environment ${envLabel} not found in project config`);
     process.exitCode = 1;
     return;
   }

@@ -87,4 +87,28 @@ describe('TerminalDisplay', () => {
     await display.clearSpinnerLine();
     expect(writeStub.called).to.equal(true);
   });
+
+  it('should ignore stop when no spinner is active', async () => {
+    const stopStub = sinon.stub(Spinner.prototype, 'stop').resolves();
+    await display.stopSpinner();
+    expect(stopStub.called).to.equal(false);
+  });
+
+  it('should ignore fail when no spinner is active', async () => {
+    const failStub = sinon.stub(Spinner.prototype, 'fail').resolves();
+    await display.failSpinner();
+    expect(failStub.called).to.equal(false);
+  });
+
+  it('should not log without an active spinner', () => {
+    const logStub = sinon.stub(Spinner.prototype, 'log');
+    display.log('hello');
+    expect(logStub.called).to.equal(false);
+  });
+
+  it('should clean without side effects when no spinner exists', async () => {
+    const writeStub = sinon.stub(process.stdout, 'write');
+    await display.cleanSpinner();
+    expect(writeStub.called).to.equal(false);
+  });
 });

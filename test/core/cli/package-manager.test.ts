@@ -34,6 +34,13 @@ describe('Package Manager Utils', () => {
       const pm = await getModulePackageManager('/project', fs);
       expect(pm).to.equal(undefined);
     });
+
+    it('should return undefined when package.json cannot be parsed', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile('/project/package.json', '{invalid');
+      const pm = await getModulePackageManager('/project', fs);
+      expect(pm).to.equal(undefined);
+    });
   });
 
   describe('getInstallCommand', () => {
@@ -58,6 +65,35 @@ describe('Package Manager Utils', () => {
       const cmd = await getInstallCommand('/project', false, fs);
       expect(cmd).to.include('pnpm');
     });
+
+    it('should include prod flag for pnpm production installs', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile('/project/package.json', JSON.stringify({ packageManager: 'pnpm@10.6.5' }));
+      const cmd = await getInstallCommand('/project', true, fs);
+      expect(cmd).to.include('--prod');
+    });
+
+    it('should include production flag for yarn production installs', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile('/project/package.json', JSON.stringify({ packageManager: 'yarn@1.22.21' }));
+      const cmd = await getInstallCommand('/project', true, fs);
+      expect(cmd).to.include('--production');
+    });
+
+    it('should omit dev flag when not production for npm', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile('/project/package.json', JSON.stringify({ packageManager: 'npm@10.2.4' }));
+      const cmd = await getInstallCommand('/project', false, fs);
+      expect(cmd).to.include('npm install');
+      expect(cmd).to.not.include('--omit=dev');
+    });
+
+    it('should default to npm when package manager is missing', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile('/project/package.json', JSON.stringify({}));
+      const cmd = await getInstallCommand('/project', true, fs);
+      expect(cmd).to.include('npm install');
+    });
   });
 
   describe('getInstallPackagesCommand', () => {
@@ -81,6 +117,13 @@ describe('Package Manager Utils', () => {
       await fs.writeFile('/project/package.json', JSON.stringify({}));
       const cmd = await getInstallPackagesCommand(['a'], false, '/project', fs);
       expect(cmd).to.include('npm');
+    });
+
+    it('should include save-dev flag for npm dev installs', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile('/project/package.json', JSON.stringify({}));
+      const cmd = await getInstallPackagesCommand(['a'], true, '/project', fs);
+      expect(cmd).to.include('--save-dev');
     });
   });
 
@@ -142,6 +185,23 @@ describe('Package Manager Utils', () => {
         expect(warnStub.called).to.equal(true);
       } finally {
         execStub.restore();
+        warnStub.restore();
+        cleanupTempDir(tempDir);
+      }
+    });
+
+    it('should warn when save fails with non-error', () => {
+      const tempDir = makeTempDir();
+      const warnStub = sinon.stub(cliUi, 'warning');
+      const readStub = sinon.stub(require('fs'), 'readFileSync').callsFake(() => {
+        throw 'boom';
+      });
+      try {
+        writeJson(`${tempDir}/package.json`, { name: 'test' });
+        savePackageManagerToPackageJson('npm', tempDir);
+        expect(warnStub.called).to.equal(true);
+      } finally {
+        readStub.restore();
         warnStub.restore();
         cleanupTempDir(tempDir);
       }

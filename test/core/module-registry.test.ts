@@ -17,6 +17,13 @@ describe('ModuleRegistry', () => {
 
     expect(registry.list()).to.deep.equal(['mod']);
     expect(registry.get('mod')).to.equal(mod);
+    expect(registry.has('mod')).to.equal(true);
+    expect(registry.has('missing')).to.equal(false);
+
+    const entries = Array.from(registry.entries());
+    expect(entries.length).to.equal(1);
+    expect(entries[0][0]).to.equal('mod');
+    expect(entries[0][1]).to.equal(mod);
 
     registry.remove('mod');
     expect(registry.list()).to.deep.equal([]);

@@ -109,4 +109,121 @@ describe('module init behavior', () => {
       cleanupTempDir(moduleDir);
     }
   });
+
+  it('warns when no interfaces are available for import', async () => {
+    const moduleDir = makeTempDir();
+    try {
+      sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+      sinon.stub(common, 'displayNonDefaultGitWarning').resolves();
+      sinon.stub(gitOps, 'loadManifestFromGit').resolves({
+        templates: [{ name: 'basic', description: 'basic', repository: '', branch: '', interfaces: ['core'] }],
+        starredInterfaces: ['core'],
+      });
+      sinon.stub(gitOps, 'copyTemplate').resolves();
+      sinon.stub(gitOps, 'loadInterfacesFromGit').resolves({
+        core: { name: 'core', manifest: { description: 'core', versions: [], files: {}, modules: [], dependencies: {} } },
+      } as any);
+
+      const importStub = sinon.stub(
+        await import('../../../../../src/core/cli/commands/module/imports/add'),
+        'moduleImportAddCommand',
+      ).resolves();
+
+      const promptStub = sinon.stub(inquirer, 'prompt');
+      promptStub.onCall(0).resolves({ template: 'basic' });
+      promptStub.onCall(1).resolves({ packageManager: 'npm' });
+      promptStub.onCall(2).resolves({ initGit: false });
+
+      sinon.stub(pkgManager, 'savePackageManagerToPackageJson').returns();
+      sinon.stub(pkgManager, 'getInstallCommand').resolves('npm install');
+      sinon.stub(command, 'ExecuteCMD').resolves({ code: 0, stdout: '', stderr: '' });
+
+      sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
+      sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
+      sinon.stub(cliUi.Spinner.prototype, 'fail').resolves();
+      sinon.stub(cliUi, 'displayBox').resolves();
+      const warningStub = sinon.stub(cliUi, 'warning');
+      sinon.stub(cliUi, 'info');
+      sinon.stub(cliUi, 'error');
+
+      await moduleInitCommand(moduleDir, {}, false);
+
+      expect(importStub.called).to.equal(false);
+      expect(warningStub.calledWithMatch('No interfaces available for import')).to.equal(true);
+    } finally {
+      cleanupTempDir(moduleDir);
+    }
+  });
+
+  it('handles empty interface selection and git init failure', async () => {
+    const moduleDir = makeTempDir();
+    try {
+      sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+      sinon.stub(common, 'displayNonDefaultGitWarning').resolves();
+      sinon.stub(gitOps, 'loadManifestFromGit').resolves({
+        templates: [{ name: 'basic', description: 'basic', repository: '', branch: '', interfaces: [] }],
+        starredInterfaces: ['core'],
+      });
+      sinon.stub(gitOps, 'copyTemplate').resolves();
+      sinon.stub(gitOps, 'loadInterfacesFromGit').resolves({
+        core: { name: 'core', manifest: { description: 'core', versions: [], files: {}, modules: [], dependencies: {} } },
+      } as any);
+
+      const importStub = sinon.stub(
+        await import('../../../../../src/core/cli/commands/module/imports/add'),
+        'moduleImportAddCommand',
+      ).resolves();
+
+      const promptStub = sinon.stub(inquirer, 'prompt');
+      promptStub.onCall(0).resolves({ template: 'basic' });
+      promptStub.onCall(1).resolves({ interfaces: [] });
+      promptStub.onCall(2).resolves({ packageManager: 'npm' });
+      promptStub.onCall(3).resolves({ initGit: true });
+
+      sinon.stub(pkgManager, 'savePackageManagerToPackageJson').returns();
+      sinon.stub(pkgManager, 'getInstallCommand').resolves('npm install');
+      sinon.stub(command, 'ExecuteCMD').resolves({ code: 0, stdout: '', stderr: '' });
+
+      sinon.stub(require('child_process'), 'execSync').throws(new Error('git init failed'));
+
+      const failStub = sinon.stub(cliUi.Spinner.prototype, 'fail').resolves();
+      sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
+      sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
+      sinon.stub(cliUi, 'displayBox').resolves();
+      const warningStub = sinon.stub(cliUi, 'warning');
+      sinon.stub(cliUi, 'info');
+      sinon.stub(cliUi, 'error');
+
+      await moduleInitCommand(moduleDir, {}, false);
+
+      expect(importStub.called).to.equal(false);
+      expect(failStub.called).to.equal(true);
+      expect(warningStub.calledWithMatch('Could not initialize git repository')).to.equal(true);
+    } finally {
+      cleanupTempDir(moduleDir);
+    }
+  });
+
+  it('rethrows errors when called from a project init flow', async () => {
+    const moduleDir = makeTempDir();
+    try {
+      sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+      sinon.stub(common, 'displayNonDefaultGitWarning').resolves();
+      sinon.stub(gitOps, 'loadManifestFromGit').rejects(new Error('boom'));
+
+      sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
+      sinon.stub(cliUi.Spinner.prototype, 'fail').resolves();
+
+      let caught: unknown;
+      try {
+        await moduleInitCommand(moduleDir, {}, true);
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).to.be.instanceOf(Error);
+    } finally {
+      cleanupTempDir(moduleDir);
+    }
+  });
 });

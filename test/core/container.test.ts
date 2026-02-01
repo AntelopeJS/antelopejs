@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Container, TOKENS } from '../../src/core/container';
+import { Container, getDefaultContainer, setDefaultContainer } from '../../src/core/container';
 
 describe('Container', () => {
   let container: Container;
@@ -24,6 +24,10 @@ describe('Container', () => {
 
       expect(a.id).to.equal(1);
       expect(b.id).to.equal(2);
+    });
+
+    it('should throw when resolving an unknown token', () => {
+      expect(() => container.resolve('missing')).to.throw('No registration found for token');
     });
   });
 
@@ -66,6 +70,34 @@ describe('Container', () => {
 
       expect(container.resolve('test')).to.equal('parent');
       expect(child.resolve('test')).to.equal('child');
+    });
+  });
+
+  describe('has', () => {
+    it('should report local and parent registrations', () => {
+      const parent = new Container();
+      parent.register('parent', () => 'parent-value');
+      const child = parent.createScope();
+      child.register('child', () => 'child-value');
+
+      expect(child.has('child')).to.equal(true);
+      expect(child.has('parent')).to.equal(true);
+      expect(child.has('missing')).to.equal(false);
+    });
+  });
+
+  describe('default container', () => {
+    it('should return the same default container instance', () => {
+      const first = getDefaultContainer();
+      const second = getDefaultContainer();
+      expect(first).to.equal(second);
+    });
+
+    it('should allow replacing the default container', () => {
+      const custom = new Container();
+      setDefaultContainer(custom);
+
+      expect(getDefaultContainer()).to.equal(custom);
     });
   });
 });

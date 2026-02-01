@@ -112,6 +112,57 @@ describe('FileSystem', () => {
       const renamed = await fs.readFileString('/c.txt');
       expect(renamed).to.equal('a');
     });
+
+    it('should return false when checking paths under a file', async () => {
+      await fs.writeFile('/file.txt', 'content');
+      expect(await fs.exists('/file.txt/child.txt')).to.equal(false);
+    });
+
+    it('should throw when statting missing paths', async () => {
+      let caught: unknown;
+      try {
+        await fs.stat('/missing');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
+    });
+
+    it('should throw when removing root path', async () => {
+      let caught: unknown;
+      try {
+        await fs.rm('/');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
+    });
+
+    it('should write nested files under file paths', async () => {
+      await fs.writeFile('/file.txt', 'base');
+      await fs.writeFile('/file.txt/child.txt', 'child');
+      const base = await fs.readFileString('/file.txt');
+      expect(base).to.equal('base');
+      expect(await fs.exists('/file.txt/child.txt')).to.equal(false);
+
+      await fs.writeFile('/other.txt', 'root');
+      await fs.writeFile('/other.txt/dir/nested.txt', 'nested');
+      const root = await fs.readFileString('/other.txt');
+      expect(root).to.equal('root');
+      expect(await fs.exists('/other.txt/dir/nested.txt')).to.equal(false);
+    });
+
+    it('should mkdir under file paths', async () => {
+      await fs.writeFile('/file.txt', 'content');
+      await fs.mkdir('/file.txt/dir', { recursive: true });
+      expect(await fs.exists('/file.txt/dir')).to.equal(false);
+    });
+
+    it('should add files via helper', async () => {
+      fs.addFile('/added.txt', 'data');
+      const content = await fs.readFileString('/added.txt');
+      expect(content).to.equal('data');
+    });
   });
 
   describe('NodeFileSystem', () => {
@@ -147,6 +198,36 @@ describe('FileSystem', () => {
       await fs.mkdir(tempDir, { recursive: true });
       await fs.writeFile(filePath, 'ok');
       expect(await fs.exists(filePath)).to.equal(true);
+    });
+
+    it('should list directory contents and stat entries', async () => {
+      await fs.mkdir(tempDir, { recursive: true });
+      const filePath = path.join(tempDir, 'file.txt');
+      await fs.writeFile(filePath, 'data');
+
+      const entries = await fs.readdir(tempDir);
+      expect(entries).to.include('file.txt');
+
+      const stats = await fs.stat(filePath);
+      expect(stats.isFile()).to.equal(true);
+      expect(stats.isDirectory()).to.equal(false);
+    });
+
+    it('should allow access checks and copy/rename files', async () => {
+      await fs.mkdir(tempDir, { recursive: true });
+      const srcPath = path.join(tempDir, 'src.txt');
+      const destPath = path.join(tempDir, 'dest.txt');
+      const renamedPath = path.join(tempDir, 'renamed.txt');
+
+      await fs.writeFile(srcPath, 'content');
+      await fs.access(srcPath);
+
+      await fs.copyFile(srcPath, destPath);
+      expect(await fs.readFileString(destPath)).to.equal('content');
+
+      await fs.rename(destPath, renamedPath);
+      expect(await fs.exists(destPath)).to.equal(false);
+      expect(await fs.readFileString(renamedPath)).to.equal('content');
     });
   });
 });

@@ -79,4 +79,73 @@ describe('PackageDownloader', () => {
     expect(execCalls[0]).to.deep.equal({ command: 'npm pack pkg@1.2.3', cwd: '/tmp/pkg' });
     expect(execCalls[1]).to.deep.equal({ command: 'npm install', cwd: '/cache/pkg' });
   });
+
+  it('should throw when npm pack fails', async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const registry = new DownloaderRegistry();
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      if (command.startsWith('npm pack')) {
+        return { stdout: '', stderr: 'fail', code: 1 };
+      }
+      return { stdout: '', stderr: '', code: 0 };
+    };
+
+    registerPackageDownloader(registry, {
+      fs,
+      exec,
+      getTemp: async () => '/tmp/pkg',
+      extract: async () => {},
+      getInstallCommand: async () => 'npm install',
+    });
+
+    const source: ModuleSourcePackage = { type: 'package', package: 'pkg', version: '1.0.0', id: 'pkg' };
+
+    try {
+      await registry.load('/project', cache, source);
+      expect.fail('Expected pack failure');
+    } catch (err) {
+      expect(err).to.be.instanceOf(Error);
+    }
+  });
+
+  it('should throw when install fails', async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const registry = new DownloaderRegistry();
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      if (command.startsWith('npm pack')) {
+        return { stdout: 'pkg-1.0.0.tgz', stderr: '', code: 0 };
+      }
+      if (command === 'npm install') {
+        return { stdout: '', stderr: 'install failed', code: 1 };
+      }
+      return { stdout: '', stderr: '', code: 0 };
+    };
+
+    const extract = async () => {
+      await fs.writeFile('/tmp/pkg/package/package.json', JSON.stringify({ name: 'pkg', version: '1.0.0' }));
+    };
+
+    registerPackageDownloader(registry, {
+      fs,
+      exec,
+      getTemp: async () => '/tmp/pkg',
+      extract,
+      getInstallCommand: async () => 'npm install',
+    });
+
+    const source: ModuleSourcePackage = { type: 'package', package: 'pkg', version: '1.0.0', id: 'pkg' };
+
+    try {
+      await registry.load('/project', cache, source);
+      expect.fail('Expected install failure');
+    } catch (err) {
+      expect(err).to.be.instanceOf(Error);
+    }
+  });
 });

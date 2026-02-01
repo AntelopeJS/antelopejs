@@ -21,6 +21,18 @@ describe('LogFormatter', () => {
       expect(result).to.include('Hello World');
     });
 
+    it('should fall back to INFO template for unknown levels', () => {
+      const result = formatter.format({
+        level: 999 as LogLevel,
+        channel: 'test',
+        args: ['Hello'],
+        time: new Date('2024-01-15T10:30:00Z'),
+      });
+
+      expect(result).to.include('[INFO]');
+      expect(result).to.include('Hello');
+    });
+
     it('should use custom template', () => {
       formatter.setTemplate(LogLevel.ERROR, '[ERROR] {{ARGS}}');
 
@@ -32,6 +44,40 @@ describe('LogFormatter', () => {
       });
 
       expect(result).to.equal('[ERROR] Error message');
+    });
+
+    it('should replace placeholders and strip chalk tokens', () => {
+      formatter.setDateFormat('yyyy-MM-dd');
+      formatter.setTemplate(
+        LogLevel.INFO,
+        '{{DATE}} {{CHANNEL}} {{MODULE}} {{ARGS}} {{chalk.red}}',
+      );
+
+      const result = formatter.format({
+        level: LogLevel.INFO,
+        channel: 'core',
+        module: 'modA',
+        args: ['hello'],
+        time: new Date('2024-01-15T00:00:00Z'),
+      });
+
+      expect(result).to.include('2024-01-15');
+      expect(result).to.include('core');
+      expect(result).to.include('modA');
+      expect(result).to.include('hello');
+      expect(result).to.not.include('chalk');
+    });
+
+    it('should stringify errors and objects', () => {
+      const result = formatter.format({
+        level: LogLevel.INFO,
+        channel: 'test',
+        args: [new Error('boom'), { a: 1 }],
+        time: new Date('2024-01-15T10:30:00Z'),
+      });
+
+      expect(result).to.include('boom');
+      expect(result).to.include('\"a\"');
     });
   });
 

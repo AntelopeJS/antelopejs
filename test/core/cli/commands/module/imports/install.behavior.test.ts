@@ -94,4 +94,80 @@ describe('module imports install behavior', () => {
       cleanupTempDir(tempDir);
     }
   });
+
+  it('reports missing interfaces and version mismatches', async () => {
+    const tempDir = makeTempDir();
+    try {
+      sinon.stub(common, 'readModuleManifest').resolves({
+        name: 'test-module',
+        antelopeJs: { imports: ['foo@1.0.0', 'bar@2.0.0'], importsOptional: [] },
+      } as any);
+      sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+
+      sinon.stub(gitOps, 'loadInterfacesFromGit').resolves({
+        bar: {
+          name: 'bar',
+          manifest: { versions: ['1.0.0'], dependencies: {}, files: {}, modules: [] },
+        } as any,
+      });
+
+      const installStub = sinon.stub(gitOps, 'installInterfaces').resolves();
+      const symlinkStub = sinon.stub(gitOps, 'createAjsSymlinks').resolves();
+      const warningStub = sinon.stub(cliUi, 'warning');
+      sinon.stub(cliUi, 'info');
+      sinon.stub(cliUi, 'success');
+      sinon.stub(cliUi.ProgressBar.prototype, 'start');
+      sinon.stub(cliUi.ProgressBar.prototype, 'update');
+      sinon.stub(cliUi.ProgressBar.prototype, 'stop');
+
+      const cmd = cmdInstall();
+      await cmd.parseAsync(['node', 'test', '--module', tempDir]);
+
+      expect(installStub.called).to.equal(false);
+      expect(symlinkStub.called).to.equal(true);
+      expect(warningStub.called).to.equal(true);
+    } finally {
+      cleanupTempDir(tempDir);
+    }
+  });
+
+  it('installs missing interfaces and reports skipped ones', async () => {
+    const tempDir = makeTempDir();
+    try {
+      const interfacesDir = path.join(tempDir, '.antelope', 'interfaces.d', 'existing');
+      mkdirSync(interfacesDir, { recursive: true });
+      writeFileSync(path.join(interfacesDir, '1.0.0.d.ts'), '// interface');
+
+      sinon.stub(common, 'readModuleManifest').resolves({
+        name: 'test-module',
+        antelopeJs: { imports: ['existing@1.0.0', 'new@1.0.0'], importsOptional: [] },
+      } as any);
+      sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+
+      sinon.stub(gitOps, 'loadInterfacesFromGit').resolves({
+        new: {
+          name: 'new',
+          manifest: { versions: ['1.0.0'], dependencies: {}, files: {}, modules: [] },
+        } as any,
+      });
+
+      const installStub = sinon.stub(gitOps, 'installInterfaces').resolves();
+      const symlinkStub = sinon.stub(gitOps, 'createAjsSymlinks').resolves();
+      const infoStub = sinon.stub(cliUi, 'info');
+      sinon.stub(cliUi, 'success');
+      sinon.stub(cliUi, 'warning');
+      sinon.stub(cliUi.ProgressBar.prototype, 'start');
+      sinon.stub(cliUi.ProgressBar.prototype, 'update');
+      sinon.stub(cliUi.ProgressBar.prototype, 'stop');
+
+      const cmd = cmdInstall();
+      await cmd.parseAsync(['node', 'test', '--module', tempDir]);
+
+      expect(installStub.calledOnce).to.equal(true);
+      expect(symlinkStub.called).to.equal(true);
+      expect(infoStub.called).to.equal(true);
+    } finally {
+      cleanupTempDir(tempDir);
+    }
+  });
 });

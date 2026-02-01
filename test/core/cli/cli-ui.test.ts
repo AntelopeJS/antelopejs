@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import * as sinon from 'sinon';
 import {
   Spinner,
+  ProgressBar,
   success,
   error,
   warning,
@@ -13,6 +14,7 @@ import {
   sleep,
   isTerminalOutput,
 } from '../../../src/core/cli/cli-ui';
+import cliProgress from 'cli-progress';
 
 describe('CLI UI', () => {
   describe('Spinner', () => {
@@ -76,6 +78,85 @@ describe('CLI UI', () => {
       }
     });
 
+    it('should advance spinner output when terminal', async () => {
+      const originalStdout = process.stdout.isTTY;
+      const originalStderr = process.stderr.isTTY;
+      (process.stdout as any).isTTY = true;
+      (process.stderr as any).isTTY = true;
+      const clock = sinon.useFakeTimers();
+      try {
+        const spinner = new Spinner('Spin');
+        await spinner.start();
+        clock.tick(100);
+        await spinner.stop();
+        expect(stdoutStub.called).to.equal(true);
+      } finally {
+        clock.restore();
+        (process.stdout as any).isTTY = originalStdout;
+        (process.stderr as any).isTTY = originalStderr;
+      }
+    });
+
+    it('should update text and return early when already running', async () => {
+      const originalStdout = process.stdout.isTTY;
+      const originalStderr = process.stderr.isTTY;
+      (process.stdout as any).isTTY = false;
+      (process.stderr as any).isTTY = false;
+      const logStub = sinon.stub(console, 'log');
+      try {
+        const spinner = new Spinner('First');
+        await spinner.start('First');
+        await spinner.start('Second');
+        await spinner.succeed();
+        const output = (logStub.firstCall?.args[0] as string) || '';
+        expect(output).to.include('Second');
+      } finally {
+        logStub.restore();
+        (process.stdout as any).isTTY = originalStdout;
+        (process.stderr as any).isTTY = originalStderr;
+      }
+    });
+
+    it('should handle status updates while running', async () => {
+      const originalStdout = process.stdout.isTTY;
+      const originalStderr = process.stderr.isTTY;
+      (process.stdout as any).isTTY = false;
+      (process.stderr as any).isTTY = false;
+      const logStub = sinon.stub(console, 'log');
+      try {
+        const spinner = new Spinner('Running');
+        await spinner.start();
+        await spinner.fail();
+        await spinner.start();
+        await spinner.info();
+        await spinner.start();
+        await spinner.warn();
+        expect(logStub.called).to.equal(true);
+      } finally {
+        logStub.restore();
+        (process.stdout as any).isTTY = originalStdout;
+        (process.stderr as any).isTTY = originalStderr;
+      }
+    });
+
+    it('should pause spinner while running', async () => {
+      const originalStdout = process.stdout.isTTY;
+      const originalStderr = process.stderr.isTTY;
+      (process.stdout as any).isTTY = true;
+      (process.stderr as any).isTTY = true;
+      const clock = sinon.useFakeTimers();
+      try {
+        const spinner = new Spinner('Pause');
+        await spinner.start();
+        await spinner.pause();
+        await spinner.stop();
+      } finally {
+        clock.restore();
+        (process.stdout as any).isTTY = originalStdout;
+        (process.stderr as any).isTTY = originalStderr;
+      }
+    });
+
     it('should no-op on status methods when not running', async () => {
       const originalStdout = process.stdout.isTTY;
       const originalStderr = process.stderr.isTTY;
@@ -93,6 +174,16 @@ describe('CLI UI', () => {
         (process.stdout as any).isTTY = originalStdout;
         (process.stderr as any).isTTY = originalStderr;
       }
+    });
+  });
+
+  describe('ProgressBar', () => {
+    it('should increment progress', () => {
+      const incrementStub = sinon.stub(cliProgress.SingleBar.prototype, 'increment');
+      const bar = new ProgressBar();
+      bar.increment(2, { title: 'x' });
+      expect(incrementStub.called).to.equal(true);
+      incrementStub.restore();
     });
   });
 

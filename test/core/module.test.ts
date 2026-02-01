@@ -47,4 +47,33 @@ describe('Module', () => {
 
     expect(detachSpy.calledOnce).to.be.true;
   });
+
+  it('should not reload callbacks when already constructed', async () => {
+    const loader = sinon.stub().resolves({});
+    const mod = new Module(manifest, loader);
+
+    await mod.construct({});
+    await mod.construct({});
+
+    expect(loader.calledOnce).to.equal(true);
+  });
+
+  it('should reload manifest and update version', async () => {
+    const reloadManifest = {
+      ...manifest,
+      version: '1.0.0',
+      reload: sinon.stub(),
+    } as any;
+    reloadManifest.reload.callsFake(async () => {
+      reloadManifest.version = '1.0.1';
+    });
+
+    const loader = sinon.stub().resolves({});
+    const mod = new Module(reloadManifest, loader);
+
+    await mod.reload();
+
+    expect(reloadManifest.reload.calledOnce).to.equal(true);
+    expect(mod.version).to.equal('1.0.1');
+  });
 });

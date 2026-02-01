@@ -36,4 +36,10 @@ describe('InterfaceRegistry', () => {
 
     expect(internal.interfaceConnections.consumer).to.be.undefined;
   });
+
+  it('should return empty list when no connections are set', () => {
+    const registry = new InterfaceRegistry();
+
+    expect(registry.getConnections('missing', 'core@beta')).to.deep.equal([]);
+  });
 });
