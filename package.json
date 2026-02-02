@@ -26,7 +26,7 @@
   "scripts": {
     "install-local": "pnpm run build && npm install -g . --force",
     "build": "rimraf dist && tsc",
-    "postbuild": "node -e \"require('fs').chmodSync('dist/core/cli/index.js', 0o755)\"",
+    "postbuild": "node -e \"const fs=require('fs'); const paths=['dist/core/cli/index.js','dist/src/core/cli/index.js']; const target=paths.find((p)=>fs.existsSync(p)); if(!target){throw new Error('CLI entry not found in dist');} fs.chmodSync(target,0o755);\"",
     "prepack": "pnpm run build",
     "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
     "generate": "node dist/core/cli/index.js module exports generate",

@@ -12,6 +12,7 @@ import { registerPackageDownloader } from './core/downloaders/package';
 import { registerGitDownloader } from './core/downloaders/git';
 import { ModuleManifest } from './core/module-manifest';
 import { LaunchOptions } from './types';
+import { setupAntelopeProjectLogging, addChannelFilter } from './logging';
 import { FileWatcher } from './core/watch/file-watcher';
 import { HotReload } from './core/watch/hot-reload';
 import { ReplSession } from './core/repl/repl-session';
@@ -89,6 +90,14 @@ export async function launch(
     projectFolder: path.resolve(projectFolder),
   } as any;
 
+  if (loadedConfig.logging) {
+    setupAntelopeProjectLogging(loadedConfig.logging);
+  }
+
+  if (options.verbose) {
+    options.verbose.forEach((channel) => addChannelFilter(channel, 0));
+  }
+
   const manager = new ModuleManager();
   const modules = await buildModuleConfigs(normalizedConfig);
   manager.addModules(modules);
@@ -127,10 +136,132 @@ export async function launch(
   return manager;
 }
 
-export async function TestModule(_moduleFolder: string = '.', files: string[] = []): Promise<number> {
-  const context = new TestContext({});
-  const runner = new TestRunner(context);
-  return runner.run(files);
+async function collectTestFiles(folder: string, pattern: RegExp, fs: NodeFileSystem): Promise<string[]> {
+  const files: string[] = [];
+
+  async function scanDir(dir: string): Promise<void> {
+    const entries = await fs.readdir(dir);
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry);
+      const stats = await fs.stat(fullPath);
+      if (stats.isDirectory()) {
+        await scanDir(fullPath);
+      } else if (pattern.test(entry)) {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  try {
+    await scanDir(folder);
+  } catch {
+    // Folder doesn't exist or is not accessible.
+  }
+
+  return files;
+}
+
+export async function TestModule(moduleFolder: string = '.', files: string[] = []): Promise<number> {
+  if (files.length > 0) {
+    const context = new TestContext({});
+    const runner = new TestRunner(context);
+    return runner.run(files);
+  }
+
+  const moduleRoot = path.resolve(moduleFolder);
+  const fs = new NodeFileSystem();
+
+  const packPath = path.join(moduleRoot, 'package.json');
+  let pack: any;
+  try {
+    const packContent = await fs.readFileString(packPath, 'utf-8');
+    pack = JSON.parse(packContent);
+  } catch {
+    console.error('Missing or invalid package.json');
+    return 1;
+  }
+
+  const testConfig = pack.antelopeJs?.test;
+  if (!testConfig) {
+    console.error('Missing antelopeJs.test config in package.json');
+    return 1;
+  }
+
+  if (!testConfig.project) {
+    console.error('Missing antelopeJs.test.project in package.json');
+    return 1;
+  }
+
+  const testProjectPath = path.isAbsolute(testConfig.project)
+    ? testConfig.project
+    : path.join(moduleRoot, testConfig.project);
+
+  let rawModule: any;
+  try {
+    rawModule = await import(testProjectPath);
+  } catch (err) {
+    console.error(`Failed to load test project config from ${testProjectPath}:`, err);
+    return 1;
+  }
+
+  const rawConfig = rawModule?.default ?? rawModule;
+  const config = rawConfig && typeof rawConfig.setup === 'function' ? await rawConfig.setup() : rawConfig;
+
+  let manager: ModuleManager | null = null;
+  let managerActive = false;
+
+  try {
+    if (config?.logging) {
+      setupAntelopeProjectLogging(config.logging);
+    }
+
+    const cacheFolder = config?.cacheFolder ?? '.cache';
+    const absoluteCache = path.isAbsolute(cacheFolder) ? cacheFolder : path.join(moduleRoot, cacheFolder);
+
+    const normalizedConfig = {
+      ...config,
+      cacheFolder: absoluteCache,
+      projectFolder: moduleRoot,
+    };
+
+    manager = new ModuleManager();
+    const modules = await buildModuleConfigs(normalizedConfig);
+    manager.addModules(modules);
+
+    await manager.constructAll();
+    manager.startAll();
+    managerActive = true;
+
+    const testFolder = path.join(moduleRoot, testConfig.folder ?? 'test');
+    const testFiles = await collectTestFiles(testFolder, /\.(test|spec)\.(js|ts)$/, fs);
+
+    if (testFiles.length === 0) {
+      console.error('No test files found');
+      await manager.destroyAll();
+      managerActive = false;
+      return 1;
+    }
+
+    const Mocha = (await import('mocha')).default;
+    const mocha = new Mocha();
+    testFiles.forEach((file) => mocha.addFile(file));
+
+    const failures = await new Promise<number>((resolve) => {
+      mocha.run((count) => resolve(count));
+    });
+
+    await manager.destroyAll();
+    managerActive = false;
+
+    return failures;
+  } finally {
+    if (manager && managerActive) {
+      await manager.destroyAll();
+    }
+    if (rawConfig && typeof rawConfig.cleanup === 'function') {
+      await rawConfig.cleanup();
+    }
+  }
 }
 
 export default launch;

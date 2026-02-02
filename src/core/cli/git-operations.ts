@@ -398,11 +398,6 @@ export async function installInterfaces(
   await terminalDisplay.stopSpinner(`Copied interface files`);
 }
 
-// Keep the original function for backward compatibility, but refactor to use the new implementation
-export async function installInterface(git: string, module: string, interfaceInfo: InterfaceInfo, version: string) {
-  await installInterfaces(git, module, [{ interfaceInfo, version }]);
-}
-
 export async function removeInterface(module: string, name: string, version: string) {
   const antelopePath = path.join(module, '.antelope');
   const interfacesPath = path.join(antelopePath, 'interfaces.d');
@@ -453,7 +448,6 @@ export class GitOperations {
   loadInterfaceFromGit = loadInterfaceFromGit;
   loadInterfacesFromGit = loadInterfacesFromGit;
   installInterfaces = installInterfaces;
-  installInterface = installInterface;
   removeInterface = removeInterface;
   copyTemplate = copyTemplate;
 }

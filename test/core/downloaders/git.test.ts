@@ -25,7 +25,7 @@ describe('GitDownloader', () => {
     await cache.load();
 
     const execCalls: Array<{ command: string; cwd?: string }> = [];
-    const exec = async (command: string, _options: { cwd?: string }) => {
+    const exec = async (command: string, options: { cwd?: string }) => {
       execCalls.push({ command, cwd: options?.cwd });
 
       if (command.startsWith('git clone')) {

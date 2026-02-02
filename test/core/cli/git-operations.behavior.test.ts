@@ -510,45 +510,4 @@ describe('Git operations behavior', () => {
       cleanupTempDir(homeDir);
     }
   });
-
-  it('delegates installInterface to installInterfaces', async () => {
-    const moduleDir = makeTempDir();
-    const homeDir = makeTempDir();
-    const originalHome = process.env.HOME;
-    try {
-      const gitOps = await loadGitOpsWithHome(homeDir);
-      const interfaceFolder = path.join(homeDir, 'interfaces', 'single');
-      const versionDir = path.join(interfaceFolder, '1.0.0');
-      await import('fs/promises').then((fs) => fs.mkdir(versionDir, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(versionDir, 'index.d.ts'), '// d.ts'));
-
-      const interfaceInfo: any = {
-        name: 'single',
-        folderPath: interfaceFolder,
-        gitPath: homeDir,
-        manifest: {
-          description: 'single',
-          versions: ['1.0.0'],
-          modules: [],
-          files: {
-            '1.0.0': { type: 'local', path: interfaceFolder },
-          },
-          dependencies: {
-            '1.0.0': { packages: [], interfaces: [] },
-          },
-        },
-      };
-
-      sinon.stub(command, 'ExecuteCMD').resolves({ code: 0, stdout: '', stderr: '' });
-      sinon.stub(terminalDisplay, 'startSpinner').resolves();
-      sinon.stub(terminalDisplay, 'stopSpinner').resolves();
-      sinon.stub(terminalDisplay, 'failSpinner').resolves();
-
-      await gitOps.installInterface('https://example.com/repo.git', moduleDir, interfaceInfo, '1.0.0');
-    } finally {
-      process.env.HOME = originalHome;
-      cleanupTempDir(moduleDir);
-      cleanupTempDir(homeDir);
-    }
-  });
 });

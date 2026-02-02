@@ -20,8 +20,9 @@ describe('runCLI behavior', () => {
     sinon.stub(logging, 'setupAntelopeProjectLogging');
     sinon.stub(versionCheck, 'warnIfOutdated').resolves();
     sinon.stub(Command.prototype, 'parseAsync').resolves();
-    sinon.stub(Command.prototype, 'getOptionValue').returns(undefined);
+    const getOptionStub = sinon.stub(Command.prototype, 'getOptionValue').returns(undefined);
     sinon.stub(cliUi, 'displayBanner');
+    return { getOptionStub };
   }
 
   it('displays banner when no args are provided', async () => {
@@ -35,9 +36,7 @@ describe('runCLI behavior', () => {
 
   it('adds channel filters when verbose is set', async () => {
     process.argv = ['node', 'ajs', '--verbose', 'core'];
-    stubCommon();
-
-    const getOptionStub = sinon.stub(Command.prototype, 'getOptionValue');
+    const { getOptionStub } = stubCommon();
     getOptionStub.returns(['core', 'cli']);
 
     const addFilterStub = sinon.stub(logging, 'addChannelFilter');

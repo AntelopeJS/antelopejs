@@ -3,6 +3,10 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import eslintPluginImport from 'eslint-plugin-import';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+const configDir = dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
   {
@@ -35,11 +39,8 @@ export default tseslint.config(
       ecmaVersion: 12,
       sourceType: 'module',
       parserOptions: {
-        project: ['tsconfig.json'],
-        projectService: {
-          allowDefaultProject: ['*.ts', 'eslint.config.mjs'],
-        },
-        tsconfigRootDir: import.meta.dirname,
+        project: ['tsconfig.eslint.json'],
+        tsconfigRootDir: configDir,
       },
     },
   },
