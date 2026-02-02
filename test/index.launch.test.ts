@@ -135,7 +135,7 @@ describe('launch', () => {
 
     const addModulesStub = sinon.stub(ModuleManager.prototype, 'addModules').callsFake(function (
       this: any,
-      modules: any[],
+      _modules: any[],
     ) {
       this.loaded = undefined;
     });

@@ -2,8 +2,7 @@ import * as path from 'path';
 import { DownloaderRegistry } from './registry';
 import { ModuleCache } from '../module-cache';
 import { ModuleManifest } from '../module-manifest';
-import { ModuleSourceLocal, ModuleSourceLocalFolder } from '../../types';
-import { IFileSystem } from '../../types';
+import { IFileSystem, ModuleSourceLocal, ModuleSourceLocalFolder } from '../../types';
 import { NodeFileSystem } from '../filesystem';
 import { expandHome } from './utils';
 

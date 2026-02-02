@@ -16,9 +16,9 @@ export function mergeDeep(
         const targetValue = result[key];
 
         if (isObject(sourceValue) && isObject(targetValue)) {
-          result[key] = mergeDeep(targetValue, sourceValue as any);
+          result[key] = mergeDeep(targetValue, sourceValue);
         } else {
-          result[key] = sourceValue as any;
+          result[key] = sourceValue;
         }
       }
     }

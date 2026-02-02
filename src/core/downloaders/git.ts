@@ -1,8 +1,7 @@
 import { DownloaderRegistry } from './registry';
 import { ModuleCache } from '../module-cache';
 import { ModuleManifest } from '../module-manifest';
-import { ModuleSourceGit } from '../../types';
-import { IFileSystem } from '../../types';
+import { IFileSystem, ModuleSourceGit } from '../../types';
 import { NodeFileSystem } from '../filesystem';
 import { CommandRunner } from './types';
 import { ExecuteCMD } from '../cli/command';

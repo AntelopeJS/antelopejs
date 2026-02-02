@@ -43,7 +43,7 @@ async function buildModuleConfigs(
 
   for (const [id, moduleConfig] of Object.entries(config.modules ?? {})) {
     const entry = moduleConfig as any;
-    const source = { ...entry.source, id } as any;
+    const source = { ...entry.source, id };
     const manifests = await registry.load(config.projectFolder, cache, source);
 
     const overrides = new Map<string, Array<{ module: string; id?: string }>>();
@@ -106,11 +106,11 @@ export async function launch(
     });
 
     for (const { module } of (manager as any).loaded?.values?.() ?? []) {
-      if ((module.manifest as any).source?.type === 'local') {
-        const watchDirs = Array.isArray((module.manifest as any).source.watchDir)
-          ? (module.manifest as any).source.watchDir
-          : (module.manifest as any).source.watchDir
-            ? [(module.manifest as any).source.watchDir]
+      if (module.manifest?.source?.type === 'local') {
+        const watchDirs = Array.isArray(module.manifest.source.watchDir)
+          ? module.manifest.source.watchDir
+          : module.manifest.source.watchDir
+            ? [module.manifest.source.watchDir]
             : [''];
         await watcher.scanModule(module.id, module.manifest.folder, watchDirs);
       }
@@ -127,7 +127,7 @@ export async function launch(
   return manager;
 }
 
-export async function TestModule(moduleFolder: string = '.', files: string[] = []): Promise<number> {
+export async function TestModule(_moduleFolder: string = '.', files: string[] = []): Promise<number> {
   const context = new TestContext({});
   const runner = new TestRunner(context);
   return runner.run(files);

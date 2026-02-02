@@ -129,7 +129,7 @@ describe('module exports generate behavior', () => {
       const execStub = sinon.stub(command, 'ExecuteCMD');
       execStub.onFirstCall().resolves({ code: 0, stdout: '', stderr: '' });
 
-      const failStub = sinon.stub(cliUi.Spinner.prototype, 'fail').resolves();
+      sinon.stub(cliUi.Spinner.prototype, 'fail').resolves();
       sinon.stub(cliUi, 'displayBox').resolves();
       sinon.stub(cliUi, 'info');
       sinon.stub(cliUi, 'warning');

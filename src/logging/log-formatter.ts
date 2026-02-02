@@ -70,9 +70,13 @@ export class LogFormatter {
       try {
         return JSON.stringify(value);
       } catch {
-        return String(value);
+        return Object.prototype.toString.call(value);
       }
     }
-    return String(value);
+    if (typeof value === 'function') {
+      return value.name ? `[Function ${value.name}]` : '[Function]';
+    }
+    const primitive = value as string | number | boolean | bigint | symbol;
+    return String(primitive);
   }
 }

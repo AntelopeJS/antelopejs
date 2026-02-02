@@ -2,8 +2,7 @@ import * as path from 'path';
 import { DownloaderRegistry } from './registry';
 import { ModuleCache } from '../module-cache';
 import { ModuleManifest, ModulePackageJson } from '../module-manifest';
-import { ModuleSourcePackage } from '../../types';
-import { IFileSystem } from '../../types';
+import { IFileSystem, ModuleSourcePackage } from '../../types';
 import { NodeFileSystem } from '../filesystem';
 import { CommandRunner } from './types';
 import { ExecuteCMD } from '../cli/command';
@@ -32,7 +31,7 @@ export function registerPackageDownloader(registry: DownloaderRegistry, deps: Pa
   const exec = deps.exec ?? ExecuteCMD;
   const extract = deps.extract ?? defaultExtract;
   const installCommand = deps.getInstallCommand ?? getInstallCommand;
-  const getTemp = deps.getTemp ?? ModuleCache.getTemp;
+  const getTemp = deps.getTemp ?? (() => ModuleCache.getTemp());
 
   registry.register('package', 'package', async (cache: ModuleCache, source: ModuleSourcePackage) => {
     let folder: string;

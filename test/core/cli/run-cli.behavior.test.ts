@@ -37,7 +37,7 @@ describe('runCLI behavior', () => {
     process.argv = ['node', 'ajs', '--verbose', 'core'];
     stubCommon();
 
-    const getOptionStub = Command.prototype.getOptionValue as sinon.SinonStub;
+    const getOptionStub = sinon.stub(Command.prototype, 'getOptionValue');
     getOptionStub.returns(['core', 'cli']);
 
     const addFilterStub = sinon.stub(logging, 'addChannelFilter');

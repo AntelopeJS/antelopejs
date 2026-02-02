@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { Class } from './decorators';
-import Logging from '../../logging/beta';
+import { Logging } from '../../logging/beta';
 
 /**
  * Represents a connection to an interface implementation.

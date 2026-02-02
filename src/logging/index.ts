@@ -1,6 +1,8 @@
-export * from './log-formatter';
-export * from './log-filter';
-export * from './logger';
+export { LogFormatter, LogLevel } from './log-formatter';
+export type { LogEntry } from './log-formatter';
+export { LogFilter } from './log-filter';
+export { Logger } from './logger';
+export type { LogTransport } from './logger';
 
 // Legacy-compatible logging helpers used by the CLI
 import { AntelopeLogging } from '../types';
