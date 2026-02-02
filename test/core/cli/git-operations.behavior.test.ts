@@ -448,6 +448,39 @@ describe('Git operations behavior', () => {
         },
       });
 
+      const extraFolder = path.join(repoPath, 'interfaces', 'extra');
+      const extraVersionDir = path.join(extraFolder, '1.0.0');
+      await import('fs/promises').then((fs) => fs.mkdir(extraVersionDir, { recursive: true }));
+      await import('fs/promises').then((fs) => fs.writeFile(path.join(extraVersionDir, 'index.d.ts'), '// d.ts'));
+      writeJson(path.join(extraFolder, 'manifest.json'), {
+        description: 'extra',
+        versions: ['1.0.0'],
+        modules: [],
+        files: {
+          '1.0.0': { type: 'local', path: 'interfaces/extra' },
+        },
+        dependencies: {
+          '1.0.0': { packages: [], interfaces: [] },
+        },
+      });
+
+      const depInfo: any = {
+        name: 'dep',
+        folderPath: depFolder,
+        gitPath: homeDir,
+        manifest: {
+          description: 'dep',
+          versions: ['1.0.0'],
+          modules: [],
+          files: {
+            '1.0.0': { type: 'local', path: 'interfaces/dep' },
+          },
+          dependencies: {
+            '1.0.0': { packages: [], interfaces: [] },
+          },
+        },
+      };
+
       const baseInfo: any = {
         name: 'base',
         folderPath: interfaceFolder,
@@ -460,7 +493,7 @@ describe('Git operations behavior', () => {
             '1.0.0': { type: 'local', path: interfaceFolder },
           },
           dependencies: {
-            '1.0.0': { packages: [], interfaces: ['dep@1.0.0', 'dep@1.0.0'] },
+            '1.0.0': { packages: [], interfaces: ['dep@1.0.0', 'extra@1.0.0'] },
           },
         },
       };
@@ -471,6 +504,7 @@ describe('Git operations behavior', () => {
       sinon.stub(terminalDisplay, 'failSpinner').resolves();
 
       await gitOps.installInterfaces(gitUrl, moduleDir, [
+        { interfaceInfo: depInfo, version: '1.0.0' },
         { interfaceInfo: baseInfo, version: '1.0.0' },
         { interfaceInfo: baseInfo, version: '1.0.0' },
       ]);

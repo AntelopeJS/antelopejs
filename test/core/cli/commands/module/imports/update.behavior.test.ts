@@ -167,4 +167,80 @@ describe('module imports update behavior', () => {
     expect(warningStub.callCount).to.be.greaterThan(0);
     expect(errorStub.called).to.equal(true);
   });
+
+  it('treats missing import arrays as empty', async () => {
+    const manifest: any = { antelopeJs: {} };
+    sinon.stub(common, 'readModuleManifest').resolves(manifest);
+    sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+    const errorStub = sinon.stub(cliUi, 'error');
+    sinon.stub(cliUi, 'info');
+
+    const cmd = cmdUpdate();
+    await cmd.parseAsync(['node', 'test', '--module', '/tmp/module']);
+
+    expect(errorStub.called).to.equal(true);
+  });
+
+  it('handles object imports and skip-install flags', async () => {
+    const manifest: any = {
+      antelopeJs: { imports: [{ name: 'foo@1.0.0', skipInstall: true }], importsOptional: [] },
+    };
+    sinon.stub(common, 'readModuleManifest').resolves(manifest);
+    sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+
+    sinon.stub(gitOps, 'loadInterfacesFromGit').resolves({
+      foo: {
+        name: 'foo',
+        manifest: { versions: ['1.0.0'], dependencies: {}, files: {}, modules: [] },
+      } as any,
+    });
+
+    sinon.stub(gitOps, 'removeInterface').resolves();
+    sinon.stub(gitOps, 'installInterfaces').resolves();
+    sinon.stub(common, 'writeModuleManifest').resolves();
+    sinon.stub(gitOps, 'createAjsSymlinks').resolves();
+
+    sinon.stub(cliUi.ProgressBar.prototype, 'start').returnsThis();
+    sinon.stub(cliUi.ProgressBar.prototype, 'update').returnsThis();
+    sinon.stub(cliUi.ProgressBar.prototype, 'stop').returns();
+    const successStub = sinon.stub(cliUi, 'success');
+    sinon.stub(cliUi, 'warning');
+    const infoStub = sinon.stub(cliUi, 'info');
+    sinon.stub(cliUi, 'error');
+
+    const cmd = cmdUpdate();
+    await cmd.parseAsync(['node', 'test', '--module', '/tmp/module']);
+
+    expect(successStub.called).to.equal(true);
+    expect(infoStub.calledWithMatch('skip-install')).to.equal(true);
+  });
+
+  it('filters selected interfaces when imports are objects', async () => {
+    const manifest: any = {
+      antelopeJs: { imports: [{ name: 'foo@1.0.0' }, { name: 'bar@1.0.0' }], importsOptional: [] },
+    };
+    sinon.stub(common, 'readModuleManifest').resolves(manifest);
+    sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+
+    sinon.stub(gitOps, 'loadInterfacesFromGit').resolves({
+      foo: { name: 'foo', manifest: { versions: ['1.0.0'], dependencies: {}, files: {}, modules: [] } } as any,
+    });
+    sinon.stub(gitOps, 'removeInterface').resolves();
+    sinon.stub(gitOps, 'installInterfaces').resolves();
+    sinon.stub(common, 'writeModuleManifest').resolves();
+    sinon.stub(gitOps, 'createAjsSymlinks').resolves();
+
+    sinon.stub(cliUi.ProgressBar.prototype, 'start').returnsThis();
+    sinon.stub(cliUi.ProgressBar.prototype, 'update').returnsThis();
+    sinon.stub(cliUi.ProgressBar.prototype, 'stop').returns();
+    const successStub = sinon.stub(cliUi, 'success');
+    sinon.stub(cliUi, 'warning');
+    sinon.stub(cliUi, 'info');
+    sinon.stub(cliUi, 'error');
+
+    const cmd = cmdUpdate();
+    await cmd.parseAsync(['node', 'test', 'foo', '--module', '/tmp/module']);
+
+    expect(successStub.called).to.equal(true);
+  });
 });

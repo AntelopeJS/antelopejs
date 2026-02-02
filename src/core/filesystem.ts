@@ -166,18 +166,17 @@ export class InMemoryFileSystem implements IFileSystem {
     const parts = dirPath.split('/').filter(Boolean);
     let current = this.root;
 
-    for (const part of parts) {
+    for (let index = 0; index < parts.length; index++) {
+      const part = parts[index];
       if (!current.children) {
         current.children = new Map();
       }
 
       let child = current.children.get(part);
       if (!child) {
-        if (!options?.recursive) {
-          const parentPath = parts.slice(0, parts.indexOf(part)).join('/');
-          if (parentPath && !this.getNode('/' + parentPath)) {
-            throw new Error(`ENOENT: no such directory: ${parentPath}`);
-          }
+        if (!options?.recursive && index < parts.length - 1) {
+          const parentPath = parts.slice(0, index + 1).join('/');
+          throw new Error(`ENOENT: no such directory: ${parentPath}`);
         }
         child = { type: 'directory', children: new Map() };
         current.children.set(part, child);

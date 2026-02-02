@@ -11,6 +11,7 @@ import {
   formatLogMessageWithRightAlignedDate,
   isTerminalOutput,
 } from '../../../src/core/cli/logging-utils';
+import * as loggingUtils from '../../../src/core/cli/logging-utils';
 
 function setTTY(stdout: boolean, stderr: boolean, columns?: number) {
   const stdoutIsTTY = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');
@@ -185,6 +186,46 @@ describe('Logging Utils', () => {
         expect(lines[1]).to.include(`[${expectedDate}]`);
       } finally {
         restore();
+      }
+    });
+
+    it('keeps intermediate lines unchanged for terminal output', () => {
+      const restore = setTTY(true, true, 30);
+      try {
+        const date = new Date(2024, 0, 15, 10, 30, 0);
+        const output = formatLogMessageWithRightAlignedDate(
+          { moduleTracking: { enabled: false } } as any,
+          { levelId: 20, args: ['first\\nmiddle\\nlast'], time: date.getTime() },
+        );
+
+        const plain = stripAnsi(output);
+        const lines = plain.split('\\n');
+        const expectedDate = formatDate(date, 'yyyy-MM-dd HH:mm:ss');
+
+        expect(lines).to.have.length(3);
+        expect(lines[0]).to.include('first');
+        expect(lines[0]).to.not.include(`[${expectedDate}]`);
+        expect(lines[1]).to.equal('middle');
+        expect(lines[2]).to.include(`[${expectedDate}]`);
+      } finally {
+        restore();
+      }
+    });
+
+    it('handles multi-line output when terminal detection is stubbed', () => {
+      const stub = sinon.stub(loggingUtils, 'isTerminalOutput').returns(true);
+      try {
+        const date = new Date(2024, 0, 15, 10, 30, 0);
+        const output = loggingUtils.formatLogMessageWithRightAlignedDate(
+          { moduleTracking: { enabled: false } } as any,
+          { levelId: 20, args: ['alpha\\nbeta\\ngamma'], time: date.getTime() },
+        );
+
+        const lines = stripAnsi(output).split('\\n');
+        expect(lines).to.have.length(3);
+        expect(lines[1]).to.equal('beta');
+      } finally {
+        stub.restore();
       }
     });
   });

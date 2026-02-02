@@ -36,6 +36,8 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
     return;
   }
 
+  const envModules = env.modules!;
+
   const loader = new ConfigLoader(new NodeFileSystem());
   const antelopeConfig = await loader.load(options.project, options.env || 'default');
 
@@ -44,16 +46,13 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
   const notInstalledModules: string[] = [];
 
   // Check if all modules exist
-  const missingModules = modules.filter((module) => {
-    if (!env.modules) return true;
-    return !env.modules[module] && !env.modules[':' + module];
-  });
+  const missingModules = modules.filter((module) => !envModules[module] && !envModules[':' + module]);
 
   if (missingModules.length > 0) {
     if (missingModules.length === modules.length) {
       error(chalk.red`None of the specified modules are installed in this project.`);
       info(
-        `Available modules: ${Object.keys(env.modules)
+        `Available modules: ${Object.keys(envModules)
           .map((m) => chalk.bold(m))
           .join(', ')}`,
       );
@@ -85,11 +84,11 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
     }
 
     // Check standard name and prefixed name (:name)
-    if (env.modules[module]) {
-      delete env.modules[module];
+    if (envModules[module]) {
+      delete envModules[module];
       removedModules.push(module);
-    } else if (env.modules[':' + module]) {
-      delete env.modules[':' + module];
+    } else if (envModules[':' + module]) {
+      delete envModules[':' + module];
       removedModules.push(':' + module);
     } else {
       notInstalledModules.push(module);

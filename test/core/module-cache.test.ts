@@ -54,4 +54,47 @@ describe('ModuleCache', () => {
     expect(await fs.readFileString('/cache/mod/file.txt')).to.equal('hello');
     expect(cache.hasVersion('mod', '^1.0.0')).to.be.true;
   });
+
+  it('loads existing manifest data when present', async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile('/cache/manifest.json', JSON.stringify({ cached: '2.0.0' }));
+    const cache = new ModuleCache('/cache', fs);
+
+    await cache.load();
+
+    expect(cache.getVersion('cached')).to.equal('2.0.0');
+  });
+
+  it('falls back to empty manifest when stored manifest is null', async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile('/cache/manifest.json', 'null');
+    const cache = new ModuleCache('/cache', fs);
+
+    await cache.load();
+
+    expect(cache.getVersion('cached')).to.equal(undefined);
+  });
+
+  it('recursively copies directories when transferring', async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache('/cache', fs);
+
+    await fs.mkdir('/tmp/src/nested', { recursive: true });
+    await fs.writeFile('/tmp/src/nested/file.txt', 'nested');
+
+    await cache.transfer('/tmp/src', 'mod', '1.0.0');
+
+    expect(await fs.readFileString('/cache/mod/nested/file.txt')).to.equal('nested');
+  });
+
+  it('creates a temp folder using the OS temp directory', async () => {
+    const tempDir = await ModuleCache.getTemp();
+    const fsNode = await import('fs/promises');
+    try {
+      const stat = await fsNode.stat(tempDir);
+      expect(stat.isDirectory()).to.equal(true);
+    } finally {
+      await fsNode.rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });

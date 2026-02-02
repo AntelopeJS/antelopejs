@@ -40,6 +40,16 @@ describe('Resolver', () => {
     expect(result).to.equal('/modB/interfaces/core/beta');
   });
 
+  it('throws when @ajs interface is not imported', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.moduleByFolder.set('/modA', moduleA);
+    resolver.moduleAssociations.set('modA', new Map());
+
+    expect(() => resolver.resolve('@ajs/core/beta', { filename: '/modA/src/index.js' } as any)).to.throw(
+      'un-imported interface',
+    );
+  });
+
   it('should resolve @ajs.raw paths', () => {
     const resolver = new Resolver(new PathMapper(() => false));
     resolver.modulesById.set('modB', moduleB);
@@ -47,6 +57,15 @@ describe('Resolver', () => {
     const result = resolver.resolve('@ajs.raw/modB/core@beta/extra', undefined);
 
     expect(result).to.equal('/modB/interfaces/core/beta/extra');
+  });
+
+  it('should resolve @ajs.raw paths without file suffix', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.modulesById.set('modB', moduleB);
+
+    const result = resolver.resolve('@ajs.raw/modB/core@beta', undefined);
+
+    expect(result).to.equal('/modB/interfaces/core/beta');
   });
 
   it('should resolve module aliases using PathMapper', () => {

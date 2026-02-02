@@ -47,8 +47,8 @@ export default function () {
       }
 
       // Check if all interfaces exist in the module
-      const imports = moduleManifest.antelopeJs?.imports ?? [];
-      const importsOptional = moduleManifest.antelopeJs?.importsOptional ?? [];
+      const imports = moduleManifest.antelopeJs.imports;
+      const importsOptional = moduleManifest.antelopeJs.importsOptional;
       const missingInterfaces = interfacesParsed.filter(
         (interface_) =>
           !imports.map(mapModuleImport).includes(interface_.raw) &&

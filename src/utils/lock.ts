@@ -38,14 +38,17 @@ export class AsyncLock {
   }
 }
 
-const LOCK_DIR = path.join(homedir(), '.antelopejs', 'locks');
+function getLockDir(): string {
+  return path.join(homedir(), '.antelopejs', 'locks');
+}
 
 export async function acquireLock(lockName: string, timeoutMs: number = 30000): Promise<() => Promise<void>> {
   const sanitizedLockName = lockName.replace(/[^a-zA-Z0-9_]/g, '_');
-  const lockFile = path.join(LOCK_DIR, `${sanitizedLockName}.lock`);
+  const lockDir = getLockDir();
+  const lockFile = path.join(lockDir, `${sanitizedLockName}.lock`);
 
   if (!existsSync(lockFile)) {
-    mkdirSync(LOCK_DIR, { recursive: true });
+    mkdirSync(lockDir, { recursive: true });
     writeFileSync(lockFile, '');
   }
 

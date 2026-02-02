@@ -10,6 +10,15 @@ function sanitize(remote: string): string {
 }
 
 describe('GitDownloader', () => {
+  it('uses default dependencies when none are provided', () => {
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry);
+
+    const source: ModuleSourceGit = { type: 'git', remote: 'https://github.com/org/repo.git' };
+
+    expect(registry.getLoaderIdentifier(source)).to.equal(source.remote);
+  });
+
   it('should clone repository and set cache version', async () => {
     const fs = new InMemoryFileSystem();
     const cache = new ModuleCache('/cache', fs);
@@ -55,6 +64,44 @@ describe('GitDownloader', () => {
     const cacheKey = sanitize(source.remote);
     expect(cache.getVersion(cacheKey)).to.equal('git:main:abcdef');
     expect(execCalls.some((call) => call.command.startsWith('git clone'))).to.be.true;
+  });
+
+  it('checks out a branch when cloning', async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const execCalls: string[] = [];
+    const exec = async (command: string, options: { cwd?: string }) => {
+      execCalls.push(command);
+      if (command.startsWith('git clone')) {
+        const parts = command.split(' ');
+        const folderName = parts[parts.length - 1];
+        const repoPath = `/cache/${folderName}`;
+        await fs.writeFile(`${repoPath}/package.json`, JSON.stringify({ name: 'repo', version: '1.0.0' }));
+      }
+      if (command.startsWith('git rev-parse')) {
+        return { stdout: 'abcdef', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git symbolic-ref')) {
+        return { stdout: 'refs/remotes/origin/main', stderr: '', code: 0 };
+      }
+      return { stdout: '', stderr: '', code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: 'git',
+      remote: 'https://github.com/org/repo.git',
+      branch: 'dev',
+      ignoreCache: true,
+    };
+
+    await registry.load('/project', cache, source);
+
+    expect(execCalls).to.include('git checkout dev');
   });
 
   it('should update cached repository and run install commands', async () => {
@@ -114,6 +161,50 @@ describe('GitDownloader', () => {
     expect(execCalls).to.include('npm install');
   });
 
+  it('uses main branch when cached and no branch is specified', async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const remote = 'https://github.com/org/repo.git';
+    const cacheKey = sanitize(remote);
+    await cache.getFolder(cacheKey, true, false);
+    await fs.writeFile(`/cache/${cacheKey}/package.json`, JSON.stringify({ name: 'repo', version: '1.0.0' }));
+    cache.setVersion(cacheKey, 'git:main:oldcommit');
+
+    const execCalls: string[] = [];
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      execCalls.push(command);
+
+      if (command === 'git fetch') {
+        return { stdout: '', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git symbolic-ref')) {
+        return { stdout: 'refs/remotes/origin/main', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git rev-parse origin/main')) {
+        return { stdout: 'oldcommit', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git rev-parse HEAD')) {
+        return { stdout: 'oldcommit', stderr: '', code: 0 };
+      }
+
+      return { stdout: '', stderr: '', code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: 'git',
+      remote,
+    };
+
+    await registry.load('/project', cache, source);
+
+    expect(execCalls).to.include('git symbolic-ref refs/remotes/origin/HEAD');
+  });
+
   it('should throw when rev-parse fails', async () => {
     const fs = new InMemoryFileSystem();
     const cache = new ModuleCache('/cache', fs);
@@ -147,6 +238,49 @@ describe('GitDownloader', () => {
       expect.fail('Expected failure');
     } catch (err) {
       expect(err).to.be.instanceOf(Error);
+    }
+  });
+
+  it('throws when install command fails with stdout only', async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      if (command.startsWith('git clone')) {
+        const parts = command.split(' ');
+        const folderName = parts[parts.length - 1];
+        const repoPath = `/cache/${folderName}`;
+        await fs.writeFile(`${repoPath}/package.json`, JSON.stringify({ name: 'repo', version: '1.0.0' }));
+        return { stdout: '', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git rev-parse')) {
+        return { stdout: 'abcdef', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git symbolic-ref')) {
+        return { stdout: 'refs/remotes/origin/main', stderr: '', code: 0 };
+      }
+      if (command === 'npm install') {
+        return { stdout: 'fail', stderr: '', code: 1 };
+      }
+      return { stdout: '', stderr: '', code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: 'git',
+      remote: 'https://github.com/org/repo.git',
+      ignoreCache: true,
+      installCommand: 'npm install',
+    };
+
+    try {
+      await registry.load('/project', cache, source);
+      expect.fail('Expected failure');
+    } catch (err) {
+      expect(String(err)).to.include('fail');
     }
   });
 });

@@ -59,6 +59,17 @@ describe('config commands behavior', () => {
     expect(displayStub.calledOnce).to.equal(true);
   });
 
+  it('displays fallback text when key is set but empty', async () => {
+    sinon.stub(common, 'readUserConfig').resolves({ git: '' } as any);
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+
+    const cmd = cmdGet();
+    await cmd.parseAsync(['node', 'test', 'git']);
+
+    expect(displayStub.calledOnce).to.equal(true);
+    expect(String(displayStub.firstCall.args[0])).to.include('Not set');
+  });
+
   it('sets configuration value and warns on non-default git', async () => {
     sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
     const writeStub = sinon.stub(common, 'writeUserConfig').resolves();
@@ -107,6 +118,43 @@ describe('config commands behavior', () => {
 
     expect(writeStub.calledOnce).to.equal(true);
     expect(writeStub.firstCall.args[0]).to.deep.equal(common.getDefaultUserConfig());
+  });
+
+  it('shows Not set for empty values in reset summary', async () => {
+    sinon.stub(common, 'readUserConfig').resolves({ git: '' } as any);
+    const writeStub = sinon.stub(common, 'writeUserConfig').resolves();
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(cliUi, 'success');
+
+    const cmd = cmdReset();
+    await cmd.parseAsync(['node', 'test', '--yes']);
+
+    expect(writeStub.calledOnce).to.equal(true);
+    expect(String(displayStub.firstCall.args[0])).to.include('Not set');
+  });
+
+  it('show renders Not set for empty values', async () => {
+    sinon.stub(common, 'readUserConfig').resolves({ git: '' } as any);
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(console, 'log');
+
+    const cmd = cmdShow();
+    await cmd.parseAsync(['node', 'test']);
+
+    expect(displayStub.calledOnce).to.equal(true);
+    expect(String(displayStub.firstCall.args[0])).to.include('Not set');
+  });
+
+  it('show renders configured values', async () => {
+    sinon.stub(common, 'readUserConfig').resolves({ git: 'https://example.com' } as any);
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(console, 'log');
+
+    const cmd = cmdShow();
+    await cmd.parseAsync(['node', 'test']);
+
+    expect(displayStub.calledOnce).to.equal(true);
+    expect(String(displayStub.firstCall.args[0])).to.include('https://example.com');
   });
 
   it('cancels reset when confirmation is declined', async () => {

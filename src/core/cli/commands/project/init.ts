@@ -129,10 +129,11 @@ export default function () {
 
       // Display success message
       console.log('');
+      const cdInstruction = project === '.' ? '' : chalk.cyan(`cd ${resolvedProjectPath}`) + '\n';
       await displayBox(
         `Your AntelopeJS project ${chalk.green.bold(answers.name)} has been successfully initialized!\n\n` +
           `${chalk.dim('To get started, run:')}\n` +
-          `${resolvedProjectPath !== '.' ? chalk.cyan(`cd ${resolvedProjectPath}`) + '\n' : ''}` +
+          `${cdInstruction}` +
           `${chalk.cyan('ajs project modules install')}\n` +
           `${chalk.cyan('ajs project run -w')}`,
         '\u{f135}  Project Created',

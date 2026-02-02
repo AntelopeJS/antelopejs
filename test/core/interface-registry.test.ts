@@ -42,4 +42,13 @@ describe('InterfaceRegistry', () => {
 
     expect(registry.getConnections('missing', 'core@beta')).to.deep.equal([]);
   });
+
+  it('should return empty list when interface is missing', () => {
+    const registry = new InterfaceRegistry();
+    const connections = new Map<string, Array<{ module: string }>>();
+    connections.set('core@beta', [{ module: 'modA' }]);
+    registry.setConnections('consumer', connections);
+
+    expect(registry.getConnections('consumer', 'missing@beta')).to.deep.equal([]);
+  });
 });

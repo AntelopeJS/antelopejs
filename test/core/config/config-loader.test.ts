@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import { ConfigLoader } from '../../../src/core/config/config-loader';
 import { InMemoryFileSystem } from '../../../src/core/filesystem';
 import * as path from 'path';
@@ -10,6 +11,10 @@ describe('ConfigLoader', () => {
   beforeEach(() => {
     fs = new InMemoryFileSystem();
     loader = new ConfigLoader(fs);
+  });
+
+  afterEach(() => {
+    sinon.restore();
   });
 
   describe('load', () => {
@@ -87,6 +92,64 @@ describe('ConfigLoader', () => {
       const config = await loader.load('/project');
 
       expect(config.cacheFolder).to.equal('my-app/.cache');
+    });
+
+    it('defaults cacheFolder when missing', async () => {
+      await fs.writeFile(
+        '/project/antelope.json',
+        JSON.stringify({
+          name: 'my-app',
+          modules: {},
+        })
+      );
+
+      const config = await loader.load('/project');
+
+      expect(config.cacheFolder).to.equal('.antelope/cache');
+    });
+
+    it('defaults cacheFolder when null', async () => {
+      await fs.writeFile(
+        '/project/antelope.json',
+        JSON.stringify({
+          name: 'my-app',
+          cacheFolder: null,
+          modules: {},
+        })
+      );
+
+      const config = await loader.load('/project');
+
+      expect(config.cacheFolder).to.equal('.antelope/cache');
+    });
+
+    it('merges module config when base config is undefined', async () => {
+      await fs.writeFile(
+        '/project/antelope.json',
+        JSON.stringify({
+          name: 'test',
+          modules: { database: '1.0.0' },
+        })
+      );
+      await fs.writeFile(
+        '/project/antelope.database.json',
+        JSON.stringify({
+          host: 'localhost',
+        })
+      );
+
+      sinon.stub((loader as any).parser, 'expandModuleShorthand').returns({
+        database: {
+          source: { type: 'package', package: 'database', version: '1.0.0' },
+          config: undefined,
+          importOverrides: [],
+          disabledExports: [],
+        },
+      });
+
+      const config = await loader.load('/project');
+
+      expect(config.modules.database.config).to.deep.equal({ host: 'localhost' });
     });
   });
 });

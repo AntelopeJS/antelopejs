@@ -37,6 +37,16 @@ describe('FileSystem', () => {
       expect(files).to.have.members(['a.txt', 'b.txt']);
     });
 
+    it('returns empty list when directory has no children map', async () => {
+      await fs.mkdir('/empty', { recursive: true });
+      const root = (fs as any).root;
+      const node = root.children.get('empty');
+      node.children = undefined;
+
+      const files = await fs.readdir('/empty');
+      expect(files).to.deep.equal([]);
+    });
+
     it('should remove files', async () => {
       await fs.writeFile('/test.txt', 'test');
       await fs.rm('/test.txt');
@@ -53,6 +63,16 @@ describe('FileSystem', () => {
       expect(caught).to.be.instanceOf(Error);
     });
 
+    it('returns empty buffer when file content is missing', async () => {
+      await fs.writeFile('/empty.txt', 'data');
+      const root = (fs as any).root;
+      const node = root.children.get('empty.txt');
+      node.content = undefined;
+
+      const buffer = await fs.readFile('/empty.txt');
+      expect(buffer.length).to.equal(0);
+    });
+
     it('should throw when listing a file path', async () => {
       await fs.writeFile('/file.txt', 'content');
       let caught: unknown;
@@ -65,8 +85,19 @@ describe('FileSystem', () => {
     });
 
     it('should create directory without recursive parents when path is new', async () => {
+      await fs.mkdir('/a', { recursive: true });
       await fs.mkdir('/a/b', { recursive: false });
       expect(await fs.exists('/a/b')).to.equal(true);
+    });
+
+    it('should throw when parent directory is missing without recursive', async () => {
+      let caught: unknown;
+      try {
+        await fs.mkdir('/missing/child', { recursive: false });
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
     });
 
     it('should handle rm force for missing paths', async () => {
@@ -113,6 +144,16 @@ describe('FileSystem', () => {
       expect(renamed).to.equal('a');
     });
 
+    it('should throw when writing to an invalid path', async () => {
+      let caught: unknown;
+      try {
+        await fs.writeFile('/', 'data');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
+    });
+
     it('should return false when checking paths under a file', async () => {
       await fs.writeFile('/file.txt', 'content');
       expect(await fs.exists('/file.txt/child.txt')).to.equal(false);
@@ -150,6 +191,23 @@ describe('FileSystem', () => {
       const root = await fs.readFileString('/other.txt');
       expect(root).to.equal('root');
       expect(await fs.exists('/other.txt/dir/nested.txt')).to.equal(false);
+    });
+
+    it('handles removing paths under a file with force', async () => {
+      await fs.writeFile('/file.txt', 'base');
+      await fs.rm('/file.txt/child.txt', { force: true });
+      expect(await fs.exists('/file.txt')).to.equal(true);
+    });
+
+    it('should throw when removing deep paths under a file', async () => {
+      await fs.writeFile('/file.txt', 'base');
+      let caught: unknown;
+      try {
+        await fs.rm('/file.txt/child/grandchild');
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).to.be.instanceOf(Error);
     });
 
     it('should mkdir under file paths', async () => {
@@ -190,6 +248,15 @@ describe('FileSystem', () => {
       const content = await fs.readFileString(filePath);
 
       expect(content).to.equal('hello world');
+    });
+
+    it('should read files as buffers', async () => {
+      await fs.mkdir(tempDir, { recursive: true });
+      const filePath = path.join(tempDir, 'buf.txt');
+      await fs.writeFile(filePath, 'buf');
+
+      const buffer = await fs.readFile(filePath);
+      expect(buffer.toString('utf-8')).to.equal('buf');
     });
 
     it('should report existence correctly', async () => {

@@ -28,6 +28,23 @@ describe('Logger', () => {
       expect(capturedLogs).to.have.length(1);
       expect(capturedLogs[0].channel).to.equal('test-channel');
     });
+
+    it('supports debug and trace on logger and channel', () => {
+      logger.setMinLevel(LogLevel.TRACE);
+      logger.debug('dbg');
+      logger.trace('trc');
+
+      const channel = logger.createChannel('test-channel');
+      channel.debug('chan dbg');
+      channel.trace('chan trc');
+
+      expect(capturedLogs.map((entry) => entry.level)).to.deep.equal([
+        LogLevel.DEBUG,
+        LogLevel.TRACE,
+        LogLevel.DEBUG,
+        LogLevel.TRACE,
+      ]);
+    });
   });
 
   describe('filtering', () => {

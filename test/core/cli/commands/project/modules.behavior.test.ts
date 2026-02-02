@@ -7,6 +7,7 @@ import { projectModulesRemoveCommand } from '../../../../../src/core/cli/command
 import * as common from '../../../../../src/core/cli/common';
 import * as cliUi from '../../../../../src/core/cli/cli-ui';
 import * as command from '../../../../../src/core/cli/command';
+import { stripAnsi } from '../../../../../src/core/cli/logging-utils';
 import { ConfigLoader } from '../../../../../src/core/config';
 import { DownloaderRegistry } from '../../../../../src/core/downloaders/registry';
 import * as packageDownloader from '../../../../../src/core/downloaders/package';
@@ -439,6 +440,31 @@ describe('project modules behavior', () => {
     expect(displayStub.calledOnce).to.equal(true);
   });
 
+  it('includes env label and singular summary when listing one module', async () => {
+    sinon.stub(common, 'readConfig').resolves({ name: 'proj', environments: { staging: {} } } as any);
+    sinon.stub(ConfigLoader.prototype, 'load').resolves({
+      modules: {
+        pkg: { source: { type: 'package', package: 'pkg', version: '1.0.0' } },
+      },
+    } as any);
+
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    const infoStub = sinon.stub(cliUi, 'info');
+    sinon.stub(cliUi, 'error');
+    sinon.stub(cliUi, 'warning');
+    sinon.stub(console, 'log');
+
+    const cmd = cmdList();
+    await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--env', 'staging']);
+
+    expect(displayStub.calledOnce).to.equal(true);
+    expect(String(displayStub.firstCall.args[1])).to.include('staging');
+    const summary = infoStub.getCalls().map((call) => String(call.args[0])).join(' ');
+    const plainSummary = stripAnsi(summary);
+    expect(plainSummary).to.include('1 module');
+    expect(plainSummary).to.not.include('1 modules');
+  });
+
   it('errors when project config is missing for list', async () => {
     sinon.stub(common, 'readConfig').resolves(undefined);
     const errorStub = sinon.stub(cliUi, 'error');
@@ -489,6 +515,22 @@ describe('project modules behavior', () => {
     await cmd.parseAsync(['node', 'test', '--project', '/tmp/project']);
 
     expect(displayStub.calledOnce).to.equal(true);
+  });
+
+  it('includes env label when no modules are installed', async () => {
+    sinon.stub(common, 'readConfig').resolves({ name: 'proj', environments: { staging: {} } } as any);
+    sinon.stub(ConfigLoader.prototype, 'load').resolves({ modules: {} } as any);
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(cliUi, 'info');
+    sinon.stub(cliUi, 'error');
+    sinon.stub(cliUi, 'warning');
+    sinon.stub(console, 'log');
+
+    const cmd = cmdList();
+    await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--env', 'staging']);
+
+    expect(displayStub.calledOnce).to.equal(true);
+    expect(String(displayStub.firstCall.args[1])).to.include('staging');
   });
 
   it('errors when environment is missing for removal', async () => {
@@ -716,6 +758,28 @@ describe('project modules behavior', () => {
     await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', 'pkg']);
 
     expect(errorStub.called).to.equal(true);
+  });
+
+  it('reports non-error failures when npm view throws', async () => {
+    sinon.stub(common, 'readConfig').resolves({
+      name: 'proj',
+      modules: { pkg: { source: { type: 'package', package: 'pkg', version: '1.0.0' } } },
+    } as any);
+    sinon.stub(ConfigLoader.prototype, 'load').resolves({
+      modules: { pkg: { source: { type: 'package', package: 'pkg', version: '1.0.0' } } },
+    } as any);
+    sinon.stub(command, 'ExecuteCMD').callsFake(() => Promise.reject('boom'));
+
+    const errorStub = sinon.stub(cliUi, 'error');
+    sinon.stub(cliUi, 'info');
+    sinon.stub(cliUi, 'warning');
+    sinon.stub(cliUi, 'success');
+
+    const cmd = cmdUpdate();
+    await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', 'pkg']);
+
+    expect(errorStub.called).to.equal(true);
+    expect(String(errorStub.firstCall.args[0])).to.include('boom');
   });
 
   it('reports when modules are already up to date', async () => {

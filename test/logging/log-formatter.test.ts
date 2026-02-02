@@ -79,6 +79,37 @@ describe('LogFormatter', () => {
       expect(result).to.include('boom');
       expect(result).to.include('\"a\"');
     });
+
+    it('should handle circular objects and primitive values', () => {
+      const circular: any = {};
+      circular.self = circular;
+
+      const result = formatter.format({
+        level: LogLevel.INFO,
+        channel: 'test',
+        args: [circular, 42],
+        time: new Date('2024-01-15T10:30:00Z'),
+      });
+
+      expect(result).to.include('[object Object]');
+      expect(result).to.include('42');
+    });
+
+    it('should stringify null, undefined, and errors without a stack', () => {
+      const err = new Error('boom');
+      err.stack = undefined;
+
+      const result = formatter.format({
+        level: LogLevel.INFO,
+        channel: 'test',
+        args: [null, undefined, err],
+        time: new Date('2024-01-15T10:30:00Z'),
+      });
+
+      expect(result).to.include('null');
+      expect(result).to.include('undefined');
+      expect(result).to.include('boom');
+    });
   });
 
   describe('formatDate', () => {

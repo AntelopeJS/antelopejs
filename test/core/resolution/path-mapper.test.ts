@@ -82,4 +82,18 @@ describe('PathMapper', () => {
       cleanupTempDir(tempDir);
     }
   });
+
+  it('returns undefined when mapping matches but files are missing', () => {
+    const mapper = new PathMapper(() => false);
+    const result = mapper.resolve('@lib/missing', { paths: [{ key: '@lib/', values: ['/missing'] }] } as any);
+
+    expect(result).to.equal(undefined);
+  });
+
+  it('falls back when default exists check fails', () => {
+    const mapper = new PathMapper();
+    const result = mapper.resolve('@lib/missing', { paths: [{ key: '@lib/', values: ['/nope'] }] } as any);
+
+    expect(result).to.equal(undefined);
+  });
 });

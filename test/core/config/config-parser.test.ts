@@ -44,6 +44,60 @@ describe('ConfigParser', () => {
 
       expect(result.nested.value).to.equal('test-nested');
     });
+
+    it('should process arrays and mixed values', () => {
+      const config = {
+        name: 'demo',
+        items: ['${name}', 2, true, { path: '${name}/dir' }],
+      };
+
+      const result = parser.processTemplates(config);
+
+      expect(result.items).to.deep.equal(['demo', 2, true, { path: 'demo/dir' }]);
+    });
+
+    it('should evaluate pure expression templates when key is missing', () => {
+      const config = {
+        a: 2,
+        b: 3,
+        sum: '${Number(a) + Number(b)}',
+      };
+
+      const result = parser.processTemplates(config);
+
+      expect(result.sum).to.equal(5);
+    });
+
+    it('should parse JSON when pure template matches JSON value', () => {
+      const config = {
+        payload: '{"enabled":true,"count":2}',
+        parsed: '${payload}',
+      };
+
+      const result = parser.processTemplates(config);
+
+      expect(result.parsed).to.deep.equal({ enabled: true, count: 2 });
+    });
+
+    it('returns original string when expression evaluation fails', () => {
+      const config = {
+        value: '${invalid+}',
+      };
+
+      const result = parser.processTemplates(config);
+
+      expect(result.value).to.equal('${invalid+}');
+    });
+
+    it('replaces missing inline template values with empty string', () => {
+      const config = {
+        value: 'hello ${missing}',
+      };
+
+      const result = parser.processTemplates(config);
+
+      expect(result.value).to.equal('hello ');
+    });
   });
 
   describe('applyEnvOverrides', () => {
@@ -80,6 +134,16 @@ describe('ConfigParser', () => {
         delete process.env.API_KEY;
       }
     });
+
+    it('should ignore overrides when env var is missing', () => {
+      const config = { api: { key: 'default' } };
+      const overrides = { API_KEY: 'api.key' };
+
+      const result = parser.applyEnvOverrides(config, overrides);
+
+      expect(result.api.key).to.equal('default');
+      expect(result).to.not.equal(config);
+    });
   });
 
   describe('expandModuleShorthand', () => {
@@ -96,6 +160,40 @@ describe('ConfigParser', () => {
         importOverrides: [],
         disabledExports: [],
       });
+    });
+
+    it('should expand object shorthand with version and overrides', () => {
+      const modules: any = {
+        mod: {
+          version: '2.0.0',
+          config: { enabled: true },
+          importOverrides: { 'core.logging': 'github:repo/core' },
+          disabledExports: ['legacy'],
+        },
+      };
+
+      const result = parser.expandModuleShorthand(modules);
+
+      expect(result.mod).to.deep.equal({
+        source: { type: 'package', package: 'mod', version: '2.0.0' },
+        config: { enabled: true },
+        importOverrides: [{ interface: 'core.logging', source: 'github:repo/core' }],
+        disabledExports: ['legacy'],
+      });
+    });
+
+    it('should keep importOverrides array as-is', () => {
+      const modules: any = {
+        mod: {
+          source: { type: 'git', remote: 'git://example.com/mod.git' },
+          importOverrides: [{ interface: 'core', source: 'local' }],
+        },
+      };
+
+      const result = parser.expandModuleShorthand(modules);
+
+      expect(result.mod.importOverrides).to.deep.equal([{ interface: 'core', source: 'local' }]);
+      expect(result.mod.disabledExports).to.deep.equal([]);
     });
   });
 });

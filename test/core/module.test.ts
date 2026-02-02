@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import { Module } from '../../src/core/module';
 import { AsyncProxy } from '../../src/interfaces/core/beta';
+import { ModuleState } from '../../src/types';
 
 const manifest = {
   name: 'mod',
@@ -10,6 +11,11 @@ const manifest = {
 } as any;
 
 describe('Module', () => {
+  it('exposes current state', () => {
+    const mod = new Module(manifest, sinon.stub().resolves({}));
+    expect(mod.state).to.equal(ModuleState.Loaded);
+  });
+
   it('should load and run lifecycle callbacks', async () => {
     const callbacks = {
       construct: sinon.spy(),

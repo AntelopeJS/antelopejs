@@ -7,7 +7,7 @@ import inquirer from 'inquirer';
 import { existsSync, readdirSync } from 'fs';
 import { moduleImportAddCommand } from './imports/add';
 import { Spinner, displayBox, info, error, warning } from '../../cli-ui';
-import { execSync } from 'child_process';
+import * as childProcess from 'child_process';
 import { getInstallCommand, savePackageManagerToPackageJson } from '../../package-manager';
 import { ExecuteCMD } from '../../command';
 
@@ -190,7 +190,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
       await gitInitSpinner.start();
 
       try {
-        execSync('git init', { cwd: path.resolve(modulePath), stdio: 'ignore' });
+        childProcess.execSync('git init', { cwd: path.resolve(modulePath), stdio: 'ignore' });
         await gitInitSpinner.succeed('Git repository initialized');
       } catch (gitErr) {
         await gitInitSpinner.fail('Failed to initialize git repository');

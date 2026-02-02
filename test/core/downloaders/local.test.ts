@@ -4,6 +4,8 @@ import { registerLocalDownloader } from '../../../src/core/downloaders/local';
 import { InMemoryFileSystem } from '../../../src/core/filesystem';
 import { ModuleCache } from '../../../src/core/module-cache';
 import { ModuleSourceLocal } from '../../../src/types';
+import { cleanupTempDir, makeTempDir } from '../../helpers/temp';
+import { writeFileSync } from 'fs';
 
 function createExecSpy() {
   const calls: Array<{ command: string; cwd?: string }> = [];
@@ -99,6 +101,51 @@ describe('LocalDownloader', () => {
       expect.fail('Expected failure');
     } catch (err) {
       expect(err).to.be.instanceOf(Error);
+    }
+  });
+
+  it('should include stdout when install command fails without stderr', async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile('/mod/package.json', JSON.stringify({ name: 'mod', version: '1.0.0' }));
+
+    const registry = new DownloaderRegistry();
+    const exec = async (_command: string, _options: { cwd?: string }) => ({
+      stdout: 'stdout fail',
+      stderr: '',
+      code: 1,
+    });
+    registerLocalDownloader(registry, { fs, exec });
+
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const source: ModuleSourceLocal = { type: 'local', path: '/mod', installCommand: 'npm install' };
+
+    try {
+      await registry.load('/project', cache, source);
+      expect.fail('Expected failure');
+    } catch (err) {
+      expect(String(err)).to.include('stdout fail');
+    }
+  });
+
+  it('uses the default filesystem when deps are omitted', async () => {
+    const tempDir = makeTempDir('local-downloader-');
+    try {
+      writeFileSync(`${tempDir}/package.json`, JSON.stringify({ name: 'mod', version: '1.0.0' }));
+
+      const registry = new DownloaderRegistry();
+      registerLocalDownloader(registry);
+
+      const cache = new ModuleCache(`${tempDir}/cache`);
+      await cache.load();
+
+      const source: ModuleSourceLocal = { type: 'local', path: tempDir };
+      const result = await registry.load('/project', cache, source);
+
+      expect(result[0].manifest.name).to.equal('mod');
+    } finally {
+      cleanupTempDir(tempDir);
     }
   });
 

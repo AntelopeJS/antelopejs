@@ -62,6 +62,29 @@ describe('TerminalDisplay', () => {
     expect(failStub.calledOnce).to.equal(true);
   });
 
+  it('should restart parent spinner after failure', async () => {
+    const startStub = sinon.stub(Spinner.prototype, 'start').resolves();
+    const failStub = sinon.stub(Spinner.prototype, 'fail').resolves();
+
+    await display.startSpinner('Outer');
+    await display.startSpinner('Inner');
+    await display.failSpinner('boom');
+
+    expect(failStub.calledOnce).to.equal(true);
+    expect(startStub.callCount).to.equal(2);
+  });
+
+  it('should fail spinner using current text when none is provided', async () => {
+    const failStub = sinon.stub(Spinner.prototype, 'fail').resolves();
+    sinon.stub(Spinner.prototype, 'start').resolves();
+
+    await display.startSpinner('Task');
+    await display.failSpinner();
+
+    expect(failStub.calledOnce).to.equal(true);
+    expect(failStub.firstCall.args[0]).to.equal('Task');
+  });
+
   it('should clean spinner state', async () => {
     const stopStub = sinon.stub(Spinner.prototype, 'stop').resolves();
     sinon.stub(Spinner.prototype, 'start').resolves();
@@ -110,5 +133,17 @@ describe('TerminalDisplay', () => {
     const writeStub = sinon.stub(process.stdout, 'write');
     await display.cleanSpinner();
     expect(writeStub.called).to.equal(false);
+  });
+
+  it('should destroy spinner when no texts remain', () => {
+    const stopStub = sinon.stub(Spinner.prototype, 'stop').resolves();
+    const clearStub = sinon.stub(display as any, 'clearSpinnerLine').resolves();
+    (display as any).currentSpinner = new Spinner('Task');
+    (display as any).currentSpinnerTexts = [];
+
+    (display as any).updateSpinnerText();
+
+    expect(stopStub.calledOnce).to.equal(true);
+    expect(clearStub.calledOnce).to.equal(true);
   });
 });

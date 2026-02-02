@@ -6,6 +6,7 @@ import {
   displayNonDefaultGitWarning,
   readConfig,
   readModuleManifest,
+  writeConfig,
   readUserConfig,
   writeModuleManifest,
   writeUserConfig,
@@ -56,6 +57,17 @@ describe('CLI Common', () => {
       const config = await readUserConfig();
       expect(config.git).to.equal('https://example.com/repo.git');
     });
+
+    it('falls back to default config when config file is null', async () => {
+      const fsNode = require('fs');
+      const path = require('path');
+      const configDir = path.join(tempHome, '.antelopejs');
+      fsNode.mkdirSync(configDir, { recursive: true });
+      fsNode.writeFileSync(path.join(configDir, 'config.json'), 'null');
+
+      const config = await readUserConfig();
+      expect(config.git).to.equal(DEFAULT_GIT_REPO);
+    });
   });
 
   describe('displayNonDefaultGitWarning', () => {
@@ -86,6 +98,12 @@ describe('CLI Common', () => {
       const config = await readConfig('/project', fs);
       expect(config?.name).to.equal('test');
     });
+
+    it('returns undefined when antelope.json is missing', async () => {
+      const fs = new InMemoryFileSystem();
+      const config = await readConfig('/missing', fs);
+      expect(config).to.equal(undefined);
+    });
   });
 
   describe('module manifest', () => {
@@ -94,6 +112,21 @@ describe('CLI Common', () => {
       await writeModuleManifest('/module', { name: 'mod', version: '1.0.0' } as any, fs);
       const manifest = await readModuleManifest('/module', fs);
       expect(manifest?.name).to.equal('mod');
+    });
+
+    it('returns undefined when package.json is missing', async () => {
+      const fs = new InMemoryFileSystem();
+      const manifest = await readModuleManifest('/module', fs);
+      expect(manifest).to.equal(undefined);
+    });
+  });
+
+  describe('writeConfig', () => {
+    it('writes antelope.json with default indentation', async () => {
+      const fs = new InMemoryFileSystem();
+      await writeConfig('/project', { name: 'demo' } as any, fs);
+      const contents = await fs.readFileString('/project/antelope.json');
+      expect(contents).to.include('"name": "demo"');
     });
   });
 });

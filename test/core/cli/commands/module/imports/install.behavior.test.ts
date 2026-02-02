@@ -63,6 +63,22 @@ describe('module imports install behavior', () => {
     }
   });
 
+  it('treats missing imports arrays as empty', async () => {
+    sinon.stub(common, 'readModuleManifest').resolves({
+      name: 'test-module',
+      antelopeJs: {},
+    } as any);
+    sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+
+    const successStub = sinon.stub(cliUi, 'success');
+    sinon.stub(cliUi, 'info');
+
+    const cmd = cmdInstall();
+    await cmd.parseAsync(['node', 'test', '--module', '/tmp/module']);
+
+    expect(successStub.called).to.equal(true);
+  });
+
   it('honors skip-install and creates symlinks', async () => {
     const tempDir = makeTempDir();
     try {

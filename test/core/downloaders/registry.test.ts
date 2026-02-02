@@ -54,4 +54,9 @@ describe('DownloaderRegistry', () => {
 
     expect(capturedPath).to.equal(path.resolve('/project', 'modules/mod'));
   });
+
+  it('returns undefined when loader is not registered', () => {
+    const registry = new DownloaderRegistry();
+    expect(registry.getLoaderIdentifier({ type: 'missing' } as any)).to.equal(undefined);
+  });
 });

@@ -64,6 +64,62 @@ describe('module imports list behavior', () => {
     expect(displayStub.calledOnce).to.equal(true);
   });
 
+  it('includes override details for required imports in verbose mode', async () => {
+    sinon.stub(common, 'readModuleManifest').resolves({
+      name: 'test-module',
+      version: '1.0.0',
+      antelopeJs: {
+        imports: ['foo@1.0.0'],
+        importsOptional: [],
+      },
+    } as any);
+
+    sinon.stub(common, 'readConfig').resolves({
+      modules: {
+        'test-module': {
+          importOverrides: [{ interface: 'foo', source: 'local' }],
+        },
+      },
+    } as any);
+
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(cliUi, 'info');
+    sinon.stub(console, 'log');
+
+    const cmd = cmdList();
+    await cmd.parseAsync(['node', 'test', '--module', '/tmp/module', '--verbose']);
+
+    expect(String(displayStub.firstCall.args[0])).to.include('Overridden');
+  });
+
+  it('includes override details for optional imports in verbose mode', async () => {
+    sinon.stub(common, 'readModuleManifest').resolves({
+      name: 'test-module',
+      version: '1.0.0',
+      antelopeJs: {
+        imports: [],
+        importsOptional: ['foo@1.0.0'],
+      },
+    } as any);
+
+    sinon.stub(common, 'readConfig').resolves({
+      modules: {
+        'test-module': {
+          importOverrides: [{ interface: 'foo', source: 'local' }],
+        },
+      },
+    } as any);
+
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(cliUi, 'info');
+    sinon.stub(console, 'log');
+
+    const cmd = cmdList();
+    await cmd.parseAsync(['node', 'test', '--module', '/tmp/module', '--verbose']);
+
+    expect(String(displayStub.firstCall.args[0])).to.include('Overridden');
+  });
+
   it('renders help text when imports exist and not verbose', async () => {
     sinon.stub(common, 'readModuleManifest').resolves({
       name: 'test-module',
@@ -89,6 +145,32 @@ describe('module imports list behavior', () => {
 
     expect(displayStub.calledOnce).to.equal(true);
     expect(logStub.called).to.equal(true);
+  });
+
+  it('renders optional import flags when skip-install is set', async () => {
+    sinon.stub(common, 'readModuleManifest').resolves({
+      name: 'test-module',
+      version: '1.0.0',
+      antelopeJs: {
+        imports: [],
+        importsOptional: [{ name: 'foo@1.0.0', skipInstall: true }],
+      },
+    } as any);
+
+    sinon.stub(common, 'readConfig').resolves({
+      modules: {
+        'test-module': 'package',
+      },
+    } as any);
+
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(cliUi, 'info');
+    sinon.stub(console, 'log');
+
+    const cmd = cmdList();
+    await cmd.parseAsync(['node', 'test', '--module', '/tmp/module']);
+
+    expect(String(displayStub.firstCall.args[0])).to.include('skip-install');
   });
 
   it('renders empty sections when no imports exist', async () => {

@@ -20,6 +20,13 @@ describe('Object Utilities', () => {
 
       expect(result).to.deep.equal({ arr: [3, 4, 5] });
     });
+
+    it('skips undefined sources', () => {
+      const target = { a: 1 };
+      const result = mergeDeep(target, undefined, { b: 2 });
+
+      expect(result).to.deep.equal({ a: 1, b: 2 });
+    });
   });
 
   describe('get', () => {

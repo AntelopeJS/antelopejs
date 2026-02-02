@@ -130,7 +130,6 @@ export default function () {
 
       // Track changes made
       const addedModules: Record<string, string[]> = {};
-      const removedModules: string[] = [];
 
       // Collect all modules to install across all environments
       const modulesToInstall: ModuleToInstall[] = [];
@@ -279,14 +278,7 @@ export default function () {
         });
       }
 
-      if (removedModules.length > 0) {
-        success(chalk.green`Removed ${removedModules.length} module(s):`);
-        removedModules.forEach((name) => {
-          info(`  ${chalk.green('•')} ${name}`);
-        });
-      }
-
-      if (Object.keys(addedModules).length === 0 && removedModules.length === 0) {
+      if (Object.keys(addedModules).length === 0) {
         success(chalk.green`No changes were made. Your project dependencies are already optimized!`);
       }
 

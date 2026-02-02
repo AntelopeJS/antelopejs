@@ -204,6 +204,49 @@ describe('module init behavior', () => {
     }
   });
 
+  it('reports non-error failures gracefully', async () => {
+    const moduleDir = makeTempDir();
+    try {
+      sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+      sinon.stub(common, 'displayNonDefaultGitWarning').resolves();
+      sinon.stub(gitOps, 'loadManifestFromGit').callsFake(() => Promise.reject('boom'));
+
+      sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
+      sinon.stub(cliUi.Spinner.prototype, 'fail').resolves();
+      const errorStub = sinon.stub(cliUi, 'error');
+      sinon.stub(cliUi, 'warning');
+
+      await moduleInitCommand(moduleDir, {}, false);
+
+      expect(errorStub.called).to.equal(true);
+      expect(String(errorStub.firstCall.args[0])).to.include('Unknown error');
+      expect(process.exitCode).to.equal(1);
+    } finally {
+      cleanupTempDir(moduleDir);
+    }
+  });
+
+  it('reports error failures with the error message', async () => {
+    const moduleDir = makeTempDir();
+    try {
+      sinon.stub(common, 'readUserConfig').resolves({ git: common.DEFAULT_GIT_REPO });
+      sinon.stub(common, 'displayNonDefaultGitWarning').resolves();
+      sinon.stub(gitOps, 'loadManifestFromGit').rejects(new Error('boom'));
+
+      sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
+      sinon.stub(cliUi.Spinner.prototype, 'fail').resolves();
+      const errorStub = sinon.stub(cliUi, 'error');
+      sinon.stub(cliUi, 'warning');
+
+      await moduleInitCommand(moduleDir, {}, false);
+
+      expect(errorStub.calledWithMatch('boom')).to.equal(true);
+      expect(process.exitCode).to.equal(1);
+    } finally {
+      cleanupTempDir(moduleDir);
+    }
+  });
+
   it('rethrows errors when called from a project init flow', async () => {
     const moduleDir = makeTempDir();
     try {

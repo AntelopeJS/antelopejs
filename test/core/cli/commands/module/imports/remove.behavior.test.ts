@@ -45,6 +45,18 @@ describe('module imports remove behavior', () => {
     expect(process.exitCode).to.equal(1);
   });
 
+  it('treats missing import arrays as empty when removing', async () => {
+    sinon.stub(common, 'readModuleManifest').resolves({ name: 'test-module', antelopeJs: {} } as any);
+    const errorStub = sinon.stub(cliUi, 'error');
+    sinon.stub(cliUi, 'info');
+
+    const cmd = cmdRemove();
+    await cmd.parseAsync(['node', 'test', 'foo@1.0.0', '--module', '/tmp/module']);
+
+    expect(errorStub.called).to.equal(true);
+    expect(process.exitCode).to.equal(1);
+  });
+
   it('warns about missing interfaces but removes existing ones', async () => {
     const manifest: any = {
       name: 'test-module',

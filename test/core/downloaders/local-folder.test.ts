@@ -4,6 +4,8 @@ import { registerLocalFolderDownloader } from '../../../src/core/downloaders/loc
 import { InMemoryFileSystem } from '../../../src/core/filesystem';
 import { ModuleCache } from '../../../src/core/module-cache';
 import { ModuleSourceLocalFolder } from '../../../src/types';
+import { cleanupTempDir, makeTempDir } from '../../helpers/temp';
+import { writeFileSync, mkdirSync } from 'fs';
 
 describe('LocalFolderDownloader', () => {
   it('should load manifests from subfolders', async () => {
@@ -43,5 +45,28 @@ describe('LocalFolderDownloader', () => {
 
     expect(result).to.have.length(1);
     expect(result[0].manifest.name).to.equal('modA');
+  });
+
+  it('uses default filesystem when deps are omitted', async () => {
+    const tempDir = makeTempDir('local-folder-');
+    try {
+      const modDir = `${tempDir}/mods/modA`;
+      mkdirSync(modDir, { recursive: true });
+      writeFileSync(`${modDir}/package.json`, JSON.stringify({ name: 'modA', version: '1.0.0' }));
+
+      const registry = new DownloaderRegistry();
+      registerLocalFolderDownloader(registry);
+
+      const cache = new ModuleCache(`${tempDir}/cache`);
+      await cache.load();
+
+      const source: ModuleSourceLocalFolder = { type: 'local-folder', path: `${tempDir}/mods` };
+      const result = await registry.load('/project', cache, source);
+
+      expect(result).to.have.length(1);
+      expect(result[0].manifest.name).to.equal('modA');
+    } finally {
+      cleanupTempDir(tempDir);
+    }
   });
 });

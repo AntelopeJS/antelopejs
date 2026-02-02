@@ -68,6 +68,50 @@ describe('project logging behavior', () => {
     expect(displayStub.calledOnce).to.equal(true);
   });
 
+  it('show includes env label and defaults for empty includes/excludes', async () => {
+    sinon.stub(common, 'readConfig').resolves({ name: 'test-project', environments: { staging: {} } } as any);
+    sinon.stub(ConfigLoader.prototype, 'load').resolves({
+      modules: {},
+      logging: {
+        enabled: true,
+        moduleTracking: { enabled: true, includes: null, excludes: null },
+        formatter: { default: '{LEVEL_NAME}' },
+        dateFormat: '',
+      },
+    } as any);
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(cliUi, 'header');
+    sinon.stub(console, 'log');
+
+    const cmd = cmdShow();
+    await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--env', 'staging']);
+
+    expect(String(displayStub.firstCall.args[1])).to.include('staging');
+    expect(String(displayStub.firstCall.args[0])).to.include('none');
+  });
+
+  it('show uses default date format when missing and marks disabled status', async () => {
+    sinon.stub(common, 'readConfig').resolves({ name: 'test-project' } as any);
+    sinon.stub(ConfigLoader.prototype, 'load').resolves({
+      modules: {},
+      logging: {
+        enabled: false,
+        moduleTracking: { enabled: false },
+        formatter: { default: '{LEVEL_NAME}' },
+      },
+    } as any);
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(cliUi, 'header');
+    sinon.stub(console, 'log');
+
+    const cmd = cmdShow();
+    await cmd.parseAsync(['node', 'test', '--project', '/tmp/project']);
+
+    const content = String(displayStub.firstCall.args[0]);
+    expect(content).to.include('disabled');
+    expect(content).to.include('yyyy-MM-dd HH:mm:ss');
+  });
+
   it('show renders blacklist mode when excludes are present', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'test-project' } as any);
     sinon.stub(ConfigLoader.prototype, 'load').resolves({
@@ -299,6 +343,35 @@ describe('project logging behavior', () => {
     expect(writeStub.calledOnce).to.equal(true);
   });
 
+  it('set includes env label in summary when env is provided', async () => {
+    const config: any = {
+      name: 'test-project',
+      environments: {
+        staging: {
+          logging: {
+            enabled: false,
+            moduleTracking: { enabled: false, includes: [], excludes: [] },
+            formatter: {},
+            dateFormat: 'yyyy',
+          },
+        },
+      },
+    };
+    sinon.stub(common, 'readConfig').resolves(config);
+    const writeStub = sinon.stub(common, 'writeConfig').resolves();
+    const displayStub = sinon.stub(cliUi, 'displayBox').resolves();
+    sinon.stub(cliUi, 'success');
+    sinon.stub(cliUi, 'warning');
+    sinon.stub(cliUi, 'error');
+    sinon.stub(console, 'log');
+
+    const cmd = cmdSet();
+    await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--env', 'staging', '--enable']);
+
+    expect(writeStub.calledOnce).to.equal(true);
+    expect(String(displayStub.firstCall.args[0])).to.include('(staging)');
+  });
+
   it('set supports interactive flow when logging is disabled', async () => {
     const config: any = { name: 'test-project' };
     sinon.stub(common, 'readConfig').resolves(config);
@@ -317,6 +390,43 @@ describe('project logging behavior', () => {
 
     expect(writeStub.calledOnce).to.equal(true);
     expect(warningStub.called).to.equal(true);
+  });
+
+  it('set supports interactive flow with env name and blacklist defaults', async () => {
+    const config: any = {
+      name: 'test-project',
+      environments: {
+        staging: {
+          logging: {
+            enabled: true,
+            moduleTracking: { enabled: true, includes: [], excludes: ['modB'] },
+            formatter: {},
+            dateFormat: 'yyyy',
+          },
+        },
+      },
+    };
+    sinon.stub(common, 'readConfig').resolves(config);
+    const writeStub = sinon.stub(common, 'writeConfig').resolves();
+    const infoStub = sinon.stub(cliUi, 'info');
+    sinon.stub(cliUi, 'success');
+    sinon.stub(cliUi, 'warning');
+    sinon.stub(cliUi, 'error');
+    sinon.stub(console, 'log');
+
+    const promptStub = sinon.stub(inquirer, 'prompt');
+    promptStub.onCall(0).resolves({ enableLogging: true });
+    promptStub.onCall(1).resolves({ enableModuleTracking: true });
+    promptStub.onCall(2).resolves({ trackingMode: 'blacklist' });
+    promptStub.onCall(3).resolves({ moduleName: '' });
+    promptStub.onCall(4).resolves({ configureFormatters: false });
+    promptStub.onCall(5).resolves({ configureDateFormat: false });
+
+    const cmd = cmdSet();
+    await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--env', 'staging']);
+
+    expect(writeStub.calledOnce).to.equal(true);
+    expect(String(infoStub.firstCall.args[0])).to.include('staging');
   });
 
   it('set supports interactive all-mode tracking', async () => {
