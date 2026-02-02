@@ -13,10 +13,7 @@ describe('InterfaceRegistry', () => {
     const registry = new InterfaceRegistry();
 
     const connections = new Map<string, Array<{ module: string; id?: string }>>();
-    connections.set('core@beta', [
-      { module: 'modA' },
-      { module: 'modB', id: 'x' },
-    ]);
+    connections.set('core@beta', [{ module: 'modA' }, { module: 'modB', id: 'x' }]);
 
     registry.setConnections('consumer', connections);
 

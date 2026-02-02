@@ -3,7 +3,6 @@ import sinon from 'sinon';
 import { ModuleLifecycle } from '../../src/core/module-lifecycle';
 import { ModuleState } from '../../src/types';
 
-
 describe('ModuleLifecycle', () => {
   it('should transition through lifecycle states', async () => {
     const calls: string[] = [];

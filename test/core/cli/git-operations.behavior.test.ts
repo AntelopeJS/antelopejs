@@ -55,9 +55,7 @@ describe('Git operations behavior', () => {
       sinon.stub(terminalDisplay, 'stopSpinner').resolves();
       sinon.stub(terminalDisplay, 'failSpinner').resolves();
 
-      await gitOps.installInterfaces('https://example.com/repo.git', moduleDir, [
-        { interfaceInfo, version: '1.0.0' },
-      ]);
+      await gitOps.installInterfaces('https://example.com/repo.git', moduleDir, [{ interfaceInfo, version: '1.0.0' }]);
 
       const installedPath = path.join(moduleDir, '.antelope', 'interfaces.d', 'interfaceA', '1.0.0');
       expect(existsSync(installedPath)).to.equal(true);
@@ -164,9 +162,7 @@ describe('Git operations behavior', () => {
 
       await gitOps.createAjsSymlinks(moduleDir);
 
-      const updated = await import('fs/promises').then((fs) =>
-        fs.readFile(path.join(ajsBase, '1.0.0.d.ts'), 'utf8'),
-      );
+      const updated = await import('fs/promises').then((fs) => fs.readFile(path.join(ajsBase, '1.0.0.d.ts'), 'utf8'));
       expect(updated).to.equal('new content');
     } finally {
       process.env.HOME = originalHome;

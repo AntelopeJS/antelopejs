@@ -26,7 +26,7 @@ describe('ModuleManifest', () => {
         antelopeJs: {
           imports: ['a@beta'],
         },
-      })
+      }),
     );
 
     await fs.writeFile(
@@ -34,7 +34,7 @@ describe('ModuleManifest', () => {
       JSON.stringify({
         imports: ['b@beta'],
         exports: ['core@beta'],
-      })
+      }),
     );
 
     const manifest = await ModuleManifest.readManifest('/mod', fs);
@@ -55,7 +55,7 @@ describe('ModuleManifest', () => {
           exportsPath: 'interfaces',
           exports: ['core@beta', 'db'],
         },
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     await fs.mkdir('/mod/interfaces/core/beta', { recursive: true });
@@ -83,7 +83,7 @@ describe('ModuleManifest', () => {
         name: 'mod',
         version: '1.0.0',
         antelopeJs: {},
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     await fs.mkdir('/mod/interfaces/core/v1', { recursive: true });
@@ -110,7 +110,7 @@ describe('ModuleManifest', () => {
           exportsPath: 'interfaces',
           exports: ['core'],
         },
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     await fs.mkdir('/mod/interfaces', { recursive: true });
@@ -138,7 +138,7 @@ describe('ModuleManifest', () => {
             '@lib/*': ['lib/*'],
           },
         },
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     const source: ModuleSourceLocal = { type: 'local', path: '/mod' };
@@ -169,7 +169,7 @@ describe('ModuleManifest', () => {
             '@lib': 'lib',
           },
         },
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     const source: ModuleSourceLocal = { type: 'local', path: '/mod' };
@@ -198,7 +198,7 @@ describe('ModuleManifest', () => {
             '@lib': 'lib',
           },
         },
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     const source: ModuleSourceLocal = { type: 'local', path: '/mod' };
@@ -221,7 +221,7 @@ describe('ModuleManifest', () => {
         antelopeJs: {
           imports: ['a@beta', { name: 'b@beta' }],
         },
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     const source: ModuleSourceLocal = { type: 'local', path: '/mod' };
@@ -239,7 +239,7 @@ describe('ModuleManifest', () => {
         name: 'mod',
         version: '1.0.0',
         antelopeJs: { imports: ['a@beta'] },
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     const source: ModuleSourceLocal = { type: 'local', path: '/mod' };
@@ -251,7 +251,7 @@ describe('ModuleManifest', () => {
         name: 'mod',
         version: '1.0.1',
         antelopeJs: { imports: ['b@beta'] },
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     await manifest.reload();
@@ -269,7 +269,7 @@ describe('ModuleManifest', () => {
         name: 'mod',
         version: '1.0.0',
         antelopeJs: { imports: ['a@beta'] },
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     const source: ModuleSourceLocal = { type: 'local', path: '/mod' };
@@ -280,7 +280,7 @@ describe('ModuleManifest', () => {
       JSON.stringify({
         name: 'mod',
         version: '1.0.1',
-      } as ModulePackageJson)
+      } as ModulePackageJson),
     );
 
     await manifest.reload();
@@ -290,10 +290,7 @@ describe('ModuleManifest', () => {
 
   it('returns false when checking non-existent directories', async () => {
     const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      '/mod/package.json',
-      JSON.stringify({ name: 'mod', version: '1.0.0' } as ModulePackageJson)
-    );
+    await fs.writeFile('/mod/package.json', JSON.stringify({ name: 'mod', version: '1.0.0' } as ModulePackageJson));
 
     const source: ModuleSourceLocal = { type: 'local', path: '/mod' };
     const manifest = await ModuleManifest.create('/mod', source, 'mod', fs);

@@ -5,7 +5,6 @@ import cmdConfigGet from '../../../../src/core/cli/commands/config/get';
 import cmdConfigSet from '../../../../src/core/cli/commands/config/set';
 import cmdConfigReset from '../../../../src/core/cli/commands/config/reset';
 
-
 describe('Config commands', () => {
   it('should expose config command factories', () => {
     expect(cmdConfig).to.be.a('function');

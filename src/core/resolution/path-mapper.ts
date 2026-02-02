@@ -20,9 +20,7 @@ export class PathMapper {
     if (manifest.srcAliases) {
       for (const { alias, replace } of manifest.srcAliases) {
         if (request.startsWith(alias)) {
-          return request.length > alias.length
-            ? path.join(replace, request.substring(alias.length))
-            : replace;
+          return request.length > alias.length ? path.join(replace, request.substring(alias.length)) : replace;
         }
       }
     }

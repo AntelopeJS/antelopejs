@@ -7,9 +7,7 @@ export async function warnIfOutdated(
   exec: (command: string, options: ExecSyncOptions) => Buffer | string = execSync,
 ): Promise<void> {
   try {
-    const latestVersion = exec('npm view @antelopejs/core version', { timeout: 3000 })
-      .toString()
-      .trim();
+    const latestVersion = exec('npm view @antelopejs/core version', { timeout: 3000 }).toString().trim();
 
     if (semver.lt(currentVersion, latestVersion)) {
       warning(`You are using an outdated version of AntelopeJS (${currentVersion}).`);

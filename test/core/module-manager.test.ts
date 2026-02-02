@@ -7,7 +7,6 @@ import { PathMapper } from '../../src/core/resolution/path-mapper';
 import { internal } from '../../src/interfaces/core/beta';
 import { ModuleSourceLocal } from '../../src/types';
 
-
 describe('ModuleManager', () => {
   beforeEach(() => {
     internal.moduleByFolder.splice(0, internal.moduleByFolder.length);
@@ -35,10 +34,7 @@ describe('ModuleManager', () => {
     const resolver = new Resolver(new PathMapper(() => false));
     const manager = new ModuleManager({ resolver });
 
-    manager.addModules([
-      { manifest: providerManifest },
-      { manifest: consumerManifest },
-    ]);
+    manager.addModules([{ manifest: providerManifest }, { manifest: consumerManifest }]);
 
     const associations = resolver.moduleAssociations.get('consumer');
     expect(associations?.get('core@beta')?.id).to.equal('provider');

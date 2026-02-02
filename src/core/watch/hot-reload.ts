@@ -4,7 +4,10 @@ export class HotReload {
   private pending = new Set<string>();
   private timer?: NodeJS.Timeout;
 
-  constructor(private reload: ReloadHandler, private debounceMs: number = 500) {}
+  constructor(
+    private reload: ReloadHandler,
+    private debounceMs: number = 500,
+  ) {}
 
   queue(moduleId: string): void {
     this.pending.add(moduleId);

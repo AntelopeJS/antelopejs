@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { GitOperations } from '../../../src/core/cli/git-operations';
 
-
 describe('Git Operations', () => {
   it('should expose git operations', () => {
     const ops = new GitOperations();

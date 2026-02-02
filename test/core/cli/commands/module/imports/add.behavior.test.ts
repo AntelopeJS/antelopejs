@@ -65,7 +65,9 @@ describe('module imports add behavior', () => {
 
     sinon
       .stub(gitOps, 'loadInterfaceFromGit')
-      .callsFake(async (_git, name) => (name === 'foo' ? (fooInfo as any) : name === 'dep' ? (depInfo as any) : undefined));
+      .callsFake(async (_git, name) =>
+        name === 'foo' ? (fooInfo as any) : name === 'dep' ? (depInfo as any) : undefined,
+      );
     const installStub = sinon.stub(gitOps, 'installInterfaces').resolves();
 
     sinon.stub(cliUi, 'error');
@@ -163,7 +165,9 @@ describe('module imports add behavior', () => {
 
     sinon
       .stub(gitOps, 'loadInterfaceFromGit')
-      .callsFake(async (_git, name) => (name === 'foo' ? (fooInfo as any) : name === 'bar' ? (barInfo as any) : undefined));
+      .callsFake(async (_git, name) =>
+        name === 'foo' ? (fooInfo as any) : name === 'bar' ? (barInfo as any) : undefined,
+      );
     const installStub = sinon.stub(gitOps, 'installInterfaces').resolves();
 
     const errorStub = sinon.stub(cliUi, 'error');
@@ -205,7 +209,9 @@ describe('module imports add behavior', () => {
       },
     };
 
-    sinon.stub(gitOps, 'loadInterfaceFromGit').callsFake(async (_git, name) => (name === 'foo' ? (fooInfo as any) : undefined));
+    sinon
+      .stub(gitOps, 'loadInterfaceFromGit')
+      .callsFake(async (_git, name) => (name === 'foo' ? (fooInfo as any) : undefined));
     const installStub = sinon.stub(gitOps, 'installInterfaces').resolves();
 
     sinon.stub(cliUi, 'error');

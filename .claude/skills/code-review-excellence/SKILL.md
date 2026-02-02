@@ -100,12 +100,14 @@ Before diving into code, understand:
 
 ```markdown
 1. **Architecture & Design**
+
    - Does the solution fit the problem?
    - Are there simpler approaches?
    - Is it consistent with existing patterns?
    - Will it scale?
 
 2. **File Organization**
+
    - Are new files in the right places?
    - Is code grouped logically?
    - Are there duplicate files?
@@ -122,18 +124,21 @@ Before diving into code, understand:
 For each file:
 
 1. **Logic & Correctness**
+
    - Edge cases handled?
    - Off-by-one errors?
    - Null/undefined checks?
    - Race conditions?
 
 2. **Security**
+
    - Input validation?
    - SQL injection risks?
    - XSS vulnerabilities?
    - Sensitive data exposure?
 
 3. **Performance**
+
    - N+1 queries?
    - Unnecessary loops?
    - Memory leaks?
@@ -206,7 +211,7 @@ the performance impact with 100k users?"
 
 ### Technique 3: Suggest, Don't Command
 
-````markdown
+```markdown
 ## Use Collaborative Language
 
 ❌ "You must change this to use async/await"
@@ -222,7 +227,7 @@ What do you think?"
 ❌ "Extract this into a function"
 ✅ "This logic appears in 3 places. Would it make sense to
 extract it into a shared utility function?"
-````
+```
 
 ### Technique 4: Differentiate Severity
 
@@ -348,11 +353,13 @@ function UserProfile({ user, onView }: Props) {
 When reviewing significant changes:
 
 1. **Design Document First**
+
    - For large features, request design doc before code
    - Review design with team before implementation
    - Agree on approach to avoid rework
 
 2. **Review in Stages**
+
    - First PR: Core abstractions and interfaces
    - Second PR: Implementation
    - Third PR: Integration and tests

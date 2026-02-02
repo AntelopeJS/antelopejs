@@ -100,7 +100,7 @@ export class Logger {
 export class LogChannel {
   constructor(
     private logger: Logger,
-    private name: string
+    private name: string,
   ) {}
 
   error(...args: unknown[]): void {

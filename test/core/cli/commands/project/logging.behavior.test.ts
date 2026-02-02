@@ -276,16 +276,7 @@ describe('project logging behavior', () => {
     sinon.stub(console, 'log');
 
     const cmd = cmdSet();
-    await cmd.parseAsync([
-      'node',
-      'test',
-      '--project',
-      '/tmp/project',
-      '--level',
-      'info',
-      '--format',
-      '[info]',
-    ]);
+    await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--level', 'info', '--format', '[info]']);
 
     expect(writeStub.calledOnce).to.equal(true);
     expect(displayStub.calledOnce).to.equal(true);
@@ -538,5 +529,4 @@ describe('project logging behavior', () => {
 
     expect(writeStub.calledOnce).to.equal(true);
   });
-
 });

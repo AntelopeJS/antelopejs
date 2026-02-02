@@ -196,10 +196,9 @@ describe('project modules install behavior', () => {
       },
     } as any);
 
-    const addStub = sinon.stub(
-      await import('../../../../../../src/core/cli/commands/project/modules/add'),
-      'projectModulesAddCommand',
-    ).resolves();
+    const addStub = sinon
+      .stub(await import('../../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+      .resolves();
 
     const promptStub = sinon.stub(inquirer, 'prompt');
     promptStub.onCall(0).resolves({ moduleName: 'modA' });
@@ -273,10 +272,9 @@ describe('project modules install behavior', () => {
       } as any;
     });
 
-    const addStub = sinon.stub(
-      await import('../../../../../../src/core/cli/commands/project/modules/add'),
-      'projectModulesAddCommand',
-    ).resolves();
+    const addStub = sinon
+      .stub(await import('../../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+      .resolves();
 
     const promptStub = sinon.stub(inquirer, 'prompt');
     promptStub.onCall(0).resolves({ moduleName: 'modA' });
@@ -294,7 +292,10 @@ describe('project modules install behavior', () => {
     const cmd = cmdInstall();
     await cmd.parseAsync(['node', 'test', '--project', '/tmp/project']);
 
-    const infoText = infoStub.getCalls().map((call) => String(call.args[0])).join(' ');
+    const infoText = infoStub
+      .getCalls()
+      .map((call) => String(call.args[0]))
+      .join(' ');
     expect(infoText).to.include('Installing 2 modules');
     expect(addStub.called).to.equal(true);
   });
@@ -402,10 +403,9 @@ describe('project modules install behavior', () => {
       },
     } as any);
 
-    const addStub = sinon.stub(
-      await import('../../../../../../src/core/cli/commands/project/modules/add'),
-      'projectModulesAddCommand',
-    ).resolves();
+    const addStub = sinon
+      .stub(await import('../../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+      .resolves();
 
     const promptStub = sinon.stub(inquirer, 'prompt');
     promptStub.onCall(0).resolves({ moduleName: 'modA' });

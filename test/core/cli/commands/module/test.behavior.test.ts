@@ -48,15 +48,7 @@ describe('module test behavior', () => {
     const testStub = sinon.stub(await import('../../../../../src/index'), 'TestModule').resolves(0);
 
     const cmd = cmdTest();
-    await cmd.parseAsync([
-      'node',
-      'test',
-      '/tmp/module',
-      '--file',
-      '/tmp/a.test.ts',
-      '--file',
-      '/tmp/b.test.ts',
-    ]);
+    await cmd.parseAsync(['node', 'test', '/tmp/module', '--file', '/tmp/a.test.ts', '--file', '/tmp/b.test.ts']);
 
     expect(testStub.calledOnce).to.equal(true);
     expect(testStub.firstCall.args[1]).to.deep.equal([path.resolve('/tmp/a.test.ts'), path.resolve('/tmp/b.test.ts')]);

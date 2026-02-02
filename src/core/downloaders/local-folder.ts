@@ -13,7 +13,7 @@ export interface LocalFolderDownloaderDeps {
 
 export function registerLocalFolderDownloader(
   registry: DownloaderRegistry,
-  deps: LocalFolderDownloaderDeps = {}
+  deps: LocalFolderDownloaderDeps = {},
 ): void {
   const fs = deps.fs ?? new NodeFileSystem();
 

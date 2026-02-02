@@ -16,11 +16,13 @@ Review a GitHub Pull Request with detailed analysis and optional direct posting 
 ### Step 1: Parse PR URL
 
 Extract from the provided URL:
+
 - `owner`: Repository owner
 - `repo`: Repository name
 - `pr_number`: Pull request number
 
 Supported URL formats:
+
 - `https://github.com/owner/repo/pull/123`
 - `https://github.com/owner/repo/pull/123/files`
 - `https://github.com/owner/repo/pull/123/commits`
@@ -46,11 +48,13 @@ Store the `headRefOid` (commit SHA) for generating code links.
 **REQUIRED SKILL:** Use the `code-review-excellence` skill to analyze the code changes.
 
 Generate a review with:
+
 - Overall assessment (APPROVE / REQUEST_CHANGES / COMMENT)
 - Summary of changes (2-3 sentences)
 - Categorized findings with file locations and line numbers
 
 **Link format for code references:**
+
 ```
 https://github.com/{owner}/{repo}/blob/{headRefOid}/{file_path}#L{line_number}
 ```
@@ -65,23 +69,29 @@ Present the review to the user in this format:
 **Overall Assessment:** APPROVE / REQUEST_CHANGES / COMMENT
 
 ### Summary
+
 {2-3 sentence summary of what the PR does and overall code quality}
 
 ### Blocking Issues
+
 - [{file}:{line}]({link}) - {description}
   **Suggestion:** {how to fix}
 
 ### Important Issues
+
 - [{file}:{line}]({link}) - {description}
 
 ### Suggestions
+
 - [{file}:{line}]({link}) - {improvement suggestion}
 
 ### Highlights
+
 - [{file}:{line}]({link}) - {what was done well}
 ```
 
 After presenting, ask the user:
+
 - **Refine**: Adjust the review based on feedback (loop back to refinement)
 - **Approve**: Proceed to output options
 
@@ -105,6 +115,7 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
 ```
 
 For inline comments, the `comments` array should contain objects with:
+
 - `path`: File path relative to repo root
 - `line`: Line number in the diff (use the NEW file line number)
 - `body`: Comment text

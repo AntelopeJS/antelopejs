@@ -75,10 +75,7 @@ export class ConfigParser {
     });
   }
 
-  applyEnvOverrides<T extends Record<string, any>>(
-    config: T,
-    overrides: Record<string, string | string[]>
-  ): T {
+  applyEnvOverrides<T extends Record<string, any>>(config: T, overrides: Record<string, string | string[]>): T {
     const result = JSON.parse(JSON.stringify(config));
 
     for (const [envVar, paths] of Object.entries(overrides)) {
@@ -94,9 +91,7 @@ export class ConfigParser {
     return result;
   }
 
-  expandModuleShorthand(
-    modules: Record<string, string | AntelopeModuleConfig>
-  ): Record<string, ExpandedModuleConfig> {
+  expandModuleShorthand(modules: Record<string, string | AntelopeModuleConfig>): Record<string, ExpandedModuleConfig> {
     const result: Record<string, ExpandedModuleConfig> = {};
 
     for (const [name, config] of Object.entries(modules)) {

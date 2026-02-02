@@ -18,7 +18,10 @@ export class Module {
   private proxies: Array<AsyncProxy> = [];
   private lifecycle: ModuleLifecycle;
 
-  constructor(public readonly manifest: ModuleManifest, private loader: ModuleLoader = defaultLoader) {
+  constructor(
+    public readonly manifest: ModuleManifest,
+    private loader: ModuleLoader = defaultLoader,
+  ) {
     this.id = this.manifest.name;
     this.version = this.manifest.version;
     this.lifecycle = new ModuleLifecycle(this.id);

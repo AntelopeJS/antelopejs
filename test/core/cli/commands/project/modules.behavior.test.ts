@@ -57,9 +57,9 @@ describe('project modules behavior', () => {
 
     sinon.stub(ModuleCache.prototype, 'load').resolves();
     sinon.stub(DownloaderRegistry.prototype, 'getLoaderIdentifier').returns('pkg');
-    sinon.stub(DownloaderRegistry.prototype, 'load').resolves([
-      { manifest: { antelopeJs: { defaultConfig: { foo: 'bar' } } } } as any,
-    ]);
+    sinon
+      .stub(DownloaderRegistry.prototype, 'load')
+      .resolves([{ manifest: { antelopeJs: { defaultConfig: { foo: 'bar' } } } } as any]);
 
     sinon.stub(command, 'ExecuteCMD').resolves({ code: 0, stdout: '1.0.0', stderr: '' });
 
@@ -257,10 +257,10 @@ describe('project modules behavior', () => {
     sinon.stub(cliUi, 'displayBox').resolves();
 
     const originalHandler = handlers.get('local');
-    handlers.set('local', async () => [
-      'localmod',
-      { source: { type: 'package', package: 'localmod', version: '1.0.0' } },
-    ] as any);
+    handlers.set(
+      'local',
+      async () => ['localmod', { source: { type: 'package', package: 'localmod', version: '1.0.0' } }] as any,
+    );
     try {
       await projectModulesAddCommand(['localmod'], { mode: 'local', project: '/tmp/project' });
     } finally {
@@ -364,7 +364,10 @@ describe('project modules behavior', () => {
     }
     expect(caught).to.be.instanceOf(Error);
 
-    const [name, config] = await handler('https://example.com/repo.git', { mode: 'git', project: '/tmp/project' } as any);
+    const [name, config] = await handler('https://example.com/repo.git', {
+      mode: 'git',
+      project: '/tmp/project',
+    } as any);
     expect(name).to.equal('repo');
     expect((config as any).source.remote).to.equal('https://example.com/repo.git');
   });
@@ -459,7 +462,10 @@ describe('project modules behavior', () => {
 
     expect(displayStub.calledOnce).to.equal(true);
     expect(String(displayStub.firstCall.args[1])).to.include('staging');
-    const summary = infoStub.getCalls().map((call) => String(call.args[0])).join(' ');
+    const summary = infoStub
+      .getCalls()
+      .map((call) => String(call.args[0]))
+      .join(' ');
     const plainSummary = stripAnsi(summary);
     expect(plainSummary).to.include('1 module');
     expect(plainSummary).to.not.include('1 modules');
@@ -852,6 +858,16 @@ describe('project modules behavior', () => {
     sinon.stub(cliUi, 'error');
 
     const cmd = cmdUpdate();
-    await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--dry-run', 'pkg1', 'pkgSame', 'gitMod', 'missing']);
+    await cmd.parseAsync([
+      'node',
+      'test',
+      '--project',
+      '/tmp/project',
+      '--dry-run',
+      'pkg1',
+      'pkgSame',
+      'gitMod',
+      'missing',
+    ]);
   });
 });

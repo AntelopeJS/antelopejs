@@ -7,7 +7,7 @@ export class ReplSession {
 
   constructor(
     private context: Record<string, unknown> = {},
-    private createRepl: ReplFactory = repl.start
+    private createRepl: ReplFactory = repl.start,
   ) {}
 
   start(prompt: string = '> '): REPLServer {

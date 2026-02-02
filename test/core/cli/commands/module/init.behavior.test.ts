@@ -26,17 +26,19 @@ describe('module init behavior', () => {
       });
       sinon.stub(gitOps, 'copyTemplate').resolves();
       sinon.stub(gitOps, 'loadInterfacesFromGit').resolves({
-        core: { name: 'core', manifest: { description: 'core', versions: [], files: {}, modules: [], dependencies: {} } },
+        core: {
+          name: 'core',
+          manifest: { description: 'core', versions: [], files: {}, modules: [], dependencies: {} },
+        },
         extra: {
           name: 'extra',
           manifest: { description: 'extra', versions: [], files: {}, modules: [], dependencies: {} },
         },
       } as any);
 
-      const importStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/module/imports/add'),
-        'moduleImportAddCommand',
-      ).resolves();
+      const importStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/module/imports/add'), 'moduleImportAddCommand')
+        .resolves();
 
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ template: 'basic' });
@@ -121,13 +123,15 @@ describe('module init behavior', () => {
       });
       sinon.stub(gitOps, 'copyTemplate').resolves();
       sinon.stub(gitOps, 'loadInterfacesFromGit').resolves({
-        core: { name: 'core', manifest: { description: 'core', versions: [], files: {}, modules: [], dependencies: {} } },
+        core: {
+          name: 'core',
+          manifest: { description: 'core', versions: [], files: {}, modules: [], dependencies: {} },
+        },
       } as any);
 
-      const importStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/module/imports/add'),
-        'moduleImportAddCommand',
-      ).resolves();
+      const importStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/module/imports/add'), 'moduleImportAddCommand')
+        .resolves();
 
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ template: 'basic' });
@@ -166,13 +170,15 @@ describe('module init behavior', () => {
       });
       sinon.stub(gitOps, 'copyTemplate').resolves();
       sinon.stub(gitOps, 'loadInterfacesFromGit').resolves({
-        core: { name: 'core', manifest: { description: 'core', versions: [], files: {}, modules: [], dependencies: {} } },
+        core: {
+          name: 'core',
+          manifest: { description: 'core', versions: [], files: {}, modules: [], dependencies: {} },
+        },
       } as any);
 
-      const importStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/module/imports/add'),
-        'moduleImportAddCommand',
-      ).resolves();
+      const importStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/module/imports/add'), 'moduleImportAddCommand')
+        .resolves();
 
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ template: 'basic' });

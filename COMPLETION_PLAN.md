@@ -16,22 +16,22 @@
 
 ## État Actuel
 
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 0-1 | Test Infrastructure & Foundations | ✅ Complet |
-| 2 | Container, FileSystem, Logging | ✅ Complet |
-| 3 | Configuration System | ✅ Complet |
-| 4 | Cache & Manifest | ✅ Complet |
-| 5 | Downloaders | ✅ Complet |
-| 6 | Interface Support | ✅ Complet |
-| 7 | Module Resolution | ✅ Complet |
-| 8 | Module Lifecycle | ✅ Complet |
-| 9 | File Watching | ✅ Complet |
-| 10 | Test Harness | ✅ Complet |
-| 11 | REPL | ✅ Complet |
-| **12** | **CLI Commands** | ❌ À faire |
-| **13** | **Public API** | ❌ À faire |
-| **14** | **Suppression ancien code** | ❌ À faire |
+| Phase  | Description                       | Status     |
+| ------ | --------------------------------- | ---------- |
+| 0-1    | Test Infrastructure & Foundations | ✅ Complet |
+| 2      | Container, FileSystem, Logging    | ✅ Complet |
+| 3      | Configuration System              | ✅ Complet |
+| 4      | Cache & Manifest                  | ✅ Complet |
+| 5      | Downloaders                       | ✅ Complet |
+| 6      | Interface Support                 | ✅ Complet |
+| 7      | Module Resolution                 | ✅ Complet |
+| 8      | Module Lifecycle                  | ✅ Complet |
+| 9      | File Watching                     | ✅ Complet |
+| 10     | Test Harness                      | ✅ Complet |
+| 11     | REPL                              | ✅ Complet |
+| **12** | **CLI Commands**                  | ❌ À faire |
+| **13** | **Public API**                    | ❌ À faire |
+| **14** | **Suppression ancien code**       | ❌ À faire |
 
 ---
 
@@ -40,6 +40,7 @@
 ### Task 12.1: CLI UI Components
 
 **Files:**
+
 - Create: `src/core/cli/cli-ui.ts`
 - Test: `test/core/cli/cli-ui.test.ts`
 
@@ -316,6 +317,7 @@ Expected: PASS
 ### Task 12.2: Command Execution
 
 **Files:**
+
 - Create: `src/core/cli/command.ts`
 - Test: `test/core/cli/command.test.ts`
 
@@ -386,6 +388,7 @@ export function ExecuteCMD(command: string, options: ExecOptions): Promise<Comma
 ### Task 12.3: Package Manager Utils
 
 **Files:**
+
 - Create: `src/core/cli/package-manager.ts`
 - Test: `test/core/cli/package-manager.test.ts`
 
@@ -424,6 +427,7 @@ describe('Package Manager Utils', () => {
 ### Task 12.4: Terminal Display Manager
 
 **Files:**
+
 - Create: `src/core/cli/terminal-display.ts`
 - Test: `test/core/cli/terminal-display.test.ts`
 
@@ -462,6 +466,7 @@ describe('TerminalDisplay', () => {
 ### Task 12.5: Logging Utilities
 
 **Files:**
+
 - Create: `src/core/cli/logging-utils.ts`
 - Test: `test/core/cli/logging-utils.test.ts`
 
@@ -470,12 +475,7 @@ describe('TerminalDisplay', () => {
 ```typescript
 // test/core/cli/logging-utils.test.ts
 import { expect } from 'chai';
-import {
-  stripAnsiCodes,
-  stringVisualWidth,
-  formatDate,
-  serializeLogValue
-} from '../../../src/core/cli/logging-utils';
+import { stripAnsiCodes, stringVisualWidth, formatDate, serializeLogValue } from '../../../src/core/cli/logging-utils';
 
 describe('Logging Utils', () => {
   describe('stripAnsiCodes', () => {
@@ -521,6 +521,7 @@ describe('Logging Utils', () => {
 ### Task 12.6: Git Operations
 
 **Files:**
+
 - Create: `src/core/cli/git-operations.ts`
 - Test: `test/core/cli/git-operations.test.ts`
 
@@ -553,6 +554,7 @@ describe('Git Operations', () => {
 ### Task 12.7: CLI Common Utilities
 
 **Files:**
+
 - Create: `src/core/cli/common.ts`
 - Test: `test/core/cli/common.test.ts`
 
@@ -566,7 +568,7 @@ import {
   readConfig,
   writeConfig,
   readUserConfig,
-  writeUserConfig
+  writeUserConfig,
 } from '../../../src/core/cli/common';
 import { InMemoryFileSystem } from '../../../src/core/filesystem';
 
@@ -605,6 +607,7 @@ describe('CLI Common', () => {
 ### Task 12.8: Version Check
 
 **Files:**
+
 - Create: `src/core/cli/version-check.ts`
 - Test: `test/core/cli/version-check.test.ts`
 
@@ -631,6 +634,7 @@ describe('Version Check', () => {
 ### Task 12.9: Project Commands - Init
 
 **Files:**
+
 - Create: `src/core/cli/commands/project/init.ts`
 - Test: `test/core/cli/commands/project/init.test.ts`
 
@@ -655,6 +659,7 @@ describe('Project Init Command', () => {
 ### Task 12.10: Project Commands - Run
 
 **Files:**
+
 - Create: `src/core/cli/commands/project/run.ts`
 - Test: `test/core/cli/commands/project/run.test.ts`
 
@@ -665,6 +670,7 @@ describe('Project Init Command', () => {
 ### Task 12.11: Project Commands - Modules (add, list, remove, update, install)
 
 **Files:**
+
 - Create: `src/core/cli/commands/project/modules/add.ts`
 - Create: `src/core/cli/commands/project/modules/list.ts`
 - Create: `src/core/cli/commands/project/modules/remove.ts`
@@ -677,6 +683,7 @@ describe('Project Init Command', () => {
 ### Task 12.12: Project Commands - Logging (show, set)
 
 **Files:**
+
 - Create: `src/core/cli/commands/project/logging/show.ts`
 - Create: `src/core/cli/commands/project/logging/set.ts`
 - Tests pour chaque fichier
@@ -686,6 +693,7 @@ describe('Project Init Command', () => {
 ### Task 12.13: Module Commands - Init & Test
 
 **Files:**
+
 - Create: `src/core/cli/commands/module/init.ts`
 - Create: `src/core/cli/commands/module/test.ts`
 - Tests pour chaque fichier
@@ -695,6 +703,7 @@ describe('Project Init Command', () => {
 ### Task 12.14: Module Commands - Imports (add, list, remove, update, install)
 
 **Files:**
+
 - Create: `src/core/cli/commands/module/imports/add.ts`
 - Create: `src/core/cli/commands/module/imports/list.ts`
 - Create: `src/core/cli/commands/module/imports/remove.ts`
@@ -707,6 +716,7 @@ describe('Project Init Command', () => {
 ### Task 12.15: Module Commands - Exports (set, generate)
 
 **Files:**
+
 - Create: `src/core/cli/commands/module/exports/set.ts`
 - Create: `src/core/cli/commands/module/exports/generate.ts`
 - Tests pour chaque fichier
@@ -716,6 +726,7 @@ describe('Project Init Command', () => {
 ### Task 12.16: Config Commands (show, get, set, reset)
 
 **Files:**
+
 - Create: `src/core/cli/commands/config/show.ts`
 - Create: `src/core/cli/commands/config/get.ts`
 - Create: `src/core/cli/commands/config/set.ts`
@@ -727,6 +738,7 @@ describe('Project Init Command', () => {
 ### Task 12.17: CLI Entry Point
 
 **Files:**
+
 - Create: `src/core/cli/index.ts`
 - Test: `test/core/cli/index.test.ts`
 
@@ -760,6 +772,7 @@ describe('CLI Entry Point', () => {
 ### Task 13.1: Launch Function
 
 **Files:**
+
 - Modify: `src/index.ts`
 - Test: `test/integration/launch.test.ts`
 
@@ -809,7 +822,7 @@ export { LaunchOptions } from './types';
 export async function launch(
   projectFolder = '.',
   env = 'default',
-  options: LaunchOptions = {}
+  options: LaunchOptions = {},
 ): Promise<ModuleManager> {
   const fs = new NodeFileSystem();
   const configLoader = new ConfigLoader(fs);
@@ -846,10 +859,7 @@ export async function launch(
   return manager;
 }
 
-export async function TestModule(
-  moduleFolder: string,
-  files?: string[]
-): Promise<void> {
+export async function TestModule(moduleFolder: string, files?: string[]): Promise<void> {
   // Implementation using TestRunner from core
 }
 
@@ -861,6 +871,7 @@ export default launch;
 ### Task 13.2: TestModule Function
 
 **Files:**
+
 - Modify: `src/index.ts` (add TestModule)
 - Test: `test/integration/test-module.test.ts`
 

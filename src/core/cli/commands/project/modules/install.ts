@@ -46,12 +46,11 @@ async function analyzeConfig(
 ): Promise<ConfigAnalyze> {
   const modules = (
     await Promise.all(
-      Object.entries(config.modules)
-        .map(([name, module]) =>
-          registry.load(projectFolder, cache, { ...module.source, id: name } as any).catch((err) => {
-            throw new Error(`Error loading module ${JSON.stringify(module.source)}: ${err}`);
-          }),
-        ),
+      Object.entries(config.modules).map(([name, module]) =>
+        registry.load(projectFolder, cache, { ...module.source, id: name } as any).catch((err) => {
+          throw new Error(`Error loading module ${JSON.stringify(module.source)}: ${err}`);
+        }),
+      ),
     )
   ).flat();
 

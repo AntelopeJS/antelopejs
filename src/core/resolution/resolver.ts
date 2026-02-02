@@ -41,9 +41,7 @@ export class Resolver {
           const associations = this.moduleAssociations.get(matchingModule.id);
           const target = associations?.get(`${name}@${version}`);
           if (!target) {
-            throw new Error(
-              `Module ${matchingModule.id} tried to use un-imported interface ${name}@${version}`
-            );
+            throw new Error(`Module ${matchingModule.id} tried to use un-imported interface ${name}@${version}`);
           }
           return path.join(target.manifest.exportsPath, request.substring(5));
         }

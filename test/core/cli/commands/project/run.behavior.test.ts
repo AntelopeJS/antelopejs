@@ -191,11 +191,9 @@ describe('project run behavior', () => {
 
   it('handles non-error failures from startAntelope', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'test-project' } as any);
-    const startStub = sinon
-      .stub(await import('../../../../../src/index'), 'default')
-      .callsFake(async () => {
-        throw 123;
-      });
+    const startStub = sinon.stub(await import('../../../../../src/index'), 'default').callsFake(async () => {
+      throw 123;
+    });
     sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
     sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
     sinon.stub(cliUi, 'displayBox').resolves();

@@ -133,7 +133,10 @@ describe('launch', () => {
     } as any);
     sinon.stub(ModuleCache.prototype, 'load').resolves();
 
-    const addModulesStub = sinon.stub(ModuleManager.prototype, 'addModules').callsFake(function (this: any, modules: any[]) {
+    const addModulesStub = sinon.stub(ModuleManager.prototype, 'addModules').callsFake(function (
+      this: any,
+      modules: any[],
+    ) {
       this.loaded = undefined;
     });
     const constructStub = sinon.stub(ModuleManager.prototype, 'constructAll').resolves();

@@ -25,14 +25,12 @@ describe('project init behavior', () => {
       promptStub.onCall(1).resolves({ blmodule: false });
       promptStub.onCall(2).resolves({ init: true });
 
-      const moduleInitStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/module/init'),
-        'moduleInitCommand',
-      ).resolves();
-      const addStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/project/modules/add'),
-        'projectModulesAddCommand',
-      ).resolves();
+      const moduleInitStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
+        .resolves();
+      const addStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+        .resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -88,14 +86,12 @@ describe('project init behavior', () => {
       promptStub.onCall(2).resolves({ source: 'git' });
       promptStub.onCall(3).resolves({ module: 'https://example.com/repo.git' });
 
-      const initStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/module/init'),
-        'moduleInitCommand',
-      ).resolves();
-      const addStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/project/modules/add'),
-        'projectModulesAddCommand',
-      ).resolves();
+      const initStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
+        .resolves();
+      const addStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+        .resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -131,14 +127,12 @@ describe('project init behavior', () => {
       promptStub.onCall(1).resolves({ blmodule: false });
       promptStub.onCall(2).resolves({ init: false });
 
-      const initStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/module/init'),
-        'moduleInitCommand',
-      ).resolves();
-      const addStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/project/modules/add'),
-        'projectModulesAddCommand',
-      ).resolves();
+      const initStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
+        .resolves();
+      const addStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+        .resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -200,14 +194,12 @@ describe('project init behavior', () => {
       promptStub.onCall(1).resolves({ blmodule: false });
       promptStub.onCall(2).resolves({ init: true });
 
-      sinon.stub(
-        await import('../../../../../src/core/cli/commands/module/init'),
-        'moduleInitCommand',
-      ).rejects(new Error('boom'));
-      const addStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/project/modules/add'),
-        'projectModulesAddCommand',
-      ).resolves();
+      sinon
+        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
+        .rejects(new Error('boom'));
+      const addStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+        .resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -241,14 +233,12 @@ describe('project init behavior', () => {
       promptStub.onCall(1).resolves({ blmodule: false });
       promptStub.onCall(2).resolves({ init: true });
 
-      sinon.stub(
-        await import('../../../../../src/core/cli/commands/module/init'),
-        'moduleInitCommand',
-      ).callsFake(() => Promise.reject('boom'));
-      const addStub = sinon.stub(
-        await import('../../../../../src/core/cli/commands/project/modules/add'),
-        'projectModulesAddCommand',
-      ).resolves();
+      sinon
+        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
+        .callsFake(() => Promise.reject('boom'));
+      const addStub = sinon
+        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+        .resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();

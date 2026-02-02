@@ -10,7 +10,6 @@ import cmdModulesInstall from '../../../../src/core/cli/commands/project/modules
 import cmdLoggingShow from '../../../../src/core/cli/commands/project/logging/show';
 import cmdLoggingSet from '../../../../src/core/cli/commands/project/logging/set';
 
-
 describe('Project commands', () => {
   it('should expose project command factories', () => {
     expect(cmdProject).to.be.a('function');

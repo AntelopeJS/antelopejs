@@ -26,7 +26,9 @@ export { DownloaderRegistry } from './core/downloaders/registry';
 export { ModuleCache } from './core/module-cache';
 export { LaunchOptions } from './types';
 
-async function buildModuleConfigs(config: Record<string, any>): Promise<Array<{ manifest: ModuleManifest; config: ModuleConfig }>> {
+async function buildModuleConfigs(
+  config: Record<string, any>,
+): Promise<Array<{ manifest: ModuleManifest; config: ModuleConfig }>> {
   const fs = new NodeFileSystem();
   const cache = new ModuleCache(config.cacheFolder, fs);
   await cache.load();
@@ -71,7 +73,7 @@ async function buildModuleConfigs(config: Record<string, any>): Promise<Array<{ 
 export async function launch(
   projectFolder: string = '.',
   env: string = 'default',
-  options: LaunchOptions = {}
+  options: LaunchOptions = {},
 ): Promise<ModuleManager> {
   const fs = new NodeFileSystem();
   const loader = new ConfigLoader(fs);

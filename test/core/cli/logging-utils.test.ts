@@ -193,10 +193,11 @@ describe('Logging Utils', () => {
       const restore = setTTY(true, true, 30);
       try {
         const date = new Date(2024, 0, 15, 10, 30, 0);
-        const output = formatLogMessageWithRightAlignedDate(
-          { moduleTracking: { enabled: false } } as any,
-          { levelId: 20, args: ['first\\nmiddle\\nlast'], time: date.getTime() },
-        );
+        const output = formatLogMessageWithRightAlignedDate({ moduleTracking: { enabled: false } } as any, {
+          levelId: 20,
+          args: ['first\\nmiddle\\nlast'],
+          time: date.getTime(),
+        });
 
         const plain = stripAnsi(output);
         const lines = plain.split('\\n');

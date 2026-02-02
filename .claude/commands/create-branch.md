@@ -7,6 +7,7 @@ description: Create a branch with a conventional name
 Create a new branch with a name following conventional naming patterns.
 
 ## Behavior
+
 1. Analyze the context of current changes or user intent
 2. Create a branch with appropriate prefix:
    - `feat/` - New features
@@ -18,6 +19,7 @@ Create a new branch with a name following conventional naming patterns.
 3. Use kebab-case for the branch name after the prefix
 
 ## Examples
+
 - `feat/user-authentication`
 - `fix/login-validation-error`
 - `refactor/api-client-structure`

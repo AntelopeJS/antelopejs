@@ -10,7 +10,6 @@ import cmdImportsInstall from '../../../../src/core/cli/commands/module/imports/
 import cmdExportsSet from '../../../../src/core/cli/commands/module/exports/set';
 import cmdExportsGenerate from '../../../../src/core/cli/commands/module/exports/generate';
 
-
 describe('Module commands', () => {
   it('should expose module command factories', () => {
     expect(cmdModule).to.be.a('function');

@@ -36,16 +36,13 @@ export class ConfigLoader {
         const moduleConfig = await this.loadJsonFile(moduleConfigPath);
         expandedModules[moduleName].config = mergeDeep(
           (expandedModules[moduleName].config as Record<string, any>) ?? {},
-          moduleConfig as Record<string, any>
+          moduleConfig as Record<string, any>,
         );
       }
     }
 
     const envOverrides = config.envOverrides ?? {};
-    const configWithOverrides = this.parser.applyEnvOverrides(
-      { ...config, modules: expandedModules },
-      envOverrides
-    );
+    const configWithOverrides = this.parser.applyEnvOverrides({ ...config, modules: expandedModules }, envOverrides);
 
     const processed = this.parser.processTemplates({
       name: configWithOverrides.name,

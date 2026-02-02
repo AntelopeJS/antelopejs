@@ -14,9 +14,9 @@ describe('TestModule Function', () => {
         "const assert = require('assert');\n" +
           "describe('sample', () => {\n" +
           "  it('passes', () => {\n" +
-          "    assert.equal(1, 1);\n" +
-          "  });\n" +
-          "});\n",
+          '    assert.equal(1, 1);\n' +
+          '  });\n' +
+          '});\n',
       );
 
       const failures = await TestModule(moduleFolder, [testFile]);

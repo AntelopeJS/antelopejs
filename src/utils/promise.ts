@@ -16,10 +16,7 @@ export function ResolveLater<T>(): DeferredPromise<T> {
   return { promise, resolve, reject };
 }
 
-export function Detour<T extends (...args: any[]) => any>(
-  fn: T,
-  sideEffect: (...args: Parameters<T>) => void
-): T {
+export function Detour<T extends (...args: any[]) => any>(fn: T, sideEffect: (...args: Parameters<T>) => void): T {
   return ((...args: Parameters<T>) => {
     sideEffect(...args);
     return fn(...args);
@@ -27,7 +24,7 @@ export function Detour<T extends (...args: any[]) => any>(
 }
 
 export function CreateDetour<T extends (...args: any[]) => any>(
-  fn: T
+  fn: T,
 ): { fn: T; detour: (sideEffect: (...args: Parameters<T>) => void) => void } {
   let currentSideEffect: ((...args: Parameters<T>) => void) | undefined;
 

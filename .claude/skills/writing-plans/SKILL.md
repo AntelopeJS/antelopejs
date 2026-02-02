@@ -16,12 +16,14 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 **Ask the user before writing the plan:**
 
 "Which development approach do you prefer?
+
 - **TDD** - Test first, then implementation (red-green-refactor cycle)
 - **Non-TDD** - Direct implementation without tests"
 
 **If Non-TDD selected, also ask:**
 
 "How should work be verified for each task?
+
 - Manual testing (describe what to check)
 - Run a command (e.g., `pnpm run build`, `pnpm run lint`)
 - Visual inspection
@@ -34,6 +36,7 @@ Document the chosen verification method in the plan header.
 **Each step is one action (2-5 minutes):**
 
 **Mode TDD:**
+
 - "Write the failing test" - step
 - "Run it to make sure it fails" - step
 - "Implement the minimal code to make the test pass" - step
@@ -41,6 +44,7 @@ Document the chosen verification method in the plan header.
 - "Commit" - step
 
 **Mode Non-TDD:**
+
 - "Implement the functionality" - step
 - "Verify using [verification method from plan]" - step
 - "Commit" - step
@@ -71,10 +75,11 @@ Document the chosen verification method in the plan header.
 
 ### Template TDD
 
-```markdown
+````markdown
 ### Task N: [Component Name]
 
 **Files:**
+
 - Create: `exact/path/to/file.ts`
 - Modify: `exact/path/to/existing.ts:123-145`
 - Test: `tests/exact/path/to/file.spec.ts`
@@ -89,6 +94,7 @@ describe('specificBehavior', () => {
   });
 });
 ```
+````
 
 **Step 2: Run test to verify it fails**
 
@@ -111,7 +117,8 @@ Expected: PASS
 **Step 5: Commit**
 
 Use @committing skill
-```
+
+````
 
 ### Template Non-TDD
 
@@ -128,7 +135,7 @@ Use @committing skill
 export function myFunction(input: string): string {
   return expected;
 }
-```
+````
 
 **Step 2: Verify**
 
@@ -138,6 +145,7 @@ Expected: [Expected result]
 **Step 3: Commit**
 
 Use @committing skill
+
 ```
 
 ## Remember
@@ -166,3 +174,4 @@ After saving the plan, offer execution choice:
 
 **If Parallel Session chosen:**
 - **REQUIRED SUB-SKILL:** New session uses executing-plans
+```

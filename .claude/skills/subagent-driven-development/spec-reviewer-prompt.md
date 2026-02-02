@@ -108,7 +108,7 @@ Implementation matches plan specifications.
 ## Placeholder Reference
 
 | Placeholder        | Description                           |
-|--------------------|---------------------------------------|
+| ------------------ | ------------------------------------- |
 | `{PLAN_FILE_PATH}` | Absolute path to the plan file        |
 | `{TASK_NUMBER}`    | Task number that was implemented      |
 | `{FILES_CHANGED}`  | List of files from implementer report |

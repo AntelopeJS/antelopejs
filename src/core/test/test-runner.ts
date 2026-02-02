@@ -4,7 +4,7 @@ import { TestContext } from './test-context';
 export class TestRunner {
   constructor(
     private context: TestContext,
-    private mochaFactory: () => Mocha = () => new Mocha()
+    private mochaFactory: () => Mocha = () => new Mocha(),
   ) {}
 
   async run(files: string[]): Promise<number> {

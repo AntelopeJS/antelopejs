@@ -21,6 +21,7 @@
 ### Task 1: Créer cli-mocks.ts
 
 **Files:**
+
 - Create: `test/helpers/cli-mocks.ts`
 
 **Step 1: Créer les factories de mock**
@@ -122,6 +123,7 @@ Expected: All existing tests pass, new file is syntactically correct
 ### Task 2: Créer cli-ui-mock.ts
 
 **Files:**
+
 - Create: `test/helpers/cli-ui-mock.ts`
 
 **Step 1: Créer les mocks UI**
@@ -192,6 +194,7 @@ Expected: All existing tests pass
 ### Task 3: Créer common-stubs.ts
 
 **Files:**
+
 - Create: `test/helpers/common-stubs.ts`
 
 **Step 1: Créer les stubs pour common.ts**
@@ -255,6 +258,7 @@ Expected: All existing tests pass
 ### Task 4: Test config/index.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/config/index.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -303,6 +307,7 @@ Expected: All tests pass including new config index tests
 ### Task 5: Test module/index.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/module/index.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -360,6 +365,7 @@ Expected: All tests pass
 ### Task 6: Test module/imports/index.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/module/imports/index.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -423,6 +429,7 @@ Expected: All tests pass
 ### Task 7: Test module/exports/index.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/module/exports/index.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -468,6 +475,7 @@ Expected: All tests pass
 ### Task 8: Test project/index.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/project/index.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -525,6 +533,7 @@ Expected: All tests pass
 ### Task 9: Test project/logging/index.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/project/logging/index.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -570,6 +579,7 @@ Expected: All tests pass
 ### Task 10: Test project/modules/index.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/project/modules/index.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -635,6 +645,7 @@ Expected: All tests pass
 ### Task 11: Test config/show.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/config/show.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -733,6 +744,7 @@ Expected: All tests pass
 ### Task 12: Test config/get.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/config/get.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -844,6 +856,7 @@ Expected: All tests pass
 ### Task 13: Test config/set.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/config/set.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -972,6 +985,7 @@ Expected: All tests pass
 ### Task 14: Test config/reset.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/config/reset.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -1110,6 +1124,7 @@ Expected: All tests pass
 ### Task 15: Test module/imports/list.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/module/imports/list.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -1261,6 +1276,7 @@ Expected: All tests pass
 ### Task 16: Test project/modules/list.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/project/modules/list.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -1404,6 +1420,7 @@ Expected: All tests pass
 ### Task 17: Test project/logging/show.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/project/logging/show.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -1532,6 +1549,7 @@ Expected: All tests pass
 ### Task 18: Test module/exports/set.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/module/exports/set.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -1655,6 +1673,7 @@ Expected: All tests pass
 ### Task 19: Test module/test.ts
 
 **Files:**
+
 - Create: `test/core/cli/commands/module/test.test.ts`
 
 **Step 1: Implémenter les tests**
@@ -1772,12 +1791,14 @@ Expected: All tests pass
 ### Task 20: Vérifier la couverture globale
 
 **Files:**
+
 - None (verification only)
 
 **Step 1: Lancer les tests avec couverture**
 
 Run: `pnpm test:coverage`
 Expected:
+
 - All tests pass
 - Coverage ≥ 95% for lines, functions, branches, statements
 
@@ -1790,12 +1811,12 @@ Expected: Les fichiers de commandes CLI testés apparaissent avec une bonne couv
 
 ## Fichiers Critiques de Référence
 
-| Fichier | Usage |
-|---------|-------|
-| `src/core/cli/common.ts` | Fonctions partagées à mocker (lignes 130-157 pour UserConfig) |
-| `src/core/cli/cli-ui.ts` | Composants UI à mocker (Spinner, ProgressBar, displayBox) |
-| `test/core/cli/commands/config.test.ts` | Pattern existant pour tester les commandes |
-| `test/core/downloaders/git.test.ts` | Pattern existant pour mocker exec |
+| Fichier                                 | Usage                                                         |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `src/core/cli/common.ts`                | Fonctions partagées à mocker (lignes 130-157 pour UserConfig) |
+| `src/core/cli/cli-ui.ts`                | Composants UI à mocker (Spinner, ProgressBar, displayBox)     |
+| `test/core/cli/commands/config.test.ts` | Pattern existant pour tester les commandes                    |
+| `test/core/downloaders/git.test.ts`     | Pattern existant pour mocker exec                             |
 
 ---
 

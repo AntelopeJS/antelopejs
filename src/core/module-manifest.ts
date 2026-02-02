@@ -53,7 +53,7 @@ export class ModuleManifest {
     public readonly source: ModuleSource,
     public readonly name: string,
     manifest: ModulePackageJson,
-    private fs: IFileSystem
+    private fs: IFileSystem,
   ) {
     this.folder = path.resolve(folder);
     this.manifest = manifest;
@@ -95,7 +95,7 @@ export class ModuleManifest {
     folder: string,
     source: ModuleSource,
     name: string,
-    fs: IFileSystem = new NodeFileSystem()
+    fs: IFileSystem = new NodeFileSystem(),
   ): Promise<ModuleManifest> {
     const manifest = await ModuleManifest.readManifest(folder, fs);
     return new ModuleManifest(folder, source, name, manifest, fs);

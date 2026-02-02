@@ -48,10 +48,7 @@ describe('LogFormatter', () => {
 
     it('should replace placeholders and strip chalk tokens', () => {
       formatter.setDateFormat('yyyy-MM-dd');
-      formatter.setTemplate(
-        LogLevel.INFO,
-        '{{DATE}} {{CHANNEL}} {{MODULE}} {{ARGS}} {{chalk.red}}',
-      );
+      formatter.setTemplate(LogLevel.INFO, '{{DATE}} {{CHANNEL}} {{MODULE}} {{ARGS}} {{chalk.red}}');
 
       const result = formatter.format({
         level: LogLevel.INFO,

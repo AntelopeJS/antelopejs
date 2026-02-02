@@ -5,7 +5,7 @@ import { ModuleSource } from '../../types';
 
 export type ModuleLoader<T extends ModuleSource = ModuleSource> = (
   cache: ModuleCache,
-  source: T
+  source: T,
 ) => Promise<ModuleManifest[]>;
 
 type WaitingType = {

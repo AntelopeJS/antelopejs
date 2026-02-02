@@ -86,9 +86,17 @@
     "typescript-eslint": "^8.30.1"
   },
   "c8": {
-    "include": ["src/**/*.ts"],
-    "exclude": ["src/**/*.d.ts", "src/interfaces/**"],
-    "reporter": ["text", "html"],
+    "include": [
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "src/**/*.d.ts",
+      "src/interfaces/**"
+    ],
+    "reporter": [
+      "text",
+      "html"
+    ],
     "report-dir": "coverage"
   }
 }

@@ -8,7 +8,10 @@ import { NodeFileSystem } from './filesystem';
 export class ModuleCache {
   private manifest: Record<string, string> = {};
 
-  constructor(public readonly path: string, private fs: IFileSystem = new NodeFileSystem()) {}
+  constructor(
+    public readonly path: string,
+    private fs: IFileSystem = new NodeFileSystem(),
+  ) {}
 
   async load(): Promise<void> {
     await this.fs.mkdir(this.path, { recursive: true });

@@ -26,7 +26,7 @@ describe('ConfigLoader', () => {
           modules: {
             'my-module': '1.0.0',
           },
-        })
+        }),
       );
 
       const config = await loader.load('/project');
@@ -48,7 +48,7 @@ describe('ConfigLoader', () => {
               cacheFolder: '/var/cache',
             },
           },
-        })
+        }),
       );
 
       const config = await loader.load('/project', 'production');
@@ -62,14 +62,14 @@ describe('ConfigLoader', () => {
         JSON.stringify({
           name: 'test',
           modules: { database: '1.0.0' },
-        })
+        }),
       );
       await fs.writeFile(
         '/project/antelope.database.json',
         JSON.stringify({
           host: 'localhost',
           port: 5432,
-        })
+        }),
       );
 
       const config = await loader.load('/project');
@@ -86,7 +86,7 @@ describe('ConfigLoader', () => {
         JSON.stringify({
           name: 'my-app',
           cacheFolder: '${name}/.cache',
-        })
+        }),
       );
 
       const config = await loader.load('/project');
@@ -100,7 +100,7 @@ describe('ConfigLoader', () => {
         JSON.stringify({
           name: 'my-app',
           modules: {},
-        })
+        }),
       );
 
       const config = await loader.load('/project');
@@ -115,7 +115,7 @@ describe('ConfigLoader', () => {
           name: 'my-app',
           cacheFolder: null,
           modules: {},
-        })
+        }),
       );
 
       const config = await loader.load('/project');
@@ -129,13 +129,13 @@ describe('ConfigLoader', () => {
         JSON.stringify({
           name: 'test',
           modules: { database: '1.0.0' },
-        })
+        }),
       );
       await fs.writeFile(
         '/project/antelope.database.json',
         JSON.stringify({
           host: 'localhost',
-        })
+        }),
       );
 
       sinon.stub((loader as any).parser, 'expandModuleShorthand').returns({

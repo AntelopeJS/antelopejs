@@ -9,7 +9,10 @@ export class FileWatcher {
   private listeners: ModuleChangeListener[] = [];
   private excludedDirs = new Set(['.git', 'node_modules']);
 
-  constructor(private fs: IFileSystem, private hasher: FileHasher = new FileHasher(fs)) {}
+  constructor(
+    private fs: IFileSystem,
+    private hasher: FileHasher = new FileHasher(fs),
+  ) {}
 
   onModuleChanged(listener: ModuleChangeListener): void {
     this.listeners.push(listener);

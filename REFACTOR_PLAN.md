@@ -28,6 +28,7 @@
 ### Task 0.1: Installer les dépendances de test
 
 **Files:**
+
 - Modify: `package.json`
 
 **Step 1: Ajouter les dépendances de test**
@@ -49,6 +50,7 @@ Run: `pnpm add -D @types/chai@^4.3.11 @types/sinon@^17.0.3 chai@^4.3.10 sinon@^1
 **Step 2: Configurer le script de test dans package.json**
 
 Modifier `scripts.test`:
+
 ```json
 {
   "scripts": {
@@ -61,6 +63,7 @@ Modifier `scripts.test`:
 **Step 3: Créer la config Mocha**
 
 Create: `.mocharc.json`
+
 ```json
 {
   "extension": ["ts"],
@@ -73,6 +76,7 @@ Create: `.mocharc.json`
 **Step 4: Vérifier que le setup fonctionne**
 
 Create: `test/setup.test.ts`
+
 ```typescript
 import { expect } from 'chai';
 
@@ -93,6 +97,7 @@ Expected: 1 passing
 ### Task 1.1: Types de base
 
 **Files:**
+
 - Create: `src/types/index.ts`
 - Create: `src/types/module.types.ts`
 - Create: `src/types/config.types.ts`
@@ -245,6 +250,7 @@ Expected: PASS
 ### Task 1.2: Promise utilities
 
 **Files:**
+
 - Create: `src/utils/promise.ts`
 - Test: `test/utils/promise.test.ts`
 
@@ -284,7 +290,9 @@ describe('Promise Utilities', () => {
     it('should wrap a function with side effect', () => {
       let sideEffect = 0;
       const original = (x: number) => x * 2;
-      const wrapped = Detour(original, () => { sideEffect++; });
+      const wrapped = Detour(original, () => {
+        sideEffect++;
+      });
 
       const result = wrapped(5);
 
@@ -320,10 +328,7 @@ export function ResolveLater<T>(): DeferredPromise<T> {
   return { promise, resolve, reject };
 }
 
-export function Detour<T extends (...args: any[]) => any>(
-  fn: T,
-  sideEffect: (...args: Parameters<T>) => void
-): T {
+export function Detour<T extends (...args: any[]) => any>(fn: T, sideEffect: (...args: Parameters<T>) => void): T {
   return ((...args: Parameters<T>) => {
     sideEffect(...args);
     return fn(...args);
@@ -331,7 +336,7 @@ export function Detour<T extends (...args: any[]) => any>(
 }
 
 export function CreateDetour<T extends (...args: any[]) => any>(
-  fn: T
+  fn: T,
 ): { fn: T; detour: (sideEffect: (...args: Parameters<T>) => void) => void } {
   let currentSideEffect: ((...args: Parameters<T>) => void) | undefined;
 
@@ -342,7 +347,9 @@ export function CreateDetour<T extends (...args: any[]) => any>(
 
   return {
     fn: wrapped,
-    detour: (sideEffect) => { currentSideEffect = sideEffect; }
+    detour: (sideEffect) => {
+      currentSideEffect = sideEffect;
+    },
   };
 }
 ```
@@ -355,6 +362,7 @@ Expected: PASS
 ### Task 1.3: Object utilities
 
 **Files:**
+
 - Create: `src/utils/object.ts`
 - Test: `test/utils/object.test.ts`
 
@@ -419,10 +427,7 @@ export function isObject(item: unknown): item is Record<string, unknown> {
   return item !== null && typeof item === 'object' && !Array.isArray(item);
 }
 
-export function mergeDeep<T extends Record<string, any>>(
-  target: T,
-  source: Partial<T>
-): T {
+export function mergeDeep<T extends Record<string, any>>(target: T, source: Partial<T>): T {
   const result = { ...target };
 
   for (const key in source) {
@@ -479,6 +484,7 @@ Expected: PASS
 ### Task 1.4: Lock utilities
 
 **Files:**
+
 - Create: `src/utils/lock.ts`
 - Test: `test/utils/lock.test.ts`
 
@@ -496,7 +502,7 @@ describe('Lock Utilities', () => {
       const results: number[] = [];
 
       const task1 = lock.acquire(async () => {
-        await new Promise(r => setTimeout(r, 30));
+        await new Promise((r) => setTimeout(r, 30));
         results.push(1);
         return 1;
       });
@@ -547,7 +553,7 @@ export class AsyncLock {
       return Promise.resolve();
     }
 
-    return new Promise<void>(resolve => {
+    return new Promise<void>((resolve) => {
       this.queue.push(resolve);
     });
   }
@@ -571,6 +577,7 @@ Expected: PASS
 ### Task 1.5: Utils index export
 
 **Files:**
+
 - Create: `src/utils/index.ts`
 
 **Step 1: Create index**
@@ -592,6 +599,7 @@ Expected: All tests pass
 ### Task 2.1: DI Container
 
 **Files:**
+
 - Create: `src/core/container.ts`
 - Test: `test/core/container.test.ts`
 
@@ -768,6 +776,7 @@ Expected: PASS
 ### Task 2.2: FileSystem abstraction
 
 **Files:**
+
 - Create: `src/core/filesystem.ts`
 - Test: `test/core/filesystem.test.ts`
 
@@ -1104,6 +1113,7 @@ Expected: PASS
 ### Task 2.3: Log Formatter
 
 **Files:**
+
 - Create: `src/logging/log-formatter.ts`
 - Test: `test/logging/log-formatter.test.ts`
 
@@ -1208,7 +1218,7 @@ export class LogFormatter {
   format(entry: LogEntry): string {
     const template = this.templates[entry.level] ?? this.templates[LogLevel.INFO];
     const dateStr = this.formatDate(entry.time);
-    const argsStr = entry.args.map(arg => this.stringify(arg)).join(' ');
+    const argsStr = entry.args.map((arg) => this.stringify(arg)).join(' ');
 
     return template
       .replace('{{DATE}}', dateStr)
@@ -1255,6 +1265,7 @@ Expected: PASS
 ### Task 2.4: Log Filter
 
 **Files:**
+
 - Create: `src/logging/log-filter.ts`
 - Test: `test/logging/log-filter.test.ts`
 
@@ -1411,6 +1422,7 @@ Expected: PASS
 ### Task 2.5: Logger Service
 
 **Files:**
+
 - Create: `src/logging/logger.ts`
 - Create: `src/logging/index.ts`
 - Test: `test/logging/logger.test.ts`
@@ -1574,7 +1586,7 @@ export class Logger {
 export class LogChannel {
   constructor(
     private logger: Logger,
-    private name: string
+    private name: string,
   ) {}
 
   error(...args: unknown[]): void {
@@ -1618,6 +1630,7 @@ Expected: PASS
 ### Task 3.1: Config Parser
 
 **Files:**
+
 - Create: `src/core/config/config-parser.ts`
 - Test: `test/core/config/config-parser.test.ts`
 
@@ -1678,7 +1691,7 @@ describe('ConfigParser', () => {
       const config = {
         database: { host: 'localhost' },
       };
-      const overrides = { 'DB_HOST': 'database.host' };
+      const overrides = { DB_HOST: 'database.host' };
 
       process.env.DB_HOST = 'production-db.example.com';
 
@@ -1695,7 +1708,7 @@ describe('ConfigParser', () => {
         api: { key: 'default' },
         auth: { key: 'default' },
       };
-      const overrides = { 'API_KEY': ['api.key', 'auth.key'] };
+      const overrides = { API_KEY: ['api.key', 'auth.key'] };
 
       process.env.API_KEY = 'secret-key';
 
@@ -1774,7 +1787,7 @@ export class ConfigParser {
     }
 
     if (Array.isArray(obj)) {
-      return obj.map(item => this.processObject(item, values));
+      return obj.map((item) => this.processObject(item, values));
     }
 
     if (isObject(obj)) {
@@ -1816,10 +1829,7 @@ export class ConfigParser {
     });
   }
 
-  applyEnvOverrides<T extends Record<string, any>>(
-    config: T,
-    overrides: Record<string, string | string[]>
-  ): T {
+  applyEnvOverrides<T extends Record<string, any>>(config: T, overrides: Record<string, string | string[]>): T {
     const result = JSON.parse(JSON.stringify(config)); // Deep clone
 
     for (const [envVar, paths] of Object.entries(overrides)) {
@@ -1835,9 +1845,7 @@ export class ConfigParser {
     return result;
   }
 
-  expandModuleShorthand(
-    modules: Record<string, string | AntelopeModuleConfig>
-  ): Record<string, ExpandedModuleConfig> {
+  expandModuleShorthand(modules: Record<string, string | AntelopeModuleConfig>): Record<string, ExpandedModuleConfig> {
     const result: Record<string, ExpandedModuleConfig> = {};
 
     for (const [name, config] of Object.entries(modules)) {
@@ -1891,6 +1899,7 @@ Expected: PASS
 ### Task 3.2: Config Loader
 
 **Files:**
+
 - Create: `src/core/config/config-loader.ts`
 - Create: `src/core/config/index.ts`
 - Test: `test/core/config/config-loader.test.ts`
@@ -1915,12 +1924,15 @@ describe('ConfigLoader', () => {
 
   describe('load', () => {
     it('should load basic config', async () => {
-      await fs.writeFile('/project/antelope.json', JSON.stringify({
-        name: 'test-project',
-        modules: {
-          'my-module': '1.0.0',
-        },
-      }));
+      await fs.writeFile(
+        '/project/antelope.json',
+        JSON.stringify({
+          name: 'test-project',
+          modules: {
+            'my-module': '1.0.0',
+          },
+        }),
+      );
 
       const config = await loader.load('/project');
 
@@ -1931,15 +1943,18 @@ describe('ConfigLoader', () => {
     });
 
     it('should merge environment config', async () => {
-      await fs.writeFile('/project/antelope.json', JSON.stringify({
-        name: 'test-project',
-        cacheFolder: '.cache',
-        environments: {
-          production: {
-            cacheFolder: '/var/cache',
+      await fs.writeFile(
+        '/project/antelope.json',
+        JSON.stringify({
+          name: 'test-project',
+          cacheFolder: '.cache',
+          environments: {
+            production: {
+              cacheFolder: '/var/cache',
+            },
           },
-        },
-      }));
+        }),
+      );
 
       const config = await loader.load('/project', 'production');
 
@@ -1947,14 +1962,20 @@ describe('ConfigLoader', () => {
     });
 
     it('should load module-specific config files', async () => {
-      await fs.writeFile('/project/antelope.json', JSON.stringify({
-        name: 'test',
-        modules: { 'database': '1.0.0' },
-      }));
-      await fs.writeFile('/project/antelope.database.json', JSON.stringify({
-        host: 'localhost',
-        port: 5432,
-      }));
+      await fs.writeFile(
+        '/project/antelope.json',
+        JSON.stringify({
+          name: 'test',
+          modules: { database: '1.0.0' },
+        }),
+      );
+      await fs.writeFile(
+        '/project/antelope.database.json',
+        JSON.stringify({
+          host: 'localhost',
+          port: 5432,
+        }),
+      );
 
       const config = await loader.load('/project');
 
@@ -1965,10 +1986,13 @@ describe('ConfigLoader', () => {
     });
 
     it('should process template strings', async () => {
-      await fs.writeFile('/project/antelope.json', JSON.stringify({
-        name: 'my-app',
-        cacheFolder: '${name}/.cache',
-      }));
+      await fs.writeFile(
+        '/project/antelope.json',
+        JSON.stringify({
+          name: 'my-app',
+          cacheFolder: '${name}/.cache',
+        }),
+      );
 
       const config = await loader.load('/project');
 
@@ -2026,18 +2050,15 @@ export class ConfigLoader {
       if (await this.fs.exists(moduleConfigPath)) {
         const moduleConfig = await this.loadJsonFile(moduleConfigPath);
         expandedModules[moduleName].config = mergeDeep(
-          expandedModules[moduleName].config as Record<string, any> ?? {},
-          moduleConfig
+          (expandedModules[moduleName].config as Record<string, any>) ?? {},
+          moduleConfig,
         );
       }
     }
 
     // Apply env overrides
     const envOverrides = config.envOverrides ?? {};
-    const configWithOverrides = this.parser.applyEnvOverrides(
-      { ...config, modules: expandedModules },
-      envOverrides
-    );
+    const configWithOverrides = this.parser.applyEnvOverrides({ ...config, modules: expandedModules }, envOverrides);
 
     // Process templates
     const processed = this.parser.processTemplates({
@@ -2074,10 +2095,12 @@ Expected: PASS
 Le plan est trop long pour tout inclure ici. Les phases suivantes suivent le même pattern TDD:
 
 ### Phase 4: Cache & Manifest
+
 - Task 4.1: ModuleCache
 - Task 4.2: ModuleManifest
 
 ### Phase 5: Downloaders
+
 - Task 5.1: DownloaderRegistry
 - Task 5.2: LocalDownloader
 - Task 5.3: LocalFolderDownloader
@@ -2085,34 +2108,41 @@ Le plan est trop long pour tout inclure ici. Les phases suivantes suivent le mê
 - Task 5.5: GitDownloader
 
 ### Phase 6: Interface Support
+
 - Task 6.1: InterfaceRegistry (gère `internal.interfaceConnections`)
 - Task 6.2: ModuleTracker (gère `internal.moduleByFolder`)
 - Task 6.3: ProxyTracker (gère `internal.knownAsync`, etc.)
 
 ### Phase 7: Module Resolution
+
 - Task 7.1: PathMapper
 - Task 7.2: Resolver
 - Task 7.3: ResolverDetour
 
 ### Phase 8: Module Lifecycle
+
 - Task 8.1: ModuleLifecycle (state machine)
 - Task 8.2: Module class
 - Task 8.3: ModuleRegistry
 - Task 8.4: ModuleManager
 
 ### Phase 9: File Watching
+
 - Task 9.1: FileHasher
 - Task 9.2: FileWatcher
 - Task 9.3: HotReload
 
 ### Phase 10: Test Harness
+
 - Task 10.1: TestContext
 - Task 10.2: TestRunner
 
 ### Phase 11: REPL
+
 - Task 11.1: ReplSession
 
 ### Phase 12: CLI
+
 - Task 12.1: UI Components
 - Task 12.2: Shared Options
 - Task 12.3: Project Commands
@@ -2121,6 +2151,7 @@ Le plan est trop long pour tout inclure ici. Les phases suivantes suivent le mê
 - Task 12.6: CLI Entry Point
 
 ### Phase 13: Public API
+
 - Task 13.1: Main exports (`src/index.ts`)
 
 ---
