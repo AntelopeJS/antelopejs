@@ -6,6 +6,9 @@ import { ResolverDetour } from './resolution/resolver-detour';
 import { PathMapper } from './resolution/path-mapper';
 import { InterfaceRegistry, InterfaceConnectionRef } from './interface-registry';
 import { ModuleTracker } from './module-tracker';
+import { Logging } from '../interfaces/logging/beta';
+
+const Logger = new Logging.Channel('loader');
 
 export interface ModuleConfig {
   config?: unknown;
@@ -79,9 +82,17 @@ export class ModuleManager {
   async constructAll(): Promise<void> {
     this.resolverDetour.attach();
     try {
-      for (const { module, config } of this.loaded.values()) {
-        await module.construct(config.config);
-      }
+      await Promise.all(
+        [...this.loaded.values()].map(({ module, config }) =>
+          module.construct(config.config).catch((err) => {
+            Logger.Error(`Failed to construct module:`);
+            Logger.Error(`  - ID: ${module.id}`);
+            Logger.Error(`  - Version: ${module.version}`);
+            Logger.Error(`  - Error: ${err instanceof Error ? err.message : String(err)}`);
+            throw err;
+          }),
+        ),
+      );
     } catch (err) {
       this.resolverDetour.detach();
       throw err;

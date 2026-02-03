@@ -56,14 +56,14 @@ export class LogFilter {
       return level;
     }
 
-    let bestMatch = '';
+    let bestMatchLength = -1;
     let bestLevel = this.minLevel;
 
     for (const [pattern, level] of this.channelLevels) {
       if (pattern.endsWith('*')) {
         const prefix = pattern.slice(0, -1);
-        if (channel.startsWith(prefix) && prefix.length > bestMatch.length) {
-          bestMatch = prefix;
+        if (channel.startsWith(prefix) && prefix.length > bestMatchLength) {
+          bestMatchLength = prefix.length;
           bestLevel = level;
         }
       }

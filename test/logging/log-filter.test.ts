@@ -27,6 +27,13 @@ describe('LogFilter', () => {
       expect(filter.shouldLog(createEntry(LogLevel.TRACE, 'loader.sub'))).to.be.true;
     });
 
+    it('should support wildcard channel filters', () => {
+      filter.setMinLevel(LogLevel.WARN);
+      filter.setChannelLevel('*', LogLevel.TRACE);
+
+      expect(filter.shouldLog(createEntry(LogLevel.TRACE, 'any'))).to.be.true;
+    });
+
     it('should filter by module includes', () => {
       filter.setModuleTracking(true);
       filter.setModuleIncludes(['database']);

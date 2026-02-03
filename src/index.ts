@@ -13,6 +13,8 @@ import { registerGitDownloader } from './core/downloaders/git';
 import { ModuleManifest } from './core/module-manifest';
 import { LaunchOptions, ModuleSourceLocal } from './types';
 import { setupAntelopeProjectLogging, addChannelFilter } from './logging';
+import { Logging } from './interfaces/logging/beta';
+import { terminalDisplay } from './core/cli/terminal-display';
 import { FileWatcher } from './core/watch/file-watcher';
 import { HotReload } from './core/watch/hot-reload';
 import { ReplSession } from './core/repl/repl-session';
@@ -27,15 +29,19 @@ export { DownloaderRegistry } from './core/downloaders/registry';
 export { ModuleCache } from './core/module-cache';
 export { LaunchOptions } from './types';
 
-async function registerCoreInterfaces(manager: ModuleManager): Promise<void> {
+const Logger = new Logging.Channel('loader');
+
+async function registerCoreInterfaces(manager: ModuleManager): Promise<ModuleManifest> {
   const coreFolder = path.resolve(path.join(__dirname, '..'));
   const coreSource: ModuleSourceLocal = { type: 'local', path: coreFolder };
   const coreManifest = await ModuleManifest.create(coreFolder, coreSource, 'antelopejs');
   manager.addStaticModule({ manifest: coreManifest });
+  return coreManifest;
 }
 
 async function buildModuleConfigs(
   config: Record<string, any>,
+  extraManifests: ModuleManifest[] = [],
 ): Promise<Array<{ manifest: ModuleManifest; config: ModuleConfig }>> {
   const fs = new NodeFileSystem();
   const cache = new ModuleCache(config.cacheFolder, fs);
@@ -47,31 +53,65 @@ async function buildModuleConfigs(
   registerPackageDownloader(registry, { fs });
   registerGitDownloader(registry, { fs });
 
-  const modules: Array<{ manifest: ModuleManifest; config: ModuleConfig }> = [];
+  await terminalDisplay.startSpinner(`Loading modules`);
 
-  for (const [id, moduleConfig] of Object.entries(config.modules ?? {})) {
+  const modulePromises = Object.entries(config.modules ?? {}).map(async ([id, moduleConfig]) => {
     const entry = moduleConfig as any;
     const source = { ...entry.source, id };
-    const manifests = await registry.load(config.projectFolder, cache, source);
 
-    const overrides = new Map<string, Array<{ module: string; id?: string }>>();
-    if (entry.importOverrides) {
-      for (const override of entry.importOverrides) {
-        const list = overrides.get(override.interface) ?? [];
-        list.push({ module: override.source, id: override.id });
-        overrides.set(override.interface, list);
+    Logger.Debug(`Loading module ${id}`);
+
+    try {
+      Logger.Trace(`Starting LoadModule for ${id}`);
+      const manifests = await registry.load(config.projectFolder, cache, source);
+      Logger.Trace(`Module manifest loaded for ${id}`);
+
+      const overrides = new Map<string, Array<{ module: string; id?: string }>>();
+      if (entry.importOverrides) {
+        for (const override of entry.importOverrides) {
+          const list = overrides.get(override.interface) ?? [];
+          list.push({ module: override.source, id: override.id });
+          overrides.set(override.interface, list);
+        }
       }
-    }
 
-    for (const manifest of manifests) {
-      modules.push({
+      const disabledExports = new Set<string>(Array.isArray(entry.disabledExports) ? entry.disabledExports : []);
+      const created = manifests.map((manifest) => ({
         manifest,
         config: {
           config: entry.config,
-          disabledExports: new Set(entry.disabledExports ?? []),
+          disabledExports,
           importOverrides: overrides,
         },
-      });
+      }));
+
+      Logger.Trace(`Modules created for ${id}`);
+      return created;
+    } catch (err) {
+      await terminalDisplay.failSpinner(`Failed to load module ${id}`);
+      await terminalDisplay.cleanSpinner();
+      Logger.Error(`Unexpected error while loading module ${id}:`);
+      Logger.Error(err);
+      throw err;
+    }
+  });
+
+  const moduleResults = await Promise.all(modulePromises);
+  const modules = moduleResults.flat();
+  await terminalDisplay.stopSpinner(`Modules loaded`);
+
+  await terminalDisplay.startSpinner(`Loading exports`);
+  Logger.Trace(`Loading exports`);
+  const exportTargets = [...extraManifests, ...modules.map((module) => module.manifest)];
+  await Promise.all(exportTargets.map((manifest) => manifest.loadExports()));
+  await terminalDisplay.stopSpinner(`Exports loaded`);
+
+  const seen = new Set<string>();
+  for (const module of modules) {
+    if (seen.has(module.manifest.name)) {
+      Logger.Error(`Detected module id collision (name in package.json): ${module.manifest.name}`);
+    } else {
+      seen.add(module.manifest.name);
     }
   }
 
@@ -104,10 +144,18 @@ export async function launch(
   }
 
   const manager = new ModuleManager();
-  await registerCoreInterfaces(manager);
-  const modules = await buildModuleConfigs(normalizedConfig);
+  const coreManifest = await registerCoreInterfaces(manager);
+  const modules = await buildModuleConfigs(normalizedConfig, [coreManifest]);
   manager.addModules(modules);
-  await manager.constructAll();
+  await terminalDisplay.startSpinner(`Constructing modules`);
+  Logger.Trace(`Constructing modules`);
+  try {
+    await manager.constructAll();
+  } catch (err) {
+    await terminalDisplay.failSpinner(`Failed to construct modules`);
+    throw err;
+  }
+  await terminalDisplay.stopSpinner(`Done loading`);
   manager.startAll();
 
   if (options.watch) {
@@ -229,11 +277,19 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
     };
 
     manager = new ModuleManager();
-    await registerCoreInterfaces(manager);
-    const modules = await buildModuleConfigs(normalizedConfig);
+    const coreManifest = await registerCoreInterfaces(manager);
+    const modules = await buildModuleConfigs(normalizedConfig, [coreManifest]);
     manager.addModules(modules);
 
-    await manager.constructAll();
+    await terminalDisplay.startSpinner(`Constructing modules`);
+    Logger.Trace(`Constructing modules`);
+    try {
+      await manager.constructAll();
+    } catch (err) {
+      await terminalDisplay.failSpinner(`Failed to construct modules`);
+      throw err;
+    }
+    await terminalDisplay.stopSpinner(`Done loading`);
     manager.startAll();
     managerActive = true;
 
