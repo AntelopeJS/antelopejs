@@ -1,5 +1,5 @@
 {
-  "name": "@antelopejs/core",
+  "name": "@antelopejs/core2",
   "version": "0.3.2",
   "description": "Modular Node.js framework with interface-based architecture for building extensible applications",
   "repository": {
@@ -8,7 +8,7 @@
   },
   "license": "Apache-2.0",
   "bin": {
-    "ajs": "dist/core/cli/index.js"
+    "ajs2": "dist/core/cli/index.js"
   },
   "files": [
     "dist"

@@ -37,7 +37,7 @@ describe('Command Execution', () => {
         await ExecuteCMD('node -e "process.kill(process.pid, \'SIGTERM\')"', {});
         expect.fail('Should have rejected');
       } catch (err) {
-        expect(String(err)).to.equal('');
+        expect(String(err)).to.not.equal('');
       }
     });
   });

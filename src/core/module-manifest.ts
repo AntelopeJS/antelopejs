@@ -98,7 +98,9 @@ export class ModuleManifest {
     fs: IFileSystem = new NodeFileSystem(),
   ): Promise<ModuleManifest> {
     const manifest = await ModuleManifest.readManifest(folder, fs);
-    return new ModuleManifest(folder, source, name, manifest, fs);
+    const instance = new ModuleManifest(folder, source, name, manifest, fs);
+    await instance.loadExports();
+    return instance;
   }
 
   static async readManifest(folder: string, fs: IFileSystem = new NodeFileSystem()): Promise<ModulePackageJson> {

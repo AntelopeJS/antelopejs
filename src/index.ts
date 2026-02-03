@@ -11,7 +11,7 @@ import { registerLocalFolderDownloader } from './core/downloaders/local-folder';
 import { registerPackageDownloader } from './core/downloaders/package';
 import { registerGitDownloader } from './core/downloaders/git';
 import { ModuleManifest } from './core/module-manifest';
-import { LaunchOptions } from './types';
+import { LaunchOptions, ModuleSourceLocal } from './types';
 import { setupAntelopeProjectLogging, addChannelFilter } from './logging';
 import { FileWatcher } from './core/watch/file-watcher';
 import { HotReload } from './core/watch/hot-reload';
@@ -26,6 +26,13 @@ export { ConfigLoader } from './core/config/config-loader';
 export { DownloaderRegistry } from './core/downloaders/registry';
 export { ModuleCache } from './core/module-cache';
 export { LaunchOptions } from './types';
+
+async function registerCoreInterfaces(manager: ModuleManager): Promise<void> {
+  const coreFolder = path.resolve(path.join(__dirname, '..'));
+  const coreSource: ModuleSourceLocal = { type: 'local', path: coreFolder };
+  const coreManifest = await ModuleManifest.create(coreFolder, coreSource, 'antelopejs');
+  manager.addStaticModule({ manifest: coreManifest });
+}
 
 async function buildModuleConfigs(
   config: Record<string, any>,
@@ -99,6 +106,7 @@ export async function launch(
   }
 
   const manager = new ModuleManager();
+  await registerCoreInterfaces(manager);
   const modules = await buildModuleConfigs(normalizedConfig);
   manager.addModules(modules);
   await manager.constructAll();
@@ -225,6 +233,7 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
     };
 
     manager = new ModuleManager();
+    await registerCoreInterfaces(manager);
     const modules = await buildModuleConfigs(normalizedConfig);
     manager.addModules(modules);
 

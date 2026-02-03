@@ -16,7 +16,8 @@ export function ExecuteCMD(command: string, options: ExecOptions): Promise<Comma
       };
 
       if (err) {
-        return reject(result.stderr || result.stdout);
+        const message = result.stderr || result.stdout || err.message || String(err);
+        return reject(message);
       }
       resolve(result);
     });

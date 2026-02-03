@@ -2,6 +2,7 @@ import { Module } from './module';
 import { ModuleManifest } from './module-manifest';
 import { ModuleRegistry } from './module-registry';
 import { Resolver } from './resolution/resolver';
+import { ResolverDetour } from './resolution/resolver-detour';
 import { PathMapper } from './resolution/path-mapper';
 import { InterfaceRegistry, InterfaceConnectionRef } from './interface-registry';
 import { ModuleTracker } from './module-tracker';
@@ -29,13 +30,27 @@ export class ModuleManager {
   public readonly resolver: Resolver;
   private readonly interfaceRegistry: InterfaceRegistry;
   private readonly moduleTracker: ModuleTracker;
+  private readonly resolverDetour: ResolverDetour;
+  private readonly staticModules: ManagedModule[] = [];
   private readonly loaded = new Map<string, ManagedModule>();
 
   constructor(deps: ModuleManagerDeps = {}) {
     this.registry = deps.registry ?? new ModuleRegistry();
     this.resolver = deps.resolver ?? new Resolver(new PathMapper());
+    this.resolverDetour = new ResolverDetour(this.resolver);
     this.interfaceRegistry = deps.interfaceRegistry ?? new InterfaceRegistry();
     this.moduleTracker = deps.moduleTracker ?? new ModuleTracker();
+  }
+
+  addStaticModule(entry: { manifest: ModuleManifest; config?: ModuleConfig }): void {
+    const module = new Module(entry.manifest);
+    const config: ModuleConfig = {
+      config: entry.config?.config,
+      importOverrides: entry.config?.importOverrides ?? new Map(),
+      disabledExports: entry.config?.disabledExports ?? new Set(),
+    };
+    this.registry.register(module);
+    this.staticModules.push({ module, config });
   }
 
   addModules(entries: Array<{ manifest: ModuleManifest; config?: ModuleConfig }>): void {
@@ -62,8 +77,14 @@ export class ModuleManager {
   }
 
   async constructAll(): Promise<void> {
-    for (const { module, config } of this.loaded.values()) {
-      await module.construct(config.config);
+    this.resolverDetour.attach();
+    try {
+      for (const { module, config } of this.loaded.values()) {
+        await module.construct(config.config);
+      }
+    } catch (err) {
+      this.resolverDetour.detach();
+      throw err;
     }
   }
 
@@ -80,8 +101,12 @@ export class ModuleManager {
   }
 
   async destroyAll(): Promise<void> {
-    for (const { module } of this.loaded.values()) {
-      await module.destroy();
+    try {
+      for (const { module } of this.loaded.values()) {
+        await module.destroy();
+      }
+    } finally {
+      this.resolverDetour.detach();
     }
   }
 
@@ -92,7 +117,6 @@ export class ModuleManager {
     this.moduleTracker.clear();
 
     const interfaceSources = new Map<string, Module>();
-
     for (const { module, config } of this.loaded.values()) {
       this.resolver.moduleByFolder.set(module.manifest.folder, module);
       this.resolver.modulesById.set(module.id, module);
@@ -102,6 +126,15 @@ export class ModuleManager {
         interfaceDir: module.manifest.exportsPath,
       });
 
+      for (const [nameVersion] of Object.entries(module.manifest.exports)) {
+        if (!config.disabledExports?.has(nameVersion)) {
+          interfaceSources.set(nameVersion, module);
+        }
+      }
+    }
+
+    for (const { module, config } of this.staticModules) {
+      this.resolver.modulesById.set(module.id, module);
       for (const [nameVersion] of Object.entries(module.manifest.exports)) {
         if (!config.disabledExports?.has(nameVersion)) {
           interfaceSources.set(nameVersion, module);
