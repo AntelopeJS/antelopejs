@@ -2,6 +2,9 @@ import * as path from 'path';
 import { ModuleCache } from '../module-cache';
 import { ModuleManifest } from '../module-manifest';
 import { ModuleSource } from '../../types';
+import { Logging } from '../../interfaces/logging/beta';
+
+const Logger = new Logging.Channel('loader.common');
 
 export type ModuleLoader<T extends ModuleSource = ModuleSource> = (
   cache: ModuleCache,
@@ -30,8 +33,10 @@ export class DownloaderRegistry {
   }
 
   load(projectFolder: string, cache: ModuleCache, source: ModuleSource): Promise<ModuleManifest[]> {
+    Logger.Debug(`LoadModule called for type ${source.type}`);
     const type = this.knownTypes.get(source.type);
     if (type) {
+      Logger.Trace(`Found loader for type ${source.type}`);
       if (type.loaderIdentifier === 'path') {
         const pathValue = (source as any)[type.loaderIdentifier];
         if (typeof pathValue === 'string' && !path.isAbsolute(pathValue)) {
@@ -41,6 +46,7 @@ export class DownloaderRegistry {
       return type.loader(cache, source as any);
     }
 
+    Logger.Info(`No loader found for type ${source.type}, adding to waitlist`);
     return new Promise<ModuleManifest[]>((resolve) => {
       let waitingList = this.waiting.get(source.type);
       if (!waitingList) {

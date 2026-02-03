@@ -1,4 +1,7 @@
 import { exec, ExecOptions } from 'child_process';
+import { Logging } from '../../interfaces/logging/beta';
+
+const Logger = new Logging.Channel('cli.command');
 
 export interface CommandResult {
   stdout: string;
@@ -8,6 +11,7 @@ export interface CommandResult {
 
 export function ExecuteCMD(command: string, options: ExecOptions): Promise<CommandResult> {
   return new Promise<CommandResult>((resolve, reject) => {
+    Logger.Trace(`Executing command: ${command}`);
     exec(command, options, (err, stdout, stderr) => {
       const result: CommandResult = {
         stdout,
@@ -16,6 +20,7 @@ export function ExecuteCMD(command: string, options: ExecOptions): Promise<Comma
       };
 
       if (err) {
+        Logger.Error('Command execution failed:', command);
         const message = result.stderr || result.stdout || err.message || String(err);
         return reject(message);
       }

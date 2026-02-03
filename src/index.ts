@@ -97,9 +97,7 @@ export async function launch(
     projectFolder: path.resolve(projectFolder),
   } as any;
 
-  if (loadedConfig.logging) {
-    setupAntelopeProjectLogging(loadedConfig.logging);
-  }
+  setupAntelopeProjectLogging(loadedConfig.logging);
 
   if (options.verbose) {
     options.verbose.forEach((channel) => addChannelFilter(channel, 0));
@@ -219,9 +217,7 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
   let managerActive = false;
 
   try {
-    if (config?.logging) {
-      setupAntelopeProjectLogging(config.logging);
-    }
+    setupAntelopeProjectLogging(config?.logging);
 
     const cacheFolder = config?.cacheFolder ?? '.cache';
     const absoluteCache = path.isAbsolute(cacheFolder) ? cacheFolder : path.join(moduleRoot, cacheFolder);

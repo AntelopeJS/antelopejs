@@ -1,9 +1,12 @@
 import { AsyncProxy } from '../interfaces/core/beta';
+import { Logging } from '../interfaces/logging/beta';
 import { ModuleManifest } from './module-manifest';
 import { ModuleCallbacks, ModuleState } from '../types';
 import { ModuleLifecycle } from './module-lifecycle';
 
 export type ModuleLoader = (mainPath: string) => Promise<ModuleCallbacks>;
+
+const Logger = new Logging.Channel('loader.module');
 
 async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
   const mod = await import(mainPath);
@@ -37,16 +40,28 @@ export class Module {
 
   async reload(): Promise<void> {
     await this.destroy();
-    await this.manifest.reload();
-    this.version = this.manifest.version;
+    try {
+      await this.manifest.reload();
+      this.version = this.manifest.version;
+    } catch (err) {
+      Logger.Error(err);
+      throw err;
+    }
   }
 
   async construct(config: unknown): Promise<void> {
     if (this.lifecycle.state !== ModuleState.Loaded) {
+      Logger.Info(`Module ${this.id} already constructed`);
       return;
     }
 
-    this.callbacks = await this.loader(this.manifest.main);
+    try {
+      this.callbacks = await this.loader(this.manifest.main);
+      Logger.Debug(`Successfully loaded module ${this.id}`);
+    } catch (err) {
+      Logger.Error(`Failed to load module ${this.id}`, err);
+      throw err;
+    }
     this.lifecycle.setCallbacks(this.callbacks);
     await this.lifecycle.construct(config);
   }
@@ -60,8 +75,13 @@ export class Module {
   }
 
   async destroy(): Promise<void> {
-    await this.lifecycle.destroy();
-    this.proxies.forEach((proxy) => proxy.detach());
-    this.proxies.splice(0, this.proxies.length);
+    try {
+      await this.lifecycle.destroy();
+      this.proxies.forEach((proxy) => proxy.detach());
+      this.proxies.splice(0, this.proxies.length);
+    } catch (err) {
+      Logger.Error(err);
+      throw err;
+    }
   }
 }
