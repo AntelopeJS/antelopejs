@@ -1,4 +1,3 @@
-import { AsyncProxy } from '../interfaces/core/beta';
 import { Logging } from '../interfaces/logging/beta';
 import { ModuleManifest } from './module-manifest';
 import { ModuleCallbacks, ModuleState } from '../types';
@@ -18,7 +17,6 @@ export class Module {
   public version: string;
 
   private callbacks?: ModuleCallbacks;
-  private proxies: Array<AsyncProxy> = [];
   private lifecycle: ModuleLifecycle;
 
   constructor(
@@ -32,10 +30,6 @@ export class Module {
 
   get state(): ModuleLifecycle['state'] {
     return this.lifecycle.state;
-  }
-
-  attachProxy(proxy: AsyncProxy): void {
-    this.proxies.push(proxy);
   }
 
   async reload(): Promise<void> {
@@ -77,8 +71,6 @@ export class Module {
   async destroy(): Promise<void> {
     try {
       await this.lifecycle.destroy();
-      this.proxies.forEach((proxy) => proxy.detach());
-      this.proxies.splice(0, this.proxies.length);
     } catch (err) {
       Logger.Error(err);
       throw err;

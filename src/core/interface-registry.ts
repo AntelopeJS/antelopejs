@@ -20,10 +20,6 @@ export class InterfaceRegistry {
     internal.interfaceConnections[moduleId] = connectionIDs;
   }
 
-  getConnections(moduleId: string, interfaceId: string): Array<{ id?: string; path: string }> {
-    return internal.interfaceConnections[moduleId]?.[interfaceId] ?? [];
-  }
-
   clearModule(moduleId: string): void {
     delete internal.interfaceConnections[moduleId];
   }
