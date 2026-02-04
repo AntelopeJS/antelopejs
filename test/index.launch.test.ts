@@ -78,18 +78,15 @@ describe('launch', () => {
     } as any;
 
     const loaded = new Map<string, any>();
-    loaded.set('modA', { module: localModule });
-    loaded.set('modB', { module: localModuleB });
-    loaded.set('modC', { module: localModuleC });
+    loaded.set('modA', { module: localModule, config: { config: { flag: true } } });
+    loaded.set('modB', { module: localModuleB, config: { config: undefined } });
+    loaded.set('modC', { module: localModuleC, config: { config: undefined } });
 
     let addedModules: any[] = [];
     sinon.stub(ModuleManager.prototype, 'addModules').callsFake(function (this: any, modules: any[]) {
       addedModules = modules;
       this.loaded = loaded;
       return [] as any;
-    });
-    sinon.stub(ModuleManager.prototype, 'getModule').callsFake((id: string) => {
-      return id === 'modA' ? localModule : undefined;
     });
     const constructStub = sinon.stub(ModuleManager.prototype, 'constructAll').resolves();
     const startStub = sinon.stub(ModuleManager.prototype, 'startAll');
@@ -99,6 +96,7 @@ describe('launch', () => {
       listener('modA');
       listener('missing');
     });
+    const startWatchingStub = sinon.stub(FileWatcher.prototype, 'startWatching');
 
     const queueStub = sinon.stub(HotReload.prototype, 'queue').callsFake(function (this: any, moduleId: string) {
       return Promise.resolve(this.reload(moduleId));
@@ -119,6 +117,7 @@ describe('launch', () => {
     expect(scanStub.calledWith('modB', '/mods/modB', ['src2'])).to.equal(true);
     expect(scanStub.calledWith('modC', '/mods/modC', [''])).to.equal(true);
     expect(queueStub.calledWith('modA')).to.equal(true);
+    expect(startWatchingStub.calledOnce).to.equal(true);
     expect(replStub.calledWith('> ')).to.equal(true);
     expect(localModule.reload.called).to.equal(true);
     expect(localModule.construct.called).to.equal(true);
@@ -148,6 +147,7 @@ describe('launch', () => {
     const scanStub = sinon.stub(FileWatcher.prototype, 'scanModule').resolves();
     const onChangedStub = sinon.stub(FileWatcher.prototype, 'onModuleChanged');
     const queueStub = sinon.stub(HotReload.prototype, 'queue').resolves();
+    const startWatchingStub = sinon.stub(FileWatcher.prototype, 'startWatching');
 
     const manager = await launch('/project', 'default', { watch: true });
 
@@ -159,6 +159,7 @@ describe('launch', () => {
     expect(scanStub.called).to.equal(false);
     expect(onChangedStub.calledOnce).to.equal(true);
     expect(queueStub.called).to.equal(false);
+    expect(startWatchingStub.calledOnce).to.equal(true);
   });
 
   it('uses manager config when reloading modules', async () => {
@@ -196,14 +197,13 @@ describe('launch', () => {
     } as any;
 
     const loaded = new Map<string, any>();
-    loaded.set('modA', { module: localModule });
+    loaded.set('modA', { module: localModule, config: { config: { debug: true } } });
 
     sinon.stub(ModuleManager.prototype, 'addModules').callsFake(function (this: any) {
       this.loaded = loaded;
       this.config = { config: { debug: true } };
       return [] as any;
     });
-    sinon.stub(ModuleManager.prototype, 'getModule').returns(localModule);
     sinon.stub(ModuleManager.prototype, 'constructAll').resolves();
     sinon.stub(ModuleManager.prototype, 'startAll');
 

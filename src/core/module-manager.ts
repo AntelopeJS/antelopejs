@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { Module } from './module';
 import { ModuleManifest } from './module-manifest';
 import { ModuleRegistry } from './module-registry';
@@ -89,6 +90,46 @@ export class ModuleManager {
 
   getLoadedModuleEntry(id: string): ManagedModule | undefined {
     return this.loaded.get(id);
+  }
+
+  unrequireModuleFiles(moduleId: string): void {
+    const entry = this.loaded.get(moduleId);
+    if (!entry) {
+      return;
+    }
+
+    const moduleFolder = path.resolve(entry.module.manifest.folder);
+    const avoidedFolders = new Set<string>();
+
+    if (entry.module.manifest.exportsPath) {
+      avoidedFolders.add(path.resolve(entry.module.manifest.exportsPath));
+    }
+    avoidedFolders.add(path.join(moduleFolder, 'node_modules'));
+
+    for (const [id, other] of this.loaded) {
+      if (id === moduleId) {
+        continue;
+      }
+      if (this.isPathWithin(other.module.manifest.folder, moduleFolder)) {
+        avoidedFolders.add(path.resolve(other.module.manifest.folder));
+      }
+    }
+
+    for (const filePath of Object.keys(require.cache)) {
+      if (!this.isPathWithin(filePath, moduleFolder)) {
+        continue;
+      }
+      let shouldDelete = true;
+      for (const avoided of avoidedFolders) {
+        if (this.isPathWithin(filePath, avoided)) {
+          shouldDelete = false;
+          break;
+        }
+      }
+      if (shouldDelete) {
+        delete require.cache[filePath];
+      }
+    }
   }
 
   replaceLoadedModule(id: string, module: Module): ManagedModule | undefined {
@@ -226,5 +267,14 @@ export class ModuleManager {
       this.resolver.moduleAssociations.set(module.id, associations);
       this.interfaceRegistry.setConnections(module.id, connections);
     }
+  }
+
+  private isPathWithin(filePath: string, dirPath: string): boolean {
+    const normalizedDir = path.resolve(dirPath);
+    const normalizedFile = path.resolve(filePath);
+    if (normalizedFile === normalizedDir) {
+      return true;
+    }
+    return normalizedFile.startsWith(normalizedDir + path.sep);
   }
 }

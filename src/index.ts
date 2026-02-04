@@ -325,11 +325,12 @@ export async function launch(
   if (options.watch) {
     const watcher = new FileWatcher(fs);
     const hotReload = new HotReload(async (moduleId) => {
-      const mod = manager.getModule(moduleId);
-      if (!mod) return;
-      await mod.reload();
-      await mod.construct((manager as any).config?.config);
-      mod.start();
+      const entry = manager.getModuleEntry(moduleId);
+      if (!entry) return;
+      manager.unrequireModuleFiles(moduleId);
+      await entry.module.reload();
+      await entry.module.construct(entry.config.config);
+      entry.module.start();
     });
 
     for (const { module } of (manager as any).loaded?.values?.() ?? []) {
@@ -344,6 +345,7 @@ export async function launch(
     }
 
     watcher.onModuleChanged((id) => hotReload.queue(id));
+    watcher.startWatching();
   }
 
   if (options.interactive) {

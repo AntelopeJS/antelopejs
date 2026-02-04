@@ -161,4 +161,53 @@ describe('ModuleManager', () => {
     manager.startModules([moduleEntry as any]);
     expect(startStub.calledOnce).to.equal(true);
   });
+
+  it('clears require cache for module files while preserving exports and submodules', () => {
+    const manager = new ModuleManager();
+    const moduleFolder = path.resolve('test', 'module');
+    const exportsPath = path.join(moduleFolder, 'interfaces');
+    const submoduleFolder = path.join(moduleFolder, 'child');
+    const nodeModulesFolder = path.join(moduleFolder, 'node_modules');
+
+    const cacheEntries = [
+      path.join(moduleFolder, 'index.js'),
+      path.join(moduleFolder, 'src', 'util.js'),
+      path.join(exportsPath, 'api.js'),
+      path.join(submoduleFolder, 'index.js'),
+      path.join(nodeModulesFolder, 'dep.js'),
+      path.resolve('other', 'file.js'),
+    ];
+
+    const previous: Record<string, any> = {};
+    for (const entry of cacheEntries) {
+      previous[entry] = require.cache[entry];
+      require.cache[entry] = {} as any;
+    }
+
+    (manager as any).loaded.set('test', {
+      module: { manifest: { folder: moduleFolder, exportsPath } },
+      config: {},
+    });
+    (manager as any).loaded.set('test.child', {
+      module: { manifest: { folder: submoduleFolder, exportsPath: path.join(submoduleFolder, 'interfaces') } },
+      config: {},
+    });
+
+    manager.unrequireModuleFiles('test');
+
+    expect(require.cache[path.join(moduleFolder, 'index.js')]).to.be.undefined;
+    expect(require.cache[path.join(moduleFolder, 'src', 'util.js')]).to.be.undefined;
+    expect(require.cache[path.join(exportsPath, 'api.js')]).to.not.be.undefined;
+    expect(require.cache[path.join(submoduleFolder, 'index.js')]).to.not.be.undefined;
+    expect(require.cache[path.join(nodeModulesFolder, 'dep.js')]).to.not.be.undefined;
+    expect(require.cache[path.resolve('other', 'file.js')]).to.not.be.undefined;
+
+    for (const entry of cacheEntries) {
+      if (previous[entry]) {
+        require.cache[entry] = previous[entry];
+      } else {
+        delete require.cache[entry];
+      }
+    }
+  });
 });

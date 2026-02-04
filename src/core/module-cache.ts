@@ -7,6 +7,7 @@ import { NodeFileSystem } from './filesystem';
 
 export class ModuleCache {
   private manifest: Record<string, string> = {};
+  private saving = false;
 
   constructor(
     public readonly path: string,
@@ -35,6 +36,7 @@ export class ModuleCache {
 
   setVersion(module: string, version: string): void {
     this.manifest[module] = version;
+    this.queueSave();
   }
 
   hasVersion(module: string, version: string): boolean {
@@ -78,5 +80,16 @@ export class ModuleCache {
         await this.fs.copyFile(srcPath, destPath);
       }
     }
+  }
+
+  private queueSave(): void {
+    if (this.saving) {
+      return;
+    }
+    this.saving = true;
+    setTimeout(() => {
+      this.saving = false;
+      void this.save();
+    }, 1);
   }
 }
