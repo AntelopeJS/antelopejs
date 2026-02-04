@@ -56,7 +56,8 @@ export class ModuleManager {
     this.staticModules.push({ module, config });
   }
 
-  addModules(entries: Array<{ manifest: ModuleManifest; config?: ModuleConfig }>): void {
+  addModules(entries: Array<{ manifest: ModuleManifest; config?: ModuleConfig }>): ManagedModule[] {
+    const created: ManagedModule[] = [];
     for (const entry of entries) {
       const module = new Module(entry.manifest);
       const config: ModuleConfig = {
@@ -65,10 +66,13 @@ export class ModuleManager {
         disabledExports: entry.config?.disabledExports ?? new Set(),
       };
       this.registry.register(module);
-      this.loaded.set(module.id, { module, config });
+      const managed = { module, config };
+      this.loaded.set(module.id, managed);
+      created.push(managed);
     }
 
     this.rebuildAssociations();
+    return created;
   }
 
   listModules(): string[] {
@@ -77,6 +81,28 @@ export class ModuleManager {
 
   getModule(id: string): Module | undefined {
     return this.registry.get(id);
+  }
+
+  getModuleEntry(id: string): ManagedModule | undefined {
+    return this.loaded.get(id) ?? this.staticModules.find((entry) => entry.module.id === id);
+  }
+
+  getLoadedModuleEntry(id: string): ManagedModule | undefined {
+    return this.loaded.get(id);
+  }
+
+  replaceLoadedModule(id: string, module: Module): ManagedModule | undefined {
+    const entry = this.loaded.get(id);
+    if (!entry) {
+      return;
+    }
+    entry.module = module;
+    this.registry.register(module);
+    return entry;
+  }
+
+  refreshAssociations(): void {
+    this.rebuildAssociations();
   }
 
   async constructAll(): Promise<void> {
@@ -99,8 +125,29 @@ export class ModuleManager {
     }
   }
 
+  async constructModules(modules: ManagedModule[]): Promise<void> {
+    this.resolverDetour.attach();
+    await Promise.all(
+      modules.map(({ module, config }) =>
+        module.construct(config.config).catch((err) => {
+          Logger.Error(`Failed to construct module:`);
+          Logger.Error(`  - ID: ${module.id}`);
+          Logger.Error(`  - Version: ${module.version}`);
+          Logger.Error(`  - Error: ${err instanceof Error ? err.message : String(err)}`);
+          throw err;
+        }),
+      ),
+    );
+  }
+
   startAll(): void {
     for (const { module } of this.loaded.values()) {
+      module.start();
+    }
+  }
+
+  startModules(modules: ManagedModule[]): void {
+    for (const { module } of modules) {
       module.start();
     }
   }

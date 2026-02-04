@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import { ModuleManager } from '../../src/core/module-manager';
 import { ModuleManifest } from '../../src/core/module-manifest';
 import { InMemoryFileSystem } from '../../src/core/filesystem';
@@ -6,6 +7,7 @@ import { Resolver } from '../../src/core/resolution/resolver';
 import { PathMapper } from '../../src/core/resolution/path-mapper';
 import { internal } from '../../src/interfaces/core/beta';
 import { ModuleSourceLocal } from '../../src/types';
+import { Module as CoreModule } from '../../src/core/module';
 import Module from 'module';
 import { mkdtemp, mkdir, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
@@ -107,5 +109,56 @@ describe('ModuleManager', () => {
       (Module as any)._resolveFilename = previousResolver;
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  it('exposes entry helpers and supports replacement', () => {
+    const manager = new ModuleManager();
+
+    const manifest = {
+      name: 'modA',
+      version: '1.0.0',
+      main: '/modA/index.js',
+      folder: '/modA',
+      exportsPath: '/modA/interfaces',
+      exports: {},
+      imports: [],
+      source: { type: 'local', path: '/modA' },
+      loadExports: async () => {},
+    } as any;
+
+    const created = manager.addModules([{ manifest }]);
+    expect(created).to.have.length(1);
+    expect(created[0].module.id).to.equal('modA');
+
+    expect(manager.getModuleEntry('modA')?.module.id).to.equal('modA');
+    expect(manager.getLoadedModuleEntry('modA')?.module.id).to.equal('modA');
+
+    const replacement = new CoreModule(manifest);
+    const replaced = manager.replaceLoadedModule('modA', replacement);
+    expect(replaced?.module).to.equal(replacement);
+    expect(manager.getModule('modA')).to.equal(replacement);
+
+    manager.refreshAssociations();
+  });
+
+  it('constructs and starts a provided module list', async () => {
+    const manager = new ModuleManager();
+    const detour = (manager as any).resolverDetour;
+    const attachStub = sinon.stub(detour, 'attach');
+
+    const constructStub = sinon.stub().resolves();
+    const startStub = sinon.stub();
+
+    const moduleEntry = {
+      module: { id: 'modA', version: '1.0.0', construct: constructStub, start: startStub } as any,
+      config: { config: { flag: true } },
+    };
+
+    await manager.constructModules([moduleEntry as any]);
+    expect(attachStub.calledOnce).to.equal(true);
+    expect(constructStub.calledWith({ flag: true })).to.equal(true);
+
+    manager.startModules([moduleEntry as any]);
+    expect(startStub.calledOnce).to.equal(true);
   });
 });

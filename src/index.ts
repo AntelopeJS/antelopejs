@@ -10,10 +10,14 @@ import { registerLocalDownloader } from './core/downloaders/local';
 import { registerLocalFolderDownloader } from './core/downloaders/local-folder';
 import { registerPackageDownloader } from './core/downloaders/package';
 import { registerGitDownloader } from './core/downloaders/git';
+import { Module } from './core/module';
+import type { ModuleSource } from './types';
 import { ModuleManifest } from './core/module-manifest';
 import { LaunchOptions, ModuleSourceLocal } from './types';
 import { setupAntelopeProjectLogging, addChannelFilter } from './logging';
 import { Logging } from './interfaces/logging/beta';
+import * as coreInterfaceBeta from './interfaces/core/beta';
+import * as moduleInterfaceBeta from './interfaces/core/beta/modules';
 import { terminalDisplay } from './core/cli/terminal-display';
 import { FileWatcher } from './core/watch/file-watcher';
 import { HotReload } from './core/watch/hot-reload';
@@ -31,6 +35,158 @@ export { LaunchOptions } from './types';
 
 const Logger = new Logging.Channel('loader');
 
+interface LoaderContext {
+  fs: NodeFileSystem;
+  cache: ModuleCache;
+  registry: DownloaderRegistry;
+  projectFolder: string;
+}
+
+async function createLoaderContext(config: { cacheFolder: string; projectFolder: string }): Promise<LoaderContext> {
+  const fs = new NodeFileSystem();
+  const cache = new ModuleCache(config.cacheFolder, fs);
+  await cache.load();
+
+  const registry = new DownloaderRegistry();
+  registerLocalDownloader(registry, { fs });
+  registerLocalFolderDownloader(registry, { fs });
+  registerPackageDownloader(registry, { fs });
+  registerGitDownloader(registry, { fs });
+
+  return {
+    fs,
+    cache,
+    registry,
+    projectFolder: config.projectFolder,
+  };
+}
+
+function mapImportOverrides(overrides?: Record<string, string[]>): Map<string, Array<{ module: string }>> {
+  const mapped = new Map<string, Array<{ module: string }>>();
+  if (!overrides) {
+    return mapped;
+  }
+  for (const [iface, modules] of Object.entries(overrides)) {
+    mapped.set(
+      iface,
+      modules.map((module) => ({ module })),
+    );
+  }
+  return mapped;
+}
+
+function exportImportOverrides(
+  overrides?: Map<string, Array<{ module: string; id?: string }>>,
+): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  if (!overrides) {
+    return result;
+  }
+  for (const [iface, modules] of overrides.entries()) {
+    result[iface] = modules.map((entry) => entry.module);
+  }
+  return result;
+}
+
+function getModuleStatus(module: { state: string }): moduleInterfaceBeta.ModuleInfo['status'] {
+  switch (module.state) {
+    case 'loaded':
+    case 'constructed':
+    case 'active':
+      return module.state;
+    default:
+      return 'unknown';
+  }
+}
+
+function toModuleSource(source: moduleInterfaceBeta.ModuleDefinition['source']): ModuleSource {
+  const type = source?.type;
+  if (type !== 'local' && type !== 'git' && type !== 'package' && type !== 'local-folder') {
+    throw new Error(`Unsupported module source type: ${String(type)}`);
+  }
+  return source as ModuleSource;
+}
+
+function registerCoreModuleInterface(manager: ModuleManager, loaderContext: LoaderContext): void {
+  coreInterfaceBeta.ImplementInterface(moduleInterfaceBeta, {
+    ListModules: async () => manager.listModules(),
+    GetModuleInfo: async (moduleId: string) => {
+      const entry = manager.getModuleEntry(moduleId);
+      if (!entry) {
+        throw new Error(`Module not found: ${moduleId}`);
+      }
+      return {
+        source: entry.module.manifest.source,
+        config: entry.config.config,
+        disabledExports: [...(entry.config.disabledExports ?? new Set())],
+        importOverrides: exportImportOverrides(entry.config.importOverrides),
+        localPath: entry.module.manifest.folder,
+        status: getModuleStatus(entry.module),
+      };
+    },
+    LoadModule: async (moduleId: string, declaration: moduleInterfaceBeta.ModuleDefinition, autostart = false) => {
+      const source = toModuleSource(declaration.source);
+      const manifests = await loaderContext.registry.load(loaderContext.projectFolder, loaderContext.cache, {
+        ...source,
+        id: moduleId,
+      });
+
+      await Promise.all(manifests.map((manifest) => manifest.loadExports()));
+
+      const moduleConfig: ModuleConfig = {
+        config: declaration.config,
+        disabledExports: new Set(declaration.disabledExports ?? []),
+        importOverrides: mapImportOverrides(declaration.importOverrides),
+      };
+
+      const created = manager.addModules(manifests.map((manifest) => ({ manifest, config: moduleConfig })));
+      await manager.constructModules(created);
+      if (autostart) {
+        manager.startModules(created);
+      }
+      return created.map(({ module }) => module.id);
+    },
+    StartModule: async (moduleId: string) => {
+      manager.getModule(moduleId)?.start();
+    },
+    StopModule: async (moduleId: string) => {
+      manager.getModule(moduleId)?.stop();
+    },
+    DestroyModule: async (moduleId: string) => {
+      await manager.getModule(moduleId)?.destroy();
+    },
+    ReloadModule: async (moduleId: string) => {
+      const entry = manager.getLoadedModuleEntry(moduleId);
+      if (!entry) {
+        return;
+      }
+
+      await entry.module.destroy();
+
+      const manifests = await loaderContext.registry.load(
+        loaderContext.projectFolder,
+        loaderContext.cache,
+        { ...entry.module.manifest.source, id: moduleId },
+      );
+      const [manifest] = manifests;
+      if (!manifest) {
+        throw new Error(`Failed to reload module ${moduleId}: no manifest returned`);
+      }
+      await manifest.loadExports();
+
+      const replacement = new Module(manifest);
+      if (replacement.id !== moduleId) {
+        throw new Error(`Reloaded module id mismatch: expected ${moduleId}, got ${replacement.id}`);
+      }
+      manager.replaceLoadedModule(moduleId, replacement);
+      manager.refreshAssociations();
+
+      await replacement.construct(entry.config.config);
+      replacement.start();
+    },
+  });
+}
+
 async function registerCoreInterfaces(manager: ModuleManager): Promise<ModuleManifest> {
   const coreFolder = path.resolve(path.join(__dirname, '..'));
   const coreSource: ModuleSourceLocal = { type: 'local', path: coreFolder };
@@ -42,16 +198,22 @@ async function registerCoreInterfaces(manager: ModuleManager): Promise<ModuleMan
 async function buildModuleConfigs(
   config: Record<string, any>,
   extraManifests: ModuleManifest[] = [],
+  loaderContext?: LoaderContext,
 ): Promise<Array<{ manifest: ModuleManifest; config: ModuleConfig }>> {
-  const fs = new NodeFileSystem();
-  const cache = new ModuleCache(config.cacheFolder, fs);
-  await cache.load();
+  const fs = loaderContext?.fs ?? new NodeFileSystem();
+  const cache = loaderContext?.cache ?? new ModuleCache(config.cacheFolder, fs);
+  if (!loaderContext?.cache) {
+    await cache.load();
+  }
 
-  const registry = new DownloaderRegistry();
-  registerLocalDownloader(registry, { fs });
-  registerLocalFolderDownloader(registry, { fs });
-  registerPackageDownloader(registry, { fs });
-  registerGitDownloader(registry, { fs });
+  const registry = loaderContext?.registry ?? new DownloaderRegistry();
+  if (!loaderContext?.registry) {
+    registerLocalDownloader(registry, { fs });
+    registerLocalFolderDownloader(registry, { fs });
+    registerPackageDownloader(registry, { fs });
+    registerGitDownloader(registry, { fs });
+  }
+  const projectFolder = loaderContext?.projectFolder ?? config.projectFolder;
 
   await terminalDisplay.startSpinner(`Loading modules`);
 
@@ -63,7 +225,7 @@ async function buildModuleConfigs(
 
     try {
       Logger.Trace(`Starting LoadModule for ${id}`);
-      const manifests = await registry.load(config.projectFolder, cache, source);
+      const manifests = await registry.load(projectFolder, cache, source);
       Logger.Trace(`Module manifest loaded for ${id}`);
 
       const overrides = new Map<string, Array<{ module: string; id?: string }>>();
@@ -143,9 +305,11 @@ export async function launch(
     options.verbose.forEach((channel) => addChannelFilter(channel, 0));
   }
 
+  const loaderContext = await createLoaderContext(normalizedConfig);
   const manager = new ModuleManager();
+  registerCoreModuleInterface(manager, loaderContext);
   const coreManifest = await registerCoreInterfaces(manager);
-  const modules = await buildModuleConfigs(normalizedConfig, [coreManifest]);
+  const modules = await buildModuleConfigs(normalizedConfig, [coreManifest], loaderContext);
   manager.addModules(modules);
   await terminalDisplay.startSpinner(`Constructing modules`);
   Logger.Trace(`Constructing modules`);
@@ -276,9 +440,11 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
       projectFolder: moduleRoot,
     };
 
+    const loaderContext = await createLoaderContext(normalizedConfig);
     manager = new ModuleManager();
+    registerCoreModuleInterface(manager, loaderContext);
     const coreManifest = await registerCoreInterfaces(manager);
-    const modules = await buildModuleConfigs(normalizedConfig, [coreManifest]);
+    const modules = await buildModuleConfigs(normalizedConfig, [coreManifest], loaderContext);
     manager.addModules(modules);
 
     await terminalDisplay.startSpinner(`Constructing modules`);

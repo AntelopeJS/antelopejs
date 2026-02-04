@@ -4,7 +4,6 @@ import { Logger } from './logger';
 import { LogLevel } from './log-formatter';
 import { mergeDeep } from '../utils/object';
 import { GetResponsibleModule } from '../interfaces/core/beta';
-import { Logging } from '../interfaces/logging/beta';
 import { terminalDisplay } from '../core/cli/terminal-display';
 import { formatLogMessageWithRightAlignedDate } from '../core/cli/logging-utils';
 

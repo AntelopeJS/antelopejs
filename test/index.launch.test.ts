@@ -47,6 +47,7 @@ describe('launch', () => {
           exports: {},
           imports: [],
           source: { type: 'local', watchDir },
+          loadExports: async () => {},
           reload: async () => {},
         } as any,
       ];
@@ -85,6 +86,7 @@ describe('launch', () => {
     sinon.stub(ModuleManager.prototype, 'addModules').callsFake(function (this: any, modules: any[]) {
       addedModules = modules;
       this.loaded = loaded;
+      return [] as any;
     });
     sinon.stub(ModuleManager.prototype, 'getModule').callsFake((id: string) => {
       return id === 'modA' ? localModule : undefined;
@@ -138,6 +140,7 @@ describe('launch', () => {
       _modules: any[],
     ) {
       this.loaded = undefined;
+      return [] as any;
     });
     const constructStub = sinon.stub(ModuleManager.prototype, 'constructAll').resolves();
     const startStub = sinon.stub(ModuleManager.prototype, 'startAll');
@@ -179,6 +182,7 @@ describe('launch', () => {
         exports: {},
         imports: [],
         source: { type: 'local', watchDir: 'src' },
+        loadExports: async () => {},
         reload: async () => {},
       } as any,
     ]);
@@ -197,6 +201,7 @@ describe('launch', () => {
     sinon.stub(ModuleManager.prototype, 'addModules').callsFake(function (this: any) {
       this.loaded = loaded;
       this.config = { config: { debug: true } };
+      return [] as any;
     });
     sinon.stub(ModuleManager.prototype, 'getModule').returns(localModule);
     sinon.stub(ModuleManager.prototype, 'constructAll').resolves();
