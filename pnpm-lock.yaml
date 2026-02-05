@@ -11,6 +11,9 @@ importers:
       '@types/proper-lockfile':
         specifier: ^4.1.4
         version: 4.1.4
+      async-exit-hook:
+        specifier: ^2.0.1
+        version: 2.0.1
       boxen:
         specifier: ^8.0.1
         version: 8.0.1
@@ -51,6 +54,9 @@ importers:
       '@eslint/js':
         specifier: ^9.25.0
         version: 9.25.0
+      '@types/async-exit-hook':
+        specifier: ^2.0.2
+        version: 2.0.2
       '@types/chai':
         specifier: ^4.3.20
         version: 4.3.20
@@ -481,6 +487,9 @@ packages:
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
 
+  '@types/async-exit-hook@2.0.2':
+    resolution: {integrity: sha512-RJbTNivnnn+JzNiQTtUgwo/1S6QUHwI5JfXCeUPsqZXB4LuvRwvHhbKFSS5jFDYpk8XoEAYVW2cumBOdGpXL2Q==}
+
   '@types/chai@4.3.20':
     resolution: {integrity: sha512-/pC9HAB5I/xMlc5FP77qjCnI16ChlJfW0tGa0IUcFn38VJrTV6DeZ60NU5KZBtaOZqjdpwTWohz5HU1RrhiYxQ==}
 
@@ -671,6 +680,10 @@ packages:
   ast-types@0.13.4:
     resolution: {integrity: sha512-x1FCFnFifvYDDzTaLII71vG5uvDwgtmDTEVWAxrgeiR8VjMONcCXJx7E+USjDtHlwFmt9MysbqgF9b9Vjr6w+w==}
     engines: {node: '>=4'}
+
+  async-exit-hook@2.0.1:
+    resolution: {integrity: sha512-NW2cX8m1Q7KPA7a5M2ULQeZ2wR5qI5PAbw5L0UOMxdioVk9PMZ0h1TmyZEkPYrCvYjDlFICusOu1dlEKAAeXBw==}
+    engines: {node: '>=0.12.0'}
 
   async-function@1.0.0:
     resolution: {integrity: sha512-hsU18Ae8CDTR6Kgu9DYf0EbCr/a5iGL0rytQDobUcdpYOKokk8LEjVphnXkDkgpi0wYVsqrXuP0bZxJaTqdgoA==}
@@ -2962,6 +2975,8 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
+  '@types/async-exit-hook@2.0.2': {}
+
   '@types/chai@4.3.20': {}
 
   '@types/cli-progress@3.11.6':
@@ -3191,6 +3206,8 @@ snapshots:
   ast-types@0.13.4:
     dependencies:
       tslib: 2.8.1
+
+  async-exit-hook@2.0.1: {}
 
   async-function@1.0.0: {}
 

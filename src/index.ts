@@ -1,6 +1,9 @@
 // Preload logging interfaces to avoid CJS circular dependency issues.
 import './interfaces/logging/beta';
+import exitHook from 'async-exit-hook';
+import EventEmitter from 'events';
 import path from 'path';
+import { Writable } from 'stream';
 import { ModuleManager, ModuleConfig } from './core/module-manager';
 import { ConfigLoader } from './core/config/config-loader';
 import { NodeFileSystem } from './core/filesystem';
@@ -34,6 +37,32 @@ export { ModuleCache } from './core/module-cache';
 export { LaunchOptions } from './types';
 
 const Logger = new Logging.Channel('loader');
+
+Writable.prototype.setMaxListeners(20);
+
+function setupProcessHandlers(): void {
+  process.on('uncaughtException', (error: Error) => {
+    Logging.Error('Uncaught exception:', error.message);
+    if (error.stack) {
+      Logging.Error(error.stack);
+    }
+    process.exit(1);
+  });
+
+  process.on('unhandledRejection', (reason: any) => {
+    Logging.Error('Unhandled rejection:', reason);
+    if (reason instanceof AggregateError && reason.errors) {
+      for (const err of reason.errors) {
+        Logging.Error('  -', err);
+      }
+    }
+    process.exit(1);
+  });
+
+  process.on('warning', (warning: Error) => {
+    Logging.Warn('Warning:', warning.message);
+  });
+}
 
 interface LoaderContext {
   fs: NodeFileSystem;
@@ -285,6 +314,7 @@ export async function launch(
   env: string = 'default',
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {
+  setupProcessHandlers();
   const fs = new NodeFileSystem();
   const loader = new ConfigLoader(fs);
   const loadedConfig = await loader.load(projectFolder, env);
@@ -305,22 +335,41 @@ export async function launch(
     options.verbose.forEach((channel) => addChannelFilter(channel, 0));
   }
 
-  const loaderContext = await createLoaderContext(normalizedConfig);
-  const manager = new ModuleManager();
-  registerCoreModuleInterface(manager, loaderContext);
-  const coreManifest = await registerCoreInterfaces(manager);
-  const modules = await buildModuleConfigs(normalizedConfig, [coreManifest], loaderContext);
-  manager.addModules(modules);
-  await terminalDisplay.startSpinner(`Constructing modules`);
-  Logger.Trace(`Constructing modules`);
+  const originalMaxListeners = EventEmitter.defaultMaxListeners;
+  EventEmitter.defaultMaxListeners = Math.max(originalMaxListeners, 50);
+
+  let manager!: ModuleManager;
   try {
-    await manager.constructAll();
-  } catch (err) {
-    await terminalDisplay.failSpinner(`Failed to construct modules`);
-    throw err;
+    const loaderContext = await createLoaderContext(normalizedConfig);
+    manager = new ModuleManager();
+    registerCoreModuleInterface(manager, loaderContext);
+    const coreManifest = await registerCoreInterfaces(manager);
+    const modules = await buildModuleConfigs(normalizedConfig, [coreManifest], loaderContext);
+    manager.addModules(modules);
+    await terminalDisplay.startSpinner(`Constructing modules`);
+    Logger.Trace(`Constructing modules`);
+    try {
+      await manager.constructAll();
+    } catch (err) {
+      await terminalDisplay.failSpinner(`Failed to construct modules`);
+      throw err;
+    }
+    await terminalDisplay.stopSpinner(`Done loading`);
+  } finally {
+    EventEmitter.defaultMaxListeners = originalMaxListeners;
   }
-  await terminalDisplay.stopSpinner(`Done loading`);
+
   manager.startAll();
+
+  exitHook(async (callback) => {
+    try {
+      await manager.destroyAll();
+    } catch (err) {
+      Logger.Error('Error during shutdown:', err);
+    } finally {
+      callback();
+    }
+  });
 
   if (options.watch) {
     const watcher = new FileWatcher(fs);
