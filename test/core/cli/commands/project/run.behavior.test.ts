@@ -85,7 +85,10 @@ describe('project run behavior', () => {
 
     sinon.stub(ModuleCache, 'getTemp').resolves('/tmp');
     sinon.stub(fsPromises, 'rm').resolves();
-    sinon.stub(require('fs'), 'writeFileSync');
+    let runnerScript = '';
+    sinon.stub(require('fs'), 'writeFileSync').callsFake((...args: any[]) => {
+      runnerScript = String(args[1]);
+    });
     sinon.stub(require('fs'), 'unlinkSync');
     sinon.stub(cliUi, 'sleep').resolves();
     sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
@@ -99,6 +102,9 @@ describe('project run behavior', () => {
     await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--inspect']);
 
     expect(forkStub.called).to.equal(true);
+    expect(runnerScript).to.contain('const entry = require(');
+    expect(runnerScript).to.contain('const start = entry.default ?? entry');
+    expect(runnerScript).to.contain('Antelope entrypoint is not a function');
   });
 
   it('uses string inspect options and verbose channels in forked run', async () => {

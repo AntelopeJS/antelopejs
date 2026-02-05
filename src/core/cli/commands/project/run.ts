@@ -76,9 +76,16 @@ export default function () {
           // Run in a separate process with inspect flag
           const inspectArg = options.inspect === true ? '--inspect' : `--inspect=${options.inspect}`;
 
+          const entryPath = path.resolve(__dirname, '../../../..');
+
           // Define the startup script directly with the runner code
           const runnerScript = `
-            require('${path.resolve(__dirname, '../..')}').default(
+            const entry = require(${JSON.stringify(entryPath)});
+            const start = entry.default ?? entry;
+            if (typeof start !== 'function') {
+              throw new TypeError('Antelope entrypoint is not a function');
+            }
+            start(
               process.env.ANTELOPE_PROJECT_PATH,
               process.env.ANTELOPE_ENV,
               {

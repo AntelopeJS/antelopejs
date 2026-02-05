@@ -59,7 +59,9 @@ describe('core/beta module interface', () => {
     sinon.stub(ModuleManager.prototype, 'listModules').returns(['modA', 'modB']);
     sinon.stub(ModuleManager.prototype, 'getModuleEntry').returns(entry as any);
     sinon.stub(ModuleManager.prototype, 'getLoadedModuleEntry').returns(entry as any);
-    sinon.stub(ModuleManager.prototype, 'addModules').returns([{ module: { id: 'modA' }, config: entry.config } as any]);
+    sinon
+      .stub(ModuleManager.prototype, 'addModules')
+      .returns([{ module: { id: 'modA' }, config: entry.config } as any]);
     const constructStub = sinon.stub(ModuleManager.prototype, 'constructModules').resolves();
     const startStub = sinon.stub(ModuleManager.prototype, 'startModules');
     const replaceStub = sinon.stub(ModuleManager.prototype, 'replaceLoadedModule').returns(entry as any);
