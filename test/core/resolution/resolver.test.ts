@@ -68,6 +68,23 @@ describe('Resolver', () => {
     expect(result).to.equal('/modB/interfaces/core/beta');
   });
 
+  it('returns undefined for invalid @ajs.raw request pattern', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.modulesById.set('modB', moduleB);
+
+    const result = resolver.resolve('@ajs.raw/modB/corebeta/extra', undefined);
+
+    expect(result).to.equal(undefined);
+  });
+
+  it('returns undefined when @ajs.raw module id is unknown', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+
+    const result = resolver.resolve('@ajs.raw/missing/core@beta/extra', undefined);
+
+    expect(result).to.equal(undefined);
+  });
+
   it('should resolve module aliases using PathMapper', () => {
     const mapper = new PathMapper(() => false);
     const resolver = new Resolver(mapper);
@@ -76,5 +93,25 @@ describe('Resolver', () => {
     const result = resolver.resolve('@src/utils', { filename: '/modA/src/index.js' } as any);
 
     expect(result).to.equal('/modA/src/utils');
+  });
+
+  it('returns undefined for invalid @ajs request pattern', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.moduleByFolder.set('/modA', moduleA);
+
+    const result = resolver.resolve('@ajs/invalid', { filename: '/modA/src/index.js' } as any);
+
+    expect(result).to.equal(undefined);
+  });
+
+  it('prefers the longest matching folder', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.moduleByFolder.set('/modA', moduleA);
+    resolver.moduleByFolder.set('/mod', moduleB);
+    resolver.moduleAssociations.set('modA', new Map([['core@beta', moduleB]]));
+
+    const result = resolver.resolve('@ajs/core/beta', { filename: '/modA/src/index.js' } as any);
+
+    expect(result).to.equal('/modB/interfaces/core/beta');
   });
 });

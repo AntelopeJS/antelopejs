@@ -4,6 +4,8 @@ import { registerGitDownloader } from '../../../src/core/downloaders/git';
 import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 import { ModuleCache } from '../../../src/core/module-cache';
 import { ModuleSourceGit } from '../../../src/types';
+import { terminalDisplay } from '../../../src/core/cli/terminal-display';
+import sinon from 'sinon';
 
 function sanitize(remote: string): string {
   return remote.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -238,6 +240,47 @@ describe('GitDownloader', () => {
       expect.fail('Expected failure');
     } catch (err) {
       expect(err).to.be.instanceOf(Error);
+    }
+  });
+
+  it('throws when rev-parse command throws', async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache('/cache', fs);
+    await cache.load();
+
+    const failSpinnerStub = sinon.stub(terminalDisplay, 'failSpinner').resolves();
+
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      if (command.startsWith('git clone')) {
+        const parts = command.split(' ');
+        const folderName = parts[parts.length - 1];
+        const repoPath = `/cache/${folderName}`;
+        await fs.writeFile(`${repoPath}/package.json`, JSON.stringify({ name: 'repo', version: '1.0.0' }));
+        return { stdout: '', stderr: '', code: 0 };
+      }
+      if (command.startsWith('git rev-parse')) {
+        throw new Error('command exploded');
+      }
+      return { stdout: '', stderr: '', code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: 'git',
+      remote: 'https://github.com/org/repo.git',
+      ignoreCache: true,
+    };
+
+    try {
+      await registry.load('/project', cache, source);
+      expect.fail('Expected failure');
+    } catch (err) {
+      expect(String(err)).to.include('command exploded');
+      expect(failSpinnerStub.called).to.equal(true);
+    } finally {
+      failSpinnerStub.restore();
     }
   });
 

@@ -31,6 +31,11 @@ describe('Package Manager Utils', () => {
       await fs.writeFile('/project/package.json', '{invalid');
       expect(await getModulePackageManager('/project', fs)).to.equal(undefined);
     });
+
+    it('returns undefined when package.json does not exist', async () => {
+      const fs = new InMemoryFileSystem();
+      expect(await getModulePackageManager('/project', fs)).to.equal(undefined);
+    });
   });
 
   describe('install command builders', () => {
@@ -53,6 +58,13 @@ describe('Package Manager Utils', () => {
     it('defaults to npm when package manager is missing', async () => {
       const fs = new InMemoryFileSystem();
       await fs.writeFile('/project/package.json', JSON.stringify({}));
+      expect(await getInstallCommand('/project', false, fs)).to.include('npm install');
+      expect(await getInstallPackagesCommand(['a'], false, '/project', fs)).to.include('npm install');
+    });
+
+    it('defaults to npm when package manager is unsupported', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile('/project/package.json', JSON.stringify({ packageManager: 'bun@1.0.0' }));
       expect(await getInstallCommand('/project', false, fs)).to.include('npm install');
       expect(await getInstallPackagesCommand(['a'], false, '/project', fs)).to.include('npm install');
     });
@@ -101,6 +113,22 @@ describe('Package Manager Utils', () => {
         expect(pkg.packageManager).to.include('npm@');
       } finally {
         execStub.restore();
+        cleanupTempDir(tempDir);
+      }
+    });
+
+    it('warns with non-error throw payloads', () => {
+      const tempDir = makeTempDir();
+      const fsModule = require('fs');
+      const readStub = sinon.stub(fsModule, 'readFileSync').throws('bad-read');
+      const warnStub = sinon.stub(cliUi, 'warning');
+      try {
+        writeJson(`${tempDir}/package.json`, { name: 'test' });
+        savePackageManagerToPackageJson('npm', tempDir);
+        expect(warnStub.called).to.equal(true);
+      } finally {
+        readStub.restore();
+        warnStub.restore();
         cleanupTempDir(tempDir);
       }
     });

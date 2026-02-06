@@ -150,5 +150,25 @@ describe('ConfigLoader', () => {
 
       expect(config.modules.database.config).to.deep.equal({ host: 'localhost' });
     });
+
+    it('uses default cache folder when env overrides return undefined', async () => {
+      await fs.writeFile(
+        '/project/antelope.json',
+        JSON.stringify({
+          name: 'my-app',
+          cacheFolder: '/custom-cache',
+          modules: {},
+        }),
+      );
+
+      sinon.stub((loader as any).parser, 'applyEnvOverrides').callsFake((config: any) => ({
+        ...config,
+        cacheFolder: undefined,
+      }));
+
+      const config = await loader.load('/project');
+
+      expect(config.cacheFolder).to.equal('.antelope/cache');
+    });
   });
 });
