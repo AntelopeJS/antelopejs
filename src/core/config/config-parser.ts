@@ -1,10 +1,10 @@
-import { AntelopeModuleConfig, ModuleSourcePackage } from '../../types';
+import { AntelopeModuleConfig, ImportOverride, ModuleSourcePackage } from '../../types';
 import { set, isObject } from '../../utils/object';
 
 export interface ExpandedModuleConfig {
   source: import('../../types').ModuleSource;
   config: unknown;
-  importOverrides: Array<{ interface: string; source: string; id?: string }>;
+  importOverrides: ImportOverride[];
   disabledExports: string[];
 }
 
@@ -108,7 +108,7 @@ export class ConfigParser {
           source = { type: 'package', package: name, version: config.version } as ModuleSourcePackage;
         }
 
-        let importOverrides: Array<{ interface: string; source: string; id?: string }> = [];
+        let importOverrides: ImportOverride[] = [];
         if (config.importOverrides) {
           if (Array.isArray(config.importOverrides)) {
             importOverrides = config.importOverrides;

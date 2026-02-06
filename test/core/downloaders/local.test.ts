@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { DownloaderRegistry } from '../../../src/core/downloaders/registry';
 import { registerLocalDownloader } from '../../../src/core/downloaders/local';
-import { InMemoryFileSystem } from '../../../src/core/filesystem';
+import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 import { ModuleCache } from '../../../src/core/module-cache';
 import { ModuleSourceLocal } from '../../../src/types';
 import { cleanupTempDir, makeTempDir } from '../../helpers/temp';

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { DownloaderRegistry } from '../../../src/core/downloaders/registry';
 import { registerGitDownloader } from '../../../src/core/downloaders/git';
-import { InMemoryFileSystem } from '../../../src/core/filesystem';
+import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 import { ModuleCache } from '../../../src/core/module-cache';
 import { ModuleSourceGit } from '../../../src/types';
 

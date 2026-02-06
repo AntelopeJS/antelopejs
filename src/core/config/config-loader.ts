@@ -11,6 +11,8 @@ export interface LoadedConfig {
   envOverrides: Record<string, string | string[]>;
 }
 
+const DEFAULT_CACHE_DIR = '.antelope/cache';
+
 export class ConfigLoader {
   private parser = new ConfigParser();
 
@@ -25,7 +27,7 @@ export class ConfigLoader {
       config = mergeDeep(config, rawConfig.environments[environment]) as AntelopeConfig;
     }
 
-    config.cacheFolder = config.cacheFolder ?? '.antelope/cache';
+    config.cacheFolder = config.cacheFolder ?? DEFAULT_CACHE_DIR;
 
     const modules = config.modules ?? {};
     const expandedModules = this.parser.expandModuleShorthand(modules);
@@ -46,7 +48,7 @@ export class ConfigLoader {
 
     const processed = this.parser.processTemplates({
       name: configWithOverrides.name,
-      cacheFolder: configWithOverrides.cacheFolder ?? '.antelope/cache',
+      cacheFolder: configWithOverrides.cacheFolder ?? DEFAULT_CACHE_DIR,
       modules: configWithOverrides.modules,
       logging: configWithOverrides.logging,
       envOverrides: envOverrides,

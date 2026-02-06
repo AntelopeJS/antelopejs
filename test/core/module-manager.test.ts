@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import { ModuleManager } from '../../src/core/module-manager';
 import { ModuleManifest } from '../../src/core/module-manifest';
-import { InMemoryFileSystem } from '../../src/core/filesystem';
+import { InMemoryFileSystem } from '../helpers/in-memory-filesystem';
 import { Resolver } from '../../src/core/resolution/resolver';
 import { PathMapper } from '../../src/core/resolution/path-mapper';
 import { internal } from '../../src/interfaces/core/beta';

@@ -1,12 +1,14 @@
 export type ReloadHandler = (moduleId: string) => void | Promise<void>;
 
+const DEFAULT_DEBOUNCE_MS = 500;
+
 export class HotReload {
   private pending = new Set<string>();
   private timer?: NodeJS.Timeout;
 
   constructor(
     private reload: ReloadHandler,
-    private debounceMs: number = 500,
+    private debounceMs: number = DEFAULT_DEBOUNCE_MS,
   ) {}
 
   queue(moduleId: string): void {

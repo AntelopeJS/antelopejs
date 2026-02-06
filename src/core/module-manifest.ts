@@ -32,13 +32,18 @@ export interface ModulePackageJson {
   _moduleAliases?: Record<string, string>;
 }
 
+interface PathMapping {
+  key: string;
+  values: string[];
+}
+
 export class ModuleManifest {
   public version: string;
   public readonly folder: string;
   public readonly main: string;
 
   public readonly baseUrl: string;
-  public readonly paths: { key: string; values: string[] }[] = [];
+  public readonly paths: PathMapping[] = [];
 
   public manifest: ModulePackageJson;
   public exportsPath: string;

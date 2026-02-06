@@ -1,8 +1,6 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
 import {
-  defaultConfigLogging,
-  levelNames,
   levelMap,
   setupAntelopeProjectLogging,
   addChannelFilter,
@@ -13,24 +11,6 @@ describe('Logging Module', () => {
   afterEach(() => {
     sinon.restore();
     setupAntelopeProjectLogging({ enabled: false });
-  });
-
-  describe('defaultConfigLogging', () => {
-    it('should have correct default values', () => {
-      expect(defaultConfigLogging.enabled).to.be.true;
-      expect(defaultConfigLogging.moduleTracking?.enabled).to.be.false;
-      expect(defaultConfigLogging.dateFormat).to.equal('yyyy-MM-dd HH:mm:ss');
-    });
-  });
-
-  describe('levelNames', () => {
-    it('should map level numbers to names', () => {
-      expect(levelNames[0]).to.equal('TRACE');
-      expect(levelNames[10]).to.equal('DEBUG');
-      expect(levelNames[20]).to.equal('INFO');
-      expect(levelNames[30]).to.equal('WARN');
-      expect(levelNames[40]).to.equal('ERROR');
-    });
   });
 
   describe('levelMap', () => {

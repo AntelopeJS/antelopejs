@@ -11,7 +11,7 @@ import {
   writeModuleManifest,
   writeUserConfig,
 } from '../../../src/core/cli/common';
-import { InMemoryFileSystem } from '../../../src/core/filesystem';
+import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 import { cleanupTempDir, makeTempDir } from '../../helpers/temp';
 import * as cliUi from '../../../src/core/cli/cli-ui';
 

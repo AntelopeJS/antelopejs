@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ModuleCache } from '../../src/core/module-cache';
-import { InMemoryFileSystem } from '../../src/core/filesystem';
+import { InMemoryFileSystem } from '../helpers/in-memory-filesystem';
 
 describe('ModuleCache', () => {
   it('should load and persist manifest data', async () => {

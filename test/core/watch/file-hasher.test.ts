@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { FileHasher } from '../../../src/core/watch/file-hasher';
-import { InMemoryFileSystem } from '../../../src/core/filesystem';
+import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 
 describe('FileHasher', () => {
   it('should produce different hashes for different content', async () => {

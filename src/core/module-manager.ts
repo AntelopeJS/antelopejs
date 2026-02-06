@@ -92,6 +92,13 @@ export class ModuleManager {
     return this.loaded.get(id);
   }
 
+  getLoadedModules(): IterableIterator<ManagedModule> {
+    if (!(this.loaded instanceof Map)) {
+      return new Map<string, ManagedModule>().values();
+    }
+    return this.loaded.values();
+  }
+
   unrequireModuleFiles(moduleId: string): void {
     const entry = this.loaded.get(moduleId);
     if (!entry) {
@@ -210,6 +217,11 @@ export class ModuleManager {
   }
 
   private rebuildAssociations(): void {
+    const interfaceSources = this.collectInterfaceSources();
+    this.buildModuleAssociations(interfaceSources);
+  }
+
+  private collectInterfaceSources(): Map<string, Module> {
     this.resolver.moduleByFolder.clear();
     this.resolver.moduleAssociations.clear();
     this.resolver.modulesById.clear();
@@ -240,32 +252,50 @@ export class ModuleManager {
         }
       }
     }
+    return interfaceSources;
+  }
 
+  private buildModuleAssociations(interfaceSources: Map<string, Module>): void {
     for (const { module, config } of this.loaded.values()) {
       const associations = new Map<string, Module | null>();
       const connections = new Map<string, InterfaceConnectionRef[]>();
-
-      for (const iface of module.manifest.imports) {
-        const provider = interfaceSources.get(iface);
-        if (provider) {
-          associations.set(iface, provider);
-          connections.set(iface, [{ module: provider.id }]);
-        }
-      }
-
-      if (config.importOverrides) {
-        for (const [iface, overrides] of config.importOverrides.entries()) {
-          const usable = overrides.filter((override) => this.loaded.has(override.module));
-          connections.set(iface, usable);
-          if (usable.length > 0) {
-            const target = this.loaded.get(usable[0].module)!.module;
-            associations.set(iface, target);
-          }
-        }
-      }
-
+      this.addDefaultAssociations(module, associations, connections, interfaceSources);
+      this.applyImportOverrides(config.importOverrides, associations, connections);
       this.resolver.moduleAssociations.set(module.id, associations);
       this.interfaceRegistry.setConnections(module.id, connections);
+    }
+  }
+
+  private addDefaultAssociations(
+    module: Module,
+    associations: Map<string, Module | null>,
+    connections: Map<string, InterfaceConnectionRef[]>,
+    interfaceSources: Map<string, Module>,
+  ): void {
+    for (const iface of module.manifest.imports) {
+      const provider = interfaceSources.get(iface);
+      if (provider) {
+        associations.set(iface, provider);
+        connections.set(iface, [{ module: provider.id }]);
+      }
+    }
+  }
+
+  private applyImportOverrides(
+    importOverrides: Map<string, InterfaceConnectionRef[]> | undefined,
+    associations: Map<string, Module | null>,
+    connections: Map<string, InterfaceConnectionRef[]>,
+  ): void {
+    if (!importOverrides) {
+      return;
+    }
+    for (const [iface, overrides] of importOverrides.entries()) {
+      const usable = overrides.filter((override) => this.loaded.has(override.module));
+      connections.set(iface, usable);
+      if (usable.length > 0) {
+        const target = this.loaded.get(usable[0].module)!.module;
+        associations.set(iface, target);
+      }
     }
   }
 

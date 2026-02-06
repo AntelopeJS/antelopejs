@@ -7,11 +7,17 @@ export interface AntelopeConfig {
   environments?: Record<string, Partial<AntelopeConfig>>;
 }
 
+export interface ImportOverride {
+  interface: string;
+  source: string;
+  id?: string;
+}
+
 export interface AntelopeModuleConfig {
   version?: string;
   source?: import('./module.types').ModuleSource;
   config?: unknown;
-  importOverrides?: Array<{ interface: string; source: string; id?: string }> | Record<string, string>;
+  importOverrides?: ImportOverride[] | Record<string, string>;
   disabledExports?: string[];
 }
 

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { ConfigLoader } from '../../../src/core/config/config-loader';
-import { InMemoryFileSystem } from '../../../src/core/filesystem';
+import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 
 describe('ConfigLoader', () => {
   let fs: InMemoryFileSystem;

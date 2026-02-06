@@ -4,18 +4,6 @@ export interface DeferredPromise<T> {
   reject: (reason?: unknown) => void;
 }
 
-export function ResolveLater<T>(): DeferredPromise<T> {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  let reject!: (reason?: unknown) => void;
-
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-
-  return { promise, resolve, reject };
-}
-
 export function Detour<T extends (...args: any[]) => any>(fn: T, sideEffect: (...args: Parameters<T>) => void): T {
   return ((...args: Parameters<T>) => {
     sideEffect(...args);

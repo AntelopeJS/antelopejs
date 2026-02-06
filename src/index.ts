@@ -1,11 +1,11 @@
-// Preload logging interfaces to avoid CJS circular dependency issues.
 import './interfaces/logging/beta';
 import exitHook from 'async-exit-hook';
 import EventEmitter from 'events';
 import path from 'path';
 import { Writable } from 'stream';
 import { ModuleManager, ModuleConfig } from './core/module-manager';
-import { ConfigLoader } from './core/config/config-loader';
+import { ConfigLoader, LoadedConfig } from './core/config/config-loader';
+import { ExpandedModuleConfig } from './core/config/config-parser';
 import { NodeFileSystem } from './core/filesystem';
 import { ModuleCache } from './core/module-cache';
 import { DownloaderRegistry } from './core/downloaders/registry';
@@ -38,7 +38,39 @@ export { LaunchOptions } from './types';
 
 const Logger = new Logging.Channel('loader');
 
-Writable.prototype.setMaxListeners(20);
+const MAX_STREAM_LISTENERS = 20;
+const EXIT_CODE_ERROR = 1;
+const DEFAULT_MAX_EVENT_LISTENERS = 50;
+const DEFAULT_ENV = 'default';
+const DEFAULT_TEST_CACHE_FOLDER = '.cache';
+const DEFAULT_TEST_FOLDER = 'test';
+const TEST_FILE_PATTERN = /\.(test|spec)\.(js|ts)$/;
+const INTERACTIVE_PROMPT = '> ';
+const MODULE_STATUS_MAP: Record<string, moduleInterfaceBeta.ModuleInfo['status']> = {
+  loaded: 'loaded',
+  constructed: 'constructed',
+  active: 'active',
+};
+
+Writable.prototype.setMaxListeners(MAX_STREAM_LISTENERS);
+
+interface ModuleOverrideRef {
+  module: string;
+  id?: string;
+}
+
+type ModuleOverrideMap = Map<string, ModuleOverrideRef[]>;
+
+interface ModuleManifestEntry {
+  manifest: ModuleManifest;
+  config: ModuleConfig;
+}
+
+interface NormalizedLoadedConfig extends LoadedConfig {
+  cacheFolder: string;
+  projectFolder: string;
+  modules: Record<string, ExpandedModuleConfig>;
+}
 
 function setupProcessHandlers(): void {
   process.on('uncaughtException', (error: Error) => {
@@ -46,7 +78,7 @@ function setupProcessHandlers(): void {
     if (error.stack) {
       Logging.Error(error.stack);
     }
-    process.exit(1);
+    process.exit(EXIT_CODE_ERROR);
   });
 
   process.on('unhandledRejection', (reason: any) => {
@@ -56,7 +88,7 @@ function setupProcessHandlers(): void {
         Logging.Error('  -', err);
       }
     }
-    process.exit(1);
+    process.exit(EXIT_CODE_ERROR);
   });
 
   process.on('warning', (warning: Error) => {
@@ -90,8 +122,8 @@ async function createLoaderContext(config: { cacheFolder: string; projectFolder:
   };
 }
 
-function mapImportOverrides(overrides?: Record<string, string[]>): Map<string, Array<{ module: string }>> {
-  const mapped = new Map<string, Array<{ module: string }>>();
+function mapImportOverrides(overrides?: Record<string, string[]>): ModuleOverrideMap {
+  const mapped: ModuleOverrideMap = new Map();
   if (!overrides) {
     return mapped;
   }
@@ -105,7 +137,7 @@ function mapImportOverrides(overrides?: Record<string, string[]>): Map<string, A
 }
 
 function exportImportOverrides(
-  overrides?: Map<string, Array<{ module: string; id?: string }>>,
+  overrides?: ModuleOverrideMap,
 ): Record<string, string[]> {
   const result: Record<string, string[]> = {};
   if (!overrides) {
@@ -118,14 +150,7 @@ function exportImportOverrides(
 }
 
 function getModuleStatus(module: { state: string }): moduleInterfaceBeta.ModuleInfo['status'] {
-  switch (module.state) {
-    case 'loaded':
-    case 'constructed':
-    case 'active':
-      return module.state;
-    default:
-      return 'unknown';
-  }
+  return MODULE_STATUS_MAP[module.state] ?? 'unknown';
 }
 
 function toModuleSource(source: moduleInterfaceBeta.ModuleDefinition['source']): ModuleSource {
@@ -224,17 +249,48 @@ async function registerCoreInterfaces(manager: ModuleManager): Promise<ModuleMan
   return coreManifest;
 }
 
-async function buildModuleConfigs(
-  config: Record<string, any>,
-  extraManifests: ModuleManifest[] = [],
+interface ModuleBuildContext {
+  fs: NodeFileSystem;
+  cache: ModuleCache;
+  registry: DownloaderRegistry;
+  projectFolder: string;
+}
+
+function buildModuleOverrides(importOverrides?: ExpandedModuleConfig['importOverrides']): ModuleOverrideMap {
+  const overrides: ModuleOverrideMap = new Map();
+  if (!importOverrides) {
+    return overrides;
+  }
+  for (const override of importOverrides) {
+    const list = overrides.get(override.interface) ?? [];
+    list.push({ module: override.source, id: override.id });
+    overrides.set(override.interface, list);
+  }
+  return overrides;
+}
+
+function buildManifestEntries(manifests: ModuleManifest[], moduleConfig: ExpandedModuleConfig): ModuleManifestEntry[] {
+  const overrides = buildModuleOverrides(moduleConfig.importOverrides);
+  const disabledExports = new Set<string>(Array.isArray(moduleConfig.disabledExports) ? moduleConfig.disabledExports : []);
+  return manifests.map((manifest) => ({
+    manifest,
+    config: {
+      config: moduleConfig.config,
+      disabledExports,
+      importOverrides: overrides,
+    },
+  }));
+}
+
+async function createModuleBuildContext(
+  config: NormalizedLoadedConfig,
   loaderContext?: LoaderContext,
-): Promise<Array<{ manifest: ModuleManifest; config: ModuleConfig }>> {
+): Promise<ModuleBuildContext> {
   const fs = loaderContext?.fs ?? new NodeFileSystem();
   const cache = loaderContext?.cache ?? new ModuleCache(config.cacheFolder, fs);
   if (!loaderContext?.cache) {
     await cache.load();
   }
-
   const registry = loaderContext?.registry ?? new DownloaderRegistry();
   if (!loaderContext?.registry) {
     registerLocalDownloader(registry, { fs });
@@ -242,42 +298,28 @@ async function buildModuleConfigs(
     registerPackageDownloader(registry, { fs });
     registerGitDownloader(registry, { fs });
   }
-  const projectFolder = loaderContext?.projectFolder ?? config.projectFolder;
+  return {
+    fs,
+    cache,
+    registry,
+    projectFolder: loaderContext?.projectFolder ?? config.projectFolder,
+  };
+}
 
-  await terminalDisplay.startSpinner(`Loading modules`);
-
-  const modulePromises = Object.entries(config.modules ?? {}).map(async ([id, moduleConfig]) => {
-    const entry = moduleConfig as any;
-    const source = { ...entry.source, id };
-
+async function loadModuleEntries(
+  modules: Record<string, ExpandedModuleConfig>,
+  context: ModuleBuildContext,
+): Promise<ModuleManifestEntry[]> {
+  const modulePromises = Object.entries(modules).map(async ([id, moduleConfig]) => {
+    const source = { ...moduleConfig.source, id };
     Logger.Debug(`Loading module ${id}`);
-
     try {
       Logger.Trace(`Starting LoadModule for ${id}`);
-      const manifests = await registry.load(projectFolder, cache, source);
+      const manifests = await context.registry.load(context.projectFolder, context.cache, source);
       Logger.Trace(`Module manifest loaded for ${id}`);
-
-      const overrides = new Map<string, Array<{ module: string; id?: string }>>();
-      if (entry.importOverrides) {
-        for (const override of entry.importOverrides) {
-          const list = overrides.get(override.interface) ?? [];
-          list.push({ module: override.source, id: override.id });
-          overrides.set(override.interface, list);
-        }
-      }
-
-      const disabledExports = new Set<string>(Array.isArray(entry.disabledExports) ? entry.disabledExports : []);
-      const created = manifests.map((manifest) => ({
-        manifest,
-        config: {
-          config: entry.config,
-          disabledExports,
-          importOverrides: overrides,
-        },
-      }));
-
+      const entries = buildManifestEntries(manifests, moduleConfig);
       Logger.Trace(`Modules created for ${id}`);
-      return created;
+      return entries;
     } catch (err) {
       await terminalDisplay.failSpinner(`Failed to load module ${id}`);
       await terminalDisplay.cleanSpinner();
@@ -286,81 +328,102 @@ async function buildModuleConfigs(
       throw err;
     }
   });
+  return (await Promise.all(modulePromises)).flat();
+}
 
-  const moduleResults = await Promise.all(modulePromises);
-  const modules = moduleResults.flat();
-  await terminalDisplay.stopSpinner(`Modules loaded`);
-
+async function loadEntryExports(extraManifests: ModuleManifest[], entries: ModuleManifestEntry[]): Promise<void> {
   await terminalDisplay.startSpinner(`Loading exports`);
   Logger.Trace(`Loading exports`);
-  const exportTargets = [...extraManifests, ...modules.map((module) => module.manifest)];
+  const exportTargets = [...extraManifests, ...entries.map((module) => module.manifest)];
   await Promise.all(exportTargets.map((manifest) => manifest.loadExports()));
   await terminalDisplay.stopSpinner(`Exports loaded`);
+}
 
+function validateModuleNameCollisions(entries: ModuleManifestEntry[]): void {
   const seen = new Set<string>();
-  for (const module of modules) {
+  for (const module of entries) {
     if (seen.has(module.manifest.name)) {
       Logger.Error(`Detected module id collision (name in package.json): ${module.manifest.name}`);
     } else {
       seen.add(module.manifest.name);
     }
   }
+}
 
+async function buildModuleConfigs(
+  config: NormalizedLoadedConfig,
+  extraManifests: ModuleManifest[] = [],
+  loaderContext?: LoaderContext,
+): Promise<ModuleManifestEntry[]> {
+  const context = await createModuleBuildContext(config, loaderContext);
+  await terminalDisplay.startSpinner(`Loading modules`);
+  const modules = await loadModuleEntries(config.modules ?? {}, context);
+  await terminalDisplay.stopSpinner(`Modules loaded`);
+  await loadEntryExports(extraManifests, modules);
+  validateModuleNameCollisions(modules);
   return modules;
 }
 
-export async function launch(
-  projectFolder: string = '.',
-  env: string = 'default',
-  options: LaunchOptions = {},
-): Promise<ModuleManager> {
-  setupProcessHandlers();
-  const fs = new NodeFileSystem();
-  const loader = new ConfigLoader(fs);
-  const loadedConfig = await loader.load(projectFolder, env);
-
+function normalizeLoadedConfig(loadedConfig: LoadedConfig, projectFolder: string): NormalizedLoadedConfig {
   const absoluteCache = path.isAbsolute(loadedConfig.cacheFolder)
     ? loadedConfig.cacheFolder
     : path.join(projectFolder, loadedConfig.cacheFolder);
-
-  const normalizedConfig = {
+  return {
     ...loadedConfig,
+    modules: loadedConfig.modules ?? {},
     cacheFolder: absoluteCache,
     projectFolder: path.resolve(projectFolder),
-  } as any;
+  };
+}
 
-  setupAntelopeProjectLogging(loadedConfig.logging);
-
-  if (options.verbose) {
-    options.verbose.forEach((channel) => addChannelFilter(channel, 0));
+function getWatchDirs(source: ModuleSource): string[] {
+  if (source.type !== 'local') {
+    return [''];
   }
+  const localSource = source as ModuleSourceLocal;
+  if (Array.isArray(localSource.watchDir)) {
+    return localSource.watchDir;
+  }
+  if (localSource.watchDir) {
+    return [localSource.watchDir];
+  }
+  return [''];
+}
 
-  const originalMaxListeners = EventEmitter.defaultMaxListeners;
-  EventEmitter.defaultMaxListeners = Math.max(originalMaxListeners, 50);
+async function reloadWatchedModule(manager: ModuleManager, moduleId: string): Promise<void> {
+  const entry = manager.getModuleEntry(moduleId);
+  if (!entry) {
+    return;
+  }
+  manager.unrequireModuleFiles(moduleId);
+  await entry.module.reload();
+  await entry.module.construct(entry.config.config);
+  entry.module.start();
+}
 
-  let manager!: ModuleManager;
+async function loadAndStartModules(manager: ModuleManager, config: NormalizedLoadedConfig): Promise<void> {
+  const loaderContext = await createLoaderContext(config);
+  registerCoreModuleInterface(manager, loaderContext);
+  const coreManifest = await registerCoreInterfaces(manager);
+  const modules = await buildModuleConfigs(config, [coreManifest], loaderContext);
+  manager.addModules(modules);
+  await terminalDisplay.startSpinner(`Constructing modules`);
+  Logger.Trace(`Constructing modules`);
   try {
-    const loaderContext = await createLoaderContext(normalizedConfig);
-    manager = new ModuleManager();
-    registerCoreModuleInterface(manager, loaderContext);
-    const coreManifest = await registerCoreInterfaces(manager);
-    const modules = await buildModuleConfigs(normalizedConfig, [coreManifest], loaderContext);
-    manager.addModules(modules);
-    await terminalDisplay.startSpinner(`Constructing modules`);
-    Logger.Trace(`Constructing modules`);
-    try {
-      await manager.constructAll();
-    } catch (err) {
-      await terminalDisplay.failSpinner(`Failed to construct modules`);
-      throw err;
-    }
-    await terminalDisplay.stopSpinner(`Done loading`);
-  } finally {
-    EventEmitter.defaultMaxListeners = originalMaxListeners;
+    await manager.constructAll();
+  } catch (err) {
+    await terminalDisplay.failSpinner(`Failed to construct modules`);
+    throw err;
   }
-
+  await terminalDisplay.stopSpinner(`Done loading`);
   manager.startAll();
+}
 
+async function setupPostLaunchFeatures(
+  manager: ModuleManager,
+  fs: NodeFileSystem,
+  options: LaunchOptions,
+): Promise<void> {
   exitHook(async (callback) => {
     try {
       await manager.destroyAll();
@@ -373,36 +436,54 @@ export async function launch(
 
   if (options.watch) {
     const watcher = new FileWatcher(fs);
-    const hotReload = new HotReload(async (moduleId) => {
-      const entry = manager.getModuleEntry(moduleId);
-      if (!entry) return;
-      manager.unrequireModuleFiles(moduleId);
-      await entry.module.reload();
-      await entry.module.construct(entry.config.config);
-      entry.module.start();
-    });
-
-    for (const { module } of (manager as any).loaded?.values?.() ?? []) {
+    const hotReload = new HotReload(async (moduleId) => reloadWatchedModule(manager, moduleId));
+    for (const { module } of manager.getLoadedModules()) {
       if (module.manifest?.source?.type === 'local') {
-        const watchDirs = Array.isArray(module.manifest.source.watchDir)
-          ? module.manifest.source.watchDir
-          : module.manifest.source.watchDir
-            ? [module.manifest.source.watchDir]
-            : [''];
-        await watcher.scanModule(module.id, module.manifest.folder, watchDirs);
+        await watcher.scanModule(module.id, module.manifest.folder, getWatchDirs(module.manifest.source));
       }
     }
-
     watcher.onModuleChanged((id) => hotReload.queue(id));
     watcher.startWatching();
   }
 
   if (options.interactive) {
     const repl = new ReplSession({ moduleManager: manager });
-    repl.start('> ');
+    repl.start(INTERACTIVE_PROMPT);
   }
+}
 
-  return manager;
+async function initializeCore(projectFolder: string, env: string, options: LaunchOptions): Promise<{
+  manager: ModuleManager;
+  fs: NodeFileSystem;
+}> {
+  setupProcessHandlers();
+  const fs = new NodeFileSystem();
+  const loader = new ConfigLoader(fs);
+  const loadedConfig = await loader.load(projectFolder, env);
+  const normalizedConfig = normalizeLoadedConfig(loadedConfig, projectFolder);
+  setupAntelopeProjectLogging(loadedConfig.logging);
+  if (options.verbose) {
+    options.verbose.forEach((channel) => addChannelFilter(channel, 0));
+  }
+  const originalMaxListeners = EventEmitter.defaultMaxListeners;
+  EventEmitter.defaultMaxListeners = Math.max(originalMaxListeners, DEFAULT_MAX_EVENT_LISTENERS);
+  const manager = new ModuleManager();
+  try {
+    await loadAndStartModules(manager, normalizedConfig);
+  } finally {
+    EventEmitter.defaultMaxListeners = originalMaxListeners;
+  }
+  return { manager, fs };
+}
+
+export async function launch(
+  projectFolder: string = '.',
+  env: string = DEFAULT_ENV,
+  options: LaunchOptions = {},
+): Promise<ModuleManager> {
+  const initialized = await initializeCore(projectFolder, env, options);
+  await setupPostLaunchFeatures(initialized.manager, initialized.fs, options);
+  return initialized.manager;
 }
 
 async function collectTestFiles(folder: string, pattern: RegExp, fs: NodeFileSystem): Promise<string[]> {
@@ -424,7 +505,7 @@ async function collectTestFiles(folder: string, pattern: RegExp, fs: NodeFileSys
   try {
     await scanDir(folder);
   } catch {
-    // Folder doesn't exist or is not accessible.
+    return files;
   }
 
   return files;
@@ -439,7 +520,48 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
 
   const moduleRoot = path.resolve(moduleFolder);
   const fs = new NodeFileSystem();
+  const loadedConfig = await loadTestConfig(moduleRoot, fs);
+  if (!loadedConfig) {
+    return EXIT_CODE_ERROR;
+  }
 
+  let manager: ModuleManager | null = null;
+  let managerActive = false;
+
+  try {
+    manager = await setupTestEnvironment(moduleRoot, loadedConfig.config);
+    managerActive = true;
+    const failures = await executeTests(moduleRoot, loadedConfig.testConfig, fs);
+    if (failures === EXIT_CODE_ERROR) {
+      await manager.destroyAll();
+      managerActive = false;
+      return EXIT_CODE_ERROR;
+    }
+    await manager.destroyAll();
+    managerActive = false;
+    return failures;
+  } finally {
+    if (manager && managerActive) {
+      await manager.destroyAll();
+    }
+    if (loadedConfig.rawConfig && typeof loadedConfig.rawConfig.cleanup === 'function') {
+      await loadedConfig.rawConfig.cleanup();
+    }
+  }
+}
+
+interface TestModuleProjectConfig {
+  project?: string;
+  folder?: string;
+}
+
+interface LoadedTestConfig {
+  testConfig: TestModuleProjectConfig;
+  rawConfig: any;
+  config: any;
+}
+
+async function loadTestConfig(moduleRoot: string, fs: NodeFileSystem): Promise<LoadedTestConfig | undefined> {
   const packPath = path.join(moduleRoot, 'package.json');
   let pack: any;
   try {
@@ -447,18 +569,18 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
     pack = JSON.parse(packContent);
   } catch {
     console.error('Missing or invalid package.json');
-    return 1;
+    return undefined;
   }
 
   const testConfig = pack.antelopeJs?.test;
   if (!testConfig) {
     console.error('Missing antelopeJs.test config in package.json');
-    return 1;
+    return undefined;
   }
 
   if (!testConfig.project) {
     console.error('Missing antelopeJs.test.project in package.json');
-    return 1;
+    return undefined;
   }
 
   const testProjectPath = path.isAbsolute(testConfig.project)
@@ -470,76 +592,62 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
     rawModule = await import(testProjectPath);
   } catch (err) {
     console.error(`Failed to load test project config from ${testProjectPath}:`, err);
-    return 1;
+    return undefined;
   }
 
   const rawConfig = rawModule?.default ?? rawModule;
   const config = rawConfig && typeof rawConfig.setup === 'function' ? await rawConfig.setup() : rawConfig;
+  return { testConfig, rawConfig, config };
+}
 
-  let manager: ModuleManager | null = null;
-  let managerActive = false;
-
+async function setupTestEnvironment(moduleRoot: string, config: any): Promise<ModuleManager> {
+  setupAntelopeProjectLogging(config?.logging);
+  const cacheFolder = config?.cacheFolder ?? DEFAULT_TEST_CACHE_FOLDER;
+  const absoluteCache = path.isAbsolute(cacheFolder) ? cacheFolder : path.join(moduleRoot, cacheFolder);
+  const normalizedConfig: NormalizedLoadedConfig = {
+    ...config,
+    modules: config?.modules ?? {},
+    cacheFolder: absoluteCache,
+    projectFolder: moduleRoot,
+    envOverrides: config?.envOverrides ?? {},
+    name: config?.name ?? 'test',
+  };
+  const loaderContext = await createLoaderContext(normalizedConfig);
+  const manager = new ModuleManager();
+  registerCoreModuleInterface(manager, loaderContext);
+  const coreManifest = await registerCoreInterfaces(manager);
+  const modules = await buildModuleConfigs(normalizedConfig, [coreManifest], loaderContext);
+  manager.addModules(modules);
+  await terminalDisplay.startSpinner(`Constructing modules`);
+  Logger.Trace(`Constructing modules`);
   try {
-    setupAntelopeProjectLogging(config?.logging);
-
-    const cacheFolder = config?.cacheFolder ?? '.cache';
-    const absoluteCache = path.isAbsolute(cacheFolder) ? cacheFolder : path.join(moduleRoot, cacheFolder);
-
-    const normalizedConfig = {
-      ...config,
-      cacheFolder: absoluteCache,
-      projectFolder: moduleRoot,
-    };
-
-    const loaderContext = await createLoaderContext(normalizedConfig);
-    manager = new ModuleManager();
-    registerCoreModuleInterface(manager, loaderContext);
-    const coreManifest = await registerCoreInterfaces(manager);
-    const modules = await buildModuleConfigs(normalizedConfig, [coreManifest], loaderContext);
-    manager.addModules(modules);
-
-    await terminalDisplay.startSpinner(`Constructing modules`);
-    Logger.Trace(`Constructing modules`);
-    try {
-      await manager.constructAll();
-    } catch (err) {
-      await terminalDisplay.failSpinner(`Failed to construct modules`);
-      throw err;
-    }
-    await terminalDisplay.stopSpinner(`Done loading`);
-    manager.startAll();
-    managerActive = true;
-
-    const testFolder = path.join(moduleRoot, testConfig.folder ?? 'test');
-    const testFiles = await collectTestFiles(testFolder, /\.(test|spec)\.(js|ts)$/, fs);
-
-    if (testFiles.length === 0) {
-      console.error('No test files found');
-      await manager.destroyAll();
-      managerActive = false;
-      return 1;
-    }
-
-    const Mocha = (await import('mocha')).default;
-    const mocha = new Mocha();
-    testFiles.forEach((file) => mocha.addFile(file));
-
-    const failures = await new Promise<number>((resolve) => {
-      mocha.run((count) => resolve(count));
-    });
-
-    await manager.destroyAll();
-    managerActive = false;
-
-    return failures;
-  } finally {
-    if (manager && managerActive) {
-      await manager.destroyAll();
-    }
-    if (rawConfig && typeof rawConfig.cleanup === 'function') {
-      await rawConfig.cleanup();
-    }
+    await manager.constructAll();
+  } catch (err) {
+    await terminalDisplay.failSpinner(`Failed to construct modules`);
+    throw err;
   }
+  await terminalDisplay.stopSpinner(`Done loading`);
+  manager.startAll();
+  return manager;
+}
+
+async function executeTests(
+  moduleRoot: string,
+  testConfig: TestModuleProjectConfig,
+  fs: NodeFileSystem,
+): Promise<number> {
+  const testFolder = path.join(moduleRoot, testConfig.folder ?? DEFAULT_TEST_FOLDER);
+  const testFiles = await collectTestFiles(testFolder, TEST_FILE_PATTERN, fs);
+  if (testFiles.length === 0) {
+    console.error('No test files found');
+    return EXIT_CODE_ERROR;
+  }
+  const Mocha = (await import('mocha')).default;
+  const mocha = new Mocha();
+  testFiles.forEach((file) => mocha.addFile(file));
+  return new Promise<number>((resolve) => {
+    mocha.run((count) => resolve(count));
+  });
 }
 
 export default launch;

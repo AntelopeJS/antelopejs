@@ -5,12 +5,17 @@ export interface InterfaceConnectionRef {
   id?: string;
 }
 
+interface InterfaceConnectionEntry {
+  path: string;
+  id?: string;
+}
+
 export class InterfaceRegistry {
   setConnections(moduleId: string, connections: Map<string, InterfaceConnectionRef[]>): void {
-    const connectionIDs: Record<string, Array<{ id?: string; path: string }>> = {};
+    const connectionIDs: Record<string, InterfaceConnectionEntry[]> = {};
     for (const [interfaceName, modules] of connections) {
       connectionIDs[interfaceName] = modules.map(({ id, module }) => {
-        const entry: { path: string; id?: string } = { path: `@ajs.raw/${module}/${interfaceName}` };
+        const entry: InterfaceConnectionEntry = { path: `@ajs.raw/${module}/${interfaceName}` };
         if (id !== undefined) {
           entry.id = id;
         }

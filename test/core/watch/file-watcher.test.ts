@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { FileWatcher } from '../../../src/core/watch/file-watcher';
-import { InMemoryFileSystem } from '../../../src/core/filesystem';
+import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 
 describe('FileWatcher', () => {
   it('should detect file changes for a module', async () => {

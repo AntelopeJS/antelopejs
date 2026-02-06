@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import * as path from 'path';
 import { DownloaderRegistry } from '../../../src/core/downloaders/registry';
 import { ModuleCache } from '../../../src/core/module-cache';
-import { InMemoryFileSystem } from '../../../src/core/filesystem';
+import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 
 describe('DownloaderRegistry', () => {
   it('should register and load a downloader', async () => {

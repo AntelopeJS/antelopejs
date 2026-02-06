@@ -5,10 +5,12 @@ import { FileHasher } from './file-hasher';
 
 export type ModuleChangeListener = (moduleId: string) => void;
 
+const EXCLUDED_WATCH_DIRS = ['.git', 'node_modules'];
+
 export class FileWatcher {
   private filesHash = new Map<string, { moduleId: string; hash: string }>();
   private listeners: ModuleChangeListener[] = [];
-  private excludedDirs = new Set(['.git', 'node_modules']);
+  private excludedDirs = new Set(EXCLUDED_WATCH_DIRS);
   private watchers = new Map<string, FSWatcher>();
   private watchedDirs = new Set<string>();
   private watchedDirModules = new Map<string, Set<string>>();

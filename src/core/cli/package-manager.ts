@@ -6,69 +6,82 @@ import { info, warning } from './cli-ui';
 import { IFileSystem } from '../../types';
 import { NodeFileSystem } from '../filesystem';
 
-/**
- * Valid package manager options
- */
-const VALID_PACKAGE_MANAGERS = ['npm', 'yarn', 'pnpm'];
+const VALID_PACKAGE_MANAGERS = ['npm', 'yarn', 'pnpm'] as const;
+type PackageManagerName = (typeof VALID_PACKAGE_MANAGERS)[number];
 
-// Default package manager to use if none is configured
-const DEFAULT_PACKAGE_MANAGER = 'npm';
+const DEFAULT_PACKAGE_MANAGER: PackageManagerName = 'npm';
 
-// Fallback versions if we can't detect
-const FALLBACK_VERSIONS = {
+const FALLBACK_VERSIONS: Record<PackageManagerName, string> = {
   npm: 'npm@10.2.4',
   yarn: 'yarn@1.22.21',
   pnpm: 'pnpm@10.6.5',
 };
 
-/**
- * Get package manager configuration from local package.json
- * @param directory The directory containing package.json
- * @returns The package manager string or undefined if not found
- */
+interface InstallPackagesParams {
+  packageList: string;
+  isDev: boolean;
+}
+
+interface InstallDependenciesParams {
+  isProduction: boolean;
+}
+
+type InstallPackagesCommandBuilder = (params: InstallPackagesParams) => string;
+type InstallDependenciesCommandBuilder = (params: InstallDependenciesParams) => string;
+
+const INSTALL_COMMANDS: Record<PackageManagerName, InstallPackagesCommandBuilder> = {
+  pnpm: ({ packageList, isDev }) => `pnpm install ${isDev ? '-D' : ''} ${packageList} -C . --lockfile-dir .`.trim(),
+  yarn: ({ packageList, isDev }) => `yarn add ${isDev ? '-D' : ''} ${packageList} -C . --lockfile-dir .`.trim(),
+  npm: ({ packageList, isDev }) =>
+    `npm install ${isDev ? '--save-dev' : '--save'} ${packageList} -C . --lockfile-dir .`.trim(),
+};
+
+const UNINSTALL_COMMANDS: Record<PackageManagerName, InstallDependenciesCommandBuilder> = {
+  pnpm: ({ isProduction }) => `pnpm install ${isProduction ? '--prod' : ''} --ignore-workspace`,
+  yarn: ({ isProduction }) => `yarn install ${isProduction ? '--production' : ''}`,
+  npm: ({ isProduction }) => `npm install ${isProduction ? '--omit=dev' : ''}`,
+};
+
+function normalizePackageManager(packageManager?: string): PackageManagerName {
+  if (!packageManager) {
+    return DEFAULT_PACKAGE_MANAGER;
+  }
+  return VALID_PACKAGE_MANAGERS.includes(packageManager as PackageManagerName)
+    ? (packageManager as PackageManagerName)
+    : DEFAULT_PACKAGE_MANAGER;
+}
+
 export async function getModulePackageManager(
   directory: string = '.',
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<string | undefined> {
   try {
     const packageJsonPath = path.join(directory, 'package.json');
-    if (await fileSystem.exists(packageJsonPath)) {
-      const packageJson = JSON.parse(await fileSystem.readFileString(packageJsonPath));
-      if (packageJson.packageManager) {
-        // Extract just the package manager name from the string (e.g., "pnpm@10.6.5" -> "pnpm")
-        const pmName = packageJson.packageManager.split('@')[0];
-        return VALID_PACKAGE_MANAGERS.includes(pmName) ? pmName : undefined;
-      }
+    if (!(await fileSystem.exists(packageJsonPath))) {
+      return undefined;
     }
-    return undefined;
+    const packageJson = JSON.parse(await fileSystem.readFileString(packageJsonPath));
+    if (!packageJson.packageManager) {
+      return undefined;
+    }
+    const pmName = packageJson.packageManager.split('@')[0];
+    return VALID_PACKAGE_MANAGERS.includes(pmName as PackageManagerName) ? pmName : undefined;
   } catch {
-    // Ignore any errors reading package.json
     return undefined;
   }
 }
 
-/**
- * Get package manager with version string
- * @param packageManager The package manager name (npm, yarn, pnpm)
- * @returns The package manager with version string (e.g., npm@10.2.4)
- */
 export function getPackageManagerWithVersion(packageManager: string): string {
   try {
     const versionOutput = execSync(`${packageManager} --version`, { encoding: 'utf8' }).trim();
     return `${packageManager}@${versionOutput}`;
   } catch {
-    // Fallback to known versions if detection fails
-    const fallbackVersion = FALLBACK_VERSIONS[packageManager as keyof typeof FALLBACK_VERSIONS];
+    const fallbackVersion = FALLBACK_VERSIONS[normalizePackageManager(packageManager)];
     warning(`Could not detect ${packageManager} version, using ${fallbackVersion}`);
     return fallbackVersion;
   }
 }
 
-/**
- * Save package manager choice to package.json
- * @param packageManager The package manager to save (npm, yarn, pnpm)
- * @param directory The directory containing package.json
- */
 export function savePackageManagerToPackageJson(packageManager: string, directory: string = '.'): void {
   const packageJsonPath = path.join(directory, 'package.json');
 
@@ -80,78 +93,38 @@ export function savePackageManagerToPackageJson(packageManager: string, director
   try {
     const packageJsonContent = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
     const packageManagerWithVersion = getPackageManagerWithVersion(packageManager);
-
-    // Add the packageManager field with specific version
     packageJsonContent.packageManager = packageManagerWithVersion;
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJsonContent, null, 2));
-
     info(`Package manager set to ${chalk.cyan(packageManager)}`);
-    return;
   } catch (err) {
     warning(
       `Could not update package.json with package manager setting: ${err instanceof Error ? err.message : String(err)}`,
     );
-    return;
   }
 }
 
-/**
- * Get the appropriate command to install specific packages
- * @param packages List of packages to install
- * @param isDev Whether to install as development dependencies
- * @param directory The directory to check for local package.json
- * @returns The full installation command
- */
 export async function getInstallPackagesCommand(
   packages: string[] = [],
   isDev = false,
   directory: string = '.',
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<string> {
-  const validPackageManager = (await getModulePackageManager(directory, fileSystem)) || DEFAULT_PACKAGE_MANAGER;
-  const packageList = packages.join(' ');
-  const devFlag = isDev ? '-D' : '';
-
-  switch (validPackageManager) {
-    case 'pnpm':
-      return `pnpm install ${devFlag} ${packageList} -C . --lockfile-dir .`.trim();
-    case 'yarn':
-      return `yarn add ${devFlag} ${packageList} -C . --lockfile-dir .`.trim();
-    case 'npm':
-    default:
-      return `npm install ${isDev ? '--save-dev' : '--save'} ${packageList} -C . --lockfile-dir .`.trim();
-  }
+  const packageManager = normalizePackageManager(await getModulePackageManager(directory, fileSystem));
+  return INSTALL_COMMANDS[packageManager]({
+    packageList: packages.join(' '),
+    isDev,
+  });
 }
 
-/**
- * Get the appropriate command to install dependencies from package.json
- * @param directory The directory to check for local package.json
- * @param isProduction Whether to install production dependencies
- * @returns The install command
- */
 export async function getInstallCommand(
   directory: string = '.',
   isProduction = true,
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<string> {
-  const validPackageManager = (await getModulePackageManager(directory, fileSystem)) || DEFAULT_PACKAGE_MANAGER;
-
-  switch (validPackageManager) {
-    case 'pnpm':
-      return `pnpm install ${isProduction ? '--prod' : ''} --ignore-workspace`;
-    case 'yarn':
-      return `yarn install ${isProduction ? '--production' : ''}`;
-    case 'npm':
-    default:
-      return `npm install ${isProduction ? '--omit=dev' : ''}`;
-  }
+  const packageManager = normalizePackageManager(await getModulePackageManager(directory, fileSystem));
+  return UNINSTALL_COMMANDS[packageManager]({ isProduction });
 }
 
-/**
- * Parse the output from npm view command
- * @param output The command output
- * @returns The parsed version string
- */
 export function parsePackageInfoOutput(output: string): string {
   return output.replace(/\n/g, '').trim();
 }

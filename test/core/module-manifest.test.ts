@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as path from 'path';
-import { InMemoryFileSystem } from '../../src/core/filesystem';
+import { InMemoryFileSystem } from '../helpers/in-memory-filesystem';
 import { ModuleManifest, ModulePackageJson } from '../../src/core/module-manifest';
 import { ModuleSourceLocal } from '../../src/types';
 
