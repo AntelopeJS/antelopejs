@@ -17,6 +17,5 @@ Commit changes and submit a pull request on the current branch.
 ## PR Description Format (default)
 
 The PR should include:
-
 - **Summary**: Brief description of changes (bullet points)
 - **Test plan**: How to verify the changes work correctly (only if tests were added or modified, otherwise omit or mark as N/A)

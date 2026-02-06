@@ -95,7 +95,7 @@ Return a code quality report:
 ## Placeholder Reference
 
 | Placeholder          | Description                               |
-| -------------------- | ----------------------------------------- |
+|----------------------|-------------------------------------------|
 | `{FILES_CHANGED}`    | List of files from implementer report     |
 | `{TASK_DESCRIPTION}` | Brief description of what was implemented |
 

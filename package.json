@@ -24,9 +24,7 @@
     "modular"
   ],
   "scripts": {
-    "install-local": "pnpm run build && npm install -g . --force",
     "build": "rimraf dist && tsc",
-    "postbuild": "node -e \"const fs=require('fs'); const paths=['dist/core/cli/index.js','dist/src/core/cli/index.js']; const target=paths.find((p)=>fs.existsSync(p)); if(!target){throw new Error('CLI entry not found in dist');} fs.chmodSync(target,0o755);\"",
     "prepack": "pnpm run build",
     "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
     "generate": "node dist/core/cli/index.js module exports generate",
@@ -35,8 +33,7 @@
     "format": "prettier --write .",
     "test": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'",
     "test:watch": "mocha --require ts-node/register --require test/setup.ts --watch --watch-extensions ts 'test/**/*.test.ts'",
-    "test:coverage": "c8 --check-coverage --lines 95 --functions 95 --branches 95 --statements 95 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'",
-    "test:coverage:80": "c8 --check-coverage --lines 80 --functions 80 --branches 80 --statements 80 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'"
+    "test:coverage": "c8 --check-coverage --lines 95 --functions 95 --branches 95 --statements 95 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'"
   },
   "antelopeJs": {
     "exportsPath": "dist/interfaces",

@@ -16,14 +16,12 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 **Ask the user before writing the plan:**
 
 "Which development approach do you prefer?
-
 - **TDD** - Test first, then implementation (red-green-refactor cycle)
 - **Non-TDD** - Direct implementation without tests"
 
 **If Non-TDD selected, also ask:**
 
 "How should work be verified for each task?
-
 - Manual testing (describe what to check)
 - Run a command (e.g., `pnpm run build`, `pnpm run lint`)
 - Visual inspection
@@ -31,12 +29,17 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 Document the chosen verification method in the plan header.
 
+**Ask about commit strategy:**
+
+"Should commits be included in the plan?
+- **Yes** - Include commit step after each task (recommended for tracking progress)
+- **No** - No commit steps (useful when experimenting or for a single final commit)"
+
 ## Bite-Sized Task Granularity
 
 **Each step is one action (2-5 minutes):**
 
 **Mode TDD:**
-
 - "Write the failing test" - step
 - "Run it to make sure it fails" - step
 - "Implement the minimal code to make the test pass" - step
@@ -44,7 +47,6 @@ Document the chosen verification method in the plan header.
 - "Commit" - step
 
 **Mode Non-TDD:**
-
 - "Implement the functionality" - step
 - "Verify using [verification method from plan]" - step
 - "Commit" - step
@@ -66,6 +68,8 @@ Document the chosen verification method in the plan header.
 
 **Mode:** TDD / Non-TDD
 
+**Commits:** Yes / No
+
 **Verification Method (Non-TDD only):** [How to verify each task - command, manual steps, etc.]
 
 ---
@@ -75,11 +79,10 @@ Document the chosen verification method in the plan header.
 
 ### Template TDD
 
-````markdown
+```markdown
 ### Task N: [Component Name]
 
 **Files:**
-
 - Create: `exact/path/to/file.ts`
 - Modify: `exact/path/to/existing.ts:123-145`
 - Test: `tests/exact/path/to/file.spec.ts`
@@ -94,7 +97,6 @@ describe('specificBehavior', () => {
   });
 });
 ```
-````
 
 **Step 2: Run test to verify it fails**
 
@@ -114,11 +116,10 @@ export function myFunction(input: string): string {
 Run: `pnpm run test tests/path/file.spec.ts`
 Expected: PASS
 
-**Step 5: Commit**
+**Step 5: Commit** *(if Commits = Yes)*
 
 Use @committing skill
-
-````
+```
 
 ### Template Non-TDD
 
@@ -135,17 +136,16 @@ Use @committing skill
 export function myFunction(input: string): string {
   return expected;
 }
-````
+```
 
 **Step 2: Verify**
 
 Run: [Verification method from plan header]
 Expected: [Expected result]
 
-**Step 3: Commit**
+**Step 3: Commit** *(if Commits = Yes)*
 
 Use @committing skill
-
 ```
 
 ## Remember
@@ -153,7 +153,8 @@ Use @committing skill
 - Complete code in plan (not "add validation")
 - Exact commands with expected output
 - Reference relevant skills with @ syntax
-- DRY, YAGNI, frequent commits, verification before commit
+- DRY, YAGNI, verification before commit
+- If Commits = Yes: frequent commits after each task
 
 ## Execution Handoff
 
@@ -174,4 +175,3 @@ After saving the plan, offer execution choice:
 
 **If Parallel Session chosen:**
 - **REQUIRED SUB-SKILL:** New session uses executing-plans
-```
