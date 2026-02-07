@@ -21,7 +21,7 @@ export function ExecuteCMD(command: string, options: ExecOptions): Promise<Comma
 
       if (err) {
         Logger.Error('Command execution failed:', command);
-        const message = result.stderr || result.stdout || err.message || String(err);
+        const message = result.stderr || result.stdout || err.message;
         return reject(message);
       }
       resolve(result);
