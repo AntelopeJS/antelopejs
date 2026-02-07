@@ -94,7 +94,12 @@ async function cloneOrFetchRepo(
   };
 }
 
-async function installDependencies(source: ModuleSourceGit, exec: CommandRunner, folder: string, name: string): Promise<void> {
+async function installDependencies(
+  source: ModuleSourceGit,
+  exec: CommandRunner,
+  folder: string,
+  name: string,
+): Promise<void> {
   if (!source.installCommand) {
     return;
   }

@@ -29,10 +29,7 @@ const SOURCE_DISPLAY_HANDLERS: Record<string, SourceDisplayHandler> = {
   },
   git: (source) => {
     const gitSource = source as ModuleSourceGit;
-    const lines = [
-      `  ${keyValue('Type', chalk.blue('git repository'))}`,
-      `  ${keyValue('Remote', gitSource.remote)}`,
-    ];
+    const lines = [`  ${keyValue('Type', chalk.blue('git repository'))}`, `  ${keyValue('Remote', gitSource.remote)}`];
     if (gitSource.branch) {
       lines.push(`  ${keyValue('Branch', gitSource.branch)}`);
     }

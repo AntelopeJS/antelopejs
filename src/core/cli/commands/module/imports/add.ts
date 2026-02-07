@@ -194,7 +194,13 @@ async function resolveInterfaceSource(
     return;
   }
 
-  const version = resolveInterfaceVersion(interfaceInfo, interfaceName, interfaceVersion, context.collection, isDependency);
+  const version = resolveInterfaceVersion(
+    interfaceInfo,
+    interfaceName,
+    interfaceVersion,
+    context.collection,
+    isDependency,
+  );
   if (!version) {
     return;
   }
@@ -300,7 +306,9 @@ async function processRequestedInterfaces(
     const parsed = parseInterfaceArg(interfaceArg);
     if (!parsed) {
       const reason = 'Invalid interface format';
-      context.collection.errorMessages.push(`${reason}: ${interfaceArg}. Use format 'interface@version', e.g., 'database@1'`);
+      context.collection.errorMessages.push(
+        `${reason}: ${interfaceArg}. Use format 'interface@version', e.g., 'database@1'`,
+      );
       context.collection.skipped.push({ name: interfaceArg, reason });
       continue;
     }

@@ -1,4 +1,4 @@
-import './interfaces/logging/beta';
+import { Logging } from './interfaces/logging/beta';
 import exitHook from 'async-exit-hook';
 import EventEmitter from 'events';
 import path from 'path';
@@ -18,7 +18,6 @@ import type { ModuleSource } from './types';
 import { ModuleManifest } from './core/module-manifest';
 import { LaunchOptions, ModuleSourceLocal } from './types';
 import { setupAntelopeProjectLogging, addChannelFilter } from './logging';
-import { Logging } from './interfaces/logging/beta';
 import * as coreInterfaceBeta from './interfaces/core/beta';
 import * as moduleInterfaceBeta from './interfaces/core/beta/modules';
 import { terminalDisplay } from './core/cli/terminal-display';
@@ -136,9 +135,7 @@ function mapImportOverrides(overrides?: Record<string, string[]>): ModuleOverrid
   return mapped;
 }
 
-function exportImportOverrides(
-  overrides?: ModuleOverrideMap,
-): Record<string, string[]> {
+function exportImportOverrides(overrides?: ModuleOverrideMap): Record<string, string[]> {
   const result: Record<string, string[]> = {};
   if (!overrides) {
     return result;
@@ -217,11 +214,10 @@ function registerCoreModuleInterface(manager: ModuleManager, loaderContext: Load
 
       await entry.module.destroy();
 
-      const manifests = await loaderContext.registry.load(
-        loaderContext.projectFolder,
-        loaderContext.cache,
-        { ...entry.module.manifest.source, id: moduleId },
-      );
+      const manifests = await loaderContext.registry.load(loaderContext.projectFolder, loaderContext.cache, {
+        ...entry.module.manifest.source,
+        id: moduleId,
+      });
       const [manifest] = manifests;
       if (!manifest) {
         throw new Error(`Failed to reload module ${moduleId}: no manifest returned`);
@@ -271,7 +267,9 @@ function buildModuleOverrides(importOverrides?: ExpandedModuleConfig['importOver
 
 function buildManifestEntries(manifests: ModuleManifest[], moduleConfig: ExpandedModuleConfig): ModuleManifestEntry[] {
   const overrides = buildModuleOverrides(moduleConfig.importOverrides);
-  const disabledExports = new Set<string>(Array.isArray(moduleConfig.disabledExports) ? moduleConfig.disabledExports : []);
+  const disabledExports = new Set<string>(
+    Array.isArray(moduleConfig.disabledExports) ? moduleConfig.disabledExports : [],
+  );
   return manifests.map((manifest) => ({
     manifest,
     config: {
@@ -452,7 +450,11 @@ async function setupPostLaunchFeatures(
   }
 }
 
-async function initializeCore(projectFolder: string, env: string, options: LaunchOptions): Promise<{
+async function initializeCore(
+  projectFolder: string,
+  env: string,
+  options: LaunchOptions,
+): Promise<{
   manager: ModuleManager;
   fs: NodeFileSystem;
 }> {

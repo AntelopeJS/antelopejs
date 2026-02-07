@@ -146,7 +146,7 @@ function createDefaultTransport(): void {
       time: entry.time.getTime(),
       channel: entry.channel,
       levelId: entry.level,
-      args: entry.args as unknown[],
+      args: entry.args,
     };
     const message = formatLogMessageWithRightAlignedDate(loggingConfig, log, entry.module);
     const stream = entry.level >= LogLevel.ERROR ? process.stderr : process.stdout;

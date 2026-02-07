@@ -334,7 +334,9 @@ function reportAsyncContext(trace: NodeJS.CallSite[]): void {
     .filter((site) => !site.getFileName()?.startsWith('node:internal/'))
     .map((site) => site.toString())
     .join('\n    - ');
-  Logging.Error('GetResponsibleModule called from within an async context, this will break hot reloading!\n    - ' + tracestr);
+  Logging.Error(
+    'GetResponsibleModule called from within an async context, this will break hot reloading!\n    - ' + tracestr,
+  );
 }
 
 /**
