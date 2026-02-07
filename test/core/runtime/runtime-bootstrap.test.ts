@@ -7,7 +7,7 @@ import * as logging from '../../../src/logging';
 
 type ProcessEventName = 'uncaughtException' | 'unhandledRejection' | 'warning';
 
-type ProcessListenerSnapshot = Record<ProcessEventName, Function[]>;
+type ProcessListenerSnapshot = Record<ProcessEventName, ((...args: any[]) => void)[]>;
 
 function snapshotProcessListeners(): ProcessListenerSnapshot {
   return {
