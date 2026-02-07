@@ -35,6 +35,7 @@ When multiple unrelated changes are present, split them into separate commits:
 - **By type**: Don't mix docs changes with code changes, or refactoring with new features
 
 Example: If you have changes to auth module (fix) and user module (feat), create two commits:
+
 1. `fix(auth): ...` with only auth-related files
 2. `feat(user): ...` with only user-related files
 
@@ -53,7 +54,7 @@ Example: If you have changes to auth module (fix) and user module (feat), create
 ## Commit Types
 
 | Type     | Description                   |
-|----------|-------------------------------|
+| -------- | ----------------------------- |
 | feat     | New feature                   |
 | fix      | Bug fix                       |
 | docs     | Documentation only            |

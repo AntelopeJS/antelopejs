@@ -14,6 +14,7 @@ Start by understanding the current project context, then ask questions one at a 
 ## The Process
 
 **Phase 1 — Understanding the idea:**
+
 - Check out the current project state first (files, docs, recent commits)
 - Ask questions one at a time to refine the idea
 - Prefer multiple choice questions when possible, but open-ended is fine too
@@ -21,11 +22,13 @@ Start by understanding the current project context, then ask questions one at a 
 - Focus on understanding: purpose, constraints, success criteria
 
 **Phase 2 — Exploring approaches:**
+
 - Propose 2-3 different approaches with trade-offs
 - Present options conversationally with your recommendation and reasoning
 - Lead with your recommended option and explain why
 
 **Phase 3 — Presenting the design:**
+
 - Once you believe you understand what you're building, present the design
 - Break it into sections of 200-300 words
 - Ask after each section whether it looks right so far
@@ -46,30 +49,39 @@ Once the design is complete and validated:
 # PRD: [Title]
 
 ## Overview
+
 [2-3 sentence summary of the product/feature]
 
 ## Problem Statement
+
 [Problem to solve, context, and motivation]
 
 ## Goals & Success Criteria
+
 [Measurable objectives and how success will be evaluated]
 
 ## User Stories
+
 - As a [user], I want [action], so that [benefit]
 
 ## Functional Requirements
+
 [Detailed functional requirements]
 
 ## Non-Functional Requirements
+
 [Performance, security, scalability requirements]
 
 ## Technical Constraints
+
 [Technical constraints identified during brainstorming]
 
 ## Out of Scope
+
 [What is explicitly excluded from this effort]
 
 ## Open Questions
+
 [Unresolved questions from the brainstorming session]
 ```
 

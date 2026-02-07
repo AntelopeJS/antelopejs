@@ -33,7 +33,7 @@ Brevity is still valued, but never at the cost of clarity or correctness.
 ## Available References
 
 | Reference                                                            | Purpose                                         |
-|----------------------------------------------------------------------|-------------------------------------------------|
+| -------------------------------------------------------------------- | ----------------------------------------------- |
 | **[references/writing-style.md](references/writing-style.md)**       | Voice, tone, sentence structure                 |
 | **[references/content-patterns.md](references/content-patterns.md)** | Blog frontmatter, structure, component patterns |
 
@@ -47,7 +47,7 @@ Brevity is still valued, but never at the cost of clarity or correctness.
 ### Writing Patterns
 
 | Pattern       | Example                                            |
-|---------------|----------------------------------------------------|
+| ------------- | -------------------------------------------------- |
 | Subject-first | "The `useFetch` composable handles data fetching." |
 | Imperative    | "Add the following to `config.ts`."                |
 | Contextual    | "When using authentication, configure..."          |
@@ -55,7 +55,7 @@ Brevity is still valued, but never at the cost of clarity or correctness.
 ### Modal Verbs
 
 | Verb     | Meaning     |
-|----------|-------------|
+| -------- | ----------- |
 | `can`    | Optional    |
 | `should` | Recommended |
 | `must`   | Required    |
@@ -63,7 +63,7 @@ Brevity is still valued, but never at the cost of clarity or correctness.
 ### Callout Patterns (WHEN to use)
 
 | Need              | Markdown Pattern                               |
-|-------------------|------------------------------------------------|
+| ----------------- | ---------------------------------------------- |
 | Info aside        | `> **Note:** ...`                              |
 | Suggestion        | `> **Tip:** ...`                               |
 | Caution           | `> **Warning:** ...`                           |

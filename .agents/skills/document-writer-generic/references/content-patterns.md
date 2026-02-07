@@ -36,7 +36,7 @@ tags:
 Use blockquotes with bold prefixes for callouts:
 
 | Need            | Markdown Pattern       | When                       |
-|-----------------|------------------------|----------------------------|
+| --------------- | ---------------------- | -------------------------- |
 | Background info | `> **Note:** ...`      | Supplementary context      |
 | Best practice   | `> **Tip:** ...`       | Recommendations            |
 | Potential issue | `> **Warning:** ...`   | Things that could go wrong |
@@ -61,7 +61,7 @@ Use blockquotes with bold prefixes for callouts:
 
 Use numbered lists for multi-step instructions:
 
-~~~md
+````md
 1. Install the module
 
    ```bash
@@ -72,8 +72,8 @@ Use numbered lists for multi-step instructions:
 
    ```ts [config.ts]
    export default {
-     module: true
-   }
+     module: true,
+   };
    ```
 
 3. Restart the development server
@@ -81,17 +81,17 @@ Use numbered lists for multi-step instructions:
    ```bash
    npm run dev
    ```
-~~~
+````
 
 ## Code Block Labels
 
 Always include file path when relevant:
 
-~~~md
+````md
 ```ts [config.ts]
 export default defineConfig({
-  modules: ['@example/content']
-})
+  modules: ['@example/content'],
+});
 ```
 
 ```vue [pages/index.vue]
@@ -103,46 +103,49 @@ export default defineConfig({
 ```bash
 npm install @example/content
 ```
-~~~
+````
 
 ## Code Alternatives
 
 Show multiple implementations with separate labeled blocks:
 
-~~~md
+````md
 ### Using Zod
 
 ```ts [validation.ts]
-import { z } from 'zod'
-const schema = z.object({ name: z.string() })
+import { z } from 'zod';
+const schema = z.object({ name: z.string() });
 ```
 
 ### Using Valibot
 
 ```ts [validation.ts]
-import * as v from 'valibot'
-const schema = v.object({ name: v.string() })
+import * as v from 'valibot';
+const schema = v.object({ name: v.string() });
 ```
-~~~
+````
 
 Package manager variants:
 
-~~~md
+````md
 **pnpm:**
+
 ```bash
 pnpm add @example/content
 ```
 
 **npm:**
+
 ```bash
 npm install @example/content
 ```
 
 **yarn:**
+
 ```bash
 yarn add @example/content
 ```
-~~~
+````
 
 ## Expandable Sections
 
@@ -155,6 +158,7 @@ Use HTML details for advanced content:
 Additional content here that is hidden by default.
 
 You can include:
+
 - Lists
 - Code blocks
 - Any markdown content
@@ -168,12 +172,15 @@ Use standard Markdown links:
 
 ```md
 <!-- Inline link -->
+
 See the [configuration guide](/docs/getting-started/configuration).
 
 <!-- Call to action -->
+
 [Get started with the documentation](/docs/getting-started)
 
 <!-- External link -->
+
 [View on GitHub](https://github.com/example/repo)
 ```
 
@@ -189,12 +196,15 @@ Link to related content:
 
 ```md
 <!-- Inline link -->
+
 See the [configuration guide](/docs/getting-started/configuration).
 
 <!-- Learn more pattern -->
+
 [Learn more about data fetching](/docs/api/composables/use-fetch)
 
 <!-- Related reading -->
+
 **Related:** [Authentication guide](/docs/guides/authentication) | [API reference](/docs/api)
 ```
 
@@ -204,8 +214,9 @@ See the [configuration guide](/docs/getting-started/configuration).
 ![Alt text description](/assets/blog/image.png)
 
 <!-- With caption -->
+
 ![Screenshot of the dashboard](/assets/blog/dashboard.png)
-*The new dashboard interface*
+_The new dashboard interface_
 ```
 
 ## Tables

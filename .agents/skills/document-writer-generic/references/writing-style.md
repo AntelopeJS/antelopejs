@@ -5,7 +5,7 @@ Writing conventions for documentation: sentence structure, voice, tone, and form
 ## Sentence Patterns
 
 | Pattern       | Usage | Example                                            |
-|---------------|-------|----------------------------------------------------|
+| ------------- | ----- | -------------------------------------------------- |
 | Subject-first | 60%   | "The `useFetch` composable handles data fetching." |
 | Imperative    | 25%   | "Add the following to `config.ts`."                |
 | Contextual    | 15%   | "When using authentication, configure..."          |
@@ -74,7 +74,7 @@ Start with "When", "If", "For", "After":
 ## Modal Verbs
 
 | Verb     | Meaning     | Example                                  |
-|----------|-------------|------------------------------------------|
+| -------- | ----------- | ---------------------------------------- |
 | `can`    | Optional    | "You can customize the theme."           |
 | `should` | Recommended | "You should use TypeScript."             |
 | `may`    | Possibility | "This may cause performance issues."     |
@@ -103,7 +103,7 @@ Start with "When", "If", "For", "After":
 ## Tone by Content Type
 
 | Content Type    | Tone          | Example                                 |
-|-----------------|---------------|-----------------------------------------|
+| --------------- | ------------- | --------------------------------------- |
 | Getting Started | Welcoming     | "Let's set up your first project."      |
 | Guides          | Instructional | "Configure the middleware as follows."  |
 | API Reference   | Precise       | "Returns `Promise<void>`."              |
@@ -117,7 +117,7 @@ Start with "When", "If", "For", "After":
 
 ````md
 ```ts [config.ts]
-export default defineConfig({})
+export default defineConfig({});
 ```
 ````
 
@@ -149,7 +149,7 @@ export default defineConfig({})
 ## Best Practices Summary
 
 | Do                          | Don't                             |
-|-----------------------------|-----------------------------------|
+| --------------------------- | --------------------------------- |
 | Active voice (85%)          | Passive voice throughout          |
 | Present tense               | Future tense for current behavior |
 | Subject-first sentences     | Inverted sentence structures      |

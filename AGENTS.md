@@ -4,18 +4,18 @@
 
 ### Critical Rules
 
-| Rule | Description |
-|------|-------------|
-| English only | All code must be in English: variable names, function names, comments |
-| PNPM only | Always use pnpm, never npm or yarn |
-| NO COMMENTS | Code must be self-documenting through clear naming |
-| NO switch/case | Use objects, maps, or arrays instead |
-| NO inline types | Define proper interfaces/types, never use anonymous types like `{a: string, b: number}` |
-| Functions ≤ 40 lines | Split into subfunctions if longer |
-| NO magic values | Extract to named constants |
-| Generic over specific | Avoid case-by-case logic |
-| 2 spaces | Use spaces, not tabs |
-| Index re-exports | In index files, prefer `export * from './module'` over named re-exports |
+| Rule                  | Description                                                                             |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| English only          | All code must be in English: variable names, function names, comments                   |
+| PNPM only             | Always use pnpm, never npm or yarn                                                      |
+| NO COMMENTS           | Code must be self-documenting through clear naming                                      |
+| NO switch/case        | Use objects, maps, or arrays instead                                                    |
+| NO inline types       | Define proper interfaces/types, never use anonymous types like `{a: string, b: number}` |
+| Functions ≤ 40 lines  | Split into subfunctions if longer                                                       |
+| NO magic values       | Extract to named constants                                                              |
+| Generic over specific | Avoid case-by-case logic                                                                |
+| 2 spaces              | Use spaces, not tabs                                                                    |
+| Index re-exports      | In index files, prefer `export * from './module'` over named re-exports                 |
 
 ### Code Structure
 
@@ -35,9 +35,12 @@ Never use `switch/case` or `if param === 'XXX'` chains. Instead:
 // BAD
 function getStatus(code: string) {
   switch (code) {
-    case 'A': return 'Active';
-    case 'I': return 'Inactive';
-    default: return 'Unknown';
+    case 'A':
+      return 'Active';
+    case 'I':
+      return 'Inactive';
+    default:
+      return 'Unknown';
   }
 }
 
@@ -69,7 +72,7 @@ function findUser(users: User[], id: string) {
 
 // GOOD
 function findUser(users: User[], id: string) {
-  return users.find(user => user.id === id) ?? null;
+  return users.find((user) => user.id === id) ?? null;
 }
 ```
 

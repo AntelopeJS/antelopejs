@@ -111,7 +111,7 @@ Return a completion report:
 ## Placeholder Reference
 
 | Placeholder        | Description                               |
-|--------------------|-------------------------------------------|
+| ------------------ | ----------------------------------------- |
 | `{PLAN_FILE_PATH}` | Absolute path to the plan file            |
 | `{TASK_NUMBER}`    | Task number to implement (e.g., "1", "2") |
 
