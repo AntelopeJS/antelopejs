@@ -1,25 +1,29 @@
 import { expect } from 'chai';
+import sinon from 'sinon';
 import {
   computeConfigHash,
   createBuildArtifact,
   readBuildArtifact,
   writeBuildArtifact,
 } from '../../../src/core/build/build-artifact';
+import * as configLoader from '../../../src/core/config/config-loader';
 import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 
 describe('build artifact', () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
   it('computes deterministic hashes for unchanged config', async () => {
     const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      '/project/antelope.json',
-      JSON.stringify({
-        name: 'sample',
-        modules: {
-          zeta: { source: { type: 'local', path: './zeta' } },
-          alpha: { source: { type: 'local', path: './alpha' } },
-        },
-      }),
-    );
+    await fs.writeFile('/project/antelope.config.ts', '');
+    sinon.stub(configLoader, 'loadTsConfigFile').resolves({
+      name: 'sample',
+      modules: {
+        zeta: { source: { type: 'local', path: './zeta' } },
+        alpha: { source: { type: 'local', path: './alpha' } },
+      },
+    });
     await fs.writeFile('/project/antelope.alpha.json', JSON.stringify({ enabled: true }));
     await fs.writeFile('/project/antelope.zeta.json', JSON.stringify({ enabled: false }));
 
@@ -29,6 +33,23 @@ describe('build artifact', () => {
 
     expect(hashA).to.equal(hashB);
     expect(hashA).to.not.equal(hashC);
+  });
+
+  it('includes resolved TS module overrides in hash', async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile('/project/antelope.config.ts', '');
+    await fs.writeFile('/project/antelope.database.json', JSON.stringify({ host: 'localhost' }));
+
+    sinon.stub(configLoader, 'loadTsConfigFile').resolves({
+      name: 'sample',
+      modules: { database: '1.0.0' },
+    });
+
+    const hashA = await computeConfigHash('/project', 'default', fs);
+    await fs.writeFile('/project/antelope.database.json', JSON.stringify({ host: 'db.internal' }));
+    const hashB = await computeConfigHash('/project', 'default', fs);
+
+    expect(hashA).to.not.equal(hashB);
   });
 
   it('writes and reads build artifacts', async () => {

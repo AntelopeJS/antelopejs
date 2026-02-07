@@ -2,14 +2,25 @@ import { Option } from 'commander';
 import { stat, writeFile as writeFileNode } from 'fs/promises';
 import path from 'path';
 import { homedir } from 'os';
+import * as ts from 'typescript';
 import { AntelopeConfig, IFileSystem } from '../../types';
 import { NodeFileSystem } from '../filesystem';
 import { mkdirSync } from 'fs';
 import { ModulePackageJson } from '../module-manifest';
 import { warning } from './cli-ui';
 import chalk from 'chalk';
+import { TS_CONFIG_FILE, tryFindConfigPath } from '../config/config-paths';
+import { loadTsConfigFile } from '../config/config-loader';
 
 const DEFAULT_INDENTATION = '  ';
+const DEFINE_CONFIG_IMPORT_LINE = "import { defineConfig } from '@antelopejs/core/config';";
+const FUNCTION_BASED_TS_CONFIG_ERROR =
+  'Cannot update antelope.config.ts automatically when default export is function-based.';
+
+interface TsConfigWriteMeta {
+  canWrite: boolean;
+  useDefineConfig: boolean;
+}
 
 /**
  * Detects the indentation character from a file
@@ -87,6 +98,75 @@ async function readJsonFile<T>(
   return JSON.parse(await fileSystem.readFileString(filePath));
 }
 
+function getDefaultExportExpression(sourceFile: ts.SourceFile): ts.Expression | undefined {
+  const exportAssignment = sourceFile.statements.find(
+    (statement): statement is ts.ExportAssignment => ts.isExportAssignment(statement) && !statement.isExportEquals,
+  );
+  return exportAssignment?.expression;
+}
+
+function isDefineConfigCall(expression: ts.Expression): expression is ts.CallExpression {
+  return (
+    ts.isCallExpression(expression) &&
+    ts.isIdentifier(expression.expression) &&
+    expression.expression.text === 'defineConfig'
+  );
+}
+
+function unwrapDefineConfigExpression(expression: ts.Expression): ts.Expression {
+  if (!isDefineConfigCall(expression) || expression.arguments.length === 0) {
+    return expression;
+  }
+  return expression.arguments[0];
+}
+
+function getTsConfigWriteMeta(configPath: string, source: string): TsConfigWriteMeta {
+  const sourceFile = ts.createSourceFile(configPath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const expression = getDefaultExportExpression(sourceFile);
+  if (!expression) {
+    return { canWrite: false, useDefineConfig: false };
+  }
+  const useDefineConfig = isDefineConfigCall(expression);
+  const targetExpression = unwrapDefineConfigExpression(expression);
+  return {
+    canWrite: ts.isObjectLiteralExpression(targetExpression),
+    useDefineConfig,
+  };
+}
+
+function createTsConfigContent(data: Partial<AntelopeConfig>, indentation: string, useDefineConfig: boolean): string {
+  const serialized = JSON.stringify(data, null, indentation);
+  if (!useDefineConfig) {
+    return `export default ${serialized};\n`;
+  }
+  return `${DEFINE_CONFIG_IMPORT_LINE}\n\nexport default defineConfig(${serialized});\n`;
+}
+
+async function writeTsConfig(
+  configPath: string,
+  data: Partial<AntelopeConfig>,
+  fileSystem: IFileSystem = new NodeFileSystem(),
+): Promise<void> {
+  const source = await fileSystem.readFileString(configPath);
+  const writeMeta = getTsConfigWriteMeta(configPath, source);
+  if (!writeMeta.canWrite) {
+    throw new Error(FUNCTION_BASED_TS_CONFIG_ERROR);
+  }
+  const indentation = await detectIndentation(configPath, fileSystem);
+  const content = createTsConfigContent(data, indentation, writeMeta.useDefineConfig);
+  await fileSystem.writeFile(configPath, content);
+}
+
+async function writeNewTsConfig(
+  project: string,
+  data: Partial<AntelopeConfig>,
+  fileSystem: IFileSystem = new NodeFileSystem(),
+): Promise<void> {
+  const configPath = path.join(project, TS_CONFIG_FILE);
+  const content = createTsConfigContent(data, DEFAULT_INDENTATION, true);
+  await fileSystem.writeFile(configPath, content);
+}
+
 /*
  * AntelopeJS configuration
  */
@@ -95,15 +175,24 @@ export async function writeConfig(
   data: Partial<AntelopeConfig>,
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<void> {
-  const configPath = path.join(project, 'antelope.json');
-  await writeJsonFile(configPath, data, fileSystem);
+  const configPath = await tryFindConfigPath(project, fileSystem);
+  if (!configPath) {
+    await writeNewTsConfig(project, data, fileSystem);
+    return;
+  }
+  await writeTsConfig(configPath, data, fileSystem);
 }
 
 export async function readConfig(
   project: string,
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<AntelopeConfig | undefined> {
-  return readJsonFile<AntelopeConfig>(path.join(project, 'antelope.json'), fileSystem);
+  const configPath = await tryFindConfigPath(project, fileSystem);
+
+  if (!configPath) {
+    return undefined;
+  }
+  return loadTsConfigFile(configPath);
 }
 
 /*

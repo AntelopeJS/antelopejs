@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { Command, Option } from 'commander';
-import { build } from '../../../..';
+import { build, DEFAULT_ENV } from '../../../..';
 import { readBuildArtifact } from '../../../build/build-artifact';
 import { Options } from '../../common';
 import { displayBox, error, info, success } from '../../cli-ui';
@@ -9,8 +9,6 @@ import { ProjectCommandOptions, resolveInheritedVerbose, validateProjectExists }
 interface BuildCommandOptions extends ProjectCommandOptions {
   project: string;
 }
-
-const DEFAULT_ENV = 'default';
 const MINUTE_IN_MILLISECONDS = 60000;
 
 function formatBuildDuration(durationMs: number): string {

@@ -13,6 +13,12 @@ interface ArtifactModuleInput {
   folder: string;
 }
 
+function writeTsConfig(projectFolder: string, config: Record<string, unknown>): void {
+  const configPath = path.join(projectFolder, 'antelope.config.ts');
+  const configContent = `export default ${JSON.stringify(config, null, 2)};\n`;
+  fs.writeFileSync(configPath, configContent, 'utf-8');
+}
+
 function createArtifact(projectFolder: string, configHash: string, modules: ArtifactModuleInput[] = []): BuildArtifact {
   const moduleEntries = modules.reduce<Record<string, BuildArtifact['modules'][string]>>((acc, module) => {
     acc[module.id] = {
@@ -60,7 +66,7 @@ describe('build and launchFromBuild', () => {
   it('build creates .antelope/build/build.json', async () => {
     const projectFolder = makeTempDir('antelope-build-');
     tempDirs.push(projectFolder);
-    writeJson(path.join(projectFolder, 'antelope.json'), {
+    writeTsConfig(projectFolder, {
       name: 'sample',
       modules: {},
     });
@@ -96,7 +102,7 @@ describe('build and launchFromBuild', () => {
     const projectFolder = makeTempDir('antelope-start-stale-');
     tempDirs.push(projectFolder);
 
-    writeJson(path.join(projectFolder, 'antelope.json'), {
+    writeTsConfig(projectFolder, {
       name: 'sample',
       modules: {},
     });
@@ -115,7 +121,7 @@ describe('build and launchFromBuild', () => {
     const projectFolder = makeTempDir('antelope-start-module-missing-');
     tempDirs.push(projectFolder);
 
-    writeJson(path.join(projectFolder, 'antelope.json'), {
+    writeTsConfig(projectFolder, {
       name: 'sample',
       modules: {},
     });

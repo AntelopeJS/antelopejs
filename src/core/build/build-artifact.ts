@@ -3,14 +3,12 @@ import path from 'path';
 import { AntelopeLogging, IFileSystem, ModuleSource } from '../../types';
 import { NodeFileSystem } from '../filesystem';
 import { ModulePackageJson } from '../module-manifest';
+import { ConfigLoader } from '../config/config-loader';
 
 const BUILD_ARTIFACT_VERSION = '1';
 const BUILD_FOLDER = '.antelope/build';
 const BUILD_FILE = 'build.json';
 const HASH_SEPARATOR = '\n--antelope-build-hash--\n';
-const MAIN_CONFIG_FILE = 'antelope.json';
-const MODULE_CONFIG_PREFIX = 'antelope.';
-const MODULE_CONFIG_SUFFIX = '.json';
 const JSON_INDENT = 2;
 
 export interface BuildPathEntry {
@@ -73,30 +71,26 @@ export interface BuildArtifactInput {
 }
 
 interface RawProjectConfig {
-  modules?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
-function resolveProjectFolder(projectFolder: string): string {
-  return path.resolve(projectFolder);
+function isRawProjectConfig(value: unknown): value is RawProjectConfig {
+  return typeof value === 'object' && value !== null;
 }
 
-function getMainConfigPath(projectFolder: string): string {
-  return path.join(resolveProjectFolder(projectFolder), MAIN_CONFIG_FILE);
-}
-
-function getModuleConfigPath(projectFolder: string, moduleName: string): string {
-  return path.join(resolveProjectFolder(projectFolder), `${MODULE_CONFIG_PREFIX}${moduleName}${MODULE_CONFIG_SUFFIX}`);
-}
-
-function getSortedModuleNames(modules?: Record<string, unknown>): string[] {
-  if (!modules) {
-    return [];
+function toStableHashValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => toStableHashValue(item));
   }
-  return Object.keys(modules).sort((a, b) => a.localeCompare(b));
+  if (!isRawProjectConfig(value)) {
+    return value;
+  }
+  const keys = Object.keys(value).sort((a, b) => a.localeCompare(b));
+  return Object.fromEntries(keys.map((key) => [key, toStableHashValue(value[key])]));
 }
 
 export function getBuildFolderPath(projectFolder: string): string {
-  return path.join(resolveProjectFolder(projectFolder), BUILD_FOLDER);
+  return path.join(path.resolve(projectFolder), BUILD_FOLDER);
 }
 
 export function getBuildArtifactPath(projectFolder: string): string {
@@ -108,20 +102,10 @@ export async function computeConfigHash(
   env: string,
   fs: IFileSystem = new NodeFileSystem(),
 ): Promise<string> {
-  const configPath = getMainConfigPath(projectFolder);
-  const configContent = await fs.readFileString(configPath, 'utf-8');
-  const rawConfig = JSON.parse(configContent) as RawProjectConfig;
-  const moduleNames = getSortedModuleNames(rawConfig.modules);
-  const hashParts: string[] = [configContent];
-
-  for (const moduleName of moduleNames) {
-    const moduleConfigPath = getModuleConfigPath(projectFolder, moduleName);
-    if (await fs.exists(moduleConfigPath)) {
-      hashParts.push(await fs.readFileString(moduleConfigPath, 'utf-8'));
-    }
-  }
-
-  hashParts.push(env);
+  const loader = new ConfigLoader(fs);
+  const resolvedConfig = await loader.load(projectFolder, env);
+  const stableConfig = JSON.stringify(toStableHashValue(resolvedConfig));
+  const hashParts: string[] = [stableConfig, env];
 
   return crypto.createHash('sha256').update(hashParts.join(HASH_SEPARATOR)).digest('hex');
 }

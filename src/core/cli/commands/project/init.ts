@@ -7,12 +7,17 @@ import { handlers, projectModulesAddCommand } from './modules/add';
 import { moduleInitCommand } from '../module/init';
 import { Spinner, displayBox, error, info, warning } from '../../cli-ui';
 import { mkdir, stat } from 'fs/promises';
+import { AntelopeConfig } from '../../../../types';
+
+interface ProjectInitAnswers {
+  name: string;
+}
 
 export default function () {
   return new Command('init')
     .description(
       `Create a new AntelopeJS project\n` +
-        `Creates a new project with an antelope.json file and optionally sets up your first module.`,
+        `Creates a new project with an antelope.config.ts file and optionally sets up your first module.`,
     )
     .argument('<project>', 'Directory path for the new project')
     .action(async (project: string) => {
@@ -40,9 +45,7 @@ export default function () {
       console.log('');
 
       // Prompt for project details
-      const answers = await inquirer.prompt<{
-        name: string;
-      }>([
+      const answers = await inquirer.prompt<ProjectInitAnswers>([
         {
           type: 'input',
           name: 'name',
@@ -62,7 +65,12 @@ export default function () {
         await configSpinner.update(`Created project directory at ${chalk.bold(resolvedProjectPath)}`);
       }
 
-      await writeConfig(resolvedProjectPath, answers);
+      const projectConfig: Partial<AntelopeConfig> = {
+        name: answers.name,
+        modules: {},
+      };
+
+      await writeConfig(resolvedProjectPath, projectConfig);
       await configSpinner.succeed('Project configuration created successfully');
 
       console.log('');

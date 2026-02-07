@@ -1,0 +1,12 @@
+{
+  "name": "module-a",
+  "version": "1.0.0",
+  "main": "index.js",
+  "antelopeJs": {
+    "imports": ["core@beta"],
+    "exports": [
+      "greeter@v1"
+    ],
+    "exportsPath": "interfaces"
+  }
+}
