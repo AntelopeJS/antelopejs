@@ -30,7 +30,12 @@ function isTsConfig(value: unknown): value is TsConfig {
 async function readTsConfigOutDir(tsConfigPath: string): Promise<string | null> {
   try {
     const tsConfigContent = await readFile(tsConfigPath, 'utf8');
-    const parsed: unknown = JSON.parse(tsConfigContent);
+    // Strip single-line comments, multi-line comments, and trailing commas (tsconfig allows these)
+    const jsonContent = tsConfigContent
+      .replace(/\/\/.*$/gm, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/,\s*([}\]])/g, '$1');
+    const parsed: unknown = JSON.parse(jsonContent);
     if (!isTsConfig(parsed)) {
       return null;
     }
