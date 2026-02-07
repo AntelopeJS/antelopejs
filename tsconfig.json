@@ -3,9 +3,7 @@
     "moduleResolution": "node",
     "target": "esnext",
     "module": "commonjs",
-    "lib": [
-      "ES2021"
-    ],
+    "lib": ["ES2021"],
     "allowJs": true,
     "checkJs": false,
     "outDir": "dist",
@@ -22,7 +20,5 @@
     "useDefineForClassFields": true,
     "stripInternal": true
   },
-  "include": [
-    "src/**/*.ts",
-  ]
+  "include": ["src/**/*.ts"]
 }
