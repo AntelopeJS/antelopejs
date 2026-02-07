@@ -1,21 +1,57 @@
-export function isObject(item: any) {
-  return item && typeof item === 'object' && !Array.isArray(item);
+export function isObject(item: unknown): item is Record<string, unknown> {
+  return item !== null && typeof item === 'object' && !Array.isArray(item);
 }
 
-export function mergeDeep(target: any, ...sources: any[]): any {
-  if (!sources.length) return target;
-  const source = sources.shift();
+export function mergeDeep(
+  target: Record<string, any>,
+  ...sources: Array<Record<string, any> | undefined>
+): Record<string, any> {
+  let result: Record<string, any> = { ...target };
 
-  if (isObject(target) && isObject(source)) {
+  for (const source of sources) {
+    if (!source) continue;
     for (const key in source) {
-      if (isObject(source[key])) {
-        if (!target[key]) Object.assign(target, { [key]: {} });
-        mergeDeep(target[key], source[key]);
-      } else {
-        Object.assign(target, { [key]: source[key] });
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        const sourceValue = source[key];
+        const targetValue = result[key];
+
+        if (isObject(sourceValue) && isObject(targetValue)) {
+          result[key] = mergeDeep(targetValue, sourceValue);
+        } else {
+          result[key] = sourceValue;
+        }
       }
     }
   }
 
-  return mergeDeep(target, ...sources);
+  return result;
+}
+
+export function get(obj: Record<string, any>, path: string): unknown {
+  const keys = path.split('.');
+  let current = obj;
+
+  for (const key of keys) {
+    if (current === null || current === undefined) {
+      return undefined;
+    }
+    current = current[key];
+  }
+
+  return current;
+}
+
+export function set(obj: Record<string, any>, path: string, value: unknown): void {
+  const keys = path.split('.');
+  let current = obj;
+
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (!(key in current) || !isObject(current[key])) {
+      current[key] = {};
+    }
+    current = current[key];
+  }
+
+  current[keys[keys.length - 1]] = value;
 }

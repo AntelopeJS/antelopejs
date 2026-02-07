@@ -3,6 +3,10 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import eslintPluginImport from 'eslint-plugin-import';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+
+const configDir = dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
   {
@@ -11,7 +15,7 @@ export default tseslint.config(
       'tmp',
       'dist',
       '.antelope',
-	  'output',
+      'output',
       'coverage',
       '.git',
       '*.log',
@@ -35,11 +39,8 @@ export default tseslint.config(
       ecmaVersion: 12,
       sourceType: 'module',
       parserOptions: {
-        project: ['tsconfig.json'],
-        projectService: {
-          allowDefaultProject: ['*.ts', 'eslint.config.mjs'],
-        },
-        tsconfigRootDir: import.meta.dirname,
+        project: ['tsconfig.eslint.json'],
+        tsconfigRootDir: configDir,
       },
     },
   },
@@ -50,12 +51,12 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'off',
       //'@typescript-eslint/no-floating-promises': 'error',
       //'@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/no-throw-literal': 'off',
       '@typescript-eslint/no-unnecessary-type-assertion': 'warn',
-      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/restrict-template-expressions': 'warn',
       '@typescript-eslint/no-namespace': 'off',
       '@typescript-eslint/only-throw-error': 'off',
@@ -63,7 +64,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       'import/prefer-default-export': 'off',
-      'import/no-extraneous-dependencies': ['error', { devDependencies: ['**/*.test.ts', '**/*.spec.ts'] }],
+      'import/no-extraneous-dependencies': ['error', { devDependencies: ['**/*.test.ts', '**/*.spec.ts', 'test/**'] }],
       'import/extensions': [
         'error',
         'ignorePackages',
@@ -93,6 +94,25 @@ export default tseslint.config(
       '@typescript-eslint/await-thenable': 'off',
       'prefer-const': 'off',
       '@typescript-eslint/ban-ts-comment': 'off',
+    },
+  },
+  {
+    files: ['src/core/cli/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+      'max-len': 'off',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      '@typescript-eslint/restrict-template-expressions': 'off',
+    },
+  },
+  {
+    files: ['test/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      'import/no-named-as-default-member': 'off',
+      'import/no-named-as-default': 'off',
     },
   },
 );

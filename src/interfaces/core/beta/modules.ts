@@ -52,9 +52,11 @@ export namespace Events {
 Events.ModuleDestroyed.register((module) => {
   if (internal.knownAsync.has(module)) {
     internal.knownAsync.get(module)!.forEach((proxy) => proxy.detach());
+    internal.knownAsync.delete(module);
   }
   if (internal.knownRegisters.has(module)) {
     internal.knownRegisters.get(module)!.forEach((proxy) => proxy.detach());
+    internal.knownRegisters.delete(module);
   }
   for (const [, proxies] of internal.knownRegisters) {
     proxies.forEach((proxy) => proxy.unregisterModule(module));

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { Class } from './decorators';
-import Logging from '../../logging/beta';
+import { Logging } from '../../logging/beta';
 
 /**
  * Represents a connection to an interface implementation.
@@ -274,20 +274,9 @@ export namespace internal {
   export const interfaceConnections: Record<string, Record<string, InterfaceConnection[]>> = {};
 }
 
-/**
- * Gets the responsible module for the current execution context.
- *
- * Determines which module is responsible for the current code execution by analyzing the call stack.
- * This is used for automatic proxy detachment and event handler cleanup.
- *
- * @param ignoreInterfaces Whether to ignore interfaces when determining the responsible module
- * @param startFrame The starting frame in the stack trace to analyze
- * @returns The module ID or undefined if no module is found
- */
-export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): string | undefined {
+function captureCallStack(startFrame = 0): NodeJS.CallSite[] {
   const oldHandler = Error.prepareStackTrace;
   const oldLimit = Error.stackTraceLimit;
-
   Error.stackTraceLimit = Infinity;
   Error.prepareStackTrace = (_, trace) => trace;
   const errObj = {} as { stack: Array<string> };
@@ -295,12 +284,21 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
   const trace = errObj.stack as unknown as NodeJS.CallSite[];
   Error.prepareStackTrace = oldHandler;
   Error.stackTraceLimit = oldLimit;
+  return trace.slice(startFrame);
+}
 
+interface ResponsibleModuleResult {
+  module?: string;
+  lastInterface: string;
+}
+
+function findResponsibleFile(trace: NodeJS.CallSite[], ignoreInterfaces: boolean): ResponsibleModuleResult {
   let currentFound = '';
   let lastInterface = '';
   let currentBestMatch = 0;
-  for (let i = startFrame; i < trace.length; ++i) {
-    const fileName = trace[i].getFileName();
+
+  for (const site of trace) {
+    const fileName = site.getFileName();
     if (!fileName || fileName.startsWith('node:internal/') || fileName.match(/[/\\]node_modules[/\\]/)) {
       continue;
     }
@@ -317,25 +315,48 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
       }
     }
     if (currentFound) {
-      return currentFound;
+      return { module: currentFound, lastInterface };
     }
-    if (!trace[i].getFunctionName() && trace[i].getTypeName()) {
-      // This stack frame is outside of a function, we shouldn't search further.
+    if (!site.getFunctionName() && site.getTypeName()) {
       break;
     }
   }
 
-  if (trace[trace.length - 1].getFileName() === 'node:internal/timers') {
-    const tracestr = trace
-      .filter((site) => !site.getFileName()?.startsWith('node:internal/'))
-      .map((site) => site.toString())
-      .join('\n    - ');
-    Logging.Error(
-      'GetResponsibleModule called from within an async context, this will break hot reloading!\n    - ' + tracestr,
-    );
-  }
+  return { lastInterface };
+}
 
-  return lastInterface;
+function reportAsyncContext(trace: NodeJS.CallSite[]): void {
+  const lastSite = trace[trace.length - 1];
+  if (lastSite?.getFileName() !== 'node:internal/timers') {
+    return;
+  }
+  const tracestr = trace
+    .filter((site) => !site.getFileName()?.startsWith('node:internal/'))
+    .map((site) => site.toString())
+    .join('\n    - ');
+  Logging.Error(
+    'GetResponsibleModule called from within an async context, this will break hot reloading!\n    - ' + tracestr,
+  );
+}
+
+/**
+ * Gets the responsible module for the current execution context.
+ *
+ * Determines which module is responsible for the current code execution by analyzing the call stack.
+ * This is used for automatic proxy detachment and event handler cleanup.
+ *
+ * @param ignoreInterfaces Whether to ignore interfaces when determining the responsible module
+ * @param startFrame The starting frame in the stack trace to analyze
+ * @returns The module ID or undefined if no module is found
+ */
+export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): string | undefined {
+  const trace = captureCallStack(startFrame);
+  const responsible = findResponsibleFile(trace, ignoreInterfaces);
+  if (responsible.module) {
+    return responsible.module;
+  }
+  reportAsyncContext(trace);
+  return responsible.lastInterface;
 }
 
 /**

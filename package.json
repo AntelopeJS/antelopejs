@@ -8,7 +8,7 @@
   },
   "license": "Apache-2.0",
   "bin": {
-    "ajs": "dist/cli/index.js"
+    "ajs": "dist/core/cli/index.js"
   },
   "files": [
     "dist"
@@ -24,16 +24,16 @@
     "modular"
   ],
   "scripts": {
-    "install-local": "pnpm run build && npm install -g . --force",
     "build": "rimraf dist && tsc",
-    "postbuild": "node -e \"require('fs').chmodSync('dist/cli/index.js', 0o755)\"",
     "prepack": "pnpm run build",
     "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
-    "generate": "node dist/cli/index.js module exports generate",
+    "generate": "node dist/core/cli/index.js module exports generate",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write .",
-    "test": "echo \"No test specified\""
+    "test": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'",
+    "test:watch": "mocha --require ts-node/register --require test/setup.ts --watch --watch-extensions ts 'test/**/*.test.ts'",
+    "test:coverage": "c8 --check-coverage --lines 95 --functions 95 --branches 95 --statements 95 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'"
   },
   "antelopeJs": {
     "exportsPath": "dist/interfaces",
@@ -52,23 +52,24 @@
     "inly": "^5.0.1",
     "inquirer": "^12.5.2",
     "mocha": "^11.1.0",
-    "ora": "^8.2.0",
-    "os": "^0.1.2",
     "proper-lockfile": "^4.1.2",
     "reflect-metadata": "^0.2.2",
     "semver": "^7.7.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "rimraf": "^6.0.1",
     "@eslint/js": "^9.25.0",
     "@types/async-exit-hook": "^2.0.2",
+    "@types/chai": "^4.3.20",
     "@types/cli-progress": "^3.11.6",
     "@types/figlet": "^1.7.0",
     "@types/inquirer": "^9.0.7",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.14.1",
     "@types/semver": "^7.7.0",
+    "@types/sinon": "^17.0.4",
+    "c8": "^10.1.3",
+    "chai": "^4.5.0",
     "eslint": "^9.25.0",
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-import": "^2.31.0",
@@ -77,7 +78,24 @@
     "prettier": "^3.5.3",
     "release-it": "^19.0.2",
     "release-it-changelogen": "^0.1.0",
+    "rimraf": "^6.0.1",
+    "sinon": "^17.0.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.30.1"
+  },
+  "c8": {
+    "include": [
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "src/**/*.d.ts",
+      "src/interfaces/**"
+    ],
+    "reporter": [
+      "text",
+      "html"
+    ],
+    "report-dir": "coverage"
   }
 }
