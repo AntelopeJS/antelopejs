@@ -56,7 +56,7 @@ describe('ConfigParser', () => {
       expect(result.items).to.deep.equal(['demo', 2, true, { path: 'demo/dir' }]);
     });
 
-    it('should evaluate pure expression templates when key is missing', () => {
+    it('should keep unresolved pure templates as-is', () => {
       const config = {
         a: 2,
         b: 3,
@@ -65,7 +65,17 @@ describe('ConfigParser', () => {
 
       const result = parser.processTemplates(config);
 
-      expect(result.sum).to.equal(5);
+      expect(result.sum).to.equal('${Number(a) + Number(b)}');
+    });
+
+    it('does not execute expressions in pure templates', () => {
+      const config = {
+        value: '${globalThis.process?.env?.PATH}',
+      };
+
+      const result = parser.processTemplates(config);
+
+      expect(result.value).to.equal('${globalThis.process?.env?.PATH}');
     });
 
     it('should parse JSON when pure template matches JSON value', () => {

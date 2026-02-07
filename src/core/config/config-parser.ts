@@ -62,12 +62,7 @@ export class ConfigParser {
           return values[key];
         }
       }
-      try {
-        const fn = new Function(...Object.keys(values), `return ${key}`);
-        return fn(...Object.values(values));
-      } catch {
-        return str;
-      }
+      return str;
     }
 
     return str.replace(/\$\{([^}]+)\}/g, (_, key) => {
