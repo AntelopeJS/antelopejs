@@ -20,7 +20,7 @@ describe('CLI Entry Point', () => {
     expect(project).to.be.ok;
     if (!project) throw new Error('project command missing');
 
-    expect(commandNames(project)).to.include.members(['init', 'logging', 'modules', 'run']);
+    expect(commandNames(project)).to.include.members(['build', 'dev', 'init', 'logging', 'modules', 'run', 'start']);
 
     const modules = project.commands.find((c: any) => c.name() === 'modules');
     if (!modules) throw new Error('project modules command missing');

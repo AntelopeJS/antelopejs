@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import * as path from 'path';
 import { InMemoryFileSystem } from '../helpers/in-memory-filesystem';
 import { ModuleManifest, ModulePackageJson } from '../../src/core/module-manifest';
+import { BuildModuleEntry } from '../../src/core/build/build-artifact';
 import { ModuleSourceLocal } from '../../src/types';
 
 describe('ModuleManifest', () => {
@@ -297,5 +298,38 @@ describe('ModuleManifest', () => {
 
     const exists = await (manifest as any).isDirectory('/missing');
     expect(exists).to.equal(false);
+  });
+
+  it('serializes and reconstructs from build entries', async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile(
+      '/mod/package.json',
+      JSON.stringify({
+        name: 'mod',
+        version: '1.0.0',
+        antelopeJs: {
+          imports: ['core@beta'],
+        },
+      } as ModulePackageJson),
+    );
+
+    const source: ModuleSourceLocal = { type: 'local', path: '/mod', main: 'dist/index.js' };
+    const manifest = await ModuleManifest.create('/mod', source, 'mod', fs);
+    manifest.exports = { 'core@beta': '/mod/interfaces/core/beta' };
+    manifest.imports = ['core@beta'];
+
+    const entry = manifest.serialize();
+    const rebuilt = ModuleManifest.fromBuildEntry(entry);
+    const rebuiltEntry = rebuilt.serialize() as BuildModuleEntry;
+
+    expect(rebuiltEntry.folder).to.equal(entry.folder);
+    expect(rebuiltEntry.name).to.equal(entry.name);
+    expect(rebuiltEntry.version).to.equal(entry.version);
+    expect(rebuiltEntry.main).to.equal(entry.main);
+    expect(rebuiltEntry.exports).to.deep.equal(entry.exports);
+    expect(rebuiltEntry.imports).to.deep.equal(entry.imports);
+    expect(rebuiltEntry.baseUrl).to.equal(entry.baseUrl);
+    expect(rebuiltEntry.paths).to.deep.equal(entry.paths);
+    expect(rebuiltEntry.exportsPath).to.equal(entry.exportsPath);
   });
 });
