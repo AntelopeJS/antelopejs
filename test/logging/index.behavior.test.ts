@@ -1,11 +1,6 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
-import {
-  levelMap,
-  setupAntelopeProjectLogging,
-  addChannelFilter,
-  getLogger,
-} from '../../src/logging';
+import { levelMap, setupAntelopeProjectLogging, addChannelFilter, getLogger } from '../../src/logging';
 
 describe('Logging Module', () => {
   afterEach(() => {

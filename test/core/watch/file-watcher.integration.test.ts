@@ -40,6 +40,5 @@ describe('FileWatcher Integration', () => {
     } finally {
       watcher.stopWatching();
     }
-
   });
 });

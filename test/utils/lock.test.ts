@@ -1,4 +1,3 @@
-import { expect } from 'chai';
 import sinon from 'sinon';
 import lockfile from 'proper-lockfile';
 import { acquireLock } from '../../src/utils/lock';

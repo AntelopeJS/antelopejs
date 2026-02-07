@@ -33,5 +33,4 @@ describe('InterfaceRegistry', () => {
 
     expect(internal.interfaceConnections.consumer).to.be.undefined;
   });
-
 });
