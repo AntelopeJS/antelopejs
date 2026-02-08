@@ -211,7 +211,7 @@ describe('project run behavior', () => {
     await cmd.parseAsync(['node', 'test', '--project', '/tmp/project']);
 
     expect(startStub.called).to.equal(true);
-    expect(errorStub.calledWithMatch('Unknown error')).to.equal(true);
+    expect(errorStub.calledWithMatch('123')).to.equal(true);
     expect(process.exitCode).to.equal(1);
   });
 

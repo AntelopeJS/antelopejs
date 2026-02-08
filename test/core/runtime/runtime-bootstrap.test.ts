@@ -67,7 +67,9 @@ describe('runtime runtime-bootstrap', () => {
       warningListener(new Error('warned'));
 
       expect(errorStub.called).to.equal(true);
-      expect(warnStub.calledWith('Warning:', 'warned')).to.equal(true);
+      const warnedErr = warnStub.args.find((a: unknown[]) => a[0] === 'Warning:' && a[1] instanceof Error);
+      expect(warnedErr).to.not.equal(undefined);
+      expect((warnedErr![1] as Error).message).to.equal('warned');
       expect(exitStub.calledWith(1)).to.equal(true);
     } finally {
       restoreProcessListeners(originalListeners);

@@ -96,7 +96,7 @@ function buildRunnerScript(entryPath: string): string {
         verbose: process.env.ANTELOPE_VERBOSE?.split(',') ?? undefined
       }
     ).catch(err => {
-      console.error('Error running AntelopeJS:', err instanceof Error ? err.message : String(err));
+      console.error('Error running AntelopeJS:', err instanceof Error ? err.stack ?? err.message : String(err));
       process.exit(1);
     });
   `;
@@ -188,7 +188,7 @@ export async function executeDevCommand(this: Command, options: DevCommandOption
     }
     await launchDirect(runOptions);
   } catch (err) {
-    error(err instanceof Error ? err.message : `Unknown error: ${String(err)}`);
+    error(err instanceof Error ? err : String(err));
     process.exitCode = 1;
   }
 }

@@ -130,9 +130,17 @@ describe('Logging Utils', () => {
 
     it('should serialize errors and dates', () => {
       const err = new Error('boom');
-      expect(serializeLogValue(err)).to.equal('Error: boom');
+      const result = serializeLogValue(err);
+      expect(result).to.include('Error: boom');
+      expect(result).to.include('at ');
       const date = new Date('2024-01-15T10:30:45Z');
       expect(serializeLogValue(date)).to.equal(date.toISOString());
+    });
+
+    it('should serialize errors without a stack', () => {
+      const err = new Error('no-stack');
+      err.stack = undefined;
+      expect(serializeLogValue(err)).to.equal('no-stack');
     });
 
     it('should handle circular references', () => {

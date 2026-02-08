@@ -136,7 +136,7 @@ export function serializeLogValue(value: any): string {
   if (value === undefined) return 'undefined';
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (value instanceof Error) return `${value.name}: ${value.message}`;
+  if (value instanceof Error) return value.stack ?? value.message;
   if (value instanceof Date) return value.toISOString();
 
   // For objects and arrays, use JSON.stringify with proper formatting

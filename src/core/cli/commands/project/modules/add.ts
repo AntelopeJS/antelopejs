@@ -66,7 +66,7 @@ export async function projectModulesAddCommand(modules: string[], options: AddOp
           : module;
       info(`Adding ${chalk.bold(modulePath)} using ${options.mode} mode`);
       return handlers.get(options.mode)!(module, { ...options, project: resolvedProjectPath }).catch((err) => {
-        error(`Failed to add module "${module}": ${err.message || err}`);
+        error(err instanceof Error ? err : `Failed to add module "${module}": ${String(err)}`);
         return null;
       });
     }),

@@ -85,7 +85,7 @@ if (require.main === module) {
       process.exit(0);
     }
 
-    console.error(chalk.red('Error:'), err.message || err);
+    console.error(chalk.red('Error:'), err instanceof Error ? (err.stack ?? err.message) : err);
     process.exit(1);
   });
 }

@@ -169,12 +169,14 @@ export function success(message: string): void {
   console.log(`${chalk.green.bold('✓')} ${message}`);
 }
 
-export function error(message: string): void {
-  console.log(`${chalk.red.bold('✗')} ${message}`);
+export function error(message: string | Error): void {
+  const text = message instanceof Error ? (message.stack ?? message.message) : message;
+  console.log(`${chalk.red.bold('✗')} ${text}`);
 }
 
-export function warning(message: string): void {
-  console.log(`${chalk.yellow.bold('⚠')} ${message}`);
+export function warning(message: string | Error): void {
+  const text = message instanceof Error ? (message.stack ?? message.message) : message;
+  console.log(`${chalk.yellow.bold('⚠')} ${text}`);
 }
 
 export function info(message: string): void {
