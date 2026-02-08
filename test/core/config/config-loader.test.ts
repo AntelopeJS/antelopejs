@@ -1,32 +1,38 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
+import { AntelopeConfig } from '../../../src/types';
+import * as configLoader from '../../../src/core/config/config-loader';
 import { ConfigLoader } from '../../../src/core/config/config-loader';
 import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 
 describe('ConfigLoader', () => {
   let fs: InMemoryFileSystem;
   let loader: ConfigLoader;
+  let loadTsConfigFileStub: sinon.SinonStub;
 
   beforeEach(() => {
     fs = new InMemoryFileSystem();
     loader = new ConfigLoader(fs);
+    loadTsConfigFileStub = sinon.stub(configLoader, 'loadTsConfigFile');
   });
 
   afterEach(() => {
     sinon.restore();
   });
 
+  async function mockTsConfig(config: AntelopeConfig): Promise<void> {
+    await fs.writeFile('/project/antelope.config.ts', '');
+    loadTsConfigFileStub.resolves(config);
+  }
+
   describe('load', () => {
-    it('should load basic config', async () => {
-      await fs.writeFile(
-        '/project/antelope.json',
-        JSON.stringify({
-          name: 'test-project',
-          modules: {
-            'my-module': '1.0.0',
-          },
-        }),
-      );
+    it('loads basic config', async () => {
+      await mockTsConfig({
+        name: 'test-project',
+        modules: {
+          'my-module': '1.0.0',
+        },
+      });
 
       const config = await loader.load('/project');
 
@@ -36,33 +42,27 @@ describe('ConfigLoader', () => {
       });
     });
 
-    it('should merge environment config', async () => {
-      await fs.writeFile(
-        '/project/antelope.json',
-        JSON.stringify({
-          name: 'test-project',
-          cacheFolder: '.cache',
-          environments: {
-            production: {
-              cacheFolder: '/var/cache',
-            },
+    it('merges environment config', async () => {
+      await mockTsConfig({
+        name: 'test-project',
+        cacheFolder: '.cache',
+        environments: {
+          production: {
+            cacheFolder: '/var/cache',
           },
-        }),
-      );
+        },
+      });
 
       const config = await loader.load('/project', 'production');
 
       expect(config.cacheFolder).to.equal('/var/cache');
     });
 
-    it('should load module-specific config files', async () => {
-      await fs.writeFile(
-        '/project/antelope.json',
-        JSON.stringify({
-          name: 'test',
-          modules: { database: '1.0.0' },
-        }),
-      );
+    it('loads module-specific config files', async () => {
+      await mockTsConfig({
+        name: 'test',
+        modules: { database: '1.0.0' },
+      });
       await fs.writeFile(
         '/project/antelope.database.json',
         JSON.stringify({
@@ -79,14 +79,11 @@ describe('ConfigLoader', () => {
       });
     });
 
-    it('should process template strings', async () => {
-      await fs.writeFile(
-        '/project/antelope.json',
-        JSON.stringify({
-          name: 'my-app',
-          cacheFolder: '${name}/.cache',
-        }),
-      );
+    it('processes template strings', async () => {
+      await mockTsConfig({
+        name: 'my-app',
+        cacheFolder: '${name}/.cache',
+      });
 
       const config = await loader.load('/project');
 
@@ -94,13 +91,10 @@ describe('ConfigLoader', () => {
     });
 
     it('defaults cacheFolder when missing', async () => {
-      await fs.writeFile(
-        '/project/antelope.json',
-        JSON.stringify({
-          name: 'my-app',
-          modules: {},
-        }),
-      );
+      await mockTsConfig({
+        name: 'my-app',
+        modules: {},
+      });
 
       const config = await loader.load('/project');
 
@@ -108,14 +102,11 @@ describe('ConfigLoader', () => {
     });
 
     it('defaults cacheFolder when null', async () => {
-      await fs.writeFile(
-        '/project/antelope.json',
-        JSON.stringify({
-          name: 'my-app',
-          cacheFolder: null,
-          modules: {},
-        }),
-      );
+      await mockTsConfig({
+        name: 'my-app',
+        cacheFolder: null as unknown as string,
+        modules: {},
+      });
 
       const config = await loader.load('/project');
 
@@ -123,13 +114,10 @@ describe('ConfigLoader', () => {
     });
 
     it('merges module config when base config is undefined', async () => {
-      await fs.writeFile(
-        '/project/antelope.json',
-        JSON.stringify({
-          name: 'test',
-          modules: { database: '1.0.0' },
-        }),
-      );
+      await mockTsConfig({
+        name: 'test',
+        modules: { database: '1.0.0' },
+      });
       await fs.writeFile(
         '/project/antelope.database.json',
         JSON.stringify({
@@ -152,14 +140,11 @@ describe('ConfigLoader', () => {
     });
 
     it('uses default cache folder when env overrides return undefined', async () => {
-      await fs.writeFile(
-        '/project/antelope.json',
-        JSON.stringify({
-          name: 'my-app',
-          cacheFolder: '/custom-cache',
-          modules: {},
-        }),
-      );
+      await mockTsConfig({
+        name: 'my-app',
+        cacheFolder: '/custom-cache',
+        modules: {},
+      });
 
       sinon.stub((loader as any).parser, 'applyEnvOverrides').callsFake((config: any) => ({
         ...config,
@@ -169,6 +154,27 @@ describe('ConfigLoader', () => {
       const config = await loader.load('/project');
 
       expect(config.cacheFolder).to.equal('.antelope/cache');
+    });
+
+    it('passes environment to loadTsConfigFile', async () => {
+      await mockTsConfig({
+        name: 'env-project',
+        modules: {},
+      });
+
+      await loader.load('/project', 'production');
+
+      expect(loadTsConfigFileStub.calledOnce).to.equal(true);
+      expect(loadTsConfigFileStub.firstCall.args[1]).to.equal('production');
+    });
+
+    it('throws when config file is missing', async () => {
+      try {
+        await loader.load('/project');
+        expect.fail('should have thrown');
+      } catch (error: any) {
+        expect(error.message).to.include('antelope.config.ts');
+      }
     });
   });
 });

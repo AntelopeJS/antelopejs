@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "CommonJS",
+    "strict": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "@ajs/core/*": ["../../../dist/interfaces/core/*"],
+      "@ajs/greeter/*": ["../module-a/interfaces/greeter/*"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

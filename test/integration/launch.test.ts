@@ -13,6 +13,13 @@ async function createModule(folder: string, name: string) {
   await fs.writeFile(path.join(folder, 'index.js'), 'module.exports = {};');
 }
 
+async function writeProjectConfig(projectFolder: string, config: Record<string, unknown>) {
+  await fs.writeFile(
+    path.join(projectFolder, 'antelope.config.ts'),
+    `export default ${JSON.stringify(config, null, 2)};\n`,
+  );
+}
+
 describe('Launch Function', () => {
   it('should return ModuleManager instance', async () => {
     const projectFolder = await fs.mkdtemp(path.join(os.tmpdir(), 'ajs-project-'));
@@ -20,21 +27,14 @@ describe('Launch Function', () => {
       const modulePath = path.join(projectFolder, 'module-a');
       await createModule(modulePath, 'module-a');
 
-      await fs.writeFile(
-        path.join(projectFolder, 'antelope.json'),
-        JSON.stringify(
-          {
-            name: 'test-project',
-            modules: {
-              'module-a': {
-                source: { type: 'local', path: './module-a', main: 'index.js' },
-              },
-            },
+      await writeProjectConfig(projectFolder, {
+        name: 'test-project',
+        modules: {
+          'module-a': {
+            source: { type: 'local', path: './module-a', main: 'index.js' },
           },
-          null,
-          2,
-        ),
-      );
+        },
+      });
 
       const manager = await launch(projectFolder);
       expect(manager).to.be.instanceOf(ModuleManager);
@@ -46,7 +46,7 @@ describe('Launch Function', () => {
     }
   });
 
-  it('should load modules from antelope.json', async () => {
+  it('should load modules from antelope.config.ts', async () => {
     const projectFolder = await fs.mkdtemp(path.join(os.tmpdir(), 'ajs-project-'));
     try {
       const moduleAPath = path.join(projectFolder, 'module-a');
@@ -54,20 +54,13 @@ describe('Launch Function', () => {
       await createModule(moduleAPath, 'module-a');
       await createModule(moduleBPath, 'module-b');
 
-      await fs.writeFile(
-        path.join(projectFolder, 'antelope.json'),
-        JSON.stringify(
-          {
-            name: 'test-project',
-            modules: {
-              'module-a': { source: { type: 'local', path: './module-a', main: 'index.js' } },
-              'module-b': { source: { type: 'local', path: './module-b', main: 'index.js' } },
-            },
-          },
-          null,
-          2,
-        ),
-      );
+      await writeProjectConfig(projectFolder, {
+        name: 'test-project',
+        modules: {
+          'module-a': { source: { type: 'local', path: './module-a', main: 'index.js' } },
+          'module-b': { source: { type: 'local', path: './module-b', main: 'index.js' } },
+        },
+      });
 
       const manager = await launch(projectFolder);
       const modules = manager.listModules();
@@ -87,24 +80,17 @@ describe('Launch Function', () => {
       const moduleBPath = path.join(projectFolder, 'module-b');
       await createModule(moduleBPath, 'module-b');
 
-      await fs.writeFile(
-        path.join(projectFolder, 'antelope.json'),
-        JSON.stringify(
-          {
-            name: 'test-project',
-            modules: {},
-            environments: {
-              prod: {
-                modules: {
-                  'module-b': { source: { type: 'local', path: './module-b', main: 'index.js' } },
-                },
-              },
+      await writeProjectConfig(projectFolder, {
+        name: 'test-project',
+        modules: {},
+        environments: {
+          prod: {
+            modules: {
+              'module-b': { source: { type: 'local', path: './module-b', main: 'index.js' } },
             },
           },
-          null,
-          2,
-        ),
-      );
+        },
+      });
 
       const manager = await launch(projectFolder, 'prod');
       const modules = manager.listModules();

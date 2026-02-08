@@ -7,6 +7,25 @@
     "url": "git+https://github.com/AntelopeJS/antelopejs.git"
   },
   "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "default": "./dist/config.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "config": [
+        "dist/config.d.ts"
+      ]
+    }
+  },
   "bin": {
     "ajs": "dist/core/cli/index.js"
   },
@@ -31,7 +50,9 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write .",
-    "test": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'",
+    "test": "pnpm test:unit && pnpm test:playground",
+    "test:unit": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'",
+    "test:playground": "pnpm build && pnpm --dir playground install && ts-node playground/test-playground.ts",
     "test:watch": "mocha --require ts-node/register --require test/setup.ts --watch --watch-extensions ts 'test/**/*.test.ts'",
     "test:coverage": "c8 --check-coverage --lines 95 --functions 95 --branches 95 --statements 95 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'"
   },
@@ -51,10 +72,12 @@
     "figlet": "^1.8.0",
     "inly": "^5.0.1",
     "inquirer": "^12.5.2",
+    "jiti": "^2.6.1",
     "mocha": "^11.1.0",
     "proper-lockfile": "^4.1.2",
     "reflect-metadata": "^0.2.2",
-    "semver": "^7.7.1"
+    "semver": "^7.7.1",
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -81,7 +104,6 @@
     "rimraf": "^6.0.1",
     "sinon": "^17.0.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3",
     "typescript-eslint": "^8.30.1"
   },
   "c8": {

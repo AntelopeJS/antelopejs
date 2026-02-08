@@ -1,8 +1,8 @@
-import { AntelopeModuleConfig, ImportOverride, ModuleSourcePackage } from '../../types';
+import { AntelopeModuleConfig, ImportOverride, ModuleSource, ModuleSourcePackage } from '../../types';
 import { set, isObject } from '../../utils/object';
 
 export interface ExpandedModuleConfig {
-  source: import('../../types').ModuleSource;
+  source: ModuleSource;
   config: unknown;
   importOverrides: ImportOverride[];
   disabledExports: string[];

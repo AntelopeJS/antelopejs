@@ -106,6 +106,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/core/watch/**/*.ts', 'src/index.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     files: ['test/**/*.ts'],
     rules: {
       'no-console': 'off',

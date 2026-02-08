@@ -14,8 +14,13 @@ import {
 import { InMemoryFileSystem } from '../../helpers/in-memory-filesystem';
 import { cleanupTempDir, makeTempDir } from '../../helpers/temp';
 import * as cliUi from '../../../src/core/cli/cli-ui';
+import * as configLoader from '../../../src/core/config/config-loader';
 
 describe('CLI Common', () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
   describe('detectIndentation', () => {
     it('should detect 2-space indentation', async () => {
       const fs = new InMemoryFileSystem();
@@ -92,14 +97,15 @@ describe('CLI Common', () => {
   });
 
   describe('readConfig', () => {
-    it('should read antelope.json', async () => {
+    it('should read antelope.config.ts', async () => {
       const fs = new InMemoryFileSystem();
-      await fs.writeFile('/project/antelope.json', '{"name":"test"}');
+      await fs.writeFile('/project/antelope.config.ts', 'export default {}');
+      sinon.stub(configLoader, 'loadTsConfigFile').resolves({ name: 'ts-project' } as any);
       const config = await readConfig('/project', fs);
-      expect(config?.name).to.equal('test');
+      expect(config?.name).to.equal('ts-project');
     });
 
-    it('returns undefined when antelope.json is missing', async () => {
+    it('returns undefined when antelope.config.ts is missing', async () => {
       const fs = new InMemoryFileSystem();
       const config = await readConfig('/missing', fs);
       expect(config).to.equal(undefined);
@@ -122,11 +128,51 @@ describe('CLI Common', () => {
   });
 
   describe('writeConfig', () => {
-    it('writes antelope.json with default indentation', async () => {
+    it('writes antelope.config.ts with default content when config is missing', async () => {
       const fs = new InMemoryFileSystem();
       await writeConfig('/project', { name: 'demo' } as any, fs);
-      const contents = await fs.readFileString('/project/antelope.json');
+      const contents = await fs.readFileString('/project/antelope.config.ts');
+      expect(contents).to.include("import { defineConfig } from '@antelopejs/core/config';");
+      expect(contents).to.include('export default defineConfig({');
       expect(contents).to.include('"name": "demo"');
+    });
+
+    it('writes antelope.config.ts when using object export', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile('/project/antelope.config.ts', 'export default { name: "demo" };');
+      await writeConfig('/project', { name: 'updated' } as any, fs);
+      const contents = await fs.readFileString('/project/antelope.config.ts');
+      expect(contents).to.include('export default {');
+      expect(contents).to.include('"name": "updated"');
+    });
+
+    it('writes antelope.config.ts when using defineConfig with object', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        '/project/antelope.config.ts',
+        "import { defineConfig } from '@antelopejs/core/config';\nexport default defineConfig({ name: 'demo' });\n",
+      );
+      await writeConfig('/project', { name: 'updated' } as any, fs);
+      const contents = await fs.readFileString('/project/antelope.config.ts');
+      expect(contents).to.include("import { defineConfig } from '@antelopejs/core/config';");
+      expect(contents).to.include('export default defineConfig({');
+      expect(contents).to.include('"name": "updated"');
+    });
+
+    it('throws for function-based antelope.config.ts exports', async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        '/project/antelope.config.ts',
+        "import { defineConfig } from '@antelopejs/core/config';\n" +
+          "export default defineConfig(() => ({ name: 'demo' }));\n",
+      );
+
+      try {
+        await writeConfig('/project', { name: 'updated' } as any, fs);
+        expect.fail('should have thrown');
+      } catch (error: any) {
+        expect(error.message).to.include('function-based');
+      }
     });
   });
 });

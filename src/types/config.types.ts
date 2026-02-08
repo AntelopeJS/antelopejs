@@ -1,3 +1,5 @@
+import { ModuleSourceLocal, ModuleSourceGit, ModuleSourcePackage, ModuleSourceLocalFolder } from './module.types';
+
 export interface AntelopeConfig {
   name: string;
   cacheFolder?: string;
@@ -15,7 +17,7 @@ export interface ImportOverride {
 
 export interface AntelopeModuleConfig {
   version?: string;
-  source?: import('./module.types').ModuleSource;
+  source?: ModuleSourceLocal | ModuleSourceGit | ModuleSourcePackage | ModuleSourceLocalFolder;
   config?: unknown;
   importOverrides?: ImportOverride[] | Record<string, string>;
   disabledExports?: string[];

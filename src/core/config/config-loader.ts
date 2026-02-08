@@ -1,7 +1,10 @@
-import * as path from 'path';
+import { createJiti } from 'jiti';
 import { IFileSystem, AntelopeConfig, AntelopeLogging } from '../../types';
 import { ConfigParser, ExpandedModuleConfig } from './config-parser';
 import { mergeDeep } from '../../utils/object';
+import { ConfigInput } from '../../config';
+import { DEFAULT_CACHE_DIR, DEFAULT_ENV, findConfigPath, getModuleConfigPath } from './config-paths';
+import * as self from './config-loader';
 
 export interface LoadedConfig {
   name: string;
@@ -11,7 +14,17 @@ export interface LoadedConfig {
   envOverrides: Record<string, string | string[]>;
 }
 
-const DEFAULT_CACHE_DIR = '.antelope/cache';
+export async function loadTsConfigFile(configPath: string, environment?: string): Promise<AntelopeConfig> {
+  const jiti = createJiti(configPath);
+  const loaded = await jiti.import(configPath);
+  const configInput: ConfigInput = (loaded as any).default ?? loaded;
+
+  if (typeof configInput === 'function') {
+    return await configInput({ env: environment ?? DEFAULT_ENV });
+  }
+
+  return configInput;
+}
 
 export class ConfigLoader {
   private parser = new ConfigParser();
@@ -19,8 +32,7 @@ export class ConfigLoader {
   constructor(private fs: IFileSystem) {}
 
   async load(projectFolder: string, environment?: string): Promise<LoadedConfig> {
-    const configPath = path.join(projectFolder, 'antelope.json');
-    const rawConfig = await this.loadJsonFile<AntelopeConfig>(configPath);
+    const rawConfig = await this.loadConfigSource(projectFolder, environment);
 
     let config = { ...rawConfig };
     if (environment && rawConfig.environments?.[environment]) {
@@ -33,7 +45,7 @@ export class ConfigLoader {
     const expandedModules = this.parser.expandModuleShorthand(modules);
 
     for (const moduleName of Object.keys(expandedModules)) {
-      const moduleConfigPath = path.join(projectFolder, `antelope.${moduleName}.json`);
+      const moduleConfigPath = getModuleConfigPath(projectFolder, moduleName);
       if (await this.fs.exists(moduleConfigPath)) {
         const moduleConfig = await this.loadJsonFile(moduleConfigPath);
         expandedModules[moduleName].config = mergeDeep(
@@ -55,6 +67,11 @@ export class ConfigLoader {
     });
 
     return processed as LoadedConfig;
+  }
+
+  private async loadConfigSource(projectFolder: string, environment?: string): Promise<AntelopeConfig> {
+    const configPath = await findConfigPath(projectFolder, this.fs);
+    return self.loadTsConfigFile(configPath, environment);
   }
 
   private async loadJsonFile<T>(filePath: string): Promise<T> {

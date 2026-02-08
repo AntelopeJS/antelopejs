@@ -14,6 +14,7 @@ export { Logger } from './logger';
 export type { LogTransport } from './logger';
 
 const DEFAULT_DATE_FORMAT = 'yyyy-MM-dd HH:mm:ss';
+const LOG_SUFFIX = '{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}';
 
 export const levelNames: Record<number, string> = {
   0: 'TRACE',
@@ -35,13 +36,12 @@ export const defaultConfigLogging: AntelopeLogging = {
   enabled: true,
   moduleTracking: { enabled: false, includes: [], excludes: [] },
   formatter: {
-    '0': '{{chalk.gray}}[{{DATE}}] {{chalk.magenta}}{{chalk.bold}}[TRACE]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}',
-    '10': '{{chalk.gray}}[{{DATE}}] {{chalk.blue}}{{chalk.bold}}[DEBUG]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}',
-    '20': '{{chalk.gray}}[{{DATE}}] {{chalk.green}}{{chalk.bold}}[INFO]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}',
-    '30': '{{chalk.gray}}[{{DATE}}] {{chalk.yellow}}{{chalk.bold}}[WARN]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}',
-    '40': '{{chalk.gray}}[{{DATE}}] {{chalk.red}}{{chalk.bold}}[ERROR]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}',
-    default:
-      '{{chalk.gray}}[{{DATE}}] {{chalk.white}}{{chalk.bold}}[LOG]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}',
+    '0': `{{chalk.gray}}[{{DATE}}] {{chalk.magenta}}{{chalk.bold}}[TRACE]${LOG_SUFFIX}`,
+    '10': `{{chalk.gray}}[{{DATE}}] {{chalk.blue}}{{chalk.bold}}[DEBUG]${LOG_SUFFIX}`,
+    '20': `{{chalk.gray}}[{{DATE}}] {{chalk.green}}{{chalk.bold}}[INFO]${LOG_SUFFIX}`,
+    '30': `{{chalk.gray}}[{{DATE}}] {{chalk.yellow}}{{chalk.bold}}[WARN]${LOG_SUFFIX}`,
+    '40': `{{chalk.gray}}[{{DATE}}] {{chalk.red}}{{chalk.bold}}[ERROR]${LOG_SUFFIX}`,
+    default: `{{chalk.gray}}[{{DATE}}] {{chalk.white}}{{chalk.bold}}[LOG]${LOG_SUFFIX}`,
   },
   dateFormat: DEFAULT_DATE_FORMAT,
 };

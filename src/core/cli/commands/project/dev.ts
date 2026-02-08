@@ -3,7 +3,7 @@ import { fork } from 'child_process';
 import fs, { unlinkSync, writeFileSync } from 'fs';
 import path from 'path';
 import { Command, Option } from 'commander';
-import startAntelope, { LaunchOptions } from '../../../..';
+import startAntelope, { LaunchOptions, DEFAULT_ENV } from '../../../..';
 import { ModuleCache } from '../../../module-cache';
 import { Options } from '../../common';
 import { displayBox, error, info, warning } from '../../cli-ui';
@@ -25,7 +25,6 @@ export interface DevCommandOptions extends LaunchOptions {
   verbose?: string[];
 }
 
-const DEFAULT_ENV = 'default';
 const DEFAULT_INSPECTOR = '--inspect';
 const RUNNER_PREFIX = 'antelope-runner-';
 const DEFAULT_INSPECT_HOST = '127.0.0.1:9229';

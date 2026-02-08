@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { Command, Option } from 'commander';
-import { LaunchOptions, launchFromBuild } from '../../../..';
+import { LaunchOptions, launchFromBuild, DEFAULT_ENV } from '../../../..';
 import { Options } from '../../common';
 import { displayBox, error, info } from '../../cli-ui';
 import { ProjectCommandOptions, resolveInheritedVerbose, validateProjectExists } from '../shared/project-command';
@@ -8,8 +8,6 @@ import { ProjectCommandOptions, resolveInheritedVerbose, validateProjectExists }
 interface StartCommandOptions extends ProjectCommandOptions, LaunchOptions {
   project: string;
 }
-
-const DEFAULT_ENV = 'default';
 const DISABLED_LABEL = 'disabled';
 
 function normalizeOptions(command: Command, options: StartCommandOptions): StartCommandOptions {
