@@ -20,6 +20,15 @@ const moduleB = {
   },
 } as any;
 
+const moduleScoped = {
+  id: 'scope/modB',
+  manifest: {
+    exportsPath: '/modScoped/interfaces',
+    srcAliases: [],
+    paths: [],
+  },
+} as any;
+
 describe('Resolver', () => {
   it('should resolve @ajs.local paths', () => {
     const resolver = new Resolver(new PathMapper(() => false));
@@ -66,6 +75,24 @@ describe('Resolver', () => {
     const result = resolver.resolve('@ajs.raw/modB/core@beta', undefined);
 
     expect(result).to.equal('/modB/interfaces/core/beta');
+  });
+
+  it('should resolve @ajs.raw paths when module id contains slash', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.modulesById.set('scope/modB', moduleScoped);
+
+    const result = resolver.resolve('@ajs.raw/scope/modB/core@beta/extra', undefined);
+
+    expect(result).to.equal('/modScoped/interfaces/core/beta/extra');
+  });
+
+  it('should resolve @ajs.raw paths without file suffix when module id contains slash', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.modulesById.set('scope/modB', moduleScoped);
+
+    const result = resolver.resolve('@ajs.raw/scope/modB/core@beta', undefined);
+
+    expect(result).to.equal('/modScoped/interfaces/core/beta');
   });
 
   it('returns undefined for invalid @ajs.raw request pattern', () => {
