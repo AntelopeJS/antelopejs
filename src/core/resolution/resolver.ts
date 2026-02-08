@@ -11,7 +11,32 @@ const AJS_PREFIX = '@ajs/';
 const AJS_LOCAL_PREFIX = '@ajs.local/';
 const AJS_RAW_PREFIX = '@ajs.raw/';
 const AJS_INTERFACE_REGEX = /^@ajs\/([^\/]+)\/([^\/]+)/;
-const AJS_RAW_REGEX = /^@ajs\.raw\/([^\/]+)\/([^@]+)@([^\/]+)(.*)/;
+const RAW_INTERFACE_SEGMENT_REGEX = /\/([^\/@]+)@([^\/]+)(\/.*)?$/;
+
+interface RawRequestParts {
+  moduleId: string;
+  interfaceName: string;
+  interfaceVersion: string;
+  filePath: string;
+}
+
+function parseRawRequest(request: string): RawRequestParts | undefined {
+  if (!request.startsWith(AJS_RAW_PREFIX)) {
+    return undefined;
+  }
+  const payload = request.substring(AJS_RAW_PREFIX.length);
+  const interfaceMatch = payload.match(RAW_INTERFACE_SEGMENT_REGEX);
+  if (!interfaceMatch) {
+    return undefined;
+  }
+  const [fullSegment, interfaceName, interfaceVersion, fileSuffix = ''] = interfaceMatch;
+  const moduleId = payload.substring(0, payload.length - fullSegment.length);
+  if (!moduleId) {
+    return undefined;
+  }
+  const filePath = fileSuffix.startsWith('/') ? fileSuffix.substring(1) : fileSuffix;
+  return { moduleId, interfaceName, interfaceVersion, filePath };
+}
 
 export class Resolver {
   public readonly moduleByFolder = new Map<string, ModuleRef>();
@@ -73,19 +98,19 @@ export class Resolver {
   }
 
   private resolveInterfaceModule(request: string): string | undefined {
-    if (!request.startsWith(AJS_RAW_PREFIX)) {
+    const rawRequest = parseRawRequest(request);
+    if (!rawRequest) {
       return undefined;
     }
-    const match = request.match(AJS_RAW_REGEX);
-    if (!match) {
-      return undefined;
-    }
-    const [, id, name, version, file] = match;
-    const target = this.modulesById.get(id);
+    const target = this.modulesById.get(rawRequest.moduleId);
     if (!target) {
       return undefined;
     }
-    const filePath = file.startsWith('/') ? file.substring(1) : file;
-    return path.join(target.manifest.exportsPath, name, version, filePath);
+    return path.join(
+      target.manifest.exportsPath,
+      rawRequest.interfaceName,
+      rawRequest.interfaceVersion,
+      rawRequest.filePath,
+    );
   }
 }
