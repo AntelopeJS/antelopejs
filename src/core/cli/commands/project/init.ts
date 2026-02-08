@@ -108,30 +108,19 @@ export default function () {
 
         await projectModulesAddCommand([module], { mode: source, project: resolvedProjectPath });
       } else {
-        const { init } = await inquirer.prompt<{ init: boolean }>([
-          {
-            type: 'confirm',
-            name: 'init',
-            message: 'Would you like to create a new app module now?',
-            default: true,
-          },
-        ]);
-
-        if (init) {
-          try {
-            await moduleInitCommand(resolvedProjectPath, {}, true);
-            await projectModulesAddCommand(['.'], { mode: 'local', project: resolvedProjectPath });
-          } catch (err) {
-            console.log('');
-            if (err instanceof Error) {
-              error(`Failed to create module: ${err.message}`);
-            } else {
-              error(`Failed to create module: ${String(err)}`);
-            }
-            error('Project creation stopped due to module initialization failure.');
-            process.exitCode = 1;
-            return;
+        try {
+          await moduleInitCommand(resolvedProjectPath, {}, true);
+          await projectModulesAddCommand(['.'], { mode: 'local', project: resolvedProjectPath });
+        } catch (err) {
+          console.log('');
+          if (err instanceof Error) {
+            error(`Failed to create module: ${err.message}`);
+          } else {
+            error(`Failed to create module: ${String(err)}`);
           }
+          error('Project creation stopped due to module initialization failure.');
+          process.exitCode = 1;
+          return;
         }
       }
 

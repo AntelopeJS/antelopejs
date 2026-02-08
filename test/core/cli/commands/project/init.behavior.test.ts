@@ -24,7 +24,6 @@ describe('project init behavior', () => {
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
-      promptStub.onCall(2).resolves({ init: true });
 
       const moduleInitStub = sinon
         .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
@@ -48,6 +47,7 @@ describe('project init behavior', () => {
       expect(writeStub.calledOnce).to.equal(true);
       expect(moduleInitStub.called).to.equal(true);
       expect(addStub.called).to.equal(true);
+      expect(promptStub.calledTwice).to.equal(true);
     } finally {
       cleanupTempDir(tempRoot);
     }
@@ -62,7 +62,10 @@ describe('project init behavior', () => {
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
-      promptStub.onCall(2).resolves({ init: false });
+      sinon.stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand').resolves();
+      sinon
+        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+        .resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -81,6 +84,7 @@ describe('project init behavior', () => {
       expect(configContent).to.include('export default defineConfig({');
       expect(configContent).to.include('"name": "my-project"');
       expect(configContent).to.include('"modules": {}');
+      expect(promptStub.calledTwice).to.equal(true);
     } finally {
       cleanupTempDir(tempRoot);
     }
@@ -149,7 +153,7 @@ describe('project init behavior', () => {
     }
   });
 
-  it('skips module initialization when user declines', async () => {
+  it('initializes module automatically when no existing module is imported', async () => {
     const tempRoot = makeTempDir();
     const projectDir = `${tempRoot}/my-project`;
     try {
@@ -159,7 +163,6 @@ describe('project init behavior', () => {
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
-      promptStub.onCall(2).resolves({ init: false });
 
       const initStub = sinon
         .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
@@ -180,8 +183,9 @@ describe('project init behavior', () => {
       const cmd = cmdInit();
       await cmd.parseAsync(['node', 'test', projectDir]);
 
-      expect(initStub.called).to.equal(false);
-      expect(addStub.called).to.equal(false);
+      expect(initStub.calledOnce).to.equal(true);
+      expect(addStub.calledOnce).to.equal(true);
+      expect(promptStub.calledTwice).to.equal(true);
     } finally {
       cleanupTempDir(tempRoot);
     }
@@ -196,7 +200,10 @@ describe('project init behavior', () => {
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
-      promptStub.onCall(2).resolves({ init: false });
+      sinon.stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand').resolves();
+      sinon
+        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
+        .resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -211,6 +218,7 @@ describe('project init behavior', () => {
 
       expect(displayStub.calledOnce).to.equal(true);
       expect(String(displayStub.firstCall.args[0])).to.not.include('cd ');
+      expect(promptStub.calledTwice).to.equal(true);
     } finally {
       cleanupTempDir(tempRoot);
     }
@@ -226,7 +234,6 @@ describe('project init behavior', () => {
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
-      promptStub.onCall(2).resolves({ init: true });
 
       sinon
         .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
@@ -265,7 +272,6 @@ describe('project init behavior', () => {
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
-      promptStub.onCall(2).resolves({ init: true });
 
       sinon
         .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
