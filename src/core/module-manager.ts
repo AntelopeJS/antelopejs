@@ -162,7 +162,7 @@ export class ModuleManager {
             Logger.Error(`Failed to construct module:`);
             Logger.Error(`  - ID: ${module.id}`);
             Logger.Error(`  - Version: ${module.version}`);
-            Logger.Error(`  - Error: ${err instanceof Error ? err.message : String(err)}`);
+            Logger.Error('  - Error:', err);
             throw err;
           }),
         ),
@@ -181,7 +181,7 @@ export class ModuleManager {
           Logger.Error(`Failed to construct module:`);
           Logger.Error(`  - ID: ${module.id}`);
           Logger.Error(`  - Version: ${module.version}`);
-          Logger.Error(`  - Error: ${err instanceof Error ? err.message : String(err)}`);
+          Logger.Error('  - Error:', err);
           throw err;
         }),
       ),

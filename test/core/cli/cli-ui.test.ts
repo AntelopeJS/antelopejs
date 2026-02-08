@@ -96,6 +96,12 @@ describe('CLI UI', () => {
       expect(() => info('Note')).to.not.throw();
     });
 
+    it('handles Error objects in error and warning', () => {
+      const err = new Error('test-error');
+      expect(() => error(err)).to.not.throw();
+      expect(() => warning(err)).to.not.throw();
+    });
+
     it('renders box, banner and header', async () => {
       const logStub = sinon.stub(console, 'log');
       try {

@@ -197,7 +197,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
         warning('Could not initialize git repository. You can do it manually later.');
 
         if (gitErr instanceof Error) {
-          warning(gitErr.message);
+          warning(gitErr);
         }
       }
     }
@@ -219,11 +219,7 @@ export async function moduleInitCommand(modulePath: string, options: InitOptions
       // When called from project init, re-throw the error so it can be handled there
       throw err;
     }
-    if (err instanceof Error) {
-      error(err.message);
-    } else {
-      error(`Unknown error: ${String(err)}`);
-    }
+    error(err instanceof Error ? err : `Unknown error: ${String(err)}`);
     process.exitCode = 1;
     return;
   }

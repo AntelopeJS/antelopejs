@@ -78,7 +78,7 @@ export default function () {
         });
         await displayBuildSummary(commandOptions.project, Date.now() - startedAt);
       } catch (err) {
-        error(err instanceof Error ? err.message : `Unknown error: ${String(err)}`);
+        error(err instanceof Error ? err : String(err));
         process.exitCode = 1;
       }
     });

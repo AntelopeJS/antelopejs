@@ -246,7 +246,7 @@ describe('module init behavior', () => {
 
       await moduleInitCommand(moduleDir, {}, false);
 
-      expect(errorStub.calledWithMatch('boom')).to.equal(true);
+      expect(errorStub.calledWithMatch(sinon.match.instanceOf(Error))).to.equal(true);
       expect(process.exitCode).to.equal(1);
     } finally {
       cleanupTempDir(moduleDir);

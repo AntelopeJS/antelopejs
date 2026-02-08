@@ -18,10 +18,7 @@ export function setupProcessHandlers(): void {
 
   processHandlersReady = true;
   process.on('uncaughtException', (error: Error) => {
-    Logging.Error('Uncaught exception:', error.message);
-    if (error.stack) {
-      Logging.Error(error.stack);
-    }
+    Logging.Error('Uncaught exception:', error);
     process.exit(EXIT_CODE_ERROR);
   });
 
@@ -34,7 +31,7 @@ export function setupProcessHandlers(): void {
   });
 
   process.on('warning', (warning: Error) => {
-    Logging.Warn('Warning:', warning.message);
+    Logging.Warn('Warning:', warning);
   });
 }
 

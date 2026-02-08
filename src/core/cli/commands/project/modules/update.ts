@@ -110,7 +110,7 @@ export default function () {
             updated.push(`${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`);
           }
         } catch (err) {
-          errorUI(chalk.red`${chalk.bold(module)}: Error: ${err instanceof Error ? err.message : String(err)}`);
+          errorUI(err instanceof Error ? err : `${module}: Error: ${String(err)}`);
           skipped.push(module);
         }
       }

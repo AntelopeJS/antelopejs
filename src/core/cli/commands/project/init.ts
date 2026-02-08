@@ -113,11 +113,7 @@ export default function () {
           await projectModulesAddCommand(['.'], { mode: 'local', project: resolvedProjectPath });
         } catch (err) {
           console.log('');
-          if (err instanceof Error) {
-            error(`Failed to create module: ${err.message}`);
-          } else {
-            error(`Failed to create module: ${String(err)}`);
-          }
+          error(err instanceof Error ? err : `Failed to create module: ${String(err)}`);
           error('Project creation stopped due to module initialization failure.');
           process.exitCode = 1;
           return;
