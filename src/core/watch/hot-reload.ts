@@ -24,4 +24,12 @@ export class HotReload {
       }, this.debounceMs);
     }
   }
+
+  clear(): void {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+    }
+    this.pending.clear();
+  }
 }
