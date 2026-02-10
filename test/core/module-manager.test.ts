@@ -162,6 +162,74 @@ describe('ModuleManager', () => {
     expect(startStub.calledOnce).to.equal(true);
   });
 
+  it('should stop and destroy modules in reverse startup order', async () => {
+    const calls: string[] = [];
+    const manager = new ModuleManager();
+
+    const makeModule = (id: string) => ({
+      id,
+      version: '1.0.0',
+      construct: sinon.stub().resolves(),
+      start: () => {
+        calls.push(`start:${id}`);
+      },
+      stop: async () => {
+        calls.push(`stop:${id}`);
+      },
+      destroy: async () => {
+        calls.push(`destroy:${id}`);
+      },
+      state: 'active',
+      manifest: { name: id, folder: `/${id}`, exports: {}, imports: [], exportsPath: '' },
+    });
+
+    const modA = makeModule('modA');
+    const modB = makeModule('modB');
+    const modC = makeModule('modC');
+
+    (manager as any).loaded.set('modA', { module: modA, config: {} });
+    (manager as any).loaded.set('modB', { module: modB, config: {} });
+    (manager as any).loaded.set('modC', { module: modC, config: {} });
+
+    manager.startAll();
+    calls.length = 0;
+
+    await manager.stopAll();
+
+    expect(calls).to.deep.equal(['stop:modC', 'stop:modB', 'stop:modA']);
+  });
+
+  it('should continue stopping when one module stop fails', async () => {
+    const calls: string[] = [];
+    const manager = new ModuleManager();
+
+    const makeModule = (id: string, shouldFail: boolean) => ({
+      id,
+      version: '1.0.0',
+      construct: sinon.stub().resolves(),
+      start: sinon.stub(),
+      stop: async () => {
+        if (shouldFail) {
+          throw new Error(`${id} stop failed`);
+        }
+        calls.push(`stop:${id}`);
+      },
+      destroy: sinon.stub().resolves(),
+      state: 'active',
+      manifest: { name: id, folder: `/${id}`, exports: {}, imports: [], exportsPath: '' },
+    });
+
+    (manager as any).loaded.set('modA', { module: makeModule('modA', false), config: {} });
+    (manager as any).loaded.set('modB', { module: makeModule('modB', true), config: {} });
+    (manager as any).loaded.set('modC', { module: makeModule('modC', false), config: {} });
+
+    manager.startAll();
+
+    await manager.stopAll();
+
+    expect(calls).to.deep.equal(['stop:modC', 'stop:modA']);
+  });
+
   it('clears require cache for module files while preserving exports and submodules', () => {
     const manager = new ModuleManager();
     const moduleFolder = path.resolve('test', 'module');

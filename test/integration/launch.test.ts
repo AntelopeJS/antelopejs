@@ -39,7 +39,7 @@ describe('Launch Function', () => {
       const manager = await launch(projectFolder);
       expect(manager).to.be.instanceOf(ModuleManager);
 
-      manager.stopAll();
+      await manager.stopAll();
       await manager.destroyAll();
     } finally {
       await fs.rm(projectFolder, { recursive: true, force: true });
@@ -67,7 +67,7 @@ describe('Launch Function', () => {
       expect(modules).to.include('module-a');
       expect(modules).to.include('module-b');
 
-      manager.stopAll();
+      await manager.stopAll();
       await manager.destroyAll();
     } finally {
       await fs.rm(projectFolder, { recursive: true, force: true });
@@ -96,7 +96,7 @@ describe('Launch Function', () => {
       const modules = manager.listModules();
       expect(modules).to.include('module-b');
 
-      manager.stopAll();
+      await manager.stopAll();
       await manager.destroyAll();
     } finally {
       await fs.rm(projectFolder, { recursive: true, force: true });

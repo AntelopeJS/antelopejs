@@ -37,6 +37,7 @@ export class ModuleManager {
   private readonly resolverDetour: ResolverDetour;
   private readonly staticModules: ManagedModule[] = [];
   private readonly loaded = new Map<string, ManagedModule>();
+  private startupOrder: string[] = [];
 
   constructor(deps: ModuleManagerDeps = {}) {
     this.registry = deps.registry ?? new ModuleRegistry();
@@ -191,29 +192,57 @@ export class ModuleManager {
   startAll(): void {
     for (const { module } of this.loaded.values()) {
       module.start();
+      this.trackModuleStart(module.id);
     }
   }
 
   startModules(modules: ManagedModule[]): void {
     for (const { module } of modules) {
       module.start();
+      this.trackModuleStart(module.id);
     }
   }
 
-  stopAll(): void {
-    for (const { module } of this.loaded.values()) {
-      module.stop();
+  async stopAll(): Promise<void> {
+    const reverseOrder = [...this.startupOrder].reverse();
+
+    for (const id of reverseOrder) {
+      const entry = this.loaded.get(id);
+      if (!entry) {
+        continue;
+      }
+
+      try {
+        await entry.module.stop();
+      } catch (error) {
+        Logger.Error(`Failed to stop module ${id}:`, error);
+      }
     }
+
+    this.startupOrder = [];
   }
 
   async destroyAll(): Promise<void> {
+    const reverseOrder = [...this.startupOrder].reverse();
+    const idsToDestroy = reverseOrder.length > 0 ? reverseOrder : [...this.loaded.keys()].reverse();
+
     try {
-      for (const { module } of this.loaded.values()) {
-        await module.destroy();
+      for (const id of idsToDestroy) {
+        const entry = this.loaded.get(id);
+        if (!entry) {
+          continue;
+        }
+        await entry.module.destroy();
       }
     } finally {
+      this.startupOrder = [];
       this.resolverDetour.detach();
     }
+  }
+
+  private trackModuleStart(moduleId: string): void {
+    this.startupOrder = this.startupOrder.filter((id) => id !== moduleId);
+    this.startupOrder.push(moduleId);
   }
 
   private rebuildAssociations(): void {
