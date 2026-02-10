@@ -43,19 +43,16 @@ describe('CLI main guard', () => {
     sinon.restore();
   });
 
-  it('exits on SIGINT', () => {
-    const exitStub = sinon.stub(process, 'exit');
+  it('does not register SIGINT listener in module scope', () => {
     const originalListeners = process.listeners('SIGINT');
     process.removeAllListeners('SIGINT');
     try {
       delete require.cache[cliPath];
       require(cliPath);
-      process.emit('SIGINT');
-      expect(exitStub.calledWith(0)).to.equal(true);
+      expect(process.listenerCount('SIGINT')).to.equal(0);
     } finally {
       process.removeAllListeners('SIGINT');
       originalListeners.forEach((listener) => process.on('SIGINT', listener));
-      exitStub.restore();
     }
   });
 

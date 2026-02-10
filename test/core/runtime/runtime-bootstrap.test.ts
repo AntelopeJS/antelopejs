@@ -4,6 +4,7 @@ import sinon from 'sinon';
 import { ConfigLoader } from '../../../src/core/config/config-loader';
 import { Logging } from '../../../src/interfaces/logging/beta';
 import * as logging from '../../../src/logging';
+import { ShutdownManager } from '../../../src/core/shutdown';
 
 type ProcessEventName = 'uncaughtException' | 'unhandledRejection' | 'warning';
 
@@ -73,6 +74,28 @@ describe('runtime runtime-bootstrap', () => {
       expect(exitStub.calledWith(1)).to.equal(true);
     } finally {
       restoreProcessListeners(originalListeners);
+    }
+  });
+
+  it('calls shutdown manager on uncaughtException instead of process.exit', () => {
+    const originalListeners = snapshotProcessListeners();
+    const bootstrap = loadBootstrapModule();
+    const shutdownManager = new ShutdownManager();
+    const shutdownStub = sinon.stub(shutdownManager, 'shutdown').resolves();
+    const exitStub = sinon.stub(process, 'exit');
+
+    try {
+      bootstrap.setupProcessHandlers(shutdownManager);
+
+      const current = snapshotProcessListeners();
+      const uncaught = current.uncaughtException[current.uncaughtException.length - 1] as (error: Error) => void;
+      uncaught(new Error('boom'));
+
+      expect(shutdownStub.calledOnceWith(1)).to.equal(true);
+      expect(exitStub.called).to.equal(false);
+    } finally {
+      restoreProcessListeners(originalListeners);
+      exitStub.restore();
     }
   });
 

@@ -1,5 +1,4 @@
 import { Logging } from './interfaces/logging/beta';
-import exitHook from 'async-exit-hook';
 import path from 'path';
 import { Writable } from 'stream';
 import { ModuleManager } from './core/module-manager';
@@ -10,6 +9,7 @@ import { FileWatcher } from './core/watch/file-watcher';
 import { HotReload } from './core/watch/hot-reload';
 import { DEFAULT_ENV } from './core/config/config-paths';
 import { ReplSession } from './core/repl/repl-session';
+import { ShutdownManager } from './core/shutdown';
 import { TestContext } from './core/test/test-context';
 import { TestRunner } from './core/test/test-runner';
 import {
@@ -53,12 +53,16 @@ const DEFAULT_TEST_CACHE_FOLDER = '.cache';
 const DEFAULT_TEST_FOLDER = 'test';
 const TEST_FILE_PATTERN = /\.(test|spec)\.(js|ts)$/;
 const INTERACTIVE_PROMPT = '> ';
+const SHUTDOWN_PRIORITY_MODULES = 30;
+const SHUTDOWN_PRIORITY_RESOURCES = 20;
+const SHUTDOWN_PRIORITY_CLEANUP = 10;
 
 Writable.prototype.setMaxListeners(MAX_STREAM_LISTENERS);
 
 interface CoreInitialization {
   manager: ModuleManager;
   fs: NodeFileSystem;
+  shutdownManager: ShutdownManager;
 }
 
 interface TestModuleProjectConfig {
@@ -72,24 +76,38 @@ interface LoadedTestConfig {
   config: any;
 }
 
-async function setupExitHook(manager: ModuleManager): Promise<void> {
-  exitHook(async (callback) => {
-    try {
-      await manager.destroyAll();
-    } catch (error) {
-      Logger.Error('Error during shutdown:', error);
-    } finally {
-      callback();
+let activeShutdownManager: ShutdownManager | undefined;
+
+function setActiveShutdownManager(shutdownManager: ShutdownManager): void {
+  activeShutdownManager?.removeSignalHandlers();
+  activeShutdownManager = shutdownManager;
+  shutdownManager.setupSignalHandlers();
+}
+
+function registerModuleShutdownHandler(shutdownManager: ShutdownManager, manager: ModuleManager): void {
+  shutdownManager.register(async () => {
+    await manager.stopAll();
+    await manager.destroyAll();
+  }, SHUTDOWN_PRIORITY_MODULES);
+}
+
+function registerShutdownCleanup(shutdownManager: ShutdownManager): void {
+  shutdownManager.register(async () => {
+    shutdownManager.removeSignalHandlers();
+    if (activeShutdownManager === shutdownManager) {
+      activeShutdownManager = undefined;
     }
-  });
+  }, SHUTDOWN_PRIORITY_CLEANUP);
 }
 
 async function setupPostLaunchFeatures(
   manager: ModuleManager,
   fs: NodeFileSystem,
   options: LaunchOptions,
+  shutdownManager: ShutdownManager,
 ): Promise<void> {
-  await setupExitHook(manager);
+  registerModuleShutdownHandler(shutdownManager, manager);
+  registerShutdownCleanup(shutdownManager);
 
   if (options.watch) {
     const watcher = new FileWatcher(fs);
@@ -104,16 +122,28 @@ async function setupPostLaunchFeatures(
 
     watcher.onModuleChanged((id) => hotReload.queue(id));
     watcher.startWatching();
+
+    shutdownManager.register(async () => {
+      hotReload.clear();
+      watcher.stopWatching();
+    }, SHUTDOWN_PRIORITY_RESOURCES);
   }
 
   if (options.interactive) {
     const repl = new ReplSession({ moduleManager: manager });
     repl.start(INTERACTIVE_PROMPT);
+
+    shutdownManager.register(async () => {
+      repl.close();
+    }, SHUTDOWN_PRIORITY_RESOURCES);
   }
+
+  setActiveShutdownManager(shutdownManager);
 }
 
 async function initializeCore(projectFolder: string, env: string, options: LaunchOptions): Promise<CoreInitialization> {
-  const runtimeConfig = await loadProjectRuntimeConfig(projectFolder, env, options);
+  const shutdownManager = new ShutdownManager();
+  const runtimeConfig = await loadProjectRuntimeConfig(projectFolder, env, options, shutdownManager);
 
   const manager = await withRaisedMaxListeners(async () => {
     const moduleManager = new ModuleManager();
@@ -125,6 +155,7 @@ async function initializeCore(projectFolder: string, env: string, options: Launc
   return {
     manager,
     fs: runtimeConfig.fs,
+    shutdownManager,
   };
 }
 
@@ -134,7 +165,7 @@ export async function launch(
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {
   const initialized = await initializeCore(projectFolder, env, options);
-  await setupPostLaunchFeatures(initialized.manager, initialized.fs, options);
+  await setupPostLaunchFeatures(initialized.manager, initialized.fs, options, initialized.shutdownManager);
   return initialized.manager;
 }
 
@@ -177,7 +208,8 @@ export async function launchFromBuild(
   env: string = DEFAULT_ENV,
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {
-  setupProcessHandlers();
+  const shutdownManager = new ShutdownManager();
+  setupProcessHandlers(shutdownManager);
   const fs = new NodeFileSystem();
   const artifact = await readBuildArtifactOrThrow(projectFolder, fs);
 
@@ -197,7 +229,9 @@ export async function launchFromBuild(
     return moduleManager;
   });
 
-  await setupExitHook(manager);
+  registerModuleShutdownHandler(shutdownManager, manager);
+  registerShutdownCleanup(shutdownManager);
+  setActiveShutdownManager(shutdownManager);
   return manager;
 }
 
