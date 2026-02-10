@@ -8,7 +8,7 @@ export interface ModuleCallbacks {
   construct?(config: unknown): Promise<void> | void;
   destroy?(): Promise<void> | void;
   start?(): void;
-  stop?(): void;
+  stop?(): Promise<void> | void;
 }
 
 export interface ModuleSource {

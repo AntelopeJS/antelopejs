@@ -38,12 +38,14 @@ export class ModuleLifecycle {
     this._state = ModuleState.Active;
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (this._state !== ModuleState.Active) {
       return;
     }
 
-    this.callbacks?.stop?.();
+    if (this.callbacks?.stop) {
+      await this.callbacks.stop();
+    }
     Events.ModuleStopped.emit(this.moduleId);
     this._state = ModuleState.Constructed;
   }
@@ -54,7 +56,7 @@ export class ModuleLifecycle {
     }
 
     if (this._state === ModuleState.Active) {
-      this.stop();
+      await this.stop();
     }
 
     if (this.callbacks?.destroy) {

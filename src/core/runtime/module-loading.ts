@@ -138,7 +138,7 @@ export function registerCoreModuleInterface(manager: ModuleManager, loaderContex
       manager.getModule(moduleId)?.start();
     },
     StopModule: async (moduleId: string) => {
-      manager.getModule(moduleId)?.stop();
+      await manager.getModule(moduleId)?.stop();
     },
     DestroyModule: async (moduleId: string) => {
       await manager.getModule(moduleId)?.destroy();

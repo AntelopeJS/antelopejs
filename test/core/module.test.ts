@@ -28,7 +28,7 @@ describe('Module', () => {
 
     await mod.construct({ foo: 'bar' });
     mod.start();
-    mod.stop();
+    await mod.stop();
     await mod.destroy();
 
     expect(loader.calledOnce).to.be.true;
@@ -65,5 +65,26 @@ describe('Module', () => {
 
     expect(reloadManifest.reload.calledOnce).to.equal(true);
     expect(mod.version).to.equal('1.0.1');
+  });
+
+  it('should await async stop callback', async () => {
+    let stopResolved = false;
+    const callbacks = {
+      stop: async () => {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 10);
+        });
+        stopResolved = true;
+      },
+    };
+
+    const loader = sinon.stub().resolves(callbacks);
+    const mod = new Module(manifest, loader);
+
+    await mod.construct({});
+    mod.start();
+    await mod.stop();
+
+    expect(stopResolved).to.equal(true);
   });
 });

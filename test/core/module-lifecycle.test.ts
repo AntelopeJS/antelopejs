@@ -31,7 +31,7 @@ describe('ModuleLifecycle', () => {
     lifecycle.start();
     expect(lifecycle.state).to.equal(ModuleState.Active);
 
-    lifecycle.stop();
+    await lifecycle.stop();
     expect(lifecycle.state).to.equal(ModuleState.Constructed);
 
     await lifecycle.destroy();
@@ -40,7 +40,7 @@ describe('ModuleLifecycle', () => {
     expect(calls).to.deep.equal(['construct', 'start', 'stop', 'destroy']);
   });
 
-  it('should ignore start/stop when in the wrong state', () => {
+  it('should ignore start/stop when in the wrong state', async () => {
     const callbacks = {
       start: sinon.spy(),
       stop: sinon.spy(),
@@ -49,7 +49,7 @@ describe('ModuleLifecycle', () => {
     lifecycle.setCallbacks(callbacks);
 
     lifecycle.start();
-    lifecycle.stop();
+    await lifecycle.stop();
 
     expect(callbacks.start.called).to.equal(false);
     expect(callbacks.stop.called).to.equal(false);
@@ -94,5 +94,35 @@ describe('ModuleLifecycle', () => {
 
     expect(callbacks.destroy.called).to.equal(false);
     expect(lifecycle.state).to.equal(ModuleState.Loaded);
+  });
+
+  it('should await async stop callback', async () => {
+    const calls: string[] = [];
+    const lifecycle = new ModuleLifecycle('mod');
+
+    lifecycle.setCallbacks({
+      construct: () => {
+        calls.push('construct');
+      },
+      start: () => {
+        calls.push('start');
+      },
+      stop: async () => {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 10);
+        });
+        calls.push('stop');
+      },
+      destroy: () => {
+        calls.push('destroy');
+      },
+    });
+
+    await lifecycle.construct({});
+    lifecycle.start();
+    await lifecycle.stop();
+    await lifecycle.destroy();
+
+    expect(calls).to.deep.equal(['construct', 'start', 'stop', 'destroy']);
   });
 });
