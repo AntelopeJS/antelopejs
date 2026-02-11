@@ -199,6 +199,32 @@ describe('ModuleManager', () => {
     expect(calls).to.deep.equal(['stop:modC', 'stop:modB', 'stop:modA']);
   });
 
+  it('should stop loaded modules even when startup order is empty', async () => {
+    const calls: string[] = [];
+    const manager = new ModuleManager();
+
+    const makeModule = (id: string) => ({
+      id,
+      version: '1.0.0',
+      construct: sinon.stub().resolves(),
+      start: sinon.stub(),
+      stop: async () => {
+        calls.push(`stop:${id}`);
+      },
+      destroy: sinon.stub().resolves(),
+      state: 'active',
+      manifest: { name: id, folder: `/${id}`, exports: {}, imports: [], exportsPath: '' },
+    });
+
+    (manager as any).loaded.set('modA', { module: makeModule('modA'), config: {} });
+    (manager as any).loaded.set('modB', { module: makeModule('modB'), config: {} });
+
+    // startupOrder is empty here (startAll/startModules not called)
+    await manager.stopAll();
+
+    expect(calls.sort()).to.deep.equal(['stop:modA', 'stop:modB']);
+  });
+
   it('should continue stopping when one module stop fails', async () => {
     const calls: string[] = [];
     const manager = new ModuleManager();

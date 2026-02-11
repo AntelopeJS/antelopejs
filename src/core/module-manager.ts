@@ -205,8 +205,9 @@ export class ModuleManager {
 
   async stopAll(): Promise<void> {
     const reverseOrder = [...this.startupOrder].reverse();
+    const idsToStop = reverseOrder.length > 0 ? reverseOrder : [...this.loaded.keys()].reverse();
 
-    for (const id of reverseOrder) {
+    for (const id of idsToStop) {
       const entry = this.loaded.get(id);
       if (!entry) {
         continue;
