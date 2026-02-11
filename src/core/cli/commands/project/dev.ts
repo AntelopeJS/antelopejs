@@ -219,7 +219,6 @@ async function launchWithInspector(options: DevCommandOptions): Promise<void> {
     void shutdownManager.shutdown(exitCode);
   });
 
-  await runCleanup();
 }
 
 async function launchDirect(options: DevCommandOptions): Promise<void> {
