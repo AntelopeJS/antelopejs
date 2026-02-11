@@ -113,6 +113,39 @@ describe('ConfigLoader', () => {
       expect(config.cacheFolder).to.equal('.antelope/cache');
     });
 
+    it('preserves test section from config', async () => {
+      const setupFn = async () => {};
+      const cleanupFn = async () => {};
+      await mockTsConfig({
+        name: 'test-project',
+        modules: {},
+        test: {
+          folder: 'specs',
+          setup: setupFn,
+          cleanup: cleanupFn,
+        },
+      });
+
+      const config = await loader.load('/project');
+
+      expect(config.test).to.deep.equal({
+        folder: 'specs',
+        setup: setupFn,
+        cleanup: cleanupFn,
+      });
+    });
+
+    it('returns undefined test when config has no test section', async () => {
+      await mockTsConfig({
+        name: 'test-project',
+        modules: {},
+      });
+
+      const config = await loader.load('/project');
+
+      expect(config.test).to.equal(undefined);
+    });
+
     it('merges module config when base config is undefined', async () => {
       await mockTsConfig({
         name: 'test',
@@ -166,6 +199,20 @@ describe('ConfigLoader', () => {
 
       expect(loadTsConfigFileStub.calledOnce).to.equal(true);
       expect(loadTsConfigFileStub.firstCall.args[1]).to.equal('production');
+    });
+
+    it('loads config from explicit config path', async () => {
+      await fs.writeFile('/other/my-config.ts', '');
+      loadTsConfigFileStub.resolves({
+        name: 'explicit-path-project',
+        modules: {},
+      });
+
+      const config = await loader.load('/project', undefined, '/other/my-config.ts');
+
+      expect(config.name).to.equal('explicit-path-project');
+      expect(loadTsConfigFileStub.calledOnce).to.equal(true);
+      expect(loadTsConfigFileStub.firstCall.args[0]).to.equal('/other/my-config.ts');
     });
 
     it('throws when config file is missing', async () => {
