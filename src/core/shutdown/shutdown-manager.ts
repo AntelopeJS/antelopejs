@@ -19,6 +19,7 @@ export class ShutdownManager {
   private handlers: RegisteredHandler[] = [];
   private isShuttingDown = false;
   private shutdownPromise?: Promise<void>;
+  private requestedExitCode?: number;
   private sigintHandler?: () => void;
   private sigtermHandler?: () => void;
 
@@ -33,12 +34,14 @@ export class ShutdownManager {
   }
 
   shutdown(exitCode?: number): Promise<void> {
+    this.updateRequestedExitCode(exitCode);
+
     if (this.shutdownPromise) {
       return this.shutdownPromise;
     }
 
     this.isShuttingDown = true;
-    this.shutdownPromise = this.executeShutdown(exitCode);
+    this.shutdownPromise = this.executeShutdown();
     return this.shutdownPromise;
   }
 
@@ -82,11 +85,26 @@ export class ShutdownManager {
     void this.shutdown(EXIT_CODE_SUCCESS);
   }
 
-  private async executeShutdown(exitCode?: number): Promise<void> {
+  private updateRequestedExitCode(exitCode?: number): void {
+    if (typeof exitCode !== 'number') {
+      return;
+    }
+
+    if (typeof this.requestedExitCode !== 'number') {
+      this.requestedExitCode = exitCode;
+      return;
+    }
+
+    if (this.requestedExitCode === EXIT_CODE_SUCCESS && exitCode !== EXIT_CODE_SUCCESS) {
+      this.requestedExitCode = exitCode;
+    }
+  }
+
+  private async executeShutdown(): Promise<void> {
     await this.runHandlersWithTimeout();
 
-    if (typeof exitCode === 'number') {
-      process.exit(exitCode);
+    if (typeof this.requestedExitCode === 'number') {
+      process.exit(this.requestedExitCode);
     }
   }
 

@@ -5,6 +5,19 @@ import { ShutdownManager } from '../../../src/core/shutdown/shutdown-manager';
 const WAIT_FOR_SIGNAL_MS = 10;
 const CUSTOM_TIMEOUT_MS = 500;
 
+interface Deferred {
+  promise: Promise<void>;
+  resolve: () => void;
+}
+
+function createDeferred(): Deferred {
+  let resolve: () => void = () => undefined;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 function waitForSignal(): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, WAIT_FOR_SIGNAL_MS);
@@ -84,6 +97,20 @@ describe('ShutdownManager', () => {
       await Promise.all([manager.shutdown(), manager.shutdown()]);
 
       expect(handler.calledOnce).to.equal(true);
+    });
+
+    it('should keep first non-zero exit code when shutdown is already running', async () => {
+      const deferred = createDeferred();
+      const exitStub = sinon.stub(process, 'exit');
+      manager.register(() => deferred.promise, 0);
+
+      const firstShutdown = manager.shutdown(0);
+      const secondShutdown = manager.shutdown(1);
+      deferred.resolve();
+
+      await Promise.all([firstShutdown, secondShutdown]);
+
+      expect(exitStub.calledOnceWith(1)).to.equal(true);
     });
   });
 
