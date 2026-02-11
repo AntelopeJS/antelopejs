@@ -71,7 +71,7 @@ export class ConfigParser {
   }
 
   applyEnvOverrides<T extends Record<string, any>>(config: T, overrides: Record<string, string | string[]>): T {
-    const result = JSON.parse(JSON.stringify(config));
+    const result = this.cloneValue(config);
 
     for (const [envVar, paths] of Object.entries(overrides)) {
       const value = process.env[envVar];
@@ -84,6 +84,22 @@ export class ConfigParser {
     }
 
     return result;
+  }
+
+  private cloneValue<T>(value: T): T {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.cloneValue(item)) as T;
+    }
+
+    if (isObject(value)) {
+      const result: Record<string, any> = {};
+      for (const [key, item] of Object.entries(value)) {
+        result[key] = this.cloneValue(item);
+      }
+      return result as T;
+    }
+
+    return value;
   }
 
   expandModuleShorthand(modules: Record<string, string | AntelopeModuleConfig>): Record<string, ExpandedModuleConfig> {

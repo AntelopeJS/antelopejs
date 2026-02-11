@@ -1,5 +1,4 @@
 import { Logging } from './interfaces/logging/beta';
-import path from 'path';
 import { Writable } from 'stream';
 import { ModuleManager } from './core/module-manager';
 import { NodeFileSystem } from './core/filesystem';
@@ -10,8 +9,6 @@ import { HotReload } from './core/watch/hot-reload';
 import { DEFAULT_ENV } from './core/config/config-paths';
 import { ReplSession } from './core/repl/repl-session';
 import { ShutdownManager } from './core/shutdown';
-import { TestContext } from './core/test/test-context';
-import { TestRunner } from './core/test/test-runner';
 import {
   constructAndStartModules,
   ensureGraphIsValid,
@@ -33,7 +30,7 @@ import {
   warnIfBuildIsStale,
   writeProjectBuildArtifact,
 } from './core/runtime/build-runtime';
-import { BuildOptions, NormalizedLoadedConfig } from './core/runtime/runtime-types';
+import { BuildOptions } from './core/runtime/runtime-types';
 
 export { ModuleManager } from './core/module-manager';
 export { Module } from './core/module';
@@ -43,15 +40,12 @@ export { DEFAULT_ENV } from './core/config/config-paths';
 export { DownloaderRegistry } from './core/downloaders/registry';
 export { ModuleCache } from './core/module-cache';
 export { LaunchOptions } from './types';
+export { TestModule } from './core/test/test-module';
 export type { BuildOptions } from './core/runtime/runtime-types';
 
 const Logger = new Logging.Channel('loader');
 
 const MAX_STREAM_LISTENERS = 20;
-const EXIT_CODE_ERROR = 1;
-const DEFAULT_TEST_CACHE_FOLDER = '.cache';
-const DEFAULT_TEST_FOLDER = 'test';
-const TEST_FILE_PATTERN = /\.(test|spec)\.(js|ts)$/;
 const INTERACTIVE_PROMPT = '> ';
 const SHUTDOWN_PRIORITY_MODULES = 30;
 const SHUTDOWN_PRIORITY_RESOURCES = 20;
@@ -63,17 +57,6 @@ interface CoreInitialization {
   manager: ModuleManager;
   fs: NodeFileSystem;
   shutdownManager: ShutdownManager;
-}
-
-interface TestModuleProjectConfig {
-  project?: string;
-  folder?: string;
-}
-
-interface LoadedTestConfig {
-  testConfig: TestModuleProjectConfig;
-  rawConfig: any;
-  config: any;
 }
 
 let activeShutdownManager: ShutdownManager | undefined;
@@ -233,159 +216,6 @@ export async function launchFromBuild(
   registerShutdownCleanup(shutdownManager);
   setActiveShutdownManager(shutdownManager);
   return manager;
-}
-
-async function collectTestFiles(folder: string, pattern: RegExp, fs: NodeFileSystem): Promise<string[]> {
-  const files: string[] = [];
-
-  async function scanDir(dir: string): Promise<void> {
-    const entries = await fs.readdir(dir);
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry);
-      const stats = await fs.stat(fullPath);
-      if (stats.isDirectory()) {
-        await scanDir(fullPath);
-      } else if (pattern.test(entry)) {
-        files.push(fullPath);
-      }
-    }
-  }
-
-  try {
-    await scanDir(folder);
-  } catch {
-    return files;
-  }
-
-  return files;
-}
-
-export async function TestModule(moduleFolder: string = '.', files: string[] = []): Promise<number> {
-  if (files.length > 0) {
-    const context = new TestContext({});
-    const runner = new TestRunner(context);
-    return runner.run(files);
-  }
-
-  const moduleRoot = path.resolve(moduleFolder);
-  const fs = new NodeFileSystem();
-  const loadedConfig = await loadTestConfig(moduleRoot, fs);
-  if (!loadedConfig) {
-    return EXIT_CODE_ERROR;
-  }
-
-  let manager: ModuleManager | null = null;
-  let managerActive = false;
-
-  try {
-    manager = await setupTestEnvironment(moduleRoot, loadedConfig.config);
-    managerActive = true;
-
-    const failures = await executeTests(moduleRoot, loadedConfig.testConfig, fs);
-    if (failures === EXIT_CODE_ERROR) {
-      await manager.destroyAll();
-      managerActive = false;
-      return EXIT_CODE_ERROR;
-    }
-
-    await manager.destroyAll();
-    managerActive = false;
-    return failures;
-  } finally {
-    if (manager && managerActive) {
-      await manager.destroyAll();
-    }
-    if (loadedConfig.rawConfig && typeof loadedConfig.rawConfig.cleanup === 'function') {
-      await loadedConfig.rawConfig.cleanup();
-    }
-  }
-}
-
-async function loadTestConfig(moduleRoot: string, fs: NodeFileSystem): Promise<LoadedTestConfig | undefined> {
-  const packPath = path.join(moduleRoot, 'package.json');
-
-  let pack: any;
-  try {
-    const packContent = await fs.readFileString(packPath, 'utf-8');
-    pack = JSON.parse(packContent);
-  } catch {
-    console.error('Missing or invalid package.json');
-    return undefined;
-  }
-
-  const testConfig = pack.antelopeJs?.test;
-  if (!testConfig) {
-    console.error('Missing antelopeJs.test config in package.json');
-    return undefined;
-  }
-
-  if (!testConfig.project) {
-    console.error('Missing antelopeJs.test.project in package.json');
-    return undefined;
-  }
-
-  const testProjectPath = path.isAbsolute(testConfig.project)
-    ? testConfig.project
-    : path.join(moduleRoot, testConfig.project);
-
-  let rawModule: any;
-  try {
-    rawModule = await import(testProjectPath);
-  } catch (error) {
-    console.error(`Failed to load test project config from ${testProjectPath}:`, error);
-    return undefined;
-  }
-
-  const rawConfig = rawModule?.default ?? rawModule;
-  const config = rawConfig && typeof rawConfig.setup === 'function' ? await rawConfig.setup() : rawConfig;
-  return { testConfig, rawConfig, config };
-}
-
-function createTestRuntimeConfig(moduleRoot: string, config: any): NormalizedLoadedConfig {
-  const cacheFolder = config?.cacheFolder ?? DEFAULT_TEST_CACHE_FOLDER;
-  const absoluteCache = path.isAbsolute(cacheFolder) ? cacheFolder : path.join(moduleRoot, cacheFolder);
-
-  return {
-    ...config,
-    modules: config?.modules ?? {},
-    cacheFolder: absoluteCache,
-    projectFolder: moduleRoot,
-    envOverrides: config?.envOverrides ?? {},
-    name: config?.name ?? 'test',
-  };
-}
-
-async function setupTestEnvironment(moduleRoot: string, config: any): Promise<ModuleManager> {
-  setupAntelopeProjectLogging(config?.logging);
-  const normalizedConfig = createTestRuntimeConfig(moduleRoot, config);
-
-  return withRaisedMaxListeners(async () => {
-    const manager = new ModuleManager();
-    await loadModuleEntriesForManager(manager, normalizedConfig, true);
-    await constructAndStartModules(manager);
-    return manager;
-  });
-}
-
-async function executeTests(
-  moduleRoot: string,
-  testConfig: TestModuleProjectConfig,
-  fs: NodeFileSystem,
-): Promise<number> {
-  const testFolder = path.join(moduleRoot, testConfig.folder ?? DEFAULT_TEST_FOLDER);
-  const testFiles = await collectTestFiles(testFolder, TEST_FILE_PATTERN, fs);
-  if (testFiles.length === 0) {
-    console.error('No test files found');
-    return EXIT_CODE_ERROR;
-  }
-
-  const Mocha = (await import('mocha')).default;
-  const mocha = new Mocha();
-  testFiles.forEach((file) => mocha.addFile(file));
-
-  return new Promise<number>((resolve) => {
-    mocha.run((count) => resolve(count));
-  });
 }
 
 export default launch;

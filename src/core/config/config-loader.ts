@@ -1,5 +1,5 @@
 import { createJiti } from 'jiti';
-import { IFileSystem, AntelopeConfig, AntelopeLogging } from '../../types';
+import { IFileSystem, AntelopeConfig, AntelopeLogging, AntelopeTestConfig } from '../../types';
 import { ConfigParser, ExpandedModuleConfig } from './config-parser';
 import { mergeDeep } from '../../utils/object';
 import { ConfigInput } from '../../config';
@@ -12,6 +12,7 @@ export interface LoadedConfig {
   modules: Record<string, ExpandedModuleConfig>;
   logging?: AntelopeLogging;
   envOverrides: Record<string, string | string[]>;
+  test?: AntelopeTestConfig;
 }
 
 export async function loadTsConfigFile(configPath: string, environment?: string): Promise<AntelopeConfig> {
@@ -31,8 +32,8 @@ export class ConfigLoader {
 
   constructor(private fs: IFileSystem) {}
 
-  async load(projectFolder: string, environment?: string): Promise<LoadedConfig> {
-    const rawConfig = await this.loadConfigSource(projectFolder, environment);
+  async load(projectFolder: string, environment?: string, configPath?: string): Promise<LoadedConfig> {
+    const rawConfig = await this.loadConfigSource(projectFolder, environment, configPath);
 
     let config = { ...rawConfig };
     if (environment && rawConfig.environments?.[environment]) {
@@ -66,12 +67,19 @@ export class ConfigLoader {
       envOverrides: envOverrides,
     });
 
-    return processed as LoadedConfig;
+    return {
+      ...(processed as LoadedConfig),
+      test: configWithOverrides.test,
+    };
   }
 
-  private async loadConfigSource(projectFolder: string, environment?: string): Promise<AntelopeConfig> {
-    const configPath = await findConfigPath(projectFolder, this.fs);
-    return self.loadTsConfigFile(configPath, environment);
+  private async loadConfigSource(
+    projectFolder: string,
+    environment?: string,
+    configPath?: string,
+  ): Promise<AntelopeConfig> {
+    const resolvedPath = configPath ?? (await findConfigPath(projectFolder, this.fs));
+    return self.loadTsConfigFile(resolvedPath, environment);
   }
 
   private async loadJsonFile<T>(filePath: string): Promise<T> {

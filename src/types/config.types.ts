@@ -1,5 +1,11 @@
 import { ModuleSourceLocal, ModuleSourceGit, ModuleSourcePackage, ModuleSourceLocalFolder } from './module.types';
 
+export interface AntelopeTestConfig {
+  folder?: string;
+  setup?: () => void | Partial<AntelopeConfig> | Promise<void | Partial<AntelopeConfig>>;
+  cleanup?: () => void | Promise<void>;
+}
+
 export interface AntelopeConfig {
   name: string;
   cacheFolder?: string;
@@ -7,6 +13,7 @@ export interface AntelopeConfig {
   logging?: AntelopeLogging;
   envOverrides?: Record<string, string | string[]>;
   environments?: Record<string, Partial<AntelopeConfig>>;
+  test?: AntelopeTestConfig;
 }
 
 export interface ImportOverride {
