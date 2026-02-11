@@ -210,8 +210,8 @@ async function launchWithInspector(options: DevCommandOptions): Promise<void> {
   shutdownManager.setupSignalHandlers();
 
   child.on('error', () => {
-    void runCleanup();
-    process.exit(1);
+    childRunning = false;
+    void shutdownManager.shutdown(1);
   });
   child.on('exit', (code) => {
     childRunning = false;
