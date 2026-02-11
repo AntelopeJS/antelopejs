@@ -6,12 +6,27 @@ import { LaunchOptions } from '../../types';
 import { addChannelFilter, setupAntelopeProjectLogging } from '../../logging';
 import { BuildOptions, NormalizedLoadedConfig, ProjectRuntimeConfig } from './runtime-types';
 import { Logging } from '../../interfaces/logging/beta';
+import { ShutdownManager } from '../shutdown';
 
 const EXIT_CODE_ERROR = 1;
 const DEFAULT_MAX_EVENT_LISTENERS = 50;
 let processHandlersReady = false;
+let activeShutdownManager: ShutdownManager | undefined;
 
-export function setupProcessHandlers(): void {
+function shutdownProcess(exitCode: number): void {
+  if (activeShutdownManager) {
+    void activeShutdownManager.shutdown(exitCode);
+    return;
+  }
+
+  process.exit(exitCode);
+}
+
+export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
+  if (shutdownManager) {
+    activeShutdownManager = shutdownManager;
+  }
+
   if (processHandlersReady) {
     return;
   }
@@ -19,7 +34,7 @@ export function setupProcessHandlers(): void {
   processHandlersReady = true;
   process.on('uncaughtException', (error: Error) => {
     Logging.Error('Uncaught exception:', error);
-    process.exit(EXIT_CODE_ERROR);
+    shutdownProcess(EXIT_CODE_ERROR);
   });
 
   process.on('unhandledRejection', (reason: any) => {
@@ -27,7 +42,7 @@ export function setupProcessHandlers(): void {
     if (reason instanceof AggregateError && reason.errors) {
       reason.errors.forEach((err: unknown) => Logging.Error('  -', err));
     }
-    process.exit(EXIT_CODE_ERROR);
+    shutdownProcess(EXIT_CODE_ERROR);
   });
 
   process.on('warning', (warning: Error) => {
@@ -71,8 +86,9 @@ export async function loadProjectRuntimeConfig(
   projectFolder: string,
   env: string,
   options: BuildOptions | LaunchOptions,
+  shutdownManager?: ShutdownManager,
 ): Promise<ProjectRuntimeConfig> {
-  setupProcessHandlers();
+  setupProcessHandlers(shutdownManager);
 
   const fs = new NodeFileSystem();
   const loader = new ConfigLoader(fs);

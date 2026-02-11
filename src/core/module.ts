@@ -64,8 +64,8 @@ export class Module {
     this.lifecycle.start();
   }
 
-  stop(): void {
-    this.lifecycle.stop();
+  async stop(): Promise<void> {
+    await this.lifecycle.stop();
   }
 
   async destroy(): Promise<void> {

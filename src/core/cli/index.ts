@@ -74,11 +74,6 @@ export const runCLI = async () => {
   }
 };
 
-// Handle process termination signals
-process.on('SIGINT', () => {
-  process.exit(0);
-});
-
 if (require.main === module) {
   runCLI().catch((err) => {
     if (err && typeof err === 'object' && 'name' in err && err.name === 'ExitPromptError') {

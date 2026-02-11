@@ -9,6 +9,10 @@ import { Command } from 'commander';
 const fsPromises = require('fs').promises;
 const childProcess = require('child_process');
 
+async function waitForAsyncWork(): Promise<void> {
+  await new Promise((resolve) => setImmediate(resolve));
+}
+
 describe('project run behavior', () => {
   afterEach(() => {
     sinon.restore();
@@ -188,9 +192,13 @@ describe('project run behavior', () => {
     await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--inspect']);
 
     callbacks.error?.();
+    await waitForAsyncWork();
     callbacks.exit?.(1);
+    await waitForAsyncWork();
     callbacks.exit?.(undefined as any);
+    await waitForAsyncWork();
     callbacks.exit?.(0);
+    await waitForAsyncWork();
 
     expect(exitStub.called).to.equal(true);
   });
@@ -217,9 +225,14 @@ describe('project run behavior', () => {
 
   it('ignores cleanup errors after inspect run', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'test-project' } as any);
-    sinon.stub(childProcess, 'fork').returns({
-      on: sinon.stub().returnsThis(),
-    } as any);
+    const callbacks: Record<string, (...args: any[]) => void> = {};
+    const child = {
+      on(event: string, cb: (...args: any[]) => void) {
+        callbacks[event] = cb;
+        return child;
+      },
+    } as any;
+    sinon.stub(childProcess, 'fork').returns(child);
 
     sinon.stub(ModuleCache, 'getTemp').resolves('/tmp');
     const rmStub = sinon.stub(fsPromises, 'rm').rejects(new Error('rm failed'));
@@ -232,11 +245,15 @@ describe('project run behavior', () => {
     sinon.stub(cliUi, 'info');
     sinon.stub(cliUi, 'warning');
     sinon.stub(cliUi, 'error');
+    const exitStub = sinon.stub(process, 'exit');
 
     const cmd = cmdRun();
     await cmd.parseAsync(['node', 'test', '--project', '/tmp/project', '--inspect']);
+    callbacks.exit?.(0);
+    await waitForAsyncWork();
 
     expect(rmStub.called).to.equal(true);
+    expect(exitStub.calledWith(0)).to.equal(true);
     expect(process.exitCode).to.equal(undefined);
   });
 });

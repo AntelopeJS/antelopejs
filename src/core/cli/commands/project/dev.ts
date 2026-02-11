@@ -1,10 +1,11 @@
 import chalk from 'chalk';
-import { fork } from 'child_process';
+import { ChildProcess, fork } from 'child_process';
 import fs, { unlinkSync, writeFileSync } from 'fs';
 import path from 'path';
 import { Command, Option } from 'commander';
 import startAntelope, { LaunchOptions, DEFAULT_ENV } from '../../../..';
 import { ModuleCache } from '../../../module-cache';
+import { ShutdownManager } from '../../../shutdown';
 import { Options } from '../../common';
 import { displayBox, error, info, warning } from '../../cli-ui';
 import { resolveInheritedVerbose, validateProjectExists } from '../shared/project-command';
@@ -28,6 +29,10 @@ export interface DevCommandOptions extends LaunchOptions {
 const DEFAULT_INSPECTOR = '--inspect';
 const RUNNER_PREFIX = 'antelope-runner-';
 const DEFAULT_INSPECT_HOST = '127.0.0.1:9229';
+const CHILD_TERMINATE_TIMEOUT_MS = 5000;
+const SHUTDOWN_PRIORITY_CHILD = 20;
+const SHUTDOWN_PRIORITY_CLEANUP = 10;
+const SHUTDOWN_PRIORITY_SIGNAL_CLEANUP = 5;
 
 const ENV_OPTION = new Option('-e, --env <environment>', 'Environment to use (development, production, etc.)').env(
   'ANTELOPEJS_LAUNCH_ENV',
@@ -122,12 +127,68 @@ async function cleanupRunner(tempDir: string, runnerPath: string): Promise<void>
   }
 }
 
+export function terminateChildProcess(
+  child: ChildProcess,
+  timeoutMs: number = CHILD_TERMINATE_TIMEOUT_MS,
+): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof child.kill !== 'function' || typeof child.on !== 'function') {
+      resolve();
+      return;
+    }
+
+    const detachExitListener = () => {
+      if (typeof child.removeListener !== 'function') {
+        return;
+      }
+      child.removeListener('exit', onExit);
+    };
+
+    const onExit = () => {
+      clearTimeout(timer);
+      detachExitListener();
+      resolve();
+    };
+
+    const timer = setTimeout(() => {
+      detachExitListener();
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        resolve();
+        return;
+      }
+      resolve();
+    }, timeoutMs);
+
+    child.on('exit', onExit);
+    try {
+      child.kill('SIGTERM');
+    } catch {
+      clearTimeout(timer);
+      detachExitListener();
+      resolve();
+    }
+  });
+}
+
 async function launchWithInspector(options: DevCommandOptions): Promise<void> {
   const inspectArg = options.inspect === true ? DEFAULT_INSPECTOR : `--inspect=${options.inspect}`;
   const entryPath = path.resolve(__dirname, '../../../..');
   const runnerScript = buildRunnerScript(entryPath);
   const tempDir = await ModuleCache.getTemp();
   const runnerPath = path.join(tempDir, `${RUNNER_PREFIX}${Date.now()}.js`);
+  const shutdownManager = new ShutdownManager();
+  let cleanupDone = false;
+  let childRunning = true;
+
+  const runCleanup = async () => {
+    if (cleanupDone) {
+      return;
+    }
+    cleanupDone = true;
+    await cleanupRunner(tempDir, runnerPath);
+  };
 
   writeFileSync(runnerPath, runnerScript);
 
@@ -136,17 +197,27 @@ async function launchWithInspector(options: DevCommandOptions): Promise<void> {
     execArgv: [inspectArg],
     env: buildRunnerEnv(options),
   });
+  shutdownManager.register(async () => {
+    if (!childRunning) {
+      return;
+    }
+    await terminateChildProcess(child);
+  }, SHUTDOWN_PRIORITY_CHILD);
+  shutdownManager.register(runCleanup, SHUTDOWN_PRIORITY_CLEANUP);
+  shutdownManager.register(async () => {
+    shutdownManager.removeSignalHandlers();
+  }, SHUTDOWN_PRIORITY_SIGNAL_CLEANUP);
+  shutdownManager.setupSignalHandlers();
+
   child.on('error', () => {
-    process.exit(1);
+    childRunning = false;
+    void shutdownManager.shutdown(1);
   });
   child.on('exit', (code) => {
-    if (code !== 0) {
-      process.exit(code || 1);
-    }
-    process.exit(0);
+    childRunning = false;
+    const exitCode = code !== 0 ? code || 1 : 0;
+    void shutdownManager.shutdown(exitCode);
   });
-
-  await cleanupRunner(tempDir, runnerPath);
 }
 
 async function launchDirect(options: DevCommandOptions): Promise<void> {
