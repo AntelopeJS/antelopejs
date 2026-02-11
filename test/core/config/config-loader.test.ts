@@ -135,6 +135,35 @@ describe('ConfigLoader', () => {
       });
     });
 
+    it('applies environment test overrides', async () => {
+      const setupFn = async () => {};
+      const cleanupFn = async () => {};
+      await mockTsConfig({
+        name: 'test-project',
+        modules: {},
+        test: {
+          folder: 'specs',
+          setup: setupFn,
+          cleanup: cleanupFn,
+        },
+        environments: {
+          production: {
+            test: {
+              folder: 'e2e',
+            },
+          },
+        },
+      });
+
+      const config = await loader.load('/project', 'production');
+
+      expect(config.test).to.deep.equal({
+        folder: 'e2e',
+        setup: setupFn,
+        cleanup: cleanupFn,
+      });
+    });
+
     it('returns undefined test when config has no test section', async () => {
       await mockTsConfig({
         name: 'test-project',

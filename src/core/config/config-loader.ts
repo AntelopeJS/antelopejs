@@ -69,7 +69,7 @@ export class ConfigLoader {
 
     return {
       ...(processed as LoadedConfig),
-      test: rawConfig.test,
+      test: configWithOverrides.test,
     };
   }
 
