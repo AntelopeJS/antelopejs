@@ -218,7 +218,6 @@ async function launchWithInspector(options: DevCommandOptions): Promise<void> {
     const exitCode = code !== 0 ? code || 1 : 0;
     void shutdownManager.shutdown(exitCode);
   });
-
 }
 
 async function launchDirect(options: DevCommandOptions): Promise<void> {
