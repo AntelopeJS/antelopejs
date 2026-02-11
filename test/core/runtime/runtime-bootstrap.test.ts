@@ -99,6 +99,32 @@ describe('runtime runtime-bootstrap', () => {
     }
   });
 
+  it('allows late wiring of shutdown manager after handlers are registered', () => {
+    const originalListeners = snapshotProcessListeners();
+    const bootstrap = loadBootstrapModule();
+
+    const exitStub = sinon.stub(process, 'exit');
+    const shutdownManager = new ShutdownManager();
+    const shutdownStub = sinon.stub(shutdownManager, 'shutdown').resolves();
+
+    try {
+      // First call registers handlers without a shutdown manager
+      bootstrap.setupProcessHandlers();
+      // Second call wires the manager (must not be ignored)
+      bootstrap.setupProcessHandlers(shutdownManager);
+
+      const current = snapshotProcessListeners();
+      const uncaught = current.uncaughtException[current.uncaughtException.length - 1] as (error: Error) => void;
+      uncaught(new Error('boom'));
+
+      expect(shutdownStub.calledOnceWith(1)).to.equal(true);
+      expect(exitStub.called).to.equal(false);
+    } finally {
+      restoreProcessListeners(originalListeners);
+      exitStub.restore();
+    }
+  });
+
   it('raises and restores max listeners on success and failure', async () => {
     const bootstrap = loadBootstrapModule();
     const originalMax = EventEmitter.defaultMaxListeners;
