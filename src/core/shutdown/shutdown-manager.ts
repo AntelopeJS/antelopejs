@@ -80,6 +80,7 @@ export class ShutdownManager {
     if (this.isShuttingDown) {
       Logger.Warn(`Received ${signal} during shutdown. Forcing process exit.`);
       process.exit(FORCE_EXIT_CODE);
+      return;
     }
 
     void this.shutdown(EXIT_CODE_SUCCESS);
