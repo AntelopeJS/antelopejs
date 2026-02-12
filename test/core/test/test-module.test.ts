@@ -325,4 +325,31 @@ describe('test-module', () => {
       expect(result).to.equal(0);
     });
   });
+
+  describe('setupTestEnvironment', () => {
+    it('enables auto-stub on the module manager resolver', async () => {
+      const { internal } = await import('../../../src/interfaces/core/beta');
+      const moduleLoading = require('../../../src/core/runtime/module-loading');
+
+      const loadEntriesStub = sinon.stub(moduleLoading, 'loadModuleEntriesForManager').resolves([]);
+      const constructStartStub = sinon.stub(moduleLoading, 'constructAndStartModules').resolves();
+
+      const config = {
+        name: 'test',
+        cacheFolder: '.antelope/cache',
+        modules: {},
+        envOverrides: {},
+      } as any;
+
+      const manager = await testModule.setupTestEnvironment('/module', config);
+
+      expect(loadEntriesStub.calledOnce).to.equal(true);
+      expect(constructStartStub.calledOnce).to.equal(true);
+      expect(manager.resolver.stubModulePath).to.be.a('string');
+      expect(manager.resolver.stubModulePath).to.include('stub-interface');
+      expect(internal.testStubMode).to.equal(true);
+
+      internal.testStubMode = false;
+    });
+  });
 });

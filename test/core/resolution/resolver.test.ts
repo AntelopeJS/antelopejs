@@ -59,6 +59,27 @@ describe('Resolver', () => {
     );
   });
 
+  it('returns stub module path for unresolved @ajs interface when stubModulePath is set', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.moduleByFolder.set('/modA', moduleA);
+    resolver.moduleAssociations.set('modA', new Map());
+    resolver.stubModulePath = '/stubs/stub-interface';
+
+    const result = resolver.resolve('@ajs/core/beta', { filename: '/modA/src/index.js' } as any);
+
+    expect(result).to.equal('/stubs/stub-interface');
+  });
+
+  it('still throws for unresolved @ajs interface when stubModulePath is not set', () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.moduleByFolder.set('/modA', moduleA);
+    resolver.moduleAssociations.set('modA', new Map());
+
+    expect(() => resolver.resolve('@ajs/core/beta', { filename: '/modA/src/index.js' } as any)).to.throw(
+      'un-imported interface',
+    );
+  });
+
   it('should resolve @ajs.raw paths', () => {
     const resolver = new Resolver(new PathMapper(() => false));
     resolver.modulesById.set('modB', moduleB);

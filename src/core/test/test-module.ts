@@ -9,11 +9,13 @@ import { NodeFileSystem } from '../filesystem';
 import { mergeDeep } from '../../utils/object';
 import { TestContext } from './test-context';
 import { TestRunner } from './test-runner';
+import { internal } from '../../interfaces/core/beta';
 import * as self from './test-module';
 
 const EXIT_CODE_ERROR = 1;
 const DEFAULT_TEST_FOLDER = 'test';
 const TEST_FILE_PATTERN = /\.(test|spec)\.(js|ts)$/;
+const STUB_INTERFACE_PATH = path.resolve(__dirname, 'stub-interface');
 
 interface LoadedTestConfig {
   config: LoadedConfig;
@@ -85,6 +87,8 @@ export async function setupTestEnvironment(moduleRoot: string, config: LoadedCon
 
   return withRaisedMaxListeners(async () => {
     const manager = new ModuleManager();
+    manager.resolver.stubModulePath = STUB_INTERFACE_PATH;
+    internal.testStubMode = true;
     await loadModuleEntriesForManager(manager, normalizedConfig, true);
     await constructAndStartModules(manager);
     return manager;
@@ -154,6 +158,7 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
     if (manager && managerActive) {
       await manager.destroyAll();
     }
+    internal.testStubMode = false;
     if (loadedConfig.test.cleanup) {
       await loadedConfig.test.cleanup();
     }

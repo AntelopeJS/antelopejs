@@ -2,6 +2,10 @@ import 'reflect-metadata';
 import { Class } from './decorators';
 import { Logging } from '../../logging/beta';
 
+const STUB_NOT_IMPLEMENTED =
+  'Interface function called without implementation in test environment. ' +
+  'Ensure the required module is loaded in your test config.';
+
 /**
  * Represents a connection to an interface implementation.
  *
@@ -72,6 +76,9 @@ export class AsyncProxy<T extends Func = Func, R = Awaited<ReturnType<T>>> {
   public call(...args: Parameters<T>): Promise<R> {
     if (this.callback) {
       return Promise.resolve(this.callback(...args));
+    }
+    if (internal.testStubMode) {
+      return Promise.reject(new Error(STUB_NOT_IMPLEMENTED));
     }
     return new Promise<R>((resolve, reject) => this.queue.push({ args, resolve, reject }));
   }
@@ -147,6 +154,9 @@ export class RegisteringProxy<T extends RegisterFunction = RegisterFunction> {
    * @param args Extra arguments
    */
   public register(id: RID<T>, ...args: RArgs<T>) {
+    if (!this.registerCallback && internal.testStubMode) {
+      throw new Error(STUB_NOT_IMPLEMENTED);
+    }
     const module = GetResponsibleModule();
     this.registered.set(id, { module, args });
     if (this.registerCallback) {
@@ -252,6 +262,7 @@ export class EventProxy<T extends EventFunction = EventFunction> {
  */
 export namespace internal {
   export const moduleByFolder = new Array<{ dir: string; id: string; interfaceDir: string }>();
+  export let testStubMode = false;
 
   export const knownAsync = new Map<string, Array<AsyncProxy>>();
   export const knownRegisters = new Map<string, Array<RegisteringProxy>>();
