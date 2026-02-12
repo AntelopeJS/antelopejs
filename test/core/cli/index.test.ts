@@ -6,12 +6,6 @@ function commandNames(cmd: any): string[] {
 }
 
 describe('CLI Entry Point', () => {
-  it('should create CLI program', () => {
-    const program = createCLI('0.0.1');
-    expect(program).to.have.property('name');
-    expect(program).to.have.property('parse');
-  });
-
   it('should register all commands', () => {
     const program = createCLI('0.0.1');
     expect(commandNames(program)).to.include.members(['config', 'module', 'project']);

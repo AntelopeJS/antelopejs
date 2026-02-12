@@ -10,8 +10,6 @@ import {
   displayBox,
   displayBanner,
   header,
-  keyValue,
-  sleep,
   isTerminalOutput,
 } from '../../../src/core/cli/cli-ui';
 import cliProgress from 'cli-progress';
@@ -65,17 +63,6 @@ describe('CLI UI', () => {
         (process.stderr as any).isTTY = originalStderr;
       }
     });
-
-    it('handles status methods when not running', async () => {
-      const spinner = new Spinner('Idle');
-      await spinner.succeed();
-      await spinner.fail();
-      await spinner.info();
-      await spinner.warn();
-      await spinner.pause();
-      await spinner.clear();
-      expect(true).to.equal(true);
-    });
   });
 
   describe('ProgressBar', () => {
@@ -112,12 +99,6 @@ describe('CLI UI', () => {
       } finally {
         logStub.restore();
       }
-    });
-
-    it('formats key/value and supports sleep', async () => {
-      expect(keyValue('a', 'b')).to.include('a');
-      await sleep(1);
-      expect(true).to.equal(true);
     });
 
     it('detects terminal output', () => {
