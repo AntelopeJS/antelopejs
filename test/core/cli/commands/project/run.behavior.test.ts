@@ -5,6 +5,7 @@ import * as common from '../../../../../src/core/cli/common';
 import * as cliUi from '../../../../../src/core/cli/cli-ui';
 import { ModuleCache } from '../../../../../src/core/module-cache';
 import { Command } from 'commander';
+import * as indexModule from '../../../../../src/index';
 
 const fsPromises = require('fs').promises;
 const childProcess = require('child_process');
@@ -32,7 +33,7 @@ describe('project run behavior', () => {
 
   it('runs project using startAntelope', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'test-project' } as any);
-    const startStub = sinon.stub(await import('../../../../../src/index'), 'default').resolves();
+    const startStub = sinon.stub(indexModule, 'default').resolves();
     sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
     sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
     sinon.stub(cliUi, 'displayBox').resolves();
@@ -48,7 +49,7 @@ describe('project run behavior', () => {
 
   it('warns when watch mode is enabled', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'test-project' } as any);
-    const startStub = sinon.stub(await import('../../../../../src/index'), 'default').resolves();
+    const startStub = sinon.stub(indexModule, 'default').resolves();
     sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
     sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
     sinon.stub(cliUi, 'displayBox').resolves();
@@ -65,7 +66,7 @@ describe('project run behavior', () => {
 
   it('sets exit code when startAntelope throws', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'test-project' } as any);
-    const startStub = sinon.stub(await import('../../../../../src/index'), 'default').rejects(new Error('boom'));
+    const startStub = sinon.stub(indexModule, 'default').rejects(new Error('boom'));
     sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
     sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
     sinon.stub(cliUi, 'displayBox').resolves();
@@ -205,7 +206,7 @@ describe('project run behavior', () => {
 
   it('handles non-error failures from startAntelope', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'test-project' } as any);
-    const startStub = sinon.stub(await import('../../../../../src/index'), 'default').callsFake(async () => {
+    const startStub = sinon.stub(indexModule, 'default').callsFake(async () => {
       throw 123;
     });
     sinon.stub(cliUi.Spinner.prototype, 'start').resolves();

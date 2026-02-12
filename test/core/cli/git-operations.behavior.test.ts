@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import sinon from 'sinon';
 import path from 'path';
 import { existsSync } from 'fs';
+import * as fsPromises from 'fs/promises';
 import { cleanupTempDir, makeTempDir, writeJson } from '../../helpers/temp';
 import * as command from '../../../src/core/cli/command';
 import * as pkgManager from '../../../src/core/cli/package-manager';
@@ -29,8 +30,8 @@ describe('Git operations behavior', () => {
       const gitOps = await loadGitOpsWithHome(moduleDir);
       const interfaceFolder = path.join(repoDir, 'interfaceA');
       const versionDir = path.join(interfaceFolder, '1.0.0');
-      await import('fs/promises').then((fs) => fs.mkdir(versionDir, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(versionDir, 'index.d.ts'), '// d.ts'));
+      await fsPromises.mkdir(versionDir, { recursive: true });
+      await fsPromises.writeFile(path.join(versionDir, 'index.d.ts'), '// d.ts');
 
       const interfaceInfo: any = {
         name: 'interfaceA',
@@ -77,7 +78,7 @@ describe('Git operations behavior', () => {
       const gitUrl = 'https://example.com/repo.git';
       const folderName = gitUrl.replace(/[^a-zA-Z0-9_]/g, '_');
       const repoPath = path.join(homeDir, '.antelopejs', 'cache', folderName);
-      await import('fs/promises').then((fs) => fs.mkdir(path.join(repoPath, 'interfaces', 'foo'), { recursive: true }));
+      await fsPromises.mkdir(path.join(repoPath, 'interfaces', 'foo'), { recursive: true });
       writeJson(path.join(repoPath, 'manifest.json'), { starredInterfaces: [], templates: [] });
       writeJson(path.join(repoPath, 'interfaces', 'foo', 'manifest.json'), {
         description: 'foo',
@@ -112,7 +113,7 @@ describe('Git operations behavior', () => {
       const gitUrl = 'https://example.com/repo.git';
       const folderName = gitUrl.replace(/[^a-zA-Z0-9_]/g, '_');
       const repoPath = path.join(homeDir, '.antelopejs', 'cache', folderName);
-      await import('fs/promises').then((fs) => fs.mkdir(repoPath, { recursive: true }));
+      await fsPromises.mkdir(repoPath, { recursive: true });
       writeJson(path.join(repoPath, 'manifest.json'), { starredInterfaces: [], templates: [] });
 
       const execStub = sinon.stub(command, 'ExecuteCMD').resolves({ code: 0, stdout: '', stderr: '' });
@@ -132,9 +133,9 @@ describe('Git operations behavior', () => {
     try {
       const gitOps = await loadGitOpsWithHome(moduleDir);
       const ifaceDir = path.join(moduleDir, '.antelope', 'interfaces.d', 'foo');
-      await import('fs/promises').then((fs) => fs.mkdir(path.join(ifaceDir, 'nested'), { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(ifaceDir, '1.0.0.d.ts'), '// d.ts'));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(ifaceDir, 'nested', '2.0.0.d.ts'), '// d.ts'));
+      await fsPromises.mkdir(path.join(ifaceDir, 'nested'), { recursive: true });
+      await fsPromises.writeFile(path.join(ifaceDir, '1.0.0.d.ts'), '// d.ts');
+      await fsPromises.writeFile(path.join(ifaceDir, 'nested', '2.0.0.d.ts'), '// d.ts');
 
       await gitOps.createAjsSymlinks(moduleDir);
 
@@ -153,16 +154,16 @@ describe('Git operations behavior', () => {
     try {
       const gitOps = await loadGitOpsWithHome(moduleDir);
       const ifaceDir = path.join(moduleDir, '.antelope', 'interfaces.d', 'foo');
-      await import('fs/promises').then((fs) => fs.mkdir(ifaceDir, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(ifaceDir, '1.0.0.d.ts'), 'new content'));
+      await fsPromises.mkdir(ifaceDir, { recursive: true });
+      await fsPromises.writeFile(path.join(ifaceDir, '1.0.0.d.ts'), 'new content');
 
       const ajsBase = path.join(moduleDir, 'node_modules', '@ajs', 'foo');
-      await import('fs/promises').then((fs) => fs.mkdir(ajsBase, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(ajsBase, '1.0.0.d.ts'), 'old content'));
+      await fsPromises.mkdir(ajsBase, { recursive: true });
+      await fsPromises.writeFile(path.join(ajsBase, '1.0.0.d.ts'), 'old content');
 
       await gitOps.createAjsSymlinks(moduleDir);
 
-      const updated = await import('fs/promises').then((fs) => fs.readFile(path.join(ajsBase, '1.0.0.d.ts'), 'utf8'));
+      const updated = await fsPromises.readFile(path.join(ajsBase, '1.0.0.d.ts'), 'utf8');
       expect(updated).to.equal('new content');
     } finally {
       process.env.HOME = originalHome;
@@ -176,8 +177,8 @@ describe('Git operations behavior', () => {
     try {
       const gitOps = await loadGitOpsWithHome(moduleDir);
       const ifaceRoot = path.join(moduleDir, '.antelope');
-      await import('fs/promises').then((fs) => fs.mkdir(ifaceRoot, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(ifaceRoot, 'interfaces.d'), 'not a dir'));
+      await fsPromises.mkdir(ifaceRoot, { recursive: true });
+      await fsPromises.writeFile(path.join(ifaceRoot, 'interfaces.d'), 'not a dir');
 
       const warnStub = sinon.stub(console, 'warn');
       await gitOps.createAjsSymlinks(moduleDir);
@@ -326,8 +327,8 @@ describe('Git operations behavior', () => {
       const folderName = remote.replace(/[^a-zA-Z0-9_]/g, '_');
       const repoPath = path.join(homeDir, '.antelopejs', 'cache', folderName);
       const interfacePath = path.join(repoPath, 'interfaces', 'foo');
-      await import('fs/promises').then((fs) => fs.mkdir(interfacePath, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(interfacePath, '1.0.0.d.ts'), '// d.ts'));
+      await fsPromises.mkdir(interfacePath, { recursive: true });
+      await fsPromises.writeFile(path.join(interfacePath, '1.0.0.d.ts'), '// d.ts');
 
       const interfaceInfo: any = {
         name: 'foo',
@@ -370,8 +371,8 @@ describe('Git operations behavior', () => {
       const gitOps = await loadGitOpsWithHome(homeDir);
       const interfaceFolder = path.join(homeDir, 'interfaces', 'bar');
       const versionDir = path.join(interfaceFolder, '1.0.0');
-      await import('fs/promises').then((fs) => fs.mkdir(versionDir, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(versionDir, 'index.d.ts'), '// d.ts'));
+      await fsPromises.mkdir(versionDir, { recursive: true });
+      await fsPromises.writeFile(path.join(versionDir, 'index.d.ts'), '// d.ts');
 
       const interfaceInfo: any = {
         name: 'bar',
@@ -422,16 +423,16 @@ describe('Git operations behavior', () => {
       const gitOps = await loadGitOpsWithHome(homeDir);
       const interfaceFolder = path.join(homeDir, 'interfaces', 'base');
       const versionDir = path.join(interfaceFolder, '1.0.0');
-      await import('fs/promises').then((fs) => fs.mkdir(versionDir, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(versionDir, 'index.d.ts'), '// d.ts'));
+      await fsPromises.mkdir(versionDir, { recursive: true });
+      await fsPromises.writeFile(path.join(versionDir, 'index.d.ts'), '// d.ts');
 
       const gitUrl = 'https://example.com/repo.git';
       const folderName = gitUrl.replace(/[^a-zA-Z0-9_]/g, '_');
       const repoPath = path.join(homeDir, '.antelopejs', 'cache', folderName);
       const depFolder = path.join(repoPath, 'interfaces', 'dep');
       const depVersionDir = path.join(depFolder, '1.0.0');
-      await import('fs/promises').then((fs) => fs.mkdir(depVersionDir, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(depVersionDir, 'index.d.ts'), '// d.ts'));
+      await fsPromises.mkdir(depVersionDir, { recursive: true });
+      await fsPromises.writeFile(path.join(depVersionDir, 'index.d.ts'), '// d.ts');
       writeJson(path.join(depFolder, 'manifest.json'), {
         description: 'dep',
         versions: ['1.0.0'],
@@ -446,8 +447,8 @@ describe('Git operations behavior', () => {
 
       const extraFolder = path.join(repoPath, 'interfaces', 'extra');
       const extraVersionDir = path.join(extraFolder, '1.0.0');
-      await import('fs/promises').then((fs) => fs.mkdir(extraVersionDir, { recursive: true }));
-      await import('fs/promises').then((fs) => fs.writeFile(path.join(extraVersionDir, 'index.d.ts'), '// d.ts'));
+      await fsPromises.mkdir(extraVersionDir, { recursive: true });
+      await fsPromises.writeFile(path.join(extraVersionDir, 'index.d.ts'), '// d.ts');
       writeJson(path.join(extraFolder, 'manifest.json'), {
         description: 'extra',
         versions: ['1.0.0'],

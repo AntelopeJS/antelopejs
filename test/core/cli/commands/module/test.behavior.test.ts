@@ -4,6 +4,7 @@ import path from 'path';
 import cmdTest, { moduleTestCommand } from '../../../../../src/core/cli/commands/module/test';
 import * as common from '../../../../../src/core/cli/common';
 import * as cliUi from '../../../../../src/core/cli/cli-ui';
+import * as testModuleModule from '../../../../../src/core/test/test-module';
 
 describe('module test behavior', () => {
   afterEach(() => {
@@ -18,7 +19,7 @@ describe('module test behavior', () => {
     sinon.stub(cliUi, 'error');
     sinon.stub(cliUi, 'info');
 
-    const testStub = sinon.stub(await import('../../../../../src/core/test/test-module'), 'TestModule').resolves(0);
+    const testStub = sinon.stub(testModuleModule, 'TestModule').resolves(0);
 
     await moduleTestCommand('/tmp/module', { file: [] });
 
@@ -31,7 +32,7 @@ describe('module test behavior', () => {
     sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
     sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
 
-    const testStub = sinon.stub(await import('../../../../../src/core/test/test-module'), 'TestModule').resolves(0);
+    const testStub = sinon.stub(testModuleModule, 'TestModule').resolves(0);
 
     await moduleTestCommand('/tmp/module', { file: ['/tmp/test.ts'] });
 
@@ -45,7 +46,7 @@ describe('module test behavior', () => {
     sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
     sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
 
-    const testStub = sinon.stub(await import('../../../../../src/core/test/test-module'), 'TestModule').resolves(0);
+    const testStub = sinon.stub(testModuleModule, 'TestModule').resolves(0);
 
     const cmd = cmdTest();
     await cmd.parseAsync(['node', 'test', '/tmp/module', '--file', '/tmp/a.test.ts', '--file', '/tmp/b.test.ts']);

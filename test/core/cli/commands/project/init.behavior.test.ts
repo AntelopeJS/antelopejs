@@ -6,6 +6,8 @@ import { readFile } from 'fs/promises';
 import cmdInit from '../../../../../src/core/cli/commands/project/init';
 import * as common from '../../../../../src/core/cli/common';
 import * as cliUi from '../../../../../src/core/cli/cli-ui';
+import * as moduleInitModule from '../../../../../src/core/cli/commands/module/init';
+import * as projectModulesAddModule from '../../../../../src/core/cli/commands/project/modules/add';
 import { cleanupTempDir, makeTempDir } from '../../../../helpers/temp';
 
 describe('project init behavior', () => {
@@ -25,12 +27,8 @@ describe('project init behavior', () => {
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
 
-      const moduleInitStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
-        .resolves();
-      const addStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-        .resolves();
+      const moduleInitStub = sinon.stub(moduleInitModule, 'moduleInitCommand').resolves();
+      const addStub = sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -62,10 +60,8 @@ describe('project init behavior', () => {
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
-      sinon.stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand').resolves();
-      sinon
-        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-        .resolves();
+      sinon.stub(moduleInitModule, 'moduleInitCommand').resolves();
+      sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -124,12 +120,8 @@ describe('project init behavior', () => {
       promptStub.onCall(2).resolves({ source: 'git' });
       promptStub.onCall(3).resolves({ module: 'https://example.com/repo.git' });
 
-      const initStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
-        .resolves();
-      const addStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-        .resolves();
+      const initStub = sinon.stub(moduleInitModule, 'moduleInitCommand').resolves();
+      const addStub = sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -164,12 +156,8 @@ describe('project init behavior', () => {
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
 
-      const initStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
-        .resolves();
-      const addStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-        .resolves();
+      const initStub = sinon.stub(moduleInitModule, 'moduleInitCommand').resolves();
+      const addStub = sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -200,10 +188,8 @@ describe('project init behavior', () => {
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
-      sinon.stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand').resolves();
-      sinon
-        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-        .resolves();
+      sinon.stub(moduleInitModule, 'moduleInitCommand').resolves();
+      sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -235,12 +221,8 @@ describe('project init behavior', () => {
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
 
-      sinon
-        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
-        .rejects(new Error('boom'));
-      const addStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-        .resolves();
+      sinon.stub(moduleInitModule, 'moduleInitCommand').rejects(new Error('boom'));
+      const addStub = sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
@@ -273,12 +255,8 @@ describe('project init behavior', () => {
       promptStub.onCall(0).resolves({ name: 'my-project' });
       promptStub.onCall(1).resolves({ blmodule: false });
 
-      sinon
-        .stub(await import('../../../../../src/core/cli/commands/module/init'), 'moduleInitCommand')
-        .callsFake(() => Promise.reject('boom'));
-      const addStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-        .resolves();
+      sinon.stub(moduleInitModule, 'moduleInitCommand').callsFake(() => Promise.reject('boom'));
+      const addStub = sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
       sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
       sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();

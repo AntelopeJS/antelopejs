@@ -10,6 +10,7 @@ import { DownloaderRegistry } from '../../../../../../src/core/downloaders/regis
 import { ModuleCache } from '../../../../../../src/core/module-cache';
 import { ModuleManifest } from '../../../../../../src/core/module-manifest';
 import { terminalDisplay } from '../../../../../../src/core/cli/terminal-display';
+import * as projectModulesAddModule from '../../../../../../src/core/cli/commands/project/modules/add';
 
 describe('project modules install behavior', () => {
   afterEach(() => {
@@ -196,9 +197,7 @@ describe('project modules install behavior', () => {
       },
     } as any);
 
-    const addStub = sinon
-      .stub(await import('../../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-      .resolves();
+    const addStub = sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
     const promptStub = sinon.stub(inquirer, 'prompt');
     promptStub.onCall(0).resolves({ moduleName: 'modA' });
@@ -272,9 +271,7 @@ describe('project modules install behavior', () => {
       } as any;
     });
 
-    const addStub = sinon
-      .stub(await import('../../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-      .resolves();
+    const addStub = sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
     const promptStub = sinon.stub(inquirer, 'prompt');
     promptStub.onCall(0).resolves({ moduleName: 'modA' });
@@ -403,9 +400,7 @@ describe('project modules install behavior', () => {
       },
     } as any);
 
-    const addStub = sinon
-      .stub(await import('../../../../../../src/core/cli/commands/project/modules/add'), 'projectModulesAddCommand')
-      .resolves();
+    const addStub = sinon.stub(projectModulesAddModule, 'projectModulesAddCommand').resolves();
 
     const promptStub = sinon.stub(inquirer, 'prompt');
     promptStub.onCall(0).resolves({ moduleName: 'modA' });
@@ -608,10 +603,7 @@ describe('project modules install behavior', () => {
 
     sinon.stub(inquirer, 'prompt').resolves({ moduleName: 'modA' });
 
-    const addStub = sinon.stub(
-      await import('../../../../../../src/core/cli/commands/project/modules/add'),
-      'projectModulesAddCommand',
-    );
+    const addStub = sinon.stub(projectModulesAddModule, 'projectModulesAddCommand');
     addStub.rejects(new Error('install failed'));
 
     const errorStub = sinon.stub(cliUi, 'error');
