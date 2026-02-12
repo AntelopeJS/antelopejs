@@ -159,6 +159,9 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
       await manager.destroyAll();
     }
     internal.testStubMode = false;
+    if (manager) {
+      manager.resolver.stubModulePath = undefined;
+    }
     if (loadedConfig.test.cleanup) {
       await loadedConfig.test.cleanup();
     }
