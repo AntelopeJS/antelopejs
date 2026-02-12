@@ -44,10 +44,3 @@ export interface LoaderContext {
   registry: DownloaderRegistry;
   projectFolder: string;
 }
-
-export interface ModuleBuildContext {
-  fs: NodeFileSystem;
-  cache: ModuleCache;
-  registry: DownloaderRegistry;
-  projectFolder: string;
-}

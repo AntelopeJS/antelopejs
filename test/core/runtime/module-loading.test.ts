@@ -59,35 +59,68 @@ describe('runtime module-loading', () => {
 
   it('reloads watched modules and ignores unknown ones', async () => {
     const managerWithoutEntry = {
-      getModuleEntry: sinon.stub().returns(undefined),
+      getLoadedModuleEntry: sinon.stub().returns(undefined),
       unrequireModuleFiles: sinon.stub(),
     } as any;
 
-    await reloadWatchedModule(managerWithoutEntry, 'unknown');
-    expect(managerWithoutEntry.unrequireModuleFiles.called).to.equal(false);
+    const loaderContext = {
+      cache: {},
+      projectFolder: '/project',
+      registry: { load: sinon.stub().resolves([]) },
+    } as any;
 
+    await reloadWatchedModule(managerWithoutEntry, 'unknown', loaderContext);
+    expect(managerWithoutEntry.unrequireModuleFiles.called).to.equal(false);
+  });
+
+  it('reloads watched modules from source when a loader context is provided', async () => {
     const entry = {
       module: {
-        reload: sinon.stub().resolves(),
-        construct: sinon.stub().resolves(),
-        start: sinon.stub(),
+        manifest: { source: { type: 'local', path: '/mods/alpha' } },
+        destroy: sinon.stub().resolves(),
       },
       config: {
         config: { enabled: true },
       },
     };
 
-    const managerWithEntry = {
-      getModuleEntry: sinon.stub().returns(entry),
+    const replaceLoadedModuleStub = sinon.stub();
+    const refreshAssociationsStub = sinon.stub();
+    const manager = {
+      getLoadedModuleEntry: sinon.stub().returns(entry),
       unrequireModuleFiles: sinon.stub(),
+      replaceLoadedModule: replaceLoadedModuleStub,
+      refreshAssociations: refreshAssociationsStub,
     } as any;
 
-    await reloadWatchedModule(managerWithEntry, 'alpha');
+    const manifest = {
+      name: 'alpha',
+      version: '1.0.0',
+      main: __filename,
+      folder: '/mods/alpha',
+      exportsPath: '/mods/alpha/interfaces',
+      exports: {},
+      imports: [],
+      source: { type: 'local', path: '/mods/alpha' },
+      loadExports: sinon.stub().resolves(),
+      reload: sinon.stub().resolves(),
+    } as any;
+    const registryLoadStub = sinon.stub().resolves([manifest]);
+    const loaderContext = {
+      cache: {},
+      projectFolder: '/project',
+      registry: { load: registryLoadStub },
+    } as any;
 
-    expect(managerWithEntry.unrequireModuleFiles.calledWith('alpha')).to.equal(true);
-    expect(entry.module.reload.calledOnce).to.equal(true);
-    expect(entry.module.construct.calledWith({ enabled: true })).to.equal(true);
-    expect(entry.module.start.calledOnce).to.equal(true);
+    await reloadWatchedModule(manager, 'alpha', loaderContext);
+
+    expect(entry.module.destroy.calledOnce).to.equal(true);
+    expect(manager.unrequireModuleFiles.calledWith('alpha')).to.equal(true);
+    const expectedSource = { type: 'local', path: '/mods/alpha', id: 'alpha' };
+    expect(registryLoadStub.calledWith('/project', loaderContext.cache, expectedSource)).to.equal(true);
+    expect(manifest.loadExports.calledOnce).to.equal(true);
+    expect(replaceLoadedModuleStub.calledOnce).to.equal(true);
+    expect(refreshAssociationsStub.calledOnce).to.equal(true);
   });
 
   it('constructs and starts modules, and fails gracefully on construct errors', async () => {
@@ -133,6 +166,7 @@ describe('runtime module-loading', () => {
     const getModuleStub = sinon.stub();
     const replaceLoadedModuleStub = sinon.stub();
     const refreshAssociationsStub = sinon.stub();
+    const unrequireModuleFilesStub = sinon.stub();
     const manager = {
       listModules: listModulesStub,
       getModuleEntry: getModuleEntryStub,
@@ -143,6 +177,7 @@ describe('runtime module-loading', () => {
       getModule: getModuleStub,
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
+      unrequireModuleFiles: unrequireModuleFilesStub,
     } as unknown as ModuleManager;
 
     const registryLoadStub = sinon.stub();

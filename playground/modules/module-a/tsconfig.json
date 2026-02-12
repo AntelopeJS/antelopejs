@@ -8,8 +8,12 @@
     "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
-      "@ajs/core/*": ["../../../dist/interfaces/core/*"]
+      "@ajs/core/*": [
+        "../../../dist/interfaces/core/*"
+      ]
     }
   },
-  "include": ["**/*.ts"]
+  "include": [
+    "**/*.ts"
+  ]
 }

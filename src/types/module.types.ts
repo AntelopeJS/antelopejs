@@ -17,12 +17,15 @@ export interface ModuleSource {
   ignoreCache?: boolean;
 }
 
+export type ModuleInstallCommand = string | string[];
+export type ModuleWatchDir = string | string[];
+
 export interface ModuleSourceLocal extends ModuleSource {
   type: 'local';
   path: string;
   main?: string;
-  watchDir?: string | string[];
-  installCommand?: string | string[];
+  watchDir?: ModuleWatchDir;
+  installCommand?: ModuleInstallCommand;
 }
 
 export interface ModuleSourceGit extends ModuleSource {
@@ -30,7 +33,7 @@ export interface ModuleSourceGit extends ModuleSource {
   remote: string;
   branch?: string;
   commit?: string;
-  installCommand?: string | string[];
+  installCommand?: ModuleInstallCommand;
 }
 
 export interface ModuleSourcePackage extends ModuleSource {
@@ -42,4 +45,6 @@ export interface ModuleSourcePackage extends ModuleSource {
 export interface ModuleSourceLocalFolder extends ModuleSource {
   type: 'local-folder';
   path: string;
+  watchDir?: ModuleWatchDir;
+  installCommand?: ModuleInstallCommand;
 }

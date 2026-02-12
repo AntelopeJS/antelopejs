@@ -10,6 +10,7 @@ import { DEFAULT_ENV } from './core/config/config-paths';
 import { ReplSession } from './core/repl/repl-session';
 import { ShutdownManager } from './core/shutdown';
 import {
+  createLoaderContext,
   constructAndStartModules,
   ensureGraphIsValid,
   getWatchDirs,
@@ -30,7 +31,7 @@ import {
   warnIfBuildIsStale,
   writeProjectBuildArtifact,
 } from './core/runtime/build-runtime';
-import { BuildOptions } from './core/runtime/runtime-types';
+import { BuildOptions, LoaderContext } from './core/runtime/runtime-types';
 
 export { ModuleManager } from './core/module-manager';
 export { Module } from './core/module';
@@ -57,6 +58,7 @@ interface CoreInitialization {
   manager: ModuleManager;
   fs: NodeFileSystem;
   shutdownManager: ShutdownManager;
+  loaderContext: LoaderContext;
 }
 
 let activeShutdownManager: ShutdownManager | undefined;
@@ -88,13 +90,14 @@ async function setupPostLaunchFeatures(
   fs: NodeFileSystem,
   options: LaunchOptions,
   shutdownManager: ShutdownManager,
+  loaderContext: LoaderContext,
 ): Promise<void> {
   registerModuleShutdownHandler(shutdownManager, manager);
   registerShutdownCleanup(shutdownManager);
 
   if (options.watch) {
     const watcher = new FileWatcher(fs);
-    const hotReload = new HotReload(async (moduleId) => reloadWatchedModule(manager, moduleId));
+    const hotReload = new HotReload(async (moduleId) => reloadWatchedModule(manager, moduleId, loaderContext));
 
     for (const { module } of manager.getLoadedModules()) {
       if (module.manifest?.source?.type === 'local') {
@@ -127,10 +130,11 @@ async function setupPostLaunchFeatures(
 async function initializeCore(projectFolder: string, env: string, options: LaunchOptions): Promise<CoreInitialization> {
   const shutdownManager = new ShutdownManager();
   const runtimeConfig = await loadProjectRuntimeConfig(projectFolder, env, options, shutdownManager);
+  const loaderContext = await createLoaderContext(runtimeConfig.normalizedConfig);
 
   const manager = await withRaisedMaxListeners(async () => {
     const moduleManager = new ModuleManager();
-    await loadModuleEntriesForManager(moduleManager, runtimeConfig.normalizedConfig, true);
+    await loadModuleEntriesForManager(moduleManager, runtimeConfig.normalizedConfig, true, loaderContext);
     await constructAndStartModules(moduleManager);
     return moduleManager;
   });
@@ -139,6 +143,7 @@ async function initializeCore(projectFolder: string, env: string, options: Launc
     manager,
     fs: runtimeConfig.fs,
     shutdownManager,
+    loaderContext,
   };
 }
 
@@ -148,7 +153,13 @@ export async function launch(
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {
   const initialized = await initializeCore(projectFolder, env, options);
-  await setupPostLaunchFeatures(initialized.manager, initialized.fs, options, initialized.shutdownManager);
+  await setupPostLaunchFeatures(
+    initialized.manager,
+    initialized.fs,
+    options,
+    initialized.shutdownManager,
+    initialized.loaderContext,
+  );
   return initialized.manager;
 }
 

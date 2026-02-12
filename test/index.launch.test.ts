@@ -39,12 +39,12 @@ describe('launch', () => {
         {
           name: id,
           version: '1.0.0',
-          main: `/mods/${id}`,
+          main: __filename,
           folder: `/mods/${id}`,
           exportsPath: `/mods/${id}/interfaces`,
           exports: {},
           imports: [],
-          source: { type: 'local', watchDir },
+          source: { type: 'local', path: `/mods/${id}`, watchDir },
           loadExports: async () => {},
           reload: async () => {},
         } as any,
@@ -53,14 +53,26 @@ describe('launch', () => {
 
     const localModule = {
       id: 'modA',
-      manifest: { source: { type: 'local', watchDir: ['src', 'lib'] }, folder: '/mods/modA' },
+      manifest: {
+        source: { type: 'local', path: '/mods/modA', watchDir: ['src', 'lib'] },
+        folder: '/mods/modA',
+        exports: {},
+        imports: [],
+      },
+      destroy: sinon.stub().resolves(),
       reload: sinon.stub().resolves(),
       construct: sinon.stub().resolves(),
       start: sinon.stub(),
     } as any;
     const localModuleB = {
       id: 'modB',
-      manifest: { source: { type: 'local', watchDir: 'src2' }, folder: '/mods/modB' },
+      manifest: {
+        source: { type: 'local', path: '/mods/modB', watchDir: 'src2' },
+        folder: '/mods/modB',
+        exports: {},
+        imports: [],
+      },
+      destroy: sinon.stub().resolves(),
       reload: sinon.stub().resolves(),
       construct: sinon.stub().resolves(),
       start: sinon.stub(),
@@ -104,7 +116,7 @@ describe('launch', () => {
     expect(scanStub.calledWith('modB', '/mods/modB', ['src2'])).to.equal(true);
     expect(startWatchingStub.calledOnce).to.equal(true);
     expect(replStub.calledWith('> ')).to.equal(true);
-    expect(localModule.construct.calledWith({ flag: true })).to.equal(true);
+    expect(localModule.destroy.calledOnce).to.equal(true);
 
     const modAConfig = addedModules.find((entry) => entry.manifest.name === 'modA')?.config;
     expect(modAConfig.importOverrides.get('core@beta')).to.deep.equal([{ module: 'provider', id: 'v1' }]);
