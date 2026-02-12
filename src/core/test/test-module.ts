@@ -116,6 +116,13 @@ function applySetupOverrides(config: LoadedConfig, overrides: Partial<AntelopeCo
   return mergeDeep(config as Record<string, any>, overrides as Record<string, any>) as unknown as LoadedConfig;
 }
 
+function clearStubModulePath(manager: ModuleManager | null): void {
+  if (!manager?.resolver) {
+    return;
+  }
+  manager.resolver.stubModulePath = undefined;
+}
+
 export async function TestModule(moduleFolder: string = '.', files: string[] = []): Promise<number> {
   if (files.length > 0) {
     const context = new TestContext({});
@@ -159,9 +166,7 @@ export async function TestModule(moduleFolder: string = '.', files: string[] = [
       await manager.destroyAll();
     }
     internal.testStubMode = false;
-    if (manager) {
-      manager.resolver.stubModulePath = undefined;
-    }
+    clearStubModulePath(manager);
     if (loadedConfig.test.cleanup) {
       await loadedConfig.test.cleanup();
     }
