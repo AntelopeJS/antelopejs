@@ -4,6 +4,8 @@ import cmdBuild from '../../../../../src/core/cli/commands/project/build';
 import cmdStart from '../../../../../src/core/cli/commands/project/start';
 import * as common from '../../../../../src/core/cli/common';
 import * as cliUi from '../../../../../src/core/cli/cli-ui';
+import * as indexModule from '../../../../../src/index';
+import * as buildArtifactModule from '../../../../../src/core/build/build-artifact';
 
 describe('project build/start behavior', () => {
   afterEach(() => {
@@ -29,8 +31,8 @@ describe('project build/start behavior', () => {
 
   it('runs build command and reports summary', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'project' } as any);
-    const buildStub = sinon.stub(await import('../../../../../src/index'), 'build').resolves();
-    sinon.stub(await import('../../../../../src/core/build/build-artifact'), 'readBuildArtifact').resolves({
+    const buildStub = sinon.stub(indexModule, 'build').resolves();
+    sinon.stub(buildArtifactModule, 'readBuildArtifact').resolves({
       modules: {
         alpha: {} as any,
         beta: {} as any,
@@ -52,7 +54,7 @@ describe('project build/start behavior', () => {
 
   it('runs start command from build artifact', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'project' } as any);
-    const startStub = sinon.stub(await import('../../../../../src/index'), 'launchFromBuild').resolves({} as any);
+    const startStub = sinon.stub(indexModule, 'launchFromBuild').resolves({} as any);
 
     stubProjectSpinners();
     sinon.stub(cliUi, 'displayBox').resolves();
@@ -70,7 +72,7 @@ describe('project build/start behavior', () => {
 
   it('sets exit code when start command fails', async () => {
     sinon.stub(common, 'readConfig').resolves({ name: 'project' } as any);
-    sinon.stub(await import('../../../../../src/index'), 'launchFromBuild').rejects(new Error('boom'));
+    sinon.stub(indexModule, 'launchFromBuild').rejects(new Error('boom'));
 
     stubProjectSpinners();
     sinon.stub(cliUi, 'displayBox').resolves();

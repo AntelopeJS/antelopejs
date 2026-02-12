@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import * as fsPromises from 'fs/promises';
 import { ModuleCache } from '../../src/core/module-cache';
 import { InMemoryFileSystem } from '../helpers/in-memory-filesystem';
 
@@ -89,12 +90,11 @@ describe('ModuleCache', () => {
 
   it('creates a temp folder using the OS temp directory', async () => {
     const tempDir = await ModuleCache.getTemp();
-    const fsNode = await import('fs/promises');
     try {
-      const stat = await fsNode.stat(tempDir);
+      const stat = await fsPromises.stat(tempDir);
       expect(stat.isDirectory()).to.equal(true);
     } finally {
-      await fsNode.rm(tempDir, { recursive: true, force: true });
+      await fsPromises.rm(tempDir, { recursive: true, force: true });
     }
   });
 });

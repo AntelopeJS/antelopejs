@@ -7,6 +7,7 @@ import * as gitOps from '../../../../../src/core/cli/git-operations';
 import * as cliUi from '../../../../../src/core/cli/cli-ui';
 import * as pkgManager from '../../../../../src/core/cli/package-manager';
 import * as command from '../../../../../src/core/cli/command';
+import * as moduleImportAddModule from '../../../../../src/core/cli/commands/module/imports/add';
 import { cleanupTempDir, makeTempDir } from '../../../../helpers/temp';
 
 describe('module init behavior', () => {
@@ -36,9 +37,7 @@ describe('module init behavior', () => {
         },
       } as any);
 
-      const importStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/module/imports/add'), 'moduleImportAddCommand')
-        .resolves();
+      const importStub = sinon.stub(moduleImportAddModule, 'moduleImportAddCommand').resolves();
 
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ template: 'basic' });
@@ -129,9 +128,7 @@ describe('module init behavior', () => {
         },
       } as any);
 
-      const importStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/module/imports/add'), 'moduleImportAddCommand')
-        .resolves();
+      const importStub = sinon.stub(moduleImportAddModule, 'moduleImportAddCommand').resolves();
 
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ template: 'basic' });
@@ -176,9 +173,7 @@ describe('module init behavior', () => {
         },
       } as any);
 
-      const importStub = sinon
-        .stub(await import('../../../../../src/core/cli/commands/module/imports/add'), 'moduleImportAddCommand')
-        .resolves();
+      const importStub = sinon.stub(moduleImportAddModule, 'moduleImportAddCommand').resolves();
 
       const promptStub = sinon.stub(inquirer, 'prompt');
       promptStub.onCall(0).resolves({ template: 'basic' });
