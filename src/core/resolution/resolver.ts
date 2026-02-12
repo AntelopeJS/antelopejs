@@ -42,6 +42,7 @@ export class Resolver {
   public readonly moduleByFolder = new Map<string, ModuleRef>();
   public readonly moduleAssociations = new Map<string, Map<string, ModuleRef | null>>();
   public readonly modulesById = new Map<string, ModuleRef>();
+  public stubModulePath?: string;
 
   constructor(private pathMapper: PathMapper) {}
 
@@ -92,6 +93,9 @@ export class Resolver {
     const associations = this.moduleAssociations.get(matchingModule.id);
     const target = associations?.get(`${name}@${version}`);
     if (!target) {
+      if (this.stubModulePath) {
+        return this.stubModulePath;
+      }
       throw new Error(`Module ${matchingModule.id} tried to use un-imported interface ${name}@${version}`);
     }
     return path.join(target.manifest.exportsPath, request.substring(AJS_PREFIX.length));
