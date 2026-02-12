@@ -1,5 +1,8 @@
 {
   "private": true,
+  "scripts": {
+    "dev": "node ../dist/core/cli/index.js project run -w"
+  },
   "dependencies": {
     "@antelopejs/core": "link:.."
   }

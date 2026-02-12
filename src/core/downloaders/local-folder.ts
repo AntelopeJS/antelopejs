@@ -4,10 +4,16 @@ import { ModuleCache } from '../module-cache';
 import { ModuleManifest } from '../module-manifest';
 import { IFileSystem, ModuleSourceLocal, ModuleSourceLocalFolder } from '../../types';
 import { NodeFileSystem } from '../filesystem';
-import { expandHome } from './utils';
+import { expandHome, runInstallCommands } from './utils';
+import { CommandRunner } from './types';
+import { ExecuteCMD } from '../cli/command';
+import { Logging } from '../../interfaces/logging/beta';
+
+const Logger = new Logging.Channel('loader.local-folder');
 
 export interface LocalFolderDownloaderDeps {
   fs?: IFileSystem;
+  exec?: CommandRunner;
 }
 
 export function registerLocalFolderDownloader(
@@ -15,6 +21,7 @@ export function registerLocalFolderDownloader(
   deps: LocalFolderDownloaderDeps = {},
 ): void {
   const fs = deps.fs ?? new NodeFileSystem();
+  const exec = deps.exec ?? ExecuteCMD;
 
   registry.register('local-folder', 'path', async (_cache: ModuleCache, source: ModuleSourceLocalFolder) => {
     const searchPath = expandHome(source.path);
@@ -26,8 +33,14 @@ export function registerLocalFolderDownloader(
       const stat = await fs.stat(folder);
       if (!stat.isDirectory()) continue;
 
-      const moduleSource: ModuleSourceLocal = { type: 'local', path: folder };
       const moduleName = source.id ? `${source.id}-${name}` : name;
+      await runInstallCommands(exec, Logger, moduleName, folder, source.installCommand);
+      const moduleSource: ModuleSourceLocal = {
+        type: 'local',
+        path: folder,
+        watchDir: source.watchDir,
+        installCommand: source.installCommand,
+      };
       const manifest = await ModuleManifest.create(folder, moduleSource, moduleName, fs);
       manifests.push(manifest);
     }

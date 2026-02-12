@@ -18,7 +18,6 @@ import { ExpandedModuleConfig } from '../config/config-parser';
 import {
   InterfaceGraphIssue,
   LoaderContext,
-  ModuleBuildContext,
   ModuleManifestEntry,
   ModuleOverrideMap,
   ModuleOverrideRef,
@@ -144,32 +143,7 @@ export function registerCoreModuleInterface(manager: ModuleManager, loaderContex
       await manager.getModule(moduleId)?.destroy();
     },
     ReloadModule: async (moduleId: string) => {
-      const entry = manager.getLoadedModuleEntry(moduleId);
-      if (!entry) {
-        return;
-      }
-
-      await entry.module.destroy();
-
-      const manifests = await loaderContext.registry.load(loaderContext.projectFolder, loaderContext.cache, {
-        ...entry.module.manifest.source,
-        id: moduleId,
-      });
-      const [manifest] = manifests;
-      if (!manifest) {
-        throw new Error(`Failed to reload module ${moduleId}: no manifest returned`);
-      }
-
-      await manifest.loadExports();
-      const replacement = new Module(manifest);
-      if (replacement.id !== moduleId) {
-        throw new Error(`Reloaded module id mismatch: expected ${moduleId}, got ${replacement.id}`);
-      }
-
-      manager.replaceLoadedModule(moduleId, replacement);
-      manager.refreshAssociations();
-      await replacement.construct(entry.config.config);
-      replacement.start();
+      await reloadLoadedModuleFromSource(manager, loaderContext, moduleId);
     },
   });
 }
@@ -211,37 +185,9 @@ function buildManifestEntries(manifests: ModuleManifest[], moduleConfig: Expande
   }));
 }
 
-function createRegistry(fs: NodeFileSystem): DownloaderRegistry {
-  const registry = new DownloaderRegistry();
-  registerLocalDownloader(registry, { fs });
-  registerLocalFolderDownloader(registry, { fs });
-  registerPackageDownloader(registry, { fs });
-  registerGitDownloader(registry, { fs });
-  return registry;
-}
-
-async function createModuleBuildContext(
-  config: NormalizedLoadedConfig,
-  loaderContext?: LoaderContext,
-): Promise<ModuleBuildContext> {
-  const fs = loaderContext?.fs ?? new NodeFileSystem();
-  const cache = loaderContext?.cache ?? new ModuleCache(config.cacheFolder, fs);
-  if (!loaderContext?.cache) {
-    await cache.load();
-  }
-
-  const registry = loaderContext?.registry ?? createRegistry(fs);
-  return {
-    fs,
-    cache,
-    registry,
-    projectFolder: loaderContext?.projectFolder ?? config.projectFolder,
-  };
-}
-
 async function loadModuleEntries(
   modules: Record<string, ExpandedModuleConfig>,
-  context: ModuleBuildContext,
+  context: LoaderContext,
 ): Promise<ModuleManifestEntry[]> {
   const modulePromises = Object.entries(modules).map(async ([id, moduleConfig]) => {
     const source = { ...moduleConfig.source, id };
@@ -288,11 +234,10 @@ function validateModuleNameCollisions(entries: ModuleManifestEntry[]): void {
 export async function buildModuleConfigs(
   config: NormalizedLoadedConfig,
   extraManifests: ModuleManifest[] = [],
-  loaderContext?: LoaderContext,
+  loaderContext: LoaderContext,
 ): Promise<ModuleManifestEntry[]> {
-  const context = await createModuleBuildContext(config, loaderContext);
   await terminalDisplay.startSpinner(`Loading modules`);
-  const modules = await loadModuleEntries(config.modules, context);
+  const modules = await loadModuleEntries(config.modules, loaderContext);
   await terminalDisplay.stopSpinner(`Modules loaded`);
   await loadEntryExports(extraManifests, modules);
   validateModuleNameCollisions(modules);
@@ -312,30 +257,72 @@ export function getWatchDirs(source: ModuleSource): string[] {
   return localSource.watchDir ? [localSource.watchDir] : [''];
 }
 
-export async function reloadWatchedModule(manager: ModuleManager, moduleId: string): Promise<void> {
-  const entry = manager.getModuleEntry(moduleId);
+async function loadModuleManifestFromSource(
+  loaderContext: LoaderContext,
+  source: ModuleSource,
+  moduleId: string,
+): Promise<ModuleManifest> {
+  const manifests = await loaderContext.registry.load(loaderContext.projectFolder, loaderContext.cache, {
+    ...source,
+    id: moduleId,
+  });
+  const [manifest] = manifests;
+  if (!manifest) {
+    throw new Error(`Failed to reload module ${moduleId}: no manifest returned`);
+  }
+  return manifest;
+}
+
+function ensureReloadedModuleId(module: Module, moduleId: string): void {
+  if (module.id !== moduleId) {
+    throw new Error(`Reloaded module id mismatch: expected ${moduleId}, got ${module.id}`);
+  }
+}
+
+async function reloadLoadedModuleFromSource(
+  manager: ModuleManager,
+  loaderContext: LoaderContext,
+  moduleId: string,
+): Promise<void> {
+  const entry = manager.getLoadedModuleEntry(moduleId);
   if (!entry) {
     return;
   }
 
+  await entry.module.destroy();
   manager.unrequireModuleFiles(moduleId);
-  await entry.module.reload();
-  await entry.module.construct(entry.config.config);
-  entry.module.start();
+  const manifest = await loadModuleManifestFromSource(loaderContext, entry.module.manifest.source, moduleId);
+  await manifest.loadExports();
+
+  const replacement = new Module(manifest);
+  ensureReloadedModuleId(replacement, moduleId);
+  manager.replaceLoadedModule(moduleId, replacement);
+  manager.refreshAssociations();
+  await replacement.construct(entry.config.config);
+  replacement.start();
+}
+
+export async function reloadWatchedModule(
+  manager: ModuleManager,
+  moduleId: string,
+  loaderContext: LoaderContext,
+): Promise<void> {
+  await reloadLoadedModuleFromSource(manager, loaderContext, moduleId);
 }
 
 export async function loadModuleEntriesForManager(
   manager: ModuleManager,
   config: NormalizedLoadedConfig,
   runtimeInterface: boolean,
+  loaderContext?: LoaderContext,
 ): Promise<ModuleManifestEntry[]> {
-  const loaderContext = await createLoaderContext(config);
+  const resolvedLoaderContext = loaderContext ?? (await createLoaderContext(config));
   if (runtimeInterface) {
-    registerCoreModuleInterface(manager, loaderContext);
+    registerCoreModuleInterface(manager, resolvedLoaderContext);
   }
 
   const coreManifest = await registerCoreInterfaces(manager);
-  const entries = await buildModuleConfigs(config, [coreManifest], loaderContext);
+  const entries = await buildModuleConfigs(config, [coreManifest], resolvedLoaderContext);
   manager.addModules(entries);
   return entries;
 }

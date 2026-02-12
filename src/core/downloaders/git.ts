@@ -7,6 +7,7 @@ import { CommandRunner } from './types';
 import { ExecuteCMD } from '../cli/command';
 import { Logging } from '../../interfaces/logging/beta';
 import { terminalDisplay } from '../cli/terminal-display';
+import { runInstallCommands } from './utils';
 
 const Logger = new Logging.Channel('loader.git');
 
@@ -94,28 +95,6 @@ async function cloneOrFetchRepo(
   };
 }
 
-async function installDependencies(
-  source: ModuleSourceGit,
-  exec: CommandRunner,
-  folder: string,
-  name: string,
-): Promise<void> {
-  if (!source.installCommand) {
-    return;
-  }
-  await terminalDisplay.startSpinner(`Installing dependencies for ${name}`);
-  const commands = Array.isArray(source.installCommand) ? source.installCommand : [source.installCommand];
-  for (const command of commands) {
-    Logger.Debug(`Executing command: ${command}`);
-    const result = await exec(command, { cwd: folder });
-    if (result.code !== 0) {
-      await terminalDisplay.failSpinner(`Failed to install dependencies: ${result.stderr}`);
-      throw new Error(`Failed to install dependencies: ${result.stderr || result.stdout}`);
-    }
-  }
-  await terminalDisplay.stopSpinner(`Dependencies installed for ${name}`);
-}
-
 export function registerGitDownloader(registry: DownloaderRegistry, deps: GitDownloaderDeps = {}): void {
   const fs = deps.fs ?? new NodeFileSystem();
   const exec = deps.exec ?? ExecuteCMD;
@@ -129,7 +108,7 @@ export function registerGitDownloader(registry: DownloaderRegistry, deps: GitDow
 
     if (updateResult.shouldInstallDependencies) {
       Logger.Debug(`Running install commands for ${name}`);
-      await installDependencies(source, exec, folder, name);
+      await runInstallCommands(exec, Logger, name, folder, source.installCommand);
     }
 
     Logger.Trace(`Git module load completed for ${name}`);

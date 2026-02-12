@@ -5,3 +5,7 @@ export interface CommandResult {
 }
 
 export type CommandRunner = (command: string, options: { cwd?: string }) => Promise<CommandResult>;
+
+export interface DebugLogger {
+  Debug(...args: unknown[]): void;
+}
