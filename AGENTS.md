@@ -8,7 +8,7 @@
 | --------------------- | --------------------------------------------------------------------------------------- |
 | English only          | All code must be in English: variable names, function names, comments                   |
 | PNPM only             | Always use pnpm, never npm or yarn                                                      |
-| NO COMMENTS           | Code must be self-documenting through clear naming                                      |
+| NO COMMENTS | Code must be self-documenting through clear naming. TSDoc is allowed for public APIs              |
 | NO switch/case        | Use objects, maps, or arrays instead                                                    |
 | NO inline types       | Define proper interfaces/types, never use anonymous types like `{a: string, b: number}` |
 | Functions ≤ 40 lines  | Split into subfunctions if longer                                                       |
