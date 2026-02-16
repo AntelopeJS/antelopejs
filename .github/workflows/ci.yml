@@ -2,13 +2,6 @@ name: ci
 
 on:
   push:
-    branches:
-      - main
-      - feat/*
-      - fix/*
-  pull_request:
-    branches:
-      - main
 
 jobs:
   ubuntu:
