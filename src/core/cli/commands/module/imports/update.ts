@@ -1,8 +1,24 @@
-import chalk from 'chalk';
-import { Command, Option } from 'commander';
-import { Options, readModuleManifest, readUserConfig, writeModuleManifest } from '../../../common';
-import { installInterfaces, loadInterfacesFromGit, removeInterface, createAjsSymlinks } from '../../../git-operations';
-import { error as errorUI, warning, info, success, ProgressBar } from '../../../cli-ui';
+import chalk from "chalk";
+import { Command, Option } from "commander";
+import {
+  error as errorUI,
+  info,
+  ProgressBar,
+  success,
+  warning,
+} from "../../../cli-ui";
+import {
+  Options,
+  readModuleManifest,
+  readUserConfig,
+  writeModuleManifest,
+} from "../../../common";
+import {
+  createAjsSymlinks,
+  installInterfaces,
+  loadInterfacesFromGit,
+  removeInterface,
+} from "../../../git-operations";
 
 interface UpdateOptions {
   module: string;
@@ -12,14 +28,25 @@ interface UpdateOptions {
 }
 
 export default function () {
-  return new Command('update')
+  return new Command("update")
     .description(
-      `Update module imports to latest versions\n` + `Updates interface definitions from their source repositories`,
+      `Update module imports to latest versions\n` +
+        `Updates interface definitions from their source repositories`,
     )
-    .argument('[interfaces...]', 'Specific interfaces to update (default: all)')
+    .argument("[interfaces...]", "Specific interfaces to update (default: all)")
     .addOption(Options.module)
-    .addOption(new Option('--dry-run', 'Show what would be updated without making changes').default(false))
-    .addOption(new Option('-s, --skip-install', 'Skip installation of interface files during update').default(false))
+    .addOption(
+      new Option(
+        "--dry-run",
+        "Show what would be updated without making changes",
+      ).default(false),
+    )
+    .addOption(
+      new Option(
+        "-s, --skip-install",
+        "Skip installation of interface files during update",
+      ).default(false),
+    )
     .action(async (selectedInterfaces: string[], options: UpdateOptions) => {
       const moduleManifest = await readModuleManifest(options.module);
       if (!moduleManifest) {
@@ -33,8 +60,10 @@ export default function () {
         moduleManifest.antelopeJs = { imports: [], importsOptional: [] };
       }
 
-      moduleManifest.antelopeJs.imports = moduleManifest.antelopeJs.imports ?? [];
-      moduleManifest.antelopeJs.importsOptional = moduleManifest.antelopeJs.importsOptional ?? [];
+      moduleManifest.antelopeJs.imports =
+        moduleManifest.antelopeJs.imports ?? [];
+      moduleManifest.antelopeJs.importsOptional =
+        moduleManifest.antelopeJs.importsOptional ?? [];
 
       const imports = moduleManifest.antelopeJs.imports;
       const importsOptional = moduleManifest.antelopeJs.importsOptional;
@@ -53,15 +82,19 @@ export default function () {
       if (selectedInterfaces && selectedInterfaces.length > 0) {
         // If specific interfaces were requested, filter the list
         interfaces = allInterfaces.filter((intf) => {
-          const interfaceName = typeof intf === 'object' ? intf.name : intf;
+          const interfaceName = typeof intf === "object" ? intf.name : intf;
           // Check if any of the selected interfaces match (by name or full name@version)
           return selectedInterfaces.some(
-            (selected) => interfaceName === selected || interfaceName.startsWith(selected + '@'),
+            (selected) =>
+              interfaceName === selected ||
+              interfaceName.startsWith(`${selected}@`),
           );
         });
 
         if (interfaces.length === 0) {
-          errorUI(chalk.red`None of the specified interfaces were found in this module`);
+          errorUI(
+            chalk.red`None of the specified interfaces were found in this module`,
+          );
           info(`Use 'ajs module imports list' to see available interfaces.`);
           return;
         }
@@ -69,16 +102,26 @@ export default function () {
 
       const interfacesParsed = interfaces.map((interface_) => {
         const [name, git, skipInstall] =
-          typeof interface_ === 'object'
+          typeof interface_ === "object"
             ? [interface_.name, interface_.git, interface_.skipInstall]
             : [interface_, undefined, undefined];
         const m = name.match(/^([^@]+)(?:@(.+))?$/);
-        return { raw: name, name: m && m[1], version: m && m[2], git, skipInstall };
+        return {
+          raw: name,
+          name: m?.[1],
+          version: m?.[2],
+          git,
+          skipInstall,
+        };
       });
 
-      const malformedInterface = interfacesParsed.find((interface_) => !interface_.name || !interface_.version);
+      const malformedInterface = interfacesParsed.find(
+        (interface_) => !interface_.name || !interface_.version,
+      );
       if (malformedInterface) {
-        errorUI(chalk.red`Interface name malformed: ${chalk.bold(malformedInterface.raw)}`);
+        errorUI(
+          chalk.red`Interface name malformed: ${chalk.bold(malformedInterface.raw)}`,
+        );
         info(`Use format: name@version (e.g., myInterface@1.0.0)`);
         process.exitCode = 1;
         return;
@@ -91,19 +134,27 @@ export default function () {
       const errorMessages: string[] = [];
 
       const userConfig = await readUserConfig();
-      const uniqueGits = new Set([...interfacesParsed.map((interface_) => interface_.git || userConfig.git)]);
+      const uniqueGits = new Set([
+        ...interfacesParsed.map(
+          (interface_) => interface_.git || userConfig.git,
+        ),
+      ]);
 
       // Setup progress bar
       const totalInterfaces = interfacesParsed.length;
       const progressBar = new ProgressBar();
-      progressBar.start(totalInterfaces, 0, 'Updating interfaces');
+      progressBar.start(totalInterfaces, 0, "Updating interfaces");
 
       let processedCount = 0;
 
       for (const git of uniqueGits) {
-        progressBar.update(processedCount, { title: `Fetching interfaces from ${git}` });
+        progressBar.update(processedCount, {
+          title: `Fetching interfaces from ${git}`,
+        });
 
-        const interfacesParsedGit = interfacesParsed.filter((interface_) => (interface_.git || userConfig.git) === git);
+        const interfacesParsedGit = interfacesParsed.filter(
+          (interface_) => (interface_.git || userConfig.git) === git,
+        );
         const interfacesInfo = await loadInterfacesFromGit(
           git,
           interfacesParsedGit.map((interface_) => interface_.name as string),
@@ -118,34 +169,49 @@ export default function () {
           const version = interface_.version as string;
           const interfaceInfo = interfacesInfo[name];
 
-          progressBar.update(processedCount, { title: `Processing ${name}@${version}` });
+          progressBar.update(processedCount, {
+            title: `Processing ${name}@${version}`,
+          });
 
           if (!interfaceInfo) {
-            errorMessages.push(`Interface ${chalk.bold(name)} not found in repository ${git}`);
-            failed.push({ name: `${name}@${version}`, reason: 'Interface not found' });
+            errorMessages.push(
+              `Interface ${chalk.bold(name)} not found in repository ${git}`,
+            );
+            failed.push({
+              name: `${name}@${version}`,
+              reason: "Interface not found",
+            });
             processedCount++;
             continue;
           }
 
           if (!interfaceInfo.manifest.versions.includes(version)) {
             warningMessages.push(
-              `Version ${chalk.bold(version)} of ${chalk.bold(name)} not found. Available versions: ${interfaceInfo.manifest.versions.join(', ')}`,
+              `Version ${chalk.bold(version)} of ${chalk.bold(name)} not found. Available versions: ${interfaceInfo.manifest.versions.join(", ")}`,
             );
-            failed.push({ name: `${name}@${version}`, reason: 'Version not found' });
+            failed.push({
+              name: `${name}@${version}`,
+              reason: "Version not found",
+            });
             processedCount++;
             continue;
           }
 
-          progressBar.update(processedCount, { title: `Queuing update for ${name}@${version}` });
+          progressBar.update(processedCount, {
+            title: `Queuing update for ${name}@${version}`,
+          });
 
           if (!options.dryRun) {
-            const shouldSkipInstall = interface_.skipInstall || options.skipInstall;
+            const shouldSkipInstall =
+              interface_.skipInstall || options.skipInstall;
             if (!shouldSkipInstall) {
               toRemove.push({ name: interfaceInfo.name, version });
               toInstall.push({ interfaceInfo, version });
             }
           }
-          updated.push(`${name}@${version}${interface_.skipInstall || options.skipInstall ? ' (skip-install)' : ''}`);
+          updated.push(
+            `${name}@${version}${interface_.skipInstall || options.skipInstall ? " (skip-install)" : ""}`,
+          );
 
           processedCount++;
           progressBar.update(processedCount);
@@ -153,7 +219,9 @@ export default function () {
 
         // Process all removals
         if (!options.dryRun && toRemove.length > 0) {
-          progressBar.update(processedCount, { title: `Removing old interface files` });
+          progressBar.update(processedCount, {
+            title: `Removing old interface files`,
+          });
           for (const { name, version } of toRemove) {
             await removeInterface(options.module, name, version);
           }
@@ -161,13 +229,15 @@ export default function () {
 
         // Install all interfaces for this git in one batch
         if (!options.dryRun && toInstall.length > 0) {
-          progressBar.update(processedCount, { title: `Installing updated interface files` });
+          progressBar.update(processedCount, {
+            title: `Installing updated interface files`,
+          });
           await installInterfaces(git, options.module, toInstall);
         }
       }
 
       // Complete progress bar
-      progressBar.update(totalInterfaces, { title: 'Done' });
+      progressBar.update(totalInterfaces, { title: "Done" });
       progressBar.stop();
 
       // Save changes to manifest
@@ -191,20 +261,24 @@ export default function () {
         if (updated.length > 0) {
           success(chalk.green`The following interfaces would be updated:`);
           updated.forEach((name) => {
-            info(`  ${chalk.green('•')} ${chalk.bold(name)}`);
+            info(`  ${chalk.green("•")} ${chalk.bold(name)}`);
           });
         }
       } else if (updated.length > 0) {
-        success(chalk.green`Successfully updated ${updated.length} interface(s):`);
+        success(
+          chalk.green`Successfully updated ${updated.length} interface(s):`,
+        );
         updated.forEach((name) => {
-          info(`  ${chalk.green('•')} ${chalk.bold(name)}`);
+          info(`  ${chalk.green("•")} ${chalk.bold(name)}`);
         });
       }
 
       if (failed.length > 0) {
         warning(chalk.yellow`Failed to update ${failed.length} interface(s):`);
         failed.forEach((item) => {
-          info(`  ${chalk.yellow('•')} ${chalk.bold(item.name)} - ${chalk.dim(item.reason)}`);
+          info(
+            `  ${chalk.yellow("•")} ${chalk.bold(item.name)} - ${chalk.dim(item.reason)}`,
+          );
         });
       }
 

@@ -1,12 +1,16 @@
-import EventEmitter from 'events';
-import path from 'path';
-import { LoadedConfig, ConfigLoader } from '../config/config-loader';
-import { NodeFileSystem } from '../filesystem';
-import { LaunchOptions } from '../../types';
-import { addChannelFilter, setupAntelopeProjectLogging } from '../../logging';
-import { BuildOptions, NormalizedLoadedConfig, ProjectRuntimeConfig } from './runtime-types';
-import { Logging } from '../../interfaces/logging/beta';
-import { ShutdownManager } from '../shutdown';
+import EventEmitter from "node:events";
+import path from "node:path";
+import { Logging } from "../../interfaces/logging/beta";
+import { addChannelFilter, setupAntelopeProjectLogging } from "../../logging";
+import type { LaunchOptions } from "../../types";
+import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
+import { NodeFileSystem } from "../filesystem";
+import type { ShutdownManager } from "../shutdown";
+import type {
+  BuildOptions,
+  NormalizedLoadedConfig,
+  ProjectRuntimeConfig,
+} from "./runtime-types";
 
 const EXIT_CODE_ERROR = 1;
 const DEFAULT_MAX_EVENT_LISTENERS = 50;
@@ -32,27 +36,34 @@ export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
   }
 
   processHandlersReady = true;
-  process.on('uncaughtException', (error: Error) => {
-    Logging.Error('Uncaught exception:', error);
+  process.on("uncaughtException", (error: Error) => {
+    Logging.Error("Uncaught exception:", error);
     shutdownProcess(EXIT_CODE_ERROR);
   });
 
-  process.on('unhandledRejection', (reason: any) => {
-    Logging.Error('Unhandled rejection:', reason);
+  process.on("unhandledRejection", (reason: any) => {
+    Logging.Error("Unhandled rejection:", reason);
     if (reason instanceof AggregateError && reason.errors) {
-      reason.errors.forEach((err: unknown) => Logging.Error('  -', err));
+      for (const err of reason.errors) {
+        Logging.Error("  -", err);
+      }
     }
     shutdownProcess(EXIT_CODE_ERROR);
   });
 
-  process.on('warning', (warning: Error) => {
-    Logging.Warn('Warning:', warning);
+  process.on("warning", (warning: Error) => {
+    Logging.Warn("Warning:", warning);
   });
 }
 
-export async function withRaisedMaxListeners<T>(task: () => Promise<T>): Promise<T> {
+export async function withRaisedMaxListeners<T>(
+  task: () => Promise<T>,
+): Promise<T> {
   const originalMaxListeners = EventEmitter.defaultMaxListeners;
-  EventEmitter.defaultMaxListeners = Math.max(originalMaxListeners, DEFAULT_MAX_EVENT_LISTENERS);
+  EventEmitter.defaultMaxListeners = Math.max(
+    originalMaxListeners,
+    DEFAULT_MAX_EVENT_LISTENERS,
+  );
 
   try {
     return await task();
@@ -66,10 +77,15 @@ export function applyVerboseChannels(verbose?: string[]): void {
     return;
   }
 
-  verbose.forEach((channel) => addChannelFilter(channel, 0));
+  for (const channel of verbose) {
+    addChannelFilter(channel, 0);
+  }
 }
 
-export function normalizeLoadedConfig(loadedConfig: LoadedConfig, projectFolder: string): NormalizedLoadedConfig {
+export function normalizeLoadedConfig(
+  loadedConfig: LoadedConfig,
+  projectFolder: string,
+): NormalizedLoadedConfig {
   const absoluteCache = path.isAbsolute(loadedConfig.cacheFolder)
     ? loadedConfig.cacheFolder
     : path.join(projectFolder, loadedConfig.cacheFolder);

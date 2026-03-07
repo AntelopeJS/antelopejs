@@ -1,5 +1,5 @@
-import Mocha from 'mocha';
-import { TestContext } from './test-context';
+import Mocha from "mocha";
+import type { TestContext } from "./test-context";
 
 export class TestRunner {
   constructor(
@@ -12,7 +12,9 @@ export class TestRunner {
 
     try {
       const mocha = this.mochaFactory();
-      files.forEach((file) => mocha.addFile(file));
+      for (const file of files) {
+        mocha.addFile(file);
+      }
 
       const failures = await new Promise<number>((resolve) => {
         mocha.run((count) => resolve(count));

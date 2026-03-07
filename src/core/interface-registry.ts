@@ -1,4 +1,4 @@
-import { internal } from '../interfaces/core/beta';
+import { internal } from "../interfaces/core/beta";
 
 export interface InterfaceConnectionRef {
   module: string;
@@ -11,11 +11,16 @@ interface InterfaceConnectionEntry {
 }
 
 export class InterfaceRegistry {
-  setConnections(moduleId: string, connections: Map<string, InterfaceConnectionRef[]>): void {
+  setConnections(
+    moduleId: string,
+    connections: Map<string, InterfaceConnectionRef[]>,
+  ): void {
     const connectionIDs: Record<string, InterfaceConnectionEntry[]> = {};
     for (const [interfaceName, modules] of connections) {
       connectionIDs[interfaceName] = modules.map(({ id, module }) => {
-        const entry: InterfaceConnectionEntry = { path: `@ajs.raw/${module}/${interfaceName}` };
+        const entry: InterfaceConnectionEntry = {
+          path: `@ajs.raw/${module}/${interfaceName}`,
+        };
         if (id !== undefined) {
           entry.id = id;
         }

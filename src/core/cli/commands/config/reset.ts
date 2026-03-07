@@ -1,16 +1,21 @@
-import chalk from 'chalk';
-import { Command } from 'commander';
-import { getDefaultUserConfig, writeUserConfig, readUserConfig } from '../../common';
-import { displayBox, success, keyValue, info } from '../../cli-ui';
+import chalk from "chalk";
+import { Command } from "commander";
+import { displayBox, info, keyValue, success } from "../../cli-ui";
+import {
+  getDefaultUserConfig,
+  readUserConfig,
+  writeUserConfig,
+} from "../../common";
 
 export default function () {
-  return new Command('reset')
+  return new Command("reset")
     .description(
-      `Reset CLI configuration to default values\n` + `Restores all configuration settings to their original defaults.`,
+      `Reset CLI configuration to default values\n` +
+        `Restores all configuration settings to their original defaults.`,
     )
-    .option('-y, --yes', 'Skip confirmation prompt')
+    .option("-y, --yes", "Skip confirmation prompt")
     .action(async (options) => {
-      console.log(''); // Add spacing for better readability
+      console.log(""); // Add spacing for better readability
 
       // Get current config
       const currentConfig = await readUserConfig();
@@ -20,7 +25,8 @@ export default function () {
 
       // Check if there are any differences
       const hasChanges = Object.entries(defaultConfig).some(
-        ([key, value]) => currentConfig[key as keyof typeof currentConfig] !== value,
+        ([key, value]) =>
+          currentConfig[key as keyof typeof currentConfig] !== value,
       );
 
       if (!hasChanges) {
@@ -30,12 +36,13 @@ export default function () {
 
       // Ask for confirmation unless -y flag was provided
       if (!options.yes) {
-        const inquirer = (await import('inquirer')).default;
+        const inquirer = (await import("inquirer")).default;
         const { confirm } = await inquirer.prompt<{ confirm: boolean }>([
           {
-            type: 'confirm',
-            name: 'confirm',
-            message: 'This will reset all configuration settings to their default values. Continue?',
+            type: "confirm",
+            name: "confirm",
+            message:
+              "This will reset all configuration settings to their default values. Continue?",
             default: false,
           },
         ]);
@@ -51,12 +58,12 @@ export default function () {
         .map(([key, defaultValue]) => {
           const currentValue = currentConfig[key as keyof typeof currentConfig];
           return (
-            `${keyValue('Setting', chalk.cyan(key))}\n` +
-            `${keyValue('Current', chalk.dim(currentValue || 'Not set'))}\n` +
-            `${keyValue('Default', chalk.green(defaultValue))}`
+            `${keyValue("Setting", chalk.cyan(key))}\n` +
+            `${keyValue("Current", chalk.dim(currentValue || "Not set"))}\n` +
+            `${keyValue("Default", chalk.green(defaultValue))}`
           );
         })
-        .join('\n\n');
+        .join("\n\n");
 
       // Reset config to defaults
       await writeUserConfig(defaultConfig);
@@ -65,8 +72,8 @@ export default function () {
       success(`Configuration reset to default values`);
 
       // Show the changes in a nice box
-      await displayBox(comparisonItems, '✓ Configuration Reset', {
-        borderColor: 'green',
+      await displayBox(comparisonItems, "✓ Configuration Reset", {
+        borderColor: "green",
         padding: 1,
       });
     });

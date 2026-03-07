@@ -1,57 +1,70 @@
-import { expect } from 'chai';
-import sinon from 'sinon';
-import path from 'path';
-import cmdTest, { moduleTestCommand } from '../../../../../src/core/cli/commands/module/test';
-import * as common from '../../../../../src/core/cli/common';
-import * as cliUi from '../../../../../src/core/cli/cli-ui';
-import * as testModuleModule from '../../../../../src/core/test/test-module';
+import path from "node:path";
+import { expect } from "chai";
+import sinon from "sinon";
+import * as cliUi from "../../../../../src/core/cli/cli-ui";
+import cmdTest, {
+  moduleTestCommand,
+} from "../../../../../src/core/cli/commands/module/test";
+import * as common from "../../../../../src/core/cli/common";
+import * as testModuleModule from "../../../../../src/core/test/test-module";
 
-describe('module test behavior', () => {
+describe("module test behavior", () => {
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;
   });
 
-  it('errors when module manifest is missing', async () => {
-    sinon.stub(common, 'readModuleManifest').resolves(undefined);
-    sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
-    sinon.stub(cliUi.Spinner.prototype, 'fail').resolves();
-    sinon.stub(cliUi, 'error');
-    sinon.stub(cliUi, 'info');
+  it("errors when module manifest is missing", async () => {
+    sinon.stub(common, "readModuleManifest").resolves(undefined);
+    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+    sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
+    sinon.stub(cliUi, "error");
+    sinon.stub(cliUi, "info");
 
-    const testStub = sinon.stub(testModuleModule, 'TestModule').resolves(0);
+    const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);
 
-    await moduleTestCommand('/tmp/module', { file: [] });
+    await moduleTestCommand("/tmp/module", { file: [] });
 
     expect(testStub.called).to.equal(false);
     expect(process.exitCode).to.equal(1);
   });
 
-  it('runs TestModule when module is valid', async () => {
-    sinon.stub(common, 'readModuleManifest').resolves({ name: 'modA' } as any);
-    sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
-    sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
+  it("runs TestModule when module is valid", async () => {
+    sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
+    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+    sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
 
-    const testStub = sinon.stub(testModuleModule, 'TestModule').resolves(0);
+    const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);
 
-    await moduleTestCommand('/tmp/module', { file: ['/tmp/test.ts'] });
+    await moduleTestCommand("/tmp/module", { file: ["/tmp/test.ts"] });
 
     expect(testStub.calledOnce).to.equal(true);
-    expect(testStub.firstCall.args[0]).to.equal(path.resolve('/tmp/module'));
-    expect(testStub.firstCall.args[1]).to.deep.equal(['/tmp/test.ts']);
+    expect(testStub.firstCall.args[0]).to.equal(path.resolve("/tmp/module"));
+    expect(testStub.firstCall.args[1]).to.deep.equal(["/tmp/test.ts"]);
   });
 
-  it('parses file options and forwards them', async () => {
-    sinon.stub(common, 'readModuleManifest').resolves({ name: 'modA' } as any);
-    sinon.stub(cliUi.Spinner.prototype, 'start').resolves();
-    sinon.stub(cliUi.Spinner.prototype, 'succeed').resolves();
+  it("parses file options and forwards them", async () => {
+    sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
+    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+    sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
 
-    const testStub = sinon.stub(testModuleModule, 'TestModule').resolves(0);
+    const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);
 
     const cmd = cmdTest();
-    await cmd.parseAsync(['node', 'test', '/tmp/module', '--file', '/tmp/a.test.ts', '--file', '/tmp/b.test.ts']);
+    await cmd.parseAsync([
+      "node",
+      "test",
+      "/tmp/module",
+      "--file",
+      "/tmp/a.test.ts",
+      "--file",
+      "/tmp/b.test.ts",
+    ]);
 
     expect(testStub.calledOnce).to.equal(true);
-    expect(testStub.firstCall.args[1]).to.deep.equal([path.resolve('/tmp/a.test.ts'), path.resolve('/tmp/b.test.ts')]);
+    expect(testStub.firstCall.args[1]).to.deep.equal([
+      path.resolve("/tmp/a.test.ts"),
+      path.resolve("/tmp/b.test.ts"),
+    ]);
   });
 });

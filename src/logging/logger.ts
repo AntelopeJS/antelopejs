@@ -1,5 +1,5 @@
-import { LogFormatter, LogLevel, LogEntry } from './log-formatter';
-import { LogFilter } from './log-filter';
+import { LogFilter } from "./log-filter";
+import { type LogEntry, LogFormatter, LogLevel } from "./log-formatter";
 
 export type LogTransport = (entry: LogEntry, formatted: string) => void;
 
@@ -7,7 +7,7 @@ export class Logger {
   private formatter = new LogFormatter();
   private filter = new LogFilter();
   private transports: LogTransport[] = [];
-  private defaultChannel = 'default';
+  private defaultChannel = "default";
 
   addTransport(transport: LogTransport): void {
     this.transports.push(transport);
@@ -72,11 +72,21 @@ export class Logger {
     this.log(LogLevel.TRACE, this.defaultChannel, args);
   }
 
-  write(level: LogLevel, channel: string, args: unknown[], module?: string): void {
+  write(
+    level: LogLevel,
+    channel: string,
+    args: unknown[],
+    module?: string,
+  ): void {
     this.log(level, channel, args, module);
   }
 
-  private log(level: LogLevel, channel: string, args: unknown[], module?: string): void {
+  private log(
+    level: LogLevel,
+    channel: string,
+    args: unknown[],
+    module?: string,
+  ): void {
     const entry: LogEntry = {
       level,
       channel,
@@ -124,4 +134,4 @@ export class LogChannel {
   }
 }
 
-export { LogLevel, LogEntry } from './log-formatter';
+export { LogEntry, LogLevel } from "./log-formatter";

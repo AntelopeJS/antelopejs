@@ -1,11 +1,11 @@
-import chalk from 'chalk';
-import { Command } from 'commander';
-import path from 'path';
-import { mkdir, stat, rm, readFile } from 'fs/promises';
-import { Options, readModuleManifest } from '../../../common';
-import { ExecuteCMD } from '../../../command';
-import { displayBox, error, warning, Spinner, info } from '../../../cli-ui';
-import { ModuleCache } from '../../../../module-cache';
+import { mkdir, readFile, rm, stat } from "node:fs/promises";
+import path from "node:path";
+import chalk from "chalk";
+import { Command } from "commander";
+import { ModuleCache } from "../../../../module-cache";
+import { displayBox, error, info, Spinner, warning } from "../../../cli-ui";
+import { ExecuteCMD } from "../../../command";
+import { Options, readModuleManifest } from "../../../common";
 
 interface GenerateOptions {
   module: string;
@@ -14,27 +14,31 @@ interface GenerateOptions {
 type TsConfig = { compilerOptions?: { outDir?: string } };
 
 function isTsConfig(value: unknown): value is TsConfig {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
   const obj = value as { compilerOptions?: unknown };
   if (obj.compilerOptions === undefined) {
     return true;
   }
-  return typeof obj.compilerOptions === 'object' && obj.compilerOptions !== null;
+  return (
+    typeof obj.compilerOptions === "object" && obj.compilerOptions !== null
+  );
 }
 
 /**
  * Reads tsconfig.json to get the outDir value
  */
-async function readTsConfigOutDir(tsConfigPath: string): Promise<string | null> {
+async function readTsConfigOutDir(
+  tsConfigPath: string,
+): Promise<string | null> {
   try {
-    const tsConfigContent = await readFile(tsConfigPath, 'utf8');
+    const tsConfigContent = await readFile(tsConfigPath, "utf8");
     // Strip single-line comments, multi-line comments, and trailing commas (tsconfig allows these)
     const jsonContent = tsConfigContent
-      .replace(/\/\/.*$/gm, '')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/,\s*([}\]])/g, '$1');
+      .replace(/\/\/.*$/gm, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/,\s*([}\]])/g, "$1");
     const parsed: unknown = JSON.parse(jsonContent);
     if (!isTsConfig(parsed)) {
       return null;
@@ -55,7 +59,9 @@ async function moveInterfaceFilesToRoot(
   tmpPath: string,
 ): Promise<boolean> {
   try {
-    const interfaceFolderExists = await stat(interfaceFolderPath).catch(() => false);
+    const interfaceFolderExists = await stat(interfaceFolderPath).catch(
+      () => false,
+    );
     if (!interfaceFolderExists) {
       return false;
     }
@@ -97,13 +103,14 @@ async function cleanOutputDirectory(outputDir: string): Promise<boolean> {
 }
 
 export default function () {
-  return new Command('generate')
+  return new Command("generate")
     .description(
-      `Generate module exports definition\n` + `Creates TypeScript definition files for your module's exports.`,
+      `Generate module exports definition\n` +
+        `Creates TypeScript definition files for your module's exports.`,
     )
     .addOption(Options.module)
     .action(async (options: GenerateOptions) => {
-      console.log(''); // Add spacing for better readability
+      console.log(""); // Add spacing for better readability
 
       // Load the module manifest to get the exports path
       const manifest = await readModuleManifest(options.module);
@@ -115,48 +122,50 @@ export default function () {
       // Check if exports path is configured
       if (!manifest.antelopeJs?.exportsPath) {
         error(`Exports path not configured in ${chalk.bold(options.module)}`);
-        warning(`Please set the exports path using: ${chalk.cyan('ajs module exports set <path>')}`);
+        warning(
+          `Please set the exports path using: ${chalk.cyan("ajs module exports set <path>")}`,
+        );
         return;
       }
 
       const exportPath = manifest.antelopeJs.exportsPath;
-      const tsConfigFile = path.join(options.module, 'tsconfig.json');
-      const outputPath = path.join(options.module, 'output');
+      const tsConfigFile = path.join(options.module, "tsconfig.json");
+      const outputPath = path.join(options.module, "output");
       const tmpPath = await ModuleCache.getTemp();
 
       info(`Generating TypeScript declarations for ${chalk.cyan(exportPath)}`);
       info(`Output directory: ${chalk.cyan(outputPath)}`);
 
       // Clean the output directory first
-      const cleanSpinner = new Spinner('Cleaning output directory');
+      const cleanSpinner = new Spinner("Cleaning output directory");
       await cleanSpinner.start();
 
       const cleanResult = await cleanOutputDirectory(outputPath);
       if (!cleanResult) {
-        await cleanSpinner.fail('Failed to clean output directory');
+        await cleanSpinner.fail("Failed to clean output directory");
         return;
       }
 
-      await cleanSpinner.succeed('Output directory cleaned');
+      await cleanSpinner.succeed("Output directory cleaned");
 
-      const spinner = new Spinner('Running TypeScript compiler');
+      const spinner = new Spinner("Running TypeScript compiler");
       await spinner.start();
 
       try {
         const tscCommand = [
-          'npx tsc',
-          '--emitDeclarationOnly',
-          '-d',
-          '--stripInternal',
-          '--removeComments false',
+          "npx tsc",
+          "--emitDeclarationOnly",
+          "-d",
+          "--stripInternal",
+          "--removeComments false",
           `--project ${tsConfigFile}`,
           `--outDir ${tmpPath}`,
-        ].join(' ');
+        ].join(" ");
 
         const result = await ExecuteCMD(tscCommand, { cwd: options.module });
 
         if (result.code !== 0) {
-          await spinner.fail('Failed to generate declarations');
+          await spinner.fail("Failed to generate declarations");
           error(result.stderr);
           process.exitCode = 1;
           return;
@@ -165,44 +174,51 @@ export default function () {
         // Get outDir from tsconfig.json
         const tsConfigOutDir = await readTsConfigOutDir(tsConfigFile);
         if (!tsConfigOutDir) {
-          await spinner.fail('Could not determine outDir from tsconfig.json');
+          await spinner.fail("Could not determine outDir from tsconfig.json");
           process.exitCode = 1;
           return;
         }
 
         // Calculate the interface folder path
-        const interfaceFolderPath = path.join(tmpPath, exportPath.replace(tsConfigOutDir, ''));
+        const interfaceFolderPath = path.join(
+          tmpPath,
+          exportPath.replace(tsConfigOutDir, ""),
+        );
 
         // Move interface files to root and clean up
-        const moveResult = await moveInterfaceFilesToRoot(interfaceFolderPath, outputPath, tmpPath);
+        const moveResult = await moveInterfaceFilesToRoot(
+          interfaceFolderPath,
+          outputPath,
+          tmpPath,
+        );
         if (!moveResult) {
-          await spinner.fail('Failed to finalize interface files');
+          await spinner.fail("Failed to finalize interface files");
           process.exitCode = 1;
           return;
         }
 
-        await spinner.succeed('TypeScript declarations generated successfully');
+        await spinner.succeed("TypeScript declarations generated successfully");
 
         await displayBox(
           `Module exports have been generated at ${chalk.green(outputPath)}\n\n` +
             `These definition files can now be imported by other modules.`,
-          '🎉 Exports Generated',
+          "🎉 Exports Generated",
           {
             padding: 1,
-            borderColor: 'green',
+            borderColor: "green",
           },
         );
       } catch (err) {
-        await spinner.fail('Failed to generate declarations');
+        await spinner.fail("Failed to generate declarations");
         error(`${String(err)}`);
 
         await displayBox(
           `Error running TypeScript compiler.\n\n` +
             `Ensure TypeScript is installed and your tsconfig.json is properly configured.`,
-          '❌ Generation Failed',
+          "❌ Generation Failed",
           {
             padding: 1,
-            borderColor: 'red',
+            borderColor: "red",
           },
         );
         process.exitCode = 1;

@@ -1,4 +1,4 @@
-import { LogLevel, LogEntry } from './log-formatter';
+import { type LogEntry, LogLevel } from "./log-formatter";
 
 export class LogFilter {
   private minLevel: LogLevel = LogLevel.INFO;
@@ -32,7 +32,10 @@ export class LogFilter {
 
   shouldLog(entry: LogEntry): boolean {
     if (this.moduleTrackingEnabled && entry.module) {
-      if (this.moduleIncludes.length > 0 && !this.moduleIncludes.includes(entry.module)) {
+      if (
+        this.moduleIncludes.length > 0 &&
+        !this.moduleIncludes.includes(entry.module)
+      ) {
         return false;
       }
       if (this.moduleExcludes.includes(entry.module)) {
@@ -60,7 +63,7 @@ export class LogFilter {
     let bestLevel = this.minLevel;
 
     for (const [pattern, level] of this.channelLevels) {
-      if (pattern.endsWith('*')) {
+      if (pattern.endsWith("*")) {
         const prefix = pattern.slice(0, -1);
         if (channel.startsWith(prefix) && prefix.length > bestMatchLength) {
           bestMatchLength = prefix.length;

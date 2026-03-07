@@ -1,35 +1,35 @@
-import { expect } from 'chai';
-import { TestContext } from '../../../src/core/test/test-context';
+import { expect } from "chai";
+import { TestContext } from "../../../src/core/test/test-context";
 
-describe('TestContext', () => {
-  it('should call custom setup and cleanup', async () => {
+describe("TestContext", () => {
+  it("should call custom setup and cleanup", async () => {
     const calls: string[] = [];
     const context = new TestContext({
       setup: async () => {
-        calls.push('setup');
+        calls.push("setup");
       },
       cleanup: async () => {
-        calls.push('cleanup');
+        calls.push("cleanup");
       },
     });
 
     await context.setup();
     await context.cleanup();
 
-    expect(calls).to.deep.equal(['setup', 'cleanup']);
+    expect(calls).to.deep.equal(["setup", "cleanup"]);
   });
 
-  it('should use module manager lifecycle when provided', async () => {
+  it("should use module manager lifecycle when provided", async () => {
     const calls: string[] = [];
     const moduleManager = {
       constructAll: async () => {
-        calls.push('construct');
+        calls.push("construct");
       },
       startAll: () => {
-        calls.push('start');
+        calls.push("start");
       },
       destroyAll: async () => {
-        calls.push('destroy');
+        calls.push("destroy");
       },
     };
 
@@ -37,6 +37,6 @@ describe('TestContext', () => {
     await context.setup();
     await context.cleanup();
 
-    expect(calls).to.deep.equal(['construct', 'start', 'destroy']);
+    expect(calls).to.deep.equal(["construct", "start", "destroy"]);
   });
 });

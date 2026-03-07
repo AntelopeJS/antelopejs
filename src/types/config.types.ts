@@ -1,8 +1,16 @@
-import { ModuleSourceLocal, ModuleSourceGit, ModuleSourcePackage, ModuleSourceLocalFolder } from './module.types';
+import type {
+  ModuleSourceGit,
+  ModuleSourceLocal,
+  ModuleSourceLocalFolder,
+  ModuleSourcePackage,
+} from "./module.types";
 
 export interface AntelopeTestConfig {
   folder?: string;
-  setup?: () => void | Partial<AntelopeConfig> | Promise<void | Partial<AntelopeConfig>>;
+  setup?: () =>
+    | undefined
+    | Partial<AntelopeConfig>
+    | Promise<undefined | Partial<AntelopeConfig>>;
   cleanup?: () => void | Promise<void>;
 }
 
@@ -24,7 +32,11 @@ export interface ImportOverride {
 
 export interface AntelopeModuleConfig {
   version?: string;
-  source?: ModuleSourceLocal | ModuleSourceGit | ModuleSourcePackage | ModuleSourceLocalFolder;
+  source?:
+    | ModuleSourceLocal
+    | ModuleSourceGit
+    | ModuleSourcePackage
+    | ModuleSourceLocalFolder;
   config?: unknown;
   importOverrides?: ImportOverride[] | Record<string, string>;
   disabledExports?: string[];

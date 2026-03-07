@@ -1,46 +1,60 @@
-import chalk from 'chalk';
-import { Command, Option } from 'commander';
-import { TestModule } from '../../../..';
-import { readModuleManifest } from '../../common';
-import { error, info, Spinner } from '../../cli-ui';
-import path from 'path';
+import path from "node:path";
+import chalk from "chalk";
+import { Command, Option } from "commander";
+import { TestModule } from "../../../..";
+import { error, info, Spinner } from "../../cli-ui";
+import { readModuleManifest } from "../../common";
 
 interface TestOptions {
   file?: string[];
 }
 
-export async function moduleTestCommand(modulePath = '.', options: TestOptions) {
-  console.log(''); // Add spacing for readability
+export async function moduleTestCommand(
+  modulePath = ".",
+  options: TestOptions,
+) {
+  console.log(""); // Add spacing for readability
 
   const resolvedPath = path.resolve(modulePath);
 
   // Check if directory is a valid module
-  const moduleSpinner = new Spinner(`Checking module at ${chalk.cyan(resolvedPath)}`);
+  const moduleSpinner = new Spinner(
+    `Checking module at ${chalk.cyan(resolvedPath)}`,
+  );
   await moduleSpinner.start();
 
   const moduleManifest = await readModuleManifest(resolvedPath);
   if (!moduleManifest) {
     await moduleSpinner.fail(`Invalid module directory`);
-    error(`Directory ${chalk.bold(resolvedPath)} does not contain a valid AntelopeJS module.`);
-    info(`Make sure you're in a valid AntelopeJS module directory with package.json.`);
+    error(
+      `Directory ${chalk.bold(resolvedPath)} does not contain a valid AntelopeJS module.`,
+    );
+    info(
+      `Make sure you're in a valid AntelopeJS module directory with package.json.`,
+    );
     process.exitCode = 1;
     return;
   }
 
-  await moduleSpinner.succeed(`Valid module found: ${chalk.cyan(moduleManifest.name)}`);
+  await moduleSpinner.succeed(
+    `Valid module found: ${chalk.cyan(moduleManifest.name)}`,
+  );
 
-  TestModule(resolvedPath, options.file);
+  await TestModule(resolvedPath, options.file);
 }
 
-const filesOption = new Option('-f, --file <path>', 'Specific test file to run').argParser((val, prev: string[]) => [
-  ...(prev ?? []),
-  path.resolve(val),
-]);
+const filesOption = new Option(
+  "-f, --file <path>",
+  "Specific test file to run",
+).argParser((val, prev: string[]) => [...(prev ?? []), path.resolve(val)]);
 
 export default function () {
-  return new Command('test')
-    .description(`Run module tests\n` + `Executes the tests defined in your module's test directory.`)
-    .argument('[path]', 'Path to the module directory')
+  return new Command("test")
+    .description(
+      `Run module tests\n` +
+        `Executes the tests defined in your module's test directory.`,
+    )
+    .argument("[path]", "Path to the module directory")
     .addOption(filesOption)
     .action(moduleTestCommand);
 }

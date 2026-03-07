@@ -1,14 +1,14 @@
-import crypto from 'crypto';
-import path from 'path';
-import { AntelopeLogging, IFileSystem, ModuleSource } from '../../types';
-import { NodeFileSystem } from '../filesystem';
-import { ModulePackageJson } from '../module-manifest';
-import { ConfigLoader } from '../config/config-loader';
+import crypto from "node:crypto";
+import path from "node:path";
+import type { AntelopeLogging, IFileSystem, ModuleSource } from "../../types";
+import { ConfigLoader } from "../config/config-loader";
+import { NodeFileSystem } from "../filesystem";
+import type { ModulePackageJson } from "../module-manifest";
 
-const BUILD_ARTIFACT_VERSION = '1';
-const BUILD_FOLDER = '.antelope/build';
-const BUILD_FILE = 'build.json';
-const HASH_SEPARATOR = '\n--antelope-build-hash--\n';
+const BUILD_ARTIFACT_VERSION = "1";
+const BUILD_FOLDER = ".antelope/build";
+const BUILD_FILE = "build.json";
+const HASH_SEPARATOR = "\n--antelope-build-hash--\n";
 const JSON_INDENT = 2;
 
 export interface BuildPathEntry {
@@ -75,7 +75,7 @@ interface RawProjectConfig {
 }
 
 function isRawProjectConfig(value: unknown): value is RawProjectConfig {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 function toStableHashValue(value: unknown): unknown {
@@ -86,7 +86,9 @@ function toStableHashValue(value: unknown): unknown {
     return value;
   }
   const keys = Object.keys(value).sort((a, b) => a.localeCompare(b));
-  return Object.fromEntries(keys.map((key) => [key, toStableHashValue(value[key])]));
+  return Object.fromEntries(
+    keys.map((key) => [key, toStableHashValue(value[key])]),
+  );
 }
 
 export function getBuildFolderPath(projectFolder: string): string {
@@ -107,7 +109,10 @@ export async function computeConfigHash(
   const stableConfig = JSON.stringify(toStableHashValue(resolvedConfig));
   const hashParts: string[] = [stableConfig, env];
 
-  return crypto.createHash('sha256').update(hashParts.join(HASH_SEPARATOR)).digest('hex');
+  return crypto
+    .createHash("sha256")
+    .update(hashParts.join(HASH_SEPARATOR))
+    .digest("hex");
 }
 
 export function createBuildArtifact(params: BuildArtifactInput): BuildArtifact {
@@ -130,7 +135,10 @@ export async function writeBuildArtifact(
   const artifactPath = getBuildArtifactPath(projectFolder);
   await fs.rm(buildFolder, { recursive: true, force: true });
   await fs.mkdir(buildFolder, { recursive: true });
-  await fs.writeFile(artifactPath, JSON.stringify(artifact, null, JSON_INDENT) + '\n');
+  await fs.writeFile(
+    artifactPath,
+    `${JSON.stringify(artifact, null, JSON_INDENT)}\n`,
+  );
 }
 
 export async function readBuildArtifact(
@@ -138,6 +146,6 @@ export async function readBuildArtifact(
   fs: IFileSystem = new NodeFileSystem(),
 ): Promise<BuildArtifact> {
   const artifactPath = getBuildArtifactPath(projectFolder);
-  const content = await fs.readFileString(artifactPath, 'utf-8');
+  const content = await fs.readFileString(artifactPath, "utf-8");
   return JSON.parse(content) as BuildArtifact;
 }

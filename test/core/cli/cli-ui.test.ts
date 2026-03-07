@@ -1,35 +1,35 @@
-import { expect } from 'chai';
-import * as sinon from 'sinon';
+import { expect } from "chai";
+import cliProgress from "cli-progress";
+import * as sinon from "sinon";
 import {
-  Spinner,
-  ProgressBar,
-  success,
-  error,
-  warning,
-  info,
-  displayBox,
   displayBanner,
+  displayBox,
+  error,
   header,
+  info,
   isTerminalOutput,
-} from '../../../src/core/cli/cli-ui';
-import cliProgress from 'cli-progress';
+  ProgressBar,
+  Spinner,
+  success,
+  warning,
+} from "../../../src/core/cli/cli-ui";
 
-describe('CLI UI', () => {
-  describe('Spinner', () => {
-    it('runs and logs in non-terminal mode', async () => {
+describe("CLI UI", () => {
+  describe("Spinner", () => {
+    it("runs and logs in non-terminal mode", async () => {
       const originalStdout = process.stdout.isTTY;
       const originalStderr = process.stderr.isTTY;
-      const writeStub = sinon.stub(process.stdout, 'write');
-      const logStub = sinon.stub(console, 'log');
+      const writeStub = sinon.stub(process.stdout, "write");
+      const logStub = sinon.stub(console, "log");
 
       (process.stdout as any).isTTY = false;
       (process.stderr as any).isTTY = false;
 
       try {
-        const spinner = new Spinner('Running');
+        const spinner = new Spinner("Running");
         await spinner.start();
-        spinner.log(process.stdout, 'step');
-        await spinner.succeed('done');
+        spinner.log(process.stdout, "step");
+        await spinner.succeed("done");
         expect(writeStub.called).to.equal(true);
         expect(logStub.called).to.equal(true);
       } finally {
@@ -40,19 +40,19 @@ describe('CLI UI', () => {
       }
     });
 
-    it('updates and stops in terminal mode', async () => {
+    it("updates and stops in terminal mode", async () => {
       const originalStdout = process.stdout.isTTY;
       const originalStderr = process.stderr.isTTY;
-      const writeStub = sinon.stub(process.stdout, 'write');
+      const writeStub = sinon.stub(process.stdout, "write");
       const clock = sinon.useFakeTimers();
 
       (process.stdout as any).isTTY = true;
       (process.stderr as any).isTTY = true;
 
       try {
-        const spinner = new Spinner('Start');
+        const spinner = new Spinner("Start");
         await spinner.start();
-        spinner.update('Updated');
+        spinner.update("Updated");
         clock.tick(200);
         await spinner.stop();
         expect(writeStub.called).to.equal(true);
@@ -65,43 +65,46 @@ describe('CLI UI', () => {
     });
   });
 
-  describe('ProgressBar', () => {
-    it('increments progress', () => {
-      const incrementStub = sinon.stub(cliProgress.SingleBar.prototype, 'increment');
+  describe("ProgressBar", () => {
+    it("increments progress", () => {
+      const incrementStub = sinon.stub(
+        cliProgress.SingleBar.prototype,
+        "increment",
+      );
       const bar = new ProgressBar();
-      bar.increment(2, { title: 'x' });
+      bar.increment(2, { title: "x" });
       expect(incrementStub.calledOnce).to.equal(true);
       incrementStub.restore();
     });
   });
 
-  describe('Display', () => {
-    it('formats messages', () => {
-      expect(() => success('Done')).to.not.throw();
-      expect(() => error('Failed')).to.not.throw();
-      expect(() => warning('Careful')).to.not.throw();
-      expect(() => info('Note')).to.not.throw();
+  describe("Display", () => {
+    it("formats messages", () => {
+      expect(() => success("Done")).to.not.throw();
+      expect(() => error("Failed")).to.not.throw();
+      expect(() => warning("Careful")).to.not.throw();
+      expect(() => info("Note")).to.not.throw();
     });
 
-    it('handles Error objects in error and warning', () => {
-      const err = new Error('test-error');
+    it("handles Error objects in error and warning", () => {
+      const err = new Error("test-error");
       expect(() => error(err)).to.not.throw();
       expect(() => warning(err)).to.not.throw();
     });
 
-    it('renders box, banner and header', async () => {
-      const logStub = sinon.stub(console, 'log');
+    it("renders box, banner and header", async () => {
+      const logStub = sinon.stub(console, "log");
       try {
-        await displayBox('Hello', 'Title');
-        displayBanner('AntelopeJS');
-        header('Header');
+        await displayBox("Hello", "Title");
+        displayBanner("AntelopeJS");
+        header("Header");
         expect(logStub.called).to.equal(true);
       } finally {
         logStub.restore();
       }
     });
 
-    it('detects terminal output', () => {
+    it("detects terminal output", () => {
       const originalStdout = process.stdout.isTTY;
       const originalStderr = process.stderr.isTTY;
       (process.stdout as any).isTTY = true;

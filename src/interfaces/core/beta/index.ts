@@ -1,10 +1,10 @@
-import 'reflect-metadata';
-import { Class } from './decorators';
-import { Logging } from '../../logging/beta';
+import "reflect-metadata";
+import { Logging } from "../../logging/beta";
+import type { Class } from "./decorators";
 
 const STUB_NOT_IMPLEMENTED =
-  'Interface function called without implementation in test environment. ' +
-  'Ensure the required module is loaded in your test config.';
+  "Interface function called without implementation in test environment. " +
+  "Ensure the required module is loaded in your test config.";
 
 /**
  * Represents a connection to an interface implementation.
@@ -80,7 +80,9 @@ export class AsyncProxy<T extends Func = Func, R = Awaited<ReturnType<T>>> {
     if (internal.testStubMode) {
       return Promise.reject(new Error(STUB_NOT_IMPLEMENTED));
     }
-    return new Promise<R>((resolve, reject) => this.queue.push({ args, resolve, reject }));
+    return new Promise<R>((resolve, reject) =>
+      this.queue.push({ args, resolve, reject }),
+    );
   }
 }
 
@@ -261,28 +263,36 @@ export class EventProxy<T extends EventFunction = EventFunction> {
  * @internal
  */
 export namespace internal {
-  export const moduleByFolder = new Array<{ dir: string; id: string; interfaceDir: string }>();
+  export const moduleByFolder: {
+    dir: string;
+    id: string;
+    interfaceDir: string;
+  }[] = [];
+  // biome-ignore lint/style/useConst: reassigned cross-file via namespace import
   export let testStubMode = false;
 
   export const knownAsync = new Map<string, Array<AsyncProxy>>();
   export const knownRegisters = new Map<string, Array<RegisteringProxy>>();
-  export const knownEvents = new Array<EventProxy>();
+  export const knownEvents: EventProxy[] = [];
 
   export function addAsyncProxy(module: string, proxy: AsyncProxy) {
     if (!knownAsync.has(module)) {
       knownAsync.set(module, []);
     }
-    knownAsync.get(module)!.push(proxy);
+    knownAsync.get(module)?.push(proxy);
   }
 
   export function addRegisteringProxy(module: string, proxy: RegisteringProxy) {
     if (!knownRegisters.has(module)) {
       knownRegisters.set(module, []);
     }
-    knownRegisters.get(module)!.push(proxy);
+    knownRegisters.get(module)?.push(proxy);
   }
 
-  export const interfaceConnections: Record<string, Record<string, InterfaceConnection[]>> = {};
+  export const interfaceConnections: Record<
+    string,
+    Record<string, InterfaceConnection[]>
+  > = {};
 }
 
 function captureCallStack(startFrame = 0): NodeJS.CallSite[] {
@@ -303,20 +313,27 @@ interface ResponsibleModuleResult {
   lastInterface: string;
 }
 
-function findResponsibleFile(trace: NodeJS.CallSite[], ignoreInterfaces: boolean): ResponsibleModuleResult {
-  let currentFound = '';
-  let lastInterface = '';
+function findResponsibleFile(
+  trace: NodeJS.CallSite[],
+  ignoreInterfaces: boolean,
+): ResponsibleModuleResult {
+  let currentFound = "";
+  let lastInterface = "";
   let currentBestMatch = 0;
 
   for (const site of trace) {
     const fileName = site.getFileName();
-    if (!fileName || fileName.startsWith('node:internal/') || fileName.match(/[/\\]node_modules[/\\]/)) {
+    if (
+      !fileName ||
+      fileName.startsWith("node:internal/") ||
+      fileName.match(/[/\\]node_modules[/\\]/)
+    ) {
       continue;
     }
     for (const { dir, id, interfaceDir } of internal.moduleByFolder) {
       if (ignoreInterfaces && fileName.startsWith(interfaceDir)) {
         lastInterface = id;
-        currentFound = '';
+        currentFound = "";
         currentBestMatch = 0;
         break;
       }
@@ -338,15 +355,16 @@ function findResponsibleFile(trace: NodeJS.CallSite[], ignoreInterfaces: boolean
 
 function reportAsyncContext(trace: NodeJS.CallSite[]): void {
   const lastSite = trace[trace.length - 1];
-  if (lastSite?.getFileName() !== 'node:internal/timers') {
+  if (lastSite?.getFileName() !== "node:internal/timers") {
     return;
   }
   const tracestr = trace
-    .filter((site) => !site.getFileName()?.startsWith('node:internal/'))
+    .filter((site) => !site.getFileName()?.startsWith("node:internal/"))
     .map((site) => site.toString())
-    .join('\n    - ');
+    .join("\n    - ");
   Logging.Error(
-    'GetResponsibleModule called from within an async context, this will break hot reloading!\n    - ' + tracestr,
+    "GetResponsibleModule called from within an async context, this will break hot reloading!\n    - " +
+      tracestr,
   );
 }
 
@@ -360,7 +378,10 @@ function reportAsyncContext(trace: NodeJS.CallSite[]): void {
  * @param startFrame The starting frame in the stack trace to analyze
  * @returns The module ID or undefined if no module is found
  */
-export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): string | undefined {
+export function GetResponsibleModule(
+  ignoreInterfaces = true,
+  startFrame = 0,
+): string | undefined {
   const trace = captureCallStack(startFrame);
   const responsible = findResponsibleFile(trace, ignoreInterfaces);
   if (responsible.module) {
@@ -381,18 +402,17 @@ export function GetResponsibleModule(ignoreInterfaces = true, startFrame = 0): s
  * @param inherit Whether to inherit metadata from the prototype chain
  * @returns The metadata instance
  */
-export function GetMetadata<T extends Record<string, any>, U extends Record<string, any>>(
-  target: U,
-  meta: Class<T, [U]> & { key: symbol },
-  inherit = true,
-): T {
+export function GetMetadata<
+  T extends Record<string, any>,
+  U extends Record<string, any>,
+>(target: U, meta: Class<T, [U]> & { key: symbol }, inherit = true): T {
   let data = Reflect.getOwnMetadata(meta.key, target) as T;
   if (!data) {
     data = new meta(target);
     const proto = Object.getPrototypeOf(target);
     if (inherit && proto) {
       const parent = GetMetadata(proto, meta, true);
-      if ('inherit' in data && typeof data.inherit === 'function') {
+      if ("inherit" in data && typeof data.inherit === "function") {
         data.inherit(parent);
       } else {
         for (const key of Object.getOwnPropertyNames(parent) as (keyof T)[]) {
@@ -415,25 +435,25 @@ export function GetMetadata<T extends Record<string, any>, U extends Record<stri
  *
  * @returns A function that proxies calls to the implementation when available
  */
-export function InterfaceFunction<T extends Func = Func, R = Awaited<ReturnType<T>>>(): (
-  ...args: Parameters<T>
-) => Promise<R> {
+export function InterfaceFunction<
+  T extends Func = Func,
+  R = Awaited<ReturnType<T>>,
+>(): (...args: Parameters<T>) => Promise<R> {
   const proxy = new AsyncProxy<T, R>();
   const func = (...args: Parameters<T>) => proxy.call(...args);
   func.proxy = proxy;
   return func;
 }
 
-type InterfaceImplType<T> =
-  T extends RegisteringProxy<infer P>
-    ? { register: P; unregister: (id: RID<P>) => void }
-    : T extends EventProxy
-      ? never
-      : T extends (...args: infer A) => infer R
-        ? (...args: A) => Awaited<R> | R
-        : T extends Record<string, any>
-          ? InterfaceToImpl<T>
-          : never;
+type InterfaceImplType<T> = T extends RegisteringProxy<infer P>
+  ? { register: P; unregister: (id: RID<P>) => void }
+  : T extends EventProxy
+    ? never
+    : T extends (...args: infer A) => infer R
+      ? (...args: A) => Awaited<R> | R
+      : T extends Record<string, any>
+        ? InterfaceToImpl<T>
+        : never;
 
 type InterfaceToImpl<T> = T extends infer P
   ? {
@@ -448,7 +468,7 @@ function implement(decl: Record<string, any>, impl: Record<string, any>) {
       if (val instanceof RegisteringProxy) {
         val.onRegister(impl[key].register);
         val.onUnregister(impl[key].unregister);
-      } else if (typeof val === 'function' && val.proxy instanceof AsyncProxy) {
+      } else if (typeof val === "function" && val.proxy instanceof AsyncProxy) {
         (<AsyncProxy>val.proxy).onCall(impl[key]);
       } else if (val instanceof AsyncProxy) {
         val.onCall(impl[key]);
@@ -469,23 +489,31 @@ function implement(decl: Record<string, any>, impl: Record<string, any>) {
  * @param implementation The implementation of the interface
  * @returns An object containing the declaration and implementation
  */
-export function ImplementInterface<T extends Record<string, unknown>, T2 extends InterfaceToImpl<T>>(
-  declaration: T,
-  implementation: T2,
-): { declaration: T; implementation: T2 };
+export function ImplementInterface<
+  T extends Record<string, unknown>,
+  T2 extends InterfaceToImpl<T>,
+>(declaration: T, implementation: T2): { declaration: T; implementation: T2 };
 
 /**
  * @deprecated Please use the non-async version of this function.
  */
-export function ImplementInterface<T extends Record<string, unknown>, T2 extends InterfaceToImpl<T>>(
+export function ImplementInterface<
+  T extends Record<string, unknown>,
+  T2 extends InterfaceToImpl<T>,
+>(
   declaration: T | Promise<T>,
   implementation: T2 | Promise<T2>,
 ): Promise<{ declaration: Awaited<T>; implementation: T2 }>;
 
-export function ImplementInterface<T extends Record<string, any>, T2 extends Record<string, any>>(
+export function ImplementInterface<
+  T extends Record<string, any>,
+  T2 extends Record<string, any>,
+>(
   declaration: T | Promise<T>,
   implementation: T2 | Promise<T2>,
-): { declaration: T; implementation: T2 } | Promise<{ declaration: T; implementation: T2 }> {
+):
+  | { declaration: T; implementation: T2 }
+  | Promise<{ declaration: T; implementation: T2 }> {
   if (declaration instanceof Promise || implementation instanceof Promise) {
     return Promise.all([declaration, implementation]).then(([decl, impl]) => {
       implement(decl, impl);
@@ -506,7 +534,9 @@ export function ImplementInterface<T extends Record<string, any>, T2 extends Rec
  * @param interfaceID The ID of the interface to get instances for
  * @returns Array of interface connections
  */
-export function GetInterfaceInstances(interfaceID: string): InterfaceConnection[] {
+export function GetInterfaceInstances(
+  interfaceID: string,
+): InterfaceConnection[] {
   const module = GetResponsibleModule();
   if (!module || !(module in internal.interfaceConnections)) return [];
   const connections = internal.interfaceConnections[module];
@@ -522,9 +552,14 @@ export function GetInterfaceInstances(interfaceID: string): InterfaceConnection[
  * @param connectionID The ID of the specific connection to retrieve
  * @returns The interface connection or undefined if not found
  */
-export function GetInterfaceInstance(interfaceID: string, connectionID: string): InterfaceConnection | undefined {
+export function GetInterfaceInstance(
+  interfaceID: string,
+  connectionID: string,
+): InterfaceConnection | undefined {
   const module = GetResponsibleModule();
   if (!module || !(module in internal.interfaceConnections)) return;
   const connections = internal.interfaceConnections[module];
-  return (connections[interfaceID] ?? []).find((connection) => connection.id == connectionID);
+  return (connections[interfaceID] ?? []).find(
+    (connection) => connection.id === connectionID,
+  );
 }

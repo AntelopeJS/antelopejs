@@ -1,9 +1,9 @@
-import chalk from 'chalk';
-import { Command, Option } from 'commander';
-import { Options, readConfig, writeConfig } from '../../../common';
-import { defaultConfigLogging } from '../../../../../logging';
-import inquirer from 'inquirer';
-import { displayBox, error, info, success, warning } from '../../../cli-ui';
+import chalk from "chalk";
+import { Command, Option } from "commander";
+import inquirer from "inquirer";
+import { defaultConfigLogging } from "../../../../../logging";
+import { displayBox, error, info, success, warning } from "../../../cli-ui";
+import { Options, readConfig, writeConfig } from "../../../common";
 
 interface SetOptions {
   project: string;
@@ -25,57 +25,91 @@ interface SetOptions {
 
 // Map the levelMap numeric values to strings for command options
 const levelStringMap: Record<string, string> = {
-  trace: '0',
-  debug: '10',
-  info: '20',
-  warn: '30',
-  error: '40',
-  default: 'default',
+  trace: "0",
+  debug: "10",
+  info: "20",
+  warn: "30",
+  error: "40",
+  default: "default",
 };
 
 export default function () {
-  return new Command('set')
-    .description(`Configure project logging settings\n` + `Enable/disable logging and set up module tracking`)
+  return new Command("set")
+    .description(
+      `Configure project logging settings\n` +
+        `Enable/disable logging and set up module tracking`,
+    )
     .addOption(Options.project)
-    .addOption(new Option('-e, --env <environment>', 'Environment to configure').env('ANTELOPEJS_LAUNCH_ENV'))
-    .addOption(new Option('--enable', 'Enable logging'))
-    .addOption(new Option('--disable', 'Disable logging'))
-    .addOption(new Option('--enableModuleTracking', 'Enable module tracking'))
-    .addOption(new Option('--disableModuleTracking', 'Disable module tracking'))
-    .addOption(new Option('--includeModule <module>', 'Add module to include list'))
-    .addOption(new Option('--excludeModule <module>', 'Add module to exclude list'))
-    .addOption(new Option('--removeInclude <module>', 'Remove module from include list'))
-    .addOption(new Option('--removeExclude <module>', 'Remove module from exclude list'))
     .addOption(
-      new Option('--level <level>', 'Set log level formatter').choices([
-        'trace',
-        'debug',
-        'info',
-        'warn',
-        'error',
-        'default',
+      new Option("-e, --env <environment>", "Environment to configure").env(
+        "ANTELOPEJS_LAUNCH_ENV",
+      ),
+    )
+    .addOption(new Option("--enable", "Enable logging"))
+    .addOption(new Option("--disable", "Disable logging"))
+    .addOption(new Option("--enableModuleTracking", "Enable module tracking"))
+    .addOption(new Option("--disableModuleTracking", "Disable module tracking"))
+    .addOption(
+      new Option("--includeModule <module>", "Add module to include list"),
+    )
+    .addOption(
+      new Option("--excludeModule <module>", "Add module to exclude list"),
+    )
+    .addOption(
+      new Option("--removeInclude <module>", "Remove module from include list"),
+    )
+    .addOption(
+      new Option("--removeExclude <module>", "Remove module from exclude list"),
+    )
+    .addOption(
+      new Option("--level <level>", "Set log level formatter").choices([
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "default",
       ]),
     )
-    .addOption(new Option('--format <format>', 'Format string for the selected level'))
-    .addOption(new Option('--dateFormat <format>', 'Set date format for logs (e.g. "yyyy-MM-dd HH:mm:ss")'))
-    .addOption(new Option('-i, --interactive', 'Interactive configuration mode').default(false))
+    .addOption(
+      new Option("--format <format>", "Format string for the selected level"),
+    )
+    .addOption(
+      new Option(
+        "--dateFormat <format>",
+        'Set date format for logs (e.g. "yyyy-MM-dd HH:mm:ss")',
+      ),
+    )
+    .addOption(
+      new Option("-i, --interactive", "Interactive configuration mode").default(
+        false,
+      ),
+    )
     .action(async (options: SetOptions) => {
-      console.log(''); // Add spacing for better readability
+      console.log(""); // Add spacing for better readability
 
       const config = await readConfig(options.project);
       if (!config) {
-        error(`No project configuration found at: ${chalk.bold(options.project)}`);
-        console.log(`Make sure you're in an AntelopeJS project or use the --project option.`);
+        error(
+          `No project configuration found at: ${chalk.bold(options.project)}`,
+        );
+        console.log(
+          `Make sure you're in an AntelopeJS project or use the --project option.`,
+        );
         process.exitCode = 1;
         return;
       }
 
       const projectName = config.name;
       const env =
-        options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
+        options.env && options.env !== "default"
+          ? config?.environments?.[options.env]
+          : config;
 
       if (!env) {
-        error(`Environment ${options.env || 'default'} not found in project config`);
+        error(
+          `Environment ${options.env || "default"} not found in project config`,
+        );
         process.exitCode = 1;
         return;
       }
@@ -125,22 +159,22 @@ export default function () {
       // Basic toggles
       if (options.enable && env.logging) {
         env.logging.enabled = true;
-        changes.push(chalk.green('Enabled logging'));
+        changes.push(chalk.green("Enabled logging"));
       }
 
       if (options.disable && env.logging) {
         env.logging.enabled = false;
-        changes.push(chalk.red('Disabled logging'));
+        changes.push(chalk.red("Disabled logging"));
       }
 
       if (options.enableModuleTracking && env.logging?.moduleTracking) {
         env.logging.moduleTracking.enabled = true;
-        changes.push(chalk.green('Enabled module tracking'));
+        changes.push(chalk.green("Enabled module tracking"));
       }
 
       if (options.disableModuleTracking && env.logging?.moduleTracking) {
         env.logging.moduleTracking.enabled = false;
-        changes.push(chalk.red('Disabled module tracking'));
+        changes.push(chalk.red("Disabled module tracking"));
       }
 
       // Date format setting
@@ -152,7 +186,9 @@ export default function () {
 
       // Module lists
       if (options.includeModule && env.logging?.moduleTracking?.includes) {
-        if (!env.logging.moduleTracking.includes.includes(options.includeModule)) {
+        if (
+          !env.logging.moduleTracking.includes.includes(options.includeModule)
+        ) {
           env.logging.moduleTracking.includes.push(options.includeModule);
           const msg = `Added module ${chalk.bold(options.includeModule)} to include list`;
           changes.push(chalk.cyan(msg));
@@ -163,7 +199,9 @@ export default function () {
       }
 
       if (options.excludeModule && env.logging?.moduleTracking?.excludes) {
-        if (!env.logging.moduleTracking.excludes.includes(options.excludeModule)) {
+        if (
+          !env.logging.moduleTracking.excludes.includes(options.excludeModule)
+        ) {
           env.logging.moduleTracking.excludes.push(options.excludeModule);
           const msg = `Added module ${chalk.bold(options.excludeModule)} to exclude list`;
           changes.push(chalk.yellow(msg));
@@ -175,7 +213,9 @@ export default function () {
 
       // Remove from lists
       if (options.removeInclude && env.logging?.moduleTracking?.includes) {
-        const index = env.logging.moduleTracking.includes.indexOf(options.removeInclude);
+        const index = env.logging.moduleTracking.includes.indexOf(
+          options.removeInclude,
+        );
         if (index !== -1) {
           env.logging.moduleTracking.includes.splice(index, 1);
           const msg = `Removed module ${chalk.bold(options.removeInclude)} from include list`;
@@ -187,7 +227,9 @@ export default function () {
       }
 
       if (options.removeExclude && env.logging?.moduleTracking?.excludes) {
-        const index = env.logging.moduleTracking.excludes.indexOf(options.removeExclude);
+        const index = env.logging.moduleTracking.excludes.indexOf(
+          options.removeExclude,
+        );
         if (index !== -1) {
           env.logging.moduleTracking.excludes.splice(index, 1);
           const msg = `Removed module ${chalk.bold(options.removeExclude)} from exclude list`;
@@ -217,22 +259,24 @@ export default function () {
 
       // Show results
       if (changes.length > 0) {
-        let content = '';
+        let content = "";
 
-        content += `${chalk.bold.cyan(`Project: ${projectName}${options.env ? ` (${options.env})` : ''}`)}\n`;
-        content += `${chalk.cyan('─'.repeat(40))}\n\n`;
+        content += `${chalk.bold.cyan(`Project: ${projectName}${options.env ? ` (${options.env})` : ""}`)}\n`;
+        content += `${chalk.cyan("─".repeat(40))}\n\n`;
 
         changes.forEach((change) => {
           content += `  ${change}\n`;
         });
 
-        await displayBox(content, '🔧 Logging Configuration Updated', {
+        await displayBox(content, "🔧 Logging Configuration Updated", {
           padding: 1,
-          borderColor: 'blue',
+          borderColor: "blue",
         });
 
         success(`Configuration saved successfully.`);
-        console.log(`Use ${chalk.cyan('ajs project logging show')} to view current settings.`);
+        console.log(
+          `Use ${chalk.cyan("ajs project logging show")} to view current settings.`,
+        );
       } else {
         warning(`No changes were made to the logging configuration.`);
       }
@@ -240,17 +284,23 @@ export default function () {
 }
 
 // Interactive configuration mode
-async function configureInteractively(projectName: string, env: any, envName?: string) {
-  console.log('');
-  info(`Configuring logging for ${chalk.bold(projectName)}${envName ? ` (${envName})` : ''}`);
-  console.log('');
+async function configureInteractively(
+  projectName: string,
+  env: any,
+  envName?: string,
+) {
+  console.log("");
+  info(
+    `Configuring logging for ${chalk.bold(projectName)}${envName ? ` (${envName})` : ""}`,
+  );
+  console.log("");
 
   // Enable/disable logging
   const { enableLogging } = await inquirer.prompt<{ enableLogging: boolean }>([
     {
-      type: 'confirm',
-      name: 'enableLogging',
-      message: 'Enable logging?',
+      type: "confirm",
+      name: "enableLogging",
+      message: "Enable logging?",
       default: env.logging.enabled,
     },
   ]);
@@ -263,11 +313,13 @@ async function configureInteractively(projectName: string, env: any, envName?: s
   }
 
   // Module tracking
-  const { enableModuleTracking } = await inquirer.prompt<{ enableModuleTracking: boolean }>([
+  const { enableModuleTracking } = await inquirer.prompt<{
+    enableModuleTracking: boolean;
+  }>([
     {
-      type: 'confirm',
-      name: 'enableModuleTracking',
-      message: 'Enable module tracking?',
+      type: "confirm",
+      name: "enableModuleTracking",
+      message: "Enable module tracking?",
       default: env.logging.moduleTracking.enabled,
     },
   ]);
@@ -277,39 +329,42 @@ async function configureInteractively(projectName: string, env: any, envName?: s
   if (enableModuleTracking) {
     const { trackingMode } = await inquirer.prompt<{ trackingMode: string }>([
       {
-        type: 'list',
-        name: 'trackingMode',
-        message: 'Select module tracking mode:',
+        type: "list",
+        name: "trackingMode",
+        message: "Select module tracking mode:",
         choices: [
-          { name: 'Log all modules', value: 'all' },
-          { name: 'Only log specific modules (whitelist)', value: 'whitelist' },
-          { name: 'Log all except specific modules (blacklist)', value: 'blacklist' },
+          { name: "Log all modules", value: "all" },
+          { name: "Only log specific modules (whitelist)", value: "whitelist" },
+          {
+            name: "Log all except specific modules (blacklist)",
+            value: "blacklist",
+          },
         ],
         default:
           env.logging.moduleTracking.includes.length > 0
-            ? 'whitelist'
+            ? "whitelist"
             : env.logging.moduleTracking.excludes.length > 0
-              ? 'blacklist'
-              : 'all',
+              ? "blacklist"
+              : "all",
       },
     ]);
 
-    if (trackingMode === 'whitelist') {
+    if (trackingMode === "whitelist") {
       // Handle include list
       await handleModuleList(
         env.logging.moduleTracking.includes,
-        'Enter module name to include (empty to finish):',
-        'Included modules:',
+        "Enter module name to include (empty to finish):",
+        "Included modules:",
       );
 
       // Clear exclude list in whitelist mode
       env.logging.moduleTracking.excludes = [];
-    } else if (trackingMode === 'blacklist') {
+    } else if (trackingMode === "blacklist") {
       // Handle exclude list
       await handleModuleList(
         env.logging.moduleTracking.excludes,
-        'Enter module name to exclude (empty to finish):',
-        'Excluded modules:',
+        "Enter module name to exclude (empty to finish):",
+        "Excluded modules:",
       );
 
       // Clear include list in blacklist mode
@@ -322,27 +377,35 @@ async function configureInteractively(projectName: string, env: any, envName?: s
   }
 
   // Format strings
-  const { configureFormatters } = await inquirer.prompt<{ configureFormatters: boolean }>([
+  const { configureFormatters } = await inquirer.prompt<{
+    configureFormatters: boolean;
+  }>([
     {
-      type: 'confirm',
-      name: 'configureFormatters',
-      message: 'Do you want to configure log formatters?',
+      type: "confirm",
+      name: "configureFormatters",
+      message: "Do you want to configure log formatters?",
       default: false,
     },
   ]);
 
   if (configureFormatters) {
-    const levels = ['trace', 'debug', 'info', 'warn', 'error', 'default'];
+    const levels = ["trace", "debug", "info", "warn", "error", "default"];
 
     for (const level of levels) {
       const levelKey = levelStringMap[level];
-      const defaultFormat = defaultConfigLogging.formatter ? defaultConfigLogging.formatter[levelKey] : '';
-      const currentFormat = env.logging.formatter ? env.logging.formatter[levelKey] || defaultFormat : defaultFormat;
+      const defaultFormat = defaultConfigLogging.formatter
+        ? defaultConfigLogging.formatter[levelKey]
+        : "";
+      const currentFormat = env.logging.formatter
+        ? env.logging.formatter[levelKey] || defaultFormat
+        : defaultFormat;
 
-      const { customizeFormat } = await inquirer.prompt<{ customizeFormat: boolean }>([
+      const { customizeFormat } = await inquirer.prompt<{
+        customizeFormat: boolean;
+      }>([
         {
-          type: 'confirm',
-          name: 'customizeFormat',
+          type: "confirm",
+          name: "customizeFormat",
           message: `Customize ${level.toUpperCase()} log format?`,
           default: false,
         },
@@ -351,8 +414,8 @@ async function configureInteractively(projectName: string, env: any, envName?: s
       if (customizeFormat) {
         const { format } = await inquirer.prompt<{ format: string }>([
           {
-            type: 'input',
-            name: 'format',
+            type: "input",
+            name: "format",
             message: `Enter format for ${level.toUpperCase()} level:`,
             default: currentFormat,
           },
@@ -367,38 +430,51 @@ async function configureInteractively(projectName: string, env: any, envName?: s
   }
 
   // Date format configuration
-  const { configureDateFormat } = await inquirer.prompt<{ configureDateFormat: boolean }>([
+  const { configureDateFormat } = await inquirer.prompt<{
+    configureDateFormat: boolean;
+  }>([
     {
-      type: 'confirm',
-      name: 'configureDateFormat',
-      message: 'Do you want to customize the date format?',
+      type: "confirm",
+      name: "configureDateFormat",
+      message: "Do you want to customize the date format?",
       default: false,
     },
   ]);
 
   if (configureDateFormat) {
-    const currentDateFormat = env.logging.dateFormat || defaultConfigLogging.dateFormat;
+    const currentDateFormat =
+      env.logging.dateFormat || defaultConfigLogging.dateFormat;
     const { dateFormat } = await inquirer.prompt<{ dateFormat: string }>([
       {
-        type: 'input',
-        name: 'dateFormat',
-        message: 'Enter date format:',
+        type: "input",
+        name: "dateFormat",
+        message: "Enter date format:",
         default: currentDateFormat,
       },
     ]);
 
     env.logging.dateFormat = dateFormat;
-    console.log(`${chalk.cyan('Date format set to:')} ${chalk.dim(dateFormat)}`);
-    console.log(`${chalk.cyan('Format tokens:')} ${chalk.dim('yyyy, MM, dd, HH, mm, ss (padded values)')}`);
-    console.log(`${chalk.cyan('Additional:')} ${chalk.dim('SSS (milliseconds), M, d, H, m, s (non-padded)')}`);
+    console.log(
+      `${chalk.cyan("Date format set to:")} ${chalk.dim(dateFormat)}`,
+    );
+    console.log(
+      `${chalk.cyan("Format tokens:")} ${chalk.dim("yyyy, MM, dd, HH, mm, ss (padded values)")}`,
+    );
+    console.log(
+      `${chalk.cyan("Additional:")} ${chalk.dim("SSS (milliseconds), M, d, H, m, s (non-padded)")}`,
+    );
   }
 
-  console.log('');
+  console.log("");
   success(`Logging configuration updated successfully.`);
 }
 
 // Helper function to manage module lists interactively
-async function handleModuleList(list: string[], prompt: string, listTitle: string) {
+async function handleModuleList(
+  list: string[],
+  prompt: string,
+  listTitle: string,
+) {
   let done = false;
 
   // Display current list
@@ -413,8 +489,8 @@ async function handleModuleList(list: string[], prompt: string, listTitle: strin
   while (!done) {
     const { moduleName } = await inquirer.prompt<{ moduleName: string }>([
       {
-        type: 'input',
-        name: 'moduleName',
+        type: "input",
+        name: "moduleName",
         message: prompt,
       },
     ]);
@@ -431,14 +507,16 @@ async function handleModuleList(list: string[], prompt: string, listTitle: strin
       warning(`Module ${chalk.bold(moduleName)} is already in the list.`);
 
       // Ask if they want to remove it
-      const { removeModule } = await inquirer.prompt<{ removeModule: boolean }>([
-        {
-          type: 'confirm',
-          name: 'removeModule',
-          message: `Do you want to remove ${moduleName} from the list?`,
-          default: false,
-        },
-      ]);
+      const { removeModule } = await inquirer.prompt<{ removeModule: boolean }>(
+        [
+          {
+            type: "confirm",
+            name: "removeModule",
+            message: `Do you want to remove ${moduleName} from the list?`,
+            default: false,
+          },
+        ],
+      );
 
       if (removeModule) {
         const index = list.indexOf(moduleName);

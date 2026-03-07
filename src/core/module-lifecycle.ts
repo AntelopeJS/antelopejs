@@ -1,5 +1,5 @@
-import { ModuleCallbacks, ModuleState } from '../types';
-import { Events } from '../interfaces/core/beta/modules';
+import { Events } from "../interfaces/core/beta/modules";
+import { type ModuleCallbacks, ModuleState } from "../types";
 
 export class ModuleLifecycle {
   private callbacks?: ModuleCallbacks;

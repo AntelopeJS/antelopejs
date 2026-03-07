@@ -1,7 +1,12 @@
-import Module from 'module';
-import { Resolver } from './resolver';
+import Module from "node:module";
+import type { Resolver } from "./resolver";
 
-type ModuleResolver = (request: string, parent: any, isMain: boolean, options: any) => string;
+type ModuleResolver = (
+  request: string,
+  parent: any,
+  isMain: boolean,
+  options: any,
+) => string;
 
 export class ResolverDetour {
   private oldResolver?: ModuleResolver;
@@ -11,9 +16,14 @@ export class ResolverDetour {
   attach(): void {
     if (!this.oldResolver) {
       this.oldResolver = (Module as any)._resolveFilename;
-      (Module as any)._resolveFilename = (request: string, parent: any, isMain: boolean, options: any) => {
+      (Module as any)._resolveFilename = (
+        request: string,
+        parent: any,
+        isMain: boolean,
+        options: any,
+      ) => {
         const newRequest = this.resolver.resolve(request, parent) ?? request;
-        return this.oldResolver!(newRequest, parent, isMain, options);
+        return this.oldResolver?.(newRequest, parent, isMain, options);
       };
     }
   }

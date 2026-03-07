@@ -1,9 +1,9 @@
-import { expect } from 'chai';
-import { Detour, CreateDetour } from '../../src/utils/promise';
+import { expect } from "chai";
+import { CreateDetour, Detour } from "../../src/utils/promise";
 
-describe('Promise Utilities', () => {
-  describe('Detour', () => {
-    it('should wrap a function with side effect', () => {
+describe("Promise Utilities", () => {
+  describe("Detour", () => {
+    it("should wrap a function with side effect", () => {
       let sideEffect = 0;
       const original = (x: number) => x * 2;
       const wrapped = Detour(original, () => {
@@ -17,8 +17,8 @@ describe('Promise Utilities', () => {
     });
   });
 
-  describe('CreateDetour', () => {
-    it('should allow swapping side effects', () => {
+  describe("CreateDetour", () => {
+    it("should allow swapping side effects", () => {
       const calls: number[] = [];
       const original = (x: number) => x + 1;
       const { fn, detour } = CreateDetour(original);
@@ -32,7 +32,7 @@ describe('Promise Utilities', () => {
       expect(calls).to.deep.equal([1, 4]);
     });
 
-    it('should work without a detour', () => {
+    it("should work without a detour", () => {
       const { fn } = CreateDetour((x: number) => x * 3);
       expect(fn(3)).to.equal(9);
     });

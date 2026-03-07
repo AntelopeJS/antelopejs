@@ -1,16 +1,16 @@
-import { expect } from 'chai';
-import { TestRunner } from '../../../src/core/test/test-runner';
-import { TestContext } from '../../../src/core/test/test-context';
+import { expect } from "chai";
+import { TestContext } from "../../../src/core/test/test-context";
+import { TestRunner } from "../../../src/core/test/test-runner";
 
-describe('TestRunner', () => {
-  it('should run tests and call setup/cleanup', async () => {
+describe("TestRunner", () => {
+  it("should run tests and call setup/cleanup", async () => {
     const calls: string[] = [];
     const context = new TestContext({
       setup: async () => {
-        calls.push('setup');
+        calls.push("setup");
       },
       cleanup: async () => {
-        calls.push('cleanup');
+        calls.push("cleanup");
       },
     });
 
@@ -26,10 +26,10 @@ describe('TestRunner', () => {
     };
 
     const runner = new TestRunner(context, () => fakeMocha as any);
-    const failures = await runner.run(['a.test.js', 'b.test.js']);
+    const failures = await runner.run(["a.test.js", "b.test.js"]);
 
     expect(failures).to.equal(0);
-    expect(addedFiles).to.deep.equal(['a.test.js', 'b.test.js']);
-    expect(calls).to.deep.equal(['setup', 'cleanup']);
+    expect(addedFiles).to.deep.equal(["a.test.js", "b.test.js"]);
+    expect(calls).to.deep.equal(["setup", "cleanup"]);
   });
 });

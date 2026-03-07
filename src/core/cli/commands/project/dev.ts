@@ -1,14 +1,17 @@
-import chalk from 'chalk';
-import { ChildProcess, fork } from 'child_process';
-import fs, { unlinkSync, writeFileSync } from 'fs';
-import path from 'path';
-import { Command, Option } from 'commander';
-import startAntelope, { LaunchOptions, DEFAULT_ENV } from '../../../..';
-import { ModuleCache } from '../../../module-cache';
-import { ShutdownManager } from '../../../shutdown';
-import { Options } from '../../common';
-import { displayBox, error, info, warning } from '../../cli-ui';
-import { resolveInheritedVerbose, validateProjectExists } from '../shared/project-command';
+import { type ChildProcess, fork } from "node:child_process";
+import fs, { unlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import chalk from "chalk";
+import { Command, Option } from "commander";
+import startAntelope, { DEFAULT_ENV, type LaunchOptions } from "../../../..";
+import { ModuleCache } from "../../../module-cache";
+import { ShutdownManager } from "../../../shutdown";
+import { displayBox, error, info, warning } from "../../cli-ui";
+import { Options } from "../../common";
+import {
+  resolveInheritedVerbose,
+  validateProjectExists,
+} from "../shared/project-command";
 
 interface RunnerEnv extends NodeJS.ProcessEnv {
   ANTELOPE_PROJECT_PATH: string;
@@ -26,23 +29,34 @@ export interface DevCommandOptions extends LaunchOptions {
   verbose?: string[];
 }
 
-const DEFAULT_INSPECTOR = '--inspect';
-const RUNNER_PREFIX = 'antelope-runner-';
-const DEFAULT_INSPECT_HOST = '127.0.0.1:9229';
+const DEFAULT_INSPECTOR = "--inspect";
+const RUNNER_PREFIX = "antelope-runner-";
+const DEFAULT_INSPECT_HOST = "127.0.0.1:9229";
 const CHILD_TERMINATE_TIMEOUT_MS = 5000;
 const SHUTDOWN_PRIORITY_CHILD = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
 const SHUTDOWN_PRIORITY_SIGNAL_CLEANUP = 5;
 
-const ENV_OPTION = new Option('-e, --env <environment>', 'Environment to use (development, production, etc.)').env(
-  'ANTELOPEJS_LAUNCH_ENV',
+const ENV_OPTION = new Option(
+  "-e, --env <environment>",
+  "Environment to use (development, production, etc.)",
+).env("ANTELOPEJS_LAUNCH_ENV");
+const WATCH_OPTION = new Option(
+  "-w, --watch",
+  "Watch for changes and automatically restart",
 );
-const WATCH_OPTION = new Option('-w, --watch', 'Watch for changes and automatically restart');
-const CONCURRENCY_OPTION = new Option('-c, --concurrency <number>', 'Number of modules to load concurrently').argParser(
-  parseInt,
+const CONCURRENCY_OPTION = new Option(
+  "-c, --concurrency <number>",
+  "Number of modules to load concurrently",
+).argParser(parseInt);
+const INSPECT_OPTION = new Option(
+  "--inspect [host:port]",
+  "Enable inspector on host:port (default: 127.0.0.1:9229)",
 );
-const INSPECT_OPTION = new Option('--inspect [host:port]', 'Enable inspector on host:port (default: 127.0.0.1:9229)');
-const INTERACTIVE_OPTION = new Option('-i, --interactive', 'Run a REPL with the project');
+const INTERACTIVE_OPTION = new Option(
+  "-i, --interactive",
+  "Run a REPL with the project",
+);
 
 interface DevCommandDefinition {
   name: string;
@@ -50,7 +64,7 @@ interface DevCommandDefinition {
 }
 
 const DEV_COMMAND_DEFINITION: DevCommandDefinition = {
-  name: 'dev',
+  name: "dev",
   description:
     `Run your AntelopeJS project in development mode\n` +
     `Starts your application by loading and connecting all modules defined in your project.`,
@@ -69,7 +83,7 @@ export function withDevCommandOptions(command: Command): Command {
 
 function resolveInspectLabel(options: DevCommandOptions): string {
   if (!options.inspect) {
-    return 'disabled';
+    return "disabled";
   }
   return options.inspect === true ? DEFAULT_INSPECT_HOST : options.inspect;
 }
@@ -78,9 +92,9 @@ async function showRunConfiguration(options: DevCommandOptions): Promise<void> {
   const inspector = resolveInspectLabel(options);
   await displayBox(
     `Environment: ${chalk.cyan(options.env || DEFAULT_ENV)}\n` +
-      `Watch mode: ${options.watch ? chalk.green('enabled') : chalk.gray('disabled')}\n` +
+      `Watch mode: ${options.watch ? chalk.green("enabled") : chalk.gray("disabled")}\n` +
       `Inspector: ${options.inspect ? chalk.green(inspector) : chalk.gray(inspector)}`,
-    ' Launch Configuration',
+    " Launch Configuration",
     { padding: 1 },
   );
 }
@@ -112,13 +126,16 @@ function buildRunnerEnv(options: DevCommandOptions): RunnerEnv {
     ...process.env,
     ANTELOPE_PROJECT_PATH: options.project,
     ANTELOPE_ENV: options.env,
-    ANTELOPE_WATCH: options.watch ? 'true' : 'false',
-    ANTELOPE_CONCURRENCY: options.concurrency?.toString() || '',
-    ANTELOPE_VERBOSE: options.verbose?.join(','),
+    ANTELOPE_WATCH: options.watch ? "true" : "false",
+    ANTELOPE_CONCURRENCY: options.concurrency?.toString() || "",
+    ANTELOPE_VERBOSE: options.verbose?.join(","),
   };
 }
 
-async function cleanupRunner(tempDir: string, runnerPath: string): Promise<void> {
+async function cleanupRunner(
+  tempDir: string,
+  runnerPath: string,
+): Promise<void> {
   unlinkSync(runnerPath);
   try {
     await fs.promises.rm(tempDir, { recursive: true, force: true });
@@ -132,16 +149,16 @@ export function terminateChildProcess(
   timeoutMs: number = CHILD_TERMINATE_TIMEOUT_MS,
 ): Promise<void> {
   return new Promise((resolve) => {
-    if (typeof child.kill !== 'function' || typeof child.on !== 'function') {
+    if (typeof child.kill !== "function" || typeof child.on !== "function") {
       resolve();
       return;
     }
 
     const detachExitListener = () => {
-      if (typeof child.removeListener !== 'function') {
+      if (typeof child.removeListener !== "function") {
         return;
       }
-      child.removeListener('exit', onExit);
+      child.removeListener("exit", onExit);
     };
 
     const onExit = () => {
@@ -153,7 +170,7 @@ export function terminateChildProcess(
     const timer = setTimeout(() => {
       detachExitListener();
       try {
-        child.kill('SIGKILL');
+        child.kill("SIGKILL");
       } catch {
         resolve();
         return;
@@ -161,9 +178,9 @@ export function terminateChildProcess(
       resolve();
     }, timeoutMs);
 
-    child.on('exit', onExit);
+    child.on("exit", onExit);
     try {
-      child.kill('SIGTERM');
+      child.kill("SIGTERM");
     } catch {
       clearTimeout(timer);
       detachExitListener();
@@ -173,8 +190,11 @@ export function terminateChildProcess(
 }
 
 async function launchWithInspector(options: DevCommandOptions): Promise<void> {
-  const inspectArg = options.inspect === true ? DEFAULT_INSPECTOR : `--inspect=${options.inspect}`;
-  const entryPath = path.resolve(__dirname, '../../../..');
+  const inspectArg =
+    options.inspect === true
+      ? DEFAULT_INSPECTOR
+      : `--inspect=${options.inspect}`;
+  const entryPath = path.resolve(__dirname, "../../../..");
   const runnerScript = buildRunnerScript(entryPath);
   const tempDir = await ModuleCache.getTemp();
   const runnerPath = path.join(tempDir, `${RUNNER_PREFIX}${Date.now()}.js`);
@@ -193,7 +213,7 @@ async function launchWithInspector(options: DevCommandOptions): Promise<void> {
   writeFileSync(runnerPath, runnerScript);
 
   const child = fork(runnerPath, [], {
-    stdio: 'inherit',
+    stdio: "inherit",
     execArgv: [inspectArg],
     env: buildRunnerEnv(options),
   });
@@ -209,11 +229,11 @@ async function launchWithInspector(options: DevCommandOptions): Promise<void> {
   }, SHUTDOWN_PRIORITY_SIGNAL_CLEANUP);
   shutdownManager.setupSignalHandlers();
 
-  child.on('error', () => {
+  child.on("error", () => {
     childRunning = false;
     void shutdownManager.shutdown(1);
   });
-  child.on('exit', (code) => {
+  child.on("exit", (code) => {
     childRunning = false;
     const exitCode = code !== 0 ? code || 1 : 0;
     void shutdownManager.shutdown(exitCode);
@@ -224,7 +244,10 @@ async function launchDirect(options: DevCommandOptions): Promise<void> {
   await startAntelope(options.project, options.env, options);
 }
 
-function withCommandVerbose(command: Command, options: DevCommandOptions): DevCommandOptions {
+function withCommandVerbose(
+  command: Command,
+  options: DevCommandOptions,
+): DevCommandOptions {
   const inheritedVerbose = resolveInheritedVerbose(command, options.verbose);
   return {
     ...options,
@@ -232,24 +255,29 @@ function withCommandVerbose(command: Command, options: DevCommandOptions): DevCo
   };
 }
 
-export async function executeDevCommand(this: Command, options: DevCommandOptions): Promise<void> {
+export async function executeDevCommand(
+  this: Command,
+  options: DevCommandOptions,
+): Promise<void> {
   const runOptions = withCommandVerbose(this, options);
-  console.log('');
+  console.log("");
 
   const hasProject = await validateProjectExists(runOptions.project);
   if (!hasProject) {
     return;
   }
 
-  console.log('');
+  console.log("");
   await showRunConfiguration(runOptions);
 
   if (runOptions.watch) {
-    console.log('');
-    warning(`Watch mode enabled - project will automatically restart when files change`);
+    console.log("");
+    warning(
+      `Watch mode enabled - project will automatically restart when files change`,
+    );
   }
 
-  console.log('');
+  console.log("");
   info(`Starting AntelopeJS project`);
 
   try {
@@ -264,8 +292,12 @@ export async function executeDevCommand(this: Command, options: DevCommandOption
   }
 }
 
-export function createDevCommand(definition: DevCommandDefinition = DEV_COMMAND_DEFINITION): Command {
-  const command = new Command(definition.name).description(definition.description);
+export function createDevCommand(
+  definition: DevCommandDefinition = DEV_COMMAND_DEFINITION,
+): Command {
+  const command = new Command(definition.name).description(
+    definition.description,
+  );
   return withDevCommandOptions(command).action(executeDevCommand);
 }
 

@@ -1,9 +1,9 @@
-import chalk from 'chalk';
-import { Command, Option } from 'commander';
-import { Options, readConfig, writeConfig } from '../../../common';
-import { ConfigLoader } from '../../../../config';
-import { NodeFileSystem } from '../../../../filesystem';
-import { error, warning, info, success } from '../../../cli-ui';
+import chalk from "chalk";
+import { Command, Option } from "commander";
+import { ConfigLoader } from "../../../../config";
+import { NodeFileSystem } from "../../../../filesystem";
+import { error, info, success, warning } from "../../../cli-ui";
+import { Options, readConfig, writeConfig } from "../../../common";
 
 interface RemoveOptions {
   project: string;
@@ -11,21 +11,30 @@ interface RemoveOptions {
   force: boolean;
 }
 
-export async function projectModulesRemoveCommand(modules: string[], options: RemoveOptions) {
+export async function projectModulesRemoveCommand(
+  modules: string[],
+  options: RemoveOptions,
+) {
   info(chalk.blue`Removing modules from project...`);
 
   const config = await readConfig(options.project);
   if (!config) {
     error(chalk.red`No project configuration found at: ${options.project}`);
-    info(`Make sure you're in an AntelopeJS project or use the --project option.`);
+    info(
+      `Make sure you're in an AntelopeJS project or use the --project option.`,
+    );
     process.exitCode = 1;
     return;
   }
 
   const env =
-    options.env && options.env !== 'default' ? config?.environments && config?.environments[options.env] : config;
+    options.env && options.env !== "default"
+      ? config?.environments?.[options.env]
+      : config;
   if (!env) {
-    error(chalk.red`Environment ${options.env || 'default'} not found in project config`);
+    error(
+      chalk.red`Environment ${options.env || "default"} not found in project config`,
+    );
     process.exitCode = 1;
     return;
   }
@@ -39,22 +48,29 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
   const envModules = env.modules!;
 
   const loader = new ConfigLoader(new NodeFileSystem());
-  const antelopeConfig = await loader.load(options.project, options.env || 'default');
+  const antelopeConfig = await loader.load(
+    options.project,
+    options.env || "default",
+  );
 
   // Track results
   const removedModules: string[] = [];
   const notInstalledModules: string[] = [];
 
   // Check if all modules exist
-  const missingModules = modules.filter((module) => !envModules[module] && !envModules[':' + module]);
+  const missingModules = modules.filter(
+    (module) => !envModules[module] && !envModules[`:${module}`],
+  );
 
   if (missingModules.length > 0) {
     if (missingModules.length === modules.length) {
-      error(chalk.red`None of the specified modules are installed in this project.`);
+      error(
+        chalk.red`None of the specified modules are installed in this project.`,
+      );
       info(
         `Available modules: ${Object.keys(envModules)
           .map((m) => chalk.bold(m))
-          .join(', ')}`,
+          .join(", ")}`,
       );
       return;
     }
@@ -63,7 +79,7 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
       error(
         chalk.red`The following modules are not present in the project: ${missingModules
           .map((m) => chalk.bold(m))
-          .join(', ')}`,
+          .join(", ")}`,
       );
       return;
     }
@@ -71,7 +87,7 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
     // Continue with warning if --force is used
     warning(chalk.yellow`The following modules will be skipped (not found):`);
     for (const module of missingModules) {
-      info(`  ${chalk.yellow('•')} ${chalk.bold(module)}`);
+      info(`  ${chalk.yellow("•")} ${chalk.bold(module)}`);
     }
   }
 
@@ -87,9 +103,9 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
     if (envModules[module]) {
       delete envModules[module];
       removedModules.push(module);
-    } else if (envModules[':' + module]) {
-      delete envModules[':' + module];
-      removedModules.push(':' + module);
+    } else if (envModules[`:${module}`]) {
+      delete envModules[`:${module}`];
+      removedModules.push(`:${module}`);
     } else {
       notInstalledModules.push(module);
       warning(chalk.yellow`Module ${chalk.bold(module)} is not installed`);
@@ -100,9 +116,11 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
   if (removedModules.length > 0) {
     await writeConfig(options.project, config);
 
-    success(chalk.green`Successfully removed ${removedModules.length} module(s):`);
+    success(
+      chalk.green`Successfully removed ${removedModules.length} module(s):`,
+    );
     removedModules.forEach((module) => {
-      info(`  ${chalk.green('•')} ${chalk.bold(module)}`);
+      info(`  ${chalk.green("•")} ${chalk.bold(module)}`);
     });
   } else {
     error(chalk.red`No modules were removed from the project`);
@@ -112,22 +130,39 @@ export async function projectModulesRemoveCommand(modules: string[], options: Re
   if (removedModules.length > 0) {
     // Check for potential broken dependencies
     const remainingModules = Object.keys(antelopeConfig.modules).filter(
-      (m) => !removedModules.includes(m) && !removedModules.includes(m.replace(':', '')),
+      (m) =>
+        !removedModules.includes(m) &&
+        !removedModules.includes(m.replace(":", "")),
     );
 
     if (remainingModules.length > 0) {
-      warning(chalk.yellow`Note: You may need to run 'ajs project modules install' to resolve any broken dependencies`);
+      warning(
+        chalk.yellow`Note: You may need to run 'ajs project modules install' to resolve any broken dependencies`,
+      );
     }
   }
 }
 
 export default function () {
-  return new Command('remove')
-    .alias('rm')
-    .description(`Remove modules from your project\n` + `Removes modules from project configuration`)
-    .argument('<modules...>', 'Names of modules to remove')
+  return new Command("remove")
+    .alias("rm")
+    .description(
+      `Remove modules from your project\n` +
+        `Removes modules from project configuration`,
+    )
+    .argument("<modules...>", "Names of modules to remove")
     .addOption(Options.project)
-    .addOption(new Option('-e, --env <environment>', 'Environment to remove modules from').env('ANTELOPEJS_LAUNCH_ENV'))
-    .addOption(new Option('-f, --force', 'Continue even if some modules are not found').default(false))
+    .addOption(
+      new Option(
+        "-e, --env <environment>",
+        "Environment to remove modules from",
+      ).env("ANTELOPEJS_LAUNCH_ENV"),
+    )
+    .addOption(
+      new Option(
+        "-f, --force",
+        "Continue even if some modules are not found",
+      ).default(false),
+    )
     .action(projectModulesRemoveCommand);
 }

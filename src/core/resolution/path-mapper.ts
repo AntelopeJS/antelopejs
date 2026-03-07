@@ -1,6 +1,6 @@
-import * as path from 'path';
-import { ModuleManifest } from '../module-manifest';
-import { accessSync, constants } from 'fs';
+import { accessSync, constants } from "node:fs";
+import * as path from "node:path";
+import type { ModuleManifest } from "../module-manifest";
 
 export type ExistsSync = (filePath: string) => boolean;
 
@@ -20,7 +20,9 @@ export class PathMapper {
     if (manifest.srcAliases) {
       for (const { alias, replace } of manifest.srcAliases) {
         if (request.startsWith(alias)) {
-          return request.length > alias.length ? path.join(replace, request.substring(alias.length)) : replace;
+          return request.length > alias.length
+            ? path.join(replace, request.substring(alias.length))
+            : replace;
         }
       }
     }
@@ -30,7 +32,10 @@ export class PathMapper {
         const part = request.substring(entry.key.length);
         for (const testPathPart of entry.values) {
           const testPath = path.join(testPathPart, part);
-          if (this.exists(testPath + '.js') || this.exists(path.join(testPath, 'index.js'))) {
+          if (
+            this.exists(`${testPath}.js`) ||
+            this.exists(path.join(testPath, "index.js"))
+          ) {
             return testPath;
           }
         }

@@ -1,10 +1,10 @@
-import { ExpandedModuleConfig } from '../config/config-parser';
-import { LoadedConfig } from '../config/config-loader';
-import { ModuleConfig } from '../module-manager';
-import { ModuleManifest } from '../module-manifest';
-import { ModuleCache } from '../module-cache';
-import { DownloaderRegistry } from '../downloaders/registry';
-import { NodeFileSystem } from '../filesystem';
+import type { LoadedConfig } from "../config/config-loader";
+import type { ExpandedModuleConfig } from "../config/config-parser";
+import type { DownloaderRegistry } from "../downloaders/registry";
+import type { NodeFileSystem } from "../filesystem";
+import type { ModuleCache } from "../module-cache";
+import type { ModuleConfig } from "../module-manager";
+import type { ModuleManifest } from "../module-manifest";
 
 export interface ModuleOverrideRef {
   module: string;

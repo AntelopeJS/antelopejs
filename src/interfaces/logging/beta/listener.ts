@@ -1,4 +1,4 @@
-import { EventProxy } from '../../core/beta';
+import { EventProxy } from "../../core/beta";
 
 /**
  * Represents a structured log entry in the Antelopejs logging system.

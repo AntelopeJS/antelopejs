@@ -1,4 +1,4 @@
-import { internal } from '../interfaces/core/beta';
+import { internal } from "../interfaces/core/beta";
 
 export interface ModuleFolderEntry {
   dir: string;
@@ -13,7 +13,11 @@ export class ModuleTracker {
 
   remove(id: string): void {
     const filtered = internal.moduleByFolder.filter((entry) => entry.id !== id);
-    internal.moduleByFolder.splice(0, internal.moduleByFolder.length, ...filtered);
+    internal.moduleByFolder.splice(
+      0,
+      internal.moduleByFolder.length,
+      ...filtered,
+    );
   }
 
   clear(): void {

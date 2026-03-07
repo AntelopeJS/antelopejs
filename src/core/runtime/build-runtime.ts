@@ -1,37 +1,47 @@
-import path from 'path';
-import { InterfaceConnectionRef } from '../interface-registry';
-import { ModuleManifest } from '../module-manifest';
-import { NodeFileSystem } from '../filesystem';
+import path from "node:path";
+import { Logging } from "../../interfaces/logging/beta";
 import {
-  BuildArtifact,
-  BuildImportOverride,
-  BuildModuleEntry,
+  type BuildArtifact,
+  type BuildImportOverride,
+  type BuildModuleEntry,
   computeConfigHash,
   createBuildArtifact,
   getBuildArtifactPath,
   readBuildArtifact,
   writeBuildArtifact,
-} from '../build/build-artifact';
-import { Logging } from '../../interfaces/logging/beta';
-import { ModuleManifestEntry, ModuleOverrideMap, NormalizedLoadedConfig } from './runtime-types';
+} from "../build/build-artifact";
+import type { NodeFileSystem } from "../filesystem";
+import type { InterfaceConnectionRef } from "../interface-registry";
+import { ModuleManifest } from "../module-manifest";
+import type {
+  ModuleManifestEntry,
+  ModuleOverrideMap,
+  NormalizedLoadedConfig,
+} from "./runtime-types";
 
 const STALE_BUILD_WARNING = `Configuration has changed since last build. Run 'ajs project build' to update.`;
 const BUILD_MISSING_REBUILD_HINT = "Run 'ajs project build --env <env>' first.";
 
-function mapBuildImportOverrides(overrides?: ModuleOverrideMap): BuildImportOverride[] | undefined {
+function mapBuildImportOverrides(
+  overrides?: ModuleOverrideMap,
+): BuildImportOverride[] | undefined {
   if (!overrides || overrides.size === 0) {
     return undefined;
   }
 
   const entries: BuildImportOverride[] = [];
   for (const [interfaceName, modules] of overrides.entries()) {
-    modules.forEach(({ module, id }) => entries.push({ interface: interfaceName, source: module, id }));
+    for (const { module, id } of modules) {
+      entries.push({ interface: interfaceName, source: module, id });
+    }
   }
 
   return entries;
 }
 
-function mapArtifactImportOverrides(overrides?: BuildImportOverride[]): ModuleOverrideMap | undefined {
+function mapArtifactImportOverrides(
+  overrides?: BuildImportOverride[],
+): ModuleOverrideMap | undefined {
   if (!overrides || overrides.length === 0) {
     return undefined;
   }
@@ -39,7 +49,10 @@ function mapArtifactImportOverrides(overrides?: BuildImportOverride[]): ModuleOv
   const mapped: ModuleOverrideMap = new Map();
   overrides.forEach((override) => {
     const entries = mapped.get(override.interface) ?? [];
-    const entry: InterfaceConnectionRef = { module: override.source, id: override.id };
+    const entry: InterfaceConnectionRef = {
+      module: override.source,
+      id: override.id,
+    };
     entries.push(entry);
     mapped.set(override.interface, entries);
   });
@@ -47,13 +60,19 @@ function mapArtifactImportOverrides(overrides?: BuildImportOverride[]): ModuleOv
   return mapped;
 }
 
-function serializeBuildModuleEntries(entries: ModuleManifestEntry[]): Record<string, BuildModuleEntry> {
+function serializeBuildModuleEntries(
+  entries: ModuleManifestEntry[],
+): Record<string, BuildModuleEntry> {
   const modules: Record<string, BuildModuleEntry> = {};
 
   entries.forEach((entry) => {
     const manifest = entry.manifest.serialize();
-    const importOverrides = mapBuildImportOverrides(entry.config.importOverrides);
-    const disabledExports = entry.config.disabledExports ? Array.from(entry.config.disabledExports) : undefined;
+    const importOverrides = mapBuildImportOverrides(
+      entry.config.importOverrides,
+    );
+    const disabledExports = entry.config.disabledExports
+      ? Array.from(entry.config.disabledExports)
+      : undefined;
     modules[entry.manifest.name] = {
       ...manifest,
       config: entry.config.config,
@@ -65,7 +84,9 @@ function serializeBuildModuleEntries(entries: ModuleManifestEntry[]): Record<str
   return modules;
 }
 
-export function mapArtifactModuleEntries(artifact: BuildArtifact): ModuleManifestEntry[] {
+export function mapArtifactModuleEntries(
+  artifact: BuildArtifact,
+): ModuleManifestEntry[] {
   return Object.values(artifact.modules).map((entry) => {
     const importOverrides = mapArtifactImportOverrides(entry.importOverrides);
     return {
@@ -80,12 +101,23 @@ export function mapArtifactModuleEntries(artifact: BuildArtifact): ModuleManifes
 }
 
 function createMissingBuildError(projectFolder: string): Error {
-  const buildPath = path.relative(path.resolve(projectFolder), getBuildArtifactPath(projectFolder));
-  const messagePath = buildPath && buildPath.length > 0 ? buildPath : '.antelope/build/build.json';
-  return new Error(`No build found at ${messagePath}\n${BUILD_MISSING_REBUILD_HINT}`);
+  const buildPath = path.relative(
+    path.resolve(projectFolder),
+    getBuildArtifactPath(projectFolder),
+  );
+  const messagePath =
+    buildPath && buildPath.length > 0
+      ? buildPath
+      : ".antelope/build/build.json";
+  return new Error(
+    `No build found at ${messagePath}\n${BUILD_MISSING_REBUILD_HINT}`,
+  );
 }
 
-export async function readBuildArtifactOrThrow(projectFolder: string, fs: NodeFileSystem): Promise<BuildArtifact> {
+export async function readBuildArtifactOrThrow(
+  projectFolder: string,
+  fs: NodeFileSystem,
+): Promise<BuildArtifact> {
   try {
     return await readBuildArtifact(projectFolder, fs);
   } catch {
@@ -108,7 +140,10 @@ export async function warnIfBuildIsStale(
   }
 }
 
-export async function ensureBuildModulesExist(artifact: BuildArtifact, fs: NodeFileSystem): Promise<void> {
+export async function ensureBuildModulesExist(
+  artifact: BuildArtifact,
+  fs: NodeFileSystem,
+): Promise<void> {
   const checks = Object.values(artifact.modules).map(async (entry) => {
     if (await fs.exists(entry.folder)) {
       return;
@@ -130,7 +165,11 @@ export async function writeProjectBuildArtifact(
   entries: ModuleManifestEntry[],
   fs: NodeFileSystem,
 ): Promise<void> {
-  const configHash = await computeConfigHash(normalizedConfig.projectFolder, env, fs);
+  const configHash = await computeConfigHash(
+    normalizedConfig.projectFolder,
+    env,
+    fs,
+  );
   const modules = serializeBuildModuleEntries(entries);
 
   const artifact = createBuildArtifact({

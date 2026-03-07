@@ -1,16 +1,24 @@
-import chalk from 'chalk';
-import { Command, Option } from 'commander';
+import chalk from "chalk";
+import { Command, Option } from "commander";
+import semver from "semver";
 import {
+  type ModuleImport,
+  type ModulePackageJson,
+  mapModuleImport,
+} from "../../../../module-manifest";
+import { error, info, ProgressBar, success, warning } from "../../../cli-ui";
+import {
+  displayNonDefaultGitWarning,
   Options,
   readModuleManifest,
-  writeModuleManifest,
   readUserConfig,
-  displayNonDefaultGitWarning,
-} from '../../../common';
-import { InterfaceInfo, loadInterfaceFromGit, installInterfaces } from '../../../git-operations';
-import { mapModuleImport, ModuleImport, ModulePackageJson } from '../../../../module-manifest';
-import semver from 'semver';
-import { error, warning, info, success, ProgressBar } from '../../../cli-ui';
+  writeModuleManifest,
+} from "../../../common";
+import {
+  type InterfaceInfo,
+  installInterfaces,
+  loadInterfaceFromGit,
+} from "../../../git-operations";
 
 interface AddOptions {
   git?: string;
@@ -63,7 +71,7 @@ interface InterfaceResolveContext {
 }
 
 const EXIT_CODE_ERROR = 1;
-const LATEST_VERSION = 'latest';
+const LATEST_VERSION = "latest";
 
 function createImportCollection(): ImportCollection {
   return {
@@ -77,12 +85,17 @@ function createImportCollection(): ImportCollection {
   };
 }
 
-function getRequestedInterfaceKey(interfaceName: string, interfaceVersion?: string): string {
+function getRequestedInterfaceKey(
+  interfaceName: string,
+  interfaceVersion?: string,
+): string {
   return `${interfaceName}@${interfaceVersion || LATEST_VERSION}`;
 }
 
-function parseInterfaceArg(interfaceArg: string): ProcessedInterfaceArg | undefined {
-  const [interfaceName, interfaceVersion] = interfaceArg.split('@');
+function parseInterfaceArg(
+  interfaceArg: string,
+): ProcessedInterfaceArg | undefined {
+  const [interfaceName, interfaceVersion] = interfaceArg.split("@");
   if (!interfaceName) {
     return undefined;
   }
@@ -107,26 +120,42 @@ function resolveInterfaceVersion(
   if (!isDependency) {
     const reason = `Version ${interfaceVersion} not found`;
     collection.errorMessages.push(
-      `${reason} for interface ${interfaceName}. Available versions: ${interfaceInfo.manifest.versions.join(', ')}`,
+      `${reason} for interface ${interfaceName}. Available versions: ${interfaceInfo.manifest.versions.join(", ")}`,
     );
-    collection.skipped.push({ name: `${interfaceName}@${interfaceVersion}`, reason });
+    collection.skipped.push({
+      name: `${interfaceName}@${interfaceVersion}`,
+      reason,
+    });
   }
 
   return undefined;
 }
 
-function interfaceAlreadyImported(moduleManifest: ModulePackageJson, importName: string, isOptional: boolean): boolean {
+function interfaceAlreadyImported(
+  moduleManifest: ModulePackageJson,
+  importName: string,
+  isOptional: boolean,
+): boolean {
   const antelopeConfig = moduleManifest.antelopeJs;
   if (!antelopeConfig) {
     return false;
   }
-  const importArray = isOptional ? antelopeConfig.importsOptional || [] : antelopeConfig.imports || [];
+  const importArray = isOptional
+    ? antelopeConfig.importsOptional || []
+    : antelopeConfig.imports || [];
   return importArray.some((item) => mapModuleImport(item) === importName);
 }
 
-function createImportObject(options: AddOptions, importName: string): ModuleImport {
+function createImportObject(
+  options: AddOptions,
+  importName: string,
+): ModuleImport {
   if (options.git) {
-    return { name: importName, git: options.git, ...(options.skipInstall && { skipInstall: true }) };
+    return {
+      name: importName,
+      git: options.git,
+      ...(options.skipInstall && { skipInstall: true }),
+    };
   }
   if (options.skipInstall) {
     return { name: importName, skipInstall: true };
@@ -147,7 +176,10 @@ function addImportResult(
   context.collection.interfacesToInstall.push({ interfaceInfo, version });
 
   if (isDependency) {
-    context.collection.addedDependencies.push({ name: interfaceInfo.name, version });
+    context.collection.addedDependencies.push({
+      name: interfaceInfo.name,
+      version,
+    });
     return;
   }
 
@@ -166,11 +198,17 @@ async function processDependencies(
   }
 
   for (const dependency of dependencies.interfaces) {
-    const [depName, depVersion] = dependency.split('@');
+    const [depName, depVersion] = dependency.split("@");
     if (!depName) {
       continue;
     }
-    await resolveInterfaceSource(context, depName, depVersion, isOptional, true);
+    await resolveInterfaceSource(
+      context,
+      depName,
+      depVersion,
+      isOptional,
+      true,
+    );
   }
 }
 
@@ -181,7 +219,10 @@ async function resolveInterfaceSource(
   isOptional: boolean,
   isDependency: boolean,
 ): Promise<void> {
-  const interfaceKey = getRequestedInterfaceKey(interfaceName, interfaceVersion);
+  const interfaceKey = getRequestedInterfaceKey(
+    interfaceName,
+    interfaceVersion,
+  );
   if (context.collection.processedInterfaces.has(interfaceKey)) {
     return;
   }
@@ -189,7 +230,10 @@ async function resolveInterfaceSource(
   const interfaceInfo = await loadInterfaceFromGit(context.git, interfaceName);
   if (!interfaceInfo) {
     if (!isDependency) {
-      context.collection.skipped.push({ name: interfaceKey, reason: 'Interface not found' });
+      context.collection.skipped.push({
+        name: interfaceKey,
+        reason: "Interface not found",
+      });
     }
     return;
   }
@@ -212,9 +256,18 @@ async function resolveInterfaceSource(
 
   context.collection.processedInterfaces.add(resolvedInterfaceKey);
 
-  if (interfaceAlreadyImported(context.moduleManifest, resolvedInterfaceKey, isOptional)) {
+  if (
+    interfaceAlreadyImported(
+      context.moduleManifest,
+      resolvedInterfaceKey,
+      isOptional,
+    )
+  ) {
     if (!isDependency) {
-      context.collection.skipped.push({ name: resolvedInterfaceKey, reason: 'Already imported' });
+      context.collection.skipped.push({
+        name: resolvedInterfaceKey,
+        reason: "Already imported",
+      });
     }
     return;
   }
@@ -240,7 +293,10 @@ function ensureManifestImports(moduleManifest: ModulePackageJson): void {
   }
 }
 
-async function updateModuleConfig(options: AddOptions, collection: ImportCollection): Promise<boolean> {
+async function updateModuleConfig(
+  options: AddOptions,
+  collection: ImportCollection,
+): Promise<boolean> {
   const moduleManifest = await readModuleManifest(options.module);
   if (!moduleManifest) {
     error(chalk.red`Failed to read module manifest after installation`);
@@ -249,9 +305,21 @@ async function updateModuleConfig(options: AddOptions, collection: ImportCollect
   }
 
   ensureManifestImports(moduleManifest);
+  let antelopeJs = moduleManifest.antelopeJs;
+  if (!antelopeJs) {
+    antelopeJs = {
+      imports: [],
+      importsOptional: [],
+    };
+    moduleManifest.antelopeJs = antelopeJs;
+  }
+  const requiredImports = antelopeJs.imports ?? [];
+  const optionalImports = antelopeJs.importsOptional ?? [];
+  antelopeJs.imports = requiredImports;
+  antelopeJs.importsOptional = optionalImports;
 
   for (const { importObj, isOptional } of collection.pendingImports) {
-    const importArray = isOptional ? moduleManifest.antelopeJs!.importsOptional! : moduleManifest.antelopeJs!.imports!;
+    const importArray = isOptional ? optionalImports : requiredImports;
     importArray.push(importObj);
   }
 
@@ -259,14 +327,21 @@ async function updateModuleConfig(options: AddOptions, collection: ImportCollect
   return true;
 }
 
-function displayResult(options: AddOptions, collection: ImportCollection): void {
+function displayResult(
+  options: AddOptions,
+  collection: ImportCollection,
+): void {
   for (const msg of collection.errorMessages) {
     error(chalk.red(msg));
   }
 
   if (collection.added.length > 0) {
-    const actionText = options.skipInstall ? 'added (without installation)' : 'added';
-    success(chalk.green`Successfully ${actionText} ${collection.added.length} interface(s):`);
+    const actionText = options.skipInstall
+      ? "added (without installation)"
+      : "added";
+    success(
+      chalk.green`Successfully ${actionText} ${collection.added.length} interface(s):`,
+    );
     for (const item of collection.added) {
       info(`  • ${chalk.bold(item.name)}@${item.version}`);
     }
@@ -280,9 +355,13 @@ function displayResult(options: AddOptions, collection: ImportCollection): void 
   }
 
   if (collection.addedDependencies.length > 0) {
-    info(chalk.blue`Additionally added ${collection.addedDependencies.length} dependency interface(s):`);
+    info(
+      chalk.blue`Additionally added ${collection.addedDependencies.length} dependency interface(s):`,
+    );
     for (const dep of collection.addedDependencies) {
-      info(`  • ${chalk.bold(dep.name)}@${dep.version} ${chalk.dim('(dependency)')}`);
+      info(
+        `  • ${chalk.bold(dep.name)}@${dep.version} ${chalk.dim("(dependency)")}`,
+      );
     }
   }
 }
@@ -305,7 +384,7 @@ async function processRequestedInterfaces(
 
     const parsed = parseInterfaceArg(interfaceArg);
     if (!parsed) {
-      const reason = 'Invalid interface format';
+      const reason = "Invalid interface format";
       context.collection.errorMessages.push(
         `${reason}: ${interfaceArg}. Use format 'interface@version', e.g., 'database@1'`,
       );
@@ -313,11 +392,20 @@ async function processRequestedInterfaces(
       continue;
     }
 
-    await resolveInterfaceSource(context, parsed.interfaceName, parsed.interfaceVersion, options.optional, false);
+    await resolveInterfaceSource(
+      context,
+      parsed.interfaceName,
+      parsed.interfaceVersion,
+      options.optional,
+      false,
+    );
   }
 }
 
-export async function moduleImportAddCommand(interfaces: string[], options: AddOptions) {
+export async function moduleImportAddCommand(
+  interfaces: string[],
+  options: AddOptions,
+) {
   const userConfig = await readUserConfig();
   const git = options.git || userConfig.git;
   await displayNonDefaultGitWarning(git);
@@ -337,16 +425,25 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
   };
 
   const importProgress = new ProgressBar();
-  importProgress.start(interfaces.length, 0, 'Importing interfaces');
+  importProgress.start(interfaces.length, 0, "Importing interfaces");
 
-  await processRequestedInterfaces(interfaces, options, context, importProgress);
+  await processRequestedInterfaces(
+    interfaces,
+    options,
+    context,
+    importProgress,
+  );
 
-  importProgress.update(interfaces.length, { title: 'Installing interfaces' });
+  importProgress.update(interfaces.length, { title: "Installing interfaces" });
   if (collection.interfacesToInstall.length > 0 && !options.skipInstall) {
-    await installInterfaces(git, options.module, collection.interfacesToInstall);
+    await installInterfaces(
+      git,
+      options.module,
+      collection.interfacesToInstall,
+    );
   }
 
-  importProgress.update(interfaces.length, { title: 'Done' });
+  importProgress.update(interfaces.length, { title: "Done" });
   importProgress.stop();
 
   const updated = await updateModuleConfig(options, collection);
@@ -358,12 +455,25 @@ export async function moduleImportAddCommand(interfaces: string[], options: AddO
 }
 
 export default function () {
-  return new Command('add')
-    .description(`Add interfaces to your module\n` + `Imports interfaces from other modules that your module will use.`)
+  return new Command("add")
+    .description(
+      `Add interfaces to your module\n` +
+        `Imports interfaces from other modules that your module will use.`,
+    )
     .addOption(Options.module)
     .addOption(Options.git)
-    .addOption(new Option('-o, --optional', 'Mark imports as optional').default(false))
-    .addOption(new Option('-s, --skip-install', 'Skip installation of the interface files').default(false))
-    .argument('<interfaces...>', 'Interfaces to add (format: interface@version)')
+    .addOption(
+      new Option("-o, --optional", "Mark imports as optional").default(false),
+    )
+    .addOption(
+      new Option(
+        "-s, --skip-install",
+        "Skip installation of the interface files",
+      ).default(false),
+    )
+    .argument(
+      "<interfaces...>",
+      "Interfaces to add (format: interface@version)",
+    )
     .action(moduleImportAddCommand);
 }

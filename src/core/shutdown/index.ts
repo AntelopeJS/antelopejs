@@ -1,1 +1,1 @@
-export * from './shutdown-manager';
+export * from "./shutdown-manager";

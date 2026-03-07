@@ -1,27 +1,27 @@
-import eventLog, { Log } from '../interfaces/logging/beta/listener';
-import { AntelopeLogging } from '../types';
-import { Logger } from './logger';
-import { LogLevel } from './log-formatter';
-import { mergeDeep } from '../utils/object';
-import { GetResponsibleModule } from '../interfaces/core/beta';
-import { terminalDisplay } from '../core/cli/terminal-display';
-import { formatLogMessageWithRightAlignedDate } from '../core/cli/logging-utils';
+import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
+import { terminalDisplay } from "../core/cli/terminal-display";
+import { GetResponsibleModule } from "../interfaces/core/beta";
+import eventLog, { type Log } from "../interfaces/logging/beta/listener";
+import type { AntelopeLogging } from "../types";
+import { mergeDeep } from "../utils/object";
+import { LogLevel } from "./log-formatter";
+import { Logger } from "./logger";
 
-export { LogFormatter, LogLevel } from './log-formatter';
-export type { LogEntry } from './log-formatter';
-export { LogFilter } from './log-filter';
-export { Logger } from './logger';
-export type { LogTransport } from './logger';
+export { LogFilter } from "./log-filter";
+export type { LogEntry } from "./log-formatter";
+export { LogFormatter, LogLevel } from "./log-formatter";
+export type { LogTransport } from "./logger";
+export { Logger } from "./logger";
 
-const DEFAULT_DATE_FORMAT = 'yyyy-MM-dd HH:mm:ss';
-const LOG_SUFFIX = '{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}';
+const DEFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+const LOG_SUFFIX = "{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}";
 
 export const levelNames: Record<number, string> = {
-  0: 'TRACE',
-  10: 'DEBUG',
-  20: 'INFO',
-  30: 'WARN',
-  40: 'ERROR',
+  0: "TRACE",
+  10: "DEBUG",
+  20: "INFO",
+  30: "WARN",
+  40: "ERROR",
 };
 
 export const levelMap: Record<string, number> = {
@@ -36,11 +36,11 @@ export const defaultConfigLogging: AntelopeLogging = {
   enabled: true,
   moduleTracking: { enabled: false, includes: [], excludes: [] },
   formatter: {
-    '0': `{{chalk.gray}}[{{DATE}}] {{chalk.magenta}}{{chalk.bold}}[TRACE]${LOG_SUFFIX}`,
-    '10': `{{chalk.gray}}[{{DATE}}] {{chalk.blue}}{{chalk.bold}}[DEBUG]${LOG_SUFFIX}`,
-    '20': `{{chalk.gray}}[{{DATE}}] {{chalk.green}}{{chalk.bold}}[INFO]${LOG_SUFFIX}`,
-    '30': `{{chalk.gray}}[{{DATE}}] {{chalk.yellow}}{{chalk.bold}}[WARN]${LOG_SUFFIX}`,
-    '40': `{{chalk.gray}}[{{DATE}}] {{chalk.red}}{{chalk.bold}}[ERROR]${LOG_SUFFIX}`,
+    "0": `{{chalk.gray}}[{{DATE}}] {{chalk.magenta}}{{chalk.bold}}[TRACE]${LOG_SUFFIX}`,
+    "10": `{{chalk.gray}}[{{DATE}}] {{chalk.blue}}{{chalk.bold}}[DEBUG]${LOG_SUFFIX}`,
+    "20": `{{chalk.gray}}[{{DATE}}] {{chalk.green}}{{chalk.bold}}[INFO]${LOG_SUFFIX}`,
+    "30": `{{chalk.gray}}[{{DATE}}] {{chalk.yellow}}{{chalk.bold}}[WARN]${LOG_SUFFIX}`,
+    "40": `{{chalk.gray}}[{{DATE}}] {{chalk.red}}{{chalk.bold}}[ERROR]${LOG_SUFFIX}`,
     default: `{{chalk.gray}}[{{DATE}}] {{chalk.white}}{{chalk.bold}}[LOG]${LOG_SUFFIX}`,
   },
   dateFormat: DEFAULT_DATE_FORMAT,
@@ -54,7 +54,7 @@ const channelCache: Record<string, number> = {};
 const channelFilters: Record<string, number | string> = {};
 
 function resolveLevelValue(level: number | string): number {
-  if (typeof level === 'string') {
+  if (typeof level === "string") {
     const normalized = level.toLowerCase();
     if (normalized in levelMap) {
       return levelMap[normalized];
@@ -76,7 +76,7 @@ function getChannelFilter(channel: string): number {
   let match = -1;
   let matchValue: number | string = levelMap.warn;
   for (const key of Object.keys(loggingConfig.channelFilter)) {
-    if (key.endsWith('*')) {
+    if (key.endsWith("*")) {
       const prefix = key.substring(0, key.length - 1);
       if (channel.startsWith(prefix) && match < key.length - 1) {
         match = key.length - 1;
@@ -110,18 +110,20 @@ function shouldIgnoreModule(module?: string): boolean {
   const includes = tracking.includes ?? [];
 
   if (excludes.length > 0) {
-    return excludes.includes(module ?? '');
+    return excludes.includes(module ?? "");
   }
 
   if (includes.length > 0) {
-    return !includes.includes(module ?? '');
+    return !includes.includes(module ?? "");
   }
 
   return false;
 }
 
 function clearChannelCache(): void {
-  Object.keys(channelCache).forEach((key) => delete channelCache[key]);
+  for (const key of Object.keys(channelCache)) {
+    delete channelCache[key];
+  }
 }
 
 function configureFilters(): void {
@@ -148,12 +150,17 @@ function createDefaultTransport(): void {
       levelId: entry.level,
       args: entry.args,
     };
-    const message = formatLogMessageWithRightAlignedDate(loggingConfig, log, entry.module);
-    const stream = entry.level >= LogLevel.ERROR ? process.stderr : process.stdout;
+    const message = formatLogMessageWithRightAlignedDate(
+      loggingConfig,
+      log,
+      entry.module,
+    );
+    const stream =
+      entry.level >= LogLevel.ERROR ? process.stderr : process.stdout;
     if (terminalDisplay.isSpinnerActive()) {
       terminalDisplay.log(message);
     } else {
-      stream.write(message + '\n');
+      stream.write(`${message}\n`);
     }
   });
 }
@@ -163,7 +170,9 @@ function registerLogHandler(): void {
     if (shouldIgnoreChannel(log)) {
       return;
     }
-    const module = loggingConfig.moduleTracking?.enabled ? GetResponsibleModule() : undefined;
+    const module = loggingConfig.moduleTracking?.enabled
+      ? GetResponsibleModule()
+      : undefined;
     if (shouldIgnoreModule(module) || !globalLogger) {
       return;
     }
@@ -177,8 +186,13 @@ function initializeLogger(): void {
   globalLogger = new Logger();
   globalLogger.setMinLevel(LogLevel.WARN);
   if (loggingConfig.channelFilter) {
-    for (const [channel, level] of Object.entries(loggingConfig.channelFilter)) {
-      globalLogger.setChannelLevel(channel, resolveLevelValue(level) as LogLevel);
+    for (const [channel, level] of Object.entries(
+      loggingConfig.channelFilter,
+    )) {
+      globalLogger.setChannelLevel(
+        channel,
+        resolveLevelValue(level) as LogLevel,
+      );
     }
   }
   if (loggingConfig.moduleTracking?.enabled) {

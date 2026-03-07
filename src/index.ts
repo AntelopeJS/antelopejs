@@ -1,53 +1,53 @@
-import { Logging } from './interfaces/logging/beta';
-import { Writable } from 'stream';
-import { ModuleManager } from './core/module-manager';
-import { NodeFileSystem } from './core/filesystem';
-import { LaunchOptions } from './types';
-import { setupAntelopeProjectLogging } from './logging';
-import { FileWatcher } from './core/watch/file-watcher';
-import { HotReload } from './core/watch/hot-reload';
-import { DEFAULT_ENV } from './core/config/config-paths';
-import { ReplSession } from './core/repl/repl-session';
-import { ShutdownManager } from './core/shutdown';
-import {
-  createLoaderContext,
-  constructAndStartModules,
-  ensureGraphIsValid,
-  getWatchDirs,
-  loadModuleEntriesForManager,
-  registerCoreInterfaces,
-  reloadWatchedModule,
-} from './core/runtime/module-loading';
-import {
-  applyVerboseChannels,
-  loadProjectRuntimeConfig,
-  setupProcessHandlers,
-  withRaisedMaxListeners,
-} from './core/runtime/runtime-bootstrap';
+import { Writable } from "node:stream";
+import { DEFAULT_ENV } from "./core/config/config-paths";
+import { NodeFileSystem } from "./core/filesystem";
+import { ModuleManager } from "./core/module-manager";
+import { ReplSession } from "./core/repl/repl-session";
 import {
   ensureBuildModulesExist,
   mapArtifactModuleEntries,
   readBuildArtifactOrThrow,
   warnIfBuildIsStale,
   writeProjectBuildArtifact,
-} from './core/runtime/build-runtime';
-import { BuildOptions, LoaderContext } from './core/runtime/runtime-types';
+} from "./core/runtime/build-runtime";
+import {
+  constructAndStartModules,
+  createLoaderContext,
+  ensureGraphIsValid,
+  getWatchDirs,
+  loadModuleEntriesForManager,
+  registerCoreInterfaces,
+  reloadWatchedModule,
+} from "./core/runtime/module-loading";
+import {
+  applyVerboseChannels,
+  loadProjectRuntimeConfig,
+  setupProcessHandlers,
+  withRaisedMaxListeners,
+} from "./core/runtime/runtime-bootstrap";
+import type { BuildOptions, LoaderContext } from "./core/runtime/runtime-types";
+import { ShutdownManager } from "./core/shutdown";
+import { FileWatcher } from "./core/watch/file-watcher";
+import { HotReload } from "./core/watch/hot-reload";
+import { Logging } from "./interfaces/logging/beta";
+import { setupAntelopeProjectLogging } from "./logging";
+import type { LaunchOptions } from "./types";
 
-export { ModuleManager } from './core/module-manager';
-export { Module } from './core/module';
-export { ModuleManifest } from './core/module-manifest';
-export { ConfigLoader } from './core/config/config-loader';
-export { DEFAULT_ENV } from './core/config/config-paths';
-export { DownloaderRegistry } from './core/downloaders/registry';
-export { ModuleCache } from './core/module-cache';
-export { LaunchOptions } from './types';
-export { TestModule } from './core/test/test-module';
-export type { BuildOptions } from './core/runtime/runtime-types';
+export { ConfigLoader } from "./core/config/config-loader";
+export { DEFAULT_ENV } from "./core/config/config-paths";
+export { DownloaderRegistry } from "./core/downloaders/registry";
+export { Module } from "./core/module";
+export { ModuleCache } from "./core/module-cache";
+export { ModuleManager } from "./core/module-manager";
+export { ModuleManifest } from "./core/module-manifest";
+export type { BuildOptions } from "./core/runtime/runtime-types";
+export { TestModule } from "./core/test/test-module";
+export { LaunchOptions } from "./types";
 
-const Logger = new Logging.Channel('loader');
+const Logger = new Logging.Channel("loader");
 
 const MAX_STREAM_LISTENERS = 20;
-const INTERACTIVE_PROMPT = '> ';
+const INTERACTIVE_PROMPT = "> ";
 const SHUTDOWN_PRIORITY_MODULES = 30;
 const SHUTDOWN_PRIORITY_RESOURCES = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
@@ -69,7 +69,10 @@ function setActiveShutdownManager(shutdownManager: ShutdownManager): void {
   shutdownManager.setupSignalHandlers();
 }
 
-function registerModuleShutdownHandler(shutdownManager: ShutdownManager, manager: ModuleManager): void {
+function registerModuleShutdownHandler(
+  shutdownManager: ShutdownManager,
+  manager: ModuleManager,
+): void {
   shutdownManager.register(async () => {
     await manager.stopAll();
     await manager.destroyAll();
@@ -97,10 +100,12 @@ async function setupPostLaunchFeatures(
 
   if (options.watch) {
     const watcher = new FileWatcher(fs);
-    const hotReload = new HotReload(async (moduleId) => reloadWatchedModule(manager, moduleId, loaderContext));
+    const hotReload = new HotReload(async (moduleId) =>
+      reloadWatchedModule(manager, moduleId, loaderContext),
+    );
 
     for (const { module } of manager.getLoadedModules()) {
-      if (module.manifest?.source?.type === 'local') {
+      if (module.manifest?.source?.type === "local") {
         const watchDirs = getWatchDirs(module.manifest.source);
         await watcher.scanModule(module.id, module.manifest.folder, watchDirs);
       }
@@ -127,14 +132,30 @@ async function setupPostLaunchFeatures(
   setActiveShutdownManager(shutdownManager);
 }
 
-async function initializeCore(projectFolder: string, env: string, options: LaunchOptions): Promise<CoreInitialization> {
+async function initializeCore(
+  projectFolder: string,
+  env: string,
+  options: LaunchOptions,
+): Promise<CoreInitialization> {
   const shutdownManager = new ShutdownManager();
-  const runtimeConfig = await loadProjectRuntimeConfig(projectFolder, env, options, shutdownManager);
-  const loaderContext = await createLoaderContext(runtimeConfig.normalizedConfig);
+  const runtimeConfig = await loadProjectRuntimeConfig(
+    projectFolder,
+    env,
+    options,
+    shutdownManager,
+  );
+  const loaderContext = await createLoaderContext(
+    runtimeConfig.normalizedConfig,
+  );
 
   const manager = await withRaisedMaxListeners(async () => {
     const moduleManager = new ModuleManager();
-    await loadModuleEntriesForManager(moduleManager, runtimeConfig.normalizedConfig, true, loaderContext);
+    await loadModuleEntriesForManager(
+      moduleManager,
+      runtimeConfig.normalizedConfig,
+      true,
+      loaderContext,
+    );
     await constructAndStartModules(moduleManager);
     return moduleManager;
   });
@@ -148,7 +169,7 @@ async function initializeCore(projectFolder: string, env: string, options: Launc
 }
 
 export async function launch(
-  projectFolder: string = '.',
+  projectFolder: string = ".",
   env: string = DEFAULT_ENV,
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {
@@ -164,17 +185,30 @@ export async function launch(
 }
 
 export async function build(
-  projectFolder: string = '.',
+  projectFolder: string = ".",
   env: string = DEFAULT_ENV,
   options: BuildOptions = {},
 ): Promise<void> {
-  const runtimeConfig = await loadProjectRuntimeConfig(projectFolder, env, options);
+  const runtimeConfig = await loadProjectRuntimeConfig(
+    projectFolder,
+    env,
+    options,
+  );
 
   await withRaisedMaxListeners(async () => {
     const manager = new ModuleManager();
-    const entries = await loadModuleEntriesForManager(manager, runtimeConfig.normalizedConfig, false);
+    const entries = await loadModuleEntriesForManager(
+      manager,
+      runtimeConfig.normalizedConfig,
+      false,
+    );
     ensureGraphIsValid(manager);
-    await writeProjectBuildArtifact(runtimeConfig.normalizedConfig, env, entries, runtimeConfig.fs);
+    await writeProjectBuildArtifact(
+      runtimeConfig.normalizedConfig,
+      env,
+      entries,
+      runtimeConfig.fs,
+    );
   });
 }
 
@@ -182,7 +216,9 @@ function logEnvironmentMismatch(startEnv: string, buildEnv: string): void {
   if (startEnv === buildEnv) {
     return;
   }
-  Logger.Info(`Starting build created for environment '${buildEnv}' with runtime env '${startEnv}'`);
+  Logger.Info(
+    `Starting build created for environment '${buildEnv}' with runtime env '${startEnv}'`,
+  );
 }
 
 async function buildManagerFromArtifact(
@@ -198,7 +234,7 @@ async function buildManagerFromArtifact(
 }
 
 export async function launchFromBuild(
-  projectFolder: string = '.',
+  projectFolder: string = ".",
   env: string = DEFAULT_ENV,
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {

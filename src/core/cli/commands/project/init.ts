@@ -1,68 +1,82 @@
-import chalk from 'chalk';
-import { Command } from 'commander';
-import inquirer from 'inquirer';
-import path from 'path';
-import { readConfig, writeConfig } from '../../common';
-import { handlers, projectModulesAddCommand } from './modules/add';
-import { moduleInitCommand } from '../module/init';
-import { Spinner, displayBox, error, info, warning } from '../../cli-ui';
-import { mkdir, stat } from 'fs/promises';
-import { AntelopeConfig } from '../../../../types';
+import { mkdir, stat } from "node:fs/promises";
+import path from "node:path";
+import chalk from "chalk";
+import { Command } from "commander";
+import inquirer from "inquirer";
+import type { AntelopeConfig } from "../../../../types";
+import { displayBox, error, info, Spinner, warning } from "../../cli-ui";
+import { readConfig, writeConfig } from "../../common";
+import { moduleInitCommand } from "../module/init";
+import { handlers, projectModulesAddCommand } from "./modules/add";
 
 interface ProjectInitAnswers {
   name: string;
 }
 
 export default function () {
-  return new Command('init')
+  return new Command("init")
     .description(
       `Create a new AntelopeJS project\n` +
         `Creates a new project with an antelope.config.ts file and optionally sets up your first module.`,
     )
-    .argument('<project>', 'Directory path for the new project')
+    .argument("<project>", "Directory path for the new project")
     .action(async (project: string) => {
-      console.log(''); // Add some spacing for better readability
+      console.log(""); // Add some spacing for better readability
 
       const resolvedProjectPath = path.resolve(project);
 
       // Check if project already exists
-      const spinner = new Spinner('Checking project path');
+      const spinner = new Spinner("Checking project path");
       await spinner.start();
 
       if (await readConfig(resolvedProjectPath)) {
-        await spinner.fail(`Project already exists at ${chalk.bold(resolvedProjectPath)}`);
-        warning(chalk.yellow`Use a different directory or delete the existing project.`);
+        await spinner.fail(
+          `Project already exists at ${chalk.bold(resolvedProjectPath)}`,
+        );
+        warning(
+          chalk.yellow`Use a different directory or delete the existing project.`,
+        );
         process.exitCode = 1;
         return;
       }
 
-      await spinner.succeed(`Project path ${chalk.bold(resolvedProjectPath)} is available`);
+      await spinner.succeed(
+        `Project path ${chalk.bold(resolvedProjectPath)} is available`,
+      );
 
       // Display welcome message
-      console.log('');
-      info('Welcome to the AntelopeJS project creation wizard!');
-      console.log(chalk.dim('Please provide the following information to set up your project.'));
-      console.log('');
+      console.log("");
+      info("Welcome to the AntelopeJS project creation wizard!");
+      console.log(
+        chalk.dim(
+          "Please provide the following information to set up your project.",
+        ),
+      );
+      console.log("");
 
       // Prompt for project details
       const answers = await inquirer.prompt<ProjectInitAnswers>([
         {
-          type: 'input',
-          name: 'name',
-          message: 'What would you like to name your project?',
+          type: "input",
+          name: "name",
+          message: "What would you like to name your project?",
           default: path.basename(resolvedProjectPath),
         },
       ]);
 
       // Create project configuration
-      const configSpinner = new Spinner('Creating project configuration');
+      const configSpinner = new Spinner("Creating project configuration");
       await configSpinner.start();
 
       // Create the project directory if it doesn't exist
-      const projectDirExists = await stat(resolvedProjectPath).catch(() => false);
+      const projectDirExists = await stat(resolvedProjectPath).catch(
+        () => false,
+      );
       if (!projectDirExists) {
         await mkdir(resolvedProjectPath, { recursive: true });
-        await configSpinner.update(`Created project directory at ${chalk.bold(resolvedProjectPath)}`);
+        await configSpinner.update(
+          `Created project directory at ${chalk.bold(resolvedProjectPath)}`,
+        );
       }
 
       const projectConfig: Partial<AntelopeConfig> = {
@@ -71,16 +85,16 @@ export default function () {
       };
 
       await writeConfig(resolvedProjectPath, projectConfig);
-      await configSpinner.succeed('Project configuration created successfully');
+      await configSpinner.succeed("Project configuration created successfully");
 
-      console.log('');
+      console.log("");
 
       // Ask about app module
       const { blmodule } = await inquirer.prompt<{ blmodule: boolean }>([
         {
-          type: 'confirm',
-          name: 'blmodule',
-          message: 'Do you have an existing app module you want to import?',
+          type: "confirm",
+          name: "blmodule",
+          message: "Do you have an existing app module you want to import?",
           default: false,
         },
       ]);
@@ -88,17 +102,17 @@ export default function () {
       if (blmodule) {
         const { source } = await inquirer.prompt<{ source: string }>([
           {
-            type: 'list',
-            name: 'source',
-            message: 'Where is your app module located?',
-            choices: [...handlers.keys()].filter((key) => key !== 'dir'),
+            type: "list",
+            name: "source",
+            message: "Where is your app module located?",
+            choices: [...handlers.keys()].filter((key) => key !== "dir"),
           },
         ]);
 
         const { module } = await inquirer.prompt<{ module: string }>([
           {
-            type: 'input',
-            name: 'module',
+            type: "input",
+            name: "module",
             message: `Please specify the ${source} source location:
   • npm: Package name (e.g., "my-package")
   • git: Repository URL (e.g., "https://github.com/user/repo")
@@ -106,31 +120,44 @@ export default function () {
           },
         ]);
 
-        await projectModulesAddCommand([module], { mode: source, project: resolvedProjectPath });
+        await projectModulesAddCommand([module], {
+          mode: source,
+          project: resolvedProjectPath,
+        });
       } else {
         try {
           await moduleInitCommand(resolvedProjectPath, {}, true);
-          await projectModulesAddCommand(['.'], { mode: 'local', project: resolvedProjectPath });
+          await projectModulesAddCommand(["."], {
+            mode: "local",
+            project: resolvedProjectPath,
+          });
         } catch (err) {
-          console.log('');
-          error(err instanceof Error ? err : `Failed to create module: ${String(err)}`);
-          error('Project creation stopped due to module initialization failure.');
+          console.log("");
+          error(
+            err instanceof Error
+              ? err
+              : `Failed to create module: ${String(err)}`,
+          );
+          error(
+            "Project creation stopped due to module initialization failure.",
+          );
           process.exitCode = 1;
           return;
         }
       }
 
       // Display success message
-      console.log('');
-      const cdInstruction = project === '.' ? '' : chalk.cyan(`cd ${resolvedProjectPath}`) + '\n';
+      console.log("");
+      const cdInstruction =
+        project === "." ? "" : `${chalk.cyan(`cd ${resolvedProjectPath}`)}\n`;
       await displayBox(
         `Your AntelopeJS project ${chalk.green.bold(answers.name)} has been successfully initialized!\n\n` +
-          `${chalk.dim('To get started, run:')}\n` +
+          `${chalk.dim("To get started, run:")}\n` +
           `${cdInstruction}` +
-          `${chalk.cyan('ajs project modules install')}\n` +
-          `${chalk.cyan('ajs project run -w')}`,
-        '\u{f135}  Project Created',
-        { borderColor: 'green' },
+          `${chalk.cyan("ajs project modules install")}\n` +
+          `${chalk.cyan("ajs project run -w")}`,
+        "\u{f135}  Project Created",
+        { borderColor: "green" },
       );
     });
 }

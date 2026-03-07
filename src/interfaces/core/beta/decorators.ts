@@ -29,18 +29,33 @@ export type PropertyDecorator = (t: any, key: PropertyKey) => void;
 /**
  * Represents a method decorator that can be applied to class methods or accessors.
  */
-export type MethodDecorator = (t: any, key: PropertyKey, descriptor: PropertyDescriptor) => void;
+export type MethodDecorator = (
+  t: any,
+  key: PropertyKey,
+  descriptor: PropertyDescriptor,
+) => void;
 
 /**
  * Represents a parameter decorator that can be applied to method parameters.
  */
-export type ParameterDecorator = (t: any, key: PropertyKey, index: number) => void;
+export type ParameterDecorator = (
+  t: any,
+  key: PropertyKey,
+  index: number,
+) => void;
 
 type ArrayValues<T> = T extends Array<infer R> ? R : never;
 
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+  k: infer I,
+) => void
+  ? I
+  : never;
 
-type MergeArray<A extends any[], B extends any[]> = A extends [infer P, ...infer PR]
+type MergeArray<A extends any[], B extends any[]> = A extends [
+  infer P,
+  ...infer PR,
+]
   ? B extends [infer Q, ...infer QR]
     ? [P | Q, ...MergeArray<PR, QR>]
     : [P | undefined, ...MergeArray<PR, []>]
@@ -51,13 +66,18 @@ type MergeArray<A extends any[], B extends any[]> = A extends [infer P, ...infer
 type UnwrapFunctions<T extends Func[]> = T extends [infer F]
   ? Parameters<F extends Func ? F : never>
   : T extends [infer F1, ...infer F2]
-    ? MergeArray<Parameters<F1 extends Func ? F1 : never>, UnwrapFunctions<F2 extends Func[] ? F2 : never>>
+    ? MergeArray<
+        Parameters<F1 extends Func ? F1 : never>,
+        UnwrapFunctions<F2 extends Func[] ? F2 : never>
+      >
     : [];
 
-type Function1<T extends Func[], A extends any[], R = void, AR extends any[] = UnwrapFunctions<T>> = (
-  a1: AR[0],
-  ...args: A
-) => R;
+type Function1<
+  T extends Func[],
+  A extends any[],
+  R = void,
+  AR extends any[] = UnwrapFunctions<T>,
+> = (a1: AR[0], ...args: A) => R;
 function Decorator1<F extends Func[], T extends any[], R = void>(
   handler: Function1<F, T, R>,
 ): (...args: T) => UnionToIntersection<ArrayValues<F>> {
@@ -66,11 +86,12 @@ function Decorator1<F extends Func[], T extends any[], R = void>(
       handler(a, ...args);
 }
 
-type Function2<T extends Func[], A extends any[], R = void, AR extends any[] = UnwrapFunctions<T>> = (
-  a1: AR[0],
-  a2: AR[1],
-  ...args: A
-) => R;
+type Function2<
+  T extends Func[],
+  A extends any[],
+  R = void,
+  AR extends any[] = UnwrapFunctions<T>,
+> = (a1: AR[0], a2: AR[1], ...args: A) => R;
 function Decorator2<F extends Func[], T extends any[], R = void>(
   handler: Function2<F, T, R>,
 ): (...args: T) => UnionToIntersection<ArrayValues<F>> {
@@ -79,12 +100,12 @@ function Decorator2<F extends Func[], T extends any[], R = void>(
       handler(a, b, ...args);
 }
 
-type Function3<T extends Func[], A extends any[], R = void, AR extends any[] = UnwrapFunctions<T>> = (
-  a1: AR[0],
-  a2: AR[1],
-  a3: AR[2],
-  ...args: A
-) => R;
+type Function3<
+  T extends Func[],
+  A extends any[],
+  R = void,
+  AR extends any[] = UnwrapFunctions<T>,
+> = (a1: AR[0], a2: AR[1], a3: AR[2], ...args: A) => R;
 function Decorator3<F extends Func[], T extends any[], R = void>(
   handler: Function3<F, T, R>,
 ): (...args: T) => UnionToIntersection<ArrayValues<F>> {
@@ -103,7 +124,9 @@ function Decorator3<F extends Func[], T extends any[], R = void>(
  * @param handler - Decorator callback function that receives the target class and factory parameters
  * @returns Decorator factory function that accepts parameters and returns a class decorator
  */
-export function MakeClassDecorator<T extends any[]>(handler: Function1<[ClassDecorator], T, any>) {
+export function MakeClassDecorator<T extends any[]>(
+  handler: Function1<[ClassDecorator], T, any>,
+) {
   return Decorator1<[ClassDecorator], T, any>(handler);
 }
 
@@ -117,7 +140,9 @@ export function MakeClassDecorator<T extends any[]>(handler: Function1<[ClassDec
  * @param handler - Decorator callback function that receives the target object, property key, and factory parameters
  * @returns Decorator factory function that accepts parameters and returns a property decorator
  */
-export function MakePropertyDecorator<T extends any[]>(handler: Function2<[PropertyDecorator], T, void>) {
+export function MakePropertyDecorator<T extends any[]>(
+  handler: Function2<[PropertyDecorator], T, void>,
+) {
   return Decorator2<[PropertyDecorator], T, void>(handler);
 }
 
@@ -135,7 +160,9 @@ export function MakePropertyDecorator<T extends any[]>(handler: Function2<[Prope
 export function MakePropertyAndClassDecorator<T extends any[]>(
   handler: Function2<[PropertyDecorator, ClassDecorator], T, any | undefined>,
 ) {
-  return Decorator2<[PropertyDecorator, ClassDecorator], T, any | undefined>(handler);
+  return Decorator2<[PropertyDecorator, ClassDecorator], T, any | undefined>(
+    handler,
+  );
 }
 
 /**
@@ -146,7 +173,9 @@ export function MakePropertyAndClassDecorator<T extends any[]>(
  * @param handler Decorator callback
  * @returns Decorator factory
  */
-export function MakeMethodDecorator<T extends any[]>(handler: Function3<[MethodDecorator], T, void>) {
+export function MakeMethodDecorator<T extends any[]>(
+  handler: Function3<[MethodDecorator], T, void>,
+) {
   return Decorator3<[MethodDecorator], T, void>(handler);
 }
 
@@ -161,7 +190,9 @@ export function MakeMethodDecorator<T extends any[]>(handler: Function3<[MethodD
 export function MakeMethodAndClassDecorator<T extends any[]>(
   handler: Function3<[MethodDecorator, ClassDecorator], T, any | undefined>,
 ) {
-  return Decorator3<[MethodDecorator, ClassDecorator], T, any | undefined>(handler);
+  return Decorator3<[MethodDecorator, ClassDecorator], T, any | undefined>(
+    handler,
+  );
 }
 
 /**
@@ -187,9 +218,17 @@ export function MakeMethodAndPropertyDecorator<T extends any[]>(
  * @returns Decorator factory
  */
 export function MakeMethodAndPropertyAndClassDecorator<T extends any[]>(
-  handler: Function3<[MethodDecorator, PropertyDecorator, ClassDecorator], T, any | undefined>,
+  handler: Function3<
+    [MethodDecorator, PropertyDecorator, ClassDecorator],
+    T,
+    any | undefined
+  >,
 ) {
-  return Decorator3<[MethodDecorator, PropertyDecorator, ClassDecorator], T, any | undefined>(handler);
+  return Decorator3<
+    [MethodDecorator, PropertyDecorator, ClassDecorator],
+    T,
+    any | undefined
+  >(handler);
 }
 
 /**
@@ -200,7 +239,9 @@ export function MakeMethodAndPropertyAndClassDecorator<T extends any[]>(
  * @param handler Decorator callback
  * @returns Decorator factory
  */
-export function MakeParameterDecorator<T extends any[]>(handler: Function3<[ParameterDecorator], T, void>) {
+export function MakeParameterDecorator<T extends any[]>(
+  handler: Function3<[ParameterDecorator], T, void>,
+) {
   return Decorator3<[ParameterDecorator], T, void>(handler);
 }
 
@@ -215,7 +256,9 @@ export function MakeParameterDecorator<T extends any[]>(handler: Function3<[Para
 export function MakeParameterAndClassDecorator<T extends any[]>(
   handler: Function3<[ParameterDecorator, ClassDecorator], T, any | undefined>,
 ) {
-  return Decorator3<[ParameterDecorator, ClassDecorator], T, any | undefined>(handler);
+  return Decorator3<[ParameterDecorator, ClassDecorator], T, any | undefined>(
+    handler,
+  );
 }
 
 /**
@@ -241,9 +284,17 @@ export function MakeParameterAndPropertyDecorator<T extends any[]>(
  * @returns Decorator factory
  */
 export function MakeParameterAndPropertyAndClassDecorator<T extends any[]>(
-  handler: Function3<[ParameterDecorator, PropertyDecorator, ClassDecorator], T, any | undefined>,
+  handler: Function3<
+    [ParameterDecorator, PropertyDecorator, ClassDecorator],
+    T,
+    any | undefined
+  >,
 ) {
-  return Decorator3<[ParameterDecorator, PropertyDecorator, ClassDecorator], T, any | undefined>(handler);
+  return Decorator3<
+    [ParameterDecorator, PropertyDecorator, ClassDecorator],
+    T,
+    any | undefined
+  >(handler);
 }
 
 /**
@@ -269,9 +320,17 @@ export function MakeParameterAndMethodDecorator<T extends any[]>(
  * @returns Decorator factory
  */
 export function MakeParameterAndMethodAndClassDecorator<T extends any[]>(
-  handler: Function3<[ParameterDecorator, MethodDecorator, ClassDecorator], T, any | undefined>,
+  handler: Function3<
+    [ParameterDecorator, MethodDecorator, ClassDecorator],
+    T,
+    any | undefined
+  >,
 ) {
-  return Decorator3<[ParameterDecorator, MethodDecorator, ClassDecorator], T, any | undefined>(handler);
+  return Decorator3<
+    [ParameterDecorator, MethodDecorator, ClassDecorator],
+    T,
+    any | undefined
+  >(handler);
 }
 
 /**
@@ -283,9 +342,17 @@ export function MakeParameterAndMethodAndClassDecorator<T extends any[]>(
  * @returns Decorator factory
  */
 export function MakeParameterAndMethodAndPropertyDecorator<T extends any[]>(
-  handler: Function3<[ParameterDecorator, MethodDecorator, PropertyDecorator], T, void>,
+  handler: Function3<
+    [ParameterDecorator, MethodDecorator, PropertyDecorator],
+    T,
+    void
+  >,
 ) {
-  return Decorator3<[ParameterDecorator, MethodDecorator, PropertyDecorator], T, void>(handler);
+  return Decorator3<
+    [ParameterDecorator, MethodDecorator, PropertyDecorator],
+    T,
+    void
+  >(handler);
 }
 
 /**
@@ -296,10 +363,18 @@ export function MakeParameterAndMethodAndPropertyDecorator<T extends any[]>(
  * @param handler Decorator callback
  * @returns Decorator factory
  */
-export function MakeParameterAndMethodAndPropertyAndClassDecorator<T extends any[]>(
-  handler: Function3<[ParameterDecorator, MethodDecorator, PropertyDecorator, ClassDecorator], T, any | undefined>,
+export function MakeParameterAndMethodAndPropertyAndClassDecorator<
+  T extends any[],
+>(
+  handler: Function3<
+    [ParameterDecorator, MethodDecorator, PropertyDecorator, ClassDecorator],
+    T,
+    any | undefined
+  >,
 ) {
-  return Decorator3<[ParameterDecorator, MethodDecorator, PropertyDecorator, ClassDecorator], T, any | undefined>(
-    handler,
-  );
+  return Decorator3<
+    [ParameterDecorator, MethodDecorator, PropertyDecorator, ClassDecorator],
+    T,
+    any | undefined
+  >(handler);
 }
