@@ -1,5 +1,5 @@
-import 'reflect-metadata';
-import { Class } from './decorators';
+import "reflect-metadata";
+import type { Class } from "./decorators";
 /**
  * Represents a connection to an interface implementation.
  *

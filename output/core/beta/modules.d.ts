@@ -1,4 +1,4 @@
-import { EventProxy } from '.';
+import { EventProxy } from ".";
 /**
  * Contains events related to module lifecycle management.
  *
@@ -86,7 +86,7 @@ export type ModuleInfo = Required<ModuleDefinition> & {
      * - 'active': Module is fully started and running
      * - 'unknown': Module status cannot be determined
      */
-    status: 'loaded' | 'constructed' | 'active' | 'unknown';
+    status: "loaded" | "constructed" | "active" | "unknown";
     /**
      * File system path where the module is located.
      */
