@@ -1,4 +1,4 @@
-import eventLog from './listener';
+import eventLog from "./listener";
 
 /**
  * Provides a structured logging system with multiple severity levels and channels.
@@ -106,7 +106,7 @@ export namespace Logging {
     }
   }
 
-  const MainChannel = new Channel('main');
+  const MainChannel = new Channel("main");
 
   /**
    * Write arguments to the main log channel at the ERROR level.
@@ -115,6 +115,7 @@ export namespace Logging {
    *
    * @param args - Values to log, which can be of any type and will be serialized appropriately
    */
+  // biome-ignore lint/suspicious/noShadowRestrictedNames: public logging API exposes Error as a level name.
   export const Error = MainChannel.Error.bind(MainChannel);
 
   /**
@@ -166,7 +167,11 @@ export namespace Logging {
    * @param channel - Name of the channel to log to, useful for categorizing logs
    * @param args - Values to log, which can be of any type and will be serialized appropriately
    */
-  export function Write(levelId: number, channel: string, ...args: any[]): void {
+  export function Write(
+    levelId: number,
+    channel: string,
+    ...args: any[]
+  ): void {
     eventLog.emit({
       time: Date.now(),
       channel,

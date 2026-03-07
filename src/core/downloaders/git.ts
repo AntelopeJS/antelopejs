@@ -1,15 +1,15 @@
-import { DownloaderRegistry } from './registry';
-import { ModuleCache } from '../module-cache';
-import { ModuleManifest } from '../module-manifest';
-import { IFileSystem, ModuleSourceGit } from '../../types';
-import { NodeFileSystem } from '../filesystem';
-import { CommandRunner } from './types';
-import { ExecuteCMD } from '../cli/command';
-import { Logging } from '../../interfaces/logging/beta';
-import { terminalDisplay } from '../cli/terminal-display';
-import { runInstallCommands } from './utils';
+import { Logging } from "../../interfaces/logging/beta";
+import type { IFileSystem, ModuleSourceGit } from "../../types";
+import { ExecuteCMD } from "../cli/command";
+import { terminalDisplay } from "../cli/terminal-display";
+import { NodeFileSystem } from "../filesystem";
+import type { ModuleCache } from "../module-cache";
+import { ModuleManifest } from "../module-manifest";
+import type { DownloaderRegistry } from "./registry";
+import type { CommandRunner } from "./types";
+import { runInstallCommands } from "./utils";
 
-const Logger = new Logging.Channel('loader.git');
+const Logger = new Logging.Channel("loader.git");
 
 export interface GitDownloaderDeps {
   fs?: IFileSystem;
@@ -17,27 +17,35 @@ export interface GitDownloaderDeps {
 }
 
 function urlToFile(url: string): string {
-  return url.replace(/[^a-zA-Z0-9_]/g, '_');
+  return url.replace(/[^a-zA-Z0-9_]/g, "_");
 }
 
-async function commitAt(branch: string, cwd: string, exec: CommandRunner): Promise<string> {
+async function commitAt(
+  branch: string,
+  cwd: string,
+  exec: CommandRunner,
+): Promise<string> {
   let res: { stdout: string; stderr: string; code: number };
   try {
     res = await exec(`git rev-parse ${branch}`, { cwd });
   } catch (err) {
-    await terminalDisplay.failSpinner(`Failed to get commit hash for ${branch}: ${String(err)}`);
+    await terminalDisplay.failSpinner(
+      `Failed to get commit hash for ${branch}: ${String(err)}`,
+    );
     throw new Error(`Failed to get commit hash for ${branch}: ${String(err)}`);
   }
   if (res.code !== 0) {
-    await terminalDisplay.failSpinner(`Failed to get commit hash for ${branch}: ${res.stderr}`);
+    await terminalDisplay.failSpinner(
+      `Failed to get commit hash for ${branch}: ${res.stderr}`,
+    );
     throw new Error(`Failed to get commit hash for ${branch}: ${res.stderr}`);
   }
   return res.stdout.trim();
 }
 
 async function mainBranch(cwd: string, exec: CommandRunner): Promise<string> {
-  const res = await exec('git symbolic-ref refs/remotes/origin/HEAD', { cwd });
-  return res.stdout.split('/')[3].trim();
+  const res = await exec("git symbolic-ref refs/remotes/origin/HEAD", { cwd });
+  return res.stdout.split("/")[3].trim();
 }
 
 interface RepoUpdateResult {
@@ -55,7 +63,7 @@ async function cloneOrFetchRepo(
   const cacheVersion = cache.getVersion(name);
   const branch = source.commit || source.branch;
 
-  if (source.ignoreCache || !cacheVersion?.startsWith('git:')) {
+  if (source.ignoreCache || !cacheVersion?.startsWith("git:")) {
     await terminalDisplay.startSpinner(`Cloning ${source.remote}`);
     await cache.getFolder(name, false, true);
     await exec(`git clone ${source.remote} ${name}`, { cwd: cache.path });
@@ -63,7 +71,7 @@ async function cloneOrFetchRepo(
       await exec(`git checkout ${branch}`, { cwd: folder });
     }
     await terminalDisplay.stopSpinner(`Cloned ${source.remote}`);
-    const newActiveCommit = await commitAt('HEAD', folder, exec);
+    const newActiveCommit = await commitAt("HEAD", folder, exec);
     const newBranch = branch ?? (await mainBranch(folder, exec));
     return {
       newVersion: `git:${newBranch}:${newActiveCommit}`,
@@ -71,9 +79,9 @@ async function cloneOrFetchRepo(
     };
   }
 
-  const [, prevBranch, prevCommit] = cacheVersion.split(':');
+  const [, prevBranch, prevCommit] = cacheVersion.split(":");
   await terminalDisplay.startSpinner(`Updating ${source.remote}`);
-  await exec('git fetch', { cwd: folder });
+  await exec("git fetch", { cwd: folder });
   const newBranch = branch ?? (await mainBranch(folder, exec));
   if (prevBranch !== newBranch) {
     await exec(`git checkout ${newBranch}`, { cwd: folder });
@@ -81,13 +89,13 @@ async function cloneOrFetchRepo(
   if (!source.commit) {
     const originCommit = await commitAt(`origin/${newBranch}`, folder, exec);
     if (originCommit !== prevCommit) {
-      await exec('git pull', { cwd: folder });
+      await exec("git pull", { cwd: folder });
     }
   }
-  const newActiveCommit = await commitAt('HEAD', folder, exec);
+  const newActiveCommit = await commitAt("HEAD", folder, exec);
   await terminalDisplay.stopSpinner(`Updated ${source.remote}`);
   if (newActiveCommit === prevCommit) {
-    return { newVersion: '', shouldInstallDependencies: false };
+    return { newVersion: "", shouldInstallDependencies: false };
   }
   return {
     newVersion: `git:${newBranch}:${newActiveCommit}`,
@@ -95,29 +103,53 @@ async function cloneOrFetchRepo(
   };
 }
 
-export function registerGitDownloader(registry: DownloaderRegistry, deps: GitDownloaderDeps = {}): void {
+export function registerGitDownloader(
+  registry: DownloaderRegistry,
+  deps: GitDownloaderDeps = {},
+): void {
   const fs = deps.fs ?? new NodeFileSystem();
   const exec = deps.exec ?? ExecuteCMD;
 
-  registry.register('git', 'remote', async (cache: ModuleCache, source: ModuleSourceGit) => {
-    Logger.Debug(`Git loader called for ${source.remote}`);
-    const name = urlToFile(source.remote);
-    Logger.Trace(`Starting Git module load for ${name}`);
-    const folder = await cache.getFolder(name, true, true);
-    const updateResult = await cloneOrFetchRepo(cache, source, exec, name, folder);
+  registry.register(
+    "git",
+    "remote",
+    async (cache: ModuleCache, source: ModuleSourceGit) => {
+      Logger.Debug(`Git loader called for ${source.remote}`);
+      const name = urlToFile(source.remote);
+      Logger.Trace(`Starting Git module load for ${name}`);
+      const folder = await cache.getFolder(name, true, true);
+      const updateResult = await cloneOrFetchRepo(
+        cache,
+        source,
+        exec,
+        name,
+        folder,
+      );
 
-    if (updateResult.shouldInstallDependencies) {
-      Logger.Debug(`Running install commands for ${name}`);
-      await runInstallCommands(exec, Logger, name, folder, source.installCommand);
-    }
+      if (updateResult.shouldInstallDependencies) {
+        Logger.Debug(`Running install commands for ${name}`);
+        await runInstallCommands(
+          exec,
+          Logger,
+          name,
+          folder,
+          source.installCommand,
+        );
+      }
 
-    Logger.Trace(`Git module load completed for ${name}`);
-    if (updateResult.newVersion) {
-      cache.setVersion(name, updateResult.newVersion);
-    }
+      Logger.Trace(`Git module load completed for ${name}`);
+      if (updateResult.newVersion) {
+        cache.setVersion(name, updateResult.newVersion);
+      }
 
-    const moduleName = source.id ?? name;
-    const manifest = await ModuleManifest.create(folder, source, moduleName, fs);
-    return [manifest];
-  });
+      const moduleName = source.id ?? name;
+      const manifest = await ModuleManifest.create(
+        folder,
+        source,
+        moduleName,
+        fs,
+      );
+      return [manifest];
+    },
+  );
 }

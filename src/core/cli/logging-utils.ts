@@ -1,5 +1,5 @@
-import chalk from 'chalk';
-import { AntelopeLogging } from '../../types';
+import chalk from "chalk";
+import type { AntelopeLogging } from "../../types";
 
 const LOG_LEVELS = {
   ERROR: 40,
@@ -22,8 +22,8 @@ const COLOR_FUNCTIONS: Record<string, (text: string) => string> = {
 };
 
 // Terminal control sequences
-export const NEWLINE = '\n';
-export const OVERWRITE_CURRENT_LINE = '\r\x1b[K';
+export const NEWLINE = "\n";
+export const OVERWRITE_CURRENT_LINE = "\r\x1b[K";
 
 // map created this way because Logging.Level is undefined on firsts calls
 export const getLevelInfo = (() => {
@@ -32,15 +32,15 @@ export const getLevelInfo = (() => {
   return (levelId: number): { name: string; color: string } => {
     if (!map) {
       map = {
-        [LOG_LEVELS.ERROR]: { name: 'ERROR', color: 'red' },
-        [LOG_LEVELS.WARN]: { name: 'WARN', color: 'yellow' },
-        [LOG_LEVELS.INFO]: { name: 'INFO', color: 'green' },
-        [LOG_LEVELS.DEBUG]: { name: 'DEBUG', color: 'blue' },
-        [LOG_LEVELS.TRACE]: { name: 'TRACE', color: 'magenta' },
-        [LOG_LEVELS.NO_PREFIX]: { name: '', color: 'white' },
+        [LOG_LEVELS.ERROR]: { name: "ERROR", color: "red" },
+        [LOG_LEVELS.WARN]: { name: "WARN", color: "yellow" },
+        [LOG_LEVELS.INFO]: { name: "INFO", color: "green" },
+        [LOG_LEVELS.DEBUG]: { name: "DEBUG", color: "blue" },
+        [LOG_LEVELS.TRACE]: { name: "TRACE", color: "magenta" },
+        [LOG_LEVELS.NO_PREFIX]: { name: "", color: "white" },
       };
     }
-    return map[levelId] ?? { name: 'LOG', color: 'white' };
+    return map[levelId] ?? { name: "LOG", color: "white" };
   };
 })();
 
@@ -62,8 +62,8 @@ export function isTerminalOutput(): boolean {
  * @returns The string without ANSI codes
  */
 export function stripAnsiCodes(str: string): string {
-  const ansiRegex = new RegExp(`\u001b\\[[0-9;]*m`, 'g');
-  return str.replace(ansiRegex, '');
+  const ansiRegex = /\u001b\[[0-9;]*m/g;
+  return str.replace(ansiRegex, "");
 }
 
 const WIDE_RANGES = [
@@ -79,7 +79,7 @@ const WIDE_RANGES = [
   [0x1f300, 0x1f9ff], // Miscellaneous Symbols and Pictographs
 ];
 
-const SINGLE_WIDE_CHARS = new Set(['✓', '•', 'ℹ', '⚠', '✗', '→', '←']);
+const SINGLE_WIDE_CHARS = new Set(["✓", "•", "ℹ", "⚠", "✗", "→", "←"]);
 
 const LAST_ASCII = 0x7f;
 const NARROW_WIDTH = 1;
@@ -98,32 +98,34 @@ export function stringVisualWidth(str: string): number {
     const cp = c.codePointAt(0)!;
 
     const isWide =
-      cp > LAST_ASCII && (SINGLE_WIDE_CHARS.has(c) || WIDE_RANGES.some(([min, max]) => cp >= min && cp <= max));
+      cp > LAST_ASCII &&
+      (SINGLE_WIDE_CHARS.has(c) ||
+        WIDE_RANGES.some(([min, max]) => cp >= min && cp <= max));
 
     return acc + (isWide ? WIDE_WIDTH : NARROW_WIDTH);
   }, 0);
 }
 
-const ESC = '\\u001B';
-const BEL = '\\u0007';
+const ESC = "\\u001B";
+const BEL = "\\u0007";
 
 export function colorEscapeSequenceRegex(): RegExp {
-  return new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
+  return new RegExp(`${ESC}\\[[0-9;]*m`, "g");
 }
 
 export function terminalTitleSequenceRegex(): RegExp {
-  return new RegExp(`${ESC}\\].*?${BEL}`, 'g');
+  return new RegExp(`${ESC}\\].*?${BEL}`, "g");
 }
 
 export function miscTerminalSequenceRegex(): RegExp {
-  return new RegExp(`${ESC}\\].*?(?=${ESC}\\[|$)`, 'g');
+  return new RegExp(`${ESC}\\].*?(?=${ESC}\\[|$)`, "g");
 }
 
 export function stripAnsi(str: string): string {
   return str
-    .replace(colorEscapeSequenceRegex(), '')
-    .replace(terminalTitleSequenceRegex(), '')
-    .replace(miscTerminalSequenceRegex(), '');
+    .replace(colorEscapeSequenceRegex(), "")
+    .replace(terminalTitleSequenceRegex(), "")
+    .replace(miscTerminalSequenceRegex(), "");
 }
 
 /**
@@ -132,10 +134,11 @@ export function stripAnsi(str: string): string {
  * @returns A string representation of the value
  */
 export function serializeLogValue(value: any): string {
-  if (value === null) return 'null';
-  if (value === undefined) return 'undefined';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value);
   if (value instanceof Error) return value.stack ?? value.message;
   if (value instanceof Date) return value.toISOString();
 
@@ -156,13 +159,14 @@ export function serializeLogValue(value: any): string {
  * @param format - The format string
  * @returns The formatted date string
  */
-export function formatDate(date: Date, format = 'yyyy-MM-dd HH:mm:ss'): string {
+export function formatDate(date: Date, format = "yyyy-MM-dd HH:mm:ss"): string {
   // Default to ISO format if no format provided
   if (!format) {
     return date.toISOString();
   }
 
-  const padZero = (num: number, length = 2) => String(num).padStart(length, '0');
+  const padZero = (num: number, length = 2) =>
+    String(num).padStart(length, "0");
 
   // Format replacements
   const replacements: Record<string, string> = {
@@ -202,10 +206,10 @@ export function formatLogMessageWithRightAlignedDate(
   logging: AntelopeLogging,
   log: { levelId: number; args: any[]; time: number },
   module?: string,
-  defaultDateFormat = 'yyyy-MM-dd HH:mm:ss',
+  defaultDateFormat = "yyyy-MM-dd HH:mm:ss",
 ): string {
   const levelInfo = getLevelInfo(log.levelId);
-  const message = log.args.map((arg) => serializeLogValue(arg)).join(' ');
+  const message = log.args.map((arg) => serializeLogValue(arg)).join(" ");
 
   let messageWithLevel: string;
   if (log.levelId === LOG_LEVELS.NO_PREFIX) {
@@ -220,7 +224,10 @@ export function formatLogMessageWithRightAlignedDate(
     messageWithLevel = `(${module}) ${messageWithLevel}`;
   }
 
-  const dateStr = formatDate(new Date(log.time), logging.dateFormat || defaultDateFormat);
+  const dateStr = formatDate(
+    new Date(log.time),
+    logging.dateFormat || defaultDateFormat,
+  );
   const dateText = chalk.gray(`[${dateStr}]`);
 
   if (!isTerminalOutput()) {
@@ -230,7 +237,7 @@ export function formatLogMessageWithRightAlignedDate(
   const terminalWidth = process.stdout.columns || DEFAULT_TERMINAL_WIDTH;
   const dateWidth = stripAnsi(dateText).length;
   const minGap = 2;
-  const lines = messageWithLevel.split('\n');
+  const lines = messageWithLevel.split("\n");
 
   const dateStart = terminalWidth - dateWidth;
 
@@ -239,10 +246,10 @@ export function formatLogMessageWithRightAlignedDate(
       const plainLine = stripAnsi(line);
       if (idx === lines.length - 1) {
         const padding = Math.max(0, dateStart - plainLine.length - minGap);
-        return line + ' '.repeat(padding) + dateText;
+        return line + " ".repeat(padding) + dateText;
       } else {
         return line;
       }
     })
-    .join('\n');
+    .join("\n");
 }

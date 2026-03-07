@@ -1,13 +1,16 @@
-import * as fs from 'fs/promises';
-import * as fsSync from 'fs';
-import { IFileSystem } from '../types';
+import type * as fsSync from "node:fs";
+import * as fs from "node:fs/promises";
+import type { IFileSystem } from "../types";
 
 export class NodeFileSystem implements IFileSystem {
   async readFile(filePath: string): Promise<Buffer> {
     return fs.readFile(filePath);
   }
 
-  async readFileString(filePath: string, encoding: BufferEncoding = 'utf-8'): Promise<string> {
+  async readFileString(
+    filePath: string,
+    encoding: BufferEncoding = "utf-8",
+  ): Promise<string> {
     return fs.readFile(filePath, encoding);
   }
 
@@ -23,11 +26,17 @@ export class NodeFileSystem implements IFileSystem {
     return fs.stat(filePath);
   }
 
-  async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+  async mkdir(
+    dirPath: string,
+    options?: { recursive?: boolean },
+  ): Promise<void> {
     await fs.mkdir(dirPath, options);
   }
 
-  async rm(filePath: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+  async rm(
+    filePath: string,
+    options?: { recursive?: boolean; force?: boolean },
+  ): Promise<void> {
     await fs.rm(filePath, options);
   }
 

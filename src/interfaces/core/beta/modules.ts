@@ -1,4 +1,4 @@
-import { EventProxy, InterfaceFunction, internal } from '.';
+import { EventProxy, InterfaceFunction, internal } from ".";
 
 /**
  * Contains events related to module lifecycle management.
@@ -51,17 +51,25 @@ export namespace Events {
 // Using the Events namespace from modules.ts instead of the lowercase events
 Events.ModuleDestroyed.register((module) => {
   if (internal.knownAsync.has(module)) {
-    internal.knownAsync.get(module)!.forEach((proxy) => proxy.detach());
+    for (const proxy of internal.knownAsync.get(module) ?? []) {
+      proxy.detach();
+    }
     internal.knownAsync.delete(module);
   }
   if (internal.knownRegisters.has(module)) {
-    internal.knownRegisters.get(module)!.forEach((proxy) => proxy.detach());
+    for (const proxy of internal.knownRegisters.get(module) ?? []) {
+      proxy.detach();
+    }
     internal.knownRegisters.delete(module);
   }
   for (const [, proxies] of internal.knownRegisters) {
-    proxies.forEach((proxy) => proxy.unregisterModule(module));
+    for (const proxy of proxies) {
+      proxy.unregisterModule(module);
+    }
   }
-  internal.knownEvents.forEach((proxy) => proxy.unregisterModule(module));
+  for (const proxy of internal.knownEvents) {
+    proxy.unregisterModule(module);
+  }
 });
 
 /**
@@ -109,7 +117,7 @@ export type ModuleInfo = Required<ModuleDefinition> & {
    * - 'active': Module is fully started and running
    * - 'unknown': Module status cannot be determined
    */
-  status: 'loaded' | 'constructed' | 'active' | 'unknown';
+  status: "loaded" | "constructed" | "active" | "unknown";
 
   /**
    * File system path where the module is located.
@@ -136,7 +144,8 @@ export const ListModules = InterfaceFunction<() => string[]>();
  * @param module The module ID to get information for
  * @returns Complete module information object
  */
-export const GetModuleInfo = InterfaceFunction<(module: string) => ModuleInfo>();
+export const GetModuleInfo =
+  InterfaceFunction<(module: string) => ModuleInfo>();
 
 /**
  * Load a new module with the given ID and configuration.
@@ -149,7 +158,13 @@ export const GetModuleInfo = InterfaceFunction<(module: string) => ModuleInfo>()
  * @param autostart Whether to automatically start the module after loading (default: false)
  */
 export const LoadModule =
-  InterfaceFunction<(module: string, configuration: ModuleDefinition, autostart?: boolean) => string[]>();
+  InterfaceFunction<
+    (
+      module: string,
+      configuration: ModuleDefinition,
+      autostart?: boolean,
+    ) => string[]
+  >();
 
 /**
  * Start a loaded but inactive module.

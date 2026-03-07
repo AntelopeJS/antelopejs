@@ -4,7 +4,10 @@ export interface DeferredPromise<T> {
   reject: (reason?: unknown) => void;
 }
 
-export function Detour<T extends (...args: any[]) => any>(fn: T, sideEffect: (...args: Parameters<T>) => void): T {
+export function Detour<T extends (...args: any[]) => any>(
+  fn: T,
+  sideEffect: (...args: Parameters<T>) => void,
+): T {
   return ((...args: Parameters<T>) => {
     sideEffect(...args);
     return fn(...args);

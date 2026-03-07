@@ -1,4 +1,4 @@
-import { Stats } from 'fs';
+import type { Stats } from "node:fs";
 
 export interface IFileSystem {
   readFile(path: string): Promise<Buffer>;
@@ -7,7 +7,10 @@ export interface IFileSystem {
   readdir(path: string): Promise<string[]>;
   stat(path: string): Promise<Stats>;
   mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
-  rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void>;
+  rm(
+    path: string,
+    options?: { recursive?: boolean; force?: boolean },
+  ): Promise<void>;
   exists(path: string): Promise<boolean>;
   access(path: string): Promise<void>;
   copyFile(src: string, dest: string): Promise<void>;

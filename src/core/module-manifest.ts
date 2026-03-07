@@ -1,12 +1,18 @@
-import * as path from 'path';
-import { IFileSystem, ModuleSource } from '../types';
-import { NodeFileSystem } from './filesystem';
-import type { BuildAliasEntry, BuildModuleEntry, BuildPathEntry } from './build/build-artifact';
+import * as path from "node:path";
+import type { IFileSystem, ModuleSource } from "../types";
+import type {
+  BuildAliasEntry,
+  BuildModuleEntry,
+  BuildPathEntry,
+} from "./build/build-artifact";
+import { NodeFileSystem } from "./filesystem";
 
-export type ModuleImport = string | { name: string; git?: string; skipInstall?: boolean };
+export type ModuleImport =
+  | string
+  | { name: string; git?: string; skipInstall?: boolean };
 
 export function mapModuleImport(moduleImport: ModuleImport): string {
-  return typeof moduleImport === 'object' ? moduleImport.name : moduleImport;
+  return typeof moduleImport === "object" ? moduleImport.name : moduleImport;
 }
 
 export interface ModulePackageJson {
@@ -56,14 +62,18 @@ interface ModuleSourceWithMain extends ModuleSource {
   main?: string;
 }
 
-function clonePathEntries(entries: BuildPathEntry[] | PathMapping[]): PathMapping[] {
+function clonePathEntries(
+  entries: BuildPathEntry[] | PathMapping[],
+): PathMapping[] {
   return entries.map((entry) => ({
     key: entry.key,
     values: [...entry.values],
   }));
 }
 
-function cloneAliasEntries(entries?: BuildAliasEntry[] | ModuleAliasEntry[]): ModuleAliasEntry[] | undefined {
+function cloneAliasEntries(
+  entries?: BuildAliasEntry[] | ModuleAliasEntry[],
+): ModuleAliasEntry[] | undefined {
   if (!entries) {
     return undefined;
   }
@@ -75,21 +85,29 @@ function cloneAliasEntries(entries?: BuildAliasEntry[] | ModuleAliasEntry[]): Mo
 
 function resolveMainPath(folder: string, source: ModuleSource): string {
   const mainCandidate = (source as ModuleSourceWithMain).main;
-  return typeof mainCandidate === 'string' ? path.join(folder, mainCandidate) : folder;
+  return typeof mainCandidate === "string"
+    ? path.join(folder, mainCandidate)
+    : folder;
 }
 
-function resolvePathMappings(baseUrl: string, manifest: ModulePackageJson): PathMapping[] {
+function resolvePathMappings(
+  baseUrl: string,
+  manifest: ModulePackageJson,
+): PathMapping[] {
   if (!manifest.antelopeJs?.paths) {
     return [];
   }
 
   return Object.entries(manifest.antelopeJs.paths).map(([key, values]) => ({
-    key: key.replace(/\*$/, ''),
-    values: values.map((value) => path.join(baseUrl, value.replace(/\*$/, ''))),
+    key: key.replace(/\*$/, ""),
+    values: values.map((value) => path.join(baseUrl, value.replace(/\*$/, ""))),
   }));
 }
 
-function resolveAliasEntries(folder: string, manifest: ModulePackageJson): ModuleAliasEntry[] | undefined {
+function resolveAliasEntries(
+  folder: string,
+  manifest: ModulePackageJson,
+): ModuleAliasEntry[] | undefined {
   const rootAliases = manifest._moduleAliases
     ? Object.entries(manifest._moduleAliases).map(([alias, replace]) => ({
         alias,
@@ -98,20 +116,29 @@ function resolveAliasEntries(folder: string, manifest: ModulePackageJson): Modul
     : [];
 
   const antelopeAliases = manifest.antelopeJs?.moduleAliases
-    ? Object.entries(manifest.antelopeJs.moduleAliases).map(([alias, replace]) => ({
-        alias,
-        replace: path.join(folder, replace),
-      }))
+    ? Object.entries(manifest.antelopeJs.moduleAliases).map(
+        ([alias, replace]) => ({
+          alias,
+          replace: path.join(folder, replace),
+        }),
+      )
     : [];
 
   const aliases = [...rootAliases, ...antelopeAliases];
   return aliases.length > 0 ? aliases : undefined;
 }
 
-function createManifestState(folder: string, source: ModuleSource, manifest: ModulePackageJson): ModuleManifestState {
-  const exportsPath = path.join(folder, manifest.antelopeJs?.exportsPath || 'interfaces');
+function createManifestState(
+  folder: string,
+  source: ModuleSource,
+  manifest: ModulePackageJson,
+): ModuleManifestState {
+  const exportsPath = path.join(
+    folder,
+    manifest.antelopeJs?.exportsPath || "interfaces",
+  );
   const imports = manifest.antelopeJs?.imports?.map(mapModuleImport) ?? [];
-  const baseUrl = path.join(folder, manifest.antelopeJs?.baseUrl ?? '');
+  const baseUrl = path.join(folder, manifest.antelopeJs?.baseUrl ?? "");
 
   return {
     main: resolveMainPath(folder, source),
@@ -155,7 +182,8 @@ export class ModuleManifest {
     this.manifest = manifest;
     this.version = this.manifest.version;
 
-    const manifestState = state ?? createManifestState(this.folder, source, this.manifest);
+    const manifestState =
+      state ?? createManifestState(this.folder, source, this.manifest);
     this.main = manifestState.main;
     this.baseUrl = manifestState.baseUrl;
     this.paths = clonePathEntries(manifestState.paths);
@@ -174,7 +202,10 @@ export class ModuleManifest {
     return new ModuleManifest(folder, source, name, manifest, fs);
   }
 
-  static fromBuildEntry(entry: BuildModuleEntry, fs: IFileSystem = new NodeFileSystem()): ModuleManifest {
+  static fromBuildEntry(
+    entry: BuildModuleEntry,
+    fs: IFileSystem = new NodeFileSystem(),
+  ): ModuleManifest {
     const state: ModuleManifestState = {
       main: entry.main,
       baseUrl: entry.baseUrl,
@@ -184,24 +215,38 @@ export class ModuleManifest {
       srcAliases: cloneAliasEntries(entry.srcAliases),
     };
 
-    const manifest = new ModuleManifest(entry.folder, entry.source, entry.name, entry.manifest, fs, state);
+    const manifest = new ModuleManifest(
+      entry.folder,
+      entry.source,
+      entry.name,
+      entry.manifest,
+      fs,
+      state,
+    );
     manifest.version = entry.version;
     manifest.exports = { ...entry.exports };
     return manifest;
   }
 
-  static async readManifest(folder: string, fs: IFileSystem = new NodeFileSystem()): Promise<ModulePackageJson> {
-    const packageJsonPath = path.join(folder, 'package.json');
-    const dedicatedJsonPath = path.join(folder, 'antelope.module.json');
+  static async readManifest(
+    folder: string,
+    fs: IFileSystem = new NodeFileSystem(),
+  ): Promise<ModulePackageJson> {
+    const packageJsonPath = path.join(folder, "package.json");
+    const dedicatedJsonPath = path.join(folder, "antelope.module.json");
 
     if (!(await fs.exists(packageJsonPath))) {
       throw new Error(`Missing package.json in '${folder}'`);
     }
 
-    const packageJson = JSON.parse(await fs.readFileString(packageJsonPath)) as ModulePackageJson;
+    const packageJson = JSON.parse(
+      await fs.readFileString(packageJsonPath),
+    ) as ModulePackageJson;
 
     if (await fs.exists(dedicatedJsonPath)) {
-      const dedicatedJson = JSON.parse(await fs.readFileString(dedicatedJsonPath)) as ModulePackageJson['antelopeJs'];
+      const dedicatedJson = JSON.parse(
+        await fs.readFileString(dedicatedJsonPath),
+      ) as ModulePackageJson["antelopeJs"];
       return {
         ...packageJson,
         antelopeJs: dedicatedJson,
@@ -235,7 +280,10 @@ export class ModuleManifest {
       for (const version of await this.fs.readdir(ifFolder)) {
         const versionName = version.match(/^([^.]+)(?:\.js)?$/);
         if (versionName) {
-          this.exports[`${name}@${versionName[1]}`] = path.join(ifFolder, versionName[1]);
+          this.exports[`${name}@${versionName[1]}`] = path.join(
+            ifFolder,
+            versionName[1],
+          );
           this.imports.push(`${name}@${versionName[1]}`);
         }
       }
@@ -246,7 +294,11 @@ export class ModuleManifest {
         const match = nameVersion.match(/^([^@]*)(?:@(.*))?$/);
         if (match) {
           if (match[2]) {
-            this.exports[nameVersion] = path.join(this.exportsPath, match[1], match[2]);
+            this.exports[nameVersion] = path.join(
+              this.exportsPath,
+              match[1],
+              match[2],
+            );
             this.imports.push(nameVersion);
           } else {
             await addIfFolder(match[1], path.join(this.exportsPath, match[1]));

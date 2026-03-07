@@ -1,10 +1,14 @@
-import chalk from 'chalk';
-import { Command, Option } from 'commander';
-import { build, DEFAULT_ENV } from '../../../..';
-import { readBuildArtifact } from '../../../build/build-artifact';
-import { Options } from '../../common';
-import { displayBox, error, info, success } from '../../cli-ui';
-import { ProjectCommandOptions, resolveInheritedVerbose, validateProjectExists } from '../shared/project-command';
+import chalk from "chalk";
+import { Command, Option } from "commander";
+import { build, DEFAULT_ENV } from "../../../..";
+import { readBuildArtifact } from "../../../build/build-artifact";
+import { displayBox, error, info, success } from "../../cli-ui";
+import { Options } from "../../common";
+import {
+  type ProjectCommandOptions,
+  resolveInheritedVerbose,
+  validateProjectExists,
+} from "../shared/project-command";
 
 interface BuildCommandOptions extends ProjectCommandOptions {
   project: string;
@@ -21,32 +25,42 @@ function formatBuildDuration(durationMs: number): string {
   return `${minutes}m ${remainingMs}ms`;
 }
 
-function normalizeOptions(command: Command, options: BuildCommandOptions): BuildCommandOptions {
+function normalizeOptions(
+  command: Command,
+  options: BuildCommandOptions,
+): BuildCommandOptions {
   return {
     ...options,
     verbose: resolveInheritedVerbose(command, options.verbose),
   };
 }
 
-async function showBuildConfiguration(options: BuildCommandOptions): Promise<void> {
+async function showBuildConfiguration(
+  options: BuildCommandOptions,
+): Promise<void> {
   await displayBox(
     `Environment: ${chalk.cyan(options.env ?? DEFAULT_ENV)}\n` +
       `Project: ${chalk.cyan(options.project)}\n` +
-      `Output: ${chalk.cyan('.antelope/build/build.json')}`,
-    '󱌢 Build Configuration',
+      `Output: ${chalk.cyan(".antelope/build/build.json")}`,
+    "󱌢 Build Configuration",
     { padding: 1 },
   );
 }
 
-async function displayBuildSummary(projectFolder: string, buildDuration: number): Promise<void> {
+async function displayBuildSummary(
+  projectFolder: string,
+  buildDuration: number,
+): Promise<void> {
   const artifact = await readBuildArtifact(projectFolder);
   const moduleCount = Object.keys(artifact.modules).length;
   const formattedDuration = formatBuildDuration(buildDuration);
-  success(`Build completed: ${moduleCount} module(s) prepared in ${formattedDuration}`);
+  success(
+    `Build completed: ${moduleCount} module(s) prepared in ${formattedDuration}`,
+  );
 }
 
 export default function () {
-  return new Command('build')
+  return new Command("build")
     .description(
       `Build your AntelopeJS project\n` +
         `Downloads modules, validates the module graph, and writes a build artifact for fast production startup.`,
@@ -54,21 +68,24 @@ export default function () {
     .addOption(Options.project)
     .addOption(Options.verbose)
     .addOption(
-      new Option('-e, --env <environment>', 'Environment to use for build validation').env('ANTELOPEJS_LAUNCH_ENV'),
+      new Option(
+        "-e, --env <environment>",
+        "Environment to use for build validation",
+      ).env("ANTELOPEJS_LAUNCH_ENV"),
     )
     .action(async function (this: Command, options: BuildCommandOptions) {
       const commandOptions = normalizeOptions(this, options);
-      console.log('');
+      console.log("");
 
       const hasProject = await validateProjectExists(commandOptions.project);
       if (!hasProject) {
         return;
       }
 
-      console.log('');
+      console.log("");
       await showBuildConfiguration(commandOptions);
 
-      console.log('');
+      console.log("");
       info(`Building AntelopeJS project`);
 
       const startedAt = Date.now();
@@ -76,7 +93,10 @@ export default function () {
         await build(commandOptions.project, commandOptions.env ?? DEFAULT_ENV, {
           verbose: commandOptions.verbose,
         });
-        await displayBuildSummary(commandOptions.project, Date.now() - startedAt);
+        await displayBuildSummary(
+          commandOptions.project,
+          Date.now() - startedAt,
+        );
       } catch (err) {
         error(err instanceof Error ? err : String(err));
         process.exitCode = 1;

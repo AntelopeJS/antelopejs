@@ -1,15 +1,23 @@
-import { defineConfig } from '@antelopejs/core/config';
+import { defineConfig } from "@antelopejs/core/config";
 
 export default defineConfig({
-  name: 'playground',
+  name: "playground",
   modules: {
-    'module-a': {
-      source: { type: 'local', path: './modules/module-a', installCommand: ['npx tsc'] },
-      config: { prefix: 'Hello' },
+    "module-a": {
+      source: {
+        type: "local",
+        path: "./modules/module-a",
+        installCommand: ["npx tsc"],
+      },
+      config: { prefix: "Hello" },
     },
-    'module-b': {
-      source: { type: 'local', path: './modules/module-b', installCommand: ['npx tsc'] },
-      config: { target: 'World' },
+    "module-b": {
+      source: {
+        type: "local",
+        path: "./modules/module-b",
+        installCommand: ["npx tsc"],
+      },
+      config: { target: "World" },
     },
   },
 });

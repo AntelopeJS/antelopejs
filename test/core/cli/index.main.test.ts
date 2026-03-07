@@ -1,31 +1,34 @@
-import { expect } from 'chai';
-import sinon from 'sinon';
-import fs from 'fs';
-import path from 'path';
-import { Command } from 'commander';
-import * as cliUi from '../../../src/core/cli/cli-ui';
-import * as versionCheck from '../../../src/core/cli/version-check';
-import * as logging from '../../../src/logging';
+import fs from "node:fs";
+import path from "node:path";
+import { expect } from "chai";
+import { Command } from "commander";
+import sinon from "sinon";
+import * as cliUi from "../../../src/core/cli/cli-ui";
+import * as versionCheck from "../../../src/core/cli/version-check";
+import * as logging from "../../../src/logging";
 
-const Module = require('module');
+const Module = require("node:module");
 
-describe('CLI main guard', () => {
-  const cliPath = require.resolve('../../../src/core/cli/index');
+describe("CLI main guard", () => {
+  const cliPath = require.resolve("../../../src/core/cli/index");
 
   function stubRunCliDeps() {
     const originalReadFileSync = fs.readFileSync;
-    const packageJsonPath = path.join(path.dirname(cliPath), '../../../package.json');
-    sinon.stub(fs, 'readFileSync').callsFake((...args: any[]) => {
+    const packageJsonPath = path.join(
+      path.dirname(cliPath),
+      "../../../package.json",
+    );
+    sinon.stub(fs, "readFileSync").callsFake((...args: any[]) => {
       const target = args[0];
-      if (typeof target === 'string' && target === packageJsonPath) {
-        return JSON.stringify({ version: '0.0.0' });
+      if (typeof target === "string" && target === packageJsonPath) {
+        return JSON.stringify({ version: "0.0.0" });
       }
       return (originalReadFileSync as any)(...args);
     });
-    sinon.stub(logging, 'setupAntelopeProjectLogging');
-    sinon.stub(versionCheck, 'warnIfOutdated').resolves();
-    sinon.stub(cliUi, 'displayBanner');
-    sinon.stub(Command.prototype, 'getOptionValue').returns(undefined);
+    sinon.stub(logging, "setupAntelopeProjectLogging");
+    sinon.stub(versionCheck, "warnIfOutdated").resolves();
+    sinon.stub(cliUi, "displayBanner");
+    sinon.stub(Command.prototype, "getOptionValue").returns(undefined);
   }
 
   function loadCliAsMain() {
@@ -43,46 +46,52 @@ describe('CLI main guard', () => {
     sinon.restore();
   });
 
-  it('does not register SIGINT listener in module scope', () => {
-    const originalListeners = process.listeners('SIGINT');
-    process.removeAllListeners('SIGINT');
+  it("does not register SIGINT listener in module scope", () => {
+    const originalListeners = process.listeners("SIGINT");
+    process.removeAllListeners("SIGINT");
     try {
       delete require.cache[cliPath];
       require(cliPath);
-      expect(process.listenerCount('SIGINT')).to.equal(0);
+      expect(process.listenerCount("SIGINT")).to.equal(0);
     } finally {
-      process.removeAllListeners('SIGINT');
-      originalListeners.forEach((listener) => process.on('SIGINT', listener));
+      process.removeAllListeners("SIGINT");
+      for (const listener of originalListeners) {
+        process.on("SIGINT", listener);
+      }
     }
   });
 
-  it('handles ExitPromptError in main guard', async () => {
+  it("handles ExitPromptError in main guard", async () => {
     stubRunCliDeps();
-    sinon.stub(Command.prototype, 'parseAsync').rejects({ name: 'ExitPromptError' });
-    const exitStub = sinon.stub(process, 'exit');
-    const errorStub = sinon.stub(console, 'error');
-    const originalListeners = process.listeners('SIGINT');
-    process.removeAllListeners('SIGINT');
+    sinon
+      .stub(Command.prototype, "parseAsync")
+      .rejects({ name: "ExitPromptError" });
+    const exitStub = sinon.stub(process, "exit");
+    const errorStub = sinon.stub(console, "error");
+    const originalListeners = process.listeners("SIGINT");
+    process.removeAllListeners("SIGINT");
     const restoreMain = loadCliAsMain();
     try {
       await new Promise((resolve) => setImmediate(resolve));
       expect(exitStub.calledWith(0)).to.equal(true);
     } finally {
       restoreMain();
-      process.removeAllListeners('SIGINT');
-      originalListeners.forEach((listener) => process.on('SIGINT', listener));
+      process.removeAllListeners("SIGINT");
+      for (const listener of originalListeners) {
+        process.on("SIGINT", listener);
+      }
       exitStub.restore();
       errorStub.restore();
     }
   });
 
-  it('logs and exits on errors in main guard', async () => {
+  it("logs and exits on errors in main guard", async () => {
     stubRunCliDeps();
-    sinon.stub(Command.prototype, 'parseAsync').rejects(new Error('boom'));
-    const exitStub = sinon.stub(process, 'exit');
-    const errorStub = sinon.stub(console, 'error');
-    const originalListeners = process.listeners('SIGINT');
-    process.removeAllListeners('SIGINT');
+    sinon.stub(Command.prototype, "parseAsync").rejects(new Error("boom"));
+    const exitStub = sinon.stub(process, "exit");
+    const errorStub = sinon.stub(console, "error");
+    const originalListeners = process.listeners("SIGINT");
+    process.removeAllListeners("SIGINT");
     const restoreMain = loadCliAsMain();
     try {
       await new Promise((resolve) => setImmediate(resolve));
@@ -90,8 +99,10 @@ describe('CLI main guard', () => {
       expect(exitStub.calledWith(1)).to.equal(true);
     } finally {
       restoreMain();
-      process.removeAllListeners('SIGINT');
-      originalListeners.forEach((listener) => process.on('SIGINT', listener));
+      process.removeAllListeners("SIGINT");
+      for (const listener of originalListeners) {
+        process.on("SIGINT", listener);
+      }
       exitStub.restore();
       errorStub.restore();
     }

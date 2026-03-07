@@ -1,17 +1,17 @@
-import * as path from 'path';
-import { ModuleManifest } from '../module-manifest';
-import { PathMapper } from './path-mapper';
+import * as path from "node:path";
+import type { ModuleManifest } from "../module-manifest";
+import type { PathMapper } from "./path-mapper";
 
 export interface ModuleRef {
   id: string;
   manifest: ModuleManifest;
 }
 
-const AJS_PREFIX = '@ajs/';
-const AJS_LOCAL_PREFIX = '@ajs.local/';
-const AJS_RAW_PREFIX = '@ajs.raw/';
-const AJS_INTERFACE_REGEX = /^@ajs\/([^\/]+)\/([^\/]+)/;
-const RAW_INTERFACE_SEGMENT_REGEX = /\/([^\/@]+)@([^\/]+)(\/.*)?$/;
+const AJS_PREFIX = "@ajs/";
+const AJS_LOCAL_PREFIX = "@ajs.local/";
+const AJS_RAW_PREFIX = "@ajs.raw/";
+const AJS_INTERFACE_REGEX = /^@ajs\/([^/]+)\/([^/]+)/;
+const RAW_INTERFACE_SEGMENT_REGEX = /\/([^/@]+)@([^/]+)(\/.*)?$/;
 
 interface RawRequestParts {
   moduleId: string;
@@ -29,18 +29,24 @@ function parseRawRequest(request: string): RawRequestParts | undefined {
   if (!interfaceMatch) {
     return undefined;
   }
-  const [fullSegment, interfaceName, interfaceVersion, fileSuffix = ''] = interfaceMatch;
+  const [fullSegment, interfaceName, interfaceVersion, fileSuffix = ""] =
+    interfaceMatch;
   const moduleId = payload.substring(0, payload.length - fullSegment.length);
   if (!moduleId) {
     return undefined;
   }
-  const filePath = fileSuffix.startsWith('/') ? fileSuffix.substring(1) : fileSuffix;
+  const filePath = fileSuffix.startsWith("/")
+    ? fileSuffix.substring(1)
+    : fileSuffix;
   return { moduleId, interfaceName, interfaceVersion, filePath };
 }
 
 export class Resolver {
   public readonly moduleByFolder = new Map<string, ModuleRef>();
-  public readonly moduleAssociations = new Map<string, Map<string, ModuleRef | null>>();
+  public readonly moduleAssociations = new Map<
+    string,
+    Map<string, ModuleRef | null>
+  >();
   public readonly modulesById = new Map<string, ModuleRef>();
   public stubModulePath?: string;
 
@@ -66,10 +72,13 @@ export class Resolver {
     if (!fileName) {
       return undefined;
     }
-    let matchingFolder = '';
+    let matchingFolder = "";
     let matchingModule: ModuleRef | undefined;
     for (const [folder, module] of this.moduleByFolder) {
-      if (fileName.startsWith(folder) && folder.length > matchingFolder.length) {
+      if (
+        fileName.startsWith(folder) &&
+        folder.length > matchingFolder.length
+      ) {
         matchingFolder = folder;
         matchingModule = module;
       }
@@ -77,10 +86,16 @@ export class Resolver {
     return matchingModule;
   }
 
-  private resolveLocalRequest(request: string, matchingModule: ModuleRef): string | undefined {
+  private resolveLocalRequest(
+    request: string,
+    matchingModule: ModuleRef,
+  ): string | undefined {
     const manifest = matchingModule.manifest;
     if (request.startsWith(AJS_LOCAL_PREFIX)) {
-      return path.join(manifest.exportsPath, request.substring(AJS_LOCAL_PREFIX.length));
+      return path.join(
+        manifest.exportsPath,
+        request.substring(AJS_LOCAL_PREFIX.length),
+      );
     }
     if (!request.startsWith(AJS_PREFIX)) {
       return undefined;
@@ -96,9 +111,14 @@ export class Resolver {
       if (this.stubModulePath) {
         return this.stubModulePath;
       }
-      throw new Error(`Module ${matchingModule.id} tried to use un-imported interface ${name}@${version}`);
+      throw new Error(
+        `Module ${matchingModule.id} tried to use un-imported interface ${name}@${version}`,
+      );
     }
-    return path.join(target.manifest.exportsPath, request.substring(AJS_PREFIX.length));
+    return path.join(
+      target.manifest.exportsPath,
+      request.substring(AJS_PREFIX.length),
+    );
   }
 
   private resolveInterfaceModule(request: string): string | undefined {

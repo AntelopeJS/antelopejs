@@ -1,5 +1,10 @@
-import { AntelopeModuleConfig, ImportOverride, ModuleSource, ModuleSourcePackage } from '../../types';
-import { set, isObject } from '../../utils/object';
+import type {
+  AntelopeModuleConfig,
+  ImportOverride,
+  ModuleSource,
+  ModuleSourcePackage,
+} from "../../types";
+import { isObject, set } from "../../utils/object";
 
 export interface ExpandedModuleConfig {
   source: ModuleSource;
@@ -14,13 +19,20 @@ export class ConfigParser {
     return this.processObject(config, flatValues) as T;
   }
 
-  private flattenConfig(obj: Record<string, any>, prefix = ''): Record<string, string> {
+  private flattenConfig(
+    obj: Record<string, any>,
+    prefix = "",
+  ): Record<string, string> {
     const result: Record<string, string> = {};
 
     for (const [key, value] of Object.entries(obj)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
 
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      if (
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+      ) {
         result[key] = String(value);
         result[fullKey] = String(value);
       } else if (isObject(value)) {
@@ -32,7 +44,7 @@ export class ConfigParser {
   }
 
   private processObject(obj: any, values: Record<string, string>): any {
-    if (typeof obj === 'string') {
+    if (typeof obj === "string") {
       return this.processString(obj, values);
     }
 
@@ -51,7 +63,10 @@ export class ConfigParser {
     return obj;
   }
 
-  private processString(str: string, values: Record<string, string>): string | any {
+  private processString(
+    str: string,
+    values: Record<string, string>,
+  ): string | any {
     const pureMatch = str.match(/^\$\{([^}]+)\}$/);
     if (pureMatch) {
       const key = pureMatch[1];
@@ -66,11 +81,14 @@ export class ConfigParser {
     }
 
     return str.replace(/\$\{([^}]+)\}/g, (_, key) => {
-      return values[key] ?? '';
+      return values[key] ?? "";
     });
   }
 
-  applyEnvOverrides<T extends Record<string, any>>(config: T, overrides: Record<string, string | string[]>): T {
+  applyEnvOverrides<T extends Record<string, any>>(
+    config: T,
+    overrides: Record<string, string | string[]>,
+  ): T {
     const result = this.cloneValue(config);
 
     for (const [envVar, paths] of Object.entries(overrides)) {
@@ -102,13 +120,19 @@ export class ConfigParser {
     return value;
   }
 
-  expandModuleShorthand(modules: Record<string, string | AntelopeModuleConfig>): Record<string, ExpandedModuleConfig> {
+  expandModuleShorthand(
+    modules: Record<string, string | AntelopeModuleConfig>,
+  ): Record<string, ExpandedModuleConfig> {
     const result: Record<string, ExpandedModuleConfig> = {};
 
     for (const [name, config] of Object.entries(modules)) {
-      if (typeof config === 'string') {
+      if (typeof config === "string") {
         result[name] = {
-          source: { type: 'package', package: name, version: config } as ModuleSourcePackage,
+          source: {
+            type: "package",
+            package: name,
+            version: config,
+          } as ModuleSourcePackage,
           config: {},
           importOverrides: [],
           disabledExports: [],
@@ -116,7 +140,11 @@ export class ConfigParser {
       } else {
         let source = config.source;
         if (!source && config.version) {
-          source = { type: 'package', package: name, version: config.version } as ModuleSourcePackage;
+          source = {
+            type: "package",
+            package: name,
+            version: config.version,
+          } as ModuleSourcePackage;
         }
 
         let importOverrides: ImportOverride[] = [];
@@ -124,10 +152,12 @@ export class ConfigParser {
           if (Array.isArray(config.importOverrides)) {
             importOverrides = config.importOverrides;
           } else {
-            importOverrides = Object.entries(config.importOverrides).map(([iface, src]) => ({
-              interface: iface,
-              source: src,
-            }));
+            importOverrides = Object.entries(config.importOverrides).map(
+              ([iface, src]) => ({
+                interface: iface,
+                source: src,
+              }),
+            );
           }
         }
 

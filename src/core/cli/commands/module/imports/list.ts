@@ -1,9 +1,9 @@
-import chalk from 'chalk';
-import { Command, Option } from 'commander';
-import { Options, readModuleManifest, readConfig } from '../../../common';
-import path from 'path';
-import { AntelopeModuleConfig } from '../../../../../types';
-import { displayBox, error, info, warning } from '../../../cli-ui';
+import path from "node:path";
+import chalk from "chalk";
+import { Command, Option } from "commander";
+import type { AntelopeModuleConfig } from "../../../../../types";
+import { displayBox, error, info, warning } from "../../../cli-ui";
+import { Options, readConfig, readModuleManifest } from "../../../common";
 
 interface ListOptions {
   module: string;
@@ -11,15 +11,21 @@ interface ListOptions {
 }
 
 export default function () {
-  return new Command('list')
-    .alias('ls')
+  return new Command("list")
+    .alias("ls")
     .description(
-      `List all imports of an AntelopeJS module\n` + `Shows required and optional module imports with their sources`,
+      `List all imports of an AntelopeJS module\n` +
+        `Shows required and optional module imports with their sources`,
     )
     .addOption(Options.module)
-    .addOption(new Option('-v, --verbose', 'Show detailed information including overrides').default(false))
+    .addOption(
+      new Option(
+        "-v, --verbose",
+        "Show detailed information including overrides",
+      ).default(false),
+    )
     .action(async (options: ListOptions) => {
-      console.log(''); // Add spacing for better readability
+      console.log(""); // Add spacing for better readability
       info(`Fetching imports for module...`);
 
       const moduleManifest = await readModuleManifest(options.module);
@@ -40,63 +46,100 @@ export default function () {
       // Get project config to check for import overrides
       const projectConfig = await readConfig(path.dirname(options.module));
       const moduleId = moduleManifest.name;
-      const moduleConfig = projectConfig?.modules?.[moduleId] as AntelopeModuleConfig | string | undefined;
+      const moduleConfig = projectConfig?.modules?.[moduleId] as
+        | AntelopeModuleConfig
+        | string
+        | undefined;
       const importOverrides =
-        moduleConfig && typeof moduleConfig === 'object' && moduleConfig.importOverrides
+        moduleConfig &&
+        typeof moduleConfig === "object" &&
+        moduleConfig.importOverrides
           ? moduleConfig.importOverrides
           : [];
 
       // Build content for display box
       let content = `${chalk.bold.blue(`Module: ${moduleManifest.name} (${moduleManifest.version})`)}\n`;
-      content += `${chalk.blue('─'.repeat(30))}\n\n`;
+      content += `${chalk.blue("─".repeat(30))}\n\n`;
 
       // Required imports section
-      content += chalk.bold.blue('Required Imports:') + '\n';
-      if (!moduleManifest.antelopeJs.imports || moduleManifest.antelopeJs.imports.length === 0) {
+      content += `${chalk.bold.blue("Required Imports:")}\n`;
+      if (
+        !moduleManifest.antelopeJs.imports ||
+        moduleManifest.antelopeJs.imports.length === 0
+      ) {
         content += chalk.italic`  No required imports defined\n`;
       } else {
         moduleManifest.antelopeJs.imports.forEach((importItem) => {
-          const importName = typeof importItem === 'string' ? importItem : importItem.name;
+          const importName =
+            typeof importItem === "string" ? importItem : importItem.name;
           const gitSource =
-            typeof importItem === 'string' ? '' : importItem.git ? ` (from ${chalk.cyan(importItem.git)})` : '';
+            typeof importItem === "string"
+              ? ""
+              : importItem.git
+                ? ` (from ${chalk.cyan(importItem.git)})`
+                : "";
           const skipInstallFlag =
-            typeof importItem === 'object' && importItem.skipInstall ? ` ${chalk.magenta('[skip-install]')}` : '';
-          content += `  ${chalk.green('•')} ${chalk.bold(importName)}${gitSource}${skipInstallFlag}\n`;
+            typeof importItem === "object" && importItem.skipInstall
+              ? ` ${chalk.magenta("[skip-install]")}`
+              : "";
+          content += `  ${chalk.green("•")} ${chalk.bold(importName)}${gitSource}${skipInstallFlag}\n`;
 
           // Show override if exists and verbose mode is on
-          if (options.verbose && importOverrides && Array.isArray(importOverrides)) {
+          if (
+            options.verbose &&
+            importOverrides &&
+            Array.isArray(importOverrides)
+          ) {
             const override = importOverrides.find(
-              (item) => item.interface === importName || item.interface === importName.split('@')[0],
+              (item) =>
+                item.interface === importName ||
+                item.interface === importName.split("@")[0],
             );
             if (override) {
-              content += `    ${chalk.dim('↳')} ${chalk.yellow('Overridden:')} ${override.source}\n`;
+              content += `    ${chalk.dim("↳")} ${chalk.yellow("Overridden:")} ${override.source}\n`;
             }
           }
         });
       }
 
-      content += '\n';
+      content += "\n";
 
       // Optional imports section
-      content += chalk.bold.blue('Optional Imports:') + '\n';
-      if (!moduleManifest.antelopeJs.importsOptional || moduleManifest.antelopeJs.importsOptional.length === 0) {
+      content += `${chalk.bold.blue("Optional Imports:")}\n`;
+      if (
+        !moduleManifest.antelopeJs.importsOptional ||
+        moduleManifest.antelopeJs.importsOptional.length === 0
+      ) {
         content += chalk.italic`  No optional imports defined\n`;
       } else {
         moduleManifest.antelopeJs.importsOptional.forEach((importItem) => {
-          const importName = typeof importItem === 'string' ? importItem : importItem.name;
+          const importName =
+            typeof importItem === "string" ? importItem : importItem.name;
           const gitSource =
-            typeof importItem === 'string' ? '' : importItem.git ? ` (from ${chalk.cyan(importItem.git)})` : '';
+            typeof importItem === "string"
+              ? ""
+              : importItem.git
+                ? ` (from ${chalk.cyan(importItem.git)})`
+                : "";
           const skipInstallFlag =
-            typeof importItem === 'object' && importItem.skipInstall ? ` ${chalk.magenta('[skip-install]')}` : '';
-          content += `  ${chalk.yellow('•')} ${chalk.bold(importName)}${gitSource}${skipInstallFlag}\n`;
+            typeof importItem === "object" && importItem.skipInstall
+              ? ` ${chalk.magenta("[skip-install]")}`
+              : "";
+          content += `  ${chalk.yellow("•")} ${chalk.bold(importName)}${gitSource}${skipInstallFlag}\n`;
 
           // Show override if exists and verbose mode is on
-          if (options.verbose && importOverrides && Array.isArray(importOverrides)) {
+          if (
+            options.verbose &&
+            importOverrides &&
+            Array.isArray(importOverrides)
+          ) {
             const override = importOverrides.find(
-              (item) => item.interface === importName || item.interface === importName.split('@')[0],
+              (item) =>
+                item.interface === importName ||
+                item.interface === importName.split("@")[0],
             );
             if (override) {
-              content += `    ${chalk.dim('↳')} ${chalk.yellow('Overridden:')} ${override.source}\n`;
+              content += `    ${chalk.dim("↳")} ${chalk.yellow("Overridden:")} ${override.source}\n`;
             }
           }
         });
@@ -104,25 +147,33 @@ export default function () {
 
       // Show tips when imports exist
       const hasImports =
-        (moduleManifest.antelopeJs.imports?.length || 0) + (moduleManifest.antelopeJs.importsOptional?.length || 0) > 0;
+        (moduleManifest.antelopeJs.imports?.length || 0) +
+          (moduleManifest.antelopeJs.importsOptional?.length || 0) >
+        0;
 
       // Display the module imports
-      await displayBox(content, '📦 Module Imports', {
+      await displayBox(content, "📦 Module Imports", {
         padding: 1,
-        borderColor: 'blue',
+        borderColor: "blue",
       });
 
       // Show help text
       if (hasImports && !options.verbose) {
-        console.log('');
-        console.log(chalk.dim`Use --verbose to see more details including overrides.`);
+        console.log("");
+        console.log(
+          chalk.dim`Use --verbose to see more details including overrides.`,
+        );
       }
 
       // Show module format for informational purposes when verbose
       if (options.verbose) {
-        console.log('');
-        console.log(chalk.dim`Module import format follows the pattern: interface@version`);
-        console.log(chalk.dim`Use 'ajs module imports add <interface[@version]>' to add new imports.`);
+        console.log("");
+        console.log(
+          chalk.dim`Module import format follows the pattern: interface@version`,
+        );
+        console.log(
+          chalk.dim`Use 'ajs module imports add <interface[@version]>' to add new imports.`,
+        );
       }
     });
 }

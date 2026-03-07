@@ -1,17 +1,17 @@
 export function isObject(item: unknown): item is Record<string, unknown> {
-  return item !== null && typeof item === 'object' && !Array.isArray(item);
+  return item !== null && typeof item === "object" && !Array.isArray(item);
 }
 
 export function mergeDeep(
   target: Record<string, any>,
   ...sources: Array<Record<string, any> | undefined>
 ): Record<string, any> {
-  let result: Record<string, any> = { ...target };
+  const result: Record<string, any> = { ...target };
 
   for (const source of sources) {
     if (!source) continue;
     for (const key in source) {
-      if (Object.prototype.hasOwnProperty.call(source, key)) {
+      if (Object.hasOwn(source, key)) {
         const sourceValue = source[key];
         const targetValue = result[key];
 
@@ -28,7 +28,7 @@ export function mergeDeep(
 }
 
 export function get(obj: Record<string, any>, path: string): unknown {
-  const keys = path.split('.');
+  const keys = path.split(".");
   let current = obj;
 
   for (const key of keys) {
@@ -41,8 +41,12 @@ export function get(obj: Record<string, any>, path: string): unknown {
   return current;
 }
 
-export function set(obj: Record<string, any>, path: string, value: unknown): void {
-  const keys = path.split('.');
+export function set(
+  obj: Record<string, any>,
+  path: string,
+  value: unknown,
+): void {
+  const keys = path.split(".");
   let current = obj;
 
   for (let i = 0; i < keys.length - 1; i++) {

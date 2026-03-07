@@ -1,3 +1,3 @@
-export * from './promise';
-export * from './object';
-export * from './lock';
+export * from "./lock";
+export * from "./object";
+export * from "./promise";

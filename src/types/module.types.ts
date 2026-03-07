@@ -1,7 +1,7 @@
 export enum ModuleState {
-  Loaded = 'loaded',
-  Constructed = 'constructed',
-  Active = 'active',
+  Loaded = "loaded",
+  Constructed = "constructed",
+  Active = "active",
 }
 
 export interface ModuleCallbacks {
@@ -12,7 +12,7 @@ export interface ModuleCallbacks {
 }
 
 export interface ModuleSource {
-  type: 'local' | 'git' | 'package' | 'local-folder';
+  type: "local" | "git" | "package" | "local-folder";
   id?: string;
   ignoreCache?: boolean;
 }
@@ -21,7 +21,7 @@ export type ModuleInstallCommand = string | string[];
 export type ModuleWatchDir = string | string[];
 
 export interface ModuleSourceLocal extends ModuleSource {
-  type: 'local';
+  type: "local";
   path: string;
   main?: string;
   watchDir?: ModuleWatchDir;
@@ -29,7 +29,7 @@ export interface ModuleSourceLocal extends ModuleSource {
 }
 
 export interface ModuleSourceGit extends ModuleSource {
-  type: 'git';
+  type: "git";
   remote: string;
   branch?: string;
   commit?: string;
@@ -37,13 +37,13 @@ export interface ModuleSourceGit extends ModuleSource {
 }
 
 export interface ModuleSourcePackage extends ModuleSource {
-  type: 'package';
+  type: "package";
   package: string;
   version: string;
 }
 
 export interface ModuleSourceLocalFolder extends ModuleSource {
-  type: 'local-folder';
+  type: "local-folder";
   path: string;
   watchDir?: ModuleWatchDir;
   installCommand?: ModuleInstallCommand;

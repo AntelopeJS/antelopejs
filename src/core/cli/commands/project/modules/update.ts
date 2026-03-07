@@ -1,12 +1,12 @@
-import chalk from 'chalk';
-import { Command, Option } from 'commander';
-import { ConfigLoader } from '../../../../config';
-import { NodeFileSystem } from '../../../../filesystem';
-import { Options, readConfig, writeConfig } from '../../../common';
-import { ExecuteCMD } from '../../../command';
-import { ModuleSourcePackage } from '../../../../../types';
-import { parsePackageInfoOutput } from '../../../package-manager';
-import { error as errorUI, warning, info, success } from '../../../cli-ui';
+import chalk from "chalk";
+import { Command, Option } from "commander";
+import type { ModuleSourcePackage } from "../../../../../types";
+import { ConfigLoader } from "../../../../config";
+import { NodeFileSystem } from "../../../../filesystem";
+import { error as errorUI, info, success, warning } from "../../../cli-ui";
+import { ExecuteCMD } from "../../../command";
+import { Options, readConfig, writeConfig } from "../../../common";
+import { parsePackageInfoOutput } from "../../../package-manager";
 
 interface UpdateOptions {
   project: string;
@@ -15,26 +15,45 @@ interface UpdateOptions {
 }
 
 export default function () {
-  return new Command('update')
-    .description(`Update modules to latest versions\n` + `Checks for and applies module updates from npm`)
-    .argument('[modules...]', 'Specific modules to update (default: all)')
+  return new Command("update")
+    .description(
+      `Update modules to latest versions\n` +
+        `Checks for and applies module updates from npm`,
+    )
+    .argument("[modules...]", "Specific modules to update (default: all)")
     .addOption(Options.project)
-    .addOption(new Option('-e, --env <environment>', 'Environment to update modules in').env('ANTELOPEJS_LAUNCH_ENV'))
-    .addOption(new Option('--dry-run', 'Show what would be updated without making changes').default(false))
+    .addOption(
+      new Option(
+        "-e, --env <environment>",
+        "Environment to update modules in",
+      ).env("ANTELOPEJS_LAUNCH_ENV"),
+    )
+    .addOption(
+      new Option(
+        "--dry-run",
+        "Show what would be updated without making changes",
+      ).default(false),
+    )
     .action(async (modules: string[], options: UpdateOptions) => {
       info(chalk.blue`Checking for module updates...`);
 
       const config = await readConfig(options.project);
       if (!config) {
-        errorUI(chalk.red`No project configuration found at: ${options.project}`);
-        info(`Make sure you're in an AntelopeJS project or use the --project option.`);
+        errorUI(
+          chalk.red`No project configuration found at: ${options.project}`,
+        );
+        info(
+          `Make sure you're in an AntelopeJS project or use the --project option.`,
+        );
         process.exitCode = 1;
         return;
       }
 
-      const env = options.env ? config?.environments && config?.environments[options.env] : config;
+      const env = options.env ? config?.environments?.[options.env] : config;
       if (!env) {
-        errorUI(chalk.red`Environment ${options.env || 'default'} not found in project config`);
+        errorUI(
+          chalk.red`Environment ${options.env || "default"} not found in project config`,
+        );
         process.exitCode = 1;
         return;
       }
@@ -45,14 +64,17 @@ export default function () {
       }
 
       const loader = new ConfigLoader(new NodeFileSystem());
-      const antelopeConfig = await loader.load(options.project, options.env || 'default');
+      const antelopeConfig = await loader.load(
+        options.project,
+        options.env || "default",
+      );
 
       // If no modules specified, check all npm modules
       const modulesToUpdate =
         modules.length > 0
           ? modules
           : Object.entries(antelopeConfig.modules)
-              .filter(([_, info]) => info.source?.type === 'package')
+              .filter(([_, info]) => info.source?.type === "package")
               .map(([name]) => name);
 
       if (modulesToUpdate.length === 0) {
@@ -70,12 +92,14 @@ export default function () {
         const moduleInfo = antelopeConfig.modules[module];
 
         if (!moduleInfo) {
-          warning(chalk.yellow`Module ${chalk.bold(module)} not found in project`);
+          warning(
+            chalk.yellow`Module ${chalk.bold(module)} not found in project`,
+          );
           notFound.push(module);
           continue;
         }
 
-        if (!moduleInfo.source || moduleInfo.source.type !== 'package') {
+        if (!moduleInfo.source || moduleInfo.source.type !== "package") {
           info(`${chalk.bold(module)}: Skipped (not an npm package)`);
           skipped.push(module);
           continue;
@@ -89,10 +113,13 @@ export default function () {
             throw new Error(`Failed to fetch version: ${result.stderr}`);
           }
           const latestVersion = parsePackageInfoOutput(result.stdout);
-          const currentVersion = (moduleInfo.source as ModuleSourcePackage).version;
+          const currentVersion = (moduleInfo.source as ModuleSourcePackage)
+            .version;
 
           if (currentVersion === latestVersion) {
-            info(`${chalk.bold(module)}: ${chalk.green('Already up to date')} (${currentVersion})`);
+            info(
+              `${chalk.bold(module)}: ${chalk.green("Already up to date")} (${currentVersion})`,
+            );
             skipped.push(module);
             continue;
           }
@@ -105,12 +132,18 @@ export default function () {
                 version: latestVersion,
               } as ModuleSourcePackage,
             };
-            updated.push(`${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`);
+            updated.push(
+              `${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`,
+            );
           } else {
-            updated.push(`${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`);
+            updated.push(
+              `${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`,
+            );
           }
         } catch (err) {
-          errorUI(err instanceof Error ? err : `${module}: Error: ${String(err)}`);
+          errorUI(
+            err instanceof Error ? err : `${module}: Error: ${String(err)}`,
+          );
           skipped.push(module);
         }
       }
@@ -126,24 +159,30 @@ export default function () {
       }
 
       if (updated.length > 0) {
-        success(chalk.green`${options.dryRun ? 'Would update' : 'Updated'} ${updated.length} module(s):`);
+        success(
+          chalk.green`${options.dryRun ? "Would update" : "Updated"} ${updated.length} module(s):`,
+        );
         updated.forEach((msg) => {
-          info(`  ${chalk.green('•')} ${msg}`);
+          info(`  ${chalk.green("•")} ${msg}`);
         });
       } else {
         success(chalk.green`All modules are up to date!`);
       }
 
       if (notFound.length > 0) {
-        warning(chalk.yellow`${notFound.length} module(s) not found in project:`);
+        warning(
+          chalk.yellow`${notFound.length} module(s) not found in project:`,
+        );
         notFound.forEach((name) => {
-          info(`  ${chalk.yellow('•')} ${chalk.bold(name)}`);
+          info(`  ${chalk.yellow("•")} ${chalk.bold(name)}`);
         });
       }
 
       // Add helpful guidance
       if (updated.length > 0 && !options.dryRun) {
-        info(`Run ${chalk.bold('ajs project run')} to use the updated modules.`);
+        info(
+          `Run ${chalk.bold("ajs project run")} to use the updated modules.`,
+        );
       }
     });
 }

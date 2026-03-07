@@ -1,13 +1,13 @@
-import { Spinner } from './cli-ui';
+import { Spinner } from "./cli-ui";
 
 export class TerminalDisplay {
   private currentSpinner?: Spinner;
   private currentSpinnerTexts: string[] = [];
-  private lastMessage: string = '';
 
   private updateSpinnerText(): void {
     if (this.currentSpinnerTexts.length > 0) {
-      const lastText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+      const lastText =
+        this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
       if (this.currentSpinner) {
         this.currentSpinner.update(lastText);
       }
@@ -18,9 +18,9 @@ export class TerminalDisplay {
 
   private destroySpinner(): void {
     if (this.currentSpinner) {
-      this.currentSpinner.stop();
+      void this.currentSpinner.stop();
       this.currentSpinner = undefined;
-      this.clearSpinnerLine();
+      void this.clearSpinnerLine();
     }
   }
 
@@ -41,7 +41,6 @@ export class TerminalDisplay {
 
   async startSpinner(text: string): Promise<void> {
     this.currentSpinnerTexts.push(text);
-    this.lastMessage = text;
 
     if (!this.currentSpinner) {
       this.currentSpinner = new Spinner(text);
@@ -54,7 +53,8 @@ export class TerminalDisplay {
   async stopSpinner(text?: string): Promise<void> {
     if (!this.currentSpinner || this.currentSpinnerTexts.length === 0) return;
 
-    const currentText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+    const currentText =
+      this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
     const displayText = text || currentText;
 
     if (text) {
@@ -67,7 +67,8 @@ export class TerminalDisplay {
     this.currentSpinnerTexts.pop();
 
     if (this.currentSpinnerTexts.length > 0) {
-      const nextText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+      const nextText =
+        this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
       this.currentSpinner = new Spinner(nextText);
       await this.currentSpinner.start();
     } else {
@@ -78,7 +79,8 @@ export class TerminalDisplay {
   async failSpinner(text?: string): Promise<void> {
     if (!this.currentSpinner || this.currentSpinnerTexts.length === 0) return;
 
-    const currentText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+    const currentText =
+      this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
     const displayText = text || currentText;
 
     await this.currentSpinner.fail(displayText);
@@ -86,7 +88,8 @@ export class TerminalDisplay {
     this.currentSpinnerTexts.pop();
 
     if (this.currentSpinnerTexts.length > 0) {
-      const nextText = this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
+      const nextText =
+        this.currentSpinnerTexts[this.currentSpinnerTexts.length - 1];
       this.currentSpinner = new Spinner(nextText);
       await this.currentSpinner.start();
     } else {
@@ -100,7 +103,7 @@ export class TerminalDisplay {
 
   async clearSpinnerLine(): Promise<void> {
     if (this.currentSpinner) {
-      process.stdout.write('\r\x1b[K');
+      process.stdout.write("\r\x1b[K");
     }
   }
 }

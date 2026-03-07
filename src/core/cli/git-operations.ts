@@ -1,12 +1,19 @@
-import { homedir } from 'os';
-import path from 'path';
-import { stat } from 'fs/promises';
-import fs, { cpSync, mkdirSync, readdirSync, rmSync, linkSync, existsSync } from 'fs';
-import { ModuleSource } from '../../types';
-import { ExecuteCMD } from './command';
-import { getInstallPackagesCommand } from './package-manager';
-import { acquireLock } from '../../utils/lock';
-import { terminalDisplay } from './terminal-display';
+import fs, {
+  cpSync,
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
+import { stat } from "node:fs/promises";
+import { homedir } from "node:os";
+import path from "node:path";
+import type { ModuleSource } from "../../types";
+import { acquireLock } from "../../utils/lock";
+import { ExecuteCMD } from "./command";
+import { getInstallPackagesCommand } from "./package-manager";
+import { terminalDisplay } from "./terminal-display";
 
 function createSymlinksRecursive(sourcePath: string, targetPath: string) {
   try {
@@ -17,7 +24,7 @@ function createSymlinksRecursive(sourcePath: string, targetPath: string) {
       const targetItemPath = path.join(targetPath, item);
       const stats = fs.statSync(sourceItemPath);
 
-      if (stats.isFile() && item.endsWith('.d.ts')) {
+      if (stats.isFile() && item.endsWith(".d.ts")) {
         // Create symlink for .d.ts files
         // Remove existing symlink if it exists
         if (existsSync(targetItemPath)) {
@@ -36,16 +43,18 @@ function createSymlinksRecursive(sourcePath: string, targetPath: string) {
       }
     }
   } catch (error) {
-    console.warn(`Warning: Could not process directory ${sourcePath}: ${String(error)}`);
+    console.warn(
+      `Warning: Could not process directory ${sourcePath}: ${String(error)}`,
+    );
   }
 }
 
 export async function createAjsSymlinks(modulePath: string) {
   const resolvedModulePath = path.resolve(modulePath);
-  const antelopePath = path.join(resolvedModulePath, '.antelope');
-  const interfacesPath = path.join(antelopePath, 'interfaces.d');
-  const nodeModulesPath = path.join(resolvedModulePath, 'node_modules');
-  const ajsPath = path.join(nodeModulesPath, '@ajs');
+  const antelopePath = path.join(resolvedModulePath, ".antelope");
+  const interfacesPath = path.join(antelopePath, "interfaces.d");
+  const nodeModulesPath = path.join(resolvedModulePath, "node_modules");
+  const ajsPath = path.join(nodeModulesPath, "@ajs");
 
   // Check if .antelope/interfaces.d exists
   if (!existsSync(interfacesPath)) {
@@ -61,9 +70,14 @@ export async function createAjsSymlinks(modulePath: string) {
   createSymlinksRecursive(interfacesPath, ajsPath);
 }
 
-async function setupGit(cachePath: string, git: string, folderName: string, branch?: string) {
+async function setupGit(
+  cachePath: string,
+  git: string,
+  folderName: string,
+  branch?: string,
+) {
   const result = await ExecuteCMD(
-    `git clone --filter=blob:none --no-checkout --depth 1 --sparse ${branch ? `--branch ${branch}` : ''} ${git} ${folderName}`,
+    `git clone --filter=blob:none --no-checkout --depth 1 --sparse ${branch ? `--branch ${branch}` : ""} ${git} ${folderName}`,
     {
       cwd: cachePath,
     },
@@ -73,15 +87,18 @@ async function setupGit(cachePath: string, git: string, folderName: string, bran
     throw new Error(`Failed to clone repository: ${result.stderr}`);
   }
 
-  const sparseResult = await ExecuteCMD('git sparse-checkout add manifest.json --skip-checks', {
-    cwd: path.join(cachePath, folderName),
-  });
+  const sparseResult = await ExecuteCMD(
+    "git sparse-checkout add manifest.json --skip-checks",
+    {
+      cwd: path.join(cachePath, folderName),
+    },
+  );
 
   if (sparseResult.code !== 0) {
     throw new Error(`Failed to setup sparse checkout: ${sparseResult.stderr}`);
   }
 
-  const checkoutResult = await ExecuteCMD('git checkout', {
+  const checkoutResult = await ExecuteCMD("git checkout", {
     cwd: path.join(cachePath, folderName),
   });
 
@@ -91,8 +108,8 @@ async function setupGit(cachePath: string, git: string, folderName: string, bran
 }
 
 async function loadGit(git: string, branch?: string): Promise<string> {
-  const folderName = git.replace(/[^a-zA-Z0-9_]/g, '_');
-  const cachePath = path.join(homedir(), '.antelopejs', 'cache');
+  const folderName = git.replace(/[^a-zA-Z0-9_]/g, "_");
+  const cachePath = path.join(homedir(), ".antelopejs", "cache");
 
   if (!(await stat(cachePath).catch(() => false))) {
     mkdirSync(cachePath, { recursive: true });
@@ -103,7 +120,7 @@ async function loadGit(git: string, branch?: string): Promise<string> {
   if (!(await stat(folderPath).catch(() => false))) {
     await setupGit(cachePath, git, folderName, branch);
   } else {
-    await ExecuteCMD('git pull', { cwd: folderPath });
+    await ExecuteCMD("git pull", { cwd: folderPath });
   }
 
   return folderPath;
@@ -125,8 +142,8 @@ export async function loadManifestFromGit(git: string): Promise<GitManifest> {
   const releaseLock = await acquireLock(`git-${git}`);
   try {
     const folderPath = await loadGit(git);
-    const manifestPath = path.join(folderPath, 'manifest.json');
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    const manifestPath = path.join(folderPath, "manifest.json");
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
     return manifest;
   } finally {
     await releaseLock();
@@ -149,7 +166,7 @@ export interface InterfaceManifest {
 }
 
 export interface InterfaceFiles {
-  type: 'git' | 'local';
+  type: "git" | "local";
   remote?: string;
   branch?: string;
   path: string;
@@ -166,8 +183,11 @@ export interface ModuleInterfaceInfo {
   versions: string[];
 }
 
-async function getInterfaceInfo(gitPath: string, interface_: string): Promise<InterfaceInfo | undefined> {
-  const iFolderPath = path.join(gitPath, 'interfaces', interface_);
+async function getInterfaceInfo(
+  gitPath: string,
+  interface_: string,
+): Promise<InterfaceInfo | undefined> {
+  const iFolderPath = path.join(gitPath, "interfaces", interface_);
 
   if (!(await stat(iFolderPath).catch(() => false))) {
     return undefined;
@@ -177,18 +197,24 @@ async function getInterfaceInfo(gitPath: string, interface_: string): Promise<In
     name: interface_,
     folderPath: iFolderPath,
     gitPath,
-    manifest: require(path.join(iFolderPath, 'manifest.json')),
+    manifest: require(path.join(iFolderPath, "manifest.json")),
   };
 }
 
-export async function loadInterfaceFromGit(git: string, interface_: string): Promise<InterfaceInfo | undefined> {
+export async function loadInterfaceFromGit(
+  git: string,
+  interface_: string,
+): Promise<InterfaceInfo | undefined> {
   const releaseLock = await acquireLock(`git-${git}`);
   try {
     const folderPath = await loadGit(git);
 
-    await ExecuteCMD(`git sparse-checkout add interfaces/${interface_}/manifest.json --skip-checks`, {
-      cwd: folderPath,
-    });
+    await ExecuteCMD(
+      `git sparse-checkout add interfaces/${interface_}/manifest.json --skip-checks`,
+      {
+        cwd: folderPath,
+      },
+    );
 
     const interfaceInfo = await getInterfaceInfo(folderPath, interface_);
 
@@ -198,14 +224,22 @@ export async function loadInterfaceFromGit(git: string, interface_: string): Pro
   }
 }
 
-export async function loadInterfacesFromGit(git: string, interfaces: string[]): Promise<Record<string, InterfaceInfo>> {
+export async function loadInterfacesFromGit(
+  git: string,
+  interfaces: string[],
+): Promise<Record<string, InterfaceInfo>> {
   const releaseLock = await acquireLock(`git-${git}`);
   try {
     const folderPath = await loadGit(git);
 
-    const sparseCheckoutPaths = interfaces.map((interface_) => `interfaces/${interface_}/manifest.json`).join(' ');
+    const sparseCheckoutPaths = interfaces
+      .map((interface_) => `interfaces/${interface_}/manifest.json`)
+      .join(" ");
 
-    await ExecuteCMD(`git sparse-checkout add ${sparseCheckoutPaths} --skip-checks`, { cwd: folderPath });
+    await ExecuteCMD(
+      `git sparse-checkout add ${sparseCheckoutPaths} --skip-checks`,
+      { cwd: folderPath },
+    );
 
     const interfacesInfo: Record<string, InterfaceInfo> = {};
 
@@ -230,7 +264,8 @@ export async function installInterfaces(
   const resolvedModulePath = path.resolve(module);
 
   // First collect all the dependencies to avoid redundant git operations
-  const allDependencies: { interfaceInfo: InterfaceInfo; version: string }[] = [];
+  const allDependencies: { interfaceInfo: InterfaceInfo; version: string }[] =
+    [];
 
   // Track processed interfaces to avoid duplicate processing
   const processedInterfaces = new Set<string>();
@@ -254,7 +289,7 @@ export async function installInterfaces(
     const dependencies = interfaceInfo.manifest.dependencies[version];
     if (dependencies.interfaces.length > 0) {
       for (const dependency of dependencies.interfaces) {
-        const [name, depVersion] = dependency.split('@');
+        const [name, depVersion] = dependency.split("@");
 
         // Skip if already processed
         const depKey = `${name}@${depVersion}`;
@@ -270,7 +305,9 @@ export async function installInterfaces(
   // Load all interface dependencies in a single batch request
   if (interfaceDepsToLoad.length > 0) {
     // Get unique interface names
-    const uniqueInterfaceNames = [...new Set(interfaceDepsToLoad.map((dep) => dep.name))];
+    const uniqueInterfaceNames = [
+      ...new Set(interfaceDepsToLoad.map((dep) => dep.name)),
+    ];
 
     // Load all interfaces in one call
     const interfaces = await loadInterfacesFromGit(git, uniqueInterfaceNames);
@@ -293,12 +330,15 @@ export async function installInterfaces(
   }
 
   // Group operations by git repository to minimize git operations
-  const gitOperations: Record<string, { path: string; checkoutPaths: string[] }> = {};
+  const gitOperations: Record<
+    string,
+    { path: string; checkoutPaths: string[] }
+  > = {};
 
   // Prepare git operations
   for (const { interfaceInfo, version } of allDependencies) {
     const files = interfaceInfo.manifest.files[version];
-    if (files.type === 'local') {
+    if (files.type === "local") {
       const gitPath = interfaceInfo.gitPath;
       const interfacePathBase = `interfaces/${interfaceInfo.name}`;
 
@@ -310,7 +350,7 @@ export async function installInterfaces(
         `${interfacePathBase}/${version}`,
         `${interfacePathBase}/${version}.d.ts`,
       );
-    } else if (files.type === 'git' && files.remote) {
+    } else if (files.type === "git" && files.remote) {
       const releaseLock = await acquireLock(`git-${files.remote}`);
       try {
         const gitPath = await loadGit(files.remote, files.branch);
@@ -319,7 +359,10 @@ export async function installInterfaces(
           gitOperations[gitPath] = { path: gitPath, checkoutPaths: [] };
         }
 
-        gitOperations[gitPath].checkoutPaths.push(`${files.path}/${version}`, `${files.path}/${version}.d.ts`);
+        gitOperations[gitPath].checkoutPaths.push(
+          `${files.path}/${version}`,
+          `${files.path}/${version}.d.ts`,
+        );
       } finally {
         await releaseLock();
       }
@@ -331,11 +374,18 @@ export async function installInterfaces(
     const folderName = path.basename(gitOp.path);
     const releaseLock = await acquireLock(`git-${folderName}`);
     try {
-      await terminalDisplay.startSpinner(`Updating git sparse-checkout for ${folderName}`);
-      await ExecuteCMD(`git sparse-checkout add ${gitOp.checkoutPaths.join(' ')} --skip-checks`, {
-        cwd: gitOp.path,
-      });
-      await terminalDisplay.stopSpinner(`Updated git sparse-checkout for ${folderName}`);
+      await terminalDisplay.startSpinner(
+        `Updating git sparse-checkout for ${folderName}`,
+      );
+      await ExecuteCMD(
+        `git sparse-checkout add ${gitOp.checkoutPaths.join(" ")} --skip-checks`,
+        {
+          cwd: gitOp.path,
+        },
+      );
+      await terminalDisplay.stopSpinner(
+        `Updated git sparse-checkout for ${folderName}`,
+      );
     } finally {
       await releaseLock();
     }
@@ -345,11 +395,11 @@ export async function installInterfaces(
   await terminalDisplay.startSpinner(`Copying interface files`);
   for (const { interfaceInfo, version } of allDependencies) {
     const files = interfaceInfo.manifest.files[version];
-    let folderPath = '';
+    let folderPath = "";
 
-    if (files.type === 'local') {
+    if (files.type === "local") {
       folderPath = path.resolve(interfaceInfo.folderPath);
-    } else if (files.type === 'git' && files.remote) {
+    } else if (files.type === "git" && files.remote) {
       const releaseLock = await acquireLock(`git-${files.remote}`);
       try {
         const gitPath = await loadGit(files.remote, files.branch);
@@ -358,14 +408,16 @@ export async function installInterfaces(
         await releaseLock();
       }
     } else {
-      throw new Error('Invalid interface files type');
+      throw new Error("Invalid interface files type");
     }
 
-    const antelopePath = path.join(resolvedModulePath, '.antelope');
-    const interfacesPath = path.join(antelopePath, 'interfaces.d');
+    const antelopePath = path.join(resolvedModulePath, ".antelope");
+    const interfacesPath = path.join(antelopePath, "interfaces.d");
 
     // Determine source and destination paths
-    const isDirectory = await stat(path.join(folderPath, version)).catch(() => false);
+    const isDirectory = await stat(path.join(folderPath, version)).catch(
+      () => false,
+    );
     const interfacePath = isDirectory
       ? path.join(interfacesPath, interfaceInfo.name, version)
       : path.join(interfacesPath, interfaceInfo.name);
@@ -376,31 +428,51 @@ export async function installInterfaces(
     }
 
     // Copy files
-    const sourcePath = isDirectory ? path.join(folderPath, version) : path.join(folderPath, `${version}.d.ts`);
-    const destPath = isDirectory ? interfacePath : path.join(interfacePath, `${version}.d.ts`);
+    const sourcePath = isDirectory
+      ? path.join(folderPath, version)
+      : path.join(folderPath, `${version}.d.ts`);
+    const destPath = isDirectory
+      ? interfacePath
+      : path.join(interfacePath, `${version}.d.ts`);
 
-    await terminalDisplay.startSpinner(`Copying interface files for ${interfaceInfo.name}@${version}`);
+    await terminalDisplay.startSpinner(
+      `Copying interface files for ${interfaceInfo.name}@${version}`,
+    );
     cpSync(sourcePath, destPath, isDirectory ? { recursive: true } : {});
-    await terminalDisplay.stopSpinner(`Copied interface files for ${interfaceInfo.name}@${version}`);
+    await terminalDisplay.stopSpinner(
+      `Copied interface files for ${interfaceInfo.name}@${version}`,
+    );
 
     const dependencies = interfaceInfo.manifest.dependencies[version];
     if (dependencies.packages.length > 0) {
-      const installCmd = await getInstallPackagesCommand(dependencies.packages, true, interfacePath);
+      const installCmd = await getInstallPackagesCommand(
+        dependencies.packages,
+        true,
+        interfacePath,
+      );
       const installResult = await ExecuteCMD(installCmd, {
         cwd: interfacePath,
       });
       if (installResult.code !== 0) {
-        await terminalDisplay.failSpinner(`Failed to install packages for ${interfaceInfo.name}@${version}`);
-        throw new Error(`Failed to install packages for ${interfaceInfo.name}@${version}: ${installResult.stderr}`);
+        await terminalDisplay.failSpinner(
+          `Failed to install packages for ${interfaceInfo.name}@${version}`,
+        );
+        throw new Error(
+          `Failed to install packages for ${interfaceInfo.name}@${version}: ${installResult.stderr}`,
+        );
       }
     }
   }
   await terminalDisplay.stopSpinner(`Copied interface files`);
 }
 
-export async function removeInterface(module: string, name: string, version: string) {
-  const antelopePath = path.join(module, '.antelope');
-  const interfacesPath = path.join(antelopePath, 'interfaces.d');
+export async function removeInterface(
+  module: string,
+  name: string,
+  version: string,
+) {
+  const antelopePath = path.join(module, ".antelope");
+  const interfacesPath = path.join(antelopePath, "interfaces.d");
   const interfaceRootPath = path.join(interfacesPath, name);
   const interfacePath = path.join(interfaceRootPath, version);
 
@@ -408,22 +480,31 @@ export async function removeInterface(module: string, name: string, version: str
     rmSync(interfacePath, { recursive: true });
   }
 
-  if ((await stat(interfaceRootPath).catch(() => false)) && readdirSync(interfaceRootPath).length <= 0) {
+  if (
+    (await stat(interfaceRootPath).catch(() => false)) &&
+    readdirSync(interfaceRootPath).length <= 0
+  ) {
     rmSync(interfaceRootPath, { recursive: true });
   }
 
-  if ((await stat(interfacesPath).catch(() => false)) && readdirSync(interfacesPath).length <= 0) {
+  if (
+    (await stat(interfacesPath).catch(() => false)) &&
+    readdirSync(interfacesPath).length <= 0
+  ) {
     rmSync(interfacesPath, { recursive: true });
   }
 
-  if ((await stat(antelopePath).catch(() => false)) && readdirSync(antelopePath).length <= 0) {
+  if (
+    (await stat(antelopePath).catch(() => false)) &&
+    readdirSync(antelopePath).length <= 0
+  ) {
     rmSync(antelopePath, { recursive: true });
   }
 }
 
 export async function copyTemplate(template: Template, distPath: string) {
   await mkdirSync(distPath, { recursive: true });
-  await ExecuteCMD('git init', {
+  await ExecuteCMD("git init", {
     cwd: distPath,
   });
 
@@ -431,7 +512,7 @@ export async function copyTemplate(template: Template, distPath: string) {
     cwd: distPath,
   });
 
-  await ExecuteCMD('git fetch', {
+  await ExecuteCMD("git fetch", {
     cwd: distPath,
   });
 
@@ -439,7 +520,7 @@ export async function copyTemplate(template: Template, distPath: string) {
     cwd: distPath,
   });
 
-  rmSync(path.join(distPath, '.git'), { recursive: true, force: true });
+  rmSync(path.join(distPath, ".git"), { recursive: true, force: true });
 }
 
 export class GitOperations {

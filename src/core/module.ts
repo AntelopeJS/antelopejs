@@ -1,11 +1,11 @@
-import { Logging } from '../interfaces/logging/beta';
-import { ModuleManifest } from './module-manifest';
-import { ModuleCallbacks, ModuleState } from '../types';
-import { ModuleLifecycle } from './module-lifecycle';
+import { Logging } from "../interfaces/logging/beta";
+import { type ModuleCallbacks, ModuleState } from "../types";
+import { ModuleLifecycle } from "./module-lifecycle";
+import type { ModuleManifest } from "./module-manifest";
 
 export type ModuleLoader = (mainPath: string) => Promise<ModuleCallbacks>;
 
-const Logger = new Logging.Channel('loader.module');
+const Logger = new Logging.Channel("loader.module");
 
 async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
   const mod = await import(mainPath);
@@ -28,7 +28,7 @@ export class Module {
     this.lifecycle = new ModuleLifecycle(this.id);
   }
 
-  get state(): ModuleLifecycle['state'] {
+  get state(): ModuleLifecycle["state"] {
     return this.lifecycle.state;
   }
 

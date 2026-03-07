@@ -1,4 +1,4 @@
-import repl, { REPLServer } from 'repl';
+import repl, { type REPLServer } from "node:repl";
 
 export type ReplFactory = (prompt?: string) => REPLServer;
 
@@ -10,7 +10,7 @@ export class ReplSession {
     private createRepl: ReplFactory = repl.start,
   ) {}
 
-  start(prompt: string = '> '): REPLServer {
+  start(prompt: string = "> "): REPLServer {
     this.server = this.createRepl(prompt);
     Object.assign(this.server.context, this.context);
     return this.server;

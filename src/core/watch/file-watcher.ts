@@ -1,11 +1,11 @@
-import * as path from 'path';
-import { FSWatcher, watch } from 'fs';
-import { IFileSystem } from '../../types';
-import { FileHasher } from './file-hasher';
+import { type FSWatcher, watch } from "node:fs";
+import * as path from "node:path";
+import type { IFileSystem } from "../../types";
+import { FileHasher } from "./file-hasher";
 
 export type ModuleChangeListener = (moduleId: string) => void;
 
-const EXCLUDED_WATCH_DIRS = ['.git', 'node_modules'];
+const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
 
 export class FileWatcher {
   private filesHash = new Map<string, { moduleId: string; hash: string }>();
@@ -24,7 +24,11 @@ export class FileWatcher {
     this.listeners.push(listener);
   }
 
-  async scanModule(moduleId: string, rootDir: string, watchDirs: string[] = ['']): Promise<void> {
+  async scanModule(
+    moduleId: string,
+    rootDir: string,
+    watchDirs: string[] = [""],
+  ): Promise<void> {
     for (const dir of watchDirs) {
       await this.exploreDir(moduleId, path.join(rootDir, dir));
     }
@@ -37,14 +41,16 @@ export class FileWatcher {
       }
       try {
         const watcher = watch(dir, (event, filename) => {
-          if (!filename || (event !== 'change' && event !== 'rename')) {
+          if (!filename || (event !== "change" && event !== "rename")) {
             return;
           }
-          const fileName = Buffer.isBuffer(filename) ? filename.toString() : filename;
+          const fileName = Buffer.isBuffer(filename)
+            ? filename.toString()
+            : filename;
           const filePath = path.join(dir, fileName);
           void this.handleFileChange(filePath);
         });
-        watcher.on('error', (err) => {
+        watcher.on("error", (err) => {
           console.error(`FileWatcher error for ${dir}:`, err);
         });
         this.watchers.set(dir, watcher);

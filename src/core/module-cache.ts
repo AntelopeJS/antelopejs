@@ -1,9 +1,9 @@
-import * as path from 'path';
-import * as os from 'os';
-import * as fsNode from 'fs/promises';
-import { satisfies } from 'semver';
-import { IFileSystem } from '../types';
-import { NodeFileSystem } from './filesystem';
+import * as fsNode from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
+import { satisfies } from "semver";
+import type { IFileSystem } from "../types";
+import { NodeFileSystem } from "./filesystem";
 
 export class ModuleCache {
   private manifest: Record<string, string> = {};
@@ -16,7 +16,7 @@ export class ModuleCache {
 
   async load(): Promise<void> {
     await this.fs.mkdir(this.path, { recursive: true });
-    const manifestPath = path.join(this.path, 'manifest.json');
+    const manifestPath = path.join(this.path, "manifest.json");
     if (await this.fs.exists(manifestPath)) {
       const data = await this.fs.readFileString(manifestPath);
       this.manifest = JSON.parse(data) || {};
@@ -26,8 +26,11 @@ export class ModuleCache {
   }
 
   async save(): Promise<void> {
-    const manifestPath = path.join(this.path, 'manifest.json');
-    await this.fs.writeFile(manifestPath, JSON.stringify(this.manifest, null, 2));
+    const manifestPath = path.join(this.path, "manifest.json");
+    await this.fs.writeFile(
+      manifestPath,
+      JSON.stringify(this.manifest, null, 2),
+    );
   }
 
   getVersion(module: string): string | undefined {
@@ -40,10 +43,16 @@ export class ModuleCache {
   }
 
   hasVersion(module: string, version: string): boolean {
-    return !!(this.manifest[module] && satisfies(this.manifest[module], version));
+    return !!(
+      this.manifest[module] && satisfies(this.manifest[module], version)
+    );
   }
 
-  async getFolder(module: string, noClean?: boolean, noCreate?: boolean): Promise<string> {
+  async getFolder(
+    module: string,
+    noClean?: boolean,
+    noCreate?: boolean,
+  ): Promise<string> {
     const folder = path.join(this.path, module);
     if (!noClean) {
       await this.fs.rm(folder, { recursive: true, force: true });
@@ -55,10 +64,14 @@ export class ModuleCache {
   }
 
   static getTemp(): Promise<string> {
-    return fsNode.mkdtemp(path.join(os.tmpdir(), 'ajs-'));
+    return fsNode.mkdtemp(path.join(os.tmpdir(), "ajs-"));
   }
 
-  async transfer(source: string, module: string, version: string): Promise<string> {
+  async transfer(
+    source: string,
+    module: string,
+    version: string,
+  ): Promise<string> {
     const dest = await this.getFolder(module, false, false);
     await this.copyDir(source, dest);
     await this.fs.rm(source, { recursive: true, force: true });

@@ -1,13 +1,13 @@
-import { expect } from 'chai';
-import { ResolverDetour } from '../../../src/core/resolution/resolver-detour';
-import { Resolver } from '../../../src/core/resolution/resolver';
-import { PathMapper } from '../../../src/core/resolution/path-mapper';
-import Module from 'module';
+import Module from "node:module";
+import { expect } from "chai";
+import { PathMapper } from "../../../src/core/resolution/path-mapper";
+import { Resolver } from "../../../src/core/resolution/resolver";
+import { ResolverDetour } from "../../../src/core/resolution/resolver-detour";
 
-describe('ResolverDetour', () => {
-  it('should attach and detach from Node resolver', () => {
+describe("ResolverDetour", () => {
+  it("should attach and detach from Node resolver", () => {
     const original = (Module as any)._resolveFilename;
-    let lastRequest = '';
+    let lastRequest = "";
     const stubResolver = (request: string) => {
       lastRequest = request;
       return request;
@@ -18,10 +18,15 @@ describe('ResolverDetour', () => {
     const detour = new ResolverDetour(resolver);
 
     detour.attach();
-    const result = (Module as any)._resolveFilename('test', { filename: '/modA/src/index.js' }, false, {});
+    const result = (Module as any)._resolveFilename(
+      "test",
+      { filename: "/modA/src/index.js" },
+      false,
+      {},
+    );
 
-    expect(result).to.equal('test');
-    expect(lastRequest).to.equal('test');
+    expect(result).to.equal("test");
+    expect(lastRequest).to.equal("test");
 
     detour.detach();
     expect((Module as any)._resolveFilename).to.equal(stubResolver);

@@ -1,15 +1,18 @@
-import * as path from 'path';
-import { Module } from './module';
-import { ModuleManifest } from './module-manifest';
-import { ModuleRegistry } from './module-registry';
-import { Resolver } from './resolution/resolver';
-import { ResolverDetour } from './resolution/resolver-detour';
-import { PathMapper } from './resolution/path-mapper';
-import { InterfaceRegistry, InterfaceConnectionRef } from './interface-registry';
-import { ModuleTracker } from './module-tracker';
-import { Logging } from '../interfaces/logging/beta';
+import * as path from "node:path";
+import { Logging } from "../interfaces/logging/beta";
+import {
+  type InterfaceConnectionRef,
+  InterfaceRegistry,
+} from "./interface-registry";
+import { Module } from "./module";
+import type { ModuleManifest } from "./module-manifest";
+import { ModuleRegistry } from "./module-registry";
+import { ModuleTracker } from "./module-tracker";
+import { PathMapper } from "./resolution/path-mapper";
+import { Resolver } from "./resolution/resolver";
+import { ResolverDetour } from "./resolution/resolver-detour";
 
-const Logger = new Logging.Channel('loader');
+const Logger = new Logging.Channel("loader");
 
 export interface ModuleConfig {
   config?: unknown;
@@ -47,7 +50,10 @@ export class ModuleManager {
     this.moduleTracker = deps.moduleTracker ?? new ModuleTracker();
   }
 
-  addStaticModule(entry: { manifest: ModuleManifest; config?: ModuleConfig }): void {
+  addStaticModule(entry: {
+    manifest: ModuleManifest;
+    config?: ModuleConfig;
+  }): void {
     const module = new Module(entry.manifest);
     const config: ModuleConfig = {
       config: entry.config?.config,
@@ -58,7 +64,9 @@ export class ModuleManager {
     this.staticModules.push({ module, config });
   }
 
-  addModules(entries: Array<{ manifest: ModuleManifest; config?: ModuleConfig }>): ManagedModule[] {
+  addModules(
+    entries: Array<{ manifest: ModuleManifest; config?: ModuleConfig }>,
+  ): ManagedModule[] {
     const created: ManagedModule[] = [];
     for (const entry of entries) {
       const module = new Module(entry.manifest);
@@ -86,7 +94,10 @@ export class ModuleManager {
   }
 
   getModuleEntry(id: string): ManagedModule | undefined {
-    return this.loaded.get(id) ?? this.staticModules.find((entry) => entry.module.id === id);
+    return (
+      this.loaded.get(id) ??
+      this.staticModules.find((entry) => entry.module.id === id)
+    );
   }
 
   getLoadedModuleEntry(id: string): ManagedModule | undefined {
@@ -112,7 +123,7 @@ export class ModuleManager {
     if (entry.module.manifest.exportsPath) {
       avoidedFolders.add(path.resolve(entry.module.manifest.exportsPath));
     }
-    avoidedFolders.add(path.join(moduleFolder, 'node_modules'));
+    avoidedFolders.add(path.join(moduleFolder, "node_modules"));
 
     for (const [id, other] of this.loaded) {
       if (id === moduleId) {
@@ -163,7 +174,7 @@ export class ModuleManager {
             Logger.Error(`Failed to construct module:`);
             Logger.Error(`  - ID: ${module.id}`);
             Logger.Error(`  - Version: ${module.version}`);
-            Logger.Error('  - Error:', err);
+            Logger.Error("  - Error:", err);
             throw err;
           }),
         ),
@@ -182,7 +193,7 @@ export class ModuleManager {
           Logger.Error(`Failed to construct module:`);
           Logger.Error(`  - ID: ${module.id}`);
           Logger.Error(`  - Version: ${module.version}`);
-          Logger.Error('  - Error:', err);
+          Logger.Error("  - Error:", err);
           throw err;
         }),
       ),
@@ -205,7 +216,10 @@ export class ModuleManager {
 
   async stopAll(): Promise<void> {
     const reverseOrder = [...this.startupOrder].reverse();
-    const idsToStop = reverseOrder.length > 0 ? reverseOrder : [...this.loaded.keys()].reverse();
+    const idsToStop =
+      reverseOrder.length > 0
+        ? reverseOrder
+        : [...this.loaded.keys()].reverse();
 
     for (const id of idsToStop) {
       const entry = this.loaded.get(id);
@@ -225,7 +239,10 @@ export class ModuleManager {
 
   async destroyAll(): Promise<void> {
     const reverseOrder = [...this.startupOrder].reverse();
-    const idsToDestroy = reverseOrder.length > 0 ? reverseOrder : [...this.loaded.keys()].reverse();
+    const idsToDestroy =
+      reverseOrder.length > 0
+        ? reverseOrder
+        : [...this.loaded.keys()].reverse();
 
     try {
       for (const id of idsToDestroy) {
@@ -289,8 +306,17 @@ export class ModuleManager {
     for (const { module, config } of this.loaded.values()) {
       const associations = new Map<string, Module | null>();
       const connections = new Map<string, InterfaceConnectionRef[]>();
-      this.addDefaultAssociations(module, associations, connections, interfaceSources);
-      this.applyImportOverrides(config.importOverrides, associations, connections);
+      this.addDefaultAssociations(
+        module,
+        associations,
+        connections,
+        interfaceSources,
+      );
+      this.applyImportOverrides(
+        config.importOverrides,
+        associations,
+        connections,
+      );
       this.resolver.moduleAssociations.set(module.id, associations);
       this.interfaceRegistry.setConnections(module.id, connections);
     }
@@ -320,11 +346,15 @@ export class ModuleManager {
       return;
     }
     for (const [iface, overrides] of importOverrides.entries()) {
-      const usable = overrides.filter((override) => this.loaded.has(override.module));
+      const usable = overrides.filter((override) =>
+        this.loaded.has(override.module),
+      );
       connections.set(iface, usable);
       if (usable.length > 0) {
-        const target = this.loaded.get(usable[0].module)!.module;
-        associations.set(iface, target);
+        const target = this.loaded.get(usable[0].module)?.module;
+        if (target) {
+          associations.set(iface, target);
+        }
       }
     }
   }

@@ -1,15 +1,15 @@
-import { Logging } from '../../interfaces/logging/beta';
+import { Logging } from "../../interfaces/logging/beta";
 
 export type ShutdownHandler = () => Promise<void> | void;
 
-type ProcessSignal = 'SIGINT' | 'SIGTERM';
+type ProcessSignal = "SIGINT" | "SIGTERM";
 
 interface RegisteredHandler {
   handler: ShutdownHandler;
   priority: number;
 }
 
-const Logger = new Logging.Channel('shutdown');
+const Logger = new Logging.Channel("shutdown");
 
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10000;
 const EXIT_CODE_SUCCESS = 0;
@@ -54,21 +54,24 @@ export class ShutdownManager {
       return;
     }
 
-    this.sigintHandler = () => this.handleSignal('SIGINT');
-    this.sigtermHandler = () => this.handleSignal('SIGTERM');
+    this.sigintHandler = () => this.handleSignal("SIGINT");
+    this.sigtermHandler = () => this.handleSignal("SIGTERM");
 
-    process.on('SIGINT', this.sigintHandler);
-    process.on('SIGTERM', this.sigtermHandler);
+    process.on("SIGINT", this.sigintHandler);
+    process.on("SIGTERM", this.sigtermHandler);
   }
 
   removeSignalHandlers(): void {
-    this.detachSignalHandler('SIGINT', this.sigintHandler);
-    this.detachSignalHandler('SIGTERM', this.sigtermHandler);
+    this.detachSignalHandler("SIGINT", this.sigintHandler);
+    this.detachSignalHandler("SIGTERM", this.sigtermHandler);
     this.sigintHandler = undefined;
     this.sigtermHandler = undefined;
   }
 
-  private detachSignalHandler(signal: ProcessSignal, handler?: () => void): void {
+  private detachSignalHandler(
+    signal: ProcessSignal,
+    handler?: () => void,
+  ): void {
     if (!handler) {
       return;
     }
@@ -87,16 +90,19 @@ export class ShutdownManager {
   }
 
   private updateRequestedExitCode(exitCode?: number): void {
-    if (typeof exitCode !== 'number') {
+    if (typeof exitCode !== "number") {
       return;
     }
 
-    if (typeof this.requestedExitCode !== 'number') {
+    if (typeof this.requestedExitCode !== "number") {
       this.requestedExitCode = exitCode;
       return;
     }
 
-    if (this.requestedExitCode === EXIT_CODE_SUCCESS && exitCode !== EXIT_CODE_SUCCESS) {
+    if (
+      this.requestedExitCode === EXIT_CODE_SUCCESS &&
+      exitCode !== EXIT_CODE_SUCCESS
+    ) {
       this.requestedExitCode = exitCode;
     }
   }
@@ -104,7 +110,7 @@ export class ShutdownManager {
   private async executeShutdown(): Promise<void> {
     await this.runHandlersWithTimeout();
 
-    if (typeof this.requestedExitCode === 'number') {
+    if (typeof this.requestedExitCode === "number") {
       process.exit(this.requestedExitCode);
     }
   }
@@ -112,7 +118,7 @@ export class ShutdownManager {
   private runHandlersWithTimeout(): Promise<void> {
     const timeoutPromise = new Promise<void>((resolve) => {
       setTimeout(() => {
-        Logger.Error('Shutdown timed out, forcing completion');
+        Logger.Error("Shutdown timed out, forcing completion");
         resolve();
       }, this.timeoutMs);
     });
@@ -121,13 +127,15 @@ export class ShutdownManager {
   }
 
   private async executeHandlers(): Promise<void> {
-    const sortedHandlers = [...this.handlers].sort((left, right) => right.priority - left.priority);
+    const sortedHandlers = [...this.handlers].sort(
+      (left, right) => right.priority - left.priority,
+    );
 
     for (const { handler } of sortedHandlers) {
       try {
         await handler();
       } catch (error) {
-        Logger.Error('Shutdown handler error:', error);
+        Logger.Error("Shutdown handler error:", error);
       }
     }
   }

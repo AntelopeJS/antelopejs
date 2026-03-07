@@ -1,10 +1,20 @@
-import { createJiti } from 'jiti';
-import { IFileSystem, AntelopeConfig, AntelopeLogging, AntelopeTestConfig } from '../../types';
-import { ConfigParser, ExpandedModuleConfig } from './config-parser';
-import { mergeDeep } from '../../utils/object';
-import { ConfigInput } from '../../config';
-import { DEFAULT_CACHE_DIR, DEFAULT_ENV, findConfigPath, getModuleConfigPath } from './config-paths';
-import * as self from './config-loader';
+import { createJiti } from "jiti";
+import type { ConfigInput } from "../../config";
+import type {
+  AntelopeConfig,
+  AntelopeLogging,
+  AntelopeTestConfig,
+  IFileSystem,
+} from "../../types";
+import { mergeDeep } from "../../utils/object";
+import * as self from "./config-loader";
+import { ConfigParser, type ExpandedModuleConfig } from "./config-parser";
+import {
+  DEFAULT_CACHE_DIR,
+  DEFAULT_ENV,
+  findConfigPath,
+  getModuleConfigPath,
+} from "./config-paths";
 
 export interface LoadedConfig {
   name: string;
@@ -15,12 +25,15 @@ export interface LoadedConfig {
   test?: AntelopeTestConfig;
 }
 
-export async function loadTsConfigFile(configPath: string, environment?: string): Promise<AntelopeConfig> {
+export async function loadTsConfigFile(
+  configPath: string,
+  environment?: string,
+): Promise<AntelopeConfig> {
   const jiti = createJiti(configPath);
   const loaded = await jiti.import(configPath);
   const configInput: ConfigInput = (loaded as any).default ?? loaded;
 
-  if (typeof configInput === 'function') {
+  if (typeof configInput === "function") {
     return await configInput({ env: environment ?? DEFAULT_ENV });
   }
 
@@ -32,12 +45,23 @@ export class ConfigLoader {
 
   constructor(private fs: IFileSystem) {}
 
-  async load(projectFolder: string, environment?: string, configPath?: string): Promise<LoadedConfig> {
-    const rawConfig = await this.loadConfigSource(projectFolder, environment, configPath);
+  async load(
+    projectFolder: string,
+    environment?: string,
+    configPath?: string,
+  ): Promise<LoadedConfig> {
+    const rawConfig = await this.loadConfigSource(
+      projectFolder,
+      environment,
+      configPath,
+    );
 
     let config = { ...rawConfig };
     if (environment && rawConfig.environments?.[environment]) {
-      config = mergeDeep(config, rawConfig.environments[environment]) as AntelopeConfig;
+      config = mergeDeep(
+        config,
+        rawConfig.environments[environment],
+      ) as AntelopeConfig;
     }
 
     config.cacheFolder = config.cacheFolder ?? DEFAULT_CACHE_DIR;
@@ -57,7 +81,10 @@ export class ConfigLoader {
     }
 
     const envOverrides = config.envOverrides ?? {};
-    const configWithOverrides = this.parser.applyEnvOverrides({ ...config, modules: expandedModules }, envOverrides);
+    const configWithOverrides = this.parser.applyEnvOverrides(
+      { ...config, modules: expandedModules },
+      envOverrides,
+    );
 
     const processed = this.parser.processTemplates({
       name: configWithOverrides.name,
@@ -78,7 +105,8 @@ export class ConfigLoader {
     environment?: string,
     configPath?: string,
   ): Promise<AntelopeConfig> {
-    const resolvedPath = configPath ?? (await findConfigPath(projectFolder, this.fs));
+    const resolvedPath =
+      configPath ?? (await findConfigPath(projectFolder, this.fs));
     return self.loadTsConfigFile(resolvedPath, environment);
   }
 

@@ -1,22 +1,32 @@
-import chalk from 'chalk';
-import { Command } from 'commander';
-import { writeUserConfig, readUserConfig, DEFAULT_GIT_REPO, displayNonDefaultGitWarning } from '../../common';
-import { displayBox, error, success, keyValue } from '../../cli-ui';
+import chalk from "chalk";
+import { Command } from "commander";
+import { displayBox, error, keyValue, success } from "../../cli-ui";
+import {
+  DEFAULT_GIT_REPO,
+  displayNonDefaultGitWarning,
+  readUserConfig,
+  writeUserConfig,
+} from "../../common";
 
-const VALID_KEYS = ['git'];
+const VALID_KEYS = ["git"];
 
 export default function () {
-  return new Command('set')
-    .description(`Set a CLI configuration value\n` + `Changes a configuration setting to a new value.`)
-    .argument('<key>', `Setting name to change (${VALID_KEYS.join(', ')})`)
-    .argument('<value>', 'New value to set')
+  return new Command("set")
+    .description(
+      `Set a CLI configuration value\n` +
+        `Changes a configuration setting to a new value.`,
+    )
+    .argument("<key>", `Setting name to change (${VALID_KEYS.join(", ")})`)
+    .argument("<value>", "New value to set")
     .action(async (key: string, value: string) => {
-      console.log(''); // Add spacing for better readability
+      console.log(""); // Add spacing for better readability
 
       // Validate the configuration key
       if (!VALID_KEYS.includes(key)) {
         error(`Invalid configuration key: ${chalk.bold(key)}`);
-        console.log(`Valid keys are: ${VALID_KEYS.map((k) => chalk.cyan(k)).join(', ')}`);
+        console.log(
+          `Valid keys are: ${VALID_KEYS.map((k) => chalk.cyan(k)).join(", ")}`,
+        );
         process.exitCode = 1;
         return;
       }
@@ -24,7 +34,7 @@ export default function () {
       const config = await readUserConfig();
 
       // Display non-default git warning if applicable
-      if (key === 'git' && value !== DEFAULT_GIT_REPO) {
+      if (key === "git" && value !== DEFAULT_GIT_REPO) {
         await displayNonDefaultGitWarning(value);
       }
 
@@ -40,6 +50,9 @@ export default function () {
 
       // Show the change in a nicely formatted box
       const formattedChange = `${keyValue(key, chalk.dim(`${oldValue} → `) + chalk.green(value))}`;
-      await displayBox(formattedChange, '📝 Configuration Changed', { padding: 1, borderColor: 'green' });
+      await displayBox(formattedChange, "📝 Configuration Changed", {
+        padding: 1,
+        borderColor: "green",
+      });
     });
 }
