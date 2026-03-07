@@ -268,7 +268,8 @@ export namespace internal {
     id: string;
     interfaceDir: string;
   }[] = [];
-  export const testStubMode = false;
+  // biome-ignore lint/style/useConst: reassigned cross-file via namespace import
+  export let testStubMode = false;
 
   export const knownAsync = new Map<string, Array<AsyncProxy>>();
   export const knownRegisters = new Map<string, Array<RegisteringProxy>>();
