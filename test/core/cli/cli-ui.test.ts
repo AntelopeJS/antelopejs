@@ -87,6 +87,5 @@ describe("CLI UI", () => {
         logStub.restore();
       }
     });
-
   });
 });

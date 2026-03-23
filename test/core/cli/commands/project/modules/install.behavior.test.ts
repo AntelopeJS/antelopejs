@@ -27,7 +27,11 @@ describe("project modules install behavior", () => {
       await mkdir(pkgDir, { recursive: true });
       await writeFile(
         path.join(pkgDir, "package.json"),
-        JSON.stringify({ name, version: "1.0.0", antelopeJs: { implements: [] } }),
+        JSON.stringify({
+          name,
+          version: "1.0.0",
+          antelopeJs: { implements: [] },
+        }),
       );
       await writeFile(path.join(pkgDir, "index.js"), "module.exports = {};");
     }
@@ -463,7 +467,9 @@ describe("project modules install behavior", () => {
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
     const fakeManifest = {
-      manifest: { dependencies: { [ifaceName]: "^1.0.0", [ifaceName2]: "^1.0.0" } },
+      manifest: {
+        dependencies: { [ifaceName]: "^1.0.0", [ifaceName2]: "^1.0.0" },
+      },
       implements: [],
       folder: tempModuleDir,
     };
@@ -571,8 +577,6 @@ describe("project modules install behavior", () => {
     expect(loadStub.called).to.equal(false);
     expect(promptStub.called).to.equal(false);
   });
-
-
 
   it("warns when no modules are found for an unresolved import", async () => {
     const baseConfig: any = {

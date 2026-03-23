@@ -28,5 +28,4 @@ describe("InterfaceRegistry", () => {
       { path: "core@beta", id: "x" },
     ]);
   });
-
 });

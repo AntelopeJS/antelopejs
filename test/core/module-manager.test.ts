@@ -40,7 +40,10 @@ async function createTempModuleWithInterfacePkg(): Promise<{
     path.join(interfacePkgDir, "package.json"),
     JSON.stringify({ name: interfacePkg, version: "1.0.0", main: "index.js" }),
   );
-  await writeFile(path.join(interfacePkgDir, "index.js"), "module.exports = {};");
+  await writeFile(
+    path.join(interfacePkgDir, "index.js"),
+    "module.exports = {};",
+  );
 
   return { root, modulePath, interfacePkg, interfacePkgDir };
 }
@@ -62,7 +65,11 @@ describe("ModuleManager", () => {
     );
     await fs.writeFile(
       "/consumer/package.json",
-      JSON.stringify({ name: "consumer", version: "1.0.0", dependencies: { "core@beta": "^1.0.0" } }),
+      JSON.stringify({
+        name: "consumer",
+        version: "1.0.0",
+        dependencies: { "core@beta": "^1.0.0" },
+      }),
     );
 
     const providerSource: ModuleSourceLocal = {
@@ -117,7 +124,11 @@ describe("ModuleManager", () => {
     );
     await fs.writeFile(
       "/consumer/package.json",
-      JSON.stringify({ name: "consumer", version: "1.0.0", dependencies: { "core@beta": "^1.0.0" } }),
+      JSON.stringify({
+        name: "consumer",
+        version: "1.0.0",
+        dependencies: { "core@beta": "^1.0.0" },
+      }),
     );
 
     const providerSource: ModuleSourceLocal = {
@@ -171,7 +182,11 @@ describe("ModuleManager", () => {
     );
     await fs.writeFile(
       "/consumer/package.json",
-      JSON.stringify({ name: "consumer", version: "1.0.0", dependencies: { "@antelopejs/interface-database": "^0.0.2" } }),
+      JSON.stringify({
+        name: "consumer",
+        version: "1.0.0",
+        dependencies: { "@antelopejs/interface-database": "^0.0.2" },
+      }),
     );
 
     const providerSource: ModuleSourceLocal = {

@@ -103,9 +103,7 @@ async function analyzeConfig(
         const pkgJsonPath = require.resolve(`${dep}/package.json`, {
           paths: [module.folder],
         });
-        const depPkg = JSON.parse(
-          await fs.readFileString(pkgJsonPath),
-        );
+        const depPkg = JSON.parse(await fs.readFileString(pkgJsonPath));
         // If the package has antelopeJs metadata, it's part of the ecosystem
         if (depPkg.antelopeJs) {
           unresolvedImports.push(dep);
