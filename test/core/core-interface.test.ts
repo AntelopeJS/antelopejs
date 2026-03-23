@@ -1,3 +1,5 @@
+import { internal } from "@antelopejs/interface-core/internal";
+import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
 import { ConfigLoader } from "../../src/core/config/config-loader";
@@ -6,8 +8,6 @@ import { Module } from "../../src/core/module";
 import { ModuleCache } from "../../src/core/module-cache";
 import { ModuleManager } from "../../src/core/module-manager";
 import { launch } from "../../src/index";
-import { internal } from "../../src/interfaces/core/beta";
-import * as moduleInterfaceBeta from "../../src/interfaces/core/beta/modules";
 
 describe("core/beta module interface", () => {
   afterEach(() => {
@@ -31,11 +31,8 @@ describe("core/beta module interface", () => {
       version: "1.0.0",
       main: "/mods/modA/index.js",
       folder: "/mods/modA",
-      exportsPath: "/mods/modA/interfaces",
-      exports: {},
       imports: [],
       source: { type: "local", path: "/mods/modA" },
-      loadExports: sinon.stub().resolves(),
     } as any;
 
     const loadStub = sinon.stub(DownloaderRegistry.prototype, "load");

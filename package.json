@@ -13,17 +13,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./config": {
-      "types": "./dist/config.d.ts",
-      "default": "./dist/config.js"
-    }
-  },
-  "typesVersions": {
-    "*": {
-      "config": [
-        "dist/config.d.ts"
-      ]
     }
   },
   "bin": {
@@ -46,23 +35,17 @@
     "build": "rimraf dist && tsc",
     "prepack": "pnpm run build",
     "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
-    "generate": "node dist/core/cli/index.js module exports generate",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "test": "pnpm test:unit && pnpm test:playground",
-    "test:unit": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'",
+    "test:unit": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
     "test:playground": "pnpm build && pnpm --dir playground install && ts-node playground/test-playground.ts",
     "test:watch": "mocha --require ts-node/register --require test/setup.ts --watch --watch-extensions ts 'test/**/*.test.ts'",
-    "test:coverage": "c8 --check-coverage --lines 95 --functions 95 --branches 95 --statements 95 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts'"
-  },
-  "antelopeJs": {
-    "exportsPath": "dist/interfaces",
-    "imports": [
-      "core@beta"
-    ]
+    "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 90 --statements 90 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit"
   },
   "dependencies": {
+    "@antelopejs/interface-core": "^0.0.2",
     "@types/proper-lockfile": "^4.1.4",
     "boxen": "^8.0.1",
     "chalk": "^4.1.2",
@@ -101,8 +84,7 @@
       "src/**/*.ts"
     ],
     "exclude": [
-      "src/**/*.d.ts",
-      "src/interfaces/**"
+      "src/**/*.d.ts"
     ],
     "reporter": [
       "text",

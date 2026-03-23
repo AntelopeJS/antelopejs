@@ -2,9 +2,12 @@
   "name": "module-b",
   "version": "1.0.0",
   "main": "index.js",
+  "dependencies": {
+    "interface-greeter": "file:../../packages/interface-greeter"
+  },
   "antelopeJs": {
     "imports": [
-      "greeter@v1"
+      "interface-greeter"
     ]
   }
 }

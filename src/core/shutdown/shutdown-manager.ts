@@ -1,4 +1,4 @@
-import { Logging } from "../../interfaces/logging/beta";
+import { Logging } from "@antelopejs/interface-core/logging";
 
 export type ShutdownHandler = () => Promise<void> | void;
 

@@ -1,9 +1,9 @@
 import assert from "node:assert";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import type { AntelopeModuleConfig } from "@antelopejs/interface-core/config";
 import chalk from "chalk";
 import { Command, Option } from "commander";
-import type { AntelopeModuleConfig } from "../../../../../types";
 import { ConfigLoader } from "../../../../config";
 import { registerGitDownloader } from "../../../../downloaders/git";
 import { registerLocalDownloader } from "../../../../downloaders/local";

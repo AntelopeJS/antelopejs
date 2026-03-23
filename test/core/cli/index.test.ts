@@ -46,26 +46,7 @@ describe("CLI Entry Point", () => {
     expect(mod).to.be.ok;
     if (!mod) throw new Error("module command missing");
 
-    expect(commandNames(mod)).to.include.members([
-      "exports",
-      "imports",
-      "init",
-      "test",
-    ]);
-
-    const imports = mod.commands.find((c: any) => c.name() === "imports");
-    if (!imports) throw new Error("module imports command missing");
-    expect(commandNames(imports)).to.include.members([
-      "add",
-      "install",
-      "list",
-      "remove",
-      "update",
-    ]);
-
-    const exportsCmd = mod.commands.find((c: any) => c.name() === "exports");
-    if (!exportsCmd) throw new Error("module exports command missing");
-    expect(commandNames(exportsCmd)).to.include.members(["generate", "set"]);
+    expect(commandNames(mod)).to.include.members(["init", "test"]);
 
     const config = program.commands.find((c: any) => c.name() === "config");
     expect(config).to.be.ok;

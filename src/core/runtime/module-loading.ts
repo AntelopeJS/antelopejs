@@ -1,8 +1,11 @@
 import path from "node:path";
-import * as coreInterfaceBeta from "../../interfaces/core/beta";
-import * as moduleInterfaceBeta from "../../interfaces/core/beta/modules";
-import { Logging } from "../../interfaces/logging/beta";
-import type { ModuleSource, ModuleSourceLocal } from "../../types";
+import * as coreInterfaceBeta from "@antelopejs/interface-core";
+import type {
+  ModuleSource,
+  ModuleSourceLocal,
+} from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
+import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import { terminalDisplay } from "../cli/terminal-display";
 import type { ExpandedModuleConfig } from "../config/config-parser";
 import { registerGitDownloader } from "../downloaders/git";
@@ -16,7 +19,6 @@ import { ModuleCache } from "../module-cache";
 import type { ModuleConfig, ModuleManager } from "../module-manager";
 import { ModuleManifest } from "../module-manifest";
 import type {
-  InterfaceGraphIssue,
   LoaderContext,
   ModuleManifestEntry,
   ModuleOverrideMap,
@@ -147,8 +149,6 @@ export function registerCoreModuleInterface(
         },
       );
 
-      await Promise.all(manifests.map((manifest) => manifest.loadExports()));
-
       const moduleConfig: ModuleConfig = {
         config: declaration.config,
         disabledExports: new Set(declaration.disabledExports ?? []),
@@ -258,19 +258,9 @@ async function loadModuleEntries(
   return (await Promise.all(modulePromises)).flat();
 }
 
-async function loadEntryExports(
-  extraManifests: ModuleManifest[],
-  entries: ModuleManifestEntry[],
-): Promise<void> {
+async function loadEntryExports(): Promise<void> {
   await terminalDisplay.startSpinner(`Loading exports`);
   Logger.Trace(`Loading exports`);
-
-  const exportTargets = [
-    ...extraManifests,
-    ...entries.map((entry) => entry.manifest),
-  ];
-  await Promise.all(exportTargets.map((manifest) => manifest.loadExports()));
-
   await terminalDisplay.stopSpinner(`Exports loaded`);
 }
 
@@ -289,13 +279,12 @@ function validateModuleNameCollisions(entries: ModuleManifestEntry[]): void {
 
 export async function buildModuleConfigs(
   config: NormalizedLoadedConfig,
-  extraManifests: ModuleManifest[] = [],
   loaderContext: LoaderContext,
 ): Promise<ModuleManifestEntry[]> {
   await terminalDisplay.startSpinner(`Loading modules`);
   const modules = await loadModuleEntries(config.modules, loaderContext);
   await terminalDisplay.stopSpinner(`Modules loaded`);
-  await loadEntryExports(extraManifests, modules);
+  await loadEntryExports();
   validateModuleNameCollisions(modules);
   return modules;
 }
@@ -360,8 +349,6 @@ async function reloadLoadedModuleFromSource(
     entry.module.manifest.source,
     moduleId,
   );
-  await manifest.loadExports();
-
   const replacement = new Module(manifest);
   ensureReloadedModuleId(replacement, moduleId);
   manager.replaceLoadedModule(moduleId, replacement);
@@ -390,12 +377,8 @@ export async function loadModuleEntriesForManager(
     await registerCoreModuleInterface(manager, resolvedLoaderContext);
   }
 
-  const coreManifest = await registerCoreInterfaces(manager);
-  const entries = await buildModuleConfigs(
-    config,
-    [coreManifest],
-    resolvedLoaderContext,
-  );
+  await registerCoreInterfaces(manager);
+  const entries = await buildModuleConfigs(config, resolvedLoaderContext);
   manager.addModules(entries);
   return entries;
 }
@@ -417,28 +400,7 @@ export async function constructAndStartModules(
   manager.startAll();
 }
 
-function collectGraphIssues(manager: ModuleManager): InterfaceGraphIssue[] {
-  const issues: InterfaceGraphIssue[] = [];
-  for (const { module } of manager.getLoadedModules()) {
-    const associations = manager.resolver.moduleAssociations.get(module.id);
-    module.manifest.imports.forEach((interfaceName) => {
-      if (!associations?.has(interfaceName)) {
-        issues.push({ moduleId: module.id, interfaceName });
-      }
-    });
-  }
-
-  return issues;
-}
-
-export function ensureGraphIsValid(manager: ModuleManager): void {
-  const issues = collectGraphIssues(manager);
-  if (issues.length === 0) {
-    return;
-  }
-
-  const summary = issues
-    .map((issue) => `  - ${issue.moduleId} -> ${issue.interfaceName}`)
-    .join("\n");
-  throw new Error(`Failed to resolve module interface graph:\n${summary}`);
+export function ensureGraphIsValid(_manager: ModuleManager): void {
+  // No-op: interface imports are now auto-derived from package.json
+  // dependencies matched against loaded modules' implements.
 }

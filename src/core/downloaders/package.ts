@@ -1,8 +1,9 @@
 import * as path from "node:path";
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
 // @ts-expect-error
 import inly from "inly";
-import { Logging } from "../../interfaces/logging/beta";
-import type { IFileSystem, ModuleSourcePackage } from "../../types";
+import type { IFileSystem } from "../../types";
 import { ExecuteCMD } from "../cli/command";
 import { getInstallCommand } from "../cli/package-manager";
 import { NodeFileSystem } from "../filesystem";

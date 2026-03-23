@@ -1,8 +1,10 @@
+import { GetResponsibleModule } from "@antelopejs/interface-core";
+import type { AntelopeLogging } from "@antelopejs/interface-core/config";
+import eventLog, {
+  type Log,
+} from "@antelopejs/interface-core/logging/listener";
 import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
 import { terminalDisplay } from "../core/cli/terminal-display";
-import { GetResponsibleModule } from "../interfaces/core/beta";
-import eventLog, { type Log } from "../interfaces/logging/beta/listener";
-import type { AntelopeLogging } from "../types";
 import { mergeDeep } from "../utils/object";
 import { LogLevel } from "./log-formatter";
 import { Logger } from "./logger";

@@ -1,6 +1,6 @@
+import { internal } from "@antelopejs/interface-core/internal";
 import { expect } from "chai";
 import { InterfaceRegistry } from "../../src/core/interface-registry";
-import { internal } from "../../src/interfaces/core/beta";
 
 describe("InterfaceRegistry", () => {
   beforeEach(() => {
@@ -24,19 +24,9 @@ describe("InterfaceRegistry", () => {
     registry.setConnections("consumer", connections);
 
     expect(internal.interfaceConnections.consumer["core@beta"]).to.deep.equal([
-      { path: "@ajs.raw/modA/core@beta" },
-      { path: "@ajs.raw/modB/core@beta", id: "x" },
+      { path: "core@beta" },
+      { path: "core@beta", id: "x" },
     ]);
   });
 
-  it("should clear connections for a module", () => {
-    const registry = new InterfaceRegistry();
-    const connections = new Map<string, Array<{ module: string }>>();
-    connections.set("core@beta", [{ module: "modA" }]);
-    registry.setConnections("consumer", connections);
-
-    registry.clearModule("consumer");
-
-    expect(internal.interfaceConnections.consumer).to.be.undefined;
-  });
 });

@@ -86,7 +86,7 @@ describe("project init behavior", () => {
         "utf-8",
       );
       expect(configContent).to.include(
-        "import { defineConfig } from '@antelopejs/core/config';",
+        "import { defineConfig } from '@antelopejs/interface-core/config';",
       );
       expect(configContent).to.include("export default defineConfig({");
       expect(configContent).to.include('"name": "my-project"');

@@ -1,5 +1,6 @@
-import { Logging } from "../../interfaces/logging/beta";
-import type { IFileSystem, ModuleSourceGit } from "../../types";
+import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
+import type { IFileSystem } from "../../types";
 import { ExecuteCMD } from "../cli/command";
 import { terminalDisplay } from "../cli/terminal-display";
 import { NodeFileSystem } from "../filesystem";

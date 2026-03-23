@@ -1,4 +1,4 @@
-import { Greeter } from "@ajs/greeter/v1";
+import { Greeter } from "interface-greeter";
 
 let config: { target: string };
 
@@ -9,7 +9,7 @@ export async function construct(moduleConfig: { target: string }) {
 
 export function start() {
   console.log("[module-b] Started");
-  Greeter.greet(config.target).then((result) => {
+  void Greeter.greet(config.target).then((result) => {
     console.log("[module-b] Greeter result:", result);
   });
 }

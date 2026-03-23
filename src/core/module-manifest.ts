@@ -1,5 +1,6 @@
 import * as path from "node:path";
-import type { IFileSystem, ModuleSource } from "../types";
+import type { ModuleSource } from "@antelopejs/interface-core/config";
+import type { IFileSystem } from "../types";
 import type {
   BuildAliasEntry,
   BuildModuleEntry,
@@ -7,26 +8,16 @@ import type {
 } from "./build/build-artifact";
 import { NodeFileSystem } from "./filesystem";
 
-export type ModuleImport =
-  | string
-  | { name: string; git?: string; skipInstall?: boolean };
-
-export function mapModuleImport(moduleImport: ModuleImport): string {
-  return typeof moduleImport === "object" ? moduleImport.name : moduleImport;
-}
-
 export interface ModulePackageJson {
   name: string;
   version: string;
   description?: string;
   author?: string | string[];
 
-  antelopeJs?: {
-    imports?: ModuleImport[];
-    importsOptional?: ModuleImport[];
+  dependencies?: Record<string, string>;
 
-    exports?: string[];
-    exportsPath?: string;
+  antelopeJs?: {
+    implements?: string[];
 
     baseUrl?: string;
     paths?: Record<string, string[]>;
@@ -53,8 +44,7 @@ interface ModuleManifestState {
   main: string;
   baseUrl: string;
   paths: PathMapping[];
-  exportsPath: string;
-  imports: string[];
+  implements: string[];
   srcAliases?: ModuleAliasEntry[];
 }
 
@@ -133,19 +123,14 @@ function createManifestState(
   source: ModuleSource,
   manifest: ModulePackageJson,
 ): ModuleManifestState {
-  const exportsPath = path.join(
-    folder,
-    manifest.antelopeJs?.exportsPath || "interfaces",
-  );
-  const imports = manifest.antelopeJs?.imports?.map(mapModuleImport) ?? [];
+  const implementedInterfaces = manifest.antelopeJs?.implements ?? [];
   const baseUrl = path.join(folder, manifest.antelopeJs?.baseUrl ?? "");
 
   return {
     main: resolveMainPath(folder, source),
     baseUrl,
     paths: resolvePathMappings(baseUrl, manifest),
-    exportsPath,
-    imports,
+    implements: [...implementedInterfaces],
     srcAliases: resolveAliasEntries(folder, manifest),
   };
 }
@@ -161,10 +146,8 @@ export class ModuleManifest {
   public paths: PathMapping[] = [];
 
   public manifest: ModulePackageJson;
-  public exportsPath: string;
 
-  public exports: Record<string, string> = {};
-  public imports: string[] = [];
+  public implements: string[] = [];
 
   public srcAliases?: ModuleAliasEntry[];
 
@@ -187,8 +170,7 @@ export class ModuleManifest {
     this.main = manifestState.main;
     this.baseUrl = manifestState.baseUrl;
     this.paths = clonePathEntries(manifestState.paths);
-    this.exportsPath = manifestState.exportsPath;
-    this.imports = [...manifestState.imports];
+    this.implements = [...manifestState.implements];
     this.srcAliases = cloneAliasEntries(manifestState.srcAliases);
   }
 
@@ -210,8 +192,7 @@ export class ModuleManifest {
       main: entry.main,
       baseUrl: entry.baseUrl,
       paths: clonePathEntries(entry.paths),
-      exportsPath: entry.exportsPath,
-      imports: [...entry.imports],
+      implements: [...(entry.implements ?? [])],
       srcAliases: cloneAliasEntries(entry.srcAliases),
     };
 
@@ -224,7 +205,6 @@ export class ModuleManifest {
       state,
     );
     manifest.version = entry.version;
-    manifest.exports = { ...entry.exports };
     return manifest;
   }
 
@@ -264,55 +244,11 @@ export class ModuleManifest {
       version: this.version,
       main: this.main,
       manifest: this.manifest,
-      exports: this.exports,
-      imports: this.imports,
+      implements: [...this.implements],
       baseUrl: this.baseUrl,
       paths: clonePathEntries(this.paths),
-      exportsPath: this.exportsPath,
       srcAliases: cloneAliasEntries(this.srcAliases),
     };
-  }
-
-  async loadExports(): Promise<void> {
-    this.exports = {};
-    const addIfFolder = async (name: string, ifFolder: string) => {
-      if (!(await this.isDirectory(ifFolder))) return;
-      for (const version of await this.fs.readdir(ifFolder)) {
-        const versionName = version.match(/^([^.]+)(?:\.js)?$/);
-        if (versionName) {
-          this.exports[`${name}@${versionName[1]}`] = path.join(
-            ifFolder,
-            versionName[1],
-          );
-          this.imports.push(`${name}@${versionName[1]}`);
-        }
-      }
-    };
-
-    if (this.manifest.antelopeJs?.exports) {
-      for (const nameVersion of this.manifest.antelopeJs.exports) {
-        const match = nameVersion.match(/^([^@]*)(?:@(.*))?$/);
-        if (match) {
-          if (match[2]) {
-            this.exports[nameVersion] = path.join(
-              this.exportsPath,
-              match[1],
-              match[2],
-            );
-            this.imports.push(nameVersion);
-          } else {
-            await addIfFolder(match[1], path.join(this.exportsPath, match[1]));
-          }
-        }
-      }
-    } else if (await this.isDirectory(this.exportsPath)) {
-      for (const name of await this.fs.readdir(this.exportsPath)) {
-        const ifFolder = path.join(this.exportsPath, name);
-        if (await this.isDirectory(ifFolder)) {
-          await addIfFolder(name, ifFolder);
-        }
-      }
-    }
   }
 
   async reload(): Promise<void> {
@@ -323,19 +259,7 @@ export class ModuleManifest {
     this.main = state.main;
     this.baseUrl = state.baseUrl;
     this.paths = clonePathEntries(state.paths);
-    this.exportsPath = state.exportsPath;
-    this.imports = [...state.imports];
+    this.implements = [...state.implements];
     this.srcAliases = cloneAliasEntries(state.srcAliases);
-
-    await this.loadExports();
-  }
-
-  private async isDirectory(filePath: string): Promise<boolean> {
-    try {
-      const stat = await this.fs.stat(filePath);
-      return stat.isDirectory();
-    } catch {
-      return false;
-    }
   }
 }

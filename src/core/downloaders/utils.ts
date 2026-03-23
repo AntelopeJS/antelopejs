@@ -1,5 +1,5 @@
 import * as os from "node:os";
-import type { ModuleInstallCommand } from "../../types";
+import type { ModuleInstallCommand } from "@antelopejs/interface-core/config";
 import { terminalDisplay } from "../cli/terminal-display";
 import type { CommandRunner, DebugLogger } from "./types";
 

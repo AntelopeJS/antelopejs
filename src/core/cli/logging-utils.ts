@@ -1,5 +1,5 @@
+import type { AntelopeLogging } from "@antelopejs/interface-core/config";
 import chalk from "chalk";
-import type { AntelopeLogging } from "../../types";
 
 const LOG_LEVELS = {
   ERROR: 40,
@@ -10,7 +10,7 @@ const LOG_LEVELS = {
   NO_PREFIX: -1,
 } as const;
 
-export const DEFAULT_TERMINAL_WIDTH = 80;
+const DEFAULT_TERMINAL_WIDTH = 80;
 
 const COLOR_FUNCTIONS: Record<string, (text: string) => string> = {
   red: chalk.red,
@@ -22,8 +22,8 @@ const COLOR_FUNCTIONS: Record<string, (text: string) => string> = {
 };
 
 // Terminal control sequences
-export const NEWLINE = "\n";
-export const OVERWRITE_CURRENT_LINE = "\r\x1b[K";
+const NEWLINE = "\n";
+const OVERWRITE_CURRENT_LINE = "\r\x1b[K";
 
 // map created this way because Logging.Level is undefined on firsts calls
 export const getLevelInfo = (() => {
@@ -109,15 +109,15 @@ export function stringVisualWidth(str: string): number {
 const ESC = "\\u001B";
 const BEL = "\\u0007";
 
-export function colorEscapeSequenceRegex(): RegExp {
+function colorEscapeSequenceRegex(): RegExp {
   return new RegExp(`${ESC}\\[[0-9;]*m`, "g");
 }
 
-export function terminalTitleSequenceRegex(): RegExp {
+function terminalTitleSequenceRegex(): RegExp {
   return new RegExp(`${ESC}\\].*?${BEL}`, "g");
 }
 
-export function miscTerminalSequenceRegex(): RegExp {
+function miscTerminalSequenceRegex(): RegExp {
   return new RegExp(`${ESC}\\].*?(?=${ESC}\\[|$)`, "g");
 }
 

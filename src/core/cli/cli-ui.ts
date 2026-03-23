@@ -1,15 +1,11 @@
 import type { Options as BoxenOptions } from "boxen";
 import chalk from "chalk";
-import cliProgress from "cli-progress";
 import figlet from "figlet";
+import { isTerminalOutput } from "./logging-utils";
 
 const clearLine = () => process.stdout.write("\r\x1b[K");
 const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const SPINNER_INTERVAL_MS = 80;
-
-export function isTerminalOutput(): boolean {
-  return process.stdout.isTTY && process.stderr.isTTY;
-}
 
 export class Spinner {
   private text: string;
@@ -110,43 +106,6 @@ export class Spinner {
   }
 }
 
-export class ProgressBar {
-  private bar: cliProgress.SingleBar;
-
-  constructor(format?: string, options?: cliProgress.Options) {
-    this.bar = new cliProgress.SingleBar(
-      {
-        format: format || " {bar} | {percentage}% | {value}/{total} | {title}",
-        barCompleteChar: "█",
-        barIncompleteChar: "░",
-        hideCursor: true,
-        clearOnComplete: false,
-        ...options,
-      },
-      cliProgress.Presets.shades_classic,
-    );
-  }
-
-  start(total: number, startValue = 0, title = "Processing"): ProgressBar {
-    this.bar.start(total, startValue, { title });
-    return this;
-  }
-
-  increment(amount = 1, payload?: Record<string, unknown>): ProgressBar {
-    this.bar.increment(amount, payload);
-    return this;
-  }
-
-  update(value: number, payload?: Record<string, unknown>): ProgressBar {
-    this.bar.update(value, payload);
-    return this;
-  }
-
-  stop(): void {
-    this.bar.stop();
-  }
-}
-
 export async function displayBox(
   message: string,
   title?: string,
@@ -204,8 +163,4 @@ export function keyValue(
   value: string | number | boolean,
 ): string {
   return `${chalk.cyan(key)}: ${value}`;
-}
-
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

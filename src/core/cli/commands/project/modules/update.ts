@@ -1,6 +1,6 @@
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import chalk from "chalk";
 import { Command, Option } from "commander";
-import type { ModuleSourcePackage } from "../../../../../types";
 import { ConfigLoader } from "../../../../config";
 import { NodeFileSystem } from "../../../../filesystem";
 import { error as errorUI, info, success, warning } from "../../../cli-ui";

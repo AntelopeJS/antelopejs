@@ -11,3 +11,22 @@ importers:
       '@antelopejs/core':
         specifier: link:..
         version: link:..
+      '@antelopejs/interface-core':
+        specifier: ^0.0.2
+        version: 0.0.2
+
+packages:
+
+  '@antelopejs/interface-core@0.0.2':
+    resolution: {integrity: sha512-CmtOJvSCRj20GOQhrE0PpHybGaW1G1lrepiKHVJa/bclhrvFYgHV0MH84TMpMOHESQT/+wuup007tfXAwaI+Eg==}
+
+  reflect-metadata@0.2.2:
+    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
+
+snapshots:
+
+  '@antelopejs/interface-core@0.0.2':
+    dependencies:
+      reflect-metadata: 0.2.2
+
+  reflect-metadata@0.2.2: {}

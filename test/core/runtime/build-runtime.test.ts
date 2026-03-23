@@ -1,3 +1,4 @@
+import { Logging } from "@antelopejs/interface-core/logging";
 import { expect } from "chai";
 import sinon from "sinon";
 import type {
@@ -16,7 +17,6 @@ import type {
   ModuleManifestEntry,
   NormalizedLoadedConfig,
 } from "../../../src/core/runtime/runtime-types";
-import { Logging } from "../../../src/interfaces/logging/beta";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 function createBuildModuleEntry(
@@ -32,11 +32,8 @@ function createBuildModuleEntry(
       name: "alpha",
       version: "1.0.0",
     },
-    exports: {},
-    imports: [],
     baseUrl: "/modules/alpha",
     paths: [],
-    exportsPath: "/modules/alpha/interfaces",
     ...overrides,
   };
 }

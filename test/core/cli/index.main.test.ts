@@ -46,19 +46,16 @@ describe("CLI main guard", () => {
     sinon.restore();
   });
 
-  it("does not register SIGINT listener in module scope", () => {
-    const originalListeners = process.listeners("SIGINT");
-    process.removeAllListeners("SIGINT");
-    try {
-      delete require.cache[cliPath];
-      require(cliPath);
-      expect(process.listenerCount("SIGINT")).to.equal(0);
-    } finally {
-      process.removeAllListeners("SIGINT");
-      for (const listener of originalListeners) {
-        process.on("SIGINT", listener);
-      }
-    }
+  it("does not register its own SIGINT listener in module scope", () => {
+    // Pre-load transitive dependencies that register SIGINT handlers (e.g. proper-lockfile via signal-exit)
+    delete require.cache[cliPath];
+    require(cliPath);
+    const baselineCount = process.listenerCount("SIGINT");
+
+    // Re-require the CLI module — should not add any additional listeners
+    delete require.cache[cliPath];
+    require(cliPath);
+    expect(process.listenerCount("SIGINT")).to.equal(baselineCount);
   });
 
   it("handles ExitPromptError in main guard", async () => {

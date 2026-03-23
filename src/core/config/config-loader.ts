@@ -1,11 +1,11 @@
-import { createJiti } from "jiti";
-import type { ConfigInput } from "../../config";
 import type {
   AntelopeConfig,
   AntelopeLogging,
   AntelopeTestConfig,
-  IFileSystem,
-} from "../../types";
+  ConfigInput,
+} from "@antelopejs/interface-core/config";
+import { createJiti } from "jiti";
+import type { IFileSystem } from "../../types";
 import { mergeDeep } from "../../utils/object";
 import * as self from "./config-loader";
 import { ConfigParser, type ExpandedModuleConfig } from "./config-parser";

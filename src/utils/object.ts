@@ -27,20 +27,6 @@ export function mergeDeep(
   return result;
 }
 
-export function get(obj: Record<string, any>, path: string): unknown {
-  const keys = path.split(".");
-  let current = obj;
-
-  for (const key of keys) {
-    if (current === null || current === undefined) {
-      return undefined;
-    }
-    current = current[key];
-  }
-
-  return current;
-}
-
 export function set(
   obj: Record<string, any>,
   path: string,

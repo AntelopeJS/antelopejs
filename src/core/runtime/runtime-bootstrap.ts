@@ -1,6 +1,6 @@
 import EventEmitter from "node:events";
 import path from "node:path";
-import { Logging } from "../../interfaces/logging/beta";
+import { Logging } from "@antelopejs/interface-core/logging";
 import { addChannelFilter, setupAntelopeProjectLogging } from "../../logging";
 import type { LaunchOptions } from "../../types";
 import { ConfigLoader, type LoadedConfig } from "../config/config-loader";

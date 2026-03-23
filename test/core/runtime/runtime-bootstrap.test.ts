@@ -1,9 +1,9 @@
 import EventEmitter from "node:events";
+import { Logging } from "@antelopejs/interface-core/logging";
 import { expect } from "chai";
 import sinon from "sinon";
 import { ConfigLoader } from "../../../src/core/config/config-loader";
 import { ShutdownManager } from "../../../src/core/shutdown";
-import { Logging } from "../../../src/interfaces/logging/beta";
 import * as logging from "../../../src/logging";
 
 type ProcessEventName = "uncaughtException" | "unhandledRejection" | "warning";

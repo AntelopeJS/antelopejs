@@ -1,4 +1,5 @@
 import { Writable } from "node:stream";
+import { Logging } from "@antelopejs/interface-core/logging";
 import { DEFAULT_ENV } from "./core/config/config-paths";
 import { NodeFileSystem } from "./core/filesystem";
 import { ModuleManager } from "./core/module-manager";
@@ -29,7 +30,6 @@ import type { BuildOptions, LoaderContext } from "./core/runtime/runtime-types";
 import { ShutdownManager } from "./core/shutdown";
 import { FileWatcher } from "./core/watch/file-watcher";
 import { HotReload } from "./core/watch/hot-reload";
-import { Logging } from "./interfaces/logging/beta";
 import { setupAntelopeProjectLogging } from "./logging";
 import type { LaunchOptions } from "./types";
 
@@ -225,8 +225,7 @@ async function buildManagerFromArtifact(
   manager: ModuleManager,
   artifactEntries: ReturnType<typeof mapArtifactModuleEntries>,
 ): Promise<void> {
-  const coreManifest = await registerCoreInterfaces(manager);
-  await coreManifest.loadExports();
+  await registerCoreInterfaces(manager);
 
   manager.addModules(artifactEntries);
   ensureGraphIsValid(manager);

@@ -3,7 +3,7 @@ import type {
   ImportOverride,
   ModuleSource,
   ModuleSourcePackage,
-} from "../../types";
+} from "@antelopejs/interface-core/config";
 import { isObject, set } from "../../utils/object";
 
 export interface ExpandedModuleConfig {

@@ -33,11 +33,6 @@ export interface ProjectRuntimeConfig {
   normalizedConfig: NormalizedLoadedConfig;
 }
 
-export interface InterfaceGraphIssue {
-  moduleId: string;
-  interfaceName: string;
-}
-
 export interface LoaderContext {
   fs: NodeFileSystem;
   cache: ModuleCache;

@@ -1,9 +1,9 @@
 import { mkdir, stat } from "node:fs/promises";
 import path from "node:path";
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import chalk from "chalk";
 import { Command } from "commander";
 import inquirer from "inquirer";
-import type { AntelopeConfig } from "../../../../types";
 import { displayBox, error, info, Spinner, warning } from "../../cli-ui";
 import { readConfig, writeConfig } from "../../common";
 import { moduleInitCommand } from "../module/init";

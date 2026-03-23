@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import { Logging } from "@antelopejs/interface-core/logging";
 import { expect } from "chai";
 import sinon from "sinon";
 import type { BuildArtifact } from "../src/core/build/build-artifact";
 import { ModuleCache } from "../src/core/module-cache";
 import { build, launchFromBuild } from "../src/index";
-import { Logging } from "../src/interfaces/logging/beta";
 import { cleanupTempDir, makeTempDir, writeJson } from "./helpers/temp";
 
 interface ArtifactModuleInput {
@@ -40,11 +40,8 @@ function createArtifact(
         name: module.id,
         version: "1.0.0",
       },
-      exports: {},
-      imports: [],
       baseUrl: module.folder,
       paths: [],
-      exportsPath: path.join(module.folder, "interfaces"),
     };
     return acc;
   }, {});

@@ -1,8 +1,8 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 import * as configLoader from "../../../src/core/config/config-loader";
 import { ConfigLoader } from "../../../src/core/config/config-loader";
-import type { AntelopeConfig } from "../../../src/types";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 describe("ConfigLoader", () => {

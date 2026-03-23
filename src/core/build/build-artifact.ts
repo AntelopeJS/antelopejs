@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 import path from "node:path";
-import type { AntelopeLogging, IFileSystem, ModuleSource } from "../../types";
+import type {
+  AntelopeLogging,
+  ModuleSource,
+} from "@antelopejs/interface-core/config";
+import type { IFileSystem } from "../../types";
 import { ConfigLoader } from "../config/config-loader";
 import { NodeFileSystem } from "../filesystem";
 import type { ModulePackageJson } from "../module-manifest";
@@ -42,11 +46,9 @@ export interface BuildModuleEntry {
   version: string;
   main: string;
   manifest: ModulePackageJson;
-  exports: Record<string, string>;
-  imports: string[];
+  implements?: string[];
   baseUrl: string;
   paths: BuildPathEntry[];
-  exportsPath: string;
   srcAliases?: BuildAliasEntry[];
   config?: unknown;
   importOverrides?: BuildImportOverride[];

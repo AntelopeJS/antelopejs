@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { get, mergeDeep, set } from "../../src/utils/object";
+import { mergeDeep, set } from "../../src/utils/object";
 
 describe("Object Utilities", () => {
   describe("mergeDeep", () => {
@@ -26,18 +26,6 @@ describe("Object Utilities", () => {
       const result = mergeDeep(target, undefined, { b: 2 });
 
       expect(result).to.deep.equal({ a: 1, b: 2 });
-    });
-  });
-
-  describe("get", () => {
-    it("should get nested value by path", () => {
-      const obj = { a: { b: { c: 42 } } };
-      expect(get(obj, "a.b.c")).to.equal(42);
-    });
-
-    it("should return undefined for missing path", () => {
-      const obj = { a: 1 };
-      expect(get(obj, "a.b.c")).to.be.undefined;
     });
   });
 

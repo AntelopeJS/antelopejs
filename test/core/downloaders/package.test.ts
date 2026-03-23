@@ -1,8 +1,8 @@
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import { registerPackageDownloader } from "../../../src/core/downloaders/package";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
 import { ModuleCache } from "../../../src/core/module-cache";
-import type { ModuleSourcePackage } from "../../../src/types";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 function createExecSpy() {

@@ -2,6 +2,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import Module from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
+import { internal } from "@antelopejs/interface-core/internal";
 import { expect } from "chai";
 import sinon from "sinon";
 import { Module as CoreModule } from "../../src/core/module";
@@ -9,9 +11,39 @@ import { ModuleManager } from "../../src/core/module-manager";
 import { ModuleManifest } from "../../src/core/module-manifest";
 import { PathMapper } from "../../src/core/resolution/path-mapper";
 import { Resolver } from "../../src/core/resolution/resolver";
-import { internal } from "../../src/interfaces/core/beta";
-import type { ModuleSourceLocal } from "../../src/types";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
+
+async function createTempModuleWithInterfacePkg(): Promise<{
+  root: string;
+  modulePath: string;
+  interfacePkg: string;
+  interfacePkgDir: string;
+}> {
+  const root = await mkdtemp(path.join(tmpdir(), "ajs-iface-"));
+  const modulePath = path.join(root, "provider");
+  const interfacePkg = "@test-scope/interface-foo";
+  const interfacePkgDir = path.join(
+    modulePath,
+    "node_modules",
+    "@test-scope",
+    "interface-foo",
+  );
+
+  await mkdir(modulePath, { recursive: true });
+  await writeFile(
+    path.join(modulePath, "package.json"),
+    JSON.stringify({ name: "provider", version: "1.0.0" }),
+  );
+
+  await mkdir(interfacePkgDir, { recursive: true });
+  await writeFile(
+    path.join(interfacePkgDir, "package.json"),
+    JSON.stringify({ name: interfacePkg, version: "1.0.0", main: "index.js" }),
+  );
+  await writeFile(path.join(interfacePkgDir, "index.js"), "module.exports = {};");
+
+  return { root, modulePath, interfacePkg, interfacePkgDir };
+}
 
 describe("ModuleManager", () => {
   beforeEach(() => {
@@ -21,7 +53,7 @@ describe("ModuleManager", () => {
     }
   });
 
-  it("should build associations and interface connections", async () => {
+  it("should build resolved interfaces and interface connections", async () => {
     const fs = new InMemoryFileSystem();
 
     await fs.writeFile(
@@ -30,7 +62,7 @@ describe("ModuleManager", () => {
     );
     await fs.writeFile(
       "/consumer/package.json",
-      JSON.stringify({ name: "consumer", version: "1.0.0" }),
+      JSON.stringify({ name: "consumer", version: "1.0.0", dependencies: { "core@beta": "^1.0.0" } }),
     );
 
     const providerSource: ModuleSourceLocal = {
@@ -43,9 +75,7 @@ describe("ModuleManager", () => {
       "provider",
       fs,
     );
-    providerManifest.exports = {
-      "core@beta": "/provider/interfaces/core/beta",
-    };
+    providerManifest.implements = ["core@beta"];
 
     const consumerSource: ModuleSourceLocal = {
       type: "local",
@@ -57,7 +87,6 @@ describe("ModuleManager", () => {
       "consumer",
       fs,
     );
-    consumerManifest.imports = ["core@beta"];
 
     const resolver = new Resolver(new PathMapper(() => false));
     const manager = new ModuleManager({ resolver });
@@ -67,12 +96,13 @@ describe("ModuleManager", () => {
       { manifest: consumerManifest },
     ]);
 
-    const associations = resolver.moduleAssociations.get("consumer");
-    expect(associations?.get("core@beta")?.id).to.equal("provider");
+    expect(manager.hasResolvedInterface("consumer", "core@beta")).to.equal(
+      true,
+    );
 
     expect(
       internal.interfaceConnections.consumer["core@beta"][0].path,
-    ).to.equal("@ajs.raw/provider/core@beta");
+    ).to.equal("core@beta");
 
     const tracked = internal.moduleByFolder.map((entry) => entry.id).sort();
     expect(tracked).to.deep.equal(["consumer", "provider"]);
@@ -87,7 +117,7 @@ describe("ModuleManager", () => {
     );
     await fs.writeFile(
       "/consumer/package.json",
-      JSON.stringify({ name: "consumer", version: "1.0.0" }),
+      JSON.stringify({ name: "consumer", version: "1.0.0", dependencies: { "core@beta": "^1.0.0" } }),
     );
 
     const providerSource: ModuleSourceLocal = {
@@ -100,9 +130,7 @@ describe("ModuleManager", () => {
       "provider",
       fs,
     );
-    providerManifest.exports = {
-      "core@beta": "/provider/interfaces/core/beta",
-    };
+    providerManifest.implements = ["core@beta"];
 
     const consumerSource: ModuleSourceLocal = {
       type: "local",
@@ -114,7 +142,6 @@ describe("ModuleManager", () => {
       "consumer",
       fs,
     );
-    consumerManifest.imports = ["core@beta"];
 
     const resolver = new Resolver(new PathMapper(() => false));
     const manager = new ModuleManager({ resolver });
@@ -130,9 +157,58 @@ describe("ModuleManager", () => {
     ]);
 
     expect(manager.getModule("provider")?.id).to.equal("provider");
+    expect(manager.hasResolvedInterface("consumer", "core@beta")).to.equal(
+      true,
+    );
+  });
 
-    const associations = resolver.moduleAssociations.get("consumer");
-    expect(associations?.get("core@beta")?.id).to.equal("provider");
+  it("registers interface sources from manifest.implements", async () => {
+    const fs = new InMemoryFileSystem();
+
+    await fs.writeFile(
+      "/provider/package.json",
+      JSON.stringify({ name: "provider", version: "1.0.0" }),
+    );
+    await fs.writeFile(
+      "/consumer/package.json",
+      JSON.stringify({ name: "consumer", version: "1.0.0", dependencies: { "@antelopejs/interface-database": "^0.0.2" } }),
+    );
+
+    const providerSource: ModuleSourceLocal = {
+      type: "local",
+      path: "/provider",
+    };
+    const providerManifest = await ModuleManifest.create(
+      "/provider",
+      providerSource,
+      "provider",
+      fs,
+    );
+    providerManifest.implements = ["@antelopejs/interface-database"];
+
+    const consumerSource: ModuleSourceLocal = {
+      type: "local",
+      path: "/consumer",
+    };
+    const consumerManifest = await ModuleManifest.create(
+      "/consumer",
+      consumerSource,
+      "consumer",
+      fs,
+    );
+
+    const manager = new ModuleManager();
+    manager.addModules([
+      { manifest: providerManifest },
+      { manifest: consumerManifest },
+    ]);
+
+    expect(
+      manager.hasResolvedInterface(
+        "consumer",
+        "@antelopejs/interface-database",
+      ),
+    ).to.equal(true);
   });
 
   it("attaches and detaches the resolver detour during lifecycle", async () => {
@@ -180,11 +256,8 @@ describe("ModuleManager", () => {
       version: "1.0.0",
       main: "/modA/index.js",
       folder: "/modA",
-      exportsPath: "/modA/interfaces",
-      exports: {},
-      imports: [],
+      manifest: { name: "modA", version: "1.0.0" },
       source: { type: "local", path: "/modA" },
-      loadExports: async () => {},
     } as any;
 
     const created = manager.addModules([{ manifest }]);
@@ -249,9 +322,7 @@ describe("ModuleManager", () => {
       manifest: {
         name: id,
         folder: `/${id}`,
-        exports: {},
         imports: [],
-        exportsPath: "",
       },
     });
 
@@ -288,9 +359,7 @@ describe("ModuleManager", () => {
       manifest: {
         name: id,
         folder: `/${id}`,
-        exports: {},
         imports: [],
-        exportsPath: "",
       },
     });
 
@@ -329,9 +398,7 @@ describe("ModuleManager", () => {
       manifest: {
         name: id,
         folder: `/${id}`,
-        exports: {},
         imports: [],
-        exportsPath: "",
       },
     });
 
@@ -355,17 +422,67 @@ describe("ModuleManager", () => {
     expect(calls).to.deep.equal(["stop:modC", "stop:modA"]);
   });
 
-  it("clears require cache for module files while preserving exports and submodules", () => {
+  it("populates interfacePackages for resolvable npm interface packages", async () => {
+    const { root, modulePath, interfacePkg, interfacePkgDir } =
+      await createTempModuleWithInterfacePkg();
+
+    try {
+      const source: ModuleSourceLocal = { type: "local", path: modulePath };
+      const manifest = await ModuleManifest.create(
+        modulePath,
+        source,
+        "provider",
+      );
+      manifest.implements = [interfacePkg];
+
+      const resolver = new Resolver(new PathMapper(() => false));
+      const manager = new ModuleManager({ resolver });
+
+      manager.addModules([{ manifest }]);
+
+      expect(resolver.interfacePackages.has(interfacePkg)).to.equal(true);
+      expect(resolver.interfacePackages.get(interfacePkg)).to.equal(
+        interfacePkgDir,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("skips non-resolvable interface names in interfacePackages", async () => {
+    const fs = new InMemoryFileSystem();
+
+    await fs.writeFile(
+      "/provider/package.json",
+      JSON.stringify({ name: "provider", version: "1.0.0" }),
+    );
+
+    const source: ModuleSourceLocal = { type: "local", path: "/provider" };
+    const manifest = await ModuleManifest.create(
+      "/provider",
+      source,
+      "provider",
+      fs,
+    );
+    manifest.implements = ["greeter@v1"];
+
+    const resolver = new Resolver(new PathMapper(() => false));
+    const manager = new ModuleManager({ resolver });
+
+    manager.addModules([{ manifest }]);
+
+    expect(resolver.interfacePackages.size).to.equal(0);
+  });
+
+  it("clears require cache for module files while preserving submodules", () => {
     const manager = new ModuleManager();
     const moduleFolder = path.resolve("test", "module");
-    const exportsPath = path.join(moduleFolder, "interfaces");
     const submoduleFolder = path.join(moduleFolder, "child");
     const nodeModulesFolder = path.join(moduleFolder, "node_modules");
 
     const cacheEntries = [
       path.join(moduleFolder, "index.js"),
       path.join(moduleFolder, "src", "util.js"),
-      path.join(exportsPath, "api.js"),
       path.join(submoduleFolder, "index.js"),
       path.join(nodeModulesFolder, "dep.js"),
       path.resolve("other", "file.js"),
@@ -378,14 +495,13 @@ describe("ModuleManager", () => {
     }
 
     (manager as any).loaded.set("test", {
-      module: { manifest: { folder: moduleFolder, exportsPath } },
+      module: { manifest: { folder: moduleFolder } },
       config: {},
     });
     (manager as any).loaded.set("test.child", {
       module: {
         manifest: {
           folder: submoduleFolder,
-          exportsPath: path.join(submoduleFolder, "interfaces"),
         },
       },
       config: {},
@@ -396,7 +512,6 @@ describe("ModuleManager", () => {
     expect(require.cache[path.join(moduleFolder, "index.js")]).to.be.undefined;
     expect(require.cache[path.join(moduleFolder, "src", "util.js")]).to.be
       .undefined;
-    expect(require.cache[path.join(exportsPath, "api.js")]).to.not.be.undefined;
     expect(require.cache[path.join(submoduleFolder, "index.js")]).to.not.be
       .undefined;
     expect(require.cache[path.join(nodeModulesFolder, "dep.js")]).to.not.be

@@ -1,11 +1,11 @@
 import path from "node:path";
-import { internal } from "../../interfaces/core/beta";
-import { setupAntelopeProjectLogging } from "../../logging";
 import type {
   AntelopeConfig,
   AntelopeTestConfig,
-  IFileSystem,
-} from "../../types";
+} from "@antelopejs/interface-core/config";
+import { internal } from "@antelopejs/interface-core/internal";
+import { setupAntelopeProjectLogging } from "../../logging";
+import type { IFileSystem } from "../../types";
 import { mergeDeep } from "../../utils/object";
 import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
 import { NodeFileSystem } from "../filesystem";
@@ -122,13 +122,75 @@ export async function setupTestEnvironment(
   });
 }
 
+export async function collectInterfaceTestFiles(
+  moduleRoot: string,
+  manager: ModuleManager | null,
+  fs: IFileSystem,
+): Promise<string[]> {
+  const packContent = await fs.readFileString(
+    path.join(moduleRoot, "package.json"),
+    "utf-8",
+  );
+  const pack = JSON.parse(packContent);
+  const implementsList: string[] = pack.antelopeJs?.implements ?? [];
+  const files: string[] = [];
+
+  for (const ifacePkg of implementsList) {
+    try {
+      const ifaceEntry = require.resolve(ifacePkg, {
+        paths: [moduleRoot],
+      });
+      const ifacePath = path.dirname(ifaceEntry);
+      // Walk up from dist subfolder to the package root
+      let pkgRoot = ifacePath;
+      while (pkgRoot !== path.dirname(pkgRoot)) {
+        if (await fs.exists(path.join(pkgRoot, "package.json"))) break;
+        pkgRoot = path.dirname(pkgRoot);
+      }
+      const testDir = path.join(pkgRoot, "dist", "tests");
+      const testFiles = await collectTestFiles(testDir, TEST_FILE_PATTERN, fs);
+      if (testFiles.length > 0 && manager) {
+        registerTestDirInResolver(testDir, manager);
+      }
+      files.push(...testFiles);
+    } catch {
+      // Interface package may not have tests yet
+    }
+  }
+
+  return files;
+}
+
+function registerTestDirInResolver(
+  testDir: string,
+  manager: ModuleManager,
+): void {
+  const resolvedDir = path.resolve(testDir);
+  for (const [, moduleRef] of manager.resolver.moduleByFolder) {
+    manager.resolver.moduleByFolder.set(resolvedDir, moduleRef);
+    return;
+  }
+}
+
 export async function executeTests(
   moduleRoot: string,
   test: AntelopeTestConfig,
+  manager: ModuleManager | null,
   fs: IFileSystem,
 ): Promise<number> {
   const testFolder = path.join(moduleRoot, test.folder ?? DEFAULT_TEST_FOLDER);
-  const testFiles = await collectTestFiles(testFolder, TEST_FILE_PATTERN, fs);
+  const localTestFiles = await collectTestFiles(
+    testFolder,
+    TEST_FILE_PATTERN,
+    fs,
+  );
+  const interfaceTestFiles = await self.collectInterfaceTestFiles(
+    moduleRoot,
+    manager,
+    fs,
+  );
+  const testFiles = [...localTestFiles, ...interfaceTestFiles];
+
   if (testFiles.length === 0) {
     console.error("No test files found");
     return EXIT_CODE_ERROR;
@@ -196,7 +258,12 @@ export async function TestModule(
     manager = await self.setupTestEnvironment(moduleRoot, loadedConfig.config);
     managerActive = true;
 
-    const failures = await self.executeTests(moduleRoot, loadedConfig.test, fs);
+    const failures = await self.executeTests(
+      moduleRoot,
+      loadedConfig.test,
+      manager,
+      fs,
+    );
     if (failures === EXIT_CODE_ERROR) {
       await manager.destroyAll();
       managerActive = false;

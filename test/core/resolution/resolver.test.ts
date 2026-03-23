@@ -5,7 +5,6 @@ import { Resolver } from "../../../src/core/resolution/resolver";
 const moduleA = {
   id: "modA",
   manifest: {
-    exportsPath: "/modA/interfaces",
     srcAliases: [{ alias: "@src", replace: "/modA/src" }],
     paths: [],
   },
@@ -14,137 +13,30 @@ const moduleA = {
 const moduleB = {
   id: "modB",
   manifest: {
-    exportsPath: "/modB/interfaces",
-    srcAliases: [],
-    paths: [],
-  },
-} as any;
-
-const moduleScoped = {
-  id: "scope/modB",
-  manifest: {
-    exportsPath: "/modScoped/interfaces",
-    srcAliases: [],
+    srcAliases: [{ alias: "@src", replace: "/mod/src" }],
     paths: [],
   },
 } as any;
 
 describe("Resolver", () => {
-  it("should resolve @ajs.local paths", () => {
+  it("returns undefined for @ajs.local requests", () => {
     const resolver = new Resolver(new PathMapper(() => false));
     resolver.moduleByFolder.set("/modA", moduleA);
 
-    const result = resolver.resolve("@ajs.local/core/beta", {
+    const result = resolver.resolve("@ajs.local/foo", {
       filename: "/modA/src/index.js",
     } as any);
-
-    expect(result).to.equal("/modA/interfaces/core/beta");
-  });
-
-  it("should resolve @ajs paths via associations", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.moduleByFolder.set("/modA", moduleA);
-    resolver.moduleAssociations.set("modA", new Map([["core@beta", moduleB]]));
-
-    const result = resolver.resolve("@ajs/core/beta", {
-      filename: "/modA/src/index.js",
-    } as any);
-
-    expect(result).to.equal("/modB/interfaces/core/beta");
-  });
-
-  it("throws when @ajs interface is not imported", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.moduleByFolder.set("/modA", moduleA);
-    resolver.moduleAssociations.set("modA", new Map());
-
-    expect(() =>
-      resolver.resolve("@ajs/core/beta", {
-        filename: "/modA/src/index.js",
-      } as any),
-    ).to.throw("un-imported interface");
-  });
-
-  it("returns stub module path for unresolved @ajs interface when stubModulePath is set", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.moduleByFolder.set("/modA", moduleA);
-    resolver.moduleAssociations.set("modA", new Map());
-    resolver.stubModulePath = "/stubs/stub-interface";
-
-    const result = resolver.resolve("@ajs/core/beta", {
-      filename: "/modA/src/index.js",
-    } as any);
-
-    expect(result).to.equal("/stubs/stub-interface");
-  });
-
-  it("still throws for unresolved @ajs interface when stubModulePath is not set", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.moduleByFolder.set("/modA", moduleA);
-    resolver.moduleAssociations.set("modA", new Map());
-
-    expect(() =>
-      resolver.resolve("@ajs/core/beta", {
-        filename: "/modA/src/index.js",
-      } as any),
-    ).to.throw("un-imported interface");
-  });
-
-  it("should resolve @ajs.raw paths", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.modulesById.set("modB", moduleB);
-
-    const result = resolver.resolve("@ajs.raw/modB/core@beta/extra", undefined);
-
-    expect(result).to.equal("/modB/interfaces/core/beta/extra");
-  });
-
-  it("should resolve @ajs.raw paths without file suffix", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.modulesById.set("modB", moduleB);
-
-    const result = resolver.resolve("@ajs.raw/modB/core@beta", undefined);
-
-    expect(result).to.equal("/modB/interfaces/core/beta");
-  });
-
-  it("should resolve @ajs.raw paths when module id contains slash", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.modulesById.set("scope/modB", moduleScoped);
-
-    const result = resolver.resolve(
-      "@ajs.raw/scope/modB/core@beta/extra",
-      undefined,
-    );
-
-    expect(result).to.equal("/modScoped/interfaces/core/beta/extra");
-  });
-
-  it("should resolve @ajs.raw paths without file suffix when module id contains slash", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.modulesById.set("scope/modB", moduleScoped);
-
-    const result = resolver.resolve("@ajs.raw/scope/modB/core@beta", undefined);
-
-    expect(result).to.equal("/modScoped/interfaces/core/beta");
-  });
-
-  it("returns undefined for invalid @ajs.raw request pattern", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.modulesById.set("modB", moduleB);
-
-    const result = resolver.resolve("@ajs.raw/modB/corebeta/extra", undefined);
 
     expect(result).to.equal(undefined);
   });
 
-  it("returns undefined when @ajs.raw module id is unknown", () => {
+  it("returns undefined for @ajs requests", () => {
     const resolver = new Resolver(new PathMapper(() => false));
+    resolver.moduleByFolder.set("/modA", moduleA);
 
-    const result = resolver.resolve(
-      "@ajs.raw/missing/core@beta/extra",
-      undefined,
-    );
+    const result = resolver.resolve("@ajs/foo", {
+      filename: "/modA/src/index.js",
+    } as any);
 
     expect(result).to.equal(undefined);
   });
@@ -158,7 +50,8 @@ describe("Resolver", () => {
       filename: "/modA/src/index.js",
     } as any);
 
-    expect(result).to.equal("/modA/src/utils");
+    expect(result?.resolvedPath).to.equal("/modA/src/utils");
+    expect(result?.resolveFrom).to.equal(undefined);
   });
 
   it("returns undefined for invalid @ajs request pattern", () => {
@@ -176,12 +69,53 @@ describe("Resolver", () => {
     const resolver = new Resolver(new PathMapper(() => false));
     resolver.moduleByFolder.set("/modA", moduleA);
     resolver.moduleByFolder.set("/mod", moduleB);
-    resolver.moduleAssociations.set("modA", new Map([["core@beta", moduleB]]));
 
-    const result = resolver.resolve("@ajs/core/beta", {
+    const result = resolver.resolve("@src/utils", {
       filename: "/modA/src/index.js",
     } as any);
 
-    expect(result).to.equal("/modB/interfaces/core/beta");
+    expect(result?.resolvedPath).to.equal("/modA/src/utils");
+  });
+
+  it("resolves interface package to canonical path", () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.interfacePackages.set(
+      "@antelopejs/interface-db",
+      "/canonical/node_modules/@antelopejs/interface-db",
+    );
+
+    const result = resolver.resolve("@antelopejs/interface-db");
+
+    expect(result?.resolvedPath).to.equal(
+      "/canonical/node_modules/@antelopejs/interface-db",
+    );
+    expect(result?.resolveFrom).to.equal(undefined);
+  });
+
+  it("resolves interface package subpath with resolveFrom", () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.interfacePackages.set(
+      "@antelopejs/interface-db",
+      "/canonical/node_modules/@antelopejs/interface-db",
+    );
+
+    const result = resolver.resolve("@antelopejs/interface-db/query");
+
+    expect(result?.resolvedPath).to.equal("@antelopejs/interface-db/query");
+    expect(result?.resolveFrom).to.equal(
+      "/canonical/node_modules/@antelopejs/interface-db",
+    );
+  });
+
+  it("does not redirect unknown packages", () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.interfacePackages.set(
+      "@antelopejs/interface-db",
+      "/canonical/node_modules/@antelopejs/interface-db",
+    );
+
+    const result = resolver.resolve("@other/package");
+
+    expect(result).to.equal(undefined);
   });
 });

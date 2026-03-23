@@ -356,9 +356,65 @@ describe("test-module", () => {
     });
   });
 
+  describe("collectInterfaceTestFiles", () => {
+    it("returns empty array when no implements field", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/module/package.json",
+        JSON.stringify({ name: "test" }),
+      );
+
+      const result = await testModule.collectInterfaceTestFiles(
+        "/module",
+        null,
+        fs,
+      );
+
+      expect(result).to.deep.equal([]);
+    });
+
+    it("returns empty array when implements is empty", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/module/package.json",
+        JSON.stringify({
+          antelopeJs: { implements: [] },
+        }),
+      );
+
+      const result = await testModule.collectInterfaceTestFiles(
+        "/module",
+        null,
+        fs,
+      );
+
+      expect(result).to.deep.equal([]);
+    });
+
+    it("skips interface packages that cannot be resolved", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/module/package.json",
+        JSON.stringify({
+          antelopeJs: {
+            implements: ["@antelopejs/non-existent-interface"],
+          },
+        }),
+      );
+
+      const result = await testModule.collectInterfaceTestFiles(
+        "/module",
+        null,
+        fs,
+      );
+
+      expect(result).to.deep.equal([]);
+    });
+  });
+
   describe("setupTestEnvironment", () => {
     it("enables auto-stub on the module manager resolver", async () => {
-      const { internal } = await import("../../../src/interfaces/core/beta");
+      const { internal } = await import("@antelopejs/interface-core/internal");
       const moduleLoading = require("../../../src/core/runtime/module-loading");
 
       const loadEntriesStub = sinon

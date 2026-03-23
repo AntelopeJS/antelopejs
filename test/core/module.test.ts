@@ -67,6 +67,54 @@ describe("Module", () => {
     expect(mod.version).to.equal("1.0.1");
   });
 
+  it("should throw and log when loader fails during construct", async () => {
+    const loader = sinon.stub().rejects(new Error("load failed"));
+    const mod = new Module(manifest, loader);
+
+    try {
+      await mod.construct({});
+      expect.fail("should have thrown");
+    } catch (err: any) {
+      expect(err.message).to.equal("load failed");
+    }
+  });
+
+  it("should throw and log when manifest reload fails", async () => {
+    const reloadManifest = {
+      ...manifest,
+      reload: sinon.stub().rejects(new Error("reload failed")),
+    } as any;
+
+    const loader = sinon.stub().resolves({});
+    const mod = new Module(reloadManifest, loader);
+
+    try {
+      await mod.reload();
+      expect.fail("should have thrown");
+    } catch (err: any) {
+      expect(err.message).to.equal("reload failed");
+    }
+  });
+
+  it("should throw and log when destroy fails", async () => {
+    const callbacks = {
+      destroy: sinon.stub().rejects(new Error("destroy failed")),
+    };
+
+    const loader = sinon.stub().resolves(callbacks);
+    const mod = new Module(manifest, loader);
+
+    await mod.construct({});
+    mod.start();
+
+    try {
+      await mod.destroy();
+      expect.fail("should have thrown");
+    } catch (err: any) {
+      expect(err.message).to.equal("destroy failed");
+    }
+  });
+
   it("should await async stop callback", async () => {
     let stopResolved = false;
     const callbacks = {

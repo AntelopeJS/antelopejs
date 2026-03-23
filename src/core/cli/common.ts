@@ -2,10 +2,11 @@ import { mkdirSync } from "node:fs";
 import { stat, writeFile as writeFileNode } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import chalk from "chalk";
 import { Option } from "commander";
 import * as ts from "typescript";
-import type { AntelopeConfig, IFileSystem } from "../../types";
+import type { IFileSystem } from "../../types";
 import { loadTsConfigFile } from "../config/config-loader";
 import { TS_CONFIG_FILE, tryFindConfigPath } from "../config/config-paths";
 import { NodeFileSystem } from "../filesystem";
@@ -14,7 +15,7 @@ import { warning } from "./cli-ui";
 
 const DEFAULT_INDENTATION = "  ";
 const DEFINE_CONFIG_IMPORT_LINE =
-  "import { defineConfig } from '@antelopejs/core/config';";
+  "import { defineConfig } from '@antelopejs/interface-core/config';";
 const FUNCTION_BASED_TS_CONFIG_ERROR =
   "Cannot update antelope.config.ts automatically when default export is function-based.";
 

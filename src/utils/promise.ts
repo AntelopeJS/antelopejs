@@ -1,9 +1,3 @@
-export interface DeferredPromise<T> {
-  promise: Promise<T>;
-  resolve: (value: T | PromiseLike<T>) => void;
-  reject: (reason?: unknown) => void;
-}
-
 export function Detour<T extends (...args: any[]) => any>(
   fn: T,
   sideEffect: (...args: Parameters<T>) => void,

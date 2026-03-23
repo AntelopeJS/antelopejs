@@ -141,7 +141,7 @@ describe("CLI Common", () => {
       await writeConfig("/project", { name: "demo" } as any, fs);
       const contents = await fs.readFileString("/project/antelope.config.ts");
       expect(contents).to.include(
-        "import { defineConfig } from '@antelopejs/core/config';",
+        "import { defineConfig } from '@antelopejs/interface-core/config';",
       );
       expect(contents).to.include("export default defineConfig({");
       expect(contents).to.include('"name": "demo"');
@@ -163,12 +163,12 @@ describe("CLI Common", () => {
       const fs = new InMemoryFileSystem();
       await fs.writeFile(
         "/project/antelope.config.ts",
-        "import { defineConfig } from '@antelopejs/core/config';\nexport default defineConfig({ name: 'demo' });\n",
+        "import { defineConfig } from '@antelopejs/interface-core/config';\nexport default defineConfig({ name: 'demo' });\n",
       );
       await writeConfig("/project", { name: "updated" } as any, fs);
       const contents = await fs.readFileString("/project/antelope.config.ts");
       expect(contents).to.include(
-        "import { defineConfig } from '@antelopejs/core/config';",
+        "import { defineConfig } from '@antelopejs/interface-core/config';",
       );
       expect(contents).to.include("export default defineConfig({");
       expect(contents).to.include('"name": "updated"');
@@ -178,7 +178,7 @@ describe("CLI Common", () => {
       const fs = new InMemoryFileSystem();
       await fs.writeFile(
         "/project/antelope.config.ts",
-        "import { defineConfig } from '@antelopejs/core/config';\n" +
+        "import { defineConfig } from '@antelopejs/interface-core/config';\n" +
           "export default defineConfig(() => ({ name: 'demo' }));\n",
       );
 

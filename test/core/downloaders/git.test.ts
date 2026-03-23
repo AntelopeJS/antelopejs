@@ -1,10 +1,10 @@
+import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 import { terminalDisplay } from "../../../src/core/cli/terminal-display";
 import { registerGitDownloader } from "../../../src/core/downloaders/git";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
 import { ModuleCache } from "../../../src/core/module-cache";
-import type { ModuleSourceGit } from "../../../src/types";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 function sanitize(remote: string): string {

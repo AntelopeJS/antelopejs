@@ -45,11 +45,8 @@ describe("launch", () => {
             version: "1.0.0",
             main: __filename,
             folder: `/mods/${id}`,
-            exportsPath: `/mods/${id}/interfaces`,
-            exports: {},
-            imports: [],
+            manifest: { name: id, version: "1.0.0" },
             source: { type: "local", path: `/mods/${id}`, watchDir },
-            loadExports: async () => {},
             reload: async () => {},
           } as any,
         ];
@@ -60,8 +57,7 @@ describe("launch", () => {
       manifest: {
         source: { type: "local", path: "/mods/modA", watchDir: ["src", "lib"] },
         folder: "/mods/modA",
-        exports: {},
-        imports: [],
+        manifest: { name: "modA", version: "1.0.0" },
       },
       destroy: sinon.stub().resolves(),
       reload: sinon.stub().resolves(),
@@ -73,8 +69,7 @@ describe("launch", () => {
       manifest: {
         source: { type: "local", path: "/mods/modB", watchDir: "src2" },
         folder: "/mods/modB",
-        exports: {},
-        imports: [],
+        manifest: { name: "modB", version: "1.0.0" },
       },
       destroy: sinon.stub().resolves(),
       reload: sinon.stub().resolves(),

@@ -105,7 +105,7 @@ describe("project run behavior", () => {
         runnerScript = String(args[1]);
       });
     sinon.stub(require("node:fs"), "unlinkSync");
-    sinon.stub(cliUi, "sleep").resolves();
+
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
     sinon.stub(cliUi, "displayBox").resolves();
@@ -138,7 +138,7 @@ describe("project run behavior", () => {
     sinon.stub(fsPromises, "rm").resolves();
     sinon.stub(require("node:fs"), "writeFileSync");
     sinon.stub(require("node:fs"), "unlinkSync");
-    sinon.stub(cliUi, "sleep").resolves();
+
     const startStub = sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     const succeedStub = sinon
       .stub(cliUi.Spinner.prototype, "succeed")
@@ -197,7 +197,7 @@ describe("project run behavior", () => {
     sinon.stub(fsPromises, "rm").resolves();
     sinon.stub(require("node:fs"), "writeFileSync");
     sinon.stub(require("node:fs"), "unlinkSync");
-    sinon.stub(cliUi, "sleep").resolves();
+
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
     sinon.stub(cliUi, "displayBox").resolves();
@@ -263,7 +263,7 @@ describe("project run behavior", () => {
     const rmStub = sinon.stub(fsPromises, "rm").rejects(new Error("rm failed"));
     sinon.stub(require("node:fs"), "writeFileSync");
     sinon.stub(require("node:fs"), "unlinkSync");
-    sinon.stub(cliUi, "sleep").resolves();
+
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
     sinon.stub(cliUi, "displayBox").resolves();

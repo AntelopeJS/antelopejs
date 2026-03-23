@@ -11,16 +11,11 @@ import {
   Options,
   readUserConfig,
 } from "../../common";
-import {
-  copyTemplate,
-  loadInterfacesFromGit,
-  loadManifestFromGit,
-} from "../../git-operations";
+import { copyTemplate, loadManifestFromGit } from "../../git-operations";
 import {
   getInstallCommand,
   savePackageManagerToPackageJson,
 } from "../../package-manager";
-import { moduleImportAddCommand } from "./imports/add";
 
 interface InitOptions {
   git?: string;
@@ -120,67 +115,6 @@ export async function moduleInitCommand(
       `Module created successfully at ${chalk.cyan(path.resolve(modulePath))}`,
     );
 
-    // Load and select interfaces
-    console.log("");
-    const interfacesInfo = await loadInterfacesFromGit(
-      git,
-      gitManifest.starredInterfaces,
-    );
-    const templateInterfaces = template.interfaces || [];
-
-    const [selectableInterfaces, nonSelectableInterfaces] = Object.values(
-      interfacesInfo,
-    ).reduce(
-      ([match, noMatch], interfaceInfo) => {
-        const formattedItem = {
-          name: `${chalk.cyan(interfaceInfo.name)} - ${chalk.dim(interfaceInfo.manifest.description)}`,
-          value: interfaceInfo.name,
-        };
-        if (!templateInterfaces.includes(interfaceInfo.name)) {
-          match.push(formattedItem);
-        } else {
-          noMatch.push(formattedItem);
-        }
-        return [match, noMatch];
-      },
-      [[], []] as { name: string; value: string }[][],
-    );
-
-    if (nonSelectableInterfaces.length) {
-      console.log("");
-      console.log(chalk.bold("Already imported interfaces from template:"));
-      nonSelectableInterfaces.forEach((interfaceInfo) => {
-        console.log(`  • ${chalk.cyan(interfaceInfo.name)}`);
-      });
-    }
-
-    if (selectableInterfaces.length === 0) {
-      warning("No interfaces available for import");
-    } else {
-      // Prompt for interface selection
-      console.log("");
-      const { interfaces } = await inquirer.prompt<{ interfaces: string[] }>([
-        {
-          type: "checkbox",
-          name: "interfaces",
-          message: "Select interfaces to import into your module",
-          choices: selectableInterfaces,
-        },
-      ]);
-
-      if (interfaces.length > 0) {
-        // Import selected interfaces
-        await moduleImportAddCommand(interfaces, {
-          git: options.git || undefined,
-          optional: false,
-          module: path.join(modulePath),
-          skipInstall: false,
-        });
-      } else {
-        info("No interfaces selected for import");
-      }
-    }
-
     // Ask about package manager
     console.log("");
     const { packageManager } = await inquirer.prompt<{
@@ -270,7 +204,7 @@ export default function () {
   return new Command("init")
     .description(
       `Create a new AntelopeJS module\n` +
-        `Walks you through setting up a new module using templates and lets you import interfaces.`,
+        `Walks you through setting up a new module using templates.`,
     )
     .argument("<path>", "Directory path for the new module")
     .addOption(Options.git)

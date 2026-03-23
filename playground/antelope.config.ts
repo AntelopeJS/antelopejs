@@ -1,4 +1,4 @@
-import { defineConfig } from "@antelopejs/core/config";
+import { defineConfig } from "@antelopejs/interface-core/config";
 
 export default defineConfig({
   name: "playground",
@@ -7,7 +7,7 @@ export default defineConfig({
       source: {
         type: "local",
         path: "./modules/module-a",
-        installCommand: ["npx tsc"],
+        installCommand: ["pnpm install", "npx tsc"],
       },
       config: { prefix: "Hello" },
     },
@@ -15,7 +15,7 @@ export default defineConfig({
       source: {
         type: "local",
         path: "./modules/module-b",
-        installCommand: ["npx tsc"],
+        installCommand: ["pnpm install", "npx tsc"],
       },
       config: { target: "World" },
     },

@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import cliProgress from "cli-progress";
 import * as sinon from "sinon";
 import {
   displayBanner,
@@ -7,8 +6,6 @@ import {
   error,
   header,
   info,
-  isTerminalOutput,
-  ProgressBar,
   Spinner,
   success,
   warning,
@@ -65,19 +62,6 @@ describe("CLI UI", () => {
     });
   });
 
-  describe("ProgressBar", () => {
-    it("increments progress", () => {
-      const incrementStub = sinon.stub(
-        cliProgress.SingleBar.prototype,
-        "increment",
-      );
-      const bar = new ProgressBar();
-      bar.increment(2, { title: "x" });
-      expect(incrementStub.calledOnce).to.equal(true);
-      incrementStub.restore();
-    });
-  });
-
   describe("Display", () => {
     it("formats messages", () => {
       expect(() => success("Done")).to.not.throw();
@@ -104,17 +88,5 @@ describe("CLI UI", () => {
       }
     });
 
-    it("detects terminal output", () => {
-      const originalStdout = process.stdout.isTTY;
-      const originalStderr = process.stderr.isTTY;
-      (process.stdout as any).isTTY = true;
-      (process.stderr as any).isTTY = true;
-      try {
-        expect(isTerminalOutput()).to.equal(true);
-      } finally {
-        (process.stdout as any).isTTY = originalStdout;
-        (process.stderr as any).isTTY = originalStderr;
-      }
-    });
   });
 });

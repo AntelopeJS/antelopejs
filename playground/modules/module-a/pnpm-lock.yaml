@@ -1,0 +1,22 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      interface-greeter:
+        specifier: file:../../packages/interface-greeter
+        version: file:../../packages/interface-greeter
+
+packages:
+
+  interface-greeter@file:../../packages/interface-greeter:
+    resolution: {directory: ../../packages/interface-greeter, type: directory}
+
+snapshots:
+
+  interface-greeter@file:../../packages/interface-greeter: {}

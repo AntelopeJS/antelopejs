@@ -1,11 +1,11 @@
 import * as path from "node:path";
+import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import type { BuildModuleEntry } from "../../src/core/build/build-artifact";
 import {
   ModuleManifest,
   type ModulePackageJson,
 } from "../../src/core/module-manifest";
-import type { ModuleSourceLocal } from "../../src/types";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 describe("ModuleManifest", () => {
@@ -28,7 +28,7 @@ describe("ModuleManifest", () => {
         name: "mod",
         version: "1.0.0",
         antelopeJs: {
-          imports: ["a@beta"],
+          implements: ["a@beta"],
         },
       }),
     );
@@ -36,100 +36,14 @@ describe("ModuleManifest", () => {
     await fs.writeFile(
       "/mod/antelope.module.json",
       JSON.stringify({
-        imports: ["b@beta"],
-        exports: ["core@beta"],
+        implements: ["b@beta"],
       }),
     );
 
     const manifest = await ModuleManifest.readManifest("/mod", fs);
 
     expect(manifest.name).to.equal("mod");
-    expect(manifest.antelopeJs?.imports).to.deep.equal(["b@beta"]);
-  });
-
-  it("should load exports and infer versions", async () => {
-    const fs = new InMemoryFileSystem();
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: {
-          exportsPath: "interfaces",
-          exports: ["core@beta", "db"],
-        },
-      } as ModulePackageJson),
-    );
-
-    await fs.mkdir("/mod/interfaces/core/beta", { recursive: true });
-    await fs.mkdir("/mod/interfaces/db/v1", { recursive: true });
-    await fs.mkdir("/mod/interfaces/db/v2", { recursive: true });
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    await manifest.loadExports();
-
-    expect(manifest.exports["core@beta"]).to.equal("/mod/interfaces/core/beta");
-    expect(manifest.exports["db@v1"]).to.equal("/mod/interfaces/db/v1");
-    expect(manifest.exports["db@v2"]).to.equal("/mod/interfaces/db/v2");
-
-    expect(manifest.imports).to.include.members([
-      "core@beta",
-      "db@v1",
-      "db@v2",
-    ]);
-  });
-
-  it("should load exports from folders when exports are not declared", async () => {
-    const fs = new InMemoryFileSystem();
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: {},
-      } as ModulePackageJson),
-    );
-
-    await fs.mkdir("/mod/interfaces/core/v1", { recursive: true });
-    await fs.mkdir("/mod/interfaces/utils/v2", { recursive: true });
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    await manifest.loadExports();
-
-    expect(manifest.exports["core@v1"]).to.equal("/mod/interfaces/core/v1");
-    expect(manifest.exports["utils@v2"]).to.equal("/mod/interfaces/utils/v2");
-  });
-
-  it("skips export folders that are not directories", async () => {
-    const fs = new InMemoryFileSystem();
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: {
-          exportsPath: "interfaces",
-          exports: ["core"],
-        },
-      } as ModulePackageJson),
-    );
-
-    await fs.mkdir("/mod/interfaces", { recursive: true });
-    await fs.writeFile("/mod/interfaces/core", "not-a-dir");
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    await manifest.loadExports();
-
-    expect(Object.keys(manifest.exports)).to.have.length(0);
+    expect(manifest.antelopeJs?.implements).to.deep.equal(["b@beta"]);
   });
 
   it("should map baseUrl and paths", async () => {
@@ -218,7 +132,31 @@ describe("ModuleManifest", () => {
     });
   });
 
-  it("should map imports from objects and strings", async () => {
+  it("should read dependencies from package.json", async () => {
+    const fs = new InMemoryFileSystem();
+
+    await fs.writeFile(
+      "/mod/package.json",
+      JSON.stringify({
+        name: "mod",
+        version: "1.0.0",
+        dependencies: {
+          "@antelopejs/interface-core": "^0.0.2",
+          "@antelopejs/interface-api": "^0.0.2",
+        },
+      } as ModulePackageJson),
+    );
+
+    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+    expect(manifest.manifest.dependencies).to.deep.equal({
+      "@antelopejs/interface-core": "^0.0.2",
+      "@antelopejs/interface-api": "^0.0.2",
+    });
+  });
+
+  it("reads implements from antelopeJs.implements", async () => {
     const fs = new InMemoryFileSystem();
 
     await fs.writeFile(
@@ -227,7 +165,7 @@ describe("ModuleManifest", () => {
         name: "mod",
         version: "1.0.0",
         antelopeJs: {
-          imports: ["a@beta", { name: "b@beta" }],
+          implements: ["@antelopejs/interface-database"],
         },
       } as ModulePackageJson),
     );
@@ -235,7 +173,26 @@ describe("ModuleManifest", () => {
     const source: ModuleSourceLocal = { type: "local", path: "/mod" };
     const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
 
-    expect(manifest.imports).to.deep.equal(["a@beta", "b@beta"]);
+    expect(manifest.implements).to.deep.equal([
+      "@antelopejs/interface-database",
+    ]);
+  });
+
+  it("defaults implements to an empty list", async () => {
+    const fs = new InMemoryFileSystem();
+
+    await fs.writeFile(
+      "/mod/package.json",
+      JSON.stringify({
+        name: "mod",
+        version: "1.0.0",
+      } as ModulePackageJson),
+    );
+
+    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+    expect(manifest.implements).to.deep.equal([]);
   });
 
   it("reloads manifest data and updates version", async () => {
@@ -246,7 +203,7 @@ describe("ModuleManifest", () => {
       JSON.stringify({
         name: "mod",
         version: "1.0.0",
-        antelopeJs: { imports: ["a@beta"] },
+        antelopeJs: { implements: ["@antelopejs/interface-core"] },
       } as ModulePackageJson),
     );
 
@@ -258,17 +215,19 @@ describe("ModuleManifest", () => {
       JSON.stringify({
         name: "mod",
         version: "1.0.1",
-        antelopeJs: { imports: ["b@beta"] },
+        antelopeJs: {
+          implements: ["@antelopejs/interface-api"],
+        },
       } as ModulePackageJson),
     );
 
     await manifest.reload();
 
     expect(manifest.version).to.equal("1.0.1");
-    expect(manifest.imports).to.deep.equal(["b@beta"]);
+    expect(manifest.implements).to.deep.equal(["@antelopejs/interface-api"]);
   });
 
-  it("resets imports when reload removes them", async () => {
+  it("resets implements when reload removes them", async () => {
     const fs = new InMemoryFileSystem();
 
     await fs.writeFile(
@@ -276,7 +235,7 @@ describe("ModuleManifest", () => {
       JSON.stringify({
         name: "mod",
         version: "1.0.0",
-        antelopeJs: { imports: ["a@beta"] },
+        antelopeJs: { implements: ["@antelopejs/interface-core"] },
       } as ModulePackageJson),
     );
 
@@ -293,21 +252,7 @@ describe("ModuleManifest", () => {
 
     await manifest.reload();
 
-    expect(manifest.imports).to.deep.equal([]);
-  });
-
-  it("returns false when checking non-existent directories", async () => {
-    const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({ name: "mod", version: "1.0.0" } as ModulePackageJson),
-    );
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    const exists = await (manifest as any).isDirectory("/missing");
-    expect(exists).to.equal(false);
+    expect(manifest.implements).to.deep.equal([]);
   });
 
   it("serializes and reconstructs from build entries", async () => {
@@ -318,7 +263,7 @@ describe("ModuleManifest", () => {
         name: "mod",
         version: "1.0.0",
         antelopeJs: {
-          imports: ["core@beta"],
+          implements: ["@antelopejs/interface-database"],
         },
       } as ModulePackageJson),
     );
@@ -329,8 +274,6 @@ describe("ModuleManifest", () => {
       main: "dist/index.js",
     };
     const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-    manifest.exports = { "core@beta": "/mod/interfaces/core/beta" };
-    manifest.imports = ["core@beta"];
 
     const entry = manifest.serialize();
     const rebuilt = ModuleManifest.fromBuildEntry(entry);
@@ -340,10 +283,8 @@ describe("ModuleManifest", () => {
     expect(rebuiltEntry.name).to.equal(entry.name);
     expect(rebuiltEntry.version).to.equal(entry.version);
     expect(rebuiltEntry.main).to.equal(entry.main);
-    expect(rebuiltEntry.exports).to.deep.equal(entry.exports);
-    expect(rebuiltEntry.imports).to.deep.equal(entry.imports);
+    expect(rebuiltEntry.implements).to.deep.equal(entry.implements);
     expect(rebuiltEntry.baseUrl).to.equal(entry.baseUrl);
     expect(rebuiltEntry.paths).to.deep.equal(entry.paths);
-    expect(rebuiltEntry.exportsPath).to.equal(entry.exportsPath);
   });
 });

@@ -1,6 +1,6 @@
 import * as path from "node:path";
-import { Logging } from "../../interfaces/logging/beta";
-import type { ModuleSource } from "../../types";
+import type { ModuleSource } from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
 import type { ModuleCache } from "../module-cache";
 import type { ModuleManifest } from "../module-manifest";
 

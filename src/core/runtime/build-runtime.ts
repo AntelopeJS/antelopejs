@@ -1,5 +1,5 @@
 import path from "node:path";
-import { Logging } from "../../interfaces/logging/beta";
+import { Logging } from "@antelopejs/interface-core/logging";
 import {
   type BuildArtifact,
   type BuildImportOverride,

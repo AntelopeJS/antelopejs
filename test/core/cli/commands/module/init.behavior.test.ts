@@ -3,7 +3,6 @@ import inquirer from "inquirer";
 import sinon from "sinon";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import * as command from "../../../../../src/core/cli/command";
-import * as moduleImportAddModule from "../../../../../src/core/cli/commands/module/imports/add";
 import { moduleInitCommand } from "../../../../../src/core/cli/commands/module/init";
 import * as common from "../../../../../src/core/cli/common";
 import * as gitOps from "../../../../../src/core/cli/git-operations";
@@ -30,48 +29,20 @@ describe("module init behavior", () => {
             description: "basic",
             repository: "",
             branch: "",
-            interfaces: ["core"],
           },
         ],
-        starredInterfaces: ["core", "extra"],
+        starredInterfaces: [],
       });
       sinon.stub(gitOps, "copyTemplate").resolves();
-      sinon.stub(gitOps, "loadInterfacesFromGit").resolves({
-        core: {
-          name: "core",
-          manifest: {
-            description: "core",
-            versions: [],
-            files: {},
-            modules: [],
-            dependencies: {},
-          },
-        },
-        extra: {
-          name: "extra",
-          manifest: {
-            description: "extra",
-            versions: [],
-            files: {},
-            modules: [],
-            dependencies: {},
-          },
-        },
-      } as any);
-
-      const importStub = sinon
-        .stub(moduleImportAddModule, "moduleImportAddCommand")
-        .resolves();
 
       const promptStub = sinon.stub(inquirer, "prompt");
       promptStub.onCall(0).resolves({ template: "basic" });
-      promptStub.onCall(1).resolves({ interfaces: ["extra"] });
-      promptStub.onCall(2).resolves({ packageManager: "npm" });
-      promptStub.onCall(3).resolves({ initGit: false });
+      promptStub.onCall(1).resolves({ packageManager: "npm" });
+      promptStub.onCall(2).resolves({ initGit: false });
 
       sinon.stub(pkgManager, "savePackageManagerToPackageJson").returns();
       sinon.stub(pkgManager, "getInstallCommand").resolves("npm install");
-      sinon
+      const execStub = sinon
         .stub(command, "ExecuteCMD")
         .resolves({ code: 0, stdout: "", stderr: "" });
 
@@ -86,7 +57,9 @@ describe("module init behavior", () => {
 
       await moduleInitCommand(moduleDir, {}, false);
 
-      expect(importStub.called).to.equal(true);
+      expect(execStub.calledWith("npm install", { cwd: moduleDir })).to.equal(
+        true,
+      );
     } finally {
       cleanupTempDir(moduleDir);
     }
@@ -112,7 +85,7 @@ describe("module init behavior", () => {
     }
   });
 
-  it("handles missing template selection and git init failure", async () => {
+  it("handles missing template selection", async () => {
     const moduleDir = makeTempDir();
     try {
       sinon
@@ -126,13 +99,11 @@ describe("module init behavior", () => {
             description: "basic",
             repository: "",
             branch: "",
-            interfaces: [],
           },
         ],
         starredInterfaces: [],
       });
       sinon.stub(gitOps, "copyTemplate").resolves();
-      sinon.stub(gitOps, "loadInterfacesFromGit").resolves({} as any);
 
       const promptStub = sinon.stub(inquirer, "prompt");
       promptStub.onCall(0).resolves({ template: "missing" });
@@ -150,7 +121,7 @@ describe("module init behavior", () => {
     }
   });
 
-  it("warns when no interfaces are available for import", async () => {
+  it("handles git init failure", async () => {
     const moduleDir = makeTempDir();
     try {
       sinon
@@ -164,108 +135,22 @@ describe("module init behavior", () => {
             description: "basic",
             repository: "",
             branch: "",
-            interfaces: ["core"],
           },
         ],
-        starredInterfaces: ["core"],
+        starredInterfaces: [],
       });
       sinon.stub(gitOps, "copyTemplate").resolves();
-      sinon.stub(gitOps, "loadInterfacesFromGit").resolves({
-        core: {
-          name: "core",
-          manifest: {
-            description: "core",
-            versions: [],
-            files: {},
-            modules: [],
-            dependencies: {},
-          },
-        },
-      } as any);
-
-      const importStub = sinon
-        .stub(moduleImportAddModule, "moduleImportAddCommand")
-        .resolves();
 
       const promptStub = sinon.stub(inquirer, "prompt");
       promptStub.onCall(0).resolves({ template: "basic" });
       promptStub.onCall(1).resolves({ packageManager: "npm" });
-      promptStub.onCall(2).resolves({ initGit: false });
+      promptStub.onCall(2).resolves({ initGit: true });
 
       sinon.stub(pkgManager, "savePackageManagerToPackageJson").returns();
       sinon.stub(pkgManager, "getInstallCommand").resolves("npm install");
       sinon
         .stub(command, "ExecuteCMD")
         .resolves({ code: 0, stdout: "", stderr: "" });
-
-      sinon.stub(cliUi.Spinner.prototype, "start").resolves();
-      sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
-      sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
-      sinon.stub(cliUi, "displayBox").resolves();
-      const warningStub = sinon.stub(cliUi, "warning");
-      sinon.stub(cliUi, "info");
-      sinon.stub(cliUi, "error");
-
-      await moduleInitCommand(moduleDir, {}, false);
-
-      expect(importStub.called).to.equal(false);
-      expect(
-        warningStub.calledWithMatch("No interfaces available for import"),
-      ).to.equal(true);
-    } finally {
-      cleanupTempDir(moduleDir);
-    }
-  });
-
-  it("handles empty interface selection and git init failure", async () => {
-    const moduleDir = makeTempDir();
-    try {
-      sinon
-        .stub(common, "readUserConfig")
-        .resolves({ git: common.DEFAULT_GIT_REPO });
-      sinon.stub(common, "displayNonDefaultGitWarning").resolves();
-      sinon.stub(gitOps, "loadManifestFromGit").resolves({
-        templates: [
-          {
-            name: "basic",
-            description: "basic",
-            repository: "",
-            branch: "",
-            interfaces: [],
-          },
-        ],
-        starredInterfaces: ["core"],
-      });
-      sinon.stub(gitOps, "copyTemplate").resolves();
-      sinon.stub(gitOps, "loadInterfacesFromGit").resolves({
-        core: {
-          name: "core",
-          manifest: {
-            description: "core",
-            versions: [],
-            files: {},
-            modules: [],
-            dependencies: {},
-          },
-        },
-      } as any);
-
-      const importStub = sinon
-        .stub(moduleImportAddModule, "moduleImportAddCommand")
-        .resolves();
-
-      const promptStub = sinon.stub(inquirer, "prompt");
-      promptStub.onCall(0).resolves({ template: "basic" });
-      promptStub.onCall(1).resolves({ interfaces: [] });
-      promptStub.onCall(2).resolves({ packageManager: "npm" });
-      promptStub.onCall(3).resolves({ initGit: true });
-
-      sinon.stub(pkgManager, "savePackageManagerToPackageJson").returns();
-      sinon.stub(pkgManager, "getInstallCommand").resolves("npm install");
-      sinon
-        .stub(command, "ExecuteCMD")
-        .resolves({ code: 0, stdout: "", stderr: "" });
-
       sinon
         .stub(require("node:child_process"), "execSync")
         .throws(new Error("git init failed"));
@@ -280,7 +165,6 @@ describe("module init behavior", () => {
 
       await moduleInitCommand(moduleDir, {}, false);
 
-      expect(importStub.called).to.equal(false);
       expect(failStub.called).to.equal(true);
       expect(
         warningStub.calledWithMatch("Could not initialize git repository"),
@@ -356,8 +240,8 @@ describe("module init behavior", () => {
       let caught: unknown;
       try {
         await moduleInitCommand(moduleDir, {}, true);
-      } catch (err) {
-        caught = err;
+      } catch (error) {
+        caught = error;
       }
 
       expect(caught).to.be.instanceOf(Error);

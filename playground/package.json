@@ -1,9 +1,11 @@
 {
   "private": true,
   "scripts": {
+    "postinstall": "cd packages/interface-greeter && npx tsc",
     "dev": "node ../dist/core/cli/index.js project run -w"
   },
   "dependencies": {
-    "@antelopejs/core": "link:.."
+    "@antelopejs/core": "link:..",
+    "@antelopejs/interface-core": "^0.0.2"
   }
 }

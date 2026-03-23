@@ -1,3 +1,4 @@
+import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
 import { terminalDisplay } from "../../../src/core/cli/terminal-display";
@@ -9,11 +10,6 @@ import {
   registerCoreModuleInterface,
   reloadWatchedModule,
 } from "../../../src/core/runtime/module-loading";
-import * as moduleInterfaceBeta from "../../../src/interfaces/core/beta/modules";
-
-function createLoadedModules(entries: any[]): IterableIterator<any> {
-  return entries[Symbol.iterator]();
-}
 
 describe("runtime module-loading", () => {
   afterEach(() => {
@@ -31,36 +27,9 @@ describe("runtime module-loading", () => {
     expect(getWatchDirs({ type: "local" } as any)).to.deep.equal([""]);
   });
 
-  it("validates graph issues and missing interfaces", () => {
-    const validManager = {
-      getLoadedModules: () =>
-        createLoadedModules([
-          {
-            module: { id: "alpha", manifest: { imports: ["db@beta"] } },
-          },
-        ]),
-      resolver: {
-        moduleAssociations: new Map([["alpha", new Map([["db@beta", {}]])]]),
-      },
-    } as any;
-
-    expect(() => ensureGraphIsValid(validManager)).to.not.throw();
-
-    const invalidManager = {
-      getLoadedModules: () =>
-        createLoadedModules([
-          {
-            module: { id: "alpha", manifest: { imports: ["db@beta"] } },
-          },
-        ]),
-      resolver: {
-        moduleAssociations: new Map([["alpha", new Map()]]),
-      },
-    } as any;
-
-    expect(() => ensureGraphIsValid(invalidManager)).to.throw(
-      "alpha -> db@beta",
-    );
+  it("ensureGraphIsValid is a no-op", () => {
+    const manager = {} as any;
+    expect(() => ensureGraphIsValid(manager)).to.not.throw();
   });
 
   it("reloads watched modules and ignores unknown ones", async () => {
@@ -104,11 +73,8 @@ describe("runtime module-loading", () => {
       version: "1.0.0",
       main: __filename,
       folder: "/mods/alpha",
-      exportsPath: "/mods/alpha/interfaces",
-      exports: {},
       imports: [],
       source: { type: "local", path: "/mods/alpha" },
-      loadExports: sinon.stub().resolves(),
       reload: sinon.stub().resolves(),
     } as any;
     const registryLoadStub = sinon.stub().resolves([manifest]);
@@ -130,7 +96,6 @@ describe("runtime module-loading", () => {
         expectedSource,
       ),
     ).to.equal(true);
-    expect(manifest.loadExports.calledOnce).to.equal(true);
     expect(replaceLoadedModuleStub.calledOnce).to.equal(true);
     expect(refreshAssociationsStub.calledOnce).to.equal(true);
   });
@@ -249,11 +214,8 @@ describe("runtime module-loading", () => {
       version: "1.0.0",
       main: "/mods/alpha/index.js",
       folder: "/mods/alpha",
-      exportsPath: "/mods/alpha/interfaces",
-      exports: {},
       imports: [],
       source: { type: "local", path: "/mods/alpha" },
-      loadExports: sinon.stub().resolves(),
       reload: sinon.stub().resolves(),
     } as any;
 

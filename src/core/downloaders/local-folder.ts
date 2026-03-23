@@ -1,10 +1,10 @@
 import * as path from "node:path";
-import { Logging } from "../../interfaces/logging/beta";
 import type {
-  IFileSystem,
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
-} from "../../types";
+} from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
+import type { IFileSystem } from "../../types";
 import { ExecuteCMD } from "../cli/command";
 import { NodeFileSystem } from "../filesystem";
 import type { ModuleCache } from "../module-cache";

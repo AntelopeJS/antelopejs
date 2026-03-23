@@ -1,4 +1,4 @@
-import { Events } from "../interfaces/core/beta/modules";
+import { Events } from "@antelopejs/interface-core/modules";
 import { type ModuleCallbacks, ModuleState } from "../types";
 
 export class ModuleLifecycle {

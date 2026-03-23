@@ -1,5 +1,5 @@
 import { type ExecOptions, exec } from "node:child_process";
-import { Logging } from "../../interfaces/logging/beta";
+import { Logging } from "@antelopejs/interface-core/logging";
 
 const Logger = new Logging.Channel("cli.command");
 

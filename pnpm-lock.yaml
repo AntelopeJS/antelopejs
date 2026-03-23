@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@antelopejs/interface-core':
+        specifier: ^0.0.2
+        version: 0.0.2
       '@types/proper-lockfile':
         specifier: ^4.1.4
         version: 4.1.4
@@ -101,6 +104,9 @@ importers:
         version: 10.9.2(@types/node@22.14.1)(typescript@5.8.3)
 
 packages:
+
+  '@antelopejs/interface-core@0.0.2':
+    resolution: {integrity: sha512-CmtOJvSCRj20GOQhrE0PpHybGaW1G1lrepiKHVJa/bclhrvFYgHV0MH84TMpMOHESQT/+wuup007tfXAwaI+Eg==}
 
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
@@ -1826,6 +1832,10 @@ packages:
     engines: {node: '>=18'}
 
 snapshots:
+
+  '@antelopejs/interface-core@0.0.2':
+    dependencies:
+      reflect-metadata: 0.2.2
 
   '@bcoe/v8-coverage@1.0.2': {}
 

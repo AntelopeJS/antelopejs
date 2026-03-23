@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { Logging } from "../interfaces/logging/beta";
+import { Logging } from "@antelopejs/interface-core/logging";
 import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
@@ -38,6 +38,7 @@ export class ModuleManager {
   private readonly interfaceRegistry: InterfaceRegistry;
   private readonly moduleTracker: ModuleTracker;
   private readonly resolverDetour: ResolverDetour;
+  private readonly resolvedAssociations = new Map<string, Set<string>>();
   private readonly staticModules: ManagedModule[] = [];
   private readonly loaded = new Map<string, ManagedModule>();
   private startupOrder: string[] = [];
@@ -120,9 +121,6 @@ export class ModuleManager {
     const moduleFolder = path.resolve(entry.module.manifest.folder);
     const avoidedFolders = new Set<string>();
 
-    if (entry.module.manifest.exportsPath) {
-      avoidedFolders.add(path.resolve(entry.module.manifest.exportsPath));
-    }
     avoidedFolders.add(path.join(moduleFolder, "node_modules"));
 
     for (const [id, other] of this.loaded) {
@@ -163,6 +161,10 @@ export class ModuleManager {
 
   refreshAssociations(): void {
     this.rebuildAssociations();
+  }
+
+  hasResolvedInterface(moduleId: string, interfaceName: string): boolean {
+    return this.resolvedAssociations.get(moduleId)?.has(interfaceName) ?? false;
   }
 
   async constructAll(): Promise<void> {
@@ -270,8 +272,9 @@ export class ModuleManager {
 
   private collectInterfaceSources(): Map<string, Module> {
     this.resolver.moduleByFolder.clear();
-    this.resolver.moduleAssociations.clear();
     this.resolver.modulesById.clear();
+    this.resolver.interfacePackages.clear();
+    this.resolvedAssociations.clear();
     this.moduleTracker.clear();
 
     const interfaceSources = new Map<string, Module>();
@@ -281,25 +284,60 @@ export class ModuleManager {
       this.moduleTracker.add({
         dir: module.manifest.folder,
         id: module.id,
-        interfaceDir: module.manifest.exportsPath,
       });
 
-      for (const [nameVersion] of Object.entries(module.manifest.exports)) {
-        if (!config.disabledExports?.has(nameVersion)) {
-          interfaceSources.set(nameVersion, module);
+      for (const interfacePackage of module.manifest.implements ?? []) {
+        if (!config.disabledExports?.has(interfacePackage)) {
+          interfaceSources.set(interfacePackage, module);
         }
       }
     }
 
     for (const { module, config } of this.staticModules) {
       this.resolver.modulesById.set(module.id, module);
-      for (const [nameVersion] of Object.entries(module.manifest.exports)) {
-        if (!config.disabledExports?.has(nameVersion)) {
-          interfaceSources.set(nameVersion, module);
+
+      for (const interfacePackage of module.manifest.implements ?? []) {
+        if (!config.disabledExports?.has(interfacePackage)) {
+          interfaceSources.set(interfacePackage, module);
         }
       }
     }
+    this.resolveInterfacePackagePaths(interfaceSources);
+
     return interfaceSources;
+  }
+
+  private resolveInterfacePackagePaths(
+    interfaceSources: Map<string, Module>,
+  ): void {
+    for (const [ifacePkg, module] of interfaceSources) {
+      // If the module implements its own package, use its folder directly
+      if (module.manifest.manifest.name === ifacePkg) {
+        this.resolver.interfacePackages.set(ifacePkg, module.manifest.folder);
+        continue;
+      }
+      try {
+        const mainPath = require.resolve(ifacePkg, {
+          paths: [module.manifest.folder],
+        });
+        // Walk up from the resolved main entry to find the package root
+        // by looking for the package name in the path
+        const pkgNameSegments = ifacePkg.split("/");
+        const scopePrefix = ifacePkg.startsWith("@")
+          ? `${pkgNameSegments[0]}/${pkgNameSegments[1]}`
+          : pkgNameSegments[0];
+        const scopeIndex = mainPath.lastIndexOf(scopePrefix);
+        if (scopeIndex !== -1) {
+          const pkgRoot = mainPath.substring(
+            0,
+            scopeIndex + scopePrefix.length,
+          );
+          this.resolver.interfacePackages.set(ifacePkg, pkgRoot);
+        }
+      } catch {
+        // Not an installable npm package (old-style name like "greeter@v1") — skip
+      }
+    }
   }
 
   private buildModuleAssociations(interfaceSources: Map<string, Module>): void {
@@ -317,7 +355,7 @@ export class ModuleManager {
         associations,
         connections,
       );
-      this.resolver.moduleAssociations.set(module.id, associations);
+      this.resolvedAssociations.set(module.id, new Set(associations.keys()));
       this.interfaceRegistry.setConnections(module.id, connections);
     }
   }
@@ -328,9 +366,9 @@ export class ModuleManager {
     connections: Map<string, InterfaceConnectionRef[]>,
     interfaceSources: Map<string, Module>,
   ): void {
-    for (const iface of module.manifest.imports) {
-      const provider = interfaceSources.get(iface);
-      if (provider) {
+    const dependencies = module.manifest.manifest.dependencies ?? {};
+    for (const [iface, provider] of interfaceSources) {
+      if (iface in dependencies) {
         associations.set(iface, provider);
         connections.set(iface, [{ module: provider.id }]);
       }

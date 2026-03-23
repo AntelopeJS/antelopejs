@@ -9,7 +9,8 @@
     "web": true
   },
   "hooks": {
-    "before:init": ["pnpm lint"]
+    "before:init": ["pnpm lint"],
+    "after:bump": "git add CHANGELOG.md"
   },
   "plugins": {
     "release-it-changelogen": {

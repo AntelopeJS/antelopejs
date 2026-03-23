@@ -40,4 +40,23 @@ describe("stub-interface", () => {
     const Greeter = stub.Greeter;
     expect(Greeter.greet.proxy).to.not.equal(undefined);
   });
+
+  it("returns undefined for symbol properties on module proxy", () => {
+    const stub = require(STUB_PATH);
+    const sym = Symbol("test");
+    expect(stub[sym]).to.equal(undefined);
+  });
+
+  it("returns undefined for symbol properties on property proxy", () => {
+    const stub = require(STUB_PATH);
+    const Greeter = stub.Greeter;
+    const sym = Symbol("test");
+    expect(Greeter[sym]).to.equal(undefined);
+  });
+
+  it("returns truthy __esModule on nested property proxy", () => {
+    const stub = require(STUB_PATH);
+    const Greeter = stub.Greeter;
+    expect(Greeter.__esModule).to.equal(true);
+  });
 });

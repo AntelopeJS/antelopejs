@@ -1,9 +1,9 @@
 import { writeFileSync } from "node:fs";
+import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import { registerLocalDownloader } from "../../../src/core/downloaders/local";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
 import { ModuleCache } from "../../../src/core/module-cache";
-import type { ModuleSourceLocal } from "../../../src/types";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 

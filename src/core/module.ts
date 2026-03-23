@@ -1,4 +1,4 @@
-import { Logging } from "../interfaces/logging/beta";
+import { Logging } from "@antelopejs/interface-core/logging";
 import { type ModuleCallbacks, ModuleState } from "../types";
 import { ModuleLifecycle } from "./module-lifecycle";
 import type { ModuleManifest } from "./module-manifest";

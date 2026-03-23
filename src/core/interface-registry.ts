@@ -1,4 +1,4 @@
-import { internal } from "../interfaces/core/beta";
+import { internal } from "@antelopejs/interface-core/internal";
 
 export interface InterfaceConnectionRef {
   module: string;
@@ -17,9 +17,9 @@ export class InterfaceRegistry {
   ): void {
     const connectionIDs: Record<string, InterfaceConnectionEntry[]> = {};
     for (const [interfaceName, modules] of connections) {
-      connectionIDs[interfaceName] = modules.map(({ id, module }) => {
+      connectionIDs[interfaceName] = modules.map(({ id }) => {
         const entry: InterfaceConnectionEntry = {
-          path: `@ajs.raw/${module}/${interfaceName}`,
+          path: interfaceName,
         };
         if (id !== undefined) {
           entry.id = id;
@@ -28,9 +28,5 @@ export class InterfaceRegistry {
       });
     }
     internal.interfaceConnections[moduleId] = connectionIDs;
-  }
-
-  clearModule(moduleId: string): void {
-    delete internal.interfaceConnections[moduleId];
   }
 }
