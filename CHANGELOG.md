@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.0.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v0.3.2...v1.0.0)
+
+### 🚀 Enhancements
+
+- Add build and start workflow for production deployment ([#58](https://github.com/AntelopeJS/antelopejs/pull/58))
+- Add TypeScript config file support with defineConfig ([#59](https://github.com/AntelopeJS/antelopejs/pull/59))
+- Add comprehensive graceful shutdown system ([#62](https://github.com/AntelopeJS/antelopejs/pull/62))
+- **test:** Auto-stub unresolved interfaces in test mode ([#66](https://github.com/AntelopeJS/antelopejs/pull/66))
+
+### 🩹 Fixes
+
+- **resolution:** Support scoped module ids in raw resolver ([#61](https://github.com/AntelopeJS/antelopejs/pull/61))
+- Clean up remaining dead code and fix install command for npm deps ([a1bd353](https://github.com/AntelopeJS/antelopejs/commit/a1bd353))
+
+### 💅 Refactors
+
+- Global architecture ([#57](https://github.com/AntelopeJS/antelopejs/pull/57))
+- Pass full Error objects to logging for stack trace visibility ([#60](https://github.com/AntelopeJS/antelopejs/pull/60))
+- Extract test module and add setup config injection ([#63](https://github.com/AntelopeJS/antelopejs/pull/63))
+- **test:** Convert inline dynamic imports to top-level and remove typing-only tests ([#64](https://github.com/AntelopeJS/antelopejs/pull/64))
+- Clean up HMR pipeline, extract shared install-command utility, remove dead code ([#65](https://github.com/AntelopeJS/antelopejs/pull/65))
+- Migrate interfaces to npm packages and remove dead code ([6c9e719](https://github.com/AntelopeJS/antelopejs/commit/6c9e719))
+
+### 🏡 Chore
+
+- Remove skill-creator agent skill ([78caaba](https://github.com/AntelopeJS/antelopejs/commit/78caaba))
+- Remove in-repo agent skills/commands and allow TSDoc ([c7924e4](https://github.com/AntelopeJS/antelopejs/commit/c7924e4))
+- Migrate from eslint/prettier to biome ([#67](https://github.com/AntelopeJS/antelopejs/pull/67))
+- Remove .prettierignore ([0059334](https://github.com/AntelopeJS/antelopejs/commit/0059334))
+- Update release-it to ^19.2.4 ([5d949d5](https://github.com/AntelopeJS/antelopejs/commit/5d949d5))
+
+### 🤖 CI
+
+- Simplify workflow triggers to run on all pushes ([03f9ac0](https://github.com/AntelopeJS/antelopejs/commit/03f9ac0))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v0.3.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v0.3.1...v0.3.2)
