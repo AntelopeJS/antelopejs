@@ -17,8 +17,8 @@ export function ExecuteCMD(
     Logger.Trace(`Executing command: ${command}`);
     exec(command, options, (err, stdout, stderr) => {
       const result: CommandResult = {
-        stdout,
-        stderr,
+        stdout: stdout?.toString() ?? "",
+        stderr: stderr?.toString() ?? "",
         code: err ? err.code || 1 : 0,
       };
 

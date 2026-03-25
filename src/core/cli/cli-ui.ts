@@ -127,7 +127,7 @@ export async function displayBox(
   console.log(boxen(message, { ...defaultOptions, ...options }));
 }
 
-export function displayBanner(text: string, font?: figlet.Fonts): void {
+export function displayBanner(text: string, font?: figlet.FontName): void {
   const figletText = figlet.textSync(text, { font: font || "Standard" });
   console.log(chalk.blue(figletText));
 }
