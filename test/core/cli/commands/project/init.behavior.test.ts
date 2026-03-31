@@ -89,8 +89,8 @@ describe("project init behavior", () => {
         "import { defineConfig } from '@antelopejs/interface-core/config';",
       );
       expect(configContent).to.include("export default defineConfig({");
-      expect(configContent).to.include('"name": "my-project"');
-      expect(configContent).to.include('"modules": {}');
+      expect(configContent).to.include('name: "my-project"');
+      expect(configContent).to.include("modules: {}");
       expect(promptStub.calledTwice).to.equal(true);
     } finally {
       cleanupTempDir(tempRoot);

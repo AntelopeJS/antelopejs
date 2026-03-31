@@ -163,12 +163,42 @@ function getTsConfigWriteMeta(
   };
 }
 
+const SAFE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
+function serializeToJs(value: unknown, indent: string, depth: number): string {
+  if (value === null || value === undefined) {
+    return String(value);
+  }
+  if (typeof value === "string") {
+    return JSON.stringify(value);
+  }
+  if (typeof value !== "object") {
+    return String(value);
+  }
+  const currentIndent = indent.repeat(depth);
+  const nextIndent = indent.repeat(depth + 1);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+    const items = value.map(
+      (item) => `${nextIndent}${serializeToJs(item, indent, depth + 1)}`,
+    );
+    return `[\n${items.join(",\n")}\n${currentIndent}]`;
+  }
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0) return "{}";
+  const props = entries.map(([key, val]) => {
+    const formattedKey = SAFE_KEY_RE.test(key) ? key : JSON.stringify(key);
+    return `${nextIndent}${formattedKey}: ${serializeToJs(val, indent, depth + 1)}`;
+  });
+  return `{\n${props.join(",\n")}\n${currentIndent}}`;
+}
+
 function createTsConfigContent(
   data: Partial<AntelopeConfig>,
   indentation: string,
   useDefineConfig: boolean,
 ): string {
-  const serialized = JSON.stringify(data, null, indentation);
+  const serialized = serializeToJs(data, indentation, 0);
   if (!useDefineConfig) {
     return `export default ${serialized};\n`;
   }

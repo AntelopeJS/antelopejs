@@ -144,7 +144,7 @@ describe("CLI Common", () => {
         "import { defineConfig } from '@antelopejs/interface-core/config';",
       );
       expect(contents).to.include("export default defineConfig({");
-      expect(contents).to.include('"name": "demo"');
+      expect(contents).to.include('name: "demo"');
     });
 
     it("writes antelope.config.ts when using object export", async () => {
@@ -156,7 +156,7 @@ describe("CLI Common", () => {
       await writeConfig("/project", { name: "updated" } as any, fs);
       const contents = await fs.readFileString("/project/antelope.config.ts");
       expect(contents).to.include("export default {");
-      expect(contents).to.include('"name": "updated"');
+      expect(contents).to.include('name: "updated"');
     });
 
     it("writes antelope.config.ts when using defineConfig with object", async () => {
@@ -171,7 +171,7 @@ describe("CLI Common", () => {
         "import { defineConfig } from '@antelopejs/interface-core/config';",
       );
       expect(contents).to.include("export default defineConfig({");
-      expect(contents).to.include('"name": "updated"');
+      expect(contents).to.include('name: "updated"');
     });
 
     it("throws for function-based antelope.config.ts exports", async () => {
