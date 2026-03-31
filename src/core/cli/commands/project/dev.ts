@@ -115,7 +115,7 @@ function buildRunnerScript(entryPath: string): string {
         verbose: process.env.ANTELOPE_VERBOSE?.split(',') ?? undefined
       }
     ).catch(err => {
-      console.error('Error running AntelopeJS:', err instanceof Error ? err.stack ?? err.message : String(err));
+      console.error('Error running AntelopeJS:', err instanceof Error ? err.message : String(err));
       process.exit(1);
     });
   `;

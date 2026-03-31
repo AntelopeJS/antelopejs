@@ -137,8 +137,7 @@ export function success(message: string): void {
 }
 
 export function error(message: string | Error): void {
-  const text =
-    message instanceof Error ? (message.stack ?? message.message) : message;
+  const text = message instanceof Error ? message.message : message;
   console.log(`${chalk.red.bold("✗")} ${text}`);
 }
 
