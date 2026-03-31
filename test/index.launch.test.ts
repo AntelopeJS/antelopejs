@@ -155,9 +155,7 @@ describe("launch", () => {
       this.loaded = undefined;
       return [] as any;
     });
-    sinon
-      .stub(ModuleManager.prototype, "getAllManagedModules")
-      .returns([]);
+    sinon.stub(ModuleManager.prototype, "getAllManagedModules").returns([]);
     sinon.stub(ModuleManager.prototype, "constructAll").resolves();
     sinon.stub(ModuleManager.prototype, "startAll");
 

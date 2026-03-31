@@ -20,7 +20,10 @@ import {
   readConfig,
   readUserConfig,
 } from "../../../common";
-import { loadInterfaceFromGit, loadManifestFromGit } from "../../../git-operations";
+import {
+  loadInterfaceFromGit,
+  loadManifestFromGit,
+} from "../../../git-operations";
 import { terminalDisplay } from "../../../terminal-display";
 import { projectModulesAddCommand } from "./add";
 

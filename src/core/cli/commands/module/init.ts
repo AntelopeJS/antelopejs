@@ -1,17 +1,28 @@
 import * as childProcess from "node:child_process";
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import inquirer from "inquirer";
-import { displayBox, error, info, Spinner, success, warning } from "../../cli-ui";
+import {
+  displayBox,
+  error,
+  info,
+  Spinner,
+  success,
+  warning,
+} from "../../cli-ui";
 import { ExecuteCMD } from "../../command";
 import {
   displayNonDefaultGitWarning,
   Options,
   readUserConfig,
 } from "../../common";
-import { copyTemplate, loadInterfacesFromGit, loadManifestFromGit } from "../../git-operations";
+import {
+  copyTemplate,
+  loadInterfacesFromGit,
+  loadManifestFromGit,
+} from "../../git-operations";
 import {
   getInstallCommand,
   savePackageManagerToPackageJson,

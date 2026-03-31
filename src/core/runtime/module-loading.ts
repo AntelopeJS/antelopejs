@@ -427,8 +427,9 @@ export function ensureGraphIsValid(manager: ModuleManager): void {
   const unresolved = findUnresolvedInterfaces(providers, consumers, staticDeps);
   if (unresolved.length > 0) {
     const details = unresolved
-      .map(({ moduleId, interfacePackage }) =>
-        `  - ${moduleId} requires ${interfacePackage}`,
+      .map(
+        ({ moduleId, interfacePackage }) =>
+          `  - ${moduleId} requires ${interfacePackage}`,
       )
       .join("\n");
     throw new Error(
