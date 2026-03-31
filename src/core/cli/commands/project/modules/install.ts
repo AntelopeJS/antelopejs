@@ -11,6 +11,7 @@ import { DownloaderRegistry } from "../../../../downloaders/registry";
 import { NodeFileSystem } from "../../../../filesystem";
 import { ModuleCache } from "../../../../module-cache";
 import { ModuleManifest } from "../../../../module-manifest";
+import { findUnresolvedInterfaces } from "../../../../resolution/interface-resolution";
 import { error, info, success, warning } from "../../../cli-ui";
 import { ExecuteCMD } from "../../../command";
 import {
@@ -19,7 +20,7 @@ import {
   readConfig,
   readUserConfig,
 } from "../../../common";
-import { loadInterfaceFromGit } from "../../../git-operations";
+import { loadInterfaceFromGit, loadManifestFromGit } from "../../../git-operations";
 import { terminalDisplay } from "../../../terminal-display";
 import { projectModulesAddCommand } from "./add";
 
@@ -49,7 +50,7 @@ async function analyzeConfig(
   registry: DownloaderRegistry,
   fs: NodeFileSystem,
 ): Promise<ConfigAnalyze> {
-  const modules = (
+  const manifests = (
     await Promise.all(
       Object.entries(config.modules).map(([name, module]) =>
         registry
@@ -72,50 +73,25 @@ async function analyzeConfig(
       "antelopejs",
       fs,
     );
-    modules.push(coreManifest);
+    manifests.push(coreManifest);
   } catch {
     // Ignore failures when running outside the package workspace
   }
 
-  // Collect all interface packages provided by loaded modules
-  const implementedInterfaces = new Set(
-    modules.flatMap((module) => module.implements),
-  );
+  const providers = manifests.map((m) => ({
+    implements: m.implements ?? [],
+  }));
 
-  // Collect all unique dependencies across all modules
-  const allDeps = new Set(
-    modules.flatMap((module) =>
-      Object.keys(module.manifest.dependencies ?? {}),
-    ),
-  );
+  const consumers = manifests.map((m) => ({
+    id: m.name,
+    folder: m.folder,
+    dependencies: m.manifest.dependencies ?? {},
+  }));
 
-  // A dependency is an unresolved interface if:
-  // - It's in the deps of some module
-  // - It's NOT implemented by any loaded module
-  // - It looks like an interface package (try resolving its package.json to check)
-  const unresolvedImports: string[] = [];
-  for (const dep of allDeps) {
-    if (implementedInterfaces.has(dep)) continue;
-
-    // Check if this dependency is an interface package by trying to read its package.json
-    for (const module of modules) {
-      try {
-        const pkgJsonPath = require.resolve(`${dep}/package.json`, {
-          paths: [module.folder],
-        });
-        const depPkg = JSON.parse(await fs.readFileString(pkgJsonPath));
-        // If the package has antelopeJs metadata, it's part of the ecosystem
-        if (depPkg.antelopeJs) {
-          unresolvedImports.push(dep);
-          break;
-        }
-      } catch {
-        // Can't resolve — not an interface package
-      }
-    }
-  }
-
-  return { unresolvedImports };
+  const unresolved = findUnresolvedInterfaces(providers, consumers);
+  return {
+    unresolvedImports: unresolved.map((u) => u.interfacePackage),
+  };
 }
 
 export default function () {
@@ -149,6 +125,8 @@ export default function () {
 
       // Display warning if using non-default git repository
       await displayNonDefaultGitWarning(git);
+
+      const gitManifest = await loadManifestFromGit(git);
 
       const fs = new NodeFileSystem();
       const loader = new ConfigLoader(fs);
@@ -209,7 +187,10 @@ export default function () {
 
           for (const imp of unresolvedImports) {
             // Look for modules implementing this interface
-            const interfaceInfo = await loadInterfaceFromGit(git, imp);
+            const interfaceDirName = gitManifest.interfaces[imp];
+            const interfaceInfo = interfaceDirName
+              ? await loadInterfaceFromGit(git, interfaceDirName)
+              : undefined;
 
             // Prepare choice for user to select a module
             const choices = [

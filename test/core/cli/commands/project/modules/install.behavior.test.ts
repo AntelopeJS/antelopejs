@@ -74,6 +74,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
 
@@ -113,6 +118,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     const loadStub = sinon
       .stub(ConfigLoader.prototype, "load")
@@ -148,6 +158,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     const loadStub = sinon
       .stub(ConfigLoader.prototype, "load")
@@ -191,6 +206,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
@@ -236,6 +256,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
@@ -310,6 +335,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
@@ -388,6 +418,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
@@ -457,6 +492,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
@@ -534,6 +574,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
@@ -591,6 +636,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
@@ -640,6 +690,11 @@ describe("project modules install behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
