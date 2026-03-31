@@ -112,6 +112,10 @@ export class ModuleManager {
     return this.loaded.values();
   }
 
+  getAllManagedModules(): ManagedModule[] {
+    return [...this.staticModules, ...this.loaded.values()];
+  }
+
   unrequireModuleFiles(moduleId: string): void {
     const entry = this.loaded.get(moduleId);
     if (!entry) {

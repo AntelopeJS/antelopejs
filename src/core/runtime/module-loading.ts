@@ -18,6 +18,7 @@ import { Module } from "../module";
 import { ModuleCache } from "../module-cache";
 import type { ModuleConfig, ModuleManager } from "../module-manager";
 import { ModuleManifest } from "../module-manifest";
+import { findUnresolvedInterfaces } from "../resolution/interface-resolution";
 import type {
   LoaderContext,
   ModuleManifestEntry,
@@ -400,7 +401,38 @@ export async function constructAndStartModules(
   manager.startAll();
 }
 
-export function ensureGraphIsValid(_manager: ModuleManager): void {
-  // No-op: interface imports are now auto-derived from package.json
-  // dependencies matched against loaded modules' implements.
+export function ensureGraphIsValid(manager: ModuleManager): void {
+  const allModules = manager.getAllManagedModules();
+  const loadedModules = [...manager.getLoadedModules()];
+  const loadedIds = new Set(loadedModules.map(({ module }) => module.id));
+
+  const providers = allModules.map(({ module, config }) => ({
+    implements: module.manifest.implements ?? [],
+    disabledExports: config.disabledExports,
+  }));
+
+  // Static modules handle their own interface deps — treat them as resolved
+  const staticDeps = allModules
+    .filter(({ module }) => !loadedIds.has(module.id))
+    .flatMap(({ module }) =>
+      Object.keys(module.manifest.manifest.dependencies ?? {}),
+    );
+
+  const consumers = loadedModules.map(({ module }) => ({
+    id: module.id,
+    folder: module.manifest.folder,
+    dependencies: module.manifest.manifest.dependencies ?? {},
+  }));
+
+  const unresolved = findUnresolvedInterfaces(providers, consumers, staticDeps);
+  if (unresolved.length > 0) {
+    const details = unresolved
+      .map(({ moduleId, interfacePackage }) =>
+        `  - ${moduleId} requires ${interfacePackage}`,
+      )
+      .join("\n");
+    throw new Error(
+      `Unresolved interface dependencies:\n${details}\n\nRun 'ajs project modules install' to resolve missing dependencies.`,
+    );
+  }
 }

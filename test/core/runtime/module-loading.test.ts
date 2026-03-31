@@ -27,8 +27,22 @@ describe("runtime module-loading", () => {
     expect(getWatchDirs({ type: "local" } as any)).to.deep.equal([""]);
   });
 
-  it("ensureGraphIsValid is a no-op", () => {
-    const manager = {} as any;
+  it("ensureGraphIsValid passes when all interfaces are resolved", () => {
+    const loadedEntry = {
+      module: {
+        id: "mod",
+        manifest: {
+          folder: "/tmp",
+          implements: [],
+          manifest: { dependencies: {} },
+        },
+      },
+      config: {},
+    };
+    const manager = {
+      getAllManagedModules: () => [loadedEntry],
+      getLoadedModules: () => [loadedEntry].values(),
+    } as any;
     expect(() => ensureGraphIsValid(manager)).to.not.throw();
   });
 

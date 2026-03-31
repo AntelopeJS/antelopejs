@@ -156,6 +156,7 @@ async function initializeCore(
       true,
       loaderContext,
     );
+    ensureGraphIsValid(moduleManager);
     await constructAndStartModules(moduleManager);
     return moduleManager;
   });
