@@ -30,6 +30,7 @@ import type { BuildOptions, LoaderContext } from "./core/runtime/runtime-types";
 import { ShutdownManager } from "./core/shutdown";
 import { FileWatcher } from "./core/watch/file-watcher";
 import { HotReload } from "./core/watch/hot-reload";
+import { checkOutdatedModules, warnOutdatedModules } from "./core/version-checker";
 import { setupAntelopeProjectLogging } from "./logging";
 import type { LaunchOptions } from "./types";
 
@@ -144,6 +145,8 @@ async function initializeCore(
     options,
     shutdownManager,
   );
+  const outdated = await checkOutdatedModules(runtimeConfig.normalizedConfig.modules);
+  warnOutdatedModules(outdated);
   const loaderContext = await createLoaderContext(
     runtimeConfig.normalizedConfig,
   );
@@ -195,6 +198,8 @@ export async function build(
     env,
     options,
   );
+  const outdated = await checkOutdatedModules(runtimeConfig.normalizedConfig.modules);
+  warnOutdatedModules(outdated);
 
   await withRaisedMaxListeners(async () => {
     const manager = new ModuleManager();

@@ -941,7 +941,7 @@ describe("project modules behavior", () => {
     expect(errorStub.called).to.equal(true);
   });
 
-  it("errors when no npm modules are available to update", async () => {
+  it("shows up to date when no npm modules are available to update", async () => {
     sinon.stub(common, "readConfig").resolves({
       name: "proj",
       modules: {
@@ -957,17 +957,16 @@ describe("project modules behavior", () => {
         },
       },
     } as any);
-    const errorStub = sinon.stub(cliUi, "error");
-    const infoStub = sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "info");
+    const successStub = sinon.stub(cliUi, "success");
 
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
-    expect(errorStub.called).to.equal(true);
-    expect(infoStub.called).to.equal(true);
+    expect(successStub.called).to.equal(true);
   });
 
-  it("reports errors when npm view fails", async () => {
+  it("skips modules silently when npm view fails", async () => {
     sinon.stub(common, "readConfig").resolves({
       name: "proj",
       modules: {
@@ -982,18 +981,17 @@ describe("project modules behavior", () => {
     sinon
       .stub(command, "ExecuteCMD")
       .resolves({ code: 1, stdout: "", stderr: "oops" });
-    const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "success");
+    const successStub = sinon.stub(cliUi, "success");
 
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project", "pkg"]);
 
-    expect(errorStub.called).to.equal(true);
+    expect(successStub.called).to.equal(true);
   });
 
-  it("reports non-error failures when npm view throws", async () => {
+  it("skips modules silently when npm view throws", async () => {
     sinon.stub(common, "readConfig").resolves({
       name: "proj",
       modules: {
@@ -1006,17 +1004,14 @@ describe("project modules behavior", () => {
       },
     } as any);
     sinon.stub(command, "ExecuteCMD").callsFake(() => Promise.reject("boom"));
-
-    const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "success");
+    const successStub = sinon.stub(cliUi, "success");
 
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project", "pkg"]);
 
-    expect(errorStub.called).to.equal(true);
-    expect(String(errorStub.firstCall.args[0])).to.include("boom");
+    expect(successStub.called).to.equal(true);
   });
 
   it("reports when modules are already up to date", async () => {

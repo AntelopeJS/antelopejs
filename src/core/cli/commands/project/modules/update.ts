@@ -3,15 +3,71 @@ import chalk from "chalk";
 import { Command, Option } from "commander";
 import { ConfigLoader } from "../../../../config";
 import { NodeFileSystem } from "../../../../filesystem";
+import {
+  type OutdatedModule,
+  checkOutdatedModules,
+} from "../../../../version-checker";
 import { error as errorUI, info, success, warning } from "../../../cli-ui";
-import { ExecuteCMD } from "../../../command";
 import { Options, readConfig, writeConfig } from "../../../common";
-import { parsePackageInfoOutput } from "../../../package-manager";
 
 interface UpdateOptions {
   project: string;
   env?: string;
   dryRun: boolean;
+}
+
+function applyUpdates(
+  env: Record<string, unknown>,
+  outdated: OutdatedModule[],
+  antelopeModules: Record<string, { source?: { type: string } }>,
+): void {
+  const envModules = (env as { modules: Record<string, unknown> }).modules;
+  for (const entry of outdated) {
+    envModules[entry.name] = {
+      ...antelopeModules[entry.name],
+      source: {
+        ...(antelopeModules[entry.name].source as ModuleSourcePackage),
+        version: entry.latest,
+      } as ModuleSourcePackage,
+    };
+  }
+}
+
+function displayResults(
+  outdated: OutdatedModule[],
+  options: UpdateOptions,
+  notFound: string[],
+): void {
+  if (options.dryRun) {
+    warning(chalk.yellow`Dry run - no changes were made`);
+  }
+
+  if (outdated.length > 0) {
+    const label = options.dryRun ? "Would update" : "Updated";
+    success(chalk.green`${label} ${outdated.length} module(s):`);
+    for (const entry of outdated) {
+      info(
+        `  ${chalk.green("•")} ${entry.name}: ${chalk.dim(entry.current)} → ${entry.latest}`,
+      );
+    }
+  } else {
+    success(chalk.green`All modules are up to date!`);
+  }
+
+  if (notFound.length > 0) {
+    warning(
+      chalk.yellow`${notFound.length} module(s) not found in project:`,
+    );
+    for (const name of notFound) {
+      info(`  ${chalk.yellow("•")} ${chalk.bold(name)}`);
+    }
+  }
+
+  if (outdated.length > 0 && !options.dryRun) {
+    info(
+      `Run ${chalk.bold("ajs project run")} to use the updated modules.`,
+    );
+  }
 }
 
 export default function () {
@@ -69,120 +125,24 @@ export default function () {
         options.env || "default",
       );
 
-      // If no modules specified, check all npm modules
-      const modulesToUpdate =
-        modules.length > 0
-          ? modules
-          : Object.entries(antelopeConfig.modules)
-              .filter(([_, info]) => info.source?.type === "package")
-              .map(([name]) => name);
+      let outdated = await checkOutdatedModules(antelopeConfig.modules);
+      let notFound: string[] = [];
 
-      if (modulesToUpdate.length === 0) {
-        errorUI(chalk.red`No npm modules found to update`);
-        info(`Only npm modules can be automatically updated.`);
-        return;
+      if (modules.length > 0) {
+        const requestedSet = new Set(modules);
+        notFound = modules.filter((m) => !antelopeConfig.modules[m]);
+        outdated = outdated.filter((entry) => requestedSet.has(entry.name));
       }
 
-      // Track results
-      const updated: string[] = [];
-      const skipped: string[] = [];
-      const notFound: string[] = [];
-
-      for (const module of modulesToUpdate) {
-        const moduleInfo = antelopeConfig.modules[module];
-
-        if (!moduleInfo) {
-          warning(
-            chalk.yellow`Module ${chalk.bold(module)} not found in project`,
-          );
-          notFound.push(module);
-          continue;
-        }
-
-        if (!moduleInfo.source || moduleInfo.source.type !== "package") {
-          info(`${chalk.bold(module)}: Skipped (not an npm package)`);
-          skipped.push(module);
-          continue;
-        }
-
-        info(`${chalk.bold(module)}: Checking for updates...`);
-
-        try {
-          const result = await ExecuteCMD(`npm view ${module} version`, {});
-          if (result.code !== 0) {
-            throw new Error(`Failed to fetch version: ${result.stderr}`);
-          }
-          const latestVersion = parsePackageInfoOutput(result.stdout);
-          const currentVersion = (moduleInfo.source as ModuleSourcePackage)
-            .version;
-
-          if (currentVersion === latestVersion) {
-            info(
-              `${chalk.bold(module)}: ${chalk.green("Already up to date")} (${currentVersion})`,
-            );
-            skipped.push(module);
-            continue;
-          }
-
-          if (!options.dryRun) {
-            env.modules[module] = {
-              ...moduleInfo,
-              source: {
-                ...(moduleInfo.source as ModuleSourcePackage),
-                version: latestVersion,
-              } as ModuleSourcePackage,
-            };
-            updated.push(
-              `${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`,
-            );
-          } else {
-            updated.push(
-              `${module}: ${chalk.dim(currentVersion)} → ${latestVersion}`,
-            );
-          }
-        } catch (err) {
-          errorUI(
-            err instanceof Error ? err : `${module}: Error: ${String(err)}`,
-          );
-          skipped.push(module);
-        }
-      }
-
-      // Save changes
-      if (updated.length > 0 && !options.dryRun) {
+      if (outdated.length > 0 && !options.dryRun) {
+        applyUpdates(
+          env as unknown as Record<string, unknown>,
+          outdated,
+          antelopeConfig.modules,
+        );
         await writeConfig(options.project, config);
       }
 
-      // Display results
-      if (options.dryRun) {
-        warning(chalk.yellow`Dry run - no changes were made`);
-      }
-
-      if (updated.length > 0) {
-        success(
-          chalk.green`${options.dryRun ? "Would update" : "Updated"} ${updated.length} module(s):`,
-        );
-        updated.forEach((msg) => {
-          info(`  ${chalk.green("•")} ${msg}`);
-        });
-      } else {
-        success(chalk.green`All modules are up to date!`);
-      }
-
-      if (notFound.length > 0) {
-        warning(
-          chalk.yellow`${notFound.length} module(s) not found in project:`,
-        );
-        notFound.forEach((name) => {
-          info(`  ${chalk.yellow("•")} ${chalk.bold(name)}`);
-        });
-      }
-
-      // Add helpful guidance
-      if (updated.length > 0 && !options.dryRun) {
-        info(
-          `Run ${chalk.bold("ajs project run")} to use the updated modules.`,
-        );
-      }
+      displayResults(outdated, options, notFound);
     });
 }
