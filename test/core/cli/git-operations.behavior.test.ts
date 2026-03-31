@@ -31,14 +31,13 @@ describe("Git operations behavior", () => {
         recursive: true,
       });
       writeJson(path.join(repoPath, "manifest.json"), {
+        interfaces: {},
         starredInterfaces: [],
         templates: [],
       });
       writeJson(path.join(repoPath, "interfaces", "foo", "manifest.json"), {
         description: "foo",
-        versions: ["1.0.0"],
-        files: { "1.0.0": { type: "local", path: "interfaces/foo" } },
-        dependencies: { "1.0.0": { packages: [], interfaces: [] } },
+        package: "@antelopejs/foo",
         modules: [],
       });
 
@@ -74,6 +73,7 @@ describe("Git operations behavior", () => {
       const repoPath = path.join(homeDir, ".antelopejs", "cache", folderName);
       await fsPromises.mkdir(repoPath, { recursive: true });
       writeJson(path.join(repoPath, "manifest.json"), {
+        interfaces: {},
         starredInterfaces: [],
         templates: [],
       });

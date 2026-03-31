@@ -63,15 +63,14 @@ async function loadGit(git: string, branch?: string): Promise<string> {
 }
 
 export interface GitManifest {
+  interfaces: Record<string, string>;
   starredInterfaces: string[];
   templates: Template[];
 }
 export interface Template {
   name: string;
-  description: string;
   repository: string;
   branch: string;
-  interfaces?: string[];
 }
 
 export async function loadManifestFromGit(git: string): Promise<GitManifest> {
@@ -95,14 +94,13 @@ export interface InterfaceInfo {
 
 export interface InterfaceManifest {
   description: string;
-  versions: string[];
+  package: string;
   modules: ModuleInterfaceInfo[];
 }
 
 export interface ModuleInterfaceInfo {
   name: string;
   source: ModuleSource;
-  versions: string[];
 }
 
 async function getInterfaceInfo(
