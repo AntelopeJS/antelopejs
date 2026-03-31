@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.1.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.0.0...v1.1.0)
+
+### 🚀 Enhancements
+
+- Serialize config as clean JS instead of JSON ([8f7c85f](https://github.com/AntelopeJS/antelopejs/commit/8f7c85f))
+- Add shared interface resolution utility ([ee799d7](https://github.com/AntelopeJS/antelopejs/commit/ee799d7))
+- Validate interface dependencies at startup ([6228ce9](https://github.com/AntelopeJS/antelopejs/commit/6228ce9))
+- Propose interface selection during module init ([e4f3d3d](https://github.com/AntelopeJS/antelopejs/commit/e4f3d3d))
+
+### 🩹 Fixes
+
+- Display error messages without stack traces in CLI ([06e22df](https://github.com/AntelopeJS/antelopejs/commit/06e22df))
+
+### 💅 Refactors
+
+- Update interface types to match actual manifest schema ([8390086](https://github.com/AntelopeJS/antelopejs/commit/8390086))
+- Use shared interface resolution in install command ([c77088f](https://github.com/AntelopeJS/antelopejs/commit/c77088f))
+
+### 🏡 Chore
+
+- Update dependencies and fix type compatibility ([5b7d560](https://github.com/AntelopeJS/antelopejs/commit/5b7d560))
+
+### 🎨 Styles
+
+- Fix linting formatting ([7023d86](https://github.com/AntelopeJS/antelopejs/commit/7023d86))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.0.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v0.3.2...v1.0.0)
