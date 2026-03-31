@@ -1,17 +1,17 @@
 import * as childProcess from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import inquirer from "inquirer";
-import { displayBox, error, info, Spinner, warning } from "../../cli-ui";
+import { displayBox, error, info, Spinner, success, warning } from "../../cli-ui";
 import { ExecuteCMD } from "../../command";
 import {
   displayNonDefaultGitWarning,
   Options,
   readUserConfig,
 } from "../../common";
-import { copyTemplate, loadManifestFromGit } from "../../git-operations";
+import { copyTemplate, loadInterfacesFromGit, loadManifestFromGit } from "../../git-operations";
 import {
   getInstallCommand,
   savePackageManagerToPackageJson,
@@ -114,6 +114,53 @@ export async function moduleInitCommand(
     await copySpinner.succeed(
       `Module created successfully at ${chalk.cyan(path.resolve(modulePath))}`,
     );
+
+    // Propose interfaces to install
+    const interfaceSpinner = new Spinner("Loading available interfaces");
+    await interfaceSpinner.start();
+
+    const interfacesInfo = await loadInterfacesFromGit(
+      git,
+      gitManifest.starredInterfaces,
+    );
+    await interfaceSpinner.succeed(
+      `Found ${Object.keys(interfacesInfo).length} available interfaces`,
+    );
+
+    if (Object.keys(interfacesInfo).length > 0) {
+      console.log("");
+      const { selectedInterfaces } = await inquirer.prompt<{
+        selectedInterfaces: string[];
+      }>([
+        {
+          type: "checkbox",
+          name: "selectedInterfaces",
+          message: "Select interfaces to install (optional)",
+          choices: Object.entries(interfacesInfo).map(([name, info]) => ({
+            name: `${name} - ${chalk.dim(info.manifest.description)}`,
+            value: name,
+          })),
+        },
+      ]);
+
+      if (selectedInterfaces.length > 0) {
+        const pkgJsonPath = path.resolve(modulePath, "package.json");
+        const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+        if (!pkgJson.dependencies) pkgJson.dependencies = {};
+
+        for (const ifaceName of selectedInterfaces) {
+          const ifaceInfo = interfacesInfo[ifaceName];
+          if (ifaceInfo?.manifest.package) {
+            pkgJson.dependencies[ifaceInfo.manifest.package] = "latest";
+          }
+        }
+
+        writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + "\n");
+        success(
+          `Added ${selectedInterfaces.length} interface(s) to dependencies`,
+        );
+      }
+    }
 
     // Ask about package manager
     console.log("");

@@ -26,14 +26,15 @@ describe("module init behavior", () => {
         templates: [
           {
             name: "basic",
-            description: "basic",
             repository: "",
             branch: "",
           },
         ],
+        interfaces: {},
         starredInterfaces: [],
       });
       sinon.stub(gitOps, "copyTemplate").resolves();
+      sinon.stub(gitOps, "loadInterfacesFromGit").resolves({});
 
       const promptStub = sinon.stub(inquirer, "prompt");
       promptStub.onCall(0).resolves({ template: "basic" });
@@ -96,14 +97,15 @@ describe("module init behavior", () => {
         templates: [
           {
             name: "basic",
-            description: "basic",
             repository: "",
             branch: "",
           },
         ],
+        interfaces: {},
         starredInterfaces: [],
       });
       sinon.stub(gitOps, "copyTemplate").resolves();
+      sinon.stub(gitOps, "loadInterfacesFromGit").resolves({});
 
       const promptStub = sinon.stub(inquirer, "prompt");
       promptStub.onCall(0).resolves({ template: "missing" });
@@ -132,14 +134,15 @@ describe("module init behavior", () => {
         templates: [
           {
             name: "basic",
-            description: "basic",
             repository: "",
             branch: "",
           },
         ],
+        interfaces: {},
         starredInterfaces: [],
       });
       sinon.stub(gitOps, "copyTemplate").resolves();
+      sinon.stub(gitOps, "loadInterfacesFromGit").resolves({});
 
       const promptStub = sinon.stub(inquirer, "prompt");
       promptStub.onCall(0).resolves({ template: "basic" });
