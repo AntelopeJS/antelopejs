@@ -114,6 +114,103 @@ describe("runtime module-loading", () => {
     expect(refreshAssociationsStub.calledOnce).to.equal(true);
   });
 
+  it("propagates error when registry.load fails during reload", async () => {
+    const entry = {
+      module: {
+        manifest: { source: { type: "local", path: "/mods/alpha" } },
+        destroy: sinon.stub().resolves(),
+      },
+      config: {
+        config: {},
+      },
+    };
+
+    const manager = {
+      getLoadedModuleEntry: sinon.stub().returns(entry),
+      unrequireModuleFiles: sinon.stub(),
+      replaceLoadedModule: sinon.stub(),
+      refreshAssociations: sinon.stub(),
+    } as any;
+
+    const registryLoadStub = sinon
+      .stub()
+      .rejects(new Error("tsc compilation failed"));
+    const loaderContext = {
+      cache: {},
+      projectFolder: "/project",
+      registry: { load: registryLoadStub },
+    } as any;
+
+    let thrown: unknown;
+    try {
+      await reloadWatchedModule(manager, "alpha", loaderContext);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.be.instanceOf(Error);
+    expect(entry.module.destroy.calledOnce).to.equal(true);
+    expect(manager.replaceLoadedModule.called).to.equal(false);
+  });
+
+  it("recovers on retry after a failed reload", async () => {
+    const destroyStub = sinon.stub().resolves();
+    const entry = {
+      module: {
+        manifest: { source: { type: "local", path: "/mods/alpha" } },
+        destroy: destroyStub,
+      },
+      config: {
+        config: {},
+      },
+    };
+
+    const replaceLoadedModuleStub = sinon.stub();
+    const refreshAssociationsStub = sinon.stub();
+    const manager = {
+      getLoadedModuleEntry: sinon.stub().returns(entry),
+      unrequireModuleFiles: sinon.stub(),
+      replaceLoadedModule: replaceLoadedModuleStub,
+      refreshAssociations: refreshAssociationsStub,
+    } as any;
+
+    const manifest = {
+      name: "alpha",
+      version: "1.0.0",
+      main: __filename,
+      folder: "/mods/alpha",
+      imports: [],
+      source: { type: "local", path: "/mods/alpha" },
+      reload: sinon.stub().resolves(),
+    } as any;
+
+    const registryLoadStub = sinon.stub();
+    registryLoadStub
+      .onFirstCall()
+      .rejects(new Error("tsc compilation failed"));
+    registryLoadStub.onSecondCall().resolves([manifest]);
+
+    const loaderContext = {
+      cache: {},
+      projectFolder: "/project",
+      registry: { load: registryLoadStub },
+    } as any;
+
+    let thrown: unknown;
+    try {
+      await reloadWatchedModule(manager, "alpha", loaderContext);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).to.be.instanceOf(Error);
+    expect(replaceLoadedModuleStub.called).to.equal(false);
+
+    await reloadWatchedModule(manager, "alpha", loaderContext);
+
+    expect(replaceLoadedModuleStub.calledOnce).to.equal(true);
+    expect(refreshAssociationsStub.calledOnce).to.equal(true);
+  });
+
   it("constructs and starts modules, and fails gracefully on construct errors", async () => {
     sinon.stub(terminalDisplay, "startSpinner").resolves();
     const stopSpinnerStub = sinon

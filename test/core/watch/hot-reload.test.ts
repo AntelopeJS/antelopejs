@@ -18,6 +18,23 @@ describe("HotReload", () => {
     expect(calls.sort()).to.deep.equal(["a", "b"]);
   });
 
+  it("should continue reloading remaining modules when one fails", async () => {
+    const reloaded: string[] = [];
+    const hotReload = new HotReload(async (id) => {
+      if (id === "failing") {
+        throw new Error("tsc compilation failed");
+      }
+      reloaded.push(id);
+    }, 10);
+
+    hotReload.queue("failing");
+    hotReload.queue("working");
+
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(reloaded).to.deep.equal(["working"]);
+  });
+
   it("should cancel pending reload on clear", () => {
     const clock = sinon.useFakeTimers();
     const reload = sinon.stub();

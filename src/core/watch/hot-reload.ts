@@ -1,6 +1,9 @@
+import { Logging } from "@antelopejs/interface-core/logging";
+
 export type ReloadHandler = (moduleId: string) => void | Promise<void>;
 
 const DEFAULT_DEBOUNCE_MS = 500;
+const Logger = new Logging.Channel("loader.hot-reload");
 
 export class HotReload {
   private pending = new Set<string>();
@@ -19,7 +22,11 @@ export class HotReload {
         this.pending.clear();
         this.timer = undefined;
         for (const id of modules) {
-          await this.reload(id);
+          try {
+            await this.reload(id);
+          } catch (err) {
+            Logger.Error(`Failed to reload module ${id}:`, err);
+          }
         }
       }, this.debounceMs);
     }
