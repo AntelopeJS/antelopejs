@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.1.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.0...v1.1.1)
+
+### 🚀 Enhancements
+
+- Warn about outdated npm modules during dev, run and build ([4e3473c](https://github.com/AntelopeJS/antelopejs/commit/4e3473c))
+
+### 🩹 Fixes
+
+- Catch errors in HMR reload loop to prevent unhandled rejections ([dd6f1a5](https://github.com/AntelopeJS/antelopejs/commit/dd6f1a5))
+
+### 🎨 Styles
+
+- Fix linting formatting ([419bceb](https://github.com/AntelopeJS/antelopejs/commit/419bceb))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.1.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.0.0...v1.1.0)
