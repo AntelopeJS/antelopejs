@@ -1,11 +1,11 @@
-import { expect } from "chai";
-import sinon from "sinon";
 import type {
   ModuleSourceLocal,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
-import * as command from "../../src/core/cli/command";
+import { expect } from "chai";
+import sinon from "sinon";
 import * as cliUi from "../../src/core/cli/cli-ui";
+import * as command from "../../src/core/cli/command";
 import type { ExpandedModuleConfig } from "../../src/core/config/config-parser";
 import {
   checkOutdatedModules,
@@ -44,8 +44,10 @@ describe("version-checker", () => {
     it("returns outdated modules only", async () => {
       const execStub = sinon.stub(command, "ExecuteCMD");
       execStub.callsFake(async (cmd: string) => {
-        if (cmd.includes("mod-a")) return { code: 0, stdout: "2.0.0\n", stderr: "" };
-        if (cmd.includes("mod-b")) return { code: 0, stdout: "1.0.0\n", stderr: "" };
+        if (cmd.includes("mod-a"))
+          return { code: 0, stdout: "2.0.0\n", stderr: "" };
+        if (cmd.includes("mod-b"))
+          return { code: 0, stdout: "1.0.0\n", stderr: "" };
         return { code: 1, stdout: "", stderr: "not found" };
       });
 

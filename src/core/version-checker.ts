@@ -1,8 +1,8 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
-import type { ExpandedModuleConfig } from "./config/config-parser";
+import { warning } from "./cli/cli-ui";
 import { ExecuteCMD } from "./cli/command";
 import { parsePackageInfoOutput } from "./cli/package-manager";
-import { warning } from "./cli/cli-ui";
+import type { ExpandedModuleConfig } from "./config/config-parser";
 
 export interface OutdatedModule {
   name: string;

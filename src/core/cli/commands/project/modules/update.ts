@@ -4,8 +4,8 @@ import { Command, Option } from "commander";
 import { ConfigLoader } from "../../../../config";
 import { NodeFileSystem } from "../../../../filesystem";
 import {
-  type OutdatedModule,
   checkOutdatedModules,
+  type OutdatedModule,
 } from "../../../../version-checker";
 import { error as errorUI, info, success, warning } from "../../../cli-ui";
 import { Options, readConfig, writeConfig } from "../../../common";
@@ -55,18 +55,14 @@ function displayResults(
   }
 
   if (notFound.length > 0) {
-    warning(
-      chalk.yellow`${notFound.length} module(s) not found in project:`,
-    );
+    warning(chalk.yellow`${notFound.length} module(s) not found in project:`);
     for (const name of notFound) {
       info(`  ${chalk.yellow("•")} ${chalk.bold(name)}`);
     }
   }
 
   if (outdated.length > 0 && !options.dryRun) {
-    info(
-      `Run ${chalk.bold("ajs project run")} to use the updated modules.`,
-    );
+    info(`Run ${chalk.bold("ajs project run")} to use the updated modules.`);
   }
 }
 

@@ -185,9 +185,7 @@ describe("runtime module-loading", () => {
     } as any;
 
     const registryLoadStub = sinon.stub();
-    registryLoadStub
-      .onFirstCall()
-      .rejects(new Error("tsc compilation failed"));
+    registryLoadStub.onFirstCall().rejects(new Error("tsc compilation failed"));
     registryLoadStub.onSecondCall().resolves([manifest]);
 
     const loaderContext = {
