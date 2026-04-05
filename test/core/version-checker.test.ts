@@ -44,21 +44,21 @@ describe("version-checker", () => {
     it("returns outdated modules only", async () => {
       const execStub = sinon.stub(command, "ExecuteCMD");
       execStub.callsFake(async (cmd: string) => {
-        if (cmd.includes("mod-a"))
+        if (cmd.includes("@scope/real-pkg-a"))
           return { code: 0, stdout: "2.0.0\n", stderr: "" };
-        if (cmd.includes("mod-b"))
+        if (cmd.includes("@scope/real-pkg-b"))
           return { code: 0, stdout: "1.0.0\n", stderr: "" };
         return { code: 1, stdout: "", stderr: "not found" };
       });
 
       const packageSourceA: ModuleSourcePackage = {
         type: "package",
-        package: "mod-a",
+        package: "@scope/real-pkg-a",
         version: "1.0.0",
       };
       const packageSourceB: ModuleSourcePackage = {
         type: "package",
-        package: "mod-b",
+        package: "@scope/real-pkg-b",
         version: "1.0.0",
       };
       const localSource: ModuleSourceLocal = {
@@ -66,13 +66,13 @@ describe("version-checker", () => {
         path: "/some/path",
       };
       const modules: Record<string, ExpandedModuleConfig> = {
-        "mod-a": {
+        "config-key-a": {
           source: packageSourceA,
           config: {},
           importOverrides: [],
           disabledExports: [],
         },
-        "mod-b": {
+        "config-key-b": {
           source: packageSourceB,
           config: {},
           importOverrides: [],
@@ -90,7 +90,7 @@ describe("version-checker", () => {
 
       expect(result).to.have.lengthOf(1);
       expect(result[0]).to.deep.equal({
-        name: "mod-a",
+        name: "config-key-a",
         current: "1.0.0",
         latest: "2.0.0",
       });

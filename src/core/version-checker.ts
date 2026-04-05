@@ -36,7 +36,9 @@ export async function checkOutdatedModules(
   );
 
   const results = await Promise.allSettled(
-    packageModules.map(([name]) => fetchLatestVersion(name)),
+    packageModules.map(([, info]) =>
+      fetchLatestVersion((info.source as ModuleSourcePackage).package),
+    ),
   );
 
   return packageModules.reduce<OutdatedModule[]>(
