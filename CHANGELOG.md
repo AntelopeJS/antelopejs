@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.1...v1.1.2)
+
+### 🩹 Fixes
+
+- Use source package name instead of config key for outdated module check ([7ff15c1](https://github.com/AntelopeJS/antelopejs/commit/7ff15c1))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.1.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.0...v1.1.1)
