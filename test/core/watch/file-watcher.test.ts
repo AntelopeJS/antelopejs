@@ -53,6 +53,55 @@ describe("FileWatcher", () => {
     expect(changes).to.deep.equal([]);
   });
 
+  it("should detect changes to individually watched files", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/antelope.config.ts", "original");
+
+    const watcher = new FileWatcher(fs);
+    const changes: string[] = [];
+    await watcher.watchFile("/project/antelope.config.ts", (path) =>
+      changes.push(path),
+    );
+
+    await fs.writeFile("/project/antelope.config.ts", "modified");
+    await watcher.handleFileChange("/project/antelope.config.ts");
+
+    expect(changes).to.have.lengthOf(1);
+    expect(changes[0]).to.equal("/project/antelope.config.ts");
+  });
+
+  it("should ignore unchanged watched files", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/antelope.config.ts", "content");
+
+    const watcher = new FileWatcher(fs);
+    const changes: string[] = [];
+    await watcher.watchFile("/project/antelope.config.ts", (path) =>
+      changes.push(path),
+    );
+
+    await watcher.handleFileChange("/project/antelope.config.ts");
+
+    expect(changes).to.deep.equal([]);
+  });
+
+  it("should support multiple listeners on the same watched file", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/config.ts", "v1");
+
+    const watcher = new FileWatcher(fs);
+    const listener1: string[] = [];
+    const listener2: string[] = [];
+    await watcher.watchFile("/project/config.ts", (p) => listener1.push(p));
+    await watcher.watchFile("/project/config.ts", (p) => listener2.push(p));
+
+    await fs.writeFile("/project/config.ts", "v2");
+    await watcher.handleFileChange("/project/config.ts");
+
+    expect(listener1).to.have.lengthOf(1);
+    expect(listener2).to.have.lengthOf(1);
+  });
+
   it("skips excluded directories when scanning", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile("/mod/.git/ignored.txt", "x");

@@ -1,6 +1,6 @@
 import { Writable } from "node:stream";
 import { Logging } from "@antelopejs/interface-core/logging";
-import { DEFAULT_ENV } from "./core/config/config-paths";
+import { DEFAULT_ENV, tryFindConfigPath } from "./core/config/config-paths";
 import { NodeFileSystem } from "./core/filesystem";
 import { ModuleManager } from "./core/module-manager";
 import { ReplSession } from "./core/repl/repl-session";
@@ -92,9 +92,49 @@ function registerShutdownCleanup(shutdownManager: ShutdownManager): void {
   }, SHUTDOWN_PRIORITY_CLEANUP);
 }
 
+async function setupWatching(
+  manager: ModuleManager,
+  fs: NodeFileSystem,
+  projectFolder: string,
+  env: string,
+  options: LaunchOptions,
+  shutdownManager: ShutdownManager,
+  loaderContext: LoaderContext,
+): Promise<void> {
+  const watcher = new FileWatcher(fs);
+  const hotReload = new HotReload(async (moduleId) =>
+    reloadWatchedModule(manager, moduleId, loaderContext),
+  );
+
+  for (const { module } of manager.getLoadedModules()) {
+    if (module.manifest?.source?.type === "local") {
+      const watchDirs = getWatchDirs(module.manifest.source);
+      await watcher.scanModule(module.id, module.manifest.folder, watchDirs);
+    }
+  }
+
+  const configPath = await tryFindConfigPath(projectFolder, fs);
+  if (configPath) {
+    await watcher.watchFile(configPath, () => {
+      Logger.Info("Configuration file changed, restarting project...");
+      void restartProject(projectFolder, env, options);
+    });
+  }
+
+  watcher.onModuleChanged((id) => hotReload.queue(id));
+  watcher.startWatching();
+
+  shutdownManager.register(async () => {
+    hotReload.clear();
+    watcher.stopWatching();
+  }, SHUTDOWN_PRIORITY_RESOURCES);
+}
+
 async function setupPostLaunchFeatures(
   manager: ModuleManager,
   fs: NodeFileSystem,
+  projectFolder: string,
+  env: string,
   options: LaunchOptions,
   shutdownManager: ShutdownManager,
   loaderContext: LoaderContext,
@@ -103,25 +143,15 @@ async function setupPostLaunchFeatures(
   registerShutdownCleanup(shutdownManager);
 
   if (options.watch) {
-    const watcher = new FileWatcher(fs);
-    const hotReload = new HotReload(async (moduleId) =>
-      reloadWatchedModule(manager, moduleId, loaderContext),
+    await setupWatching(
+      manager,
+      fs,
+      projectFolder,
+      env,
+      options,
+      shutdownManager,
+      loaderContext,
     );
-
-    for (const { module } of manager.getLoadedModules()) {
-      if (module.manifest?.source?.type === "local") {
-        const watchDirs = getWatchDirs(module.manifest.source);
-        await watcher.scanModule(module.id, module.manifest.folder, watchDirs);
-      }
-    }
-
-    watcher.onModuleChanged((id) => hotReload.queue(id));
-    watcher.startWatching();
-
-    shutdownManager.register(async () => {
-      hotReload.clear();
-      watcher.stopWatching();
-    }, SHUTDOWN_PRIORITY_RESOURCES);
   }
 
   if (options.interactive) {
@@ -177,6 +207,36 @@ async function initializeCore(
   };
 }
 
+let isRestarting = false;
+
+async function restartProject(
+  projectFolder: string,
+  env: string,
+  options: LaunchOptions,
+): Promise<void> {
+  if (isRestarting) return;
+  isRestarting = true;
+
+  try {
+    if (activeShutdownManager) {
+      await activeShutdownManager.shutdown();
+    }
+
+    const initialized = await initializeCore(projectFolder, env, options);
+    await setupPostLaunchFeatures(
+      initialized.manager,
+      initialized.fs,
+      projectFolder,
+      env,
+      options,
+      initialized.shutdownManager,
+      initialized.loaderContext,
+    );
+  } finally {
+    isRestarting = false;
+  }
+}
+
 export async function launch(
   projectFolder: string = ".",
   env: string = DEFAULT_ENV,
@@ -186,6 +246,8 @@ export async function launch(
   await setupPostLaunchFeatures(
     initialized.manager,
     initialized.fs,
+    projectFolder,
+    env,
     options,
     initialized.shutdownManager,
     initialized.loaderContext,
