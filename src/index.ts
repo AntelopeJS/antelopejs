@@ -207,25 +207,34 @@ async function initializeCore(
   };
 }
 
+let isRestarting = false;
+
 async function restartProject(
   projectFolder: string,
   env: string,
   options: LaunchOptions,
 ): Promise<void> {
-  if (activeShutdownManager) {
-    await activeShutdownManager.shutdown();
-  }
+  if (isRestarting) return;
+  isRestarting = true;
 
-  const initialized = await initializeCore(projectFolder, env, options);
-  await setupPostLaunchFeatures(
-    initialized.manager,
-    initialized.fs,
-    projectFolder,
-    env,
-    options,
-    initialized.shutdownManager,
-    initialized.loaderContext,
-  );
+  try {
+    if (activeShutdownManager) {
+      await activeShutdownManager.shutdown();
+    }
+
+    const initialized = await initializeCore(projectFolder, env, options);
+    await setupPostLaunchFeatures(
+      initialized.manager,
+      initialized.fs,
+      projectFolder,
+      env,
+      options,
+      initialized.shutdownManager,
+      initialized.loaderContext,
+    );
+  } finally {
+    isRestarting = false;
+  }
 }
 
 export async function launch(

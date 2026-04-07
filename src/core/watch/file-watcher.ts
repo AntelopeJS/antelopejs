@@ -139,6 +139,7 @@ export class FileWatcher {
     entry: { hash: string; listeners: FileChangeListener[] },
   ): Promise<void> {
     if (!(await this.fs.exists(filePath))) {
+      console.warn(`Watched file deleted: ${filePath}`);
       return;
     }
 
