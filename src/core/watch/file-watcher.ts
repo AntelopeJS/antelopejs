@@ -4,6 +4,7 @@ import type { IFileSystem } from "../../types";
 import { FileHasher } from "./file-hasher";
 
 export type ModuleChangeListener = (moduleId: string) => void;
+export type FileChangeListener = (filePath: string) => void;
 
 const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
 
@@ -14,6 +15,10 @@ export class FileWatcher {
   private watchers = new Map<string, FSWatcher>();
   private watchedDirs = new Set<string>();
   private watchedDirModules = new Map<string, Set<string>>();
+  private watchedFiles = new Map<
+    string,
+    { hash: string; listeners: FileChangeListener[] }
+  >();
 
   constructor(
     private fs: IFileSystem,
@@ -32,6 +37,24 @@ export class FileWatcher {
     for (const dir of watchDirs) {
       await this.exploreDir(moduleId, path.join(rootDir, dir));
     }
+  }
+
+  async watchFile(
+    filePath: string,
+    listener: FileChangeListener,
+  ): Promise<void> {
+    const resolved = path.resolve(filePath);
+    const dir = path.dirname(resolved);
+
+    const existing = this.watchedFiles.get(resolved);
+    if (existing) {
+      existing.listeners.push(listener);
+      return;
+    }
+
+    const hash = await this.hasher.hashFile(resolved);
+    this.watchedFiles.set(resolved, { hash, listeners: [listener] });
+    this.watchedDirs.add(dir);
   }
 
   startWatching(): void {
@@ -72,6 +95,13 @@ export class FileWatcher {
       return;
     }
 
+    const resolved = path.resolve(filePath);
+    const watchedFile = this.watchedFiles.get(resolved);
+    if (watchedFile) {
+      await this.handleWatchedFileChange(resolved, watchedFile);
+      return;
+    }
+
     const entry = this.filesHash.get(filePath);
 
     if (!(await this.fs.exists(filePath))) {
@@ -101,6 +131,25 @@ export class FileWatcher {
     if (newHash !== entry.hash) {
       this.filesHash.set(filePath, { moduleId: entry.moduleId, hash: newHash });
       this.notifyModuleChange(entry.moduleId);
+    }
+  }
+
+  private async handleWatchedFileChange(
+    filePath: string,
+    entry: { hash: string; listeners: FileChangeListener[] },
+  ): Promise<void> {
+    if (!(await this.fs.exists(filePath))) {
+      return;
+    }
+
+    const newHash = await this.hasher.hashFile(filePath);
+    if (newHash === entry.hash) {
+      return;
+    }
+
+    entry.hash = newHash;
+    for (const listener of entry.listeners) {
+      listener(filePath);
     }
   }
 
