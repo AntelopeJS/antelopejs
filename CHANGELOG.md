@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.3
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.2...v1.1.3)
+
+### 🚀 Enhancements
+
+- **watch:** Restart project when config file changes ([#68](https://github.com/AntelopeJS/antelopejs/pull/68))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.1.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.1...v1.1.2)
