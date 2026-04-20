@@ -14,7 +14,6 @@ export class FileWatcher {
   private excludedDirs = new Set(EXCLUDED_WATCH_DIRS);
   private watchers = new Map<string, FSWatcher>();
   private watchedDirs = new Set<string>();
-  private watchedDirModules = new Map<string, Set<string>>();
   private watchedFiles = new Map<
     string,
     { hash: string; listeners: FileChangeListener[] }
@@ -103,12 +102,13 @@ export class FileWatcher {
     }
 
     const entry = this.filesHash.get(filePath);
+    if (!entry) {
+      return;
+    }
 
     if (!(await this.fs.exists(filePath))) {
-      if (entry) {
-        this.filesHash.delete(filePath);
-        this.notifyModuleChange(entry.moduleId);
-      }
+      this.filesHash.delete(filePath);
+      this.notifyModuleChange(entry.moduleId);
       return;
     }
 
@@ -118,16 +118,6 @@ export class FileWatcher {
     }
 
     const newHash = await this.hasher.hashFile(filePath);
-    if (!entry) {
-      const moduleId = this.getModuleIdForPath(filePath);
-      if (!moduleId) {
-        return;
-      }
-      this.filesHash.set(filePath, { moduleId, hash: newHash });
-      this.notifyModuleChange(moduleId);
-      return;
-    }
-
     if (newHash !== entry.hash) {
       this.filesHash.set(filePath, { moduleId: entry.moduleId, hash: newHash });
       this.notifyModuleChange(entry.moduleId);
@@ -155,7 +145,7 @@ export class FileWatcher {
   }
 
   private async exploreDir(moduleId: string, dirPath: string): Promise<void> {
-    this.trackWatchedDir(dirPath, moduleId);
+    this.watchedDirs.add(dirPath);
     const entries = await this.fs.readdir(dirPath);
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry);
@@ -169,31 +159,6 @@ export class FileWatcher {
         const hash = await this.hasher.hashFile(fullPath);
         this.filesHash.set(fullPath, { moduleId, hash });
       }
-    }
-  }
-
-  private trackWatchedDir(dirPath: string, moduleId: string): void {
-    this.watchedDirs.add(dirPath);
-    const existing = this.watchedDirModules.get(dirPath);
-    if (existing) {
-      existing.add(moduleId);
-    } else {
-      this.watchedDirModules.set(dirPath, new Set([moduleId]));
-    }
-  }
-
-  private getModuleIdForPath(filePath: string): string | undefined {
-    let current = path.dirname(path.resolve(filePath));
-    while (true) {
-      const entry = this.watchedDirModules.get(current);
-      if (entry && entry.size > 0) {
-        return entry.values().next().value;
-      }
-      const parent = path.dirname(current);
-      if (parent === current) {
-        return undefined;
-      }
-      current = parent;
     }
   }
 

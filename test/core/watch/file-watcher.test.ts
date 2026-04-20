@@ -102,6 +102,44 @@ describe("FileWatcher", () => {
     expect(listener2).to.have.lengthOf(1);
   });
 
+  it("does not notify when an untracked temp file appears", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/index.js", "v1");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+
+    await fs.writeFile("/mod/_tmp_1234_abcdef", "intermediate");
+    await watcher.handleFileChange("/mod/_tmp_1234_abcdef");
+    await fs.rm("/mod/_tmp_1234_abcdef");
+    await watcher.handleFileChange("/mod/_tmp_1234_abcdef");
+
+    expect(changes).to.deep.equal([]);
+  });
+
+  it("notifies exactly once for an atomic-write rename over a tracked file", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/index.js", "v1");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+
+    await fs.writeFile("/mod/index.js.tmp.5678", "v2");
+    await watcher.handleFileChange("/mod/index.js.tmp.5678");
+    await fs.writeFile("/mod/index.js", "v2");
+    await fs.rm("/mod/index.js.tmp.5678");
+    await watcher.handleFileChange("/mod/index.js");
+    await watcher.handleFileChange("/mod/index.js.tmp.5678");
+
+    expect(changes).to.deep.equal(["mod"]);
+  });
+
   it("skips excluded directories when scanning", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile("/mod/.git/ignored.txt", "x");
