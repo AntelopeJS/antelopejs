@@ -6,6 +6,7 @@ import launch, { type ModuleManager } from "../../src";
 
 const MARKER_TIMEOUT_MS = 8000;
 const MARKER_POLL_MS = 50;
+const NO_RELOAD_WINDOW_MS = 3000;
 
 async function waitFor(
   predicate: () => Promise<boolean>,
@@ -26,6 +27,23 @@ async function readMarker(markerPath: string): Promise<string | undefined> {
     return await fs.readFile(markerPath, "utf-8");
   } catch {
     return undefined;
+  }
+}
+
+async function assertStableStartCount(
+  startCountPath: string,
+  expected: number,
+  windowMs: number,
+): Promise<void> {
+  const deadline = Date.now() + windowMs;
+  while (Date.now() < deadline) {
+    const current = parseInt(await fs.readFile(startCountPath, "utf-8"), 10);
+    if (current !== expected) {
+      throw new Error(
+        `Expected startCount to stay at ${expected}, observed ${current}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, MARKER_POLL_MS));
   }
 }
 
@@ -146,7 +164,7 @@ exports.destroy = () => {};
       await fs.writeFile(tmpPath, "intermediate garbage");
       await fs.rm(tmpPath);
 
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await assertStableStartCount(startCountPath, 1, NO_RELOAD_WINDOW_MS);
 
       const startCount = parseInt(
         await fs.readFile(startCountPath, "utf-8"),
