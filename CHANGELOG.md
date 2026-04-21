@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.4
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.3...v1.1.4)
+
+### 🩹 Fixes
+
+- **watch:** Prevent HMR reload loop from atomic-write temp files ([#69](https://github.com/AntelopeJS/antelopejs/pull/69))
+- **hmr:** Dedup interface-core and fix proxy registration attribution ([#70](https://github.com/AntelopeJS/antelopejs/pull/70))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.1.3
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.2...v1.1.3)
