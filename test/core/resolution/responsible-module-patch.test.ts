@@ -132,6 +132,37 @@ describe("computeResponsibleModule", () => {
 
     expect(computeResponsibleModule(trace, entries)).to.equal("playground");
   });
+
+  it("stops at Node's module-loader boundary so a module's top-level side effects are attributed to itself, not the requirer", () => {
+    // cms/page.js runs its top-level `RootCategory()` during its own load;
+    // the stack above node:internal/modules is cms (the module being loaded),
+    // the stack below is the playground file that triggered the require.
+    // The registration belongs to cms, not playground.
+    const entries: ModuleFolderEntryInternal[] = [
+      { id: "cms", dir: "/project/cms", isImplementor: true },
+      { id: "playground", dir: "/project/cms/playground" },
+    ];
+    const trace: CallSiteLike[] = [
+      frame("/project/cms/dist/interfaces/cms/page.js"),
+      frame("/project/cms/dist/interfaces/cms/page.js"),
+      frame("node:internal/modules/cjs/loader"),
+      frame("node:internal/modules/helpers"),
+      frame("/project/cms/playground/dist/table-view/category.js"),
+    ];
+
+    expect(computeResponsibleModule(trace, entries)).to.equal("cms");
+  });
+
+  it("does not stop on unrelated node:internal frames (timers, process)", () => {
+    const entries: ModuleFolderEntryInternal[] = [{ id: "local", dir: "/app" }];
+    const trace: CallSiteLike[] = [
+      frame("node:internal/timers"),
+      frame("node:internal/process/task_queues"),
+      frame("/app/dist/index.js"),
+    ];
+
+    expect(computeResponsibleModule(trace, entries)).to.equal("local");
+  });
 });
 
 describe("RegisteringProxy replay resilience", () => {

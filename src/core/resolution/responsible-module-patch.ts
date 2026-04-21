@@ -102,16 +102,22 @@ function warnOnMissingFields(
  *
  * Rules:
  *   1. Frames pointing into `node_modules` or `node:internal/` are skipped.
- *   2. The first frame matching a non-implementor module wins — that is the
+ *   2. The walker stops at Node's module-loader boundary
+ *      (`node:internal/modules/…`). Frames above the boundary belong to the
+ *      module currently being loaded — they own the registration. Frames
+ *      below the boundary belong to whoever triggered the require; they must
+ *      not be credited with side-effects of the loaded module.
+ *   3. The first frame matching a non-implementor module wins — that is the
  *      user code that triggered the chain. Among ties on a single frame the
  *      longest matching `dir` wins.
- *   3. If no non-implementor frame matches, fall back to the first implementor
+ *   4. If no non-implementor frame matches, fall back to the first implementor
  *      match encountered, so framework-internal events still resolve to *a*
  *      module instead of an empty string.
  *
- * The walker always traverses the entire trace so an unregistered intermediate
- * frame (e.g. an anonymous class method in third-party code) cannot shadow a
- * consumer frame lower in the stack.
+ * Within a single module-load boundary the walker always traverses every
+ * frame so an unregistered intermediate frame (e.g. an anonymous class
+ * method in third-party code) cannot shadow a consumer frame lower in the
+ * stack.
  */
 export function computeResponsibleModule(
   trace: CallSiteLike[],
@@ -121,6 +127,9 @@ export function computeResponsibleModule(
 
   for (const site of trace) {
     const fileName = site.getFileName();
+    if (isModuleLoaderBoundary(fileName)) {
+      break;
+    }
     if (isSkippableFile(fileName)) {
       continue;
     }
@@ -263,6 +272,10 @@ function isSkippableFile(fileName: string | null): boolean {
     return true;
   }
   return /[/\\]node_modules[/\\]/.test(fileName);
+}
+
+function isModuleLoaderBoundary(fileName: string | null): boolean {
+  return fileName != null && fileName.startsWith("node:internal/modules/");
 }
 
 function findMatchingEntry(
