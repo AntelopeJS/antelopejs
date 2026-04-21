@@ -4,7 +4,6 @@ import { DEFAULT_ENV, tryFindConfigPath } from "./core/config/config-paths";
 import { NodeFileSystem } from "./core/filesystem";
 import { ModuleManager } from "./core/module-manager";
 import { ReplSession } from "./core/repl/repl-session";
-import { applyResponsibleModulePatch } from "./core/resolution/responsible-module-patch";
 import {
   ensureBuildModulesExist,
   mapArtifactModuleEntries,
@@ -48,8 +47,6 @@ export { ModuleManifest } from "./core/module-manifest";
 export type { BuildOptions } from "./core/runtime/runtime-types";
 export { TestModule } from "./core/test/test-module";
 export { LaunchOptions } from "./types";
-
-applyResponsibleModulePatch();
 
 const Logger = new Logging.Channel("loader");
 
