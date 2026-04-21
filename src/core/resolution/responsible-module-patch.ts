@@ -4,7 +4,16 @@ import {
   RegisteringProxy,
 } from "@antelopejs/interface-core";
 import { internal } from "@antelopejs/interface-core/internal";
+import { Logging } from "@antelopejs/interface-core/logging";
 import * as proxiesModule from "@antelopejs/interface-core/proxies";
+
+const PatchLogger = new Logging.Channel("loader.responsible-module-patch");
+
+const EXPECTED_FIELDS = {
+  RegisteringProxy: ["registered", "registerCallback"],
+  AsyncProxy: ["callback", "queue"],
+  EventProxy: ["registered"],
+} as const;
 
 export interface ModuleFolderEntryInternal {
   dir: string;
@@ -49,9 +58,42 @@ export function applyResponsibleModulePatch(): void {
     value: patched,
   });
 
+  warnOnMissingFields(
+    "RegisteringProxy",
+    new RegisteringProxy(),
+    EXPECTED_FIELDS.RegisteringProxy,
+  );
+  warnOnMissingFields(
+    "AsyncProxy",
+    new AsyncProxy(),
+    EXPECTED_FIELDS.AsyncProxy,
+  );
+  warnOnMissingFields(
+    "EventProxy",
+    new EventProxy(),
+    EXPECTED_FIELDS.EventProxy,
+  );
+
   patchRegisteringProxy(patched);
   patchAsyncProxy(patched);
   patchEventProxy(patched);
+}
+
+function warnOnMissingFields(
+  className: string,
+  instance: object,
+  fields: readonly string[],
+): void {
+  const missing = fields.filter(
+    (field) => !(field in (instance as Record<string, unknown>)),
+  );
+  if (missing.length > 0) {
+    PatchLogger.Warn(
+      `${className} is missing expected internal fields [${missing.join(", ")}]. ` +
+        "The responsible-module patch may no longer work correctly against this " +
+        "version of @antelopejs/interface-core; HMR cleanup could regress.",
+    );
+  }
 }
 
 /**
@@ -66,6 +108,10 @@ export function applyResponsibleModulePatch(): void {
  *   3. If no non-implementor frame matches, fall back to the first implementor
  *      match encountered, so framework-internal events still resolve to *a*
  *      module instead of an empty string.
+ *
+ * The walker always traverses the entire trace so an unregistered intermediate
+ * frame (e.g. an anonymous class method in third-party code) cannot shadow a
+ * consumer frame lower in the stack.
  */
 export function computeResponsibleModule(
   trace: CallSiteLike[],
@@ -80,9 +126,6 @@ export function computeResponsibleModule(
     }
     const match = findMatchingEntry(fileName as string, entries);
     if (!match) {
-      if (!site.getFunctionName() && site.getTypeName()) {
-        break;
-      }
       continue;
     }
     if (!match.isImplementor) {
@@ -117,8 +160,16 @@ function patchRegisteringProxy(getResponsible: () => string | undefined): void {
       }
     }
     const registered = this.registered as Map<unknown, { args: unknown[] }>;
+    const cb = callback as (id: unknown, ...args: unknown[]) => void;
     for (const [id, { args }] of registered) {
-      (callback as (id: unknown, ...args: unknown[]) => void)(id, ...args);
+      try {
+        cb(id, ...args);
+      } catch (err) {
+        PatchLogger.Error(
+          `RegisteringProxy replay failed for id ${String(id)}:`,
+          err,
+        );
+      }
     }
   };
   proto.register = function (

@@ -1,9 +1,13 @@
+import { RegisteringProxy } from "@antelopejs/interface-core";
 import { expect } from "chai";
 import {
+  applyResponsibleModulePatch,
   type CallSiteLike,
   computeResponsibleModule,
   type ModuleFolderEntryInternal,
 } from "../../../src/core/resolution/responsible-module-patch";
+
+applyResponsibleModulePatch();
 
 function frame(
   fileName: string | null,
@@ -105,13 +109,48 @@ describe("computeResponsibleModule", () => {
     expect(computeResponsibleModule(trace, entries)).to.equal("local");
   });
 
-  it("stops walking when a frame has no functionName but has a typeName", () => {
+  it("does not abort on unmatched frames with no functionName but a typeName", () => {
     const entries: ModuleFolderEntryInternal[] = [{ id: "local", dir: "/app" }];
     const trace: CallSiteLike[] = [
       frame("/somewhere/else.js", { functionName: null, typeName: "Foo" }),
       frame("/app/dist/index.js"),
     ];
 
-    expect(computeResponsibleModule(trace, entries)).to.equal(undefined);
+    expect(computeResponsibleModule(trace, entries)).to.equal("local");
+  });
+
+  it("walks past anonymous frames between implementor and consumer", () => {
+    const entries: ModuleFolderEntryInternal[] = [
+      { id: "cms", dir: "/project/cms", isImplementor: true },
+      { id: "playground", dir: "/project/cms/playground" },
+    ];
+    const trace: CallSiteLike[] = [
+      frame("/project/cms/dist/interfaces/cms/page.js"),
+      frame("/third-party/anon.js", { functionName: null, typeName: "Proxy" }),
+      frame("/project/cms/playground/dist/page.js"),
+    ];
+
+    expect(computeResponsibleModule(trace, entries)).to.equal("playground");
+  });
+});
+
+describe("RegisteringProxy replay resilience", () => {
+  it("replays every entry even when an earlier callback throws", () => {
+    const proxy = new RegisteringProxy<(id: string, arg: string) => void>();
+    proxy.register("a", "alpha");
+    proxy.register("b", "beta");
+    proxy.register("c", "gamma");
+
+    const seen: string[] = [];
+    const callback = (id: string, arg: string) => {
+      seen.push(`${id}:${arg}`);
+      if (id === "a") {
+        throw new Error("boom");
+      }
+    };
+
+    proxy.onRegister(callback, true);
+
+    expect(seen).to.deep.equal(["a:alpha", "b:beta", "c:gamma"]);
   });
 });
