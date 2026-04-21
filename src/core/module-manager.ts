@@ -288,6 +288,7 @@ export class ModuleManager {
       this.moduleTracker.add({
         dir: module.manifest.folder,
         id: module.id,
+        isImplementor: (module.manifest.implements ?? []).length > 0,
       });
 
       for (const interfacePackage of module.manifest.implements ?? []) {

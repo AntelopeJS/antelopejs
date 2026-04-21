@@ -3,6 +3,7 @@ import { internal } from "@antelopejs/interface-core/internal";
 export interface ModuleFolderEntry {
   dir: string;
   id: string;
+  isImplementor?: boolean;
 }
 
 export class ModuleTracker {
