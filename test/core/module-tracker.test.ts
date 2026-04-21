@@ -24,4 +24,21 @@ describe("ModuleTracker", () => {
 
     expect(internal.moduleByFolder).to.have.length(0);
   });
+
+  it("should preserve the isImplementor flag on added entries", () => {
+    const tracker = new ModuleTracker();
+
+    tracker.add({ id: "consumer", dir: "/consumer" });
+    tracker.add({ id: "provider", dir: "/provider", isImplementor: true });
+
+    const entries = internal.moduleByFolder as Array<{
+      id: string;
+      dir: string;
+      isImplementor?: boolean;
+    }>;
+    const consumer = entries.find((e) => e.id === "consumer");
+    const provider = entries.find((e) => e.id === "provider");
+    expect(consumer?.isImplementor).to.equal(undefined);
+    expect(provider?.isImplementor).to.equal(true);
+  });
 });
