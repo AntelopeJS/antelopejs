@@ -25,6 +25,11 @@
     "access": "public"
   },
   "packageManager": "pnpm@10.6.5",
+  "antelopeJs": {
+    "implements": [
+      "@antelopejs/interface-core"
+    ]
+  },
   "keywords": [
     "antelopejs",
     "framework",
