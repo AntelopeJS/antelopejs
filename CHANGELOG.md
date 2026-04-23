@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.5
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.4...v1.1.5)
+
+### 🩹 Fixes
+
+- Declare @antelopejs/interface-core as implemented by the core ([886f921](https://github.com/AntelopeJS/antelopejs/commit/886f921))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.1.4
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.3...v1.1.4)
