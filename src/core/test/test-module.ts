@@ -115,9 +115,9 @@ export async function setupTestEnvironment(
   return withRaisedMaxListeners(async () => {
     const manager = new ModuleManager();
     manager.resolver.stubModulePath = STUB_INTERFACE_PATH;
-    internal.testStubMode = true;
     await loadModuleEntriesForManager(manager, normalizedConfig, true);
     await constructAndStartModules(manager);
+    internal.testStubMode = true;
     return manager;
   });
 }
