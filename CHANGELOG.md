@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.6
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.5...v1.1.6)
+
+### 🩹 Fixes
+
+- **test:** Set testStubMode after modules are loaded and started ([#71](https://github.com/AntelopeJS/antelopejs/pull/71))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.1.5
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.4...v1.1.5)
