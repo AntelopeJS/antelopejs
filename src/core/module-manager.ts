@@ -8,9 +8,15 @@ import { Module } from "./module";
 import type { ModuleManifest } from "./module-manifest";
 import { ModuleRegistry } from "./module-registry";
 import { ModuleTracker } from "./module-tracker";
+import type { UnresolvedInterface } from "./resolution/interface-resolution";
 import { PathMapper } from "./resolution/path-mapper";
 import { Resolver } from "./resolution/resolver";
 import { ResolverDetour } from "./resolution/resolver-detour";
+import {
+  clearStubInterfaceWarnings,
+  logStubInterfaceWarningOnce,
+  neutralizeInterfacePackage,
+} from "./resolution/stub-interface-runtime";
 
 const Logger = new Logging.Channel("loader");
 
@@ -41,6 +47,7 @@ export class ModuleManager {
   private readonly resolvedAssociations = new Map<string, Set<string>>();
   private readonly staticModules: ManagedModule[] = [];
   private readonly loaded = new Map<string, ManagedModule>();
+  private readonly stubbedInterfacePaths = new Map<string, string>();
   private startupOrder: string[] = [];
 
   constructor(deps: ModuleManagerDeps = {}) {
@@ -171,8 +178,78 @@ export class ModuleManager {
     return this.resolvedAssociations.get(moduleId)?.has(interfaceName) ?? false;
   }
 
+  registerStubbedInterfaces(stubbed: UnresolvedInterface[]): void {
+    for (const { moduleId, interfacePackage } of stubbed) {
+      if (this.stubbedInterfacePaths.has(interfacePackage)) {
+        continue;
+      }
+      const consumerFolder = this.loaded.get(moduleId)?.module.manifest.folder;
+      if (!consumerFolder) {
+        continue;
+      }
+      const pkgRoot = this.resolveInterfacePackageRoot(
+        interfacePackage,
+        consumerFolder,
+      );
+      if (!pkgRoot) {
+        continue;
+      }
+      this.stubbedInterfacePaths.set(interfacePackage, pkgRoot);
+      this.resolver.interfacePackages.set(interfacePackage, pkgRoot);
+      logStubInterfaceWarningOnce(interfacePackage);
+    }
+  }
+
+  private resolveInterfacePackageRoot(
+    ifacePkg: string,
+    fromFolder: string,
+  ): string | undefined {
+    try {
+      const mainPath = require.resolve(ifacePkg, { paths: [fromFolder] });
+      return extractPackageRoot(mainPath, ifacePkg);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private applyInterfaceStubs(): void {
+    const implemented = this.collectImplementedInterfaces();
+    for (const [interfaceName, pkgRoot] of [...this.stubbedInterfacePaths]) {
+      if (implemented.has(interfaceName)) {
+        this.stubbedInterfacePaths.delete(interfaceName);
+        continue;
+      }
+      if (!this.resolver.interfacePackages.has(interfaceName)) {
+        this.resolver.interfacePackages.set(interfaceName, pkgRoot);
+      }
+      try {
+        require(interfaceName);
+      } catch (err) {
+        Logger.Error(
+          `Failed to load optional interface '${interfaceName}':`,
+          err,
+        );
+        continue;
+      }
+      neutralizeInterfacePackage(pkgRoot, interfaceName);
+    }
+  }
+
+  private collectImplementedInterfaces(): Set<string> {
+    const implemented = new Set<string>();
+    for (const { module, config } of this.getAllManagedModules()) {
+      for (const iface of module.manifest.implements ?? []) {
+        if (!config.disabledExports?.has(iface)) {
+          implemented.add(iface);
+        }
+      }
+    }
+    return implemented;
+  }
+
   async constructAll(): Promise<void> {
     this.resolverDetour.attach();
+    this.applyInterfaceStubs();
     try {
       await Promise.all(
         [...this.loaded.values()].map(({ module, config }) =>
@@ -193,6 +270,7 @@ export class ModuleManager {
 
   async constructModules(modules: ManagedModule[]): Promise<void> {
     this.resolverDetour.attach();
+    this.applyInterfaceStubs();
     await Promise.all(
       modules.map(({ module, config }) =>
         module.construct(config.config).catch((err) => {
@@ -260,6 +338,8 @@ export class ModuleManager {
       }
     } finally {
       this.startupOrder = [];
+      this.stubbedInterfacePaths.clear();
+      clearStubInterfaceWarnings();
       this.resolverDetour.detach();
     }
   }
@@ -325,18 +405,8 @@ export class ModuleManager {
         const mainPath = require.resolve(ifacePkg, {
           paths: [module.manifest.folder],
         });
-        // Walk up from the resolved main entry to find the package root
-        // by looking for the package name in the path
-        const pkgNameSegments = ifacePkg.split("/");
-        const scopePrefix = ifacePkg.startsWith("@")
-          ? `${pkgNameSegments[0]}/${pkgNameSegments[1]}`
-          : pkgNameSegments[0];
-        const scopeIndex = mainPath.lastIndexOf(scopePrefix);
-        if (scopeIndex !== -1) {
-          const pkgRoot = mainPath.substring(
-            0,
-            scopeIndex + scopePrefix.length,
-          );
+        const pkgRoot = extractPackageRoot(mainPath, ifacePkg);
+        if (pkgRoot) {
           this.resolver.interfacePackages.set(ifacePkg, pkgRoot);
         }
       } catch {
@@ -410,4 +480,16 @@ export class ModuleManager {
     }
     return normalizedFile.startsWith(normalizedDir + path.sep);
   }
+}
+
+function extractPackageRoot(
+  mainPath: string,
+  ifacePkg: string,
+): string | undefined {
+  const marker = `${path.sep}${ifacePkg.replace("/", path.sep)}${path.sep}`;
+  const scopeIndex = mainPath.indexOf(marker);
+  if (scopeIndex === -1) {
+    return undefined;
+  }
+  return mainPath.substring(0, scopeIndex + marker.length - 1);
 }
