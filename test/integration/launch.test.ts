@@ -85,6 +85,131 @@ describe("Launch Function", () => {
     }
   });
 
+  it("loads an unimplemented optional interface and stubs its AsyncProxies", async () => {
+    const projectFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-project-"),
+    );
+    try {
+      // An interface package: real files on disk that declare an AsyncProxy-
+      // backed InterfaceFunction and a synchronous RegisteringProxy. The
+      // presence of `antelopeJs` in package.json marks it as an interface.
+      const ifaceFolder = path.join(projectFolder, "iface-pkg");
+      await fs.mkdir(ifaceFolder, { recursive: true });
+      await fs.writeFile(
+        path.join(ifaceFolder, "package.json"),
+        JSON.stringify(
+          {
+            name: "iface-pkg",
+            version: "1.0.0",
+            main: "index.js",
+            antelopeJs: {},
+          },
+          null,
+          2,
+        ),
+      );
+      await fs.writeFile(
+        path.join(ifaceFolder, "index.js"),
+        `
+        const core = require("@antelopejs/interface-core");
+        exports.Iface = {
+          fetch: core.InterfaceFunction(),
+        };
+        exports.OnThing = new core.RegisteringProxy();
+        `,
+      );
+
+      // A consumer module that lists iface-pkg under optionalDependencies and
+      // captures the imported exports so the test can probe them.
+      const consumerFolder = path.join(projectFolder, "consumer");
+      await fs.mkdir(consumerFolder, { recursive: true });
+      await fs.writeFile(
+        path.join(consumerFolder, "package.json"),
+        JSON.stringify(
+          {
+            name: "consumer",
+            version: "1.0.0",
+            main: "index.js",
+            optionalDependencies: { "iface-pkg": "*" },
+          },
+          null,
+          2,
+        ),
+      );
+      await fs.writeFile(
+        path.join(consumerFolder, "index.js"),
+        `
+        const iface = require("iface-pkg");
+        module.exports = {
+          construct() {
+            global.__antelopeStubTest = iface;
+          },
+        };
+        `,
+      );
+
+      await fs.mkdir(path.join(consumerFolder, "node_modules"), {
+        recursive: true,
+      });
+      await fs.symlink(
+        ifaceFolder,
+        path.join(consumerFolder, "node_modules", "iface-pkg"),
+      );
+
+      await writeProjectConfig(projectFolder, {
+        name: "test-project",
+        modules: {
+          consumer: {
+            source: {
+              type: "local",
+              path: "./consumer",
+              main: "index.js",
+            },
+          },
+        },
+      });
+
+      const manager = await launch(projectFolder);
+      try {
+        expect(manager.resolver.interfacePackages.has("iface-pkg")).to.equal(
+          true,
+        );
+        const captured = (global as any).__antelopeStubTest;
+        expect(captured).to.exist;
+        expect(captured.Iface.fetch).to.be.a("function");
+
+        // RegisteringProxy is sync and should not be neutralized
+        let registered = false;
+        captured.OnThing.onRegister(() => {
+          registered = true;
+        }, true);
+        captured.OnThing.register("id-1");
+        expect(registered).to.equal(true);
+
+        // AsyncProxy-backed call should reject promptly instead of hanging
+        let asyncError: Error | undefined;
+        try {
+          await Promise.race([
+            captured.Iface.fetch(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("HANG")), 1000),
+            ),
+          ]);
+        } catch (e) {
+          asyncError = e as Error;
+        }
+        expect(asyncError?.message ?? "").to.match(/iface-pkg/);
+        expect(asyncError?.message ?? "").to.not.match(/HANG/);
+      } finally {
+        delete (global as any).__antelopeStubTest;
+        await manager.stopAll();
+        await manager.destroyAll();
+      }
+    } finally {
+      await fs.rm(projectFolder, { recursive: true, force: true });
+    }
+  });
+
   it("should respect environment option", async () => {
     const projectFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-project-"),

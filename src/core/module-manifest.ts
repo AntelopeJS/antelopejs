@@ -15,6 +15,7 @@ export interface ModulePackageJson {
   author?: string | string[];
 
   dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
 
   antelopeJs?: {
     implements?: string[];

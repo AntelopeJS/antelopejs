@@ -8,9 +8,14 @@ import { Module } from "./module";
 import type { ModuleManifest } from "./module-manifest";
 import { ModuleRegistry } from "./module-registry";
 import { ModuleTracker } from "./module-tracker";
+import type { UnresolvedInterface } from "./resolution/interface-resolution";
 import { PathMapper } from "./resolution/path-mapper";
 import { Resolver } from "./resolution/resolver";
 import { ResolverDetour } from "./resolution/resolver-detour";
+import {
+  logStubInterfaceWarningOnce,
+  neutralizeInterfaceAsyncProxies,
+} from "./resolution/stub-interface-runtime";
 
 const Logger = new Logging.Channel("loader");
 
@@ -41,6 +46,7 @@ export class ModuleManager {
   private readonly resolvedAssociations = new Map<string, Set<string>>();
   private readonly staticModules: ManagedModule[] = [];
   private readonly loaded = new Map<string, ManagedModule>();
+  private readonly stubbedInterfaceNames = new Set<string>();
   private startupOrder: string[] = [];
 
   constructor(deps: ModuleManagerDeps = {}) {
@@ -171,8 +177,66 @@ export class ModuleManager {
     return this.resolvedAssociations.get(moduleId)?.has(interfaceName) ?? false;
   }
 
+  registerStubbedInterfaces(stubbed: UnresolvedInterface[]): void {
+    for (const { moduleId, interfacePackage } of stubbed) {
+      if (this.resolver.interfacePackages.has(interfacePackage)) {
+        this.stubbedInterfaceNames.add(interfacePackage);
+        continue;
+      }
+      const consumerFolder = this.loaded.get(moduleId)?.module.manifest.folder;
+      if (!consumerFolder) {
+        continue;
+      }
+      const pkgRoot = this.resolveInterfacePackageRoot(
+        interfacePackage,
+        consumerFolder,
+      );
+      if (!pkgRoot) {
+        continue;
+      }
+      this.resolver.interfacePackages.set(interfacePackage, pkgRoot);
+      this.stubbedInterfaceNames.add(interfacePackage);
+      logStubInterfaceWarningOnce(interfacePackage);
+    }
+  }
+
+  private resolveInterfacePackageRoot(
+    ifacePkg: string,
+    fromFolder: string,
+  ): string | undefined {
+    try {
+      const mainPath = require.resolve(ifacePkg, { paths: [fromFolder] });
+      const pkgNameSegments = ifacePkg.split("/");
+      const scopePrefix = ifacePkg.startsWith("@")
+        ? `${pkgNameSegments[0]}/${pkgNameSegments[1]}`
+        : pkgNameSegments[0];
+      const scopeIndex = mainPath.lastIndexOf(scopePrefix);
+      if (scopeIndex === -1) {
+        return undefined;
+      }
+      return mainPath.substring(0, scopeIndex + scopePrefix.length);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private applyInterfaceStubs(): void {
+    for (const interfaceName of this.stubbedInterfaceNames) {
+      try {
+        const exports = require(interfaceName);
+        neutralizeInterfaceAsyncProxies(exports, interfaceName);
+      } catch (err) {
+        Logger.Error(
+          `Failed to stub optional interface '${interfaceName}':`,
+          err,
+        );
+      }
+    }
+  }
+
   async constructAll(): Promise<void> {
     this.resolverDetour.attach();
+    this.applyInterfaceStubs();
     try {
       await Promise.all(
         [...this.loaded.values()].map(({ module, config }) =>
@@ -193,6 +257,7 @@ export class ModuleManager {
 
   async constructModules(modules: ManagedModule[]): Promise<void> {
     this.resolverDetour.attach();
+    this.applyInterfaceStubs();
     await Promise.all(
       modules.map(({ module, config }) =>
         module.construct(config.config).catch((err) => {

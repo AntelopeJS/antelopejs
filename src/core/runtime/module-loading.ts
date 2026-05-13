@@ -422,9 +422,14 @@ export function ensureGraphIsValid(manager: ModuleManager): void {
     id: module.id,
     folder: module.manifest.folder,
     dependencies: module.manifest.manifest.dependencies ?? {},
+    optionalDependencies: module.manifest.manifest.optionalDependencies ?? {},
   }));
 
-  const unresolved = findUnresolvedInterfaces(providers, consumers, staticDeps);
+  const { unresolved, stubbed } = findUnresolvedInterfaces(
+    providers,
+    consumers,
+    staticDeps,
+  );
   if (unresolved.length > 0) {
     const details = unresolved
       .map(
@@ -435,5 +440,9 @@ export function ensureGraphIsValid(manager: ModuleManager): void {
     throw new Error(
       `Unresolved interface dependencies:\n${details}\n\nRun 'ajs project modules install' to resolve missing dependencies.`,
     );
+  }
+
+  if (stubbed.length > 0) {
+    manager.registerStubbedInterfaces(stubbed);
   }
 }

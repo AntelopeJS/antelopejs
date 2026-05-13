@@ -89,9 +89,10 @@ async function analyzeConfig(
     id: m.name,
     folder: m.folder,
     dependencies: m.manifest.dependencies ?? {},
+    optionalDependencies: m.manifest.optionalDependencies ?? {},
   }));
 
-  const unresolved = findUnresolvedInterfaces(providers, consumers);
+  const { unresolved } = findUnresolvedInterfaces(providers, consumers);
   return {
     unresolvedImports: unresolved.map((u) => u.interfacePackage),
   };
