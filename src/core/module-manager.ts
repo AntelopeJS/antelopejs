@@ -206,15 +206,7 @@ export class ModuleManager {
   ): string | undefined {
     try {
       const mainPath = require.resolve(ifacePkg, { paths: [fromFolder] });
-      const pkgNameSegments = ifacePkg.split("/");
-      const scopePrefix = ifacePkg.startsWith("@")
-        ? `${pkgNameSegments[0]}/${pkgNameSegments[1]}`
-        : pkgNameSegments[0];
-      const scopeIndex = mainPath.lastIndexOf(scopePrefix);
-      if (scopeIndex === -1) {
-        return undefined;
-      }
-      return mainPath.substring(0, scopeIndex + scopePrefix.length);
+      return extractPackageRoot(mainPath, ifacePkg);
     } catch {
       return undefined;
     }
@@ -413,18 +405,8 @@ export class ModuleManager {
         const mainPath = require.resolve(ifacePkg, {
           paths: [module.manifest.folder],
         });
-        // Walk up from the resolved main entry to find the package root
-        // by looking for the package name in the path
-        const pkgNameSegments = ifacePkg.split("/");
-        const scopePrefix = ifacePkg.startsWith("@")
-          ? `${pkgNameSegments[0]}/${pkgNameSegments[1]}`
-          : pkgNameSegments[0];
-        const scopeIndex = mainPath.lastIndexOf(scopePrefix);
-        if (scopeIndex !== -1) {
-          const pkgRoot = mainPath.substring(
-            0,
-            scopeIndex + scopePrefix.length,
-          );
+        const pkgRoot = extractPackageRoot(mainPath, ifacePkg);
+        if (pkgRoot) {
           this.resolver.interfacePackages.set(ifacePkg, pkgRoot);
         }
       } catch {
@@ -498,4 +480,16 @@ export class ModuleManager {
     }
     return normalizedFile.startsWith(normalizedDir + path.sep);
   }
+}
+
+function extractPackageRoot(
+  mainPath: string,
+  ifacePkg: string,
+): string | undefined {
+  const marker = `${path.sep}${ifacePkg.replace("/", path.sep)}${path.sep}`;
+  const scopeIndex = mainPath.indexOf(marker);
+  if (scopeIndex === -1) {
+    return undefined;
+  }
+  return mainPath.substring(0, scopeIndex + marker.length - 1);
 }
