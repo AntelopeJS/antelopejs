@@ -1,3 +1,5 @@
+import Module from "node:module";
+import path from "node:path";
 import {
   AsyncProxy,
   EventProxy,
@@ -62,6 +64,31 @@ export function neutralizeInterfaceAsyncProxies(
   interfaceName: string,
 ): void {
   walk(exports, interfaceName, new WeakSet());
+}
+
+function isWithin(filePath: string, dirPath: string): boolean {
+  const normalizedDir = path.resolve(dirPath);
+  const normalizedFile = path.resolve(filePath);
+  if (normalizedFile === normalizedDir) {
+    return true;
+  }
+  return normalizedFile.startsWith(normalizedDir + path.sep);
+}
+
+export function neutralizeInterfacePackage(
+  packageRoot: string,
+  interfaceName: string,
+): void {
+  const cache = (Module as unknown as { _cache: Record<string, NodeModule> })
+    ._cache;
+  const seen = new WeakSet<object>();
+  for (const filename of Object.keys(cache)) {
+    if (!isWithin(filename, packageRoot)) {
+      continue;
+    }
+    const cachedModule = cache[filename];
+    walk(cachedModule.exports, interfaceName, seen);
+  }
 }
 
 export function logStubInterfaceWarningOnce(interfaceName: string): void {

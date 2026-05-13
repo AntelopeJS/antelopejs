@@ -14,7 +14,7 @@ import { Resolver } from "./resolution/resolver";
 import { ResolverDetour } from "./resolution/resolver-detour";
 import {
   logStubInterfaceWarningOnce,
-  neutralizeInterfaceAsyncProxies,
+  neutralizeInterfacePackage,
 } from "./resolution/stub-interface-runtime";
 
 const Logger = new Logging.Channel("loader");
@@ -223,14 +223,19 @@ export class ModuleManager {
   private applyInterfaceStubs(): void {
     for (const interfaceName of this.stubbedInterfaceNames) {
       try {
-        const exports = require(interfaceName);
-        neutralizeInterfaceAsyncProxies(exports, interfaceName);
+        require(interfaceName);
       } catch (err) {
         Logger.Error(
-          `Failed to stub optional interface '${interfaceName}':`,
+          `Failed to load optional interface '${interfaceName}':`,
           err,
         );
+        continue;
       }
+      const pkgRoot = this.resolver.interfacePackages.get(interfaceName);
+      if (!pkgRoot) {
+        continue;
+      }
+      neutralizeInterfacePackage(pkgRoot, interfaceName);
     }
   }
 
