@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.2.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.6...v1.2.0)
+
+### 🚀 Enhancements
+
+- **resolver:** Allow optional interface deps to stub at runtime ([#72](https://github.com/AntelopeJS/antelopejs/pull/72))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+
 ## v1.1.6
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.1.5...v1.1.6)
