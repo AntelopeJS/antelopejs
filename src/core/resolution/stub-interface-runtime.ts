@@ -101,3 +101,7 @@ export function logStubInterfaceWarningOnce(interfaceName: string): void {
       `async calls on it will reject, sync usage will no-op.`,
   );
 }
+
+export function clearStubInterfaceWarnings(): void {
+  warned.clear();
+}

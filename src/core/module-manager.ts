@@ -13,6 +13,7 @@ import { PathMapper } from "./resolution/path-mapper";
 import { Resolver } from "./resolution/resolver";
 import { ResolverDetour } from "./resolution/resolver-detour";
 import {
+  clearStubInterfaceWarnings,
   logStubInterfaceWarningOnce,
   neutralizeInterfacePackage,
 } from "./resolution/stub-interface-runtime";
@@ -46,7 +47,7 @@ export class ModuleManager {
   private readonly resolvedAssociations = new Map<string, Set<string>>();
   private readonly staticModules: ManagedModule[] = [];
   private readonly loaded = new Map<string, ManagedModule>();
-  private readonly stubbedInterfaceNames = new Set<string>();
+  private readonly stubbedInterfacePaths = new Map<string, string>();
   private startupOrder: string[] = [];
 
   constructor(deps: ModuleManagerDeps = {}) {
@@ -179,8 +180,7 @@ export class ModuleManager {
 
   registerStubbedInterfaces(stubbed: UnresolvedInterface[]): void {
     for (const { moduleId, interfacePackage } of stubbed) {
-      if (this.resolver.interfacePackages.has(interfacePackage)) {
-        this.stubbedInterfaceNames.add(interfacePackage);
+      if (this.stubbedInterfacePaths.has(interfacePackage)) {
         continue;
       }
       const consumerFolder = this.loaded.get(moduleId)?.module.manifest.folder;
@@ -194,8 +194,8 @@ export class ModuleManager {
       if (!pkgRoot) {
         continue;
       }
+      this.stubbedInterfacePaths.set(interfacePackage, pkgRoot);
       this.resolver.interfacePackages.set(interfacePackage, pkgRoot);
-      this.stubbedInterfaceNames.add(interfacePackage);
       logStubInterfaceWarningOnce(interfacePackage);
     }
   }
@@ -221,7 +221,15 @@ export class ModuleManager {
   }
 
   private applyInterfaceStubs(): void {
-    for (const interfaceName of this.stubbedInterfaceNames) {
+    const implemented = this.collectImplementedInterfaces();
+    for (const [interfaceName, pkgRoot] of [...this.stubbedInterfacePaths]) {
+      if (implemented.has(interfaceName)) {
+        this.stubbedInterfacePaths.delete(interfaceName);
+        continue;
+      }
+      if (!this.resolver.interfacePackages.has(interfaceName)) {
+        this.resolver.interfacePackages.set(interfaceName, pkgRoot);
+      }
       try {
         require(interfaceName);
       } catch (err) {
@@ -231,12 +239,20 @@ export class ModuleManager {
         );
         continue;
       }
-      const pkgRoot = this.resolver.interfacePackages.get(interfaceName);
-      if (!pkgRoot) {
-        continue;
-      }
       neutralizeInterfacePackage(pkgRoot, interfaceName);
     }
+  }
+
+  private collectImplementedInterfaces(): Set<string> {
+    const implemented = new Set<string>();
+    for (const { module, config } of this.getAllManagedModules()) {
+      for (const iface of module.manifest.implements ?? []) {
+        if (!config.disabledExports?.has(iface)) {
+          implemented.add(iface);
+        }
+      }
+    }
+    return implemented;
   }
 
   async constructAll(): Promise<void> {
@@ -330,6 +346,8 @@ export class ModuleManager {
       }
     } finally {
       this.startupOrder = [];
+      this.stubbedInterfacePaths.clear();
+      clearStubInterfaceWarnings();
       this.resolverDetour.detach();
     }
   }
