@@ -18,9 +18,7 @@ import {
   normalizeLoadedConfig,
   withRaisedMaxListeners,
 } from "../runtime/runtime-bootstrap";
-import { TestContext } from "./test-context";
 import * as self from "./test-module";
-import { TestRunner } from "./test-runner";
 
 const EXIT_CODE_ERROR = 1;
 const DEFAULT_TEST_FOLDER = "test";
@@ -177,19 +175,12 @@ export async function executeTests(
   test: AntelopeTestConfig,
   manager: ModuleManager | null,
   fs: IFileSystem,
+  files: string[] = [],
 ): Promise<number> {
-  const testFolder = path.join(moduleRoot, test.folder ?? DEFAULT_TEST_FOLDER);
-  const localTestFiles = await collectTestFiles(
-    testFolder,
-    TEST_FILE_PATTERN,
-    fs,
-  );
-  const interfaceTestFiles = await self.collectInterfaceTestFiles(
-    moduleRoot,
-    manager,
-    fs,
-  );
-  const testFiles = [...localTestFiles, ...interfaceTestFiles];
+  const testFiles =
+    files.length > 0
+      ? files
+      : await discoverTestFiles(moduleRoot, test, manager, fs);
 
   if (testFiles.length === 0) {
     console.error("No test files found");
@@ -205,6 +196,26 @@ export async function executeTests(
   return new Promise<number>((resolve) => {
     mocha.run((count) => resolve(count));
   });
+}
+
+async function discoverTestFiles(
+  moduleRoot: string,
+  test: AntelopeTestConfig,
+  manager: ModuleManager | null,
+  fs: IFileSystem,
+): Promise<string[]> {
+  const testFolder = path.join(moduleRoot, test.folder ?? DEFAULT_TEST_FOLDER);
+  const localTestFiles = await collectTestFiles(
+    testFolder,
+    TEST_FILE_PATTERN,
+    fs,
+  );
+  const interfaceTestFiles = await self.collectInterfaceTestFiles(
+    moduleRoot,
+    manager,
+    fs,
+  );
+  return [...localTestFiles, ...interfaceTestFiles];
 }
 
 function applySetupOverrides(
@@ -228,12 +239,6 @@ export async function TestModule(
   moduleFolder: string = ".",
   files: string[] = [],
 ): Promise<number> {
-  if (files.length > 0) {
-    const context = new TestContext({});
-    const runner = new TestRunner(context);
-    return runner.run(files);
-  }
-
   const moduleRoot = path.resolve(moduleFolder);
   const fs = new NodeFileSystem();
   const loadedConfig = await self.loadTestConfig(moduleRoot, fs);
@@ -263,6 +268,7 @@ export async function TestModule(
       loadedConfig.test,
       manager,
       fs,
+      files,
     );
     if (failures === EXIT_CODE_ERROR) {
       await manager.destroyAll();

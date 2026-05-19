@@ -328,6 +328,36 @@ describe("test-module", () => {
       });
     });
 
+    it("forwards explicit file filter to executeTests after full bootstrap", async () => {
+      const destroyAllStub = sinon.stub().resolves();
+      const mockConfig = {
+        name: "test",
+        cacheFolder: ".antelope/cache",
+        modules: {},
+        envOverrides: {},
+        test: {},
+      };
+
+      sinon.stub(testModule, "loadTestConfig").resolves({
+        config: mockConfig as any,
+        test: mockConfig.test,
+      });
+
+      const setupEnvStub = sinon
+        .stub(testModule, "setupTestEnvironment")
+        .resolves({ destroyAll: destroyAllStub } as any);
+
+      const executeStub = sinon.stub(testModule, "executeTests").resolves(0);
+
+      const files = ["/module/test/only-this.test.js"];
+      const result = await testModule.TestModule("/module", files);
+
+      expect(result).to.equal(0);
+      expect(setupEnvStub.calledOnce).to.equal(true);
+      expect(executeStub.calledOnce).to.equal(true);
+      expect(executeStub.firstCall.args[4]).to.deep.equal(files);
+    });
+
     it("works without setup and cleanup hooks", async () => {
       const destroyAllStub = sinon.stub().resolves();
 
