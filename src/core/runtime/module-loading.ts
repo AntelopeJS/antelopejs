@@ -307,6 +307,7 @@ async function loadModuleManifestFromSource(
   loaderContext: LoaderContext,
   source: ModuleSource,
   moduleId: string,
+  reload = false,
 ): Promise<ModuleManifest> {
   const manifests = await loaderContext.registry.load(
     loaderContext.projectFolder,
@@ -315,6 +316,7 @@ async function loadModuleManifestFromSource(
       ...source,
       id: moduleId,
     },
+    { reload },
   );
   const [manifest] = manifests;
   if (!manifest) {
@@ -349,6 +351,7 @@ async function reloadLoadedModuleFromSource(
     loaderContext,
     entry.module.manifest.source,
     moduleId,
+    true,
   );
   const replacement = new Module(manifest);
   ensureReloadedModuleId(replacement, moduleId);

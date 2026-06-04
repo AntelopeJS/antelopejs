@@ -9,7 +9,7 @@ import { ExecuteCMD } from "../cli/command";
 import { NodeFileSystem } from "../filesystem";
 import type { ModuleCache } from "../module-cache";
 import { ModuleManifest } from "../module-manifest";
-import type { DownloaderRegistry } from "./registry";
+import type { DownloaderRegistry, LoadOptions } from "./registry";
 import type { CommandRunner } from "./types";
 import { expandHome, runInstallCommands } from "./utils";
 
@@ -30,10 +30,18 @@ export function registerLocalFolderDownloader(
   registry.register(
     "local-folder",
     "path",
-    async (_cache: ModuleCache, source: ModuleSourceLocalFolder) => {
+    async (
+      _cache: ModuleCache,
+      source: ModuleSourceLocalFolder,
+      options?: LoadOptions,
+    ) => {
       const searchPath = expandHome(source.path);
       const entries = await fs.readdir(searchPath);
       const manifests: ModuleManifest[] = [];
+
+      const installCommand = options?.reload
+        ? (source.reloadCommand ?? source.installCommand)
+        : source.installCommand;
 
       for (const name of entries) {
         const folder = path.join(searchPath, name);
@@ -46,13 +54,14 @@ export function registerLocalFolderDownloader(
           Logger,
           moduleName,
           folder,
-          source.installCommand,
+          installCommand,
         );
         const moduleSource: ModuleSourceLocal = {
           type: "local",
           path: folder,
           watchDir: source.watchDir,
           installCommand: source.installCommand,
+          reloadCommand: source.reloadCommand,
         };
         const manifest = await ModuleManifest.create(
           folder,

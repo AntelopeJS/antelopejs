@@ -6,7 +6,7 @@ import { ExecuteCMD } from "../cli/command";
 import { NodeFileSystem } from "../filesystem";
 import type { ModuleCache } from "../module-cache";
 import { ModuleManifest } from "../module-manifest";
-import type { DownloaderRegistry } from "./registry";
+import type { DownloaderRegistry, LoadOptions } from "./registry";
 import type { CommandRunner } from "./types";
 import { expandHome, runInstallCommands } from "./utils";
 
@@ -27,7 +27,11 @@ export function registerLocalDownloader(
   registry.register(
     "local",
     "path",
-    async (_cache: ModuleCache, source: ModuleSourceLocal) => {
+    async (
+      _cache: ModuleCache,
+      source: ModuleSourceLocal,
+      options?: LoadOptions,
+    ) => {
       const formattedPath = expandHome(source.path);
       if (!(await fs.exists(formattedPath))) {
         Logger.Error(
@@ -38,12 +42,16 @@ export function registerLocalDownloader(
         );
       }
 
+      const installCommand = options?.reload
+        ? (source.reloadCommand ?? source.installCommand)
+        : source.installCommand;
+
       await runInstallCommands(
         exec,
         Logger,
         formattedPath,
         formattedPath,
-        source.installCommand,
+        installCommand,
       );
 
       const name = source.id ?? path.basename(formattedPath);

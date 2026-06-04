@@ -6,14 +6,20 @@ import type { ModuleManifest } from "../module-manifest";
 
 const Logger = new Logging.Channel("loader.common");
 
+export interface LoadOptions {
+  reload?: boolean;
+}
+
 export type ModuleLoader<T extends ModuleSource = ModuleSource> = (
   cache: ModuleCache,
   source: T,
+  options?: LoadOptions,
 ) => Promise<ModuleManifest[]>;
 
 type WaitingType = {
   cache: ModuleCache;
   source: ModuleSource;
+  options?: LoadOptions;
   resolve: (info: ModuleManifest[]) => void;
   reject: (error?: unknown) => void;
 };
@@ -34,7 +40,7 @@ export class DownloaderRegistry {
     const waitingList = this.waiting.get(type);
     if (waitingList) {
       for (const waiter of waitingList) {
-        void loader(waiter.cache, waiter.source as T).then(
+        void loader(waiter.cache, waiter.source as T, waiter.options).then(
           waiter.resolve,
           waiter.reject,
         );
@@ -47,6 +53,7 @@ export class DownloaderRegistry {
     projectFolder: string,
     cache: ModuleCache,
     source: ModuleSource,
+    options?: LoadOptions,
   ): Promise<ModuleManifest[]> {
     Logger.Debug(`LoadModule called for type ${source.type}`);
     const type = this.knownTypes.get(source.type);
@@ -61,7 +68,7 @@ export class DownloaderRegistry {
           );
         }
       }
-      return type.loader(cache, source as any);
+      return type.loader(cache, source as any, options);
     }
 
     Logger.Info(`No loader found for type ${source.type}, adding to waitlist`);
@@ -71,7 +78,7 @@ export class DownloaderRegistry {
         waitingList = [];
         this.waiting.set(source.type, waitingList);
       }
-      waitingList.push({ cache, source, resolve, reject });
+      waitingList.push({ cache, source, options, resolve, reject });
     });
   }
 
