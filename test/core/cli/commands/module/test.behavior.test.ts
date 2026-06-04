@@ -43,6 +43,28 @@ describe("module test behavior", () => {
     expect(testStub.firstCall.args[1]).to.deep.equal(["/tmp/test.ts"]);
   });
 
+  it("sets exitCode=1 when TestModule reports failures", async () => {
+    sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
+    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+    sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
+    sinon.stub(testModuleModule, "TestModule").resolves(3);
+
+    await moduleTestCommand("/tmp/module", { file: [] });
+
+    expect(process.exitCode).to.equal(1);
+  });
+
+  it("leaves exitCode unset when TestModule reports zero failures", async () => {
+    sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
+    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+    sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
+    sinon.stub(testModuleModule, "TestModule").resolves(0);
+
+    await moduleTestCommand("/tmp/module", { file: [] });
+
+    expect(process.exitCode).to.equal(undefined);
+  });
+
   it("parses file options and forwards them", async () => {
     sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
