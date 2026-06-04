@@ -24,6 +24,7 @@ const EXIT_CODE_ERROR = 1;
 const DEFAULT_TEST_FOLDER = "test";
 const TEST_FILE_PATTERN = /\.(test|spec)\.(js|ts)$/;
 const STUB_INTERFACE_PATH = path.resolve(__dirname, "stub-interface");
+const TEST_MODULE_ID = "__antelope_test__";
 
 interface LoadedTestConfig {
   config: LoadedConfig;
@@ -116,6 +117,7 @@ export async function setupTestEnvironment(
     await loadModuleEntriesForManager(manager, normalizedConfig, true);
     await constructAndStartModules(manager);
     internal.testStubMode = true;
+    registerTestDir(path.resolve(moduleRoot), manager);
     return manager;
   });
 }
@@ -148,7 +150,7 @@ export async function collectInterfaceTestFiles(
       const testDir = path.join(pkgRoot, "dist", "tests");
       const testFiles = await collectTestFiles(testDir, TEST_FILE_PATTERN, fs);
       if (testFiles.length > 0 && manager) {
-        registerTestDirInResolver(testDir, manager);
+        registerTestDir(testDir, manager);
       }
       files.push(...testFiles);
     } catch {
@@ -159,14 +161,14 @@ export async function collectInterfaceTestFiles(
   return files;
 }
 
-function registerTestDirInResolver(
-  testDir: string,
-  manager: ModuleManager,
-): void {
+function registerTestDir(testDir: string, manager: ModuleManager): void {
   const resolvedDir = path.resolve(testDir);
-  for (const [, moduleRef] of manager.resolver.moduleByFolder) {
-    manager.resolver.moduleByFolder.set(resolvedDir, moduleRef);
-    return;
+  const firstModule = manager.resolver.moduleByFolder.values().next().value;
+  if (firstModule && !manager.resolver.moduleByFolder.has(resolvedDir)) {
+    manager.resolver.moduleByFolder.set(resolvedDir, firstModule);
+  }
+  if (!internal.moduleByFolder.some((entry) => entry.dir === resolvedDir)) {
+    internal.moduleByFolder.push({ dir: resolvedDir, id: TEST_MODULE_ID });
   }
 }
 
