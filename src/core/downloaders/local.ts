@@ -9,6 +9,7 @@ import { ModuleManifest } from "../module-manifest";
 import type { DownloaderRegistry } from "./registry";
 import type { CommandRunner } from "./types";
 import { expandHome, runInstallCommands } from "./utils";
+import type { LoadOptions } from "./registry";
 
 const Logger = new Logging.Channel("loader.local");
 
@@ -27,7 +28,11 @@ export function registerLocalDownloader(
   registry.register(
     "local",
     "path",
-    async (_cache: ModuleCache, source: ModuleSourceLocal) => {
+    async (
+      _cache: ModuleCache,
+      source: ModuleSourceLocal,
+      options?: LoadOptions,
+    ) => {
       const formattedPath = expandHome(source.path);
       if (!(await fs.exists(formattedPath))) {
         Logger.Error(
@@ -38,13 +43,23 @@ export function registerLocalDownloader(
         );
       }
 
-      await runInstallCommands(
-        exec,
-        Logger,
-        formattedPath,
-        formattedPath,
-        source.installCommand,
-      );
+      if (!options?.reload) {
+        await runInstallCommands(
+          exec,
+          Logger,
+          formattedPath,
+          formattedPath,
+          source.installCommand,
+        );
+      } else {
+        await runInstallCommands(
+          exec,
+          Logger,
+          formattedPath,
+          formattedPath,
+          source.reloadCommand ?? source.installCommand,
+        );
+      }
 
       const name = source.id ?? path.basename(formattedPath);
       const manifest = await ModuleManifest.create(
