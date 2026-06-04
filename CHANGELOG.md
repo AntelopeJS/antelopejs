@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.3.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.2.1...v1.3.0)
+
+### 🚀 Enhancements
+
+- **watch:** Serialize per-module reloads + reloadCommand support ([#74](https://github.com/AntelopeJS/antelopejs/pull/74))
+
+### 🩹 Fixes
+
+- **version-checker:** Surface npm registry failures during startup ([#75](https://github.com/AntelopeJS/antelopejs/pull/75))
+- **cli:** Propagate test failures as non-zero exit code ([#76](https://github.com/AntelopeJS/antelopejs/pull/76))
+- **test:** Register test directories in internal.moduleByFolder ([#77](https://github.com/AntelopeJS/antelopejs/pull/77))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+
 ## v1.2.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.2.0...v1.2.1)
