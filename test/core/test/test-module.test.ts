@@ -477,9 +477,7 @@ describe("test-module", () => {
       const { internal } = await import("@antelopejs/interface-core/internal");
       const moduleLoading = require("../../../src/core/runtime/module-loading");
 
-      sinon
-        .stub(moduleLoading, "loadModuleEntriesForManager")
-        .resolves([]);
+      sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);
       sinon.stub(moduleLoading, "constructAndStartModules").resolves();
 
       const moduleRoot = "/some/module/root";
@@ -493,15 +491,12 @@ describe("test-module", () => {
         envOverrides: {},
       } as any);
 
-      const entry = internal.moduleByFolder.find(
-        (e) => e.dir === resolvedRoot,
-      );
+      const entry = internal.moduleByFolder.find((e) => e.dir === resolvedRoot);
       expect(entry, "moduleRoot should be registered").to.not.equal(undefined);
       expect(entry?.id).to.equal("__antelope_test__");
 
       internal.testStubMode = false;
       internal.moduleByFolder.length = lengthBefore;
     });
-
   });
 });
