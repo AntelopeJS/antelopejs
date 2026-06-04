@@ -170,6 +170,82 @@ describe("version-checker", () => {
       expect(warned).to.include("mod-a");
       expect(warned).to.include("network error");
     });
+
+    it("emits the slow-check warning when probes exceed the threshold", async () => {
+      const clock = sinon.useFakeTimers();
+      let resolveExec: (value: {
+        code: number;
+        stdout: string;
+        stderr: string;
+      }) => void = () => {};
+      sinon.stub(command, "ExecuteCMD").returns(
+        new Promise((resolve) => {
+          resolveExec = resolve;
+        }),
+      );
+      const warnStub = sinon.stub(cliUi, "warning");
+
+      const packageSource: ModuleSourcePackage = {
+        type: "package",
+        package: "mod-a",
+        version: "1.0.0",
+      };
+      const modules: Record<string, ExpandedModuleConfig> = {
+        "mod-a": {
+          source: packageSource,
+          config: {},
+          importOverrides: [],
+          disabledExports: [],
+        },
+      };
+
+      const pending = checkOutdatedModules(modules);
+
+      await clock.tickAsync(14_999);
+      expect(warnStub.called).to.equal(false);
+
+      await clock.tickAsync(2);
+      expect(warnStub.calledOnce).to.equal(true);
+      expect(String(warnStub.firstCall.args[0])).to.include(
+        "longer than expected",
+      );
+
+      resolveExec({ code: 0, stdout: "1.0.0\n", stderr: "" });
+      await clock.runAllAsync();
+      await pending;
+
+      expect(warnStub.calledOnce).to.equal(true);
+    });
+
+    it("does not emit the slow-check warning when probes finish quickly", async () => {
+      const clock = sinon.useFakeTimers();
+      sinon.stub(command, "ExecuteCMD").resolves({
+        code: 0,
+        stdout: "1.0.0\n",
+        stderr: "",
+      });
+      const warnStub = sinon.stub(cliUi, "warning");
+
+      const packageSource: ModuleSourcePackage = {
+        type: "package",
+        package: "mod-a",
+        version: "1.0.0",
+      };
+      const modules: Record<string, ExpandedModuleConfig> = {
+        "mod-a": {
+          source: packageSource,
+          config: {},
+          importOverrides: [],
+          disabledExports: [],
+        },
+      };
+
+      const pending = checkOutdatedModules(modules);
+      await clock.runAllAsync();
+      await pending;
+
+      expect(warnStub.called).to.equal(false);
+    });
   });
 
   describe("warnOutdatedModules", () => {
