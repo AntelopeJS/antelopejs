@@ -62,6 +62,7 @@ export function registerLocalFolderDownloader(
           path: folder,
           watchDir: source.watchDir,
           installCommand: source.installCommand,
+          reloadCommand: source.reloadCommand,
         };
         const manifest = await ModuleManifest.create(
           folder,
