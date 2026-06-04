@@ -9,10 +9,9 @@ import { ExecuteCMD } from "../cli/command";
 import { NodeFileSystem } from "../filesystem";
 import type { ModuleCache } from "../module-cache";
 import { ModuleManifest } from "../module-manifest";
-import type { DownloaderRegistry } from "./registry";
+import type { DownloaderRegistry, LoadOptions } from "./registry";
 import type { CommandRunner } from "./types";
 import { expandHome, runInstallCommands } from "./utils";
-import type { LoadOptions } from "./registry";
 
 const Logger = new Logging.Channel("loader.local-folder");
 
