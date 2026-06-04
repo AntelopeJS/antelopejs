@@ -43,23 +43,17 @@ export function registerLocalDownloader(
         );
       }
 
-      if (!options?.reload) {
-        await runInstallCommands(
-          exec,
-          Logger,
-          formattedPath,
-          formattedPath,
-          source.installCommand,
-        );
-      } else {
-        await runInstallCommands(
-          exec,
-          Logger,
-          formattedPath,
-          formattedPath,
-          source.reloadCommand ?? source.installCommand,
-        );
-      }
+      const installCommand = options?.reload
+        ? (source.reloadCommand ?? source.installCommand)
+        : source.installCommand;
+
+      await runInstallCommands(
+        exec,
+        Logger,
+        formattedPath,
+        formattedPath,
+        installCommand,
+      );
 
       const name = source.id ?? path.basename(formattedPath);
       const manifest = await ModuleManifest.create(
