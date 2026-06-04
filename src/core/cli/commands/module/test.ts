@@ -40,7 +40,10 @@ export async function moduleTestCommand(
     `Valid module found: ${chalk.cyan(moduleManifest.name)}`,
   );
 
-  await TestModule(resolvedPath, options.file);
+  const failures = await TestModule(resolvedPath, options.file);
+  if (failures > 0) {
+    process.exitCode = 1;
+  }
 }
 
 const filesOption = new Option(
