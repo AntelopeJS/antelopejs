@@ -225,10 +225,7 @@ export class ModuleManager {
       try {
         require(interfaceName);
       } catch (err) {
-        Logger.Error(
-          `Failed to load optional interface '${interfaceName}':`,
-          err,
-        );
+        Logger.Error(`Failed to load interface '${interfaceName}':`, err);
         continue;
       }
       neutralizeInterfacePackage(pkgRoot, interfaceName);

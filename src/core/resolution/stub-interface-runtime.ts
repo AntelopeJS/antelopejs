@@ -13,8 +13,8 @@ const warned = new Set<string>();
 function makeRejection(interfaceName: string): Promise<never> {
   return Promise.reject(
     new Error(
-      `Optional interface '${interfaceName}' has no provider; ` +
-        `async calls reject. Load an implementing module to enable this interface.`,
+      `Interface '${interfaceName}' has no provider for this async method; ` +
+        `the call was rejected. Load a module that implements it to enable this call.`,
     ),
   );
 }
