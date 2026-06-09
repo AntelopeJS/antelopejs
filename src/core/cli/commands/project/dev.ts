@@ -32,7 +32,7 @@ export interface DevCommandOptions extends LaunchOptions {
 const DEFAULT_INSPECTOR = "--inspect";
 const RUNNER_PREFIX = "antelope-runner-";
 const DEFAULT_INSPECT_HOST = "127.0.0.1:9229";
-const CHILD_TERMINATE_TIMEOUT_MS = 5000;
+const CHILD_TERMINATE_TIMEOUT_MS = 12000;
 const SHUTDOWN_PRIORITY_CHILD = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
 const SHUTDOWN_PRIORITY_SIGNAL_CLEANUP = 5;
