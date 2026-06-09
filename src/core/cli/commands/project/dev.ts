@@ -5,7 +5,10 @@ import chalk from "chalk";
 import { Command, Option } from "commander";
 import startAntelope, { DEFAULT_ENV, type LaunchOptions } from "../../../..";
 import { ModuleCache } from "../../../module-cache";
-import { ShutdownManager } from "../../../shutdown";
+import {
+  DEFAULT_SHUTDOWN_TIMEOUT_MS,
+  ShutdownManager,
+} from "../../../shutdown";
 import { displayBox, error, info, warning } from "../../cli-ui";
 import { Options } from "../../common";
 import {
@@ -32,7 +35,9 @@ export interface DevCommandOptions extends LaunchOptions {
 const DEFAULT_INSPECTOR = "--inspect";
 const RUNNER_PREFIX = "antelope-runner-";
 const DEFAULT_INSPECT_HOST = "127.0.0.1:9229";
-const CHILD_TERMINATE_TIMEOUT_MS = 5000;
+const CHILD_TERMINATE_HEADROOM_MS = 2000;
+const CHILD_TERMINATE_TIMEOUT_MS =
+  DEFAULT_SHUTDOWN_TIMEOUT_MS + CHILD_TERMINATE_HEADROOM_MS;
 const SHUTDOWN_PRIORITY_CHILD = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
 const SHUTDOWN_PRIORITY_SIGNAL_CLEANUP = 5;

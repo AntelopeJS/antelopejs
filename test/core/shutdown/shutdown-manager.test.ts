@@ -194,5 +194,49 @@ describe("ShutdownManager", () => {
 
       expect(exitStub.calledWith(1)).to.equal(true);
     });
+
+    it("should not force exit on SIGTERM received during graceful shutdown", async () => {
+      const deferred = createDeferred();
+      const handler = sinon.stub().returns(deferred.promise);
+      const exitStub = sinon.stub(process, "exit");
+      manager.register(handler, 0);
+      manager.setupSignalHandlers();
+
+      process.emit("SIGINT");
+      await waitForSignal();
+
+      process.emit("SIGTERM");
+      await waitForSignal();
+
+      expect(exitStub.calledWith(1)).to.equal(false);
+      expect(handler.calledOnce).to.equal(true);
+
+      deferred.resolve();
+      await waitForSignal();
+
+      expect(exitStub.calledWith(0)).to.equal(true);
+    });
+
+    it("should not force exit on SIGINT received after SIGTERM starts shutdown", async () => {
+      const deferred = createDeferred();
+      const handler = sinon.stub().returns(deferred.promise);
+      const exitStub = sinon.stub(process, "exit");
+      manager.register(handler, 0);
+      manager.setupSignalHandlers();
+
+      process.emit("SIGTERM");
+      await waitForSignal();
+
+      process.emit("SIGINT");
+      await waitForSignal();
+
+      expect(exitStub.calledWith(1)).to.equal(false);
+      expect(handler.calledOnce).to.equal(true);
+
+      deferred.resolve();
+      await waitForSignal();
+
+      expect(exitStub.calledWith(0)).to.equal(true);
+    });
   });
 });

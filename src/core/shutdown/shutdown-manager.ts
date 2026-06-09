@@ -11,7 +11,7 @@ interface RegisteredHandler {
 
 const Logger = new Logging.Channel("shutdown");
 
-const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10000;
+export const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10000;
 const EXIT_CODE_SUCCESS = 0;
 const FORCE_EXIT_CODE = 1;
 
@@ -22,6 +22,7 @@ export class ShutdownManager {
   private requestedExitCode?: number;
   private sigintHandler?: () => void;
   private sigtermHandler?: () => void;
+  private seenSignals = new Set<ProcessSignal>();
 
   constructor(private timeoutMs: number = DEFAULT_SHUTDOWN_TIMEOUT_MS) {}
 
@@ -81,11 +82,22 @@ export class ShutdownManager {
 
   private handleSignal(signal: ProcessSignal): void {
     if (this.isShuttingDown) {
-      Logger.Warn(`Received ${signal} during shutdown. Forcing process exit.`);
-      process.exit(FORCE_EXIT_CODE);
+      if (this.seenSignals.has(signal)) {
+        Logger.Warn(
+          `Received ${signal} during shutdown. Forcing process exit.`,
+        );
+        process.exit(FORCE_EXIT_CODE);
+        return;
+      }
+
+      this.seenSignals.add(signal);
+      Logger.Info(
+        `Received ${signal} during graceful shutdown; ignoring (already shutting down).`,
+      );
       return;
     }
 
+    this.seenSignals.add(signal);
     void this.shutdown(EXIT_CODE_SUCCESS);
   }
 
