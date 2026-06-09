@@ -210,6 +210,128 @@ describe("Launch Function", () => {
     }
   });
 
+  it("self-hosts a standalone interface required with no implementer", async () => {
+    const projectFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-project-"),
+    );
+    try {
+      // A standalone interface package: same shape as a normal interface, but
+      // its package.json declares `antelopeJs.standalone`. It exposes a plain
+      // sync RegisteringProxy (its real working surface) and an AsyncProxy
+      // method that would need an external provider.
+      const ifaceFolder = path.join(projectFolder, "iface-standalone");
+      await fs.mkdir(ifaceFolder, { recursive: true });
+      await fs.writeFile(
+        path.join(ifaceFolder, "package.json"),
+        JSON.stringify(
+          {
+            name: "iface-standalone",
+            version: "1.0.0",
+            main: "index.js",
+            antelopeJs: { standalone: true },
+          },
+          null,
+          2,
+        ),
+      );
+      await fs.writeFile(
+        path.join(ifaceFolder, "index.js"),
+        `
+        const core = require("@antelopejs/interface-core");
+        exports.Iface = {
+          fetch: core.InterfaceFunction(),
+        };
+        exports.OnThing = new core.RegisteringProxy();
+        `,
+      );
+
+      // A consumer that lists the interface under regular dependencies — the
+      // case that previously threw "Unresolved interface dependencies".
+      const consumerFolder = path.join(projectFolder, "consumer");
+      await fs.mkdir(consumerFolder, { recursive: true });
+      await fs.writeFile(
+        path.join(consumerFolder, "package.json"),
+        JSON.stringify(
+          {
+            name: "consumer",
+            version: "1.0.0",
+            main: "index.js",
+            dependencies: { "iface-standalone": "*" },
+          },
+          null,
+          2,
+        ),
+      );
+      await fs.writeFile(
+        path.join(consumerFolder, "index.js"),
+        `
+        const iface = require("iface-standalone");
+        module.exports = {
+          construct() {
+            global.__antelopeStandaloneTest = iface;
+          },
+        };
+        `,
+      );
+
+      await fs.mkdir(path.join(consumerFolder, "node_modules"), {
+        recursive: true,
+      });
+      await fs.symlink(
+        ifaceFolder,
+        path.join(consumerFolder, "node_modules", "iface-standalone"),
+      );
+
+      await writeProjectConfig(projectFolder, {
+        name: "test-project",
+        modules: {
+          consumer: {
+            source: { type: "local", path: "./consumer", main: "index.js" },
+          },
+        },
+      });
+
+      // Should NOT throw despite no module implementing iface-standalone.
+      const manager = await launch(projectFolder);
+      try {
+        expect(
+          manager.resolver.interfacePackages.has("iface-standalone"),
+        ).to.equal(true);
+        const captured = (global as any).__antelopeStandaloneTest;
+        expect(captured).to.exist;
+
+        // Sync RegisteringProxy surface works as normal (not neutralized).
+        let registered = false;
+        captured.OnThing.onRegister(() => {
+          registered = true;
+        }, true);
+        captured.OnThing.register("id-1");
+        expect(registered).to.equal(true);
+
+        // An AsyncProxy method with no provider still rejects promptly.
+        let asyncError: Error | undefined;
+        try {
+          await Promise.race([
+            captured.Iface.fetch(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("HANG")), 1000),
+            ),
+          ]);
+        } catch (e) {
+          asyncError = e as Error;
+        }
+        expect(asyncError?.message ?? "").to.match(/iface-standalone/);
+        expect(asyncError?.message ?? "").to.not.match(/HANG/);
+      } finally {
+        delete (global as any).__antelopeStandaloneTest;
+        await manager.stopAll();
+        await manager.destroyAll();
+      }
+    } finally {
+      await fs.rm(projectFolder, { recursive: true, force: true });
+    }
+  });
+
   it("should respect environment option", async () => {
     const projectFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-project-"),
