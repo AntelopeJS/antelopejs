@@ -179,7 +179,7 @@ export class ModuleManager {
   }
 
   registerStubbedInterfaces(stubbed: UnresolvedInterface[]): void {
-    for (const { moduleId, interfacePackage } of stubbed) {
+    for (const { moduleId, interfacePackage, standalone } of stubbed) {
       if (this.stubbedInterfacePaths.has(interfacePackage)) {
         continue;
       }
@@ -196,7 +196,7 @@ export class ModuleManager {
       }
       this.stubbedInterfacePaths.set(interfacePackage, pkgRoot);
       this.resolver.interfacePackages.set(interfacePackage, pkgRoot);
-      logStubInterfaceWarningOnce(interfacePackage);
+      logStubInterfaceWarningOnce(interfacePackage, standalone);
     }
   }
 
@@ -225,10 +225,7 @@ export class ModuleManager {
       try {
         require(interfaceName);
       } catch (err) {
-        Logger.Error(
-          `Failed to load optional interface '${interfaceName}':`,
-          err,
-        );
+        Logger.Error(`Failed to load interface '${interfaceName}':`, err);
         continue;
       }
       neutralizeInterfacePackage(pkgRoot, interfaceName);

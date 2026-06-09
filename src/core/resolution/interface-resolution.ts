@@ -15,6 +15,17 @@ export interface InterfaceConsumer {
 export interface UnresolvedInterface {
   moduleId: string;
   interfacePackage: string;
+  /**
+   * True when the interface package declares `antelopeJs.standalone`. Carried
+   * on stubbed entries so the runtime can log a standalone (expected) message
+   * rather than an optional-dependency warning. Has no effect on `unresolved`.
+   */
+  standalone?: boolean;
+}
+
+interface InterfacePackageInfo {
+  isInterface: boolean;
+  standalone: boolean;
 }
 
 export interface InterfaceResolutionResult {
@@ -22,15 +33,22 @@ export interface InterfaceResolutionResult {
   stubbed: UnresolvedInterface[];
 }
 
-function isInterfacePackage(dep: string, consumerFolder: string): boolean {
+function readInterfacePackageInfo(
+  dep: string,
+  consumerFolder: string,
+): InterfacePackageInfo {
   try {
     const pkgJsonPath = require.resolve(`${dep}/package.json`, {
       paths: [consumerFolder],
     });
     const depPkg = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-    return Boolean(depPkg.antelopeJs);
+    const antelopeJs = depPkg.antelopeJs;
+    return {
+      isInterface: Boolean(antelopeJs),
+      standalone: Boolean(antelopeJs?.standalone),
+    };
   } catch {
-    return false;
+    return { isInterface: false, standalone: false };
   }
 }
 
@@ -53,15 +71,31 @@ export function findUnresolvedInterfaces(
   for (const consumer of consumers) {
     for (const dep of Object.keys(consumer.dependencies)) {
       if (implementedInterfaces.has(dep)) continue;
-      if (!isInterfacePackage(dep, consumer.folder)) continue;
-      unresolved.push({ moduleId: consumer.id, interfacePackage: dep });
+      const info = readInterfacePackageInfo(dep, consumer.folder);
+      if (!info.isInterface) continue;
+      // A standalone interface with no implementer self-hosts instead of
+      // blocking startup — route it through the stub/self-host path.
+      if (info.standalone) {
+        stubbed.push({
+          moduleId: consumer.id,
+          interfacePackage: dep,
+          standalone: true,
+        });
+      } else {
+        unresolved.push({ moduleId: consumer.id, interfacePackage: dep });
+      }
     }
 
     const optional = consumer.optionalDependencies ?? {};
     for (const dep of Object.keys(optional)) {
       if (implementedInterfaces.has(dep)) continue;
-      if (!isInterfacePackage(dep, consumer.folder)) continue;
-      stubbed.push({ moduleId: consumer.id, interfacePackage: dep });
+      const info = readInterfacePackageInfo(dep, consumer.folder);
+      if (!info.isInterface) continue;
+      stubbed.push({
+        moduleId: consumer.id,
+        interfacePackage: dep,
+        standalone: info.standalone,
+      });
     }
   }
 

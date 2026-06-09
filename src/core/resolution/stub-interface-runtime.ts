@@ -13,8 +13,8 @@ const warned = new Set<string>();
 function makeRejection(interfaceName: string): Promise<never> {
   return Promise.reject(
     new Error(
-      `Optional interface '${interfaceName}' has no provider; ` +
-        `async calls reject. Load an implementing module to enable this interface.`,
+      `Interface '${interfaceName}' has no provider for this async method; ` +
+        `the call was rejected. Load a module that implements it to enable this call.`,
     ),
   );
 }
@@ -91,11 +91,23 @@ export function neutralizeInterfacePackage(
   }
 }
 
-export function logStubInterfaceWarningOnce(interfaceName: string): void {
+export function logStubInterfaceWarningOnce(
+  interfaceName: string,
+  standalone = false,
+): void {
   if (warned.has(interfaceName)) {
     return;
   }
   warned.add(interfaceName);
+  if (standalone) {
+    // Expected for standalone interfaces — they self-host without an
+    // implementing module. Only proxy methods needing a provider reject.
+    Logger.Trace(
+      `Interface '${interfaceName}' has no implementing module; running standalone. ` +
+        `Proxy methods that require a provider will reject.`,
+    );
+    return;
+  }
   Logger.Warn(
     `Optional interface '${interfaceName}' has no provider; ` +
       `async calls on it will reject, sync usage will no-op.`,
