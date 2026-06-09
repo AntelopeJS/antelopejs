@@ -11,7 +11,7 @@ interface RegisteredHandler {
 
 const Logger = new Logging.Channel("shutdown");
 
-const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10000;
+export const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10000;
 const EXIT_CODE_SUCCESS = 0;
 const FORCE_EXIT_CODE = 1;
 
