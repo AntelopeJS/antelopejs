@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.3.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.3.0...v1.3.1)
+
+### 🚀 Enhancements
+
+- **resolution:** Allow interfaces to declare themselves standalone ([#79](https://github.com/AntelopeJS/antelopejs/pull/79))
+
+### 🩹 Fixes
+
+- **shutdown:** Keep graceful shutdown on terminal Ctrl+C in inspector mode ([#78](https://github.com/AntelopeJS/antelopejs/pull/78))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+
 ## v1.3.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.2.1...v1.3.0)
