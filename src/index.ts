@@ -11,6 +11,7 @@ import {
   warnIfBuildIsStale,
   writeProjectBuildArtifact,
 } from "./core/runtime/build-runtime";
+import { registerCoreRuntimeInterface } from "./core/runtime/dev-server-registry";
 import {
   constructAndStartModules,
   createLoaderContext,
@@ -185,6 +186,13 @@ async function initializeCore(
   const loaderContext = await createLoaderContext(
     runtimeConfig.normalizedConfig,
   );
+  await registerCoreRuntimeInterface({
+    dev: true,
+    projectPath: projectFolder,
+    env,
+    fs: runtimeConfig.fs,
+    shutdownManager,
+  });
 
   const manager = await withRaisedMaxListeners(async () => {
     const moduleManager = new ModuleManager();
@@ -325,6 +333,13 @@ export async function launchFromBuild(
 
   await warnIfBuildIsStale(projectFolder, artifact, fs);
   await ensureBuildModulesExist(artifact, fs);
+  await registerCoreRuntimeInterface({
+    dev: false,
+    projectPath: projectFolder,
+    env: startEnv,
+    fs,
+    shutdownManager,
+  });
 
   const manager = await withRaisedMaxListeners(async () => {
     const moduleManager = new ModuleManager();
