@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.3.1...v1.3.2)
+
+### 🩹 Fixes
+
+- **test:** Validate module graph before constructing modules in test runner ([#80](https://github.com/AntelopeJS/antelopejs/pull/80))
+
+### ❤️ Contributors
+
+- Fabrice Cst <fabrice@altab.be>
+
 ## v1.3.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.3.0...v1.3.1)
