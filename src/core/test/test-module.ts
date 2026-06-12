@@ -12,6 +12,7 @@ import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../module-manager";
 import {
   constructAndStartModules,
+  ensureGraphIsValid,
   loadModuleEntriesForManager,
 } from "../runtime/module-loading";
 import {
@@ -115,6 +116,7 @@ export async function setupTestEnvironment(
     const manager = new ModuleManager();
     manager.resolver.stubModulePath = STUB_INTERFACE_PATH;
     await loadModuleEntriesForManager(manager, normalizedConfig, true);
+    ensureGraphIsValid(manager);
     await constructAndStartModules(manager);
     internal.testStubMode = true;
     registerTestDir(path.resolve(moduleRoot), manager);
