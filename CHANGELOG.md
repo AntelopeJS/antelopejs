@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.3.2...v1.4.0)
+
+### 🚀 Enhancements
+
+- **runtime:** Implement runtime info and dev server registry interface ([#81](https://github.com/AntelopeJS/antelopejs/pull/81))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.3.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.3.1...v1.3.2)
