@@ -88,6 +88,25 @@ describe("core/runtime dev server registry", () => {
       });
     });
 
+    it("serializes concurrent registrations", async () => {
+      const fs = new InMemoryFileSystem();
+      const store = createStore(fs);
+
+      await Promise.all([
+        store.register("api", API_ENDPOINTS),
+        store.register("ws", WS_ENDPOINTS),
+      ]);
+
+      const registry = (await readRegistry(fs)) as {
+        servers: Record<string, unknown>;
+      };
+      expect(registry.servers).to.deep.equal({
+        api: { endpoints: API_ENDPOINTS },
+        ws: { endpoints: WS_ENDPOINTS },
+      });
+      expect(await fs.exists(TEMP_REGISTRY_PATH)).to.equal(false);
+    });
+
     it("cleanup removes the registry only after a registration", async () => {
       const fs = new InMemoryFileSystem();
       await fs.writeFile(REGISTRY_PATH, "{}");

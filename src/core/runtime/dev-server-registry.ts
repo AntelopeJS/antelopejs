@@ -37,6 +37,7 @@ export interface DevRegistryStoreOptions {
 export class DevRegistryStore {
   private servers: Record<string, DevServerEntry> = {};
   private hasRegisteredServers = false;
+  private pendingWrite: Promise<void> = Promise.resolve();
 
   constructor(private options: DevRegistryStoreOptions) {}
 
@@ -98,7 +99,13 @@ export class DevRegistryStore {
     };
   }
 
-  private async writeRegistry(): Promise<void> {
+  private writeRegistry(): Promise<void> {
+    const write = this.pendingWrite.then(() => this.performWrite());
+    this.pendingWrite = write.catch(() => undefined);
+    return write;
+  }
+
+  private async performWrite(): Promise<void> {
     const filePath = this.registryFilePath;
     const tempPath = `${filePath}${TEMP_FILE_SUFFIX}`;
     await this.options.fs.mkdir(path.dirname(filePath), { recursive: true });
