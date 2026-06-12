@@ -120,6 +120,18 @@ describe("core/runtime dev server registry", () => {
       expect(await fs.exists(REGISTRY_PATH)).to.equal(false);
     });
 
+    it("cleanup drains an in-flight registration before removing the file", async () => {
+      const fs = new InMemoryFileSystem();
+      const store = createStore(fs);
+
+      const registration = store.register("api", API_ENDPOINTS);
+      await store.cleanup();
+      await registration;
+
+      expect(await fs.exists(REGISTRY_PATH)).to.equal(false);
+      expect(await fs.exists(TEMP_REGISTRY_PATH)).to.equal(false);
+    });
+
     it("removes an orphan registry when the owning pid is dead", async () => {
       const fs = new InMemoryFileSystem();
       await fs.writeFile(

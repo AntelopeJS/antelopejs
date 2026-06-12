@@ -72,6 +72,7 @@ export class DevRegistryStore {
       return;
     }
 
+    await this.pendingWrite;
     await this.options.fs.rm(this.registryFilePath, { force: true });
   }
 
