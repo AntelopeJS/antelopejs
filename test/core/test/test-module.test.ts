@@ -473,6 +473,35 @@ describe("test-module", () => {
       internal.testStubMode = false;
     });
 
+    it("validates the module graph before constructing modules so standalone interfaces get canonicalized", async () => {
+      const { internal } = await import("@antelopejs/interface-core/internal");
+      const moduleLoading = require("../../../src/core/runtime/module-loading");
+
+      const loadEntriesStub = sinon
+        .stub(moduleLoading, "loadModuleEntriesForManager")
+        .resolves([]);
+      const ensureGraphStub = sinon.stub(moduleLoading, "ensureGraphIsValid");
+      const constructStartStub = sinon
+        .stub(moduleLoading, "constructAndStartModules")
+        .resolves();
+
+      const manager = await testModule.setupTestEnvironment("/module", {
+        name: "test",
+        cacheFolder: ".antelope/cache",
+        modules: {},
+        envOverrides: {},
+      } as any);
+
+      expect(ensureGraphStub.calledOnceWithExactly(manager)).to.equal(true);
+      sinon.assert.callOrder(
+        loadEntriesStub,
+        ensureGraphStub,
+        constructStartStub,
+      );
+
+      internal.testStubMode = false;
+    });
+
     it("registers moduleRoot in internal.moduleByFolder so test-file frames find a module", async () => {
       const { internal } = await import("@antelopejs/interface-core/internal");
       const moduleLoading = require("../../../src/core/runtime/module-loading");
