@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.1...v1.4.2)
+
+### 🚀 Enhancements
+
+- **logging:** Default log level to info instead of warn ([#83](https://github.com/AntelopeJS/antelopejs/pull/83))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.4.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.0...v1.4.1)
