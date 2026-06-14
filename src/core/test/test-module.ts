@@ -8,8 +8,10 @@ import { setupAntelopeProjectLogging } from "../../logging";
 import type { IFileSystem } from "../../types";
 import { mergeDeep } from "../../utils/object";
 import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
+import { DEFAULT_ENV } from "../config/config-paths";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../module-manager";
+import { registerCoreRuntimeInterface } from "../runtime/dev-server-registry";
 import {
   constructAndStartModules,
   ensureGraphIsValid,
@@ -108,6 +110,7 @@ export async function loadTestConfig(
 export async function setupTestEnvironment(
   moduleRoot: string,
   config: LoadedConfig,
+  fs: IFileSystem = new NodeFileSystem(),
 ): Promise<ModuleManager> {
   setupAntelopeProjectLogging(config.logging);
   const normalizedConfig = normalizeLoadedConfig(config, moduleRoot);
@@ -117,6 +120,12 @@ export async function setupTestEnvironment(
     manager.resolver.stubModulePath = STUB_INTERFACE_PATH;
     await loadModuleEntriesForManager(manager, normalizedConfig, true);
     ensureGraphIsValid(manager);
+    await registerCoreRuntimeInterface({
+      dev: false,
+      projectPath: moduleRoot,
+      env: DEFAULT_ENV,
+      fs,
+    });
     await constructAndStartModules(manager);
     internal.testStubMode = true;
     registerTestDir(path.resolve(moduleRoot), manager);
@@ -264,7 +273,11 @@ export async function TestModule(
       }
     }
 
-    manager = await self.setupTestEnvironment(moduleRoot, loadedConfig.config);
+    manager = await self.setupTestEnvironment(
+      moduleRoot,
+      loadedConfig.config,
+      fs,
+    );
     managerActive = true;
 
     const failures = await self.executeTests(
