@@ -72,11 +72,11 @@ function resolveLevelValue(level: number | string): number {
 
 function getChannelFilter(channel: string): number {
   if (!loggingConfig.channelFilter) {
-    return levelMap.warn;
+    return levelMap.info;
   }
 
   let match = -1;
-  let matchValue: number | string = levelMap.warn;
+  let matchValue: number | string = levelMap.info;
   for (const key of Object.keys(loggingConfig.channelFilter)) {
     if (key.endsWith("*")) {
       const prefix = key.substring(0, key.length - 1);
@@ -186,7 +186,7 @@ function registerLogHandler(): void {
 
 function initializeLogger(): void {
   globalLogger = new Logger();
-  globalLogger.setMinLevel(LogLevel.WARN);
+  globalLogger.setMinLevel(LogLevel.INFO);
   if (loggingConfig.channelFilter) {
     for (const [channel, level] of Object.entries(
       loggingConfig.channelFilter,
