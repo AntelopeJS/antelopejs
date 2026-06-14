@@ -5,6 +5,37 @@ import { ConfigLoader } from "../../../src/core/config/config-loader";
 import * as testModule from "../../../src/core/test/test-module";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
+const RUNTIME_INFO_TIMEOUT_MS = 1000;
+
+interface ResettableProxy {
+  onCall(callback: () => undefined, manualDetach?: boolean): void;
+  detach(): void;
+}
+
+interface ProxiedInterfaceFunction {
+  proxy: ResettableProxy;
+}
+
+function resetProxy(interfaceFunction: unknown): void {
+  const { proxy } = interfaceFunction as ProxiedInterfaceFunction;
+  proxy.onCall(() => undefined, true);
+  proxy.detach();
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const guard = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([promise, guard]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 describe("test-module", () => {
   afterEach(() => {
     sinon.restore();
@@ -526,6 +557,36 @@ describe("test-module", () => {
 
       internal.testStubMode = false;
       internal.moduleByFolder.length = lengthBefore;
+    });
+
+    it("registers the core runtime interface so GetRuntimeInfo resolves instead of hanging", async () => {
+      const { internal } = await import("@antelopejs/interface-core/internal");
+      const { GetRuntimeInfo } = await import(
+        "@antelopejs/interface-core/runtime"
+      );
+      const moduleLoading = require("../../../src/core/runtime/module-loading");
+
+      sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);
+      sinon.stub(moduleLoading, "constructAndStartModules").resolves();
+      resetProxy(GetRuntimeInfo);
+
+      const moduleRoot = "/runtime/module";
+      await testModule.setupTestEnvironment(moduleRoot, {
+        name: "test",
+        cacheFolder: ".antelope/cache",
+        modules: {},
+        envOverrides: {},
+      } as any);
+
+      const info = await withTimeout(GetRuntimeInfo(), RUNTIME_INFO_TIMEOUT_MS);
+      expect(info).to.deep.equal({
+        dev: false,
+        projectPath: path.resolve(moduleRoot),
+        env: "default",
+      });
+
+      internal.testStubMode = false;
+      resetProxy(GetRuntimeInfo);
     });
   });
 });
