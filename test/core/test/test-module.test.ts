@@ -571,6 +571,7 @@ describe("test-module", () => {
       resetProxy(GetRuntimeInfo);
 
       const moduleRoot = "/runtime/module";
+      const lengthBefore = internal.moduleByFolder.length;
       await testModule.setupTestEnvironment(moduleRoot, {
         name: "test",
         cacheFolder: ".antelope/cache",
@@ -586,6 +587,7 @@ describe("test-module", () => {
       });
 
       internal.testStubMode = false;
+      internal.moduleByFolder.length = lengthBefore;
       resetProxy(GetRuntimeInfo);
     });
   });
