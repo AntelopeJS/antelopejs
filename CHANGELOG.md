@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.0...v1.4.1)
+
+### 🩹 Fixes
+
+- **test:** Register core runtime interface in module test runner ([#82](https://github.com/AntelopeJS/antelopejs/pull/82))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.4.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.3.2...v1.4.0)
