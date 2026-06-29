@@ -18,6 +18,9 @@ import { ExecuteCMD } from "../../../command";
 import { Options, readConfig, writeConfig } from "../../../common";
 import { parsePackageInfoOutput } from "../../../package-manager";
 
+const LOCAL_MODULE_WATCH_DIRS = ["src"];
+const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];
+
 interface AddOptions {
   mode: string;
   project: string;
@@ -314,7 +317,9 @@ handlers.set("local", async (module, options) => {
       source: {
         type: "local",
         path: path.relative(options.project, resolvedModulePath) || ".",
-        installCommand: ["npx tsc"],
+        watchDir: LOCAL_MODULE_WATCH_DIRS,
+        installCommand: LOCAL_MODULE_BUILD_COMMAND,
+        reloadCommand: LOCAL_MODULE_BUILD_COMMAND,
       },
     },
   ];
@@ -334,7 +339,9 @@ handlers.set("dir", async (module, options) => {
       source: {
         type: "local-folder",
         path: path.relative(options.project, resolvedFolderPath) || ".",
-        installCommand: ["npx tsc"],
+        watchDir: LOCAL_MODULE_WATCH_DIRS,
+        installCommand: LOCAL_MODULE_BUILD_COMMAND,
+        reloadCommand: LOCAL_MODULE_BUILD_COMMAND,
       },
     },
   ];
