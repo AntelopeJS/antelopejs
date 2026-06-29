@@ -483,6 +483,10 @@ describe("project modules behavior", () => {
       } as any);
       expect(localName).to.equal("moduleA");
       expect((localConfig as any).source.type).to.equal("local");
+      expect((localConfig as any).source.watchDir).to.deep.equal(["src"]);
+      expect((localConfig as any).source.reloadCommand).to.deep.equal([
+        "npx tsc",
+      ]);
 
       const dirHandler = handlers.get("dir")!;
       const [dirName, dirConfig] = await dirHandler(pkgDir, {
@@ -490,6 +494,10 @@ describe("project modules behavior", () => {
       } as any);
       expect(dirName.startsWith(":")).to.equal(true);
       expect((dirConfig as any).source.type).to.equal("local-folder");
+      expect((dirConfig as any).source.watchDir).to.deep.equal(["src"]);
+      expect((dirConfig as any).source.reloadCommand).to.deep.equal([
+        "npx tsc",
+      ]);
     } finally {
       cleanupTempDir(tempDir);
     }
