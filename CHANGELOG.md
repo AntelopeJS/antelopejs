@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.4.4
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.3...v1.4.4)
+
+### 🚀 Enhancements
+
+- **cli:** Add reloadCommand and watchDir to generated local modules ([#85](https://github.com/AntelopeJS/antelopejs/pull/85))
+
+### 🩹 Fixes
+
+- **watch:** Adopt runtime-created files and dirs, guard reloads by content signature ([#87](https://github.com/AntelopeJS/antelopejs/pull/87))
+
+### 📖 Documentation
+
+- Add framework documentation ([#86](https://github.com/AntelopeJS/antelopejs/pull/86))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+- Fabrice Cst <fabrice@altab.be>
+
 ## v1.4.3
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.2...v1.4.3)
