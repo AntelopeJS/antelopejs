@@ -306,6 +306,29 @@ describe("FileWatcher", () => {
     expect(changes).to.deep.equal([]);
   });
 
+  it("does not adopt or re-arm watchers for a new directory after stopWatching", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/index.js", "v1");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+    watcher.startWatching();
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+
+    watcher.stopWatching();
+
+    await fs.writeFile("/mod/page/page.js", "class Empty {}");
+    await watcher.handleFileChange("/mod/page");
+    watcher.startWatching();
+
+    expect(changes).to.deep.equal([]);
+    expect(
+      (watcher as unknown as { watchers: Map<string, unknown> }).watchers.size,
+    ).to.equal(0);
+  });
+
   it("does not notify watched-file listeners after stopWatching", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile("/project/antelope.config.ts", "original");

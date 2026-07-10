@@ -62,6 +62,9 @@ export class FileWatcher {
   }
 
   startWatching(): void {
+    if (this.stopped) {
+      return;
+    }
     for (const dir of this.watchedDirs) {
       if (this.watchers.has(dir)) {
         continue;
@@ -130,7 +133,7 @@ export class FileWatcher {
   }
 
   async handleFileChange(filePath: string): Promise<void> {
-    if (this.isExcludedPath(filePath)) {
+    if (this.stopped || this.isExcludedPath(filePath)) {
       return;
     }
 
