@@ -110,6 +110,83 @@ describe("HMR end-to-end", () => {
     }
   });
 
+  it("adopts a source file added at runtime and reloads for it and its later edits", async function () {
+    this.timeout(20000);
+
+    const projectFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-hmr-add-"),
+    );
+    const modulePath = path.join(projectFolder, "mod");
+    const markerPath = path.join(projectFolder, "marker.txt");
+    const startCountPath = path.join(projectFolder, "start-count.txt");
+    const indexPath = path.join(modulePath, "index.js");
+
+    await fs.mkdir(modulePath, { recursive: true });
+    await fs.writeFile(
+      path.join(modulePath, "package.json"),
+      JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
+    );
+    const src = `const fs = require("node:fs");
+let cfg;
+exports.construct = (c) => { cfg = c; };
+exports.start = () => {
+  const prev = fs.existsSync(cfg.startCountPath)
+    ? parseInt(fs.readFileSync(cfg.startCountPath, "utf-8"), 10) || 0
+    : 0;
+  fs.writeFileSync(cfg.startCountPath, String(prev + 1));
+  fs.writeFileSync(cfg.markerPath, "v1");
+};
+exports.stop = () => {};
+exports.destroy = () => {};
+`;
+    await fs.writeFile(indexPath, src);
+
+    const config = {
+      name: "hmr-add-test",
+      modules: {
+        mod: {
+          source: { type: "local", path: "./mod", main: "index.js" },
+          config: { markerPath, startCountPath },
+        },
+      },
+    };
+    await fs.writeFile(
+      path.join(projectFolder, "antelope.config.ts"),
+      `export default ${JSON.stringify(config)};\n`,
+    );
+
+    let manager: ModuleManager | undefined;
+    try {
+      manager = await launch(projectFolder, "default", { watch: true });
+      await waitFor(async () => (await readMarker(markerPath)) === "v1", 2000);
+
+      const addedPath = path.join(modulePath, "helper.js");
+      await fs.writeFile(addedPath, "module.exports = 1;");
+      await waitFor(
+        async () =>
+          parseInt(await fs.readFile(startCountPath, "utf-8"), 10) === 2,
+        MARKER_TIMEOUT_MS,
+      );
+
+      await fs.writeFile(addedPath, "module.exports = 2;");
+      await waitFor(
+        async () =>
+          parseInt(await fs.readFile(startCountPath, "utf-8"), 10) === 3,
+        MARKER_TIMEOUT_MS,
+      );
+
+      expect(parseInt(await fs.readFile(startCountPath, "utf-8"), 10)).to.equal(
+        3,
+      );
+    } finally {
+      if (manager) {
+        await manager.stopAll();
+        await manager.destroyAll();
+      }
+      await fs.rm(projectFolder, { recursive: true, force: true });
+    }
+  });
+
   it("does not reload when atomic-write temp files appear", async function () {
     this.timeout(20000);
 

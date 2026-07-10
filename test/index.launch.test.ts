@@ -96,6 +96,10 @@ describe("launch", () => {
     sinon.stub(ModuleManager.prototype, "startAll");
 
     const scanStub = sinon.stub(FileWatcher.prototype, "scanModule").resolves();
+    let signatureSeq = 0;
+    sinon
+      .stub(FileWatcher.prototype, "getModuleSignature")
+      .callsFake(() => `sig-${signatureSeq++}`);
     sinon
       .stub(FileWatcher.prototype, "onModuleChanged")
       .callsFake((listener) => listener("modA"));

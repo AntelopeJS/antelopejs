@@ -103,14 +103,21 @@ async function setupWatching(
   loaderContext: LoaderContext,
 ): Promise<void> {
   const watcher = new FileWatcher(fs);
-  const hotReload = new HotReload(async (moduleId) =>
-    reloadWatchedModule(manager, moduleId, loaderContext),
-  );
+  const loadedSignatures = new Map<string, string>();
+  const hotReload = new HotReload(async (moduleId) => {
+    const signature = watcher.getModuleSignature(moduleId);
+    if (loadedSignatures.get(moduleId) === signature) {
+      return;
+    }
+    await reloadWatchedModule(manager, moduleId, loaderContext);
+    loadedSignatures.set(moduleId, signature);
+  });
 
   for (const { module } of manager.getLoadedModules()) {
     if (module.manifest?.source?.type === "local") {
       const watchDirs = getWatchDirs(module.manifest.source);
       await watcher.scanModule(module.id, module.manifest.folder, watchDirs);
+      loadedSignatures.set(module.id, watcher.getModuleSignature(module.id));
     }
   }
 
