@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { type FSWatcher, watch } from "node:fs";
 import * as path from "node:path";
 import type { IFileSystem } from "../../types";
@@ -10,14 +11,17 @@ const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
 
 export class FileWatcher {
   private filesHash = new Map<string, { moduleId: string; hash: string }>();
+  private moduleFiles = new Map<string, Set<string>>();
   private listeners: ModuleChangeListener[] = [];
   private excludedDirs = new Set(EXCLUDED_WATCH_DIRS);
   private watchers = new Map<string, FSWatcher>();
   private watchedDirs = new Set<string>();
+  private dirModules = new Map<string, string>();
   private watchedFiles = new Map<
     string,
     { hash: string; listeners: FileChangeListener[] }
   >();
+  private changeChains = new Map<string, Promise<void>>();
 
   constructor(
     private fs: IFileSystem,
@@ -70,7 +74,7 @@ export class FileWatcher {
             ? filename.toString()
             : filename;
           const filePath = path.join(dir, fileName);
-          void this.handleFileChange(filePath);
+          this.enqueueChange(dir, filePath);
         });
         watcher.on("error", (err) => {
           console.error(`FileWatcher error for ${dir}:`, err);
@@ -89,6 +93,39 @@ export class FileWatcher {
     this.watchers.clear();
   }
 
+  private enqueueChange(dir: string, filePath: string): void {
+    const previous = this.changeChains.get(dir) ?? Promise.resolve();
+    const next = previous
+      .then(() => this.handleFileChange(filePath))
+      .catch((err) => {
+        console.error(`FileWatcher error handling ${filePath}:`, err);
+      });
+    this.changeChains.set(dir, next);
+  }
+
+  private setFileEntry(filePath: string, moduleId: string, hash: string): void {
+    const existing = this.filesHash.get(filePath);
+    if (existing && existing.moduleId !== moduleId) {
+      this.moduleFiles.get(existing.moduleId)?.delete(filePath);
+    }
+    this.filesHash.set(filePath, { moduleId, hash });
+    let files = this.moduleFiles.get(moduleId);
+    if (!files) {
+      files = new Set();
+      this.moduleFiles.set(moduleId, files);
+    }
+    files.add(filePath);
+  }
+
+  private deleteFileEntry(filePath: string): void {
+    const existing = this.filesHash.get(filePath);
+    if (!existing) {
+      return;
+    }
+    this.filesHash.delete(filePath);
+    this.moduleFiles.get(existing.moduleId)?.delete(filePath);
+  }
+
   async handleFileChange(filePath: string): Promise<void> {
     if (this.isExcludedPath(filePath)) {
       return;
@@ -103,11 +140,12 @@ export class FileWatcher {
 
     const entry = this.filesHash.get(filePath);
     if (!entry) {
+      await this.handleNewPath(filePath);
       return;
     }
 
     if (!(await this.fs.exists(filePath))) {
-      this.filesHash.delete(filePath);
+      this.deleteFileEntry(filePath);
       this.notifyModuleChange(entry.moduleId);
       return;
     }
@@ -119,7 +157,7 @@ export class FileWatcher {
 
     const newHash = await this.hasher.hashFile(filePath);
     if (newHash !== entry.hash) {
-      this.filesHash.set(filePath, { moduleId: entry.moduleId, hash: newHash });
+      this.setFileEntry(filePath, entry.moduleId, newHash);
       this.notifyModuleChange(entry.moduleId);
     }
   }
@@ -144,8 +182,85 @@ export class FileWatcher {
     }
   }
 
+  private async handleNewPath(filePath: string): Promise<void> {
+    if (!(await this.fs.exists(filePath))) {
+      this.handleRemovedDir(filePath);
+      return;
+    }
+    const moduleId = this.dirModules.get(path.dirname(filePath));
+    if (!moduleId) {
+      return;
+    }
+    const stat = await this.fs.stat(filePath);
+    if (stat.isDirectory()) {
+      if (this.watchedDirs.has(filePath)) {
+        return;
+      }
+      await this.exploreDir(moduleId, filePath);
+      this.startWatching();
+      this.notifyModuleChange(moduleId);
+      return;
+    }
+
+    const hash = await this.hasher.hashFile(filePath);
+    if (!(await this.fs.exists(filePath))) {
+      return;
+    }
+    this.setFileEntry(filePath, moduleId, hash);
+    this.notifyModuleChange(moduleId);
+  }
+
+  private handleRemovedDir(dirPath: string): void {
+    if (!this.watchedDirs.has(dirPath)) {
+      return;
+    }
+    const moduleId = this.dirModules.get(dirPath);
+    this.pruneDir(dirPath);
+    if (moduleId) {
+      this.notifyModuleChange(moduleId);
+    }
+  }
+
+  private pruneDir(dirPath: string): void {
+    const prefix = `${dirPath}${path.sep}`;
+    for (const dir of this.watchedDirs) {
+      if (dir !== dirPath && !dir.startsWith(prefix)) {
+        continue;
+      }
+      this.watchedDirs.delete(dir);
+      this.dirModules.delete(dir);
+      this.changeChains.delete(dir);
+      const watcher = this.watchers.get(dir);
+      if (watcher) {
+        watcher.close();
+        this.watchers.delete(dir);
+      }
+    }
+    for (const filePath of this.filesHash.keys()) {
+      if (filePath.startsWith(prefix)) {
+        this.deleteFileEntry(filePath);
+      }
+    }
+  }
+
+  getModuleSignature(moduleId: string): string {
+    const files = this.moduleFiles.get(moduleId);
+    const entries: string[] = [];
+    if (files) {
+      for (const filePath of files) {
+        const entry = this.filesHash.get(filePath);
+        if (entry) {
+          entries.push(`${filePath}\0${entry.hash}`);
+        }
+      }
+    }
+    entries.sort();
+    return createHash("sha256").update(entries.join("\n")).digest("hex");
+  }
+
   private async exploreDir(moduleId: string, dirPath: string): Promise<void> {
     this.watchedDirs.add(dirPath);
+    this.dirModules.set(dirPath, moduleId);
     const entries = await this.fs.readdir(dirPath);
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry);
@@ -157,7 +272,7 @@ export class FileWatcher {
         await this.exploreDir(moduleId, fullPath);
       } else {
         const hash = await this.hasher.hashFile(fullPath);
-        this.filesHash.set(fullPath, { moduleId, hash });
+        this.setFileEntry(fullPath, moduleId, hash);
       }
     }
   }

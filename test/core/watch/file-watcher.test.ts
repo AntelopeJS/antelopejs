@@ -102,7 +102,7 @@ describe("FileWatcher", () => {
     expect(listener2).to.have.lengthOf(1);
   });
 
-  it("does not notify when an untracked temp file appears", async () => {
+  it("adopts a new source file so later edits behave like it was always there", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile("/mod/index.js", "v1");
 
@@ -112,15 +112,167 @@ describe("FileWatcher", () => {
     const changes: string[] = [];
     watcher.onModuleChanged((id) => changes.push(id));
 
-    await fs.writeFile("/mod/_tmp_1234_abcdef", "intermediate");
-    await watcher.handleFileChange("/mod/_tmp_1234_abcdef");
-    await fs.rm("/mod/_tmp_1234_abcdef");
-    await watcher.handleFileChange("/mod/_tmp_1234_abcdef");
+    await fs.writeFile("/mod/page.js", "class Page {}");
+    await watcher.handleFileChange("/mod/page.js");
+    expect(changes).to.deep.equal(["mod"]);
+
+    changes.length = 0;
+    await watcher.handleFileChange("/mod/page.js");
+    expect(changes).to.deep.equal([]);
+
+    await fs.writeFile("/mod/page.js", "class Page { render() {} }");
+    await watcher.handleFileChange("/mod/page.js");
+    expect(changes).to.deep.equal(["mod"]);
+  });
+
+  it("tracks module signature changes for added, edited, and removed files", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/index.js", "v1");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+
+    const initial = watcher.getModuleSignature("mod");
+
+    await fs.writeFile("/mod/page.js", "class Page {}");
+    await watcher.handleFileChange("/mod/page.js");
+    const afterAdd = watcher.getModuleSignature("mod");
+    expect(afterAdd).to.not.equal(initial);
+
+    await fs.writeFile("/mod/page.js", "class Page { render() {} }");
+    await watcher.handleFileChange("/mod/page.js");
+    expect(watcher.getModuleSignature("mod")).to.not.equal(afterAdd);
+
+    await fs.rm("/mod/page.js");
+    await watcher.handleFileChange("/mod/page.js");
+    expect(watcher.getModuleSignature("mod")).to.equal(initial);
+  });
+
+  it("returns to the pre-trigger signature after a transient temp file appears and is removed", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/index.js", "v1");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+
+    const baseline = watcher.getModuleSignature("mod");
+
+    await fs.writeFile("/mod/index.js.tmp.5678", "intermediate garbage");
+    await watcher.handleFileChange("/mod/index.js.tmp.5678");
+    expect(watcher.getModuleSignature("mod")).to.not.equal(baseline);
+
+    await fs.rm("/mod/index.js.tmp.5678");
+    await watcher.handleFileChange("/mod/index.js.tmp.5678");
+    expect(watcher.getModuleSignature("mod")).to.equal(baseline);
+  });
+
+  it("watches a directory created at runtime and reloads for it", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/index.js", "v1");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+
+    await fs.writeFile("/mod/page/page.js", "class Empty {}");
+    await watcher.handleFileChange("/mod/page");
+    expect(changes).to.deep.equal(["mod"]);
+
+    changes.length = 0;
+    await fs.writeFile("/mod/page/page.js", "class Full { render() {} }");
+    await watcher.handleFileChange("/mod/page/page.js");
+    expect(changes).to.deep.equal(["mod"]);
+  });
+
+  it("recurses into nested directories created at runtime", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/index.js", "v1");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+
+    await fs.writeFile("/mod/category/xy/page.js", "class Xy {}");
+    await watcher.handleFileChange("/mod/category");
+    expect(changes).to.deep.equal(["mod"]);
+
+    changes.length = 0;
+    await fs.writeFile("/mod/category/xy/page.js", "class Xy { render() {} }");
+    await watcher.handleFileChange("/mod/category/xy/page.js");
+    expect(changes).to.deep.equal(["mod"]);
+  });
+
+  it("re-adopts a directory that was removed and recreated", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/index.js", "v1");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+
+    await fs.writeFile("/mod/page/page.js", "class A {}");
+    await watcher.handleFileChange("/mod/page");
+    expect(changes).to.deep.equal(["mod"]);
+
+    changes.length = 0;
+    await fs.rm("/mod/page/page.js");
+    await fs.rm("/mod/page");
+    await watcher.handleFileChange("/mod/page");
+    expect(changes).to.deep.equal(["mod"]);
+
+    changes.length = 0;
+    await fs.writeFile("/mod/page/page.js", "class B {}");
+    await watcher.handleFileChange("/mod/page");
+    expect(changes).to.deep.equal(["mod"]);
+
+    changes.length = 0;
+    await fs.writeFile("/mod/page/page.js", "class B { render() {} }");
+    await watcher.handleFileChange("/mod/page/page.js");
+    expect(changes).to.deep.equal(["mod"]);
+  });
+
+  it("clears the module signature contribution of a removed directory", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/index.js", "v1");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+
+    const baseline = watcher.getModuleSignature("mod");
+
+    await fs.writeFile("/mod/page/page.js", "class A {}");
+    await watcher.handleFileChange("/mod/page");
+    expect(watcher.getModuleSignature("mod")).to.not.equal(baseline);
+
+    await fs.rm("/mod/page/page.js");
+    await fs.rm("/mod/page");
+    await watcher.handleFileChange("/mod/page");
+    expect(watcher.getModuleSignature("mod")).to.equal(baseline);
+  });
+
+  it("ignores a new directory that has no owning module", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/antelope.config.ts", "x");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.watchFile("/project/antelope.config.ts", () => {});
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+
+    await fs.mkdir("/project/newdir", { recursive: true });
+    await watcher.handleFileChange("/project/newdir");
 
     expect(changes).to.deep.equal([]);
   });
 
-  it("notifies exactly once for an atomic-write rename over a tracked file", async () => {
+  it("ignores a node_modules directory created at runtime", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile("/mod/index.js", "v1");
 
@@ -130,14 +282,10 @@ describe("FileWatcher", () => {
     const changes: string[] = [];
     watcher.onModuleChanged((id) => changes.push(id));
 
-    await fs.writeFile("/mod/index.js.tmp.5678", "v2");
-    await watcher.handleFileChange("/mod/index.js.tmp.5678");
-    await fs.writeFile("/mod/index.js", "v2");
-    await fs.rm("/mod/index.js.tmp.5678");
-    await watcher.handleFileChange("/mod/index.js");
-    await watcher.handleFileChange("/mod/index.js.tmp.5678");
+    await fs.writeFile("/mod/node_modules/dep/index.js", "x");
+    await watcher.handleFileChange("/mod/node_modules");
 
-    expect(changes).to.deep.equal(["mod"]);
+    expect(changes).to.deep.equal([]);
   });
 
   it("skips excluded directories when scanning", async () => {
