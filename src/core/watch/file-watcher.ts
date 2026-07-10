@@ -22,6 +22,7 @@ export class FileWatcher {
     { hash: string; listeners: FileChangeListener[] }
   >();
   private changeChains = new Map<string, Promise<void>>();
+  private stopped = false;
 
   constructor(
     private fs: IFileSystem,
@@ -87,10 +88,12 @@ export class FileWatcher {
   }
 
   stopWatching(): void {
+    this.stopped = true;
     for (const watcher of this.watchers.values()) {
       watcher.close();
     }
     this.watchers.clear();
+    this.changeChains.clear();
   }
 
   private enqueueChange(dir: string, filePath: string): void {
@@ -177,6 +180,9 @@ export class FileWatcher {
     }
 
     entry.hash = newHash;
+    if (this.stopped) {
+      return;
+    }
     for (const listener of entry.listeners) {
       listener(filePath);
     }
@@ -278,6 +284,9 @@ export class FileWatcher {
   }
 
   private notifyModuleChange(moduleId: string): void {
+    if (this.stopped) {
+      return;
+    }
     for (const listener of this.listeners) {
       listener(moduleId);
     }

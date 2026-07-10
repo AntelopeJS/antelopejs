@@ -288,6 +288,42 @@ describe("FileWatcher", () => {
     expect(changes).to.deep.equal([]);
   });
 
+  it("does not notify module changes after stopWatching", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/a.txt", "a");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+
+    watcher.stopWatching();
+
+    await fs.writeFile("/mod/a.txt", "b");
+    await watcher.handleFileChange("/mod/a.txt");
+
+    expect(changes).to.deep.equal([]);
+  });
+
+  it("does not notify watched-file listeners after stopWatching", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/antelope.config.ts", "original");
+
+    const watcher = new FileWatcher(fs);
+    const changes: string[] = [];
+    await watcher.watchFile("/project/antelope.config.ts", (p) =>
+      changes.push(p),
+    );
+
+    watcher.stopWatching();
+
+    await fs.writeFile("/project/antelope.config.ts", "modified");
+    await watcher.handleFileChange("/project/antelope.config.ts");
+
+    expect(changes).to.deep.equal([]);
+  });
+
   it("skips excluded directories when scanning", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile("/mod/.git/ignored.txt", "x");
