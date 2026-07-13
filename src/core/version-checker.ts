@@ -1,4 +1,5 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import { satisfies, validRange } from "semver";
 import { info as infoMessage, warning } from "./cli/cli-ui";
 import { ExecuteCMD } from "./cli/command";
 import { parsePackageInfoOutput } from "./cli/package-manager";
@@ -15,6 +16,24 @@ const VERSION_ARGUMENT = "version";
 const UPDATE_COMMAND = "ajs project modules update";
 const SLOW_CHECK_THRESHOLD_MS = 15_000;
 const MAX_REASON_LENGTH = 200;
+
+const RANGE_PREFIX_PATTERN = /^[\^~]/;
+
+export function isUpToDate(currentSpec: string, latest: string): boolean {
+  if (currentSpec === latest) {
+    return true;
+  }
+  const range = validRange(currentSpec);
+  if (range === null) {
+    return true;
+  }
+  return satisfies(latest, range);
+}
+
+export function bumpVersionSpec(currentSpec: string, latest: string): string {
+  const prefix = currentSpec.match(RANGE_PREFIX_PATTERN)?.[0] ?? "";
+  return `${prefix}${latest}`;
+}
 
 export async function fetchLatestVersion(packageName: string): Promise<string> {
   const result = await ExecuteCMD(
@@ -75,7 +94,7 @@ export async function checkOutdatedModules(
       }
       const current = (info.source as ModuleSourcePackage).version;
       const latest = result.value;
-      if (current !== latest) {
+      if (!isUpToDate(current, latest)) {
         outdated.push({ name, current, latest });
       }
       return outdated;
