@@ -6,7 +6,9 @@ import inquirer from "inquirer";
 import sinon from "sinon";
 import * as cliUi from "../../../../../../src/core/cli/cli-ui";
 import * as projectModulesAddModule from "../../../../../../src/core/cli/commands/project/modules/add";
-import cmdInstall from "../../../../../../src/core/cli/commands/project/modules/install";
+import cmdInstall, {
+  resolveInstallIdentifier,
+} from "../../../../../../src/core/cli/commands/project/modules/install";
 import * as common from "../../../../../../src/core/cli/common";
 import * as gitOps from "../../../../../../src/core/cli/git-operations";
 import { terminalDisplay } from "../../../../../../src/core/cli/terminal-display";
@@ -48,6 +50,32 @@ describe("project modules install behavior", () => {
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;
+  });
+
+  describe("resolveInstallIdentifier", () => {
+    it("appends the manifest version to package identifiers", () => {
+      const source: any = {
+        type: "package",
+        package: "modA",
+        version: "^1.0.0",
+      };
+      expect(resolveInstallIdentifier(source, "modA")).to.equal("modA@^1.0.0");
+    });
+
+    it("keeps package identifiers unchanged when the manifest omits the version", () => {
+      const source: any = { type: "package", package: "modA" };
+      expect(resolveInstallIdentifier(source, "modA")).to.equal("modA");
+    });
+
+    it("keeps non-package identifiers unchanged", () => {
+      const source: any = {
+        type: "git",
+        remote: "https://example.com/repo.git",
+      };
+      expect(
+        resolveInstallIdentifier(source, "https://example.com/repo.git"),
+      ).to.equal("https://example.com/repo.git");
+    });
   });
 
   it("errors when project config is missing", async () => {
@@ -320,6 +348,7 @@ describe("project modules install behavior", () => {
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(addStub.called).to.equal(true);
+    expect(addStub.firstCall.args[0]).to.deep.equal(["pkg:module@1.0.0"]);
   });
 
   it("installs module and uses singular label", async () => {
