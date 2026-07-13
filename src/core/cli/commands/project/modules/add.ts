@@ -13,10 +13,14 @@ import { DownloaderRegistry } from "../../../../downloaders/registry";
 import { NodeFileSystem } from "../../../../filesystem";
 import { ModuleCache } from "../../../../module-cache";
 import type { ModulePackageJson } from "../../../../module-manifest";
+import {
+  fetchLatestVersion,
+  toFloatingSpec,
+  validateVersionSpec,
+} from "../../../../version-checker";
 import { displayBox, error, info, success, warning } from "../../../cli-ui";
 import { ExecuteCMD } from "../../../command";
 import { Options, readConfig, writeConfig } from "../../../common";
-import { parsePackageInfoOutput } from "../../../package-manager";
 
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
 const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];
@@ -36,10 +40,101 @@ export const handlers = new Map<
   ) => Promise<[string, AntelopeModuleConfig | string]>
 >();
 
+interface ModuleLoadResult {
+  moduleName: string;
+  moduleConfig: AntelopeModuleConfig | string;
+  skipped: boolean;
+  failed: boolean;
+}
+
+export interface AddCommandResult {
+  added: string[];
+  skipped: string[];
+  failed: string[];
+}
+
+async function downloadModuleToCache(
+  registry: DownloaderRegistry,
+  cache: ModuleCache,
+  projectPath: string,
+  moduleName: string,
+  moduleConfig: AntelopeModuleConfig,
+): Promise<boolean> {
+  const loaderIdentifier = registry.getLoaderIdentifier(
+    moduleConfig.source as any,
+  );
+  if (!loaderIdentifier) {
+    return true;
+  }
+  info(`Downloading module ${chalk.bold(moduleName)} to cache...`);
+  try {
+    const moduleManifests = await registry.load(projectPath, cache, {
+      ...moduleConfig.source,
+      id: moduleName,
+    } as any);
+    if (moduleManifests.length > 0) {
+      const manifest = moduleManifests[0];
+      if (manifest.manifest.antelopeJs?.defaultConfig) {
+        moduleConfig.config = manifest.manifest.antelopeJs.defaultConfig;
+      }
+    }
+    success(
+      `Successfully downloaded module ${chalk.bold(moduleName)} to cache`,
+    );
+    return true;
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    error(
+      `Failed to download module ${chalk.bold(moduleName)}: ${errorMessage}`,
+    );
+    return false;
+  }
+}
+
+async function displayAddResults(
+  added: string[],
+  skipped: string[],
+  failed: string[],
+): Promise<void> {
+  let resultContent = "";
+
+  if (added.length > 0) {
+    resultContent += `${chalk.green.bold("Successfully added:")}\n`;
+    added.forEach((name) => {
+      resultContent += `  • ${chalk.bold(name)}\n`;
+    });
+  }
+
+  if (skipped.length > 0) {
+    if (resultContent) resultContent += "\n";
+    resultContent += `${chalk.yellow.bold("Skipped:")}\n`;
+    skipped.forEach((name) => {
+      resultContent += `  • ${chalk.dim(name)}\n`;
+    });
+  }
+
+  if (failed.length > 0) {
+    if (resultContent) resultContent += "\n";
+    resultContent += `${chalk.red.bold("Failed:")}\n`;
+    failed.forEach((name) => {
+      resultContent += `  • ${chalk.bold(name)}\n`;
+    });
+  }
+
+  if (resultContent) {
+    const borderColor =
+      added.length > 0 ? "green" : failed.length > 0 ? "red" : "yellow";
+    await displayBox(resultContent, "📦 Module Addition Results", {
+      padding: 1,
+      borderColor,
+    });
+  }
+}
+
 export async function projectModulesAddCommand(
   modules: string[],
   options: AddOptions,
-) {
+): Promise<AddCommandResult | undefined> {
   console.log(""); // Add spacing for better readability
   info(`Adding modules to your project...`);
 
@@ -69,6 +164,8 @@ export async function projectModulesAddCommand(
   registerPackageDownloader(registry, { fs, exec: ExecuteCMD });
   registerGitDownloader(registry, { fs, exec: ExecuteCMD });
 
+  const failed: string[] = [];
+
   let sources = await Promise.all(
     modules.map((module) => {
       const modulePath =
@@ -89,6 +186,7 @@ export async function projectModulesAddCommand(
               ? err
               : `Failed to add module "${module}": ${String(err)}`,
           );
+          failed.push(module);
           return null;
         });
     }),
@@ -127,57 +225,35 @@ export async function projectModulesAddCommand(
   await cache.load();
 
   // Prepare module loading tasks for parallel execution
-  const moduleLoadingTasks = sources.map(async (source) => {
-    if (!source) return null;
+  const moduleLoadingTasks = sources.map(
+    async (source): Promise<ModuleLoadResult | null> => {
+      if (!source) return null;
 
-    const [moduleName, moduleConfig] = source;
+      const [moduleName, moduleConfig] = source;
 
-    // Check if module already exists
-    if (antelopeConfig.modules[moduleName]) {
-      return { moduleName, moduleConfig, skipped: true };
-    }
-
-    // Download module to cache if needed
-    if (
-      typeof moduleConfig === "object" &&
-      moduleConfig !== null &&
-      "source" in moduleConfig
-    ) {
-      const loaderIdentifier = registry.getLoaderIdentifier(
-        moduleConfig.source as any,
-      );
-      if (loaderIdentifier) {
-        info(`Downloading module ${chalk.bold(moduleName)} to cache...`);
-        try {
-          const moduleManifests = await registry.load(
-            resolvedProjectPath,
-            cache,
-            {
-              ...moduleConfig.source,
-              id: moduleName,
-            } as any,
-          );
-          if (moduleManifests.length > 0) {
-            const manifest = moduleManifests[0];
-            if (manifest.manifest.antelopeJs?.defaultConfig) {
-              moduleConfig.config = manifest.manifest.antelopeJs.defaultConfig;
-            }
-          }
-          success(
-            `Successfully downloaded module ${chalk.bold(moduleName)} to cache`,
-          );
-        } catch (error: unknown) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          warning(
-            `Failed to download module ${chalk.bold(moduleName)} to cache: ${errorMessage}`,
-          );
-        }
+      // Check if module already exists
+      if (antelopeConfig.modules[moduleName]) {
+        return { moduleName, moduleConfig, skipped: true, failed: false };
       }
-    }
 
-    return { moduleName, moduleConfig, skipped: false };
-  });
+      // Download module to cache if needed
+      const downloadable =
+        typeof moduleConfig === "object" &&
+        moduleConfig !== null &&
+        "source" in moduleConfig;
+      const downloaded = downloadable
+        ? await downloadModuleToCache(
+            registry,
+            cache,
+            resolvedProjectPath,
+            moduleName,
+            moduleConfig,
+          )
+        : true;
+
+      return { moduleName, moduleConfig, skipped: false, failed: !downloaded };
+    },
+  );
 
   // Execute all module loading tasks in parallel
   const moduleResults = await Promise.all(moduleLoadingTasks);
@@ -186,9 +262,16 @@ export async function projectModulesAddCommand(
   for (const result of moduleResults) {
     if (!result) continue;
 
-    const { moduleName, moduleConfig, skipped: wasSkipped } = result;
+    const {
+      moduleName,
+      moduleConfig,
+      skipped: wasSkipped,
+      failed: hasFailed,
+    } = result;
 
-    if (wasSkipped) {
+    if (hasFailed) {
+      failed.push(moduleName);
+    } else if (wasSkipped) {
       skipped.push(moduleName);
     } else {
       env.modules[moduleName] = moduleConfig;
@@ -196,33 +279,19 @@ export async function projectModulesAddCommand(
     }
   }
 
+  if (failed.length > 0) {
+    process.exitCode = 1;
+  }
+
   // Save the updated config
-  await writeConfig(resolvedProjectPath, config);
+  if (added.length > 0) {
+    await writeConfig(resolvedProjectPath, config);
+  }
 
   // Show results
-  let resultContent = "";
+  await displayAddResults(added, skipped, failed);
 
-  if (added.length > 0) {
-    resultContent += `${chalk.green.bold("Successfully added:")}\n`;
-    added.forEach((name) => {
-      resultContent += `  • ${chalk.bold(name)}\n`;
-    });
-  }
-
-  if (skipped.length > 0) {
-    if (resultContent) resultContent += "\n";
-    resultContent += `${chalk.yellow.bold("Skipped:")}\n`;
-    skipped.forEach((name) => {
-      resultContent += `  • ${chalk.dim(name)}\n`;
-    });
-  }
-
-  if (resultContent) {
-    await displayBox(resultContent, "📦 Module Addition Results", {
-      padding: 1,
-      borderColor: added.length > 0 ? "green" : "yellow",
-    });
-  }
+  return { added, skipped, failed };
 }
 
 export default function () {
@@ -244,7 +313,9 @@ export default function () {
         "Environment to add modules to",
       ).env("ANTELOPEJS_LAUNCH_ENV"),
     )
-    .action(projectModulesAddCommand);
+    .action(async (modules: string[], options: AddOptions) => {
+      await projectModulesAddCommand(modules, options);
+    });
 }
 
 // Module source handlers
@@ -255,21 +326,20 @@ handlers.set("package", async (module) => {
     m,
     `Invalid npm module format: '${module}'. Use <name>@<version>, <name>version or <name>`,
   );
-  let [, name, version] = m;
-  if (!version) {
-    const result = await ExecuteCMD(`npm view ${name} version`, {});
-    if (result.code !== 0) {
-      throw new Error(`Failed to fetch version: ${result.stderr}`);
-    }
-    version = parsePackageInfoOutput(result.stdout);
+  const [, name, version] = m;
+  if (version) {
+    await validateVersionSpec(name, version);
   }
+  const resolvedVersion = version
+    ? version
+    : toFloatingSpec(await fetchLatestVersion(name));
   return [
     name,
     {
       source: {
         type: "package",
         package: name,
-        version: version,
+        version: resolvedVersion,
       },
     },
   ];

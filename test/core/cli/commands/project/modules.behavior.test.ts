@@ -243,7 +243,7 @@ describe("project modules behavior", () => {
     expect(successStub.called).to.equal(true);
   });
 
-  it("warns when download fails with non-error", async () => {
+  it("errors and skips module when download fails with non-error", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
@@ -256,19 +256,21 @@ describe("project modules behavior", () => {
       .callsFake(() => Promise.reject("boom"));
     sinon.stub(common, "writeConfig").resolves();
 
-    const warnStub = sinon.stub(cliUi, "warning");
+    const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "error");
+    sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "displayBox").resolves();
 
     await projectModulesAddCommand(["pkg@1.0.0"], {
       mode: "package",
       project: "/tmp/project",
     });
-    expect(warnStub.called).to.equal(true);
-    const warningMsg = warnStub.firstCall.args[0] as string;
-    expect(warningMsg).to.include("boom");
+    expect(errorStub.called).to.equal(true);
+    const errorMsg = errorStub.firstCall.args[0] as string;
+    expect(errorMsg).to.include("boom");
+    expect(config.modules).to.not.have.property("pkg");
+    expect(process.exitCode).to.equal(1);
   });
 
   it("reports handler rejection with non-error", async () => {
@@ -302,7 +304,7 @@ describe("project modules behavior", () => {
     expect(errorMsg).to.include("boom");
   });
 
-  it("warns when download fails after loader identifier resolves", async () => {
+  it("errors and skips module when download fails after loader identifier resolves", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     sinon.stub(common, "writeConfig").resolves();
@@ -316,10 +318,10 @@ describe("project modules behavior", () => {
         });
       });
 
-    const warnStub = sinon.stub(cliUi, "warning");
+    const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "error");
+    sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "displayBox").resolves();
 
     const originalHandler = handlers.get("local");
@@ -344,7 +346,9 @@ describe("project modules behavior", () => {
       }
     }
 
-    expect(warnStub.called).to.equal(true);
+    expect(errorStub.called).to.equal(true);
+    expect(config.modules).to.not.have.property("localmod");
+    expect(process.exitCode).to.equal(1);
   });
 
   it("handles handler errors and initializes env modules", async () => {
@@ -378,14 +382,14 @@ describe("project modules behavior", () => {
 
     expect(errorStub.called).to.equal(true);
     expect(config.modules).to.be.an("object");
-    expect(writeStub.calledOnce).to.equal(true);
+    expect(writeStub.called).to.equal(false);
 
     const expectedPath = "/tmp/project/modules/modA";
     const infoCalls = infoStub.getCalls().map((call) => call.args[0] as string);
     expect(infoCalls.some((msg) => msg.includes(expectedPath))).to.equal(true);
   });
 
-  it("warns when download to cache fails but still adds module", async () => {
+  it("does not add module when download to cache fails", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
@@ -403,23 +407,25 @@ describe("project modules behavior", () => {
       .stub(DownloaderRegistry.prototype, "load")
       .rejects(new Error("download failed"));
 
-    const warnStub = sinon.stub(cliUi, "warning");
+    const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "error");
+    sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "displayBox").resolves();
 
-    await projectModulesAddCommand(["pkg"], {
+    const result = await projectModulesAddCommand(["pkg"], {
       mode: "package",
       project: "/tmp/project",
     });
 
-    expect(warnStub.called).to.equal(true);
-    expect(writeStub.calledOnce).to.equal(true);
-    expect(config.modules).to.have.property("pkg");
+    expect(errorStub.called).to.equal(true);
+    expect(writeStub.called).to.equal(false);
+    expect(config.modules).to.not.have.property("pkg");
+    expect(result?.failed).to.deep.equal(["pkg"]);
+    expect(process.exitCode).to.equal(1);
   });
 
-  it("package handler resolves latest version", async () => {
+  it("package handler resolves latest version as a floating caret range", async () => {
     const execStub = sinon
       .stub(command, "ExecuteCMD")
       .resolves({ code: 0, stdout: "1.2.3", stderr: "" });
@@ -431,7 +437,58 @@ describe("project modules behavior", () => {
 
     expect(execStub.called).to.equal(true);
     expect(name).to.equal("pkg");
-    expect((config as any).source.version).to.equal("1.2.3");
+    expect((config as any).source.version).to.equal("^1.2.3");
+  });
+
+  it("package handler keeps an explicit semver range without registry lookup", async () => {
+    const execStub = sinon.stub(command, "ExecuteCMD");
+    const handler = handlers.get("package")!;
+    const [name, config] = await handler("pkg@^2.0.0", {
+      mode: "package",
+      project: "/tmp/project",
+    } as any);
+
+    expect(execStub.called).to.equal(false);
+    expect(name).to.equal("pkg");
+    expect((config as any).source.version).to.equal("^2.0.0");
+  });
+
+  it("package handler accepts a registry dist-tag", async () => {
+    const execStub = sinon.stub(command, "ExecuteCMD").resolves({
+      code: 0,
+      stdout: '{"latest":"1.0.0","beta":"2.0.0-beta.1"}',
+      stderr: "",
+    });
+    const handler = handlers.get("package")!;
+    const [name, config] = await handler("pkg@beta", {
+      mode: "package",
+      project: "/tmp/project",
+    } as any);
+
+    expect(execStub.firstCall.args[0]).to.include("dist-tags");
+    expect(name).to.equal("pkg");
+    expect((config as any).source.version).to.equal("beta");
+  });
+
+  it("package handler rejects a spec that is neither range nor dist-tag", async () => {
+    sinon.stub(command, "ExecuteCMD").resolves({
+      code: 0,
+      stdout: '{"latest":"1.0.0"}',
+      stderr: "",
+    });
+    const handler = handlers.get("package")!;
+    let caught: unknown;
+    try {
+      await handler("pkg@lastest", {
+        mode: "package",
+        project: "/tmp/project",
+      } as any);
+    } catch (err) {
+      caught = err;
+    }
+    expect(String(caught)).to.include(
+      "neither a valid semver range nor a dist-tag",
+    );
   });
 
   it("package handler throws when version fetch fails", async () => {

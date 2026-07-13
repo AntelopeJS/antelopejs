@@ -1,4 +1,8 @@
 import path from "node:path";
+import type {
+  ModuleSource,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 import chalk from "chalk";
 import { Command, Option } from "commander";
 import inquirer from "inquirer";
@@ -35,6 +39,19 @@ interface InstallOptions {
 
 interface ConfigAnalyze {
   unresolvedImports: string[];
+}
+
+const PACKAGE_SOURCE_TYPE = "package";
+
+export function resolveInstallIdentifier(
+  source: ModuleSource,
+  identifier: string,
+): string {
+  if (source.type !== PACKAGE_SOURCE_TYPE) {
+    return identifier;
+  }
+  const version = (source as ModuleSourcePackage).version;
+  return version ? `${identifier}@${version}` : identifier;
 }
 
 // Interface for tracking modules to be installed
@@ -248,7 +265,10 @@ export default function () {
 
                   // Add to modules to install
                   modulesToInstall.push({
-                    loaderIdentifier,
+                    loaderIdentifier: resolveInstallIdentifier(
+                      source as ModuleSource,
+                      loaderIdentifier,
+                    ),
                     mode,
                     moduleName,
                     imports: [imp],
@@ -305,19 +325,30 @@ export default function () {
           );
 
           try {
-            await projectModulesAddCommand(loaderIdentifiers, {
+            const result = await projectModulesAddCommand(loaderIdentifiers, {
               mode,
               project: options.project,
               env,
             });
 
-            success(
-              chalk.green`Successfully installed modules for environment ${env} (mode: ${mode})`,
-            );
+            const failedCount = result
+              ? result.failed.length
+              : loaderIdentifiers.length;
+            if (failedCount > 0) {
+              error(
+                chalk.red`Failed to install ${failedCount} module(s) for environment ${env} (mode: ${mode})`,
+              );
+              process.exitCode = 1;
+            } else {
+              success(
+                chalk.green`Successfully installed modules for environment ${env} (mode: ${mode})`,
+              );
+            }
           } catch (err) {
             error(
               chalk.red`Failed to install modules for environment ${env} (mode: ${mode}): ${err}`,
             );
+            process.exitCode = 1;
           }
         }
         await terminalDisplay.stopSpinner(

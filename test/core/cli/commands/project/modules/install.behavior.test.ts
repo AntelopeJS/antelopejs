@@ -6,7 +6,9 @@ import inquirer from "inquirer";
 import sinon from "sinon";
 import * as cliUi from "../../../../../../src/core/cli/cli-ui";
 import * as projectModulesAddModule from "../../../../../../src/core/cli/commands/project/modules/add";
-import cmdInstall from "../../../../../../src/core/cli/commands/project/modules/install";
+import cmdInstall, {
+  resolveInstallIdentifier,
+} from "../../../../../../src/core/cli/commands/project/modules/install";
 import * as common from "../../../../../../src/core/cli/common";
 import * as gitOps from "../../../../../../src/core/cli/git-operations";
 import { terminalDisplay } from "../../../../../../src/core/cli/terminal-display";
@@ -48,6 +50,32 @@ describe("project modules install behavior", () => {
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;
+  });
+
+  describe("resolveInstallIdentifier", () => {
+    it("appends the manifest version to package identifiers", () => {
+      const source: any = {
+        type: "package",
+        package: "modA",
+        version: "^1.0.0",
+      };
+      expect(resolveInstallIdentifier(source, "modA")).to.equal("modA@^1.0.0");
+    });
+
+    it("keeps package identifiers unchanged when the manifest omits the version", () => {
+      const source: any = { type: "package", package: "modA" };
+      expect(resolveInstallIdentifier(source, "modA")).to.equal("modA");
+    });
+
+    it("keeps non-package identifiers unchanged", () => {
+      const source: any = {
+        type: "git",
+        remote: "https://example.com/repo.git",
+      };
+      expect(
+        resolveInstallIdentifier(source, "https://example.com/repo.git"),
+      ).to.equal("https://example.com/repo.git");
+    });
   });
 
   it("errors when project config is missing", async () => {
@@ -320,6 +348,7 @@ describe("project modules install behavior", () => {
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(addStub.called).to.equal(true);
+    expect(addStub.firstCall.args[0]).to.deep.equal(["pkg:module@1.0.0"]);
   });
 
   it("installs module and uses singular label", async () => {
@@ -755,5 +784,98 @@ describe("project modules install behavior", () => {
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(errorStub.called).to.equal(true);
+    expect(process.exitCode).to.equal(1);
+  });
+
+  it("reports failure when add resolves with failed modules", async () => {
+    const baseConfig: any = {
+      name: "proj",
+      modules: {
+        app: { source: { type: "package", package: "app", version: "1.0.0" } },
+      },
+    };
+
+    sinon.stub(common, "readConfig").resolves(baseConfig);
+    sinon
+      .stub(common, "readUserConfig")
+      .resolves({ git: common.DEFAULT_GIT_REPO });
+    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
+
+    sinon.stub(ConfigLoader.prototype, "load").resolves({
+      modules: {
+        app: { source: { type: "package", package: "app", version: "1.0.0" } },
+      },
+    } as any);
+
+    sinon.stub(ModuleCache.prototype, "load").resolves();
+
+    const fakeManifest = {
+      manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
+      implements: [],
+      folder: tempModuleDir,
+    };
+    sinon
+      .stub(DownloaderRegistry.prototype, "load")
+      .resolves([fakeManifest as any]);
+    sinon
+      .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
+      .returns("pkg:module");
+
+    sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
+
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves({
+      name: "iface",
+      manifest: {
+        description: "iface",
+        versions: ["1.0.0"],
+        files: {},
+        dependencies: {},
+        modules: [
+          {
+            name: "modA",
+            source: { type: "package", package: "modA", version: "1.0.0" },
+          },
+        ],
+      },
+    } as any);
+
+    sinon.stub(inquirer, "prompt").resolves({ moduleName: "modA" });
+
+    const addStub = sinon.stub(
+      projectModulesAddModule,
+      "projectModulesAddCommand",
+    );
+    addStub.resolves({ added: [], skipped: [], failed: ["modA"] });
+
+    const errorStub = sinon.stub(cliUi, "error");
+    const successStub = sinon.stub(cliUi, "success");
+    sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "warning");
+
+    sinon.stub(terminalDisplay, "startSpinner").resolves();
+    sinon.stub(terminalDisplay, "stopSpinner").resolves();
+    sinon.stub(terminalDisplay, "failSpinner").resolves();
+
+    const cmd = cmdInstall();
+    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+
+    const errorMessages = errorStub
+      .getCalls()
+      .map((call) => String(call.args[0]));
+    expect(
+      errorMessages.some((msg) => msg.includes("Failed to install 1 module")),
+    ).to.equal(true);
+    const successMessages = successStub
+      .getCalls()
+      .map((call) => String(call.args[0]));
+    expect(
+      successMessages.some((msg) => msg.includes("Successfully installed")),
+    ).to.equal(false);
+    expect(process.exitCode).to.equal(1);
   });
 });
