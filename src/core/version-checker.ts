@@ -13,6 +13,8 @@ export interface OutdatedModule {
 
 const NPM_VIEW_COMMAND = "npm view";
 const VERSION_ARGUMENT = "version";
+const DIST_TAGS_ARGUMENT = "dist-tags --json";
+const CARET_PREFIX = "^";
 const UPDATE_COMMAND = "ajs project modules update";
 const SLOW_CHECK_THRESHOLD_MS = 15_000;
 const MAX_REASON_LENGTH = 200;
@@ -35,11 +37,51 @@ export function bumpVersionSpec(currentSpec: string, latest: string): string {
   return `${prefix}${latest}`;
 }
 
+export function toFloatingSpec(version: string): string {
+  return `${CARET_PREFIX}${version}`;
+}
+
+export async function fetchDistTags(
+  packageName: string,
+): Promise<Record<string, string>> {
+  const result = await ExecuteCMD(
+    `${NPM_VIEW_COMMAND} ${packageName} ${DIST_TAGS_ARGUMENT}`,
+    {},
+  );
+  if (result.code !== 0) {
+    throw new Error(
+      `Failed to fetch dist-tags of ${packageName}: ${result.stderr}`,
+    );
+  }
+  return JSON.parse(result.stdout) as Record<string, string>;
+}
+
+export async function validateVersionSpec(
+  packageName: string,
+  spec: string,
+): Promise<void> {
+  if (validRange(spec) !== null) {
+    return;
+  }
+  const distTags = await fetchDistTags(packageName);
+  if (spec in distTags) {
+    return;
+  }
+  throw new Error(
+    `'${spec}' is neither a valid semver range nor a dist-tag of '${packageName}'`,
+  );
+}
+
 export async function fetchLatestVersion(packageName: string): Promise<string> {
   const result = await ExecuteCMD(
     `${NPM_VIEW_COMMAND} ${packageName} ${VERSION_ARGUMENT}`,
     {},
   );
+  if (result.code !== 0) {
+    throw new Error(
+      `Failed to fetch version of ${packageName}: ${result.stderr}`,
+    );
+  }
   return parsePackageInfoOutput(result.stdout);
 }
 

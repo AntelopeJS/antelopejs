@@ -10,8 +10,11 @@ import type { ExpandedModuleConfig } from "../../src/core/config/config-parser";
 import {
   bumpVersionSpec,
   checkOutdatedModules,
+  fetchDistTags,
   fetchLatestVersion,
   isUpToDate,
+  toFloatingSpec,
+  validateVersionSpec,
   warnOutdatedModules,
 } from "../../src/core/version-checker";
 
@@ -323,6 +326,78 @@ describe("version-checker", () => {
       expect(bumpVersionSpec("^1.0.0", "2.0.0")).to.equal("^2.0.0");
       expect(bumpVersionSpec("~1.0.0", "1.2.0")).to.equal("~1.2.0");
       expect(bumpVersionSpec("1.0.0", "2.0.0")).to.equal("2.0.0");
+    });
+  });
+
+  describe("toFloatingSpec", () => {
+    it("prefixes the version with a caret", () => {
+      expect(toFloatingSpec("1.2.3")).to.equal("^1.2.3");
+    });
+  });
+
+  describe("fetchDistTags", () => {
+    it("parses dist-tags JSON output", async () => {
+      sinon.stub(command, "ExecuteCMD").resolves({
+        code: 0,
+        stdout: '{"latest":"1.0.0","next":"2.0.0-rc.1"}',
+        stderr: "",
+      });
+
+      const tags = await fetchDistTags("some-package");
+
+      expect(tags).to.deep.equal({ latest: "1.0.0", next: "2.0.0-rc.1" });
+    });
+
+    it("throws when npm view exits with a non-zero code", async () => {
+      sinon.stub(command, "ExecuteCMD").resolves({
+        code: 1,
+        stdout: "",
+        stderr: "not found",
+      });
+
+      try {
+        await fetchDistTags("some-package");
+        expect.fail("expected fetchDistTags to throw");
+      } catch (err) {
+        expect(String(err)).to.include("not found");
+      }
+    });
+  });
+
+  describe("validateVersionSpec", () => {
+    it("accepts a valid semver range without registry lookup", async () => {
+      const execStub = sinon.stub(command, "ExecuteCMD");
+
+      await validateVersionSpec("some-package", "^1.2.0");
+
+      expect(execStub.called).to.equal(false);
+    });
+
+    it("accepts an existing dist-tag", async () => {
+      sinon.stub(command, "ExecuteCMD").resolves({
+        code: 0,
+        stdout: '{"latest":"1.0.0","beta":"2.0.0-beta.1"}',
+        stderr: "",
+      });
+
+      await validateVersionSpec("some-package", "beta");
+    });
+
+    it("rejects a spec that is neither range nor dist-tag", async () => {
+      sinon.stub(command, "ExecuteCMD").resolves({
+        code: 0,
+        stdout: '{"latest":"1.0.0"}',
+        stderr: "",
+      });
+
+      try {
+        await validateVersionSpec("some-package", "lastest");
+        expect.fail("expected validateVersionSpec to throw");
+      } catch (err) {
+        expect(String(err)).to.include(
+          "neither a valid semver range nor a dist-tag",
+        );
+      }
     });
   });
 
