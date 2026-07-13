@@ -331,9 +331,12 @@ export default function () {
               env,
             });
 
-            if (result && result.failed.length > 0) {
+            const failedCount = result
+              ? result.failed.length
+              : loaderIdentifiers.length;
+            if (failedCount > 0) {
               error(
-                chalk.red`Failed to install ${result.failed.length} module(s) for environment ${env} (mode: ${mode})`,
+                chalk.red`Failed to install ${failedCount} module(s) for environment ${env} (mode: ${mode})`,
               );
               process.exitCode = 1;
             } else {
