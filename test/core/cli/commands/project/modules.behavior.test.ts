@@ -382,7 +382,7 @@ describe("project modules behavior", () => {
 
     expect(errorStub.called).to.equal(true);
     expect(config.modules).to.be.an("object");
-    expect(writeStub.calledOnce).to.equal(true);
+    expect(writeStub.called).to.equal(false);
 
     const expectedPath = "/tmp/project/modules/modA";
     const infoCalls = infoStub.getCalls().map((call) => call.args[0] as string);
@@ -413,14 +413,15 @@ describe("project modules behavior", () => {
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "displayBox").resolves();
 
-    await projectModulesAddCommand(["pkg"], {
+    const result = await projectModulesAddCommand(["pkg"], {
       mode: "package",
       project: "/tmp/project",
     });
 
     expect(errorStub.called).to.equal(true);
-    expect(writeStub.calledOnce).to.equal(true);
+    expect(writeStub.called).to.equal(false);
     expect(config.modules).to.not.have.property("pkg");
+    expect(result?.failed).to.deep.equal(["pkg"]);
     expect(process.exitCode).to.equal(1);
   });
 

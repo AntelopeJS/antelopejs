@@ -325,15 +325,22 @@ export default function () {
           );
 
           try {
-            await projectModulesAddCommand(loaderIdentifiers, {
+            const result = await projectModulesAddCommand(loaderIdentifiers, {
               mode,
               project: options.project,
               env,
             });
 
-            success(
-              chalk.green`Successfully installed modules for environment ${env} (mode: ${mode})`,
-            );
+            if (result && result.failed.length > 0) {
+              error(
+                chalk.red`Failed to install ${result.failed.length} module(s) for environment ${env} (mode: ${mode})`,
+              );
+              process.exitCode = 1;
+            } else {
+              success(
+                chalk.green`Successfully installed modules for environment ${env} (mode: ${mode})`,
+              );
+            }
           } catch (err) {
             error(
               chalk.red`Failed to install modules for environment ${env} (mode: ${mode}): ${err}`,

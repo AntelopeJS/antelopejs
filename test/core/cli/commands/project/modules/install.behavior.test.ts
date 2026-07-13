@@ -785,4 +785,96 @@ describe("project modules install behavior", () => {
 
     expect(errorStub.called).to.equal(true);
   });
+
+  it("reports failure when add resolves with failed modules", async () => {
+    const baseConfig: any = {
+      name: "proj",
+      modules: {
+        app: { source: { type: "package", package: "app", version: "1.0.0" } },
+      },
+    };
+
+    sinon.stub(common, "readConfig").resolves(baseConfig);
+    sinon
+      .stub(common, "readUserConfig")
+      .resolves({ git: common.DEFAULT_GIT_REPO });
+    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      starredInterfaces: [],
+      templates: [],
+    });
+
+    sinon.stub(ConfigLoader.prototype, "load").resolves({
+      modules: {
+        app: { source: { type: "package", package: "app", version: "1.0.0" } },
+      },
+    } as any);
+
+    sinon.stub(ModuleCache.prototype, "load").resolves();
+
+    const fakeManifest = {
+      manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
+      implements: [],
+      folder: tempModuleDir,
+    };
+    sinon
+      .stub(DownloaderRegistry.prototype, "load")
+      .resolves([fakeManifest as any]);
+    sinon
+      .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
+      .returns("pkg:module");
+
+    sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
+
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves({
+      name: "iface",
+      manifest: {
+        description: "iface",
+        versions: ["1.0.0"],
+        files: {},
+        dependencies: {},
+        modules: [
+          {
+            name: "modA",
+            source: { type: "package", package: "modA", version: "1.0.0" },
+          },
+        ],
+      },
+    } as any);
+
+    sinon.stub(inquirer, "prompt").resolves({ moduleName: "modA" });
+
+    const addStub = sinon.stub(
+      projectModulesAddModule,
+      "projectModulesAddCommand",
+    );
+    addStub.resolves({ added: [], skipped: [], failed: ["modA"] });
+
+    const errorStub = sinon.stub(cliUi, "error");
+    const successStub = sinon.stub(cliUi, "success");
+    sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "warning");
+
+    sinon.stub(terminalDisplay, "startSpinner").resolves();
+    sinon.stub(terminalDisplay, "stopSpinner").resolves();
+    sinon.stub(terminalDisplay, "failSpinner").resolves();
+
+    const cmd = cmdInstall();
+    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+
+    const errorMessages = errorStub
+      .getCalls()
+      .map((call) => String(call.args[0]));
+    expect(
+      errorMessages.some((msg) => msg.includes("Failed to install 1 module")),
+    ).to.equal(true);
+    const successMessages = successStub
+      .getCalls()
+      .map((call) => String(call.args[0]));
+    expect(
+      successMessages.some((msg) => msg.includes("Successfully installed")),
+    ).to.equal(false);
+    expect(process.exitCode).to.equal(1);
+  });
 });

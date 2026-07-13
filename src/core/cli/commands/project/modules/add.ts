@@ -47,6 +47,12 @@ interface ModuleLoadResult {
   failed: boolean;
 }
 
+export interface AddCommandResult {
+  added: string[];
+  skipped: string[];
+  failed: string[];
+}
+
 async function downloadModuleToCache(
   registry: DownloaderRegistry,
   cache: ModuleCache,
@@ -128,7 +134,7 @@ async function displayAddResults(
 export async function projectModulesAddCommand(
   modules: string[],
   options: AddOptions,
-) {
+): Promise<AddCommandResult | undefined> {
   console.log(""); // Add spacing for better readability
   info(`Adding modules to your project...`);
 
@@ -278,10 +284,14 @@ export async function projectModulesAddCommand(
   }
 
   // Save the updated config
-  await writeConfig(resolvedProjectPath, config);
+  if (added.length > 0) {
+    await writeConfig(resolvedProjectPath, config);
+  }
 
   // Show results
   await displayAddResults(added, skipped, failed);
+
+  return { added, skipped, failed };
 }
 
 export default function () {
@@ -303,7 +313,9 @@ export default function () {
         "Environment to add modules to",
       ).env("ANTELOPEJS_LAUNCH_ENV"),
     )
-    .action(projectModulesAddCommand);
+    .action(async (modules: string[], options: AddOptions) => {
+      await projectModulesAddCommand(modules, options);
+    });
 }
 
 // Module source handlers
