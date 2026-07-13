@@ -346,6 +346,62 @@ describe("GitDownloader", () => {
     expect(cache.getVersion(cacheKey)).to.equal("git:release/2.x:abcdef");
   });
 
+  it("rejects a remote containing shell metacharacters before running git", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const execCalls: string[] = [];
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      execCalls.push(command);
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote: "https://github.com/org/repo.git; touch /tmp/pwned",
+      ignoreCache: true,
+    };
+
+    try {
+      await registry.load("/project", cache, source);
+      expect.fail("Expected unsafe remote to be rejected");
+    } catch (err) {
+      expect(String(err)).to.include("Unsafe characters");
+    }
+    expect(execCalls.some((call) => call.startsWith("git clone"))).to.be.false;
+  });
+
+  it("rejects a branch containing shell metacharacters", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const exec = async (_command: string, _options: { cwd?: string }) => {
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote: "https://github.com/org/repo.git",
+      branch: "main; rm -rf ~",
+      ignoreCache: true,
+    };
+
+    try {
+      await registry.load("/project", cache, source);
+      expect.fail("Expected unsafe branch to be rejected");
+    } catch (err) {
+      expect(String(err)).to.include("Unsafe characters");
+    }
+  });
+
   it("throws when git clone fails", async () => {
     const fs = new InMemoryFileSystem();
     const cache = new ModuleCache("/cache", fs);

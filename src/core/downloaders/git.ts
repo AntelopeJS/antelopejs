@@ -14,6 +14,7 @@ import { runInstallCommands } from "./utils";
 const Logger = new Logging.Channel("loader.git");
 
 const GIT_DIR = ".git";
+const SAFE_GIT_ARGUMENT = /^[A-Za-z0-9._:/@~-]+$/;
 
 export interface GitDownloaderDeps {
   fs?: IFileSystem;
@@ -22,6 +23,25 @@ export interface GitDownloaderDeps {
 
 function urlToFile(url: string): string {
   return url.replace(/[^a-zA-Z0-9_]/g, "_");
+}
+
+function assertSafeGitArgument(value: string, label: string): string {
+  if (!SAFE_GIT_ARGUMENT.test(value)) {
+    throw new Error(
+      `Unsafe characters in git ${label} '${value}'; only letters, digits and ._:/@~- are allowed`,
+    );
+  }
+  return value;
+}
+
+function validateSource(source: ModuleSourceGit): void {
+  assertSafeGitArgument(source.remote, "remote");
+  if (source.branch) {
+    assertSafeGitArgument(source.branch, "branch");
+  }
+  if (source.commit) {
+    assertSafeGitArgument(source.commit, "commit");
+  }
 }
 
 function toCommandResult(err: unknown): CommandResult {
@@ -70,7 +90,8 @@ async function mainBranch(cwd: string, exec: CommandRunner): Promise<string> {
     cwd,
     exec,
   );
-  return res.stdout.trim().split("/").slice(3).join("/");
+  const branch = res.stdout.trim().split("/").slice(3).join("/");
+  return assertSafeGitArgument(branch, "branch");
 }
 
 interface RepoUpdateResult {
@@ -168,6 +189,7 @@ export function registerGitDownloader(
     "remote",
     async (cache: ModuleCache, source: ModuleSourceGit) => {
       Logger.Debug(`Git loader called for ${source.remote}`);
+      validateSource(source);
       const name = urlToFile(source.remote);
       Logger.Trace(`Starting Git module load for ${name}`);
       const folder = await cache.getFolder(name, true, true);

@@ -115,9 +115,15 @@ async function resolveTargetVersion(
   }
   const cached = cache.getVersion(source.package);
   if (cached && cacheSatisfiesSpec(cached, source.version)) {
-    Logger.Debug(
-      `Registry unreachable, keeping cached ${source.package}@${cached}`,
-    );
+    if (validRange(source.version) === null) {
+      Logger.Warn(
+        `Registry unreachable, serving last cached ${source.package}@${cached} for tag '${source.version}' (cannot verify it is current)`,
+      );
+    } else {
+      Logger.Debug(
+        `Registry unreachable, keeping cached ${source.package}@${cached}`,
+      );
+    }
     return cached;
   }
   throw new Error(
