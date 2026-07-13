@@ -784,6 +784,7 @@ describe("project modules install behavior", () => {
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(errorStub.called).to.equal(true);
+    expect(process.exitCode).to.equal(1);
   });
 
   it("reports failure when add resolves with failed modules", async () => {

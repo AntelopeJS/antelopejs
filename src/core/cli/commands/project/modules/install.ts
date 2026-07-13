@@ -348,6 +348,7 @@ export default function () {
             error(
               chalk.red`Failed to install modules for environment ${env} (mode: ${mode}): ${err}`,
             );
+            process.exitCode = 1;
           }
         }
         await terminalDisplay.stopSpinner(
