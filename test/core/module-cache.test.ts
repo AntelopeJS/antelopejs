@@ -48,12 +48,48 @@ describe("ModuleCache", () => {
 
     await fs.writeFile("/tmp/src/file.txt", "hello");
 
-    const dest = await cache.transfer("/tmp/src", "mod", "1.0.0");
+    const dest = await cache.transfer("/tmp/src", "mod");
+    await cache.commitVersion("mod", "1.0.0");
 
     expect(dest).to.equal("/cache/mod");
     expect(await fs.exists("/tmp/src")).to.be.false;
     expect(await fs.readFileString("/cache/mod/file.txt")).to.equal("hello");
     expect(cache.hasVersion("mod", "^1.0.0")).to.be.true;
+  });
+
+  it("does not record a version when transferring", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+
+    await fs.writeFile("/tmp/src/file.txt", "hello");
+
+    await cache.transfer("/tmp/src", "mod");
+
+    expect(cache.getVersion("mod")).to.be.undefined;
+  });
+
+  it("records a version through commitVersion", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    await cache.commitVersion("mod", "1.0.0");
+
+    const data = JSON.parse(await fs.readFileString("/cache/manifest.json"));
+    expect(data.mod).to.equal("1.0.0");
+  });
+
+  it("removes a version through clearVersion", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    await cache.commitVersion("mod", "1.0.0");
+    await cache.clearVersion("mod");
+
+    expect(cache.getVersion("mod")).to.be.undefined;
+    const data = JSON.parse(await fs.readFileString("/cache/manifest.json"));
+    expect(data.mod).to.be.undefined;
   });
 
   it("loads existing manifest data when present", async () => {
@@ -67,6 +103,16 @@ describe("ModuleCache", () => {
     await cache.load();
 
     expect(cache.getVersion("cached")).to.equal("2.0.0");
+  });
+
+  it("falls back to empty manifest when stored manifest is corrupt", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/cache/manifest.json", '{"mod": "1.0');
+    const cache = new ModuleCache("/cache", fs);
+
+    await cache.load();
+
+    expect(cache.getVersion("mod")).to.equal(undefined);
   });
 
   it("falls back to empty manifest when stored manifest is null", async () => {
@@ -86,7 +132,7 @@ describe("ModuleCache", () => {
     await fs.mkdir("/tmp/src/nested", { recursive: true });
     await fs.writeFile("/tmp/src/nested/file.txt", "nested");
 
-    await cache.transfer("/tmp/src", "mod", "1.0.0");
+    await cache.transfer("/tmp/src", "mod");
 
     expect(await fs.readFileString("/cache/mod/nested/file.txt")).to.equal(
       "nested",
