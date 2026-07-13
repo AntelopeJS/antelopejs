@@ -128,6 +128,7 @@ describe("GitDownloader", () => {
       `/cache/${cacheKey}/package.json`,
       JSON.stringify({ name: "repo", version: "1.0.0" }),
     );
+    await fs.writeFile(`/cache/${cacheKey}/.git/HEAD`, "ref: refs/heads/main");
     cache.setVersion(cacheKey, "git:main:oldcommit");
 
     const execCalls: string[] = [];
@@ -138,9 +139,6 @@ describe("GitDownloader", () => {
         return { stdout: "", stderr: "", code: 0 };
       }
       if (command === "git checkout develop") {
-        return { stdout: "", stderr: "", code: 0 };
-      }
-      if (command === "git pull") {
         return { stdout: "", stderr: "", code: 0 };
       }
       if (command.startsWith("git rev-parse origin/develop")) {
@@ -172,8 +170,271 @@ describe("GitDownloader", () => {
     expect(cache.getVersion(cacheKey)).to.equal("git:develop:newcommit");
     expect(execCalls).to.include("git fetch");
     expect(execCalls).to.include("git checkout develop");
-    expect(execCalls).to.include("git pull");
+    expect(execCalls).to.include("git reset --hard origin/develop");
     expect(execCalls).to.include("npm install");
+  });
+
+  it("uses the cached copy when git fetch fails", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const remote = "https://github.com/org/repo.git";
+    const cacheKey = sanitize(remote);
+    await cache.getFolder(cacheKey, true, false);
+    await fs.writeFile(
+      `/cache/${cacheKey}/package.json`,
+      JSON.stringify({ name: "repo", version: "1.0.0" }),
+    );
+    await fs.writeFile(`/cache/${cacheKey}/.git/HEAD`, "ref: refs/heads/main");
+    cache.setVersion(cacheKey, "git:main:oldcommit");
+
+    const execCalls: string[] = [];
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      execCalls.push(command);
+      if (command === "git fetch") {
+        throw new Error("network error");
+      }
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote,
+      branch: "main",
+    };
+
+    const result = await registry.load("/project", cache, source);
+
+    expect(result).to.have.length(1);
+    expect(cache.getVersion(cacheKey)).to.equal("git:main:oldcommit");
+    expect(execCalls.some((call) => call.startsWith("git reset"))).to.be.false;
+  });
+
+  it("resets to the origin branch after a force-push", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const remote = "https://github.com/org/repo.git";
+    const cacheKey = sanitize(remote);
+    await cache.getFolder(cacheKey, true, false);
+    await fs.writeFile(
+      `/cache/${cacheKey}/package.json`,
+      JSON.stringify({ name: "repo", version: "1.0.0" }),
+    );
+    await fs.writeFile(`/cache/${cacheKey}/.git/HEAD`, "ref: refs/heads/main");
+    cache.setVersion(cacheKey, "git:main:oldcommit");
+
+    const execCalls: string[] = [];
+    let headCommit = "oldcommit";
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      execCalls.push(command);
+      if (command === "git reset --hard origin/main") {
+        headCommit = "forcedcommit";
+        return { stdout: "", stderr: "", code: 0 };
+      }
+      if (command.startsWith("git rev-parse origin/main")) {
+        return { stdout: "forcedcommit", stderr: "", code: 0 };
+      }
+      if (command.startsWith("git rev-parse HEAD")) {
+        return { stdout: headCommit, stderr: "", code: 0 };
+      }
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote,
+      branch: "main",
+    };
+
+    await registry.load("/project", cache, source);
+
+    expect(execCalls).to.include("git reset --hard origin/main");
+    expect(cache.getVersion(cacheKey)).to.equal("git:main:forcedcommit");
+  });
+
+  it("re-clones when the manifest has an entry but the repo folder is missing", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const remote = "https://github.com/org/repo.git";
+    const cacheKey = sanitize(remote);
+    cache.setVersion(cacheKey, "git:main:oldcommit");
+
+    const execCalls: string[] = [];
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      execCalls.push(command);
+      if (command.startsWith("git clone")) {
+        await fs.writeFile(
+          `/cache/${cacheKey}/package.json`,
+          JSON.stringify({ name: "repo", version: "1.0.0" }),
+        );
+        return { stdout: "", stderr: "", code: 0 };
+      }
+      if (command.startsWith("git rev-parse")) {
+        return { stdout: "abcdef", stderr: "", code: 0 };
+      }
+      if (command.startsWith("git symbolic-ref")) {
+        return { stdout: "refs/remotes/origin/main", stderr: "", code: 0 };
+      }
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote,
+    };
+
+    const result = await registry.load("/project", cache, source);
+
+    expect(result).to.have.length(1);
+    expect(execCalls.some((call) => call.startsWith("git clone"))).to.be.true;
+    expect(cache.getVersion(cacheKey)).to.equal("git:main:abcdef");
+  });
+
+  it("keeps the full branch name when the default branch contains slashes", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const remote = "https://github.com/org/repo.git";
+    const cacheKey = sanitize(remote);
+
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      if (command.startsWith("git clone")) {
+        await fs.writeFile(
+          `/cache/${cacheKey}/package.json`,
+          JSON.stringify({ name: "repo", version: "1.0.0" }),
+        );
+        return { stdout: "", stderr: "", code: 0 };
+      }
+      if (command.startsWith("git rev-parse")) {
+        return { stdout: "abcdef", stderr: "", code: 0 };
+      }
+      if (command.startsWith("git symbolic-ref")) {
+        return {
+          stdout: "refs/remotes/origin/release/2.x\n",
+          stderr: "",
+          code: 0,
+        };
+      }
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote,
+    };
+
+    await registry.load("/project", cache, source);
+
+    expect(cache.getVersion(cacheKey)).to.equal("git:release/2.x:abcdef");
+  });
+
+  it("rejects a remote containing shell metacharacters before running git", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const execCalls: string[] = [];
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      execCalls.push(command);
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote: "https://github.com/org/repo.git; touch /tmp/pwned",
+      ignoreCache: true,
+    };
+
+    try {
+      await registry.load("/project", cache, source);
+      expect.fail("Expected unsafe remote to be rejected");
+    } catch (err) {
+      expect(String(err)).to.include("Unsafe characters");
+    }
+    expect(execCalls.some((call) => call.startsWith("git clone"))).to.be.false;
+  });
+
+  it("rejects a branch containing shell metacharacters", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const exec = async (_command: string, _options: { cwd?: string }) => {
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote: "https://github.com/org/repo.git",
+      branch: "main; rm -rf ~",
+      ignoreCache: true,
+    };
+
+    try {
+      await registry.load("/project", cache, source);
+      expect.fail("Expected unsafe branch to be rejected");
+    } catch (err) {
+      expect(String(err)).to.include("Unsafe characters");
+    }
+  });
+
+  it("throws when git clone fails", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const failSpinnerStub = sinon
+      .stub(terminalDisplay, "failSpinner")
+      .resolves();
+
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      if (command.startsWith("git clone")) {
+        return { stdout: "", stderr: "repository not found", code: 1 };
+      }
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote: "https://github.com/org/missing.git",
+      ignoreCache: true,
+    };
+
+    try {
+      await registry.load("/project", cache, source);
+      expect.fail("Expected clone failure");
+    } catch (err) {
+      expect(String(err)).to.include("repository not found");
+    } finally {
+      failSpinnerStub.restore();
+    }
   });
 
   it("uses main branch when cached and no branch is specified", async () => {
@@ -188,6 +449,7 @@ describe("GitDownloader", () => {
       `/cache/${cacheKey}/package.json`,
       JSON.stringify({ name: "repo", version: "1.0.0" }),
     );
+    await fs.writeFile(`/cache/${cacheKey}/.git/HEAD`, "ref: refs/heads/main");
     cache.setVersion(cacheKey, "git:main:oldcommit");
 
     const execCalls: string[] = [];

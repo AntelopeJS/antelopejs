@@ -8,8 +8,10 @@ import * as cliUi from "../../src/core/cli/cli-ui";
 import * as command from "../../src/core/cli/command";
 import type { ExpandedModuleConfig } from "../../src/core/config/config-parser";
 import {
+  bumpVersionSpec,
   checkOutdatedModules,
   fetchLatestVersion,
+  isUpToDate,
   warnOutdatedModules,
 } from "../../src/core/version-checker";
 
@@ -101,6 +103,60 @@ describe("version-checker", () => {
         current: "1.0.0",
         latest: "2.0.0",
       });
+    });
+
+    it("does not flag modules whose range already covers the latest version", async () => {
+      sinon.stub(command, "ExecuteCMD").resolves({
+        code: 0,
+        stdout: "1.2.0\n",
+        stderr: "",
+      });
+
+      const packageSource: ModuleSourcePackage = {
+        type: "package",
+        package: "mod-a",
+        version: "^1.0.0",
+      };
+      const modules: Record<string, ExpandedModuleConfig> = {
+        "mod-a": {
+          source: packageSource,
+          config: {},
+          importOverrides: [],
+          disabledExports: [],
+        },
+      };
+
+      const result = await checkOutdatedModules(modules);
+
+      expect(result).to.deep.equal([]);
+    });
+
+    it("flags modules whose range does not cover the latest version", async () => {
+      sinon.stub(command, "ExecuteCMD").resolves({
+        code: 0,
+        stdout: "2.0.0\n",
+        stderr: "",
+      });
+
+      const packageSource: ModuleSourcePackage = {
+        type: "package",
+        package: "mod-a",
+        version: "^1.0.0",
+      };
+      const modules: Record<string, ExpandedModuleConfig> = {
+        "mod-a": {
+          source: packageSource,
+          config: {},
+          importOverrides: [],
+          disabledExports: [],
+        },
+      };
+
+      const result = await checkOutdatedModules(modules);
+
+      expect(result).to.deep.equal([
+        { name: "mod-a", current: "^1.0.0", latest: "2.0.0" },
+      ]);
     });
 
     it("returns empty array when all modules are up to date", async () => {
@@ -245,6 +301,28 @@ describe("version-checker", () => {
       await pending;
 
       expect(warnStub.called).to.equal(false);
+    });
+  });
+
+  describe("isUpToDate", () => {
+    it("compares exact versions and ranges against the latest version", () => {
+      expect(isUpToDate("1.0.0", "1.0.0")).to.equal(true);
+      expect(isUpToDate("1.0.0", "1.1.0")).to.equal(false);
+      expect(isUpToDate("^1.0.0", "1.5.0")).to.equal(true);
+      expect(isUpToDate("^1.0.0", "2.0.0")).to.equal(false);
+    });
+
+    it("treats dist-tags as always up to date since the loader floats them", () => {
+      expect(isUpToDate("latest", "1.0.0")).to.equal(true);
+      expect(isUpToDate("next", "2.0.0")).to.equal(true);
+    });
+  });
+
+  describe("bumpVersionSpec", () => {
+    it("preserves range prefixes when bumping", () => {
+      expect(bumpVersionSpec("^1.0.0", "2.0.0")).to.equal("^2.0.0");
+      expect(bumpVersionSpec("~1.0.0", "1.2.0")).to.equal("~1.2.0");
+      expect(bumpVersionSpec("1.0.0", "2.0.0")).to.equal("2.0.0");
     });
   });
 

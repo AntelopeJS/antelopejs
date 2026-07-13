@@ -4,6 +4,7 @@ import { Command, Option } from "commander";
 import { ConfigLoader } from "../../../../config";
 import { NodeFileSystem } from "../../../../filesystem";
 import {
+  bumpVersionSpec,
   checkOutdatedModules,
   type OutdatedModule,
 } from "../../../../version-checker";
@@ -27,7 +28,7 @@ function applyUpdates(
       ...antelopeModules[entry.name],
       source: {
         ...(antelopeModules[entry.name].source as ModuleSourcePackage),
-        version: entry.latest,
+        version: bumpVersionSpec(entry.current, entry.latest),
       } as ModuleSourcePackage,
     };
   }
@@ -47,7 +48,7 @@ function displayResults(
     success(chalk.green`${label} ${outdated.length} module(s):`);
     for (const entry of outdated) {
       info(
-        `  ${chalk.green("•")} ${entry.name}: ${chalk.dim(entry.current)} → ${entry.latest}`,
+        `  ${chalk.green("•")} ${entry.name}: ${chalk.dim(entry.current)} → ${bumpVersionSpec(entry.current, entry.latest)}`,
       );
     }
   } else {

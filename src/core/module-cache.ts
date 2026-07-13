@@ -7,7 +7,7 @@ import { NodeFileSystem } from "./filesystem";
 
 export class ModuleCache {
   private manifest: Record<string, string> = {};
-  private saving = false;
+  private pendingSave: Promise<void> = Promise.resolve();
 
   constructor(
     public readonly path: string,
@@ -17,20 +17,23 @@ export class ModuleCache {
   async load(): Promise<void> {
     await this.fs.mkdir(this.path, { recursive: true });
     const manifestPath = path.join(this.path, "manifest.json");
+    this.manifest = {};
     if (await this.fs.exists(manifestPath)) {
-      const data = await this.fs.readFileString(manifestPath);
-      this.manifest = JSON.parse(data) || {};
-    } else {
-      this.manifest = {};
+      try {
+        const data = await this.fs.readFileString(manifestPath);
+        this.manifest = JSON.parse(data) || {};
+      } catch {
+        this.manifest = {};
+      }
     }
   }
 
-  async save(): Promise<void> {
+  save(): Promise<void> {
     const manifestPath = path.join(this.path, "manifest.json");
-    await this.fs.writeFile(
-      manifestPath,
-      JSON.stringify(this.manifest, null, 2),
+    this.pendingSave = this.pendingSave.then(() =>
+      this.fs.writeFile(manifestPath, JSON.stringify(this.manifest, null, 2)),
     );
+    return this.pendingSave;
   }
 
   getVersion(module: string): string | undefined {
@@ -39,7 +42,6 @@ export class ModuleCache {
 
   setVersion(module: string, version: string): void {
     this.manifest[module] = version;
-    this.queueSave();
   }
 
   hasVersion(module: string, version: string): boolean {
@@ -67,17 +69,21 @@ export class ModuleCache {
     return fsNode.mkdtemp(path.join(os.tmpdir(), "ajs-"));
   }
 
-  async transfer(
-    source: string,
-    module: string,
-    version: string,
-  ): Promise<string> {
+  async transfer(source: string, module: string): Promise<string> {
     const dest = await this.getFolder(module, false, false);
     await this.copyDir(source, dest);
     await this.fs.rm(source, { recursive: true, force: true });
+    return dest;
+  }
+
+  async commitVersion(module: string, version: string): Promise<void> {
     this.setVersion(module, version);
     await this.save();
-    return dest;
+  }
+
+  async clearVersion(module: string): Promise<void> {
+    delete this.manifest[module];
+    await this.save();
   }
 
   private async copyDir(source: string, dest: string): Promise<void> {
@@ -93,16 +99,5 @@ export class ModuleCache {
         await this.fs.copyFile(srcPath, destPath);
       }
     }
-  }
-
-  private queueSave(): void {
-    if (this.saving) {
-      return;
-    }
-    this.saving = true;
-    setTimeout(() => {
-      this.saving = false;
-      void this.save();
-    }, 1);
   }
 }
