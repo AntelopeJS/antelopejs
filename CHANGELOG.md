@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.4.5
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.4...v1.4.5)
+
+### 🚀 Enhancements
+
+- **downloaders:** Floating semver ranges, transactional module cache, hardened git updates ([#88](https://github.com/AntelopeJS/antelopejs/pull/88))
+- **cli:** Align modules add/install with floating semver ranges ([#90](https://github.com/AntelopeJS/antelopejs/pull/90))
+
+### 📖 Documentation
+
+- Declare table fields with @Field and @Relation decorators in guide examples ([#89](https://github.com/AntelopeJS/antelopejs/pull/89))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+- Fabrice Cst <fabrice@altab.be>
+
 ## v1.4.4
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.3...v1.4.4)
