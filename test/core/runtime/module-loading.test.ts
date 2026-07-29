@@ -284,7 +284,7 @@ describe("runtime module-loading", () => {
       },
     } as any;
 
-    await registerCoreModuleInterface(manager, loaderContext);
+    registerCoreModuleInterface(manager, async () => loaderContext);
 
     manager.getModuleEntry = sinon.stub().returns(undefined) as any;
     let infoError: unknown;
