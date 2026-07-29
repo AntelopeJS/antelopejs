@@ -439,8 +439,10 @@ export class ModuleManager {
     interfaceSources: Map<string, Module>,
   ): void {
     const dependencies = module.manifest.manifest.dependencies ?? {};
+    const optionalDependencies =
+      module.manifest.manifest.optionalDependencies ?? {};
     for (const [iface, provider] of interfaceSources) {
-      if (iface in dependencies) {
+      if (iface in dependencies || iface in optionalDependencies) {
         associations.set(iface, provider);
         connections.set(iface, [{ module: provider.id }]);
       }

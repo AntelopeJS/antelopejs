@@ -115,6 +115,97 @@ describe("ModuleManager", () => {
     expect(tracked).to.deep.equal(["consumer", "provider"]);
   });
 
+  it("connects a provided optional dependency like a required one", async () => {
+    const fs = new InMemoryFileSystem();
+
+    await fs.writeFile(
+      "/provider/package.json",
+      JSON.stringify({ name: "provider", version: "1.0.0" }),
+    );
+    await fs.writeFile(
+      "/consumer/package.json",
+      JSON.stringify({
+        name: "consumer",
+        version: "1.0.0",
+        optionalDependencies: { "core@beta": "^1.0.0" },
+      }),
+    );
+
+    const providerSource: ModuleSourceLocal = {
+      type: "local",
+      path: "/provider",
+    };
+    const providerManifest = await ModuleManifest.create(
+      "/provider",
+      providerSource,
+      "provider",
+      fs,
+    );
+    providerManifest.implements = ["core@beta"];
+
+    const consumerSource: ModuleSourceLocal = {
+      type: "local",
+      path: "/consumer",
+    };
+    const consumerManifest = await ModuleManifest.create(
+      "/consumer",
+      consumerSource,
+      "consumer",
+      fs,
+    );
+
+    const resolver = new Resolver(new PathMapper(() => false));
+    const manager = new ModuleManager({ resolver });
+
+    manager.addModules([
+      { manifest: providerManifest },
+      { manifest: consumerManifest },
+    ]);
+
+    expect(manager.hasResolvedInterface("consumer", "core@beta")).to.equal(
+      true,
+    );
+    expect(
+      internal.interfaceConnections.consumer["core@beta"][0].path,
+    ).to.equal("core@beta");
+  });
+
+  it("does not connect an optional dependency that has no provider", async () => {
+    const fs = new InMemoryFileSystem();
+
+    await fs.writeFile(
+      "/consumer/package.json",
+      JSON.stringify({
+        name: "consumer",
+        version: "1.0.0",
+        optionalDependencies: { "core@beta": "^1.0.0" },
+      }),
+    );
+
+    const consumerSource: ModuleSourceLocal = {
+      type: "local",
+      path: "/consumer",
+    };
+    const consumerManifest = await ModuleManifest.create(
+      "/consumer",
+      consumerSource,
+      "consumer",
+      fs,
+    );
+
+    const resolver = new Resolver(new PathMapper(() => false));
+    const manager = new ModuleManager({ resolver });
+
+    manager.addModules([{ manifest: consumerManifest }]);
+
+    expect(manager.hasResolvedInterface("consumer", "core@beta")).to.equal(
+      false,
+    );
+    expect(internal.interfaceConnections.consumer?.["core@beta"]).to.equal(
+      undefined,
+    );
+  });
+
   it("returns modules by id and honors import overrides", async () => {
     const fs = new InMemoryFileSystem();
 
