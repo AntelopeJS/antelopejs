@@ -187,3 +187,21 @@ export async function writeProjectBuildArtifact(
 
   await writeBuildArtifact(normalizedConfig.projectFolder, artifact, fs);
 }
+
+const loaderChannel = new Logging.Channel("loader");
+
+/**
+ * Report when a build artifact produced for one environment is being started
+ * under a different runtime environment.
+ */
+export function logEnvironmentMismatch(
+  startEnv: string,
+  buildEnv: string,
+): void {
+  if (startEnv === buildEnv) {
+    return;
+  }
+  loaderChannel.Info(
+    `Starting build created for environment '${buildEnv}' with runtime env '${startEnv}'`,
+  );
+}

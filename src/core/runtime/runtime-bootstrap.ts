@@ -98,6 +98,24 @@ export function normalizeLoadedConfig(
   };
 }
 
+/**
+ * Load and normalize a project's configuration without applying any process
+ * level side effects, so callers stay in control of ordering.
+ */
+export async function loadProjectConfig(
+  projectFolder: string,
+  env: string,
+): Promise<ProjectRuntimeConfig> {
+  const fs = new NodeFileSystem();
+  const loader = new ConfigLoader(fs);
+  const loadedConfig = await loader.load(projectFolder, env);
+
+  return {
+    fs,
+    normalizedConfig: normalizeLoadedConfig(loadedConfig, projectFolder),
+  };
+}
+
 export async function loadProjectRuntimeConfig(
   projectFolder: string,
   env: string,
@@ -106,13 +124,10 @@ export async function loadProjectRuntimeConfig(
 ): Promise<ProjectRuntimeConfig> {
   setupProcessHandlers(shutdownManager);
 
-  const fs = new NodeFileSystem();
-  const loader = new ConfigLoader(fs);
-  const loadedConfig = await loader.load(projectFolder, env);
-  const normalizedConfig = normalizeLoadedConfig(loadedConfig, projectFolder);
+  const config = await loadProjectConfig(projectFolder, env);
 
-  setupAntelopeProjectLogging(loadedConfig.logging);
+  setupAntelopeProjectLogging(config.normalizedConfig.logging);
   applyVerboseChannels(options.verbose);
 
-  return { fs, normalizedConfig };
+  return config;
 }

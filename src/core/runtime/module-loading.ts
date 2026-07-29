@@ -20,7 +20,9 @@ import type { ModuleConfig, ModuleManager } from "../module-manager";
 import { ModuleManifest } from "../module-manifest";
 import { findUnresolvedInterfaces } from "../resolution/interface-resolution";
 import type {
+  LoaderConfig,
   LoaderContext,
+  LoaderContextProvider,
   ModuleManifestEntry,
   ModuleOverrideMap,
   ModuleOverrideRef,
@@ -92,11 +94,10 @@ function toModuleSource(
   return source as ModuleSource;
 }
 
-export async function createLoaderContext(config: {
-  cacheFolder: string;
-  projectFolder: string;
-}): Promise<LoaderContext> {
-  const fs = new NodeFileSystem();
+export async function createLoaderContext(
+  config: LoaderConfig,
+  fs: NodeFileSystem = new NodeFileSystem(),
+): Promise<LoaderContext> {
   const cache = new ModuleCache(config.cacheFolder, fs);
   await cache.load();
 
@@ -116,7 +117,7 @@ export async function createLoaderContext(config: {
 
 export function registerCoreModuleInterface(
   manager: ModuleManager,
-  loaderContext: LoaderContext,
+  loadContext: LoaderContextProvider,
 ): void {
   void coreInterfaceBeta.ImplementInterface(moduleInterfaceBeta, {
     ListModules: async () => manager.listModules(),
@@ -141,6 +142,7 @@ export function registerCoreModuleInterface(
       autostart = false,
     ) => {
       const source = toModuleSource(declaration.source);
+      const loaderContext = await loadContext();
       const manifests = await loaderContext.registry.load(
         loaderContext.projectFolder,
         loaderContext.cache,
@@ -175,7 +177,11 @@ export function registerCoreModuleInterface(
       await manager.getModule(moduleId)?.destroy();
     },
     ReloadModule: async (moduleId: string) => {
-      await reloadLoadedModuleFromSource(manager, loaderContext, moduleId);
+      await reloadLoadedModuleFromSource(
+        manager,
+        await loadContext(),
+        moduleId,
+      );
     },
   });
 }
@@ -378,7 +384,7 @@ export async function loadModuleEntriesForManager(
   const resolvedLoaderContext =
     loaderContext ?? (await createLoaderContext(config));
   if (runtimeInterface) {
-    await registerCoreModuleInterface(manager, resolvedLoaderContext);
+    registerCoreModuleInterface(manager, async () => resolvedLoaderContext);
   }
 
   await registerCoreInterfaces(manager);

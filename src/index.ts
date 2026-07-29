@@ -1,41 +1,38 @@
 import { Writable } from "node:stream";
 import { Logging } from "@antelopejs/interface-core/logging";
 import { DEFAULT_ENV, tryFindConfigPath } from "./core/config/config-paths";
-import { NodeFileSystem } from "./core/filesystem";
+import type { NodeFileSystem } from "./core/filesystem";
 import { ModuleManager } from "./core/module-manager";
 import { ReplSession } from "./core/repl/repl-session";
+import { writeProjectBuildArtifact } from "./core/runtime/build-runtime";
 import {
-  ensureBuildModulesExist,
-  mapArtifactModuleEntries,
-  readBuildArtifactOrThrow,
-  warnIfBuildIsStale,
-  writeProjectBuildArtifact,
-} from "./core/runtime/build-runtime";
-import { registerCoreRuntimeInterface } from "./core/runtime/dev-server-registry";
+  prepareFromArtifact,
+  prepareFromConfig,
+  runLaunchSequence,
+} from "./core/runtime/launch-sequence";
 import {
-  constructAndStartModules,
-  createLoaderContext,
   ensureGraphIsValid,
   getWatchDirs,
   loadModuleEntriesForManager,
-  registerCoreInterfaces,
   reloadWatchedModule,
 } from "./core/runtime/module-loading";
 import {
-  applyVerboseChannels,
   loadProjectRuntimeConfig,
-  setupProcessHandlers,
   withRaisedMaxListeners,
 } from "./core/runtime/runtime-bootstrap";
-import type { BuildOptions, LoaderContext } from "./core/runtime/runtime-types";
-import { ShutdownManager } from "./core/shutdown";
+import type {
+  BuildOptions,
+  LoaderContext,
+  ProjectPreparer,
+  StartedProject,
+} from "./core/runtime/runtime-types";
+import type { ShutdownManager } from "./core/shutdown";
 import {
   checkOutdatedModules,
   warnOutdatedModules,
 } from "./core/version-checker";
 import { FileWatcher } from "./core/watch/file-watcher";
 import { HotReload } from "./core/watch/hot-reload";
-import { setupAntelopeProjectLogging } from "./logging";
 import type { LaunchOptions } from "./types";
 
 export { ConfigLoader } from "./core/config/config-loader";
@@ -56,15 +53,10 @@ const INTERACTIVE_PROMPT = "> ";
 const SHUTDOWN_PRIORITY_MODULES = 30;
 const SHUTDOWN_PRIORITY_RESOURCES = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
+const UNSUPPORTED_ARTIFACT_OPTIONS_WARNING =
+  "Watch and interactive modes are only available when launching from configuration; ignoring them for this build artifact launch.";
 
 Writable.prototype.setMaxListeners(MAX_STREAM_LISTENERS);
-
-interface CoreInitialization {
-  manager: ModuleManager;
-  fs: NodeFileSystem;
-  shutdownManager: ShutdownManager;
-  loaderContext: LoaderContext;
-}
 
 let activeShutdownManager: ShutdownManager | undefined;
 
@@ -139,30 +131,33 @@ async function setupWatching(
 }
 
 async function setupPostLaunchFeatures(
-  manager: ModuleManager,
-  fs: NodeFileSystem,
+  started: StartedProject,
   projectFolder: string,
   env: string,
   options: LaunchOptions,
-  shutdownManager: ShutdownManager,
-  loaderContext: LoaderContext,
 ): Promise<void> {
+  const { manager, shutdownManager } = started;
+
   registerModuleShutdownHandler(shutdownManager, manager);
   registerShutdownCleanup(shutdownManager);
 
-  if (options.watch) {
+  if (!started.dev && (options.watch || options.interactive)) {
+    Logger.Warn(UNSUPPORTED_ARTIFACT_OPTIONS_WARNING);
+  }
+
+  if (started.dev && options.watch) {
     await setupWatching(
       manager,
-      fs,
+      started.fs,
       projectFolder,
       env,
       options,
       shutdownManager,
-      loaderContext,
+      await started.loadContext(),
     );
   }
 
-  if (options.interactive) {
+  if (started.dev && options.interactive) {
     const repl = new ReplSession({ moduleManager: manager });
     repl.start(INTERACTIVE_PROMPT);
 
@@ -174,52 +169,15 @@ async function setupPostLaunchFeatures(
   setActiveShutdownManager(shutdownManager);
 }
 
-async function initializeCore(
+async function startProject(
+  prepare: ProjectPreparer,
   projectFolder: string,
   env: string,
   options: LaunchOptions,
-): Promise<CoreInitialization> {
-  const shutdownManager = new ShutdownManager();
-  const runtimeConfig = await loadProjectRuntimeConfig(
-    projectFolder,
-    env,
-    options,
-    shutdownManager,
-  );
-  const outdated = await checkOutdatedModules(
-    runtimeConfig.normalizedConfig.modules,
-  );
-  warnOutdatedModules(outdated);
-  const loaderContext = await createLoaderContext(
-    runtimeConfig.normalizedConfig,
-  );
-  await registerCoreRuntimeInterface({
-    dev: true,
-    projectPath: projectFolder,
-    env,
-    fs: runtimeConfig.fs,
-    shutdownManager,
-  });
-
-  const manager = await withRaisedMaxListeners(async () => {
-    const moduleManager = new ModuleManager();
-    await loadModuleEntriesForManager(
-      moduleManager,
-      runtimeConfig.normalizedConfig,
-      true,
-      loaderContext,
-    );
-    ensureGraphIsValid(moduleManager);
-    await constructAndStartModules(moduleManager);
-    return moduleManager;
-  });
-
-  return {
-    manager,
-    fs: runtimeConfig.fs,
-    shutdownManager,
-    loaderContext,
-  };
+): Promise<ModuleManager> {
+  const started = await runLaunchSequence(prepare, projectFolder, env, options);
+  await setupPostLaunchFeatures(started, projectFolder, env, options);
+  return started.manager;
 }
 
 let isRestarting = false;
@@ -237,16 +195,7 @@ async function restartProject(
       await activeShutdownManager.shutdown();
     }
 
-    const initialized = await initializeCore(projectFolder, env, options);
-    await setupPostLaunchFeatures(
-      initialized.manager,
-      initialized.fs,
-      projectFolder,
-      env,
-      options,
-      initialized.shutdownManager,
-      initialized.loaderContext,
-    );
+    await startProject(prepareFromConfig, projectFolder, env, options);
   } finally {
     isRestarting = false;
   }
@@ -257,17 +206,7 @@ export async function launch(
   env: string = DEFAULT_ENV,
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {
-  const initialized = await initializeCore(projectFolder, env, options);
-  await setupPostLaunchFeatures(
-    initialized.manager,
-    initialized.fs,
-    projectFolder,
-    env,
-    options,
-    initialized.shutdownManager,
-    initialized.loaderContext,
-  );
-  return initialized.manager;
+  return startProject(prepareFromConfig, projectFolder, env, options);
 }
 
 export async function build(
@@ -302,63 +241,17 @@ export async function build(
   });
 }
 
-function logEnvironmentMismatch(startEnv: string, buildEnv: string): void {
-  if (startEnv === buildEnv) {
-    return;
-  }
-  Logger.Info(
-    `Starting build created for environment '${buildEnv}' with runtime env '${startEnv}'`,
-  );
-}
-
-async function buildManagerFromArtifact(
-  manager: ModuleManager,
-  artifactEntries: ReturnType<typeof mapArtifactModuleEntries>,
-): Promise<void> {
-  await registerCoreInterfaces(manager);
-
-  manager.addModules(artifactEntries);
-  ensureGraphIsValid(manager);
-  await constructAndStartModules(manager);
-}
-
 export async function launchFromBuild(
   projectFolder: string = ".",
   env: string = DEFAULT_ENV,
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {
-  const shutdownManager = new ShutdownManager();
-  setupProcessHandlers(shutdownManager);
-  const fs = new NodeFileSystem();
-  const artifact = await readBuildArtifactOrThrow(projectFolder, fs);
-
-  setupAntelopeProjectLogging(artifact.config.logging);
-  applyVerboseChannels(options.verbose);
-
-  const startEnv = env || DEFAULT_ENV;
-  logEnvironmentMismatch(startEnv, artifact.env);
-
-  await warnIfBuildIsStale(projectFolder, artifact, fs);
-  await ensureBuildModulesExist(artifact, fs);
-  await registerCoreRuntimeInterface({
-    dev: false,
-    projectPath: projectFolder,
-    env: startEnv,
-    fs,
-    shutdownManager,
-  });
-
-  const manager = await withRaisedMaxListeners(async () => {
-    const moduleManager = new ModuleManager();
-    const artifactEntries = mapArtifactModuleEntries(artifact);
-    await buildManagerFromArtifact(moduleManager, artifactEntries);
-    return moduleManager;
-  });
-
-  registerModuleShutdownHandler(shutdownManager, manager);
-  registerShutdownCleanup(shutdownManager);
-  setActiveShutdownManager(shutdownManager);
-  return manager;
+  return startProject(
+    prepareFromArtifact,
+    projectFolder,
+    env || DEFAULT_ENV,
+    options,
+  );
 }
 
 export default launch;

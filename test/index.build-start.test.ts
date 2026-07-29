@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { ListModules } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
 import type { BuildArtifact } from "../src/core/build/build-artifact";
@@ -11,6 +12,23 @@ import { cleanupTempDir, makeTempDir, writeJson } from "./helpers/temp";
 interface ArtifactModuleInput {
   id: string;
   folder: string;
+}
+
+const PENDING = Symbol("pending");
+const PROXY_TIMEOUT_MS = 1000;
+
+function settlesOrPending<T>(
+  call: Promise<T>,
+  ms: number,
+): Promise<T | typeof PENDING> {
+  const timeout = new Promise<typeof PENDING>((resolve) =>
+    setTimeout(() => resolve(PENDING), ms).unref(),
+  );
+  return Promise.race([call, timeout]);
+}
+
+function detachProxy(fn: unknown): void {
+  (fn as { proxy?: { detach(): void } }).proxy?.detach();
 }
 
 function writeTsConfig(
@@ -66,6 +84,7 @@ describe("build and launchFromBuild", () => {
 
   afterEach(() => {
     sinon.restore();
+    detachProxy(ListModules);
     for (const dir of tempDirs.splice(0)) {
       cleanupTempDir(dir);
     }
@@ -137,6 +156,33 @@ describe("build and launchFromBuild", () => {
     expect(warnStub.firstCall.args.join(" ")).to.include(
       "Configuration has changed since last build",
     );
+  });
+
+  it("launchFromBuild implements the core modules interface", async () => {
+    const projectFolder = makeTempDir("antelope-start-modules-interface-");
+    tempDirs.push(projectFolder);
+
+    writeTsConfig(projectFolder, {
+      name: "sample",
+      modules: {},
+    });
+    const artifact = createArtifact(projectFolder, "abc123");
+    writeJson(
+      path.join(projectFolder, ".antelope", "build", "build.json"),
+      artifact,
+    );
+
+    detachProxy(ListModules);
+
+    await launchFromBuild(projectFolder);
+
+    const result = await settlesOrPending(ListModules(), PROXY_TIMEOUT_MS);
+
+    expect(result).to.not.equal(
+      PENDING,
+      "ListModules() never settled: no provider for @antelopejs/interface-core/modules",
+    );
+    expect(result).to.be.an("array");
   });
 
   it("launchFromBuild throws when a module folder is missing", async () => {
