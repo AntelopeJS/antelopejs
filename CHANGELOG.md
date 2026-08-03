@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.6
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.5...v1.4.6)
+
+### 🩹 Fixes
+
+- **runtime:** Provide the core modules interface when launching from a build artifact ([#92](https://github.com/AntelopeJS/antelopejs/pull/92))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+
 ## v1.4.5
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.4...v1.4.5)
