@@ -60,8 +60,8 @@ export class Module {
     await this.lifecycle.construct(config);
   }
 
-  start(): void {
-    this.lifecycle.start();
+  start(): Promise<void> {
+    return this.lifecycle.start();
   }
 
   async stop(): Promise<void> {

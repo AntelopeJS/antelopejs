@@ -28,12 +28,12 @@ export class ModuleLifecycle {
     this._state = ModuleState.Constructed;
   }
 
-  start(): void {
+  async start(): Promise<void> {
     if (this._state !== ModuleState.Constructed) {
       return;
     }
 
-    this.callbacks?.start?.();
+    await this.callbacks?.start?.();
     Events.ModuleStarted.emit(this.moduleId);
     this._state = ModuleState.Active;
   }

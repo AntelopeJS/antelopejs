@@ -281,18 +281,17 @@ export class ModuleManager {
     );
   }
 
-  startAll(): void {
-    for (const { module } of this.loaded.values()) {
-      module.start();
-      this.trackModuleStart(module.id);
-    }
+  async startAll(): Promise<void> {
+    await this.startModules([...this.loaded.values()]);
   }
 
-  startModules(modules: ManagedModule[]): void {
+  async startModules(modules: ManagedModule[]): Promise<void> {
+    const starting: Promise<void>[] = [];
     for (const { module } of modules) {
-      module.start();
+      starting.push(module.start());
       this.trackModuleStart(module.id);
     }
+    await Promise.all(starting);
   }
 
   async stopAll(): Promise<void> {

@@ -403,7 +403,7 @@ describe("ModuleManager", () => {
     expect(attachStub.calledOnce).to.equal(true);
     expect(constructStub.calledWith({ flag: true })).to.equal(true);
 
-    manager.startModules([moduleEntry as any]);
+    await manager.startModules([moduleEntry as any]);
     expect(startStub.calledOnce).to.equal(true);
   });
 
@@ -440,7 +440,7 @@ describe("ModuleManager", () => {
     (manager as any).loaded.set("modB", { module: modB, config: {} });
     (manager as any).loaded.set("modC", { module: modC, config: {} });
 
-    manager.startAll();
+    await manager.startAll();
     calls.length = 0;
 
     await manager.stopAll();
@@ -521,7 +521,7 @@ describe("ModuleManager", () => {
       config: {},
     });
 
-    manager.startAll();
+    await manager.startAll();
 
     await manager.stopAll();
 
