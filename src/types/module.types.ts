@@ -7,6 +7,6 @@ export enum ModuleState {
 export interface ModuleCallbacks {
   construct?(config: unknown): Promise<void> | void;
   destroy?(): Promise<void> | void;
-  start?(): void;
+  start?(): Promise<void> | void;
   stop?(): Promise<void> | void;
 }

@@ -248,6 +248,42 @@ describe("runtime module-loading", () => {
     expect(failingManager.startAll.called).to.equal(false);
   });
 
+  it("resolves only after async start hooks settle", async () => {
+    sinon.stub(terminalDisplay, "startSpinner").resolves();
+    sinon.stub(terminalDisplay, "stopSpinner").resolves();
+
+    let settleStart: () => void = () => undefined;
+    let startSettled = false;
+    const manager = {
+      constructAll: sinon.stub().resolves(),
+      startAll: sinon.stub().callsFake(
+        () =>
+          new Promise<void>((resolve) => {
+            settleStart = () => {
+              startSettled = true;
+              resolve();
+            };
+          }),
+      ),
+    } as any;
+
+    let resolved = false;
+    const pending = constructAndStartModules(manager).then(() => {
+      resolved = true;
+    });
+
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+    expect(manager.startAll.calledOnce).to.equal(true);
+    expect(resolved).to.equal(false);
+
+    settleStart();
+    await pending;
+    expect(startSettled).to.equal(true);
+    expect(resolved).to.equal(true);
+  });
+
   it("handles module interface operations and error branches", async () => {
     const listModulesStub = sinon.stub().returns(["alpha"]);
     const getModuleEntryStub = sinon.stub();
