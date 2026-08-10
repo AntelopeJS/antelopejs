@@ -1,6 +1,6 @@
 export interface ModuleManagerLifecycle {
   constructAll(): Promise<void>;
-  startAll(): void;
+  startAll(): Promise<void> | void;
   destroyAll(): Promise<void>;
 }
 
@@ -29,7 +29,7 @@ export class TestContext {
 
     if (this.moduleManager) {
       await this.moduleManager.constructAll();
-      this.moduleManager.startAll();
+      await this.moduleManager.startAll();
     }
   }
 

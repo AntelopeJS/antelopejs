@@ -163,12 +163,12 @@ export function registerCoreModuleInterface(
       );
       await manager.constructModules(created);
       if (autostart) {
-        manager.startModules(created);
+        await manager.startModules(created);
       }
       return created.map(({ module }) => module.id);
     },
     StartModule: async (moduleId: string) => {
-      manager.getModule(moduleId)?.start();
+      await manager.getModule(moduleId)?.start();
     },
     StopModule: async (moduleId: string) => {
       await manager.getModule(moduleId)?.stop();
@@ -364,7 +364,7 @@ async function reloadLoadedModuleFromSource(
   manager.replaceLoadedModule(moduleId, replacement);
   manager.refreshAssociations();
   await replacement.construct(entry.config.config);
-  replacement.start();
+  await replacement.start();
 }
 
 export async function reloadWatchedModule(
@@ -407,7 +407,7 @@ export async function constructAndStartModules(
   }
 
   await terminalDisplay.stopSpinner(`Done loading`);
-  manager.startAll();
+  await manager.startAll();
 }
 
 export function ensureGraphIsValid(manager: ModuleManager): void {

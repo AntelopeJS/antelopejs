@@ -27,7 +27,7 @@ describe("Module", () => {
     const mod = new Module(manifest, loader);
 
     await mod.construct({ foo: "bar" });
-    mod.start();
+    await mod.start();
     await mod.stop();
     await mod.destroy();
 
@@ -105,7 +105,7 @@ describe("Module", () => {
     const mod = new Module(manifest, loader);
 
     await mod.construct({});
-    mod.start();
+    await mod.start();
 
     try {
       await mod.destroy();
@@ -130,7 +130,7 @@ describe("Module", () => {
     const mod = new Module(manifest, loader);
 
     await mod.construct({});
-    mod.start();
+    await mod.start();
     await mod.stop();
 
     expect(stopResolved).to.equal(true);

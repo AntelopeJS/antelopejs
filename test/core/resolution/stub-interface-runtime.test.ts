@@ -4,8 +4,11 @@ import {
   InterfaceFunction,
   RegisteringProxy,
 } from "@antelopejs/interface-core";
+import { internal } from "@antelopejs/interface-core/internal";
 import { expect } from "chai";
+import { ModuleLifecycle } from "../../../src/core/module-lifecycle";
 import { neutralizeInterfaceAsyncProxies } from "../../../src/core/resolution/stub-interface-runtime";
+import { ModuleState } from "../../../src/types";
 
 describe("neutralizeInterfaceAsyncProxies", () => {
   it("makes AsyncProxy-backed calls reject instead of queuing forever", async () => {
@@ -44,17 +47,53 @@ describe("neutralizeInterfaceAsyncProxies", () => {
     expect(rejected).to.equal(true);
   });
 
-  it("leaves RegisteringProxy untouched", () => {
+  it("makes RegisteringProxy.register() a no-op in test stub mode", () => {
     const reg = new RegisteringProxy<(id: string) => void>();
     const iface = { reg };
     neutralizeInterfaceAsyncProxies(iface, "reg-iface");
 
-    let called = false;
-    reg.onRegister(() => {
-      called = true;
-    }, true);
+    internal.testStubMode = true;
+    try {
+      expect(() => reg.register("id-1")).to.not.throw();
+      expect(() => reg.unregister("id-1")).to.not.throw();
+    } finally {
+      internal.testStubMode = false;
+    }
+  });
+
+  it("replays registrations recorded while neutralized to a later provider", () => {
+    const reg = new RegisteringProxy<(id: string) => void>();
+    neutralizeInterfaceAsyncProxies({ reg }, "reg-iface");
     reg.register("id-1");
-    expect(called).to.equal(true);
+
+    const received: string[] = [];
+    reg.onRegister((id) => received.push(id), true);
+    expect(received).to.deep.equal(["id-1"]);
+  });
+
+  it("boots a module whose async start() registers into a stubbed optional interface", async () => {
+    const reg = new RegisteringProxy<(id: string) => void>();
+    neutralizeInterfaceAsyncProxies({ reg }, "optional-iface");
+
+    const lifecycle = new ModuleLifecycle("mod-async-start");
+    lifecycle.setCallbacks({
+      start: async () => {
+        await new Promise((resolve) => {
+          setImmediate(resolve);
+        });
+        reg.register("trigger-1");
+      },
+    });
+
+    await lifecycle.construct({});
+    await lifecycle.start();
+    internal.testStubMode = true;
+    try {
+      expect(lifecycle.state).to.equal(ModuleState.Active);
+      expect(() => reg.register("trigger-2")).to.not.throw();
+    } finally {
+      internal.testStubMode = false;
+    }
   });
 
   it("leaves EventProxy untouched", () => {
