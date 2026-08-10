@@ -118,6 +118,95 @@ describe("ModuleLifecycle", () => {
     expect(lifecycle.state).to.equal(ModuleState.Active);
   });
 
+  it("should run the start callback once when starts overlap", async () => {
+    const start = sinon.stub().callsFake(
+      () =>
+        new Promise<void>((resolve) => {
+          setImmediate(resolve);
+        }),
+    );
+    const lifecycle = new ModuleLifecycle("mod");
+    lifecycle.setCallbacks({ start });
+
+    await lifecycle.construct({});
+    await Promise.all([lifecycle.start(), lifecycle.start()]);
+
+    expect(start.calledOnce).to.equal(true);
+    expect(lifecycle.state).to.equal(ModuleState.Active);
+  });
+
+  it("should stop a module whose start is still pending", async () => {
+    const calls: string[] = [];
+    const lifecycle = new ModuleLifecycle("mod");
+
+    lifecycle.setCallbacks({
+      start: async () => {
+        await new Promise((resolve) => {
+          setImmediate(resolve);
+        });
+        calls.push("start");
+      },
+      stop: () => {
+        calls.push("stop");
+      },
+    });
+
+    await lifecycle.construct({});
+    const starting = lifecycle.start();
+    await Promise.all([lifecycle.stop(), starting]);
+
+    expect(calls).to.deep.equal(["start", "stop"]);
+    expect(lifecycle.state).to.equal(ModuleState.Constructed);
+  });
+
+  it("should destroy a module whose start is still pending", async () => {
+    const calls: string[] = [];
+    const lifecycle = new ModuleLifecycle("mod");
+
+    lifecycle.setCallbacks({
+      start: async () => {
+        await new Promise((resolve) => {
+          setImmediate(resolve);
+        });
+        calls.push("start");
+      },
+      stop: () => {
+        calls.push("stop");
+      },
+      destroy: () => {
+        calls.push("destroy");
+      },
+    });
+
+    await lifecycle.construct({});
+    const starting = lifecycle.start();
+    await Promise.all([lifecycle.destroy(), starting]);
+
+    expect(calls).to.deep.equal(["start", "stop", "destroy"]);
+    expect(lifecycle.state).to.equal(ModuleState.Loaded);
+  });
+
+  it("should stay startable after a failed start", async () => {
+    const start = sinon
+      .stub()
+      .onFirstCall()
+      .rejects(new Error("boom"))
+      .onSecondCall()
+      .resolves();
+    const lifecycle = new ModuleLifecycle("mod");
+    lifecycle.setCallbacks({ start });
+
+    await lifecycle.construct({});
+    await lifecycle.start().then(
+      () => expect.fail("start should have rejected"),
+      (err: Error) => expect(err.message).to.equal("boom"),
+    );
+    expect(lifecycle.state).to.equal(ModuleState.Constructed);
+
+    await lifecycle.start();
+    expect(lifecycle.state).to.equal(ModuleState.Active);
+  });
+
   it("should await async stop callback", async () => {
     const calls: string[] = [];
     const lifecycle = new ModuleLifecycle("mod");
