@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.7
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.6...v1.4.7)
+
+### 🩹 Fixes
+
+- **core:** Neutralize RegisteringProxy on stubbed optional interfaces and settle async start() before test stub mode ([#94](https://github.com/AntelopeJS/antelopejs/pull/94))
+
+### ❤️ Contributors
+
+- Fabrice Cst <fabrice@altab.be>
+
 ## v1.4.6
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.5...v1.4.6)
