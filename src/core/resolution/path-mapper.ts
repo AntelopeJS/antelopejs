@@ -19,7 +19,7 @@ export class PathMapper {
   resolve(request: string, manifest: ModuleManifest): string | undefined {
     if (manifest.srcAliases) {
       for (const { alias, replace } of manifest.srcAliases) {
-        if (request.startsWith(alias)) {
+        if (request === alias || request.startsWith(`${alias}/`)) {
           return request.length > alias.length
             ? path.join(replace, request.substring(alias.length))
             : replace;
