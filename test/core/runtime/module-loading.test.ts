@@ -2,7 +2,10 @@ import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
 import { terminalDisplay } from "../../../src/core/cli/terminal-display";
-import type { ModuleManager } from "../../../src/core/module-manager";
+import type {
+  ManagedModule,
+  ModuleManager,
+} from "../../../src/core/module-manager";
 import {
   constructAndStartModules,
   ensureGraphIsValid,
@@ -10,6 +13,14 @@ import {
   registerCoreModuleInterface,
   reloadWatchedModule,
 } from "../../../src/core/runtime/module-loading";
+
+async function constructManagedModules(
+  entries: ManagedModule[],
+): Promise<void> {
+  await Promise.all(
+    entries.map(({ module, config }) => module.construct(config.config)),
+  );
+}
 
 describe("runtime module-loading", () => {
   afterEach(() => {
@@ -80,6 +91,7 @@ describe("runtime module-loading", () => {
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
+      constructModules: sinon.stub().callsFake(constructManagedModules),
     } as any;
 
     const manifest = {
@@ -112,6 +124,49 @@ describe("runtime module-loading", () => {
     ).to.equal(true);
     expect(replaceLoadedModuleStub.calledOnce).to.equal(true);
     expect(refreshAssociationsStub.calledOnce).to.equal(true);
+    expect(manager.constructModules.calledOnce).to.equal(true);
+  });
+
+  it("propagates interface compatibility validation during reload", async () => {
+    const entry = {
+      module: {
+        manifest: { source: { type: "local", path: "/mods/alpha" } },
+        destroy: sinon.stub().resolves(),
+      },
+      config: { config: {} },
+    };
+    const compatibilityError = new Error(
+      "Incompatible interface package resolution",
+    );
+    const manager = {
+      getLoadedModuleEntry: sinon.stub().returns(entry),
+      unrequireModuleFiles: sinon.stub(),
+      replaceLoadedModule: sinon.stub(),
+      refreshAssociations: sinon.stub(),
+      constructModules: sinon.stub().rejects(compatibilityError),
+    } as any;
+    const manifest = {
+      name: "alpha",
+      version: "1.0.0",
+      main: __filename,
+      folder: "/mods/alpha",
+      source: { type: "local", path: "/mods/alpha" },
+    } as any;
+    const loaderContext = {
+      cache: {},
+      projectFolder: "/project",
+      registry: { load: sinon.stub().resolves([manifest]) },
+    } as any;
+
+    let thrown: unknown;
+    try {
+      await reloadWatchedModule(manager, "alpha", loaderContext);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.equal(compatibilityError);
+    expect(manager.constructModules.calledOnce).to.equal(true);
   });
 
   it("propagates error when registry.load fails during reload", async () => {
@@ -172,6 +227,7 @@ describe("runtime module-loading", () => {
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
+      constructModules: sinon.stub().callsFake(constructManagedModules),
     } as any;
 
     const manifest = {

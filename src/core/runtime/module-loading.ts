@@ -363,7 +363,9 @@ async function reloadLoadedModuleFromSource(
   ensureReloadedModuleId(replacement, moduleId);
   manager.replaceLoadedModule(moduleId, replacement);
   manager.refreshAssociations();
-  await replacement.construct(entry.config.config);
+  await manager.constructModules([
+    { module: replacement, config: entry.config },
+  ]);
   await replacement.start();
 }
 

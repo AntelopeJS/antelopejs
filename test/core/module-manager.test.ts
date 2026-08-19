@@ -48,6 +48,126 @@ async function createTempModuleWithInterfacePkg(): Promise<{
   return { root, modulePath, interfacePkg, interfacePkgDir };
 }
 
+interface ResolutionFixture {
+  root: string;
+  providerPath: string;
+  consumerPath: string;
+  packageName: string;
+  providerPackageRoot: string;
+  consumerPackageRoot: string;
+}
+
+interface ResolutionFixtureVersions {
+  provider: string;
+  consumer: string;
+  range: string;
+}
+
+async function writeInterfacePackage(
+  packageRoot: string,
+  packageName: string,
+  version: string,
+): Promise<void> {
+  await mkdir(path.join(packageRoot, "dist"), { recursive: true });
+  await writeFile(
+    path.join(packageRoot, "package.json"),
+    JSON.stringify({
+      name: packageName,
+      version,
+      exports: { ".": "./dist/index.js" },
+      antelopeJs: {},
+    }),
+  );
+  await writeFile(
+    path.join(packageRoot, "dist", "index.js"),
+    `module.exports = ${JSON.stringify(version)};`,
+  );
+}
+
+async function createResolutionFixture(
+  versions: ResolutionFixtureVersions,
+): Promise<ResolutionFixture> {
+  const root = await mkdtemp(path.join(tmpdir(), "ajs-interface-resolution-"));
+  const providerPath = path.join(root, "provider");
+  const consumerPath = path.join(root, "consumer");
+  const packageName = "interface-shared";
+  const providerPackageRoot = path.join(
+    providerPath,
+    "node_modules",
+    packageName,
+  );
+  const consumerPackageRoot = path.join(
+    consumerPath,
+    "node_modules",
+    packageName,
+  );
+  await mkdir(providerPath, { recursive: true });
+  await mkdir(consumerPath, { recursive: true });
+  await writeFile(
+    path.join(providerPath, "package.json"),
+    JSON.stringify({ name: "provider", version: "1.0.0" }),
+  );
+  await writeFile(
+    path.join(consumerPath, "package.json"),
+    JSON.stringify({
+      name: "consumer",
+      version: "1.0.0",
+      dependencies: { [packageName]: versions.range },
+    }),
+  );
+  await writeInterfacePackage(
+    providerPackageRoot,
+    packageName,
+    versions.provider,
+  );
+  await writeInterfacePackage(
+    consumerPackageRoot,
+    packageName,
+    versions.consumer,
+  );
+  return {
+    root,
+    providerPath,
+    consumerPath,
+    packageName,
+    providerPackageRoot,
+    consumerPackageRoot,
+  };
+}
+
+async function createResolutionManager(
+  fixture: ResolutionFixture,
+): Promise<ModuleManager> {
+  const providerSource: ModuleSourceLocal = {
+    type: "local",
+    path: fixture.providerPath,
+  };
+  const providerManifest = await ModuleManifest.create(
+    fixture.providerPath,
+    providerSource,
+    "provider",
+  );
+  providerManifest.implements = [fixture.packageName];
+  const consumerSource: ModuleSourceLocal = {
+    type: "local",
+    path: fixture.consumerPath,
+  };
+  const consumerManifest = await ModuleManifest.create(
+    fixture.consumerPath,
+    consumerSource,
+    "consumer",
+  );
+  const manager = new ModuleManager();
+  const modules = manager.addModules([
+    { manifest: providerManifest },
+    { manifest: consumerManifest },
+  ]);
+  modules.forEach(({ module }) => {
+    sinon.stub(module, "construct").resolves();
+  });
+  return manager;
+}
+
 describe("ModuleManager", () => {
   beforeEach(() => {
     internal.moduleByFolder.splice(0, internal.moduleByFolder.length);
@@ -552,6 +672,86 @@ describe("ModuleManager", () => {
       );
     } finally {
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("canonicalizes compatible physical package copies before construction", async () => {
+    const fixture = await createResolutionFixture({
+      provider: "1.4.0",
+      consumer: "1.2.0",
+      range: "^1.0.0",
+    });
+    try {
+      const manager = await createResolutionManager(fixture);
+
+      await manager.constructAll();
+
+      expect(
+        manager.resolver.interfacePackages.get(fixture.packageName),
+      ).to.equal(fixture.providerPackageRoot);
+      expect(
+        manager.resolver.interfacePackageEntries.get(fixture.packageName),
+      ).to.equal(path.join(fixture.providerPackageRoot, "dist", "index.js"));
+      await manager.destroyAll();
+    } finally {
+      await rm(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a canonical v2 package for a consumer requiring v1", async () => {
+    const fixture = await createResolutionFixture({
+      provider: "2.0.0",
+      consumer: "1.8.0",
+      range: "^1.0.0",
+    });
+    try {
+      const manager = await createResolutionManager(fixture);
+      let error: Error | undefined;
+
+      try {
+        await manager.constructAll();
+      } catch (caught) {
+        error = caught as Error;
+      }
+
+      expect(error?.message).to.include(
+        "consumer requires interface-shared@^1.0.0, but the canonical package is 2.0.0",
+      );
+      const consumer = manager.getModule("consumer") as any;
+      expect(consumer.construct.called).to.equal(false);
+    } finally {
+      await rm(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an incompatible interface copy loaded before construction", async () => {
+    const fixture = await createResolutionFixture({
+      provider: "1.4.0",
+      consumer: "1.2.0",
+      range: "^1.0.0",
+    });
+    const consumerRequire = Module.createRequire(
+      path.join(fixture.consumerPath, "index.js"),
+    );
+    const loadedEntry = consumerRequire.resolve(fixture.packageName);
+    try {
+      consumerRequire(fixture.packageName);
+      const manager = await createResolutionManager(fixture);
+      let error: Error | undefined;
+
+      try {
+        await manager.constructAll();
+      } catch (caught) {
+        error = caught as Error;
+      }
+
+      expect(error?.message).to.include("was loaded from");
+      expect(error?.message).to.include(
+        "preloaded interface copies cannot be redirected",
+      );
+    } finally {
+      delete require.cache[loadedEntry];
+      await rm(fixture.root, { recursive: true, force: true });
     }
   });
 

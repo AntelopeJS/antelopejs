@@ -143,7 +143,12 @@ describe("findUnresolvedInterfaces (standalone interfaces)", () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(
       path.join(dir, "package.json"),
-      JSON.stringify({ name, version: "1.0.0", main: "index.js", antelopeJs }),
+      JSON.stringify({
+        name,
+        version: "1.0.0",
+        exports: { ".": "./index.js" },
+        antelopeJs,
+      }),
     );
     writeFileSync(path.join(dir, "index.js"), "module.exports = {};");
   }
