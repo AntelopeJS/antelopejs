@@ -4,13 +4,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@antelopejs/interface-core@0.0.8':
+    hash: 2989799a73aca8b482691f7d599c885d3e16662d87a8b4fdffc887dd4c77956e
+    path: patches/@antelopejs__interface-core@0.0.8.patch
+
 importers:
 
   .:
     dependencies:
       '@antelopejs/interface-core':
-        specifier: ^0.0.8
-        version: 0.0.8
+        specifier: github:AntelopeJS/interface-core#fb88a4065e36206dd346bbe58890ec18c50c344c
+        version: https://codeload.github.com/AntelopeJS/interface-core/tar.gz/fb88a4065e36206dd346bbe58890ec18c50c344c(patch_hash=2989799a73aca8b482691f7d599c885d3e16662d87a8b4fdffc887dd4c77956e)
       '@types/proper-lockfile':
         specifier: ^4.1.4
         version: 4.1.4
@@ -103,10 +108,37 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.19.15)(typescript@5.9.3)
 
+  playground:
+    dependencies:
+      '@antelopejs/core':
+        specifier: link:..
+        version: link:..
+      '@antelopejs/interface-core':
+        specifier: ^0.0.6
+        version: 0.0.6
+
+  playground/modules/module-a:
+    dependencies:
+      interface-greeter:
+        specifier: file:../../packages/interface-greeter
+        version: link:../../packages/interface-greeter
+
+  playground/modules/module-b:
+    dependencies:
+      interface-greeter:
+        specifier: file:../../packages/interface-greeter
+        version: link:../../packages/interface-greeter
+
+  playground/packages/interface-greeter: {}
+
 packages:
 
-  '@antelopejs/interface-core@0.0.8':
-    resolution: {integrity: sha512-9VjKxKXoGRM0Ux/qbZXGiC6Ot5QJVQq4ayjU1J0jcO+8vHeZDolbPGUKTAABQ/o9xoL/RxVTyNMwxyiQW0roZg==}
+  '@antelopejs/interface-core@0.0.6':
+    resolution: {integrity: sha512-OMna86iT/ylL6wJl6FCPw9ieddULXGs4jTmeiDBNEXYQ9acnVXjS/+SaN0UR0h7oY7WTD9VwKXVwG95qjNIA1w==}
+
+  '@antelopejs/interface-core@https://codeload.github.com/AntelopeJS/interface-core/tar.gz/fb88a4065e36206dd346bbe58890ec18c50c344c':
+    resolution: {tarball: https://codeload.github.com/AntelopeJS/interface-core/tar.gz/fb88a4065e36206dd346bbe58890ec18c50c344c}
+    version: 0.0.8
 
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
@@ -521,6 +553,7 @@ packages:
   basic-ftp@5.2.0:
     resolution: {integrity: sha512-VoMINM2rqJwJgfdHq6RiUudKt2BV+FY5ZFezP/ypmwayk68+NzzAQy4XXLlqsGD4MCzq3DrmNFD/uUmBJuGoXw==}
     engines: {node: '>=10.0.0'}
+    deprecated: Security vulnerability fixed in 5.2.1, please upgrade
 
   before-after-hook@4.0.0:
     resolution: {integrity: sha512-q6tR3RPqIB1pMiTRMFcZwuG5T8vwp+vUvEG0vuI6B+Rikh5BfPp2fQ82c925FOs+b0lcFQ8CFrL+KbilfZFhOQ==}
@@ -1762,7 +1795,11 @@ packages:
 
 snapshots:
 
-  '@antelopejs/interface-core@0.0.8':
+  '@antelopejs/interface-core@0.0.6':
+    dependencies:
+      reflect-metadata: 0.2.2
+
+  '@antelopejs/interface-core@https://codeload.github.com/AntelopeJS/interface-core/tar.gz/fb88a4065e36206dd346bbe58890ec18c50c344c(patch_hash=2989799a73aca8b482691f7d599c885d3e16662d87a8b4fdffc887dd4c77956e)':
     dependencies:
       reflect-metadata: 0.2.2
 

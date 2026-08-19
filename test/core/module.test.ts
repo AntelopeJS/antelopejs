@@ -1,3 +1,4 @@
+import { GetModuleContext } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
 import { Module } from "../../src/core/module";
@@ -36,6 +37,32 @@ describe("Module", () => {
     expect(callbacks.start.calledOnce).to.be.true;
     expect(callbacks.stop.calledOnce).to.be.true;
     expect(callbacks.destroy.calledOnce).to.be.true;
+  });
+
+  it("runs loading and every lifecycle callback in module context", async () => {
+    const contexts: string[] = [];
+    const capture = () => {
+      contexts.push(GetModuleContext()?.module ?? "missing");
+    };
+    const mod = new Module(
+      { ...manifest, name: "context-module" },
+      async () => {
+        capture();
+        return {
+          construct: capture,
+          start: capture,
+          stop: capture,
+          destroy: capture,
+        };
+      },
+    );
+
+    await mod.construct({});
+    await mod.start();
+    await mod.stop();
+    await mod.destroy();
+
+    expect(contexts).to.deep.equal(Array(5).fill("context-module"));
   });
 
   it("should not reload callbacks when already constructed", async () => {

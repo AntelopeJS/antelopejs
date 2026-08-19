@@ -5,6 +5,10 @@ import {
   InterfaceRegistry,
 } from "./interface-registry";
 import { Module } from "./module";
+import {
+  buildProviderRoutes,
+  type InterfaceProviderRoute,
+} from "./module-context";
 import type { ModuleManifest } from "./module-manifest";
 import { ModuleRegistry } from "./module-registry";
 import { ModuleTracker } from "./module-tracker";
@@ -45,6 +49,11 @@ export class ModuleManager {
   private readonly moduleTracker: ModuleTracker;
   private readonly resolverDetour: ResolverDetour;
   private readonly resolvedAssociations = new Map<string, Set<string>>();
+  private readonly resolvedConnections = new Map<
+    string,
+    Map<string, InterfaceConnectionRef[]>
+  >();
+  private readonly selectedProviders = new Map<string, Map<string, string>>();
   private readonly staticModules: ManagedModule[] = [];
   private readonly loaded = new Map<string, ManagedModule>();
   private readonly stubbedInterfacePaths = new Map<string, string>();
@@ -348,16 +357,19 @@ export class ModuleManager {
   private rebuildAssociations(): void {
     const interfaceSources = this.collectInterfaceSources();
     this.buildModuleAssociations(interfaceSources);
+    this.configureModuleContexts();
   }
 
-  private collectInterfaceSources(): Map<string, Module> {
+  private collectInterfaceSources(): Map<string, Module[]> {
     this.resolver.moduleByFolder.clear();
     this.resolver.modulesById.clear();
     this.resolver.interfacePackages.clear();
     this.resolvedAssociations.clear();
+    this.resolvedConnections.clear();
+    this.selectedProviders.clear();
     this.moduleTracker.clear();
 
-    const interfaceSources = new Map<string, Module>();
+    const interfaceSources = new Map<string, Module[]>();
     for (const { module, config } of this.loaded.values()) {
       this.resolver.moduleByFolder.set(module.manifest.folder, module);
       this.resolver.modulesById.set(module.id, module);
@@ -369,7 +381,7 @@ export class ModuleManager {
 
       for (const interfacePackage of module.manifest.implements ?? []) {
         if (!config.disabledExports?.has(interfacePackage)) {
-          interfaceSources.set(interfacePackage, module);
+          this.addInterfaceSource(interfaceSources, interfacePackage, module);
         }
       }
     }
@@ -379,7 +391,7 @@ export class ModuleManager {
 
       for (const interfacePackage of module.manifest.implements ?? []) {
         if (!config.disabledExports?.has(interfacePackage)) {
-          interfaceSources.set(interfacePackage, module);
+          this.addInterfaceSource(interfaceSources, interfacePackage, module);
         }
       }
     }
@@ -389,9 +401,13 @@ export class ModuleManager {
   }
 
   private resolveInterfacePackagePaths(
-    interfaceSources: Map<string, Module>,
+    interfaceSources: Map<string, Module[]>,
   ): void {
-    for (const [ifacePkg, module] of interfaceSources) {
+    for (const [ifacePkg, modules] of interfaceSources) {
+      const module = modules[0];
+      if (!module) {
+        continue;
+      }
       // If the module implements its own package, use its folder directly
       if (module.manifest.manifest.name === ifacePkg) {
         this.resolver.interfacePackages.set(ifacePkg, module.manifest.folder);
@@ -411,62 +427,138 @@ export class ModuleManager {
     }
   }
 
-  private buildModuleAssociations(interfaceSources: Map<string, Module>): void {
+  private buildModuleAssociations(
+    interfaceSources: Map<string, Module[]>,
+  ): void {
     for (const { module, config } of this.loaded.values()) {
-      const associations = new Map<string, Module | null>();
       const connections = new Map<string, InterfaceConnectionRef[]>();
+      const selected = new Map<string, string>();
       this.addDefaultAssociations(
         module,
-        associations,
         connections,
+        selected,
         interfaceSources,
       );
       this.applyImportOverrides(
+        module.id,
         config.importOverrides,
-        associations,
         connections,
+        selected,
       );
-      this.resolvedAssociations.set(module.id, new Set(associations.keys()));
-      this.interfaceRegistry.setConnections(module.id, connections);
+      this.resolvedAssociations.set(module.id, new Set(connections.keys()));
+      this.resolvedConnections.set(module.id, connections);
+      this.selectedProviders.set(module.id, selected);
+      this.interfaceRegistry.setConnections(module.id, connections, selected);
     }
   }
 
   private addDefaultAssociations(
     module: Module,
-    associations: Map<string, Module | null>,
     connections: Map<string, InterfaceConnectionRef[]>,
-    interfaceSources: Map<string, Module>,
+    selected: Map<string, string>,
+    interfaceSources: Map<string, Module[]>,
   ): void {
     const dependencies = module.manifest.manifest.dependencies ?? {};
     const optionalDependencies =
       module.manifest.manifest.optionalDependencies ?? {};
-    for (const [iface, provider] of interfaceSources) {
+    for (const [iface, providers] of interfaceSources) {
       if (iface in dependencies || iface in optionalDependencies) {
-        associations.set(iface, provider);
-        connections.set(iface, [{ module: provider.id }]);
+        const providerIds = providers.map(({ id }) => id).sort();
+        const defaultProvider = providerIds[0];
+        if (!defaultProvider) {
+          continue;
+        }
+        connections.set(
+          iface,
+          providerIds.map((provider) => ({ module: provider })),
+        );
+        selected.set(iface, defaultProvider);
       }
     }
   }
 
   private applyImportOverrides(
+    moduleId: string,
     importOverrides: Map<string, InterfaceConnectionRef[]> | undefined,
-    associations: Map<string, Module | null>,
     connections: Map<string, InterfaceConnectionRef[]>,
+    selected: Map<string, string>,
   ): void {
     if (!importOverrides) {
       return;
     }
     for (const [iface, overrides] of importOverrides.entries()) {
-      const usable = overrides.filter((override) =>
-        this.loaded.has(override.module),
+      this.validateImportOverrides(moduleId, iface, overrides);
+      connections.set(iface, overrides);
+      selected.set(iface, overrides[0].module);
+    }
+  }
+
+  private addInterfaceSource(
+    sources: Map<string, Module[]>,
+    interfaceName: string,
+    module: Module,
+  ): void {
+    const providers = sources.get(interfaceName) ?? [];
+    providers.push(module);
+    sources.set(interfaceName, providers);
+  }
+
+  private validateImportOverrides(
+    consumerId: string,
+    interfaceName: string,
+    overrides: InterfaceConnectionRef[],
+  ): void {
+    if (overrides.length === 0) {
+      throw new Error(
+        `Module '${consumerId}' has no providers in its '${interfaceName}' import override.`,
       );
-      connections.set(iface, usable);
-      if (usable.length > 0) {
-        const target = this.loaded.get(usable[0].module)?.module;
-        if (target) {
-          associations.set(iface, target);
-        }
+    }
+    const connectionIds = new Set<string>();
+    for (const override of overrides) {
+      const target = this.getModuleEntry(override.module);
+      const implementsInterface =
+        target?.module.manifest.implements.includes(interfaceName) &&
+        !target.config.disabledExports?.has(interfaceName);
+      if (!implementsInterface) {
+        throw new Error(
+          `Module '${consumerId}' routes '${interfaceName}' to '${override.module}', but that loaded module does not provide the interface.`,
+        );
       }
+      if (override.id && connectionIds.has(override.id)) {
+        throw new Error(
+          `Module '${consumerId}' has duplicate connection ID '${override.id}' for '${interfaceName}'.`,
+        );
+      }
+      if (override.id) {
+        connectionIds.add(override.id);
+      }
+    }
+  }
+
+  private configureModuleContexts(): void {
+    for (const { module, config } of this.getAllManagedModules()) {
+      const selected =
+        this.selectedProviders.get(module.id) ?? new Map<string, string>();
+      const connections =
+        this.resolvedConnections.get(module.id) ??
+        new Map<string, InterfaceConnectionRef[]>();
+      const routes: InterfaceProviderRoute[] = [...selected].map(
+        ([interfaceName, provider]) => ({
+          interfaceName,
+          packageRoot: this.resolver.interfacePackages.get(interfaceName),
+          provider,
+          providerCount: new Set(
+            connections.get(interfaceName)?.map(({ module }) => module),
+          ).size,
+        }),
+      );
+      const isProvider = (module.manifest.implements ?? []).some(
+        (interfaceName) => !config.disabledExports?.has(interfaceName),
+      );
+      module.setProviderRoutes(
+        buildProviderRoutes(module.id, routes),
+        isProvider,
+      );
     }
   }
 

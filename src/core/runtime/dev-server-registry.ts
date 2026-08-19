@@ -1,5 +1,6 @@
 import path from "node:path";
 import * as coreInterfaceBeta from "@antelopejs/interface-core";
+import { RunWithModuleContext } from "@antelopejs/interface-core/modules";
 import type {
   DevServerEndpoint,
   DevServerEntry,
@@ -14,6 +15,7 @@ const TEMP_FILE_SUFFIX = ".tmp";
 const JSON_INDENT = 2;
 const SHUTDOWN_PRIORITY_DEV_REGISTRY = 10;
 const PERMISSION_DENIED_CODE = "EPERM";
+const CORE_MODULE_ID = "antelopejs";
 
 export type PidProbe = (pid: number) => boolean;
 
@@ -161,10 +163,17 @@ export async function registerCoreRuntimeInterface(
   };
   const store = await setupDevRegistryStore(options, projectPath);
 
-  void coreInterfaceBeta.ImplementInterface(runtimeInterfaceBeta, {
-    GetRuntimeInfo: async () => runtimeInfo,
-    RegisterDevServer: async (name: string, endpoints: DevServerEndpoint[]) => {
-      await store?.register(name, endpoints);
-    },
-  });
+  RunWithModuleContext(
+    { module: CORE_MODULE_ID, provider: CORE_MODULE_ID },
+    () =>
+      coreInterfaceBeta.ImplementInterface(runtimeInterfaceBeta, {
+        GetRuntimeInfo: async () => runtimeInfo,
+        RegisterDevServer: async (
+          name: string,
+          endpoints: DevServerEndpoint[],
+        ) => {
+          await store?.register(name, endpoints);
+        },
+      }),
+  );
 }
