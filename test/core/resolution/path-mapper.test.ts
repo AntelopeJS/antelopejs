@@ -29,6 +29,14 @@ describe("PathMapper", () => {
     expect(result).to.equal("/mod/src");
   });
 
+  it("does not resolve aliases that only share a prefix", () => {
+    const mapper = new PathMapper(() => false);
+
+    const result = mapper.resolve("@src-extra/utils", manifest);
+
+    expect(result).to.equal(undefined);
+  });
+
   it("should resolve mapped paths when target exists", () => {
     const existing = new Set<string>(["/mod/src/lib/util.js"]);
     const mapper = new PathMapper((p) => existing.has(p));
