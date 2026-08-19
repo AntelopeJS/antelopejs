@@ -8,6 +8,7 @@ import type {
 } from "../../../src/core/module-manager";
 import {
   constructAndStartModules,
+  destroyModulesAfterFailure,
   ensureGraphIsValid,
   getWatchDirs,
   registerCoreModuleInterface,
@@ -353,6 +354,23 @@ describe("runtime module-loading", () => {
     await pending;
     expect(startSettled).to.equal(true);
     expect(resolved).to.equal(true);
+  });
+
+  it("preserves startup errors when cleanup also fails", async () => {
+    const startupFailure = new Error("start failed");
+    const manager = {
+      destroyAll: sinon.stub().rejects(new Error("destroy failed")),
+    } as any;
+
+    let thrown: unknown;
+    try {
+      await destroyModulesAfterFailure(manager, startupFailure);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.equal(startupFailure);
+    expect(manager.destroyAll.calledOnce).to.equal(true);
   });
 
   it("handles module interface operations and error branches", async () => {

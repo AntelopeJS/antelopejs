@@ -17,6 +17,7 @@ import {
   buildModuleConfigs,
   constructAndStartModules,
   createLoaderContext,
+  destroyModulesAfterFailure,
   ensureGraphIsValid,
   registerCoreInterfaces,
   registerCoreModuleInterface,
@@ -208,8 +209,7 @@ async function startProjectModules(
       await constructAndStartModules(moduleManager);
       return moduleManager;
     } catch (error) {
-      await moduleManager.destroyAll();
-      throw error;
+      return destroyModulesAfterFailure(moduleManager, error);
     }
   });
 }
