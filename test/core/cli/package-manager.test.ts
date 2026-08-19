@@ -170,6 +170,44 @@ describe("Package Manager Utils", () => {
       }
     });
 
+    it("updates copied lockfiles during project initialization", async () => {
+      sinon.stub(require("node:child_process"), "execSync").returns("0.20.0");
+      const fs = new InMemoryFileSystem();
+      const cases = [
+        {
+          command:
+            "corepack pnpm@10.6.5 install --ignore-workspace --prefer-offline",
+          lockfile: "pnpm-lock.yaml",
+          packageManager: "pnpm@10.6.5",
+        },
+        {
+          command: "corepack yarn@1.22.21 install --prefer-offline",
+          lockfile: "yarn.lock",
+          packageManager: "yarn@1.22.21",
+        },
+        {
+          command: "corepack npm@10.2.4 install --prefer-offline",
+          lockfile: "package-lock.json",
+          packageManager: "npm@10.2.4",
+        },
+      ];
+
+      for (const testCase of cases) {
+        await fs.writeFile(
+          "/project/package.json",
+          JSON.stringify({
+            dependencies: { "selected-interface": "latest" },
+            packageManager: testCase.packageManager,
+          }),
+        );
+        await fs.writeFile(`/project/${testCase.lockfile}`, "copied-template");
+        expect(
+          await getInstallCommand("/project", false, fs, "update"),
+        ).to.equal(testCase.command);
+        await fs.rm(`/project/${testCase.lockfile}`);
+      }
+    });
+
     it("ignores malformed versions", async () => {
       const fs = new InMemoryFileSystem();
       await fs.writeFile(

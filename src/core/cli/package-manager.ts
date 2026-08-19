@@ -32,6 +32,7 @@ interface InstallPackagesParams {
 interface InstallDependenciesParams {
   executable: string;
   hasLockfile: boolean;
+  isLockfileFrozen: boolean;
   isProduction: boolean;
 }
 
@@ -39,6 +40,8 @@ interface PackageManager {
   executable: string;
   name: PackageManagerName;
 }
+
+type LockfileMode = "frozen" | "update";
 
 type InstallPackagesCommandBuilder = (params: InstallPackagesParams) => string;
 type InstallDependenciesCommandBuilder = (
@@ -71,17 +74,17 @@ const UNINSTALL_COMMANDS: Record<
   PackageManagerName,
   InstallDependenciesCommandBuilder
 > = {
-  pnpm: ({ executable, hasLockfile, isProduction }) =>
+  pnpm: ({ executable, hasLockfile, isLockfileFrozen, isProduction }) =>
     compactCommand(
-      `${executable} install ${isProduction ? "--prod" : ""} --ignore-workspace${hasLockfile ? " --frozen-lockfile --prefer-offline" : ""}`,
+      `${executable} install ${isProduction ? "--prod" : ""} --ignore-workspace${isLockfileFrozen ? " --frozen-lockfile" : ""}${hasLockfile ? " --prefer-offline" : ""}`,
     ),
-  yarn: ({ executable, hasLockfile, isProduction }) =>
+  yarn: ({ executable, hasLockfile, isLockfileFrozen, isProduction }) =>
     compactCommand(
-      `${executable} install ${isProduction ? "--production" : ""}${hasLockfile ? " --frozen-lockfile --prefer-offline" : ""}`,
+      `${executable} install ${isProduction ? "--production" : ""}${isLockfileFrozen ? " --frozen-lockfile" : ""}${hasLockfile ? " --prefer-offline" : ""}`,
     ),
-  npm: ({ executable, hasLockfile, isProduction }) =>
+  npm: ({ executable, hasLockfile, isLockfileFrozen, isProduction }) =>
     compactCommand(
-      `${executable} ${hasLockfile ? "ci --prefer-offline" : "install"} ${isProduction ? "--omit=dev" : ""}`,
+      `${executable} ${isLockfileFrozen ? "ci --prefer-offline" : `install${hasLockfile ? " --prefer-offline" : ""}`} ${isProduction ? "--omit=dev" : ""}`,
     ),
 };
 
@@ -215,6 +218,7 @@ export async function getInstallCommand(
   directory: string = ".",
   isProduction = true,
   fileSystem: IFileSystem = new NodeFileSystem(),
+  lockfileMode: LockfileMode = "frozen",
 ): Promise<string> {
   const packageManager = resolvePackageManager(
     await getModulePackageManager(directory, fileSystem),
@@ -227,6 +231,7 @@ export async function getInstallCommand(
   return UNINSTALL_COMMANDS[packageManager.name]({
     executable: packageManager.executable,
     hasLockfile,
+    isLockfileFrozen: hasLockfile && lockfileMode === "frozen",
     isProduction,
   });
 }

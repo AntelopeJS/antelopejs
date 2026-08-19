@@ -42,7 +42,9 @@ describe("module init behavior", () => {
       promptStub.onCall(2).resolves({ initGit: false });
 
       sinon.stub(pkgManager, "savePackageManagerToPackageJson").returns();
-      sinon.stub(pkgManager, "getInstallCommand").resolves("npm install");
+      const getInstallCommandStub = sinon
+        .stub(pkgManager, "getInstallCommand")
+        .resolves("npm install");
       const execStub = sinon
         .stub(command, "ExecuteCMD")
         .resolves({ code: 0, stdout: "", stderr: "" });
@@ -58,6 +60,9 @@ describe("module init behavior", () => {
 
       await moduleInitCommand(moduleDir, {}, false);
 
+      expect(
+        getInstallCommandStub.calledWith(moduleDir, false, undefined, "update"),
+      ).to.equal(true);
       expect(execStub.calledWith("npm install", { cwd: moduleDir })).to.equal(
         true,
       );
