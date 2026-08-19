@@ -117,19 +117,24 @@ export async function setupTestEnvironment(
 
   return withRaisedMaxListeners(async () => {
     const manager = new ModuleManager();
-    manager.resolver.stubModulePath = STUB_INTERFACE_PATH;
-    await loadModuleEntriesForManager(manager, normalizedConfig, true);
-    ensureGraphIsValid(manager);
-    await registerCoreRuntimeInterface({
-      dev: false,
-      projectPath: moduleRoot,
-      env: DEFAULT_ENV,
-      fs,
-    });
-    await constructAndStartModules(manager);
-    internal.testStubMode = true;
-    registerTestDir(path.resolve(moduleRoot), manager);
-    return manager;
+    try {
+      manager.resolver.stubModulePath = STUB_INTERFACE_PATH;
+      await loadModuleEntriesForManager(manager, normalizedConfig, true);
+      ensureGraphIsValid(manager);
+      await registerCoreRuntimeInterface({
+        dev: false,
+        projectPath: moduleRoot,
+        env: DEFAULT_ENV,
+        fs,
+      });
+      await constructAndStartModules(manager);
+      internal.testStubMode = true;
+      registerTestDir(path.resolve(moduleRoot), manager);
+      return manager;
+    } catch (error) {
+      await manager.destroyAll();
+      throw error;
+    }
   });
 }
 

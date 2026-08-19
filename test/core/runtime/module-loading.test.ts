@@ -251,7 +251,6 @@ describe("runtime module-loading", () => {
     const startFailingManager = {
       constructAll: sinon.stub().resolves(),
       startAll: sinon.stub().rejects(startupFailure),
-      destroyAll: sinon.stub().resolves(),
     } as any;
 
     thrown = undefined;
@@ -262,7 +261,6 @@ describe("runtime module-loading", () => {
     }
 
     expect(thrown).to.equal(startupFailure);
-    expect(startFailingManager.destroyAll.calledOnce).to.equal(true);
   });
 
   it("resolves only after async start hooks settle", async () => {
