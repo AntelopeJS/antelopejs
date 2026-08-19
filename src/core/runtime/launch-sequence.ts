@@ -17,6 +17,7 @@ import {
   buildModuleConfigs,
   constructAndStartModules,
   createLoaderContext,
+  destroyModulesAfterFailure,
   ensureGraphIsValid,
   registerCoreInterfaces,
   registerCoreModuleInterface,
@@ -24,6 +25,7 @@ import {
 import {
   applyVerboseChannels,
   loadProjectConfig,
+  releaseProcessShutdownManager,
   setupProcessHandlers,
   withRaisedMaxListeners,
 } from "./runtime-bootstrap";
@@ -31,6 +33,7 @@ import type {
   LoaderConfig,
   LoaderContext,
   LoaderContextProvider,
+  PreparedProject,
   ProjectPreparer,
   StartedProject,
 } from "./runtime-types";
@@ -143,6 +146,27 @@ export async function runLaunchSequence(
   const shutdownManager = new ShutdownManager();
   setupProcessHandlers(shutdownManager);
 
+  try {
+    return await completeLaunchSequence(
+      prepare,
+      projectFolder,
+      env,
+      options,
+      shutdownManager,
+    );
+  } catch (error) {
+    releaseProcessShutdownManager(shutdownManager);
+    throw error;
+  }
+}
+
+async function completeLaunchSequence(
+  prepare: ProjectPreparer,
+  projectFolder: string,
+  env: string,
+  options: LaunchOptions,
+  shutdownManager: ShutdownManager,
+): Promise<StartedProject> {
   const project = await prepare(projectFolder, env);
 
   setupAntelopeProjectLogging(project.logging);
@@ -158,18 +182,7 @@ export async function runLaunchSequence(
     shutdownManager,
   });
 
-  const manager = await withRaisedMaxListeners(async () => {
-    const moduleManager = new ModuleManager();
-
-    registerCoreModuleInterface(moduleManager, project.loadContext);
-    await registerCoreInterfaces(moduleManager);
-
-    moduleManager.addModules(await project.createEntries());
-
-    ensureGraphIsValid(moduleManager);
-    await constructAndStartModules(moduleManager);
-    return moduleManager;
-  });
+  const manager = await startProjectModules(project);
 
   return {
     manager,
@@ -178,4 +191,25 @@ export async function runLaunchSequence(
     fs: project.fs,
     shutdownManager,
   };
+}
+
+async function startProjectModules(
+  project: PreparedProject,
+): Promise<ModuleManager> {
+  return withRaisedMaxListeners(async () => {
+    const moduleManager = new ModuleManager();
+
+    try {
+      registerCoreModuleInterface(moduleManager, project.loadContext);
+      await registerCoreInterfaces(moduleManager);
+
+      moduleManager.addModules(await project.createEntries());
+
+      ensureGraphIsValid(moduleManager);
+      await constructAndStartModules(moduleManager);
+      return moduleManager;
+    } catch (error) {
+      return destroyModulesAfterFailure(moduleManager, error);
+    }
+  });
 }

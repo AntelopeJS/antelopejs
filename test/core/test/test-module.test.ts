@@ -2,6 +2,7 @@ import path from "node:path";
 import { expect } from "chai";
 import sinon from "sinon";
 import { ConfigLoader } from "../../../src/core/config/config-loader";
+import { ModuleManager } from "../../../src/core/module-manager";
 import * as testModule from "../../../src/core/test/test-module";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
@@ -475,6 +476,60 @@ describe("test-module", () => {
   });
 
   describe("setupTestEnvironment", () => {
+    it("destroys the manager when startup fails", async () => {
+      const moduleLoading = require("../../../src/core/runtime/module-loading");
+      const startupFailure = new Error("start failed");
+      sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);
+      sinon
+        .stub(moduleLoading, "constructAndStartModules")
+        .rejects(startupFailure);
+      const destroyStub = sinon
+        .stub(ModuleManager.prototype, "destroyAll")
+        .resolves();
+
+      let thrown: unknown;
+      try {
+        await testModule.setupTestEnvironment("/module", {
+          name: "test",
+          cacheFolder: ".antelope/cache",
+          modules: {},
+          envOverrides: {},
+        } as any);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).to.equal(startupFailure);
+      expect(destroyStub.calledOnce).to.equal(true);
+    });
+
+    it("preserves startup errors when test-runtime cleanup fails", async () => {
+      const moduleLoading = require("../../../src/core/runtime/module-loading");
+      const startupFailure = new Error("start failed");
+      sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);
+      sinon
+        .stub(moduleLoading, "constructAndStartModules")
+        .rejects(startupFailure);
+      const destroyStub = sinon
+        .stub(ModuleManager.prototype, "destroyAll")
+        .rejects(new Error("destroy failed"));
+
+      let thrown: unknown;
+      try {
+        await testModule.setupTestEnvironment("/module", {
+          name: "test",
+          cacheFolder: ".antelope/cache",
+          modules: {},
+          envOverrides: {},
+        } as any);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).to.equal(startupFailure);
+      expect(destroyStub.calledOnce).to.equal(true);
+    });
+
     it("enables auto-stub on the module manager resolver", async () => {
       const { internal } = await import("@antelopejs/interface-core/internal");
       const moduleLoading = require("../../../src/core/runtime/module-loading");

@@ -18,6 +18,7 @@ import {
 } from "./core/runtime/module-loading";
 import {
   loadProjectRuntimeConfig,
+  releaseProcessShutdownManager,
   withRaisedMaxListeners,
 } from "./core/runtime/runtime-bootstrap";
 import type {
@@ -58,12 +59,26 @@ const UNSUPPORTED_ARTIFACT_OPTIONS_WARNING =
 
 Writable.prototype.setMaxListeners(MAX_STREAM_LISTENERS);
 
-let activeShutdownManager: ShutdownManager | undefined;
+const activeShutdownManagers: ShutdownManager[] = [];
 
 function setActiveShutdownManager(shutdownManager: ShutdownManager): void {
-  activeShutdownManager?.removeSignalHandlers();
-  activeShutdownManager = shutdownManager;
+  releaseActiveShutdownManager(shutdownManager);
+  activeShutdownManagers.at(-1)?.removeSignalHandlers();
+  activeShutdownManagers.push(shutdownManager);
   shutdownManager.setupSignalHandlers();
+}
+
+function releaseActiveShutdownManager(shutdownManager: ShutdownManager): void {
+  const index = activeShutdownManagers.indexOf(shutdownManager);
+  if (index === -1) {
+    return;
+  }
+  const wasActive = index === activeShutdownManagers.length - 1;
+  activeShutdownManagers.splice(index, 1);
+  shutdownManager.removeSignalHandlers();
+  if (wasActive) {
+    activeShutdownManagers.at(-1)?.setupSignalHandlers();
+  }
 }
 
 function registerModuleShutdownHandler(
@@ -78,10 +93,8 @@ function registerModuleShutdownHandler(
 
 function registerShutdownCleanup(shutdownManager: ShutdownManager): void {
   shutdownManager.register(async () => {
-    shutdownManager.removeSignalHandlers();
-    if (activeShutdownManager === shutdownManager) {
-      activeShutdownManager = undefined;
-    }
+    releaseActiveShutdownManager(shutdownManager);
+    releaseProcessShutdownManager(shutdownManager);
   }, SHUTDOWN_PRIORITY_CLEANUP);
 }
 
@@ -105,6 +118,11 @@ async function setupWatching(
     loadedSignatures.set(moduleId, signature);
   });
 
+  shutdownManager.register(async () => {
+    hotReload.clear();
+    watcher.stopWatching();
+  }, SHUTDOWN_PRIORITY_RESOURCES);
+
   for (const { module } of manager.getLoadedModules()) {
     if (module.manifest?.source?.type === "local") {
       const watchDirs = getWatchDirs(module.manifest.source);
@@ -123,11 +141,6 @@ async function setupWatching(
 
   watcher.onModuleChanged((id) => hotReload.queue(id));
   watcher.startWatching();
-
-  shutdownManager.register(async () => {
-    hotReload.clear();
-    watcher.stopWatching();
-  }, SHUTDOWN_PRIORITY_RESOURCES);
 }
 
 async function setupPostLaunchFeatures(
@@ -159,11 +172,10 @@ async function setupPostLaunchFeatures(
 
   if (started.dev && options.interactive) {
     const repl = new ReplSession({ moduleManager: manager });
-    repl.start(INTERACTIVE_PROMPT);
-
     shutdownManager.register(async () => {
       repl.close();
     }, SHUTDOWN_PRIORITY_RESOURCES);
+    repl.start(INTERACTIVE_PROMPT);
   }
 
   setActiveShutdownManager(shutdownManager);
@@ -176,8 +188,13 @@ async function startProject(
   options: LaunchOptions,
 ): Promise<ModuleManager> {
   const started = await runLaunchSequence(prepare, projectFolder, env, options);
-  await setupPostLaunchFeatures(started, projectFolder, env, options);
-  return started.manager;
+  try {
+    await setupPostLaunchFeatures(started, projectFolder, env, options);
+    return started.manager;
+  } catch (error) {
+    await started.shutdownManager.shutdown();
+    throw error;
+  }
 }
 
 let isRestarting = false;
@@ -191,6 +208,7 @@ async function restartProject(
   isRestarting = true;
 
   try {
+    const activeShutdownManager = activeShutdownManagers.at(-1);
     if (activeShutdownManager) {
       await activeShutdownManager.shutdown();
     }
@@ -226,18 +244,22 @@ export async function build(
 
   await withRaisedMaxListeners(async () => {
     const manager = new ModuleManager();
-    const entries = await loadModuleEntriesForManager(
-      manager,
-      runtimeConfig.normalizedConfig,
-      false,
-    );
-    ensureGraphIsValid(manager);
-    await writeProjectBuildArtifact(
-      runtimeConfig.normalizedConfig,
-      env,
-      entries,
-      runtimeConfig.fs,
-    );
+    try {
+      const entries = await loadModuleEntriesForManager(
+        manager,
+        runtimeConfig.normalizedConfig,
+        false,
+      );
+      ensureGraphIsValid(manager);
+      await writeProjectBuildArtifact(
+        runtimeConfig.normalizedConfig,
+        env,
+        entries,
+        runtimeConfig.fs,
+      );
+    } finally {
+      await manager.destroyAll();
+    }
   });
 }
 

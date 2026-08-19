@@ -273,10 +273,10 @@ export class ModuleManager {
   }
 
   async constructAll(): Promise<void> {
-    this.validateInterfacePackages();
-    this.resolverDetour.attach();
-    this.applyInterfaceStubs();
+    const leaseAcquired = this.resolverDetour.attach();
     try {
+      this.validateInterfacePackages();
+      this.applyInterfaceStubs();
       await Promise.all(
         [...this.loaded.values()].map(({ module, config }) =>
           module.construct(config.config).catch((err) => {
@@ -289,26 +289,35 @@ export class ModuleManager {
         ),
       );
     } catch (err) {
-      this.resolverDetour.detach();
+      if (leaseAcquired) {
+        this.releaseRuntimeState();
+      }
       throw err;
     }
   }
 
   async constructModules(modules: ManagedModule[]): Promise<void> {
-    this.validateInterfacePackages();
-    this.resolverDetour.attach();
-    this.applyInterfaceStubs();
-    await Promise.all(
-      modules.map(({ module, config }) =>
-        module.construct(config.config).catch((err) => {
-          Logger.Error(`Failed to construct module:`);
-          Logger.Error(`  - ID: ${module.id}`);
-          Logger.Error(`  - Version: ${module.version}`);
-          Logger.Error("  - Error:", err);
-          throw err;
-        }),
-      ),
-    );
+    const leaseAcquired = this.resolverDetour.attach();
+    try {
+      this.validateInterfacePackages();
+      this.applyInterfaceStubs();
+      await Promise.all(
+        modules.map(({ module, config }) =>
+          module.construct(config.config).catch((err) => {
+            Logger.Error(`Failed to construct module:`);
+            Logger.Error(`  - ID: ${module.id}`);
+            Logger.Error(`  - Version: ${module.version}`);
+            Logger.Error("  - Error:", err);
+            throw err;
+          }),
+        ),
+      );
+    } catch (err) {
+      if (leaseAcquired) {
+        this.releaseRuntimeState();
+      }
+      throw err;
+    }
   }
 
   async startAll(): Promise<void> {
@@ -364,10 +373,16 @@ export class ModuleManager {
       }
     } finally {
       this.startupOrder = [];
-      this.stubbedInterfacePackages.clear();
-      clearStubInterfaceWarnings();
-      this.resolverDetour.detach();
+      this.releaseRuntimeState();
     }
+  }
+
+  private releaseRuntimeState(): void {
+    this.stubbedInterfacePackages.clear();
+    clearStubInterfaceWarnings();
+    this.moduleTracker.clear();
+    this.interfaceRegistry.clear();
+    this.resolverDetour.detach();
   }
 
   private trackModuleStart(moduleId: string): void {
@@ -389,6 +404,7 @@ export class ModuleManager {
     this.interfacePackagePlans.clear();
     this.resolvedAssociations.clear();
     this.moduleTracker.clear();
+    this.interfaceRegistry.clear();
 
     const interfaceSources = new Map<string, Module>();
     for (const { module, config } of this.loaded.values()) {

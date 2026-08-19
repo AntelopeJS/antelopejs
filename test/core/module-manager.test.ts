@@ -832,4 +832,79 @@ describe("ModuleManager", () => {
       }
     }
   });
+
+  it("releases the resolver lease when partial construction fails", async () => {
+    const originalResolver = (Module as any)._resolveFilename;
+    const manager = new ModuleManager();
+    const moduleEntry = {
+      module: {
+        id: "failing",
+        version: "1.0.0",
+        construct: sinon.stub().rejects(new Error("construct failed")),
+      },
+      config: {},
+    };
+
+    let constructionError: unknown;
+    try {
+      await manager.constructModules([moduleEntry as any]);
+    } catch (error) {
+      constructionError = error;
+    }
+
+    expect(constructionError).to.be.instanceOf(Error);
+    expect((Module as any)._resolveFilename).to.equal(originalResolver);
+  });
+
+  it("keeps manager-owned global state isolated during rebuild and destroy", async () => {
+    const first = new ModuleManager();
+    const second = new ModuleManager();
+    const firstManifest = {
+      name: "duplicate",
+      version: "1.0.0",
+      main: "/first/index.js",
+      folder: "/first",
+      manifest: { name: "duplicate", version: "1.0.0" },
+      source: { type: "local", path: "/first" },
+    } as any;
+    const secondManifest = {
+      ...firstManifest,
+      main: "/second/index.js",
+      folder: "/second",
+      source: { type: "local", path: "/second" },
+    } as any;
+
+    first.addModules([{ manifest: firstManifest }]);
+    second.addModules([{ manifest: secondManifest }]);
+    first.refreshAssociations();
+
+    expect(
+      internal.moduleByFolder.map((entry) => entry.dir).sort(),
+    ).to.deep.equal(["/first", "/second"]);
+
+    await first.destroyAll();
+    expect(internal.moduleByFolder.map((entry) => entry.dir)).to.deep.equal([
+      "/second",
+    ]);
+    expect(internal.interfaceConnections.duplicate).to.not.equal(undefined);
+
+    await second.destroyAll();
+    expect(internal.moduleByFolder).to.have.length(0);
+    expect(internal.interfaceConnections.duplicate).to.equal(undefined);
+  });
+
+  it("does not leak leases or global state across repeated destruction", async () => {
+    const originalResolver = (Module as any)._resolveFilename;
+    const manager = new ModuleManager();
+
+    await manager.constructAll();
+    await manager.destroyAll();
+    await manager.destroyAll();
+    await manager.constructAll();
+    await manager.destroyAll();
+
+    expect((Module as any)._resolveFilename).to.equal(originalResolver);
+    expect(internal.moduleByFolder).to.have.length(0);
+    expect(internal.interfaceConnections).to.deep.equal({});
+  });
 });

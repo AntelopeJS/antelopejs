@@ -412,6 +412,21 @@ export async function constructAndStartModules(
   await manager.startAll();
 }
 
+export async function destroyModulesAfterFailure(
+  manager: ModuleManager,
+  error: unknown,
+): Promise<never> {
+  try {
+    await manager.destroyAll();
+  } catch (cleanupError) {
+    Logger.Error(
+      "Failed to clean up modules after startup failure:",
+      cleanupError,
+    );
+  }
+  throw error;
+}
+
 export function ensureGraphIsValid(manager: ModuleManager): void {
   const allModules = manager.getAllManagedModules();
   const loadedModules = [...manager.getLoadedModules()];
