@@ -56,6 +56,14 @@ export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
   });
 }
 
+export function releaseProcessShutdownManager(
+  shutdownManager: ShutdownManager,
+): void {
+  if (activeShutdownManager === shutdownManager) {
+    activeShutdownManager = undefined;
+  }
+}
+
 export async function withRaisedMaxListeners<T>(
   task: () => Promise<T>,
 ): Promise<T> {

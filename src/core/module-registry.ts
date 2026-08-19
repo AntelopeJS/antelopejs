@@ -14,4 +14,8 @@ export class ModuleRegistry {
   list(): string[] {
     return [...this.modules.keys()];
   }
+
+  clear(): void {
+    this.modules.clear();
+  }
 }

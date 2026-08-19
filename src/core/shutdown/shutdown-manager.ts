@@ -128,14 +128,22 @@ export class ShutdownManager {
   }
 
   private runHandlersWithTimeout(): Promise<void> {
+    let timeout: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<void>((resolve) => {
-      setTimeout(() => {
+      timeout = setTimeout(() => {
         Logger.Error("Shutdown timed out, forcing completion");
         resolve();
       }, this.timeoutMs);
     });
 
-    return Promise.race([this.executeHandlers(), timeoutPromise]);
+    return Promise.race([this.executeHandlers(), timeoutPromise]).finally(
+      () => {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+        this.handlers = [];
+      },
+    );
   }
 
   private async executeHandlers(): Promise<void> {

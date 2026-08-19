@@ -523,9 +523,169 @@ describe("ModuleManager", () => {
 
     await manager.startAll();
 
-    await manager.stopAll();
+    let thrown: unknown;
+    try {
+      await manager.stopAll();
+    } catch (error) {
+      thrown = error;
+    }
 
     expect(calls).to.deep.equal(["stop:modC", "stop:modA"]);
+    expect(thrown).to.be.instanceOf(AggregateError);
+    expect((thrown as AggregateError).errors).to.have.length(1);
+  });
+
+  it("waits for sibling constructs and aggregates rollback errors", async () => {
+    const calls: string[] = [];
+    const manager = new ModuleManager();
+    const detour = (manager as any).resolverDetour;
+    const detach = sinon.stub(detour, "detach");
+    sinon.stub(detour, "attach");
+    sinon.stub(manager as any, "applyInterfaceStubs");
+
+    let settleA: () => void = () => undefined;
+    const moduleA = {
+      id: "a",
+      version: "1.0.0",
+      construct: () =>
+        new Promise<void>((resolve) => {
+          settleA = () => {
+            calls.push("construct:a");
+            resolve();
+          };
+        }),
+      destroy: async () => {
+        calls.push("destroy:a");
+      },
+    };
+    const moduleB = {
+      id: "b",
+      version: "1.0.0",
+      construct: async () => {
+        throw new Error("construct:b");
+      },
+      destroy: sinon.stub().resolves(),
+    };
+    const moduleC = {
+      id: "c",
+      version: "1.0.0",
+      construct: async () => {
+        calls.push("construct:c");
+      },
+      destroy: async () => {
+        calls.push("destroy:c");
+        throw new Error("destroy:c");
+      },
+    };
+
+    (manager as any).loaded.set("a", { module: moduleA, config: {} });
+    (manager as any).loaded.set("b", { module: moduleB, config: {} });
+    (manager as any).loaded.set("c", { module: moduleC, config: {} });
+
+    const pending = manager.constructAll();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(detach.called).to.equal(false);
+    settleA();
+
+    let thrown: unknown;
+    try {
+      await pending;
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(calls).to.deep.equal([
+      "construct:c",
+      "construct:a",
+      "destroy:c",
+      "destroy:a",
+    ]);
+    expect(detach.calledOnce).to.equal(true);
+    expect(thrown).to.be.instanceOf(AggregateError);
+    expect((thrown as AggregateError).errors).to.have.length(2);
+  });
+
+  it("destroys every module and clears state after multiple failures", async () => {
+    const calls: string[] = [];
+    const manager = new ModuleManager();
+    const makeModule = (id: string, shouldFail: boolean) => ({
+      id,
+      destroy: async () => {
+        calls.push(id);
+        if (shouldFail) {
+          throw new Error(`destroy:${id}`);
+        }
+      },
+    });
+
+    (manager as any).loaded.set("a", {
+      module: makeModule("a", true),
+      config: {},
+    });
+    (manager as any).loaded.set("b", {
+      module: makeModule("b", true),
+      config: {},
+    });
+    (manager as any).loaded.set("c", {
+      module: makeModule("c", false),
+      config: {},
+    });
+
+    let thrown: unknown;
+    try {
+      await manager.destroyAll();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(calls).to.deep.equal(["c", "b", "a"]);
+    expect(thrown).to.be.instanceOf(AggregateError);
+    expect((thrown as AggregateError).errors).to.have.length(2);
+    expect(manager.listModules()).to.deep.equal([]);
+    expect([...manager.getLoadedModules()]).to.deep.equal([]);
+    expect(manager.resolver.modulesById.size).to.equal(0);
+  });
+
+  it("cleans every live module after a start failure", async () => {
+    const calls: string[] = [];
+    const manager = new ModuleManager();
+    const makeModule = (id: string, shouldFail: boolean) => ({
+      id,
+      start: async () => {
+        calls.push(`start:${id}`);
+        if (shouldFail) {
+          throw new Error(`start:${id}`);
+        }
+      },
+      destroy: async () => {
+        calls.push(`destroy:${id}`);
+      },
+    });
+
+    for (const id of ["a", "b", "c"]) {
+      (manager as any).loaded.set(id, {
+        module: makeModule(id, id === "b"),
+        config: {},
+      });
+    }
+
+    let thrown: unknown;
+    try {
+      await manager.startAll();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(calls).to.deep.equal([
+      "start:a",
+      "start:b",
+      "start:c",
+      "destroy:c",
+      "destroy:b",
+      "destroy:a",
+    ]);
+    expect(thrown).to.be.instanceOf(AggregateError);
+    expect(manager.listModules()).to.deep.equal([]);
   });
 
   it("populates interfacePackages for resolvable npm interface packages", async () => {

@@ -4,7 +4,7 @@ import { type ModuleCallbacks, ModuleState } from "../types";
 export class ModuleLifecycle {
   private callbacks?: ModuleCallbacks;
   private _state: ModuleState = ModuleState.Loaded;
-  private starting?: Promise<void>;
+  private transition: Promise<void> = Promise.resolve();
 
   constructor(private moduleId: string) {}
 
@@ -16,57 +16,42 @@ export class ModuleLifecycle {
     this.callbacks = callbacks;
   }
 
-  async construct(config: unknown): Promise<void> {
+  construct(config: unknown): Promise<void> {
+    return this.enqueue(() => this.runConstruct(config));
+  }
+
+  private async runConstruct(config: unknown): Promise<void> {
     if (this._state !== ModuleState.Loaded) {
       return;
     }
 
+    this._state = ModuleState.Constructed;
     if (this.callbacks?.construct) {
       await this.callbacks.construct(config);
     }
 
     Events.ModuleConstructed.emit(this.moduleId);
-    this._state = ModuleState.Constructed;
   }
 
-  async start(): Promise<void> {
-    if (this.starting) {
-      return this.starting;
-    }
+  start(): Promise<void> {
+    return this.enqueue(() => this.runStart());
+  }
 
+  private async runStart(): Promise<void> {
     if (this._state !== ModuleState.Constructed) {
       return;
     }
 
-    this.starting = this.runStart();
-    return this.starting;
+    await this.callbacks?.start?.();
+    Events.ModuleStarted.emit(this.moduleId);
+    this._state = ModuleState.Active;
   }
 
-  private async runStart(): Promise<void> {
-    try {
-      await this.callbacks?.start?.();
-      Events.ModuleStarted.emit(this.moduleId);
-      this._state = ModuleState.Active;
-    } finally {
-      this.starting = undefined;
-    }
+  stop(): Promise<void> {
+    return this.enqueue(() => this.runStop());
   }
 
-  /**
-   * An async start hook leaves the state on `Constructed` until it settles, so
-   * guards below must wait for it instead of reading a state that is still in
-   * transition - otherwise a stop racing a pending start silently no-ops and
-   * the module ends up active anyway.
-   */
-  private async settleStart(): Promise<void> {
-    if (this.starting) {
-      await this.starting.catch(() => undefined);
-    }
-  }
-
-  async stop(): Promise<void> {
-    await this.settleStart();
-
+  private async runStop(): Promise<void> {
     if (this._state !== ModuleState.Active) {
       return;
     }
@@ -78,15 +63,17 @@ export class ModuleLifecycle {
     this._state = ModuleState.Constructed;
   }
 
-  async destroy(): Promise<void> {
-    await this.settleStart();
+  destroy(): Promise<void> {
+    return this.enqueue(() => this.runDestroy());
+  }
 
+  private async runDestroy(): Promise<void> {
     if (this._state === ModuleState.Loaded) {
       return;
     }
 
     if (this._state === ModuleState.Active) {
-      await this.stop();
+      await this.runStop();
     }
 
     if (this.callbacks?.destroy) {
@@ -95,5 +82,11 @@ export class ModuleLifecycle {
 
     Events.ModuleDestroyed.emit(this.moduleId);
     this._state = ModuleState.Loaded;
+  }
+
+  private enqueue(operation: () => Promise<void>): Promise<void> {
+    const result = this.transition.then(operation, operation);
+    this.transition = result.catch(() => undefined);
+    return result;
   }
 }

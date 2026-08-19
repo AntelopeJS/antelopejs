@@ -29,4 +29,10 @@ export class InterfaceRegistry {
     }
     internal.interfaceConnections[moduleId] = connectionIDs;
   }
+
+  clear(moduleIds: string[]): void {
+    for (const moduleId of moduleIds) {
+      delete internal.interfaceConnections[moduleId];
+    }
+  }
 }

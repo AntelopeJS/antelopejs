@@ -18,6 +18,7 @@ import {
 } from "./core/runtime/module-loading";
 import {
   loadProjectRuntimeConfig,
+  releaseProcessShutdownManager,
   withRaisedMaxListeners,
 } from "./core/runtime/runtime-bootstrap";
 import type {
@@ -70,15 +71,33 @@ function registerModuleShutdownHandler(
   shutdownManager: ShutdownManager,
   manager: ModuleManager,
 ): void {
-  shutdownManager.register(async () => {
+  shutdownManager.register(
+    () => shutdownModules(manager),
+    SHUTDOWN_PRIORITY_MODULES,
+  );
+}
+
+async function shutdownModules(manager: ModuleManager): Promise<void> {
+  const errors: unknown[] = [];
+  try {
     await manager.stopAll();
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
     await manager.destroyAll();
-  }, SHUTDOWN_PRIORITY_MODULES);
+  } catch (error) {
+    errors.push(error);
+  }
+  if (errors.length > 0) {
+    throw new AggregateError(errors, "Shutdown failed");
+  }
 }
 
 function registerShutdownCleanup(shutdownManager: ShutdownManager): void {
   shutdownManager.register(async () => {
     shutdownManager.removeSignalHandlers();
+    releaseProcessShutdownManager(shutdownManager);
     if (activeShutdownManager === shutdownManager) {
       activeShutdownManager = undefined;
     }
@@ -176,8 +195,14 @@ async function startProject(
   options: LaunchOptions,
 ): Promise<ModuleManager> {
   const started = await runLaunchSequence(prepare, projectFolder, env, options);
-  await setupPostLaunchFeatures(started, projectFolder, env, options);
-  return started.manager;
+  try {
+    await setupPostLaunchFeatures(started, projectFolder, env, options);
+    return started.manager;
+  } catch (error) {
+    await started.shutdownManager.shutdown();
+    releaseProcessShutdownManager(started.shutdownManager);
+    throw error;
+  }
 }
 
 let isRestarting = false;

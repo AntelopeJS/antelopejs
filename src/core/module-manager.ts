@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { ModuleState } from "../types";
 import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
@@ -37,6 +38,8 @@ interface ModuleManagerDeps {
   interfaceRegistry?: InterfaceRegistry;
   moduleTracker?: ModuleTracker;
 }
+
+type ModuleOperation = (module: Module) => Promise<void>;
 
 export class ModuleManager {
   public readonly registry: ModuleRegistry;
@@ -245,24 +248,33 @@ export class ModuleManager {
   }
 
   async constructAll(): Promise<void> {
+    const modules = [...this.loaded.values()];
     this.resolverDetour.attach();
     this.applyInterfaceStubs();
-    try {
-      await Promise.all(
-        [...this.loaded.values()].map(({ module, config }) =>
-          module.construct(config.config).catch((err) => {
-            Logger.Error(`Failed to construct module:`);
-            Logger.Error(`  - ID: ${module.id}`);
-            Logger.Error(`  - Version: ${module.version}`);
-            Logger.Error("  - Error:", err);
-            throw err;
-          }),
-        ),
-      );
-    } catch (err) {
-      this.resolverDetour.detach();
-      throw err;
+    const results = await Promise.allSettled(
+      modules.map(({ module, config }) =>
+        this.constructModule(module, config.config),
+      ),
+    );
+    const errors = collectRejectedErrors(results);
+    if (errors.length === 0) {
+      return;
     }
+
+    const constructed = modules.filter(
+      ({ module }, index) =>
+        results[index].status === "fulfilled" ||
+        module.state !== ModuleState.Loaded,
+    );
+    const cleanupErrors = await runModuleOperations(
+      constructed.reverse(),
+      (module) => module.destroy(),
+    );
+    this.resolverDetour.detach();
+    throw new AggregateError(
+      [...errors, ...cleanupErrors],
+      "Failed to construct modules",
+    );
   }
 
   async constructModules(modules: ManagedModule[]): Promise<void> {
@@ -270,74 +282,109 @@ export class ModuleManager {
     this.applyInterfaceStubs();
     await Promise.all(
       modules.map(({ module, config }) =>
-        module.construct(config.config).catch((err) => {
-          Logger.Error(`Failed to construct module:`);
-          Logger.Error(`  - ID: ${module.id}`);
-          Logger.Error(`  - Version: ${module.version}`);
-          Logger.Error("  - Error:", err);
-          throw err;
-        }),
+        this.constructModule(module, config.config),
       ),
     );
   }
 
   async startAll(): Promise<void> {
-    await this.startModules([...this.loaded.values()]);
+    try {
+      await this.startModules([...this.loaded.values()]);
+    } catch (error) {
+      let cleanupErrors: unknown[] = [];
+      try {
+        await this.destroyAll();
+      } catch (cleanupError) {
+        cleanupErrors = unpackErrors(cleanupError);
+      }
+      throw new AggregateError(
+        [...unpackErrors(error), ...cleanupErrors],
+        "Failed to start modules",
+      );
+    }
   }
 
   async startModules(modules: ManagedModule[]): Promise<void> {
-    const starting: Promise<void>[] = [];
-    for (const { module } of modules) {
-      starting.push(module.start());
+    modules.forEach(({ module }) => {
       this.trackModuleStart(module.id);
+    });
+    const results = await Promise.allSettled(
+      modules.map(({ module }) => module.start()),
+    );
+    const errors = collectRejectedErrors(results);
+    if (errors.length > 0) {
+      throw new AggregateError(errors, "Failed to start modules");
     }
-    await Promise.all(starting);
   }
 
   async stopAll(): Promise<void> {
-    const reverseOrder = [...this.startupOrder].reverse();
-    const idsToStop =
-      reverseOrder.length > 0
-        ? reverseOrder
-        : [...this.loaded.keys()].reverse();
-
-    for (const id of idsToStop) {
-      const entry = this.loaded.get(id);
-      if (!entry) {
-        continue;
-      }
-
-      try {
-        await entry.module.stop();
-      } catch (error) {
-        Logger.Error(`Failed to stop module ${id}:`, error);
-      }
-    }
-
+    const modules = this.getReverseLifecycleModules();
+    const errors = await runModuleOperations(modules, (module) =>
+      module.stop(),
+    );
     this.startupOrder = [];
+    if (errors.length > 0) {
+      throw new AggregateError(errors, "Failed to stop modules");
+    }
   }
 
   async destroyAll(): Promise<void> {
-    const reverseOrder = [...this.startupOrder].reverse();
-    const idsToDestroy =
-      reverseOrder.length > 0
-        ? reverseOrder
-        : [...this.loaded.keys()].reverse();
-
-    try {
-      for (const id of idsToDestroy) {
-        const entry = this.loaded.get(id);
-        if (!entry) {
-          continue;
-        }
-        await entry.module.destroy();
-      }
-    } finally {
-      this.startupOrder = [];
-      this.stubbedInterfacePaths.clear();
-      clearStubInterfaceWarnings();
-      this.resolverDetour.detach();
+    const modules = this.getReverseLifecycleModules();
+    const errors = await runModuleOperations(modules, (module) =>
+      module.destroy(),
+    );
+    this.clearManagedState();
+    if (errors.length > 0) {
+      throw new AggregateError(errors, "Failed to destroy modules");
     }
+  }
+
+  private async constructModule(
+    module: Module,
+    config: unknown,
+  ): Promise<void> {
+    try {
+      await module.construct(config);
+    } catch (error) {
+      Logger.Error(`Failed to construct module:`);
+      Logger.Error(`  - ID: ${module.id}`);
+      Logger.Error(`  - Version: ${module.version}`);
+      Logger.Error("  - Error:", error);
+      throw error;
+    }
+  }
+
+  private getReverseLifecycleModules(): ManagedModule[] {
+    const orderedIds = [...this.startupOrder].reverse();
+    const seen = new Set(orderedIds);
+    for (const id of [...this.loaded.keys()].reverse()) {
+      if (!seen.has(id)) {
+        orderedIds.push(id);
+      }
+    }
+    return orderedIds.flatMap((id) => {
+      const entry = this.loaded.get(id);
+      return entry ? [entry] : [];
+    });
+  }
+
+  private clearManagedState(): void {
+    const moduleIds = this.getAllManagedModules().map(
+      ({ module }) => module.id,
+    );
+    this.interfaceRegistry.clear(moduleIds);
+    this.loaded.clear();
+    this.staticModules.length = 0;
+    this.registry.clear();
+    this.resolvedAssociations.clear();
+    this.resolver.moduleByFolder.clear();
+    this.resolver.modulesById.clear();
+    this.resolver.interfacePackages.clear();
+    this.moduleTracker.clear();
+    this.startupOrder = [];
+    this.stubbedInterfacePaths.clear();
+    clearStubInterfaceWarnings();
+    this.resolverDetour.detach();
   }
 
   private trackModuleStart(moduleId: string): void {
@@ -478,6 +525,33 @@ export class ModuleManager {
     }
     return normalizedFile.startsWith(normalizedDir + path.sep);
   }
+}
+
+function collectRejectedErrors(
+  results: PromiseSettledResult<unknown>[],
+): unknown[] {
+  return results.flatMap((result) =>
+    result.status === "rejected" ? [result.reason] : [],
+  );
+}
+
+function unpackErrors(error: unknown): unknown[] {
+  return error instanceof AggregateError ? error.errors : [error];
+}
+
+async function runModuleOperations(
+  modules: ManagedModule[],
+  operation: ModuleOperation,
+): Promise<unknown[]> {
+  const errors: unknown[] = [];
+  for (const { module } of modules) {
+    try {
+      await operation(module);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  return errors;
 }
 
 function extractPackageRoot(

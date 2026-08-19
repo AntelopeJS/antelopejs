@@ -6,6 +6,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
 import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
+import { ModuleState } from "../../types";
 import { terminalDisplay } from "../cli/terminal-display";
 import type { ExpandedModuleConfig } from "../config/config-parser";
 import { registerGitDownloader } from "../downloaders/git";
@@ -16,7 +17,11 @@ import { DownloaderRegistry } from "../downloaders/registry";
 import { NodeFileSystem } from "../filesystem";
 import { Module } from "../module";
 import { ModuleCache } from "../module-cache";
-import type { ModuleConfig, ModuleManager } from "../module-manager";
+import type {
+  ManagedModule,
+  ModuleConfig,
+  ModuleManager,
+} from "../module-manager";
 import { ModuleManifest } from "../module-manifest";
 import { findUnresolvedInterfaces } from "../resolution/interface-resolution";
 import type {
@@ -351,20 +356,85 @@ async function reloadLoadedModuleFromSource(
     return;
   }
 
-  await entry.module.destroy();
-  manager.unrequireModuleFiles(moduleId);
+  const previous = entry.module;
   const manifest = await loadModuleManifestFromSource(
     loaderContext,
-    entry.module.manifest.source,
+    previous.manifest.source,
     moduleId,
     true,
   );
   const replacement = new Module(manifest);
   ensureReloadedModuleId(replacement, moduleId);
-  manager.replaceLoadedModule(moduleId, replacement);
-  manager.refreshAssociations();
-  await replacement.construct(entry.config.config);
-  await replacement.start();
+  const previousWasActive = previous.state === ModuleState.Active;
+  try {
+    await previous.destroy();
+  } catch (error) {
+    const recoveryErrors = await recoverPreviousModule(
+      previous,
+      previousWasActive,
+    );
+    throw new AggregateError(
+      [error, ...recoveryErrors],
+      `Failed to destroy module ${moduleId} during reload`,
+    );
+  }
+  manager.unrequireModuleFiles(moduleId);
+  await activateReplacement(manager, entry, replacement);
+}
+
+async function recoverPreviousModule(
+  previous: Module,
+  previousWasActive: boolean,
+): Promise<unknown[]> {
+  if (!previousWasActive || previous.state !== ModuleState.Constructed) {
+    return [];
+  }
+  try {
+    await previous.start();
+    return [];
+  } catch (error) {
+    return [error];
+  }
+}
+
+async function activateReplacement(
+  manager: ModuleManager,
+  entry: ManagedModule,
+  replacement: Module,
+): Promise<void> {
+  let replacementInstalled = false;
+  try {
+    replacementInstalled = Boolean(
+      manager.replaceLoadedModule(replacement.id, replacement),
+    );
+    if (!replacementInstalled) {
+      throw new Error(`Failed to replace module ${replacement.id}`);
+    }
+    manager.refreshAssociations();
+    await replacement.construct(entry.config.config);
+    await replacement.start();
+  } catch (error) {
+    const cleanupErrors = replacementInstalled
+      ? await cleanupReplacement(replacement)
+      : [];
+    throw new AggregateError(
+      [...unpackReloadErrors(error), ...cleanupErrors],
+      `Failed to activate replacement module ${replacement.id}`,
+    );
+  }
+}
+
+async function cleanupReplacement(replacement: Module): Promise<unknown[]> {
+  try {
+    await replacement.destroy();
+    return [];
+  } catch (error) {
+    return [error];
+  }
+}
+
+function unpackReloadErrors(error: unknown): unknown[] {
+  return error instanceof AggregateError ? error.errors : [error];
 }
 
 export async function reloadWatchedModule(
