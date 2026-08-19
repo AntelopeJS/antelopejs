@@ -118,6 +118,11 @@ async function setupWatching(
     loadedSignatures.set(moduleId, signature);
   });
 
+  shutdownManager.register(async () => {
+    hotReload.clear();
+    watcher.stopWatching();
+  }, SHUTDOWN_PRIORITY_RESOURCES);
+
   for (const { module } of manager.getLoadedModules()) {
     if (module.manifest?.source?.type === "local") {
       const watchDirs = getWatchDirs(module.manifest.source);
@@ -136,11 +141,6 @@ async function setupWatching(
 
   watcher.onModuleChanged((id) => hotReload.queue(id));
   watcher.startWatching();
-
-  shutdownManager.register(async () => {
-    hotReload.clear();
-    watcher.stopWatching();
-  }, SHUTDOWN_PRIORITY_RESOURCES);
 }
 
 async function setupPostLaunchFeatures(
@@ -172,11 +172,10 @@ async function setupPostLaunchFeatures(
 
   if (started.dev && options.interactive) {
     const repl = new ReplSession({ moduleManager: manager });
-    repl.start(INTERACTIVE_PROMPT);
-
     shutdownManager.register(async () => {
       repl.close();
     }, SHUTDOWN_PRIORITY_RESOURCES);
+    repl.start(INTERACTIVE_PROMPT);
   }
 
   setActiveShutdownManager(shutdownManager);
@@ -189,8 +188,13 @@ async function startProject(
   options: LaunchOptions,
 ): Promise<ModuleManager> {
   const started = await runLaunchSequence(prepare, projectFolder, env, options);
-  await setupPostLaunchFeatures(started, projectFolder, env, options);
-  return started.manager;
+  try {
+    await setupPostLaunchFeatures(started, projectFolder, env, options);
+    return started.manager;
+  } catch (error) {
+    await started.shutdownManager.shutdown();
+    throw error;
+  }
 }
 
 let isRestarting = false;
