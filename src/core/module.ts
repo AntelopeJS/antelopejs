@@ -1,5 +1,6 @@
 import { Logging } from "@antelopejs/interface-core/logging";
 import {
+  Events,
   type ModuleExecutionContext,
   RunWithModuleContext,
 } from "@antelopejs/interface-core/modules";
@@ -80,6 +81,7 @@ export class Module {
         Logger.Debug(`Successfully loaded module ${this.id}`);
       } catch (err) {
         Logger.Error(`Failed to load module ${this.id}`, err);
+        Events.ModuleDestroyed.emit(this.id);
         throw err;
       }
       this.lifecycle.setCallbacks(this.callbacks);

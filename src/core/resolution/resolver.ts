@@ -1,5 +1,5 @@
-import path from "node:path";
 import type { ModuleManifest } from "../module-manifest";
+import { isPathWithin, resolvePackage } from "./package-resolution";
 import type { PathMapper } from "./path-mapper";
 
 export interface ModuleRef {
@@ -13,14 +13,16 @@ export interface ResolveResult {
 }
 
 const CORE_PKG = "@antelopejs/interface-core";
-const CORE_RESOLVE_FROM = path.dirname(
-  require.resolve(`${CORE_PKG}/package.json`),
-);
+const CORE_PACKAGE = resolvePackage(CORE_PKG, __dirname);
+const CORE_RESOLVE_FROM = CORE_PACKAGE?.root ?? __dirname;
+const CORE_ENTRY = CORE_PACKAGE?.entry ?? CORE_PKG;
 
 export class Resolver {
   public readonly moduleByFolder = new Map<string, ModuleRef>();
   public readonly modulesById = new Map<string, ModuleRef>();
   public readonly interfacePackages = new Map<string, string>();
+  public readonly interfacePackageEntries = new Map<string, string>();
+  public readonly interfacePackageResolveFrom = new Map<string, string>();
   public stubModulePath?: string;
 
   constructor(private pathMapper: PathMapper) {}
@@ -52,7 +54,7 @@ export class Resolver {
 
   private resolveInterfaceCore(request: string): ResolveResult | undefined {
     if (request === CORE_PKG) {
-      return { resolvedPath: CORE_RESOLVE_FROM };
+      return { resolvedPath: CORE_ENTRY };
     }
     if (request.startsWith(`${CORE_PKG}/`)) {
       return { resolvedPath: request, resolveFrom: CORE_RESOLVE_FROM };
@@ -63,10 +65,15 @@ export class Resolver {
   private resolveInterfacePackage(request: string): ResolveResult | undefined {
     for (const [pkg, rootDir] of this.interfacePackages) {
       if (request === pkg) {
-        return { resolvedPath: rootDir };
+        return {
+          resolvedPath: this.interfacePackageEntries.get(pkg) ?? rootDir,
+        };
       }
       if (request.startsWith(`${pkg}/`)) {
-        return { resolvedPath: request, resolveFrom: rootDir };
+        return {
+          resolvedPath: request,
+          resolveFrom: this.interfacePackageResolveFrom.get(pkg) ?? rootDir,
+        };
       }
     }
     return undefined;
@@ -80,7 +87,7 @@ export class Resolver {
     let matchingModule: ModuleRef | undefined;
     for (const [folder, module] of this.moduleByFolder) {
       if (
-        fileName.startsWith(folder) &&
+        isPathWithin(fileName, folder) &&
         folder.length > matchingFolder.length
       ) {
         matchingFolder = folder;

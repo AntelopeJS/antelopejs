@@ -6,7 +6,7 @@ import {
 
 export interface InterfaceProviderRoute {
   interfaceName: string;
-  packageRoot?: string;
+  packageEntry?: string;
   provider: string;
   providerCount: number;
 }
@@ -45,7 +45,7 @@ function collectProxyIdentities(value: unknown): string[] {
 }
 
 function loadInterfaceDeclaration(route: InterfaceProviderRoute): unknown {
-  if (!route.packageRoot) {
+  if (!route.packageEntry) {
     if (route.providerCount > 1) {
       throw new Error(
         `Cannot route '${route.interfaceName}' between ${route.providerCount} providers because its package could not be resolved. Configure one provider or install a resolvable interface package.`,
@@ -55,11 +55,11 @@ function loadInterfaceDeclaration(route: InterfaceProviderRoute): unknown {
   }
 
   try {
-    const declaration = require(route.packageRoot);
+    const declaration = require(route.packageEntry);
     return BindInterfaceProxyIdentities(declaration, route.interfaceName);
   } catch (error) {
     throw new Error(
-      `Failed to prepare provider routing for '${route.interfaceName}' from '${route.packageRoot}'.`,
+      `Failed to prepare provider routing for '${route.interfaceName}' from '${route.packageEntry}'.`,
       { cause: error },
     );
   }

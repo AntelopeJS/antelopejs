@@ -179,4 +179,76 @@ describe("launch", () => {
     expect(scanStub.called).to.equal(false);
     expect(startWatchingStub.calledOnce).to.equal(true);
   });
+
+  it("cleans up once when post-launch watch setup fails", async () => {
+    const setupFailure = new Error("scan failed");
+    sinon.stub(ConfigLoader.prototype, "load").resolves({
+      cacheFolder: "/abs/cache",
+      projectFolder: "/project",
+      modules: {
+        modA: { source: { type: "local", path: "/mods/modA" } },
+      },
+    } as any);
+    sinon.stub(ModuleCache.prototype, "load").resolves();
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([
+      {
+        name: "modA",
+        version: "1.0.0",
+        main: __filename,
+        folder: "/mods/modA",
+        manifest: { name: "modA", version: "1.0.0" },
+        source: { type: "local", path: "/mods/modA" },
+      } as any,
+    ]);
+    sinon.stub(ModuleManager.prototype, "constructAll").resolves();
+    sinon.stub(ModuleManager.prototype, "startAll").resolves();
+    const stopStub = sinon.stub(ModuleManager.prototype, "stopAll").resolves();
+    const destroyStub = sinon
+      .stub(ModuleManager.prototype, "destroyAll")
+      .resolves();
+    sinon.stub(FileWatcher.prototype, "scanModule").rejects(setupFailure);
+    const stopWatchingStub = sinon.stub(FileWatcher.prototype, "stopWatching");
+
+    let thrown: unknown;
+    try {
+      await launch("/project", "default", { watch: true });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.equal(setupFailure);
+    expect(stopStub.calledOnce).to.equal(true);
+    expect(destroyStub.calledOnce).to.equal(true);
+    expect(stopWatchingStub.calledOnce).to.equal(true);
+  });
+
+  it("closes the REPL and cleans up once when interactive setup fails", async () => {
+    const setupFailure = new Error("repl failed");
+    sinon.stub(ConfigLoader.prototype, "load").resolves({
+      cacheFolder: "/abs/cache",
+      projectFolder: "/project",
+      modules: {},
+    } as any);
+    sinon.stub(ModuleCache.prototype, "load").resolves();
+    sinon.stub(ModuleManager.prototype, "constructAll").resolves();
+    sinon.stub(ModuleManager.prototype, "startAll").resolves();
+    const stopStub = sinon.stub(ModuleManager.prototype, "stopAll").resolves();
+    const destroyStub = sinon
+      .stub(ModuleManager.prototype, "destroyAll")
+      .resolves();
+    sinon.stub(ReplSession.prototype, "start").throws(setupFailure);
+    const closeStub = sinon.stub(ReplSession.prototype, "close");
+
+    let thrown: unknown;
+    try {
+      await launch("/project", "default", { interactive: true });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.equal(setupFailure);
+    expect(stopStub.calledOnce).to.equal(true);
+    expect(destroyStub.calledOnce).to.equal(true);
+    expect(closeStub.calledOnce).to.equal(true);
+  });
 });

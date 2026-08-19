@@ -433,13 +433,13 @@ describe("provider-aware runtime", () => {
       buildProviderRoutes("consumer", [
         {
           interfaceName: "first-interface",
-          packageRoot,
+          packageEntry: packageRoot,
           provider: "provider-a",
           providerCount: 2,
         },
         {
           interfaceName: "second-interface",
-          packageRoot,
+          packageEntry: packageRoot,
           provider: "provider-b",
           providerCount: 2,
         },

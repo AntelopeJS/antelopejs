@@ -128,6 +128,36 @@ describe("runtime runtime-bootstrap", () => {
     }
   });
 
+  it("restores the previous process shutdown manager on release", () => {
+    const originalListeners = snapshotProcessListeners();
+    const bootstrap = loadBootstrapModule();
+    const first = new ShutdownManager();
+    const second = new ShutdownManager();
+    const firstShutdown = sinon.stub(first, "shutdown").resolves();
+    const secondShutdown = sinon.stub(second, "shutdown").resolves();
+    const exitStub = sinon.stub(process, "exit");
+
+    try {
+      bootstrap.setupProcessHandlers(first);
+      bootstrap.setupProcessHandlers(second);
+      bootstrap.releaseProcessShutdownManager(second);
+
+      const current = snapshotProcessListeners();
+      const uncaught = current.uncaughtException[
+        current.uncaughtException.length - 1
+      ] as (error: Error) => void;
+      uncaught(new Error("boom"));
+
+      expect(firstShutdown.calledOnceWith(1)).to.equal(true);
+      expect(secondShutdown.called).to.equal(false);
+      expect(exitStub.called).to.equal(false);
+      bootstrap.releaseProcessShutdownManager(first);
+    } finally {
+      restoreProcessListeners(originalListeners);
+      exitStub.restore();
+    }
+  });
+
   it("allows late wiring of shutdown manager after handlers are registered", () => {
     const originalListeners = snapshotProcessListeners();
     const bootstrap = loadBootstrapModule();

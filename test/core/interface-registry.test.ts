@@ -40,5 +40,38 @@ describe("InterfaceRegistry", () => {
         selected: false,
       },
     ]);
+    registry.clear();
+  });
+
+  it("restores duplicate module IDs when the newer owner clears first", () => {
+    const first = new InterfaceRegistry();
+    const second = new InterfaceRegistry();
+    const firstConnections = new Map([["first", [{ module: "provider" }]]]);
+    const secondConnections = new Map([["second", [{ module: "provider" }]]]);
+
+    first.setConnections("duplicate", firstConnections);
+    second.setConnections("duplicate", secondConnections);
+    second.clear();
+
+    expect(internal.interfaceConnections.duplicate).to.have.key("first");
+
+    first.clear();
+    expect(internal.interfaceConnections.duplicate).to.equal(undefined);
+  });
+
+  it("preserves duplicate module IDs when the older owner clears first", () => {
+    const first = new InterfaceRegistry();
+    const second = new InterfaceRegistry();
+    const firstConnections = new Map([["first", [{ module: "provider" }]]]);
+    const secondConnections = new Map([["second", [{ module: "provider" }]]]);
+
+    first.setConnections("duplicate", firstConnections);
+    second.setConnections("duplicate", secondConnections);
+    first.clear();
+
+    expect(internal.interfaceConnections.duplicate).to.have.key("second");
+
+    second.clear();
+    expect(internal.interfaceConnections.duplicate).to.equal(undefined);
   });
 });
