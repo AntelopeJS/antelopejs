@@ -17,7 +17,6 @@ import {
   buildModuleConfigs,
   constructAndStartModules,
   createLoaderContext,
-  destroyModulesAfterFailure,
   ensureGraphIsValid,
   registerCoreInterfaces,
   registerCoreModuleInterface,
@@ -144,6 +143,7 @@ export async function runLaunchSequence(
   options: LaunchOptions,
 ): Promise<StartedProject> {
   const shutdownManager = new ShutdownManager();
+  const manager = new ModuleManager();
   setupProcessHandlers(shutdownManager);
 
   try {
@@ -153,10 +153,18 @@ export async function runLaunchSequence(
       env,
       options,
       shutdownManager,
+      manager,
     );
   } catch (error) {
+    const cleanupErrors = await cleanupFailedLaunch(manager, shutdownManager);
     releaseProcessShutdownManager(shutdownManager);
-    throw error;
+    if (cleanupErrors.length === 0) {
+      throw error;
+    }
+    throw new AggregateError(
+      [...unpackErrors(error), ...cleanupErrors],
+      "Failed to launch project",
+    );
   }
 }
 
@@ -166,6 +174,7 @@ async function completeLaunchSequence(
   env: string,
   options: LaunchOptions,
   shutdownManager: ShutdownManager,
+  manager: ModuleManager,
 ): Promise<StartedProject> {
   const project = await prepare(projectFolder, env);
 
@@ -182,7 +191,7 @@ async function completeLaunchSequence(
     shutdownManager,
   });
 
-  const manager = await startProjectModules(project);
+  await startProjectModules(manager, project);
 
   return {
     manager,
@@ -194,22 +203,38 @@ async function completeLaunchSequence(
 }
 
 async function startProjectModules(
+  moduleManager: ModuleManager,
   project: PreparedProject,
-): Promise<ModuleManager> {
-  return withRaisedMaxListeners(async () => {
-    const moduleManager = new ModuleManager();
+): Promise<void> {
+  await withRaisedMaxListeners(async () => {
+    registerCoreModuleInterface(moduleManager, project.loadContext);
+    await registerCoreInterfaces(moduleManager);
 
-    try {
-      registerCoreModuleInterface(moduleManager, project.loadContext);
-      await registerCoreInterfaces(moduleManager);
+    moduleManager.addModules(await project.createEntries());
 
-      moduleManager.addModules(await project.createEntries());
-
-      ensureGraphIsValid(moduleManager);
-      await constructAndStartModules(moduleManager);
-      return moduleManager;
-    } catch (error) {
-      return destroyModulesAfterFailure(moduleManager, error);
-    }
+    ensureGraphIsValid(moduleManager);
+    await constructAndStartModules(moduleManager);
   });
+}
+
+async function cleanupFailedLaunch(
+  manager: ModuleManager,
+  shutdownManager: ShutdownManager,
+): Promise<unknown[]> {
+  const errors: unknown[] = [];
+  try {
+    await manager.destroyAll();
+  } catch (error) {
+    errors.push(...unpackErrors(error));
+  }
+  try {
+    await shutdownManager.shutdown();
+  } catch (error) {
+    errors.push(...unpackErrors(error));
+  }
+  return errors;
+}
+
+function unpackErrors(error: unknown): unknown[] {
+  return error instanceof AggregateError ? error.errors : [error];
 }

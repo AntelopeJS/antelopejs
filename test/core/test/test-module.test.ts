@@ -503,7 +503,7 @@ describe("test-module", () => {
       expect(destroyStub.calledOnce).to.equal(true);
     });
 
-    it("preserves startup errors when test-runtime cleanup fails", async () => {
+    it("aggregates startup and test-runtime cleanup errors", async () => {
       const moduleLoading = require("../../../src/core/runtime/module-loading");
       const startupFailure = new Error("start failed");
       sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);
@@ -526,7 +526,12 @@ describe("test-module", () => {
         thrown = error;
       }
 
-      expect(thrown).to.equal(startupFailure);
+      expect(thrown).to.be.instanceOf(AggregateError);
+      expect((thrown as AggregateError).errors[0]).to.equal(startupFailure);
+      expect((thrown as AggregateError).errors[1]).to.have.property(
+        "message",
+        "destroy failed",
+      );
       expect(destroyStub.calledOnce).to.equal(true);
     });
 

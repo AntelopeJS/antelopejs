@@ -85,10 +85,27 @@ function registerModuleShutdownHandler(
   shutdownManager: ShutdownManager,
   manager: ModuleManager,
 ): void {
-  shutdownManager.register(async () => {
+  shutdownManager.register(
+    () => shutdownModules(manager),
+    SHUTDOWN_PRIORITY_MODULES,
+  );
+}
+
+async function shutdownModules(manager: ModuleManager): Promise<void> {
+  const errors: unknown[] = [];
+  try {
     await manager.stopAll();
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
     await manager.destroyAll();
-  }, SHUTDOWN_PRIORITY_MODULES);
+  } catch (error) {
+    errors.push(error);
+  }
+  if (errors.length > 0) {
+    throw new AggregateError(errors, "Shutdown failed");
+  }
 }
 
 function registerShutdownCleanup(shutdownManager: ShutdownManager): void {

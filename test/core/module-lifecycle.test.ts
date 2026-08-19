@@ -68,6 +68,24 @@ describe("ModuleLifecycle", () => {
     expect(lifecycle.state).to.equal(ModuleState.Constructed);
   });
 
+  it("allows cleanup after construct fails", async () => {
+    const destroy = sinon.stub().resolves();
+    const lifecycle = new ModuleLifecycle("mod");
+    lifecycle.setCallbacks({
+      construct: async () => {
+        throw new Error("construct failed");
+      },
+      destroy,
+    });
+
+    await lifecycle.construct({}).catch(() => undefined);
+    expect(lifecycle.state).to.equal(ModuleState.Constructed);
+
+    await lifecycle.destroy();
+    expect(destroy.calledOnce).to.equal(true);
+    expect(lifecycle.state).to.equal(ModuleState.Loaded);
+  });
+
   it("should stop active modules during destroy", async () => {
     const callbacks = {
       stop: sinon.spy(),
@@ -82,6 +100,63 @@ describe("ModuleLifecycle", () => {
 
     expect(callbacks.stop.calledOnce).to.equal(true);
     expect(callbacks.destroy.calledOnce).to.equal(true);
+    expect(lifecycle.state).to.equal(ModuleState.Loaded);
+  });
+
+  it("attempts destroy after stop fails and reports the stop error", async () => {
+    const destroy = sinon.stub().resolves();
+    const lifecycle = new ModuleLifecycle("mod");
+    lifecycle.setCallbacks({
+      stop: sinon.stub().rejects(new Error("stop failed")),
+      destroy,
+    });
+    await lifecycle.construct({});
+    await lifecycle.start();
+
+    let thrown: unknown;
+    try {
+      await lifecycle.destroy();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(destroy.calledOnce).to.equal(true);
+    expect(thrown).to.have.property("message", "stop failed");
+    expect(lifecycle.state).to.equal(ModuleState.Loaded);
+  });
+
+  it("aggregates stop and destroy failures and retries both phases", async () => {
+    const stop = sinon
+      .stub()
+      .onFirstCall()
+      .rejects(new Error("stop failed"))
+      .onSecondCall()
+      .resolves();
+    const destroy = sinon
+      .stub()
+      .onFirstCall()
+      .rejects(new Error("destroy failed"))
+      .onSecondCall()
+      .resolves();
+    const lifecycle = new ModuleLifecycle("mod");
+    lifecycle.setCallbacks({ stop, destroy });
+    await lifecycle.construct({});
+    await lifecycle.start();
+
+    let thrown: unknown;
+    try {
+      await lifecycle.destroy();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.be.instanceOf(AggregateError);
+    expect((thrown as AggregateError).errors).to.have.length(2);
+    expect(lifecycle.state).to.equal(ModuleState.Active);
+
+    await lifecycle.destroy();
+    expect(stop.calledTwice).to.equal(true);
+    expect(destroy.calledTwice).to.equal(true);
     expect(lifecycle.state).to.equal(ModuleState.Loaded);
   });
 
@@ -235,5 +310,50 @@ describe("ModuleLifecycle", () => {
     await lifecycle.destroy();
 
     expect(calls).to.deep.equal(["construct", "start", "stop", "destroy"]);
+  });
+
+  it("serializes overlapping construct calls", async () => {
+    const construct = sinon.stub().callsFake(
+      () =>
+        new Promise<void>((resolve) => {
+          setImmediate(resolve);
+        }),
+    );
+    const lifecycle = new ModuleLifecycle("mod");
+    lifecycle.setCallbacks({ construct });
+
+    await Promise.all([lifecycle.construct({}), lifecycle.construct({})]);
+
+    expect(construct.calledOnce).to.equal(true);
+    expect(lifecycle.state).to.equal(ModuleState.Constructed);
+  });
+
+  it("serializes overlapping stop and destroy calls", async () => {
+    const calls: string[] = [];
+    const lifecycle = new ModuleLifecycle("mod");
+    lifecycle.setCallbacks({
+      start: async () => {
+        await new Promise((resolve) => setImmediate(resolve));
+        calls.push("start");
+      },
+      stop: () => {
+        calls.push("stop");
+      },
+      destroy: () => {
+        calls.push("destroy");
+      },
+    });
+
+    await lifecycle.construct({});
+    await Promise.all([
+      lifecycle.start(),
+      lifecycle.stop(),
+      lifecycle.stop(),
+      lifecycle.destroy(),
+      lifecycle.destroy(),
+    ]);
+
+    expect(calls).to.deep.equal(["start", "stop", "destroy"]);
+    expect(lifecycle.state).to.equal(ModuleState.Loaded);
   });
 });

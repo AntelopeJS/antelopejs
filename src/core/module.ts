@@ -1,4 +1,5 @@
 import { Logging } from "@antelopejs/interface-core/logging";
+import { Events } from "@antelopejs/interface-core/modules";
 import { type ModuleCallbacks, ModuleState } from "../types";
 import { ModuleLifecycle } from "./module-lifecycle";
 import type { ModuleManifest } from "./module-manifest";
@@ -54,6 +55,7 @@ export class Module {
       Logger.Debug(`Successfully loaded module ${this.id}`);
     } catch (err) {
       Logger.Error(`Failed to load module ${this.id}`, err);
+      Events.ModuleDestroyed.emit(this.id);
       throw err;
     }
     this.lifecycle.setCallbacks(this.callbacks);
