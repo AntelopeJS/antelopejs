@@ -407,7 +407,19 @@ export async function constructAndStartModules(
   }
 
   await terminalDisplay.stopSpinner(`Done loading`);
-  await manager.startAll();
+  try {
+    await manager.startAll();
+  } catch (error) {
+    try {
+      await manager.destroyAll();
+    } catch (cleanupError) {
+      Logger.Error(
+        "Failed to clean up modules after startup failure:",
+        cleanupError,
+      );
+    }
+    throw error;
+  }
 }
 
 export function ensureGraphIsValid(manager: ModuleManager): void {

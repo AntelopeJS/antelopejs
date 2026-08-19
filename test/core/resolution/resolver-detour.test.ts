@@ -4,33 +4,94 @@ import { PathMapper } from "../../../src/core/resolution/path-mapper";
 import { Resolver } from "../../../src/core/resolution/resolver";
 import { ResolverDetour } from "../../../src/core/resolution/resolver-detour";
 
-describe("ResolverDetour", () => {
-  it("should attach and detach from Node resolver", () => {
-    const original = (Module as any)._resolveFilename;
-    let lastRequest = "";
-    const stubResolver = (request: string) => {
-      lastRequest = request;
-      return request;
-    };
-    (Module as any)._resolveFilename = stubResolver;
+type ModuleResolver = (request: string) => string;
 
-    const resolver = new Resolver(new PathMapper(() => false));
-    const detour = new ResolverDetour(resolver);
+function createResolver(resolvedPath?: string): Resolver {
+  const resolver = new Resolver(new PathMapper(() => false));
+  if (resolvedPath) {
+    resolver.resolve = () => ({ resolvedPath });
+  }
+  return resolver;
+}
+
+function resolveRequest(): string {
+  return (Module as any)._resolveFilename(
+    "request",
+    { filename: "/module/index.js" },
+    false,
+    {},
+  );
+}
+
+describe("ResolverDetour", () => {
+  const processResolver = (Module as any)._resolveFilename;
+  let originalResolver: ModuleResolver;
+
+  beforeEach(() => {
+    originalResolver = (request) => request;
+    (Module as any)._resolveFilename = originalResolver;
+  });
+
+  afterEach(() => {
+    (Module as any)._resolveFilename = processResolver;
+  });
+
+  it("uses one process hook and preserves the newer lease", () => {
+    const first = new ResolverDetour(createResolver("first"));
+    const second = new ResolverDetour(createResolver("second"));
+
+    first.attach();
+    const processHook = (Module as any)._resolveFilename;
+    second.attach();
+
+    expect((Module as any)._resolveFilename).to.equal(processHook);
+    expect(resolveRequest()).to.equal("second");
+
+    first.detach();
+    expect((Module as any)._resolveFilename).to.equal(processHook);
+    expect(resolveRequest()).to.equal("second");
+
+    second.detach();
+    expect((Module as any)._resolveFilename).to.equal(originalResolver);
+  });
+
+  it("restores the older lease when the newer lease detaches first", () => {
+    const first = new ResolverDetour(createResolver("first"));
+    const second = new ResolverDetour(createResolver("second"));
+
+    first.attach();
+    second.attach();
+    second.detach();
+
+    expect(resolveRequest()).to.equal("first");
+
+    first.detach();
+    expect((Module as any)._resolveFilename).to.equal(originalResolver);
+  });
+
+  it("attaches and detaches each lease idempotently", () => {
+    const detour = new ResolverDetour(createResolver());
 
     detour.attach();
-    const result = (Module as any)._resolveFilename(
-      "test",
-      { filename: "/modA/src/index.js" },
-      false,
-      {},
-    );
-
-    expect(result).to.equal("test");
-    expect(lastRequest).to.equal("test");
+    const processHook = (Module as any)._resolveFilename;
+    detour.attach();
+    expect((Module as any)._resolveFilename).to.equal(processHook);
 
     detour.detach();
-    expect((Module as any)._resolveFilename).to.equal(stubResolver);
+    detour.detach();
+    expect((Module as any)._resolveFilename).to.equal(originalResolver);
+  });
 
-    (Module as any)._resolveFilename = original;
+  it("detects an externally replaced process hook without overwriting it", () => {
+    const detour = new ResolverDetour(createResolver());
+    const externalResolver = (request: string) => `external:${request}`;
+
+    detour.attach();
+    (Module as any)._resolveFilename = externalResolver;
+
+    expect(() => detour.detach()).to.throw(
+      "Node module resolver hook was replaced externally",
+    );
+    expect((Module as any)._resolveFilename).to.equal(externalResolver);
   });
 });

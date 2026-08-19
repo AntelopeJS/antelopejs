@@ -246,6 +246,23 @@ describe("runtime module-loading", () => {
       true,
     );
     expect(failingManager.startAll.called).to.equal(false);
+
+    const startupFailure = new Error("start failed");
+    const startFailingManager = {
+      constructAll: sinon.stub().resolves(),
+      startAll: sinon.stub().rejects(startupFailure),
+      destroyAll: sinon.stub().resolves(),
+    } as any;
+
+    thrown = undefined;
+    try {
+      await constructAndStartModules(startFailingManager);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.equal(startupFailure);
+    expect(startFailingManager.destroyAll.calledOnce).to.equal(true);
   });
 
   it("resolves only after async start hooks settle", async () => {

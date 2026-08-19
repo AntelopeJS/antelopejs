@@ -15,9 +15,10 @@ import type {
 const EXIT_CODE_ERROR = 1;
 const DEFAULT_MAX_EVENT_LISTENERS = 50;
 let processHandlersReady = false;
-let activeShutdownManager: ShutdownManager | undefined;
+const shutdownManagers: ShutdownManager[] = [];
 
 function shutdownProcess(exitCode: number): void {
+  const activeShutdownManager = shutdownManagers.at(-1);
   if (activeShutdownManager) {
     void activeShutdownManager.shutdown(exitCode);
     return;
@@ -28,7 +29,8 @@ function shutdownProcess(exitCode: number): void {
 
 export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
   if (shutdownManager) {
-    activeShutdownManager = shutdownManager;
+    releaseProcessShutdownManager(shutdownManager);
+    shutdownManagers.push(shutdownManager);
   }
 
   if (processHandlersReady) {
@@ -54,6 +56,15 @@ export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
   process.on("warning", (warning: Error) => {
     Logging.Warn("Warning:", warning);
   });
+}
+
+export function releaseProcessShutdownManager(
+  shutdownManager: ShutdownManager,
+): void {
+  const index = shutdownManagers.indexOf(shutdownManager);
+  if (index !== -1) {
+    shutdownManagers.splice(index, 1);
+  }
 }
 
 export async function withRaisedMaxListeners<T>(
