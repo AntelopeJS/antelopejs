@@ -23,7 +23,7 @@ export class InterfaceRegistry {
   setConnections(
     moduleId: string,
     connections: Map<string, InterfaceConnectionRef[]>,
-    selectedProviders: Map<string, string>,
+    selectedProviders: Map<string, string> = new Map(),
   ): void {
     const connectionIDs: ModuleConnections = {};
     for (const [interfaceName, modules] of connections) {
