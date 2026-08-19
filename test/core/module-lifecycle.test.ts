@@ -103,6 +103,63 @@ describe("ModuleLifecycle", () => {
     expect(lifecycle.state).to.equal(ModuleState.Loaded);
   });
 
+  it("attempts destroy after stop fails and reports the stop error", async () => {
+    const destroy = sinon.stub().resolves();
+    const lifecycle = new ModuleLifecycle("mod");
+    lifecycle.setCallbacks({
+      stop: sinon.stub().rejects(new Error("stop failed")),
+      destroy,
+    });
+    await lifecycle.construct({});
+    await lifecycle.start();
+
+    let thrown: unknown;
+    try {
+      await lifecycle.destroy();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(destroy.calledOnce).to.equal(true);
+    expect(thrown).to.have.property("message", "stop failed");
+    expect(lifecycle.state).to.equal(ModuleState.Loaded);
+  });
+
+  it("aggregates stop and destroy failures and retries both phases", async () => {
+    const stop = sinon
+      .stub()
+      .onFirstCall()
+      .rejects(new Error("stop failed"))
+      .onSecondCall()
+      .resolves();
+    const destroy = sinon
+      .stub()
+      .onFirstCall()
+      .rejects(new Error("destroy failed"))
+      .onSecondCall()
+      .resolves();
+    const lifecycle = new ModuleLifecycle("mod");
+    lifecycle.setCallbacks({ stop, destroy });
+    await lifecycle.construct({});
+    await lifecycle.start();
+
+    let thrown: unknown;
+    try {
+      await lifecycle.destroy();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.be.instanceOf(AggregateError);
+    expect((thrown as AggregateError).errors).to.have.length(2);
+    expect(lifecycle.state).to.equal(ModuleState.Active);
+
+    await lifecycle.destroy();
+    expect(stop.calledTwice).to.equal(true);
+    expect(destroy.calledTwice).to.equal(true);
+    expect(lifecycle.state).to.equal(ModuleState.Loaded);
+  });
+
   it("should do nothing on destroy when already loaded", async () => {
     const callbacks = { destroy: sinon.spy() };
     const lifecycle = new ModuleLifecycle("mod");

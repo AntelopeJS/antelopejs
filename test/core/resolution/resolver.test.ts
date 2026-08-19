@@ -4,6 +4,7 @@ import { PathMapper } from "../../../src/core/resolution/path-mapper";
 import { Resolver } from "../../../src/core/resolution/resolver";
 
 const CORE_PKG = "@antelopejs/interface-core";
+const CORE_CANONICAL_ENTRY = require.resolve(CORE_PKG);
 const CORE_CANONICAL_DIR = path.dirname(
   require.resolve(`${CORE_PKG}/package.json`),
 );
@@ -83,6 +84,17 @@ describe("Resolver", () => {
     expect(result?.resolvedPath).to.equal("/modA/src/utils");
   });
 
+  it("does not assign sibling folders that only share a prefix", () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.moduleByFolder.set("/modules/mod-a", moduleA);
+
+    const result = resolver.resolve("@src/utils", {
+      filename: "/modules/mod-a2/index.js",
+    } as any);
+
+    expect(result).to.equal(undefined);
+  });
+
   it("resolves interface package to canonical path", () => {
     const resolver = new Resolver(new PathMapper(() => false));
     resolver.interfacePackages.set(
@@ -130,7 +142,7 @@ describe("Resolver", () => {
 
     const result = resolver.resolve(CORE_PKG);
 
-    expect(result?.resolvedPath).to.equal(CORE_CANONICAL_DIR);
+    expect(result?.resolvedPath).to.equal(CORE_CANONICAL_ENTRY);
     expect(result?.resolveFrom).to.equal(undefined);
   });
 
@@ -149,7 +161,7 @@ describe("Resolver", () => {
 
     const result = resolver.resolve(CORE_PKG);
 
-    expect(result?.resolvedPath).to.equal(CORE_CANONICAL_DIR);
+    expect(result?.resolvedPath).to.equal(CORE_CANONICAL_ENTRY);
   });
 
   it("does not redirect packages that merely share the interface-core prefix", () => {

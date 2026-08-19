@@ -83,7 +83,7 @@ describe("core/beta module interface", () => {
     sinon.stub(Module.prototype, "construct").resolves();
     sinon.stub(Module.prototype, "start").resolves();
 
-    await launch("/project", "default", {});
+    const manager = await launch("/project", "default", {});
     startStub.resetHistory();
 
     const list = await moduleInterfaceBeta.ListModules();
@@ -123,5 +123,6 @@ describe("core/beta module interface", () => {
       error = err;
     }
     expect(error).to.be.instanceOf(Error);
+    await manager.destroyAll();
   });
 });

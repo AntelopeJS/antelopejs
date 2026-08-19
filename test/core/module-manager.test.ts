@@ -48,6 +48,126 @@ async function createTempModuleWithInterfacePkg(): Promise<{
   return { root, modulePath, interfacePkg, interfacePkgDir };
 }
 
+interface ResolutionFixture {
+  root: string;
+  providerPath: string;
+  consumerPath: string;
+  packageName: string;
+  providerPackageRoot: string;
+  consumerPackageRoot: string;
+}
+
+interface ResolutionFixtureVersions {
+  provider: string;
+  consumer: string;
+  range: string;
+}
+
+async function writeInterfacePackage(
+  packageRoot: string,
+  packageName: string,
+  version: string,
+): Promise<void> {
+  await mkdir(path.join(packageRoot, "dist"), { recursive: true });
+  await writeFile(
+    path.join(packageRoot, "package.json"),
+    JSON.stringify({
+      name: packageName,
+      version,
+      exports: { ".": "./dist/index.js" },
+      antelopeJs: {},
+    }),
+  );
+  await writeFile(
+    path.join(packageRoot, "dist", "index.js"),
+    `module.exports = ${JSON.stringify(version)};`,
+  );
+}
+
+async function createResolutionFixture(
+  versions: ResolutionFixtureVersions,
+): Promise<ResolutionFixture> {
+  const root = await mkdtemp(path.join(tmpdir(), "ajs-interface-resolution-"));
+  const providerPath = path.join(root, "provider");
+  const consumerPath = path.join(root, "consumer");
+  const packageName = "interface-shared";
+  const providerPackageRoot = path.join(
+    providerPath,
+    "node_modules",
+    packageName,
+  );
+  const consumerPackageRoot = path.join(
+    consumerPath,
+    "node_modules",
+    packageName,
+  );
+  await mkdir(providerPath, { recursive: true });
+  await mkdir(consumerPath, { recursive: true });
+  await writeFile(
+    path.join(providerPath, "package.json"),
+    JSON.stringify({ name: "provider", version: "1.0.0" }),
+  );
+  await writeFile(
+    path.join(consumerPath, "package.json"),
+    JSON.stringify({
+      name: "consumer",
+      version: "1.0.0",
+      dependencies: { [packageName]: versions.range },
+    }),
+  );
+  await writeInterfacePackage(
+    providerPackageRoot,
+    packageName,
+    versions.provider,
+  );
+  await writeInterfacePackage(
+    consumerPackageRoot,
+    packageName,
+    versions.consumer,
+  );
+  return {
+    root,
+    providerPath,
+    consumerPath,
+    packageName,
+    providerPackageRoot,
+    consumerPackageRoot,
+  };
+}
+
+async function createResolutionManager(
+  fixture: ResolutionFixture,
+): Promise<ModuleManager> {
+  const providerSource: ModuleSourceLocal = {
+    type: "local",
+    path: fixture.providerPath,
+  };
+  const providerManifest = await ModuleManifest.create(
+    fixture.providerPath,
+    providerSource,
+    "provider",
+  );
+  providerManifest.implements = [fixture.packageName];
+  const consumerSource: ModuleSourceLocal = {
+    type: "local",
+    path: fixture.consumerPath,
+  };
+  const consumerManifest = await ModuleManifest.create(
+    fixture.consumerPath,
+    consumerSource,
+    "consumer",
+  );
+  const manager = new ModuleManager();
+  const modules = manager.addModules([
+    { manifest: providerManifest },
+    { manifest: consumerManifest },
+  ]);
+  modules.forEach(({ module }) => {
+    sinon.stub(module, "construct").resolves();
+  });
+  return manager;
+}
+
 describe("ModuleManager", () => {
   beforeEach(() => {
     internal.moduleByFolder.splice(0, internal.moduleByFolder.length);
@@ -540,7 +660,7 @@ describe("ModuleManager", () => {
     const manager = new ModuleManager();
     const detour = (manager as any).resolverDetour;
     const detach = sinon.stub(detour, "detach");
-    sinon.stub(detour, "attach");
+    sinon.stub(detour, "attach").returns(true);
     sinon.stub(manager as any, "applyInterfaceStubs");
 
     let settleA: () => void = () => undefined;
@@ -646,6 +766,44 @@ describe("ModuleManager", () => {
     expect(manager.resolver.modulesById.size).to.equal(0);
   });
 
+  it("privately retains failed cleanup and retries it after clearing state", async () => {
+    const calls: string[] = [];
+    const manager = new ModuleManager();
+    const makeModule = (id: string, failOnce: boolean) => ({
+      id,
+      state: "constructed",
+      destroy: sinon.stub().callsFake(async function (this: any) {
+        calls.push(id);
+        if (failOnce && this.destroy.callCount === 1) {
+          throw new Error(`destroy:${id}`);
+        }
+        this.state = "loaded";
+      }),
+    });
+    const moduleA = makeModule("a", true);
+    const moduleB = makeModule("b", true);
+    const moduleC = makeModule("c", false);
+
+    for (const module of [moduleA, moduleB, moduleC]) {
+      (manager as any).loaded.set(module.id, { module, config: {} });
+      manager.registry.register(module as any);
+    }
+
+    await manager.destroyAll().catch(() => undefined);
+
+    expect(calls).to.deep.equal(["c", "b", "a"]);
+    expect(manager.listModules()).to.deep.equal([]);
+    expect(manager.getModule("a")).to.equal(undefined);
+    expect([...manager.getLoadedModules()]).to.deep.equal([]);
+
+    await manager.destroyAll();
+
+    expect(calls).to.deep.equal(["c", "b", "a", "b", "a"]);
+    expect(moduleA.destroy.calledTwice).to.equal(true);
+    expect(moduleB.destroy.calledTwice).to.equal(true);
+    expect(moduleC.destroy.calledOnce).to.equal(true);
+  });
+
   it("cleans every live module after a start failure", async () => {
     const calls: string[] = [];
     const manager = new ModuleManager();
@@ -712,6 +870,86 @@ describe("ModuleManager", () => {
       );
     } finally {
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("canonicalizes compatible physical package copies before construction", async () => {
+    const fixture = await createResolutionFixture({
+      provider: "1.4.0",
+      consumer: "1.2.0",
+      range: "^1.0.0",
+    });
+    try {
+      const manager = await createResolutionManager(fixture);
+
+      await manager.constructAll();
+
+      expect(
+        manager.resolver.interfacePackages.get(fixture.packageName),
+      ).to.equal(fixture.providerPackageRoot);
+      expect(
+        manager.resolver.interfacePackageEntries.get(fixture.packageName),
+      ).to.equal(path.join(fixture.providerPackageRoot, "dist", "index.js"));
+      await manager.destroyAll();
+    } finally {
+      await rm(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a canonical v2 package for a consumer requiring v1", async () => {
+    const fixture = await createResolutionFixture({
+      provider: "2.0.0",
+      consumer: "1.8.0",
+      range: "^1.0.0",
+    });
+    try {
+      const manager = await createResolutionManager(fixture);
+      let error: Error | undefined;
+
+      try {
+        await manager.constructAll();
+      } catch (caught) {
+        error = caught as Error;
+      }
+
+      expect(error?.message).to.include(
+        "consumer requires interface-shared@^1.0.0, but the canonical package is 2.0.0",
+      );
+      const consumer = manager.getModule("consumer") as any;
+      expect(consumer.construct.called).to.equal(false);
+    } finally {
+      await rm(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an incompatible interface copy loaded before construction", async () => {
+    const fixture = await createResolutionFixture({
+      provider: "1.4.0",
+      consumer: "1.2.0",
+      range: "^1.0.0",
+    });
+    const consumerRequire = Module.createRequire(
+      path.join(fixture.consumerPath, "index.js"),
+    );
+    const loadedEntry = consumerRequire.resolve(fixture.packageName);
+    try {
+      consumerRequire(fixture.packageName);
+      const manager = await createResolutionManager(fixture);
+      let error: Error | undefined;
+
+      try {
+        await manager.constructAll();
+      } catch (caught) {
+        error = caught as Error;
+      }
+
+      expect(error?.message).to.include("was loaded from");
+      expect(error?.message).to.include(
+        "preloaded interface copies cannot be redirected",
+      );
+    } finally {
+      delete require.cache[loadedEntry];
+      await rm(fixture.root, { recursive: true, force: true });
     }
   });
 
@@ -791,5 +1029,80 @@ describe("ModuleManager", () => {
         delete require.cache[entry];
       }
     }
+  });
+
+  it("releases the resolver lease when partial construction fails", async () => {
+    const originalResolver = (Module as any)._resolveFilename;
+    const manager = new ModuleManager();
+    const moduleEntry = {
+      module: {
+        id: "failing",
+        version: "1.0.0",
+        construct: sinon.stub().rejects(new Error("construct failed")),
+      },
+      config: {},
+    };
+
+    let constructionError: unknown;
+    try {
+      await manager.constructModules([moduleEntry as any]);
+    } catch (error) {
+      constructionError = error;
+    }
+
+    expect(constructionError).to.be.instanceOf(Error);
+    expect((Module as any)._resolveFilename).to.equal(originalResolver);
+  });
+
+  it("keeps manager-owned global state isolated during rebuild and destroy", async () => {
+    const first = new ModuleManager();
+    const second = new ModuleManager();
+    const firstManifest = {
+      name: "duplicate",
+      version: "1.0.0",
+      main: "/first/index.js",
+      folder: "/first",
+      manifest: { name: "duplicate", version: "1.0.0" },
+      source: { type: "local", path: "/first" },
+    } as any;
+    const secondManifest = {
+      ...firstManifest,
+      main: "/second/index.js",
+      folder: "/second",
+      source: { type: "local", path: "/second" },
+    } as any;
+
+    first.addModules([{ manifest: firstManifest }]);
+    second.addModules([{ manifest: secondManifest }]);
+    first.refreshAssociations();
+
+    expect(
+      internal.moduleByFolder.map((entry) => entry.dir).sort(),
+    ).to.deep.equal(["/first", "/second"]);
+
+    await first.destroyAll();
+    expect(internal.moduleByFolder.map((entry) => entry.dir)).to.deep.equal([
+      "/second",
+    ]);
+    expect(internal.interfaceConnections.duplicate).to.not.equal(undefined);
+
+    await second.destroyAll();
+    expect(internal.moduleByFolder).to.have.length(0);
+    expect(internal.interfaceConnections.duplicate).to.equal(undefined);
+  });
+
+  it("does not leak leases or global state across repeated destruction", async () => {
+    const originalResolver = (Module as any)._resolveFilename;
+    const manager = new ModuleManager();
+
+    await manager.constructAll();
+    await manager.destroyAll();
+    await manager.destroyAll();
+    await manager.constructAll();
+    await manager.destroyAll();
+
+    expect((Module as any)._resolveFilename).to.equal(originalResolver);
+    expect(internal.moduleByFolder).to.have.length(0);
+    expect(internal.interfaceConnections).to.deep.equal({});
   });
 });

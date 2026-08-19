@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { resolvePackage } from "./package-resolution";
 
 export interface InterfaceProvider {
   implements: string[];
@@ -37,19 +37,14 @@ function readInterfacePackageInfo(
   dep: string,
   consumerFolder: string,
 ): InterfacePackageInfo {
-  try {
-    const pkgJsonPath = require.resolve(`${dep}/package.json`, {
-      paths: [consumerFolder],
-    });
-    const depPkg = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-    const antelopeJs = depPkg.antelopeJs;
-    return {
-      isInterface: Boolean(antelopeJs),
-      standalone: Boolean(antelopeJs?.standalone),
-    };
-  } catch {
+  const resolvedPackage = resolvePackage(dep, consumerFolder);
+  if (!resolvedPackage) {
     return { isInterface: false, standalone: false };
   }
+  return {
+    isInterface: Boolean(resolvedPackage.antelopeJs),
+    standalone: Boolean(resolvedPackage.antelopeJs?.standalone),
+  };
 }
 
 export function findUnresolvedInterfaces(

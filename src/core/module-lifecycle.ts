@@ -72,16 +72,36 @@ export class ModuleLifecycle {
       return;
     }
 
+    const errors: unknown[] = [];
+    let destroyFailed = false;
     if (this._state === ModuleState.Active) {
-      await this.runStop();
+      try {
+        await this.runStop();
+      } catch (error) {
+        errors.push(error);
+      }
     }
 
-    if (this.callbacks?.destroy) {
-      await this.callbacks.destroy();
+    try {
+      await this.callbacks?.destroy?.();
+    } catch (error) {
+      errors.push(error);
+      destroyFailed = true;
     }
 
-    Events.ModuleDestroyed.emit(this.moduleId);
-    this._state = ModuleState.Loaded;
+    if (!destroyFailed) {
+      Events.ModuleDestroyed.emit(this.moduleId);
+      this._state = ModuleState.Loaded;
+    }
+    if (errors.length === 1) {
+      throw errors[0];
+    }
+    if (errors.length > 1) {
+      throw new AggregateError(
+        errors,
+        `Failed to destroy module ${this.moduleId}`,
+      );
+    }
   }
 
   private enqueue(operation: () => Promise<void>): Promise<void> {

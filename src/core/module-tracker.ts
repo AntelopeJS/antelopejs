@@ -7,11 +7,22 @@ export interface ModuleFolderEntry {
 }
 
 export class ModuleTracker {
+  private readonly entries = new Set<ModuleFolderEntry>();
+
   add(entry: ModuleFolderEntry): void {
+    this.entries.add(entry);
     internal.moduleByFolder.push(entry);
   }
 
   clear(): void {
-    internal.moduleByFolder.splice(0, internal.moduleByFolder.length);
+    const retained = internal.moduleByFolder.filter(
+      (entry) => !this.entries.has(entry),
+    );
+    internal.moduleByFolder.splice(
+      0,
+      internal.moduleByFolder.length,
+      ...retained,
+    );
+    this.entries.clear();
   }
 }

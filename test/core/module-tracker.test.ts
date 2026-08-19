@@ -25,6 +25,38 @@ describe("ModuleTracker", () => {
     expect(internal.moduleByFolder).to.have.length(0);
   });
 
+  it("clears only entries owned by the tracker", () => {
+    const first = new ModuleTracker();
+    const second = new ModuleTracker();
+
+    first.add({ id: "shared", dir: "/first" });
+    second.add({ id: "shared", dir: "/second" });
+
+    first.clear();
+    expect(internal.moduleByFolder).to.deep.equal([
+      { id: "shared", dir: "/second" },
+    ]);
+
+    second.clear();
+    expect(internal.moduleByFolder).to.have.length(0);
+  });
+
+  it("supports clearing owners in reverse order", () => {
+    const first = new ModuleTracker();
+    const second = new ModuleTracker();
+
+    first.add({ id: "first", dir: "/first" });
+    second.add({ id: "second", dir: "/second" });
+
+    second.clear();
+    expect(internal.moduleByFolder.map((entry) => entry.id)).to.deep.equal([
+      "first",
+    ]);
+
+    first.clear();
+    expect(internal.moduleByFolder).to.have.length(0);
+  });
+
   it("should preserve the isImplementor flag on added entries", () => {
     const tracker = new ModuleTracker();
 

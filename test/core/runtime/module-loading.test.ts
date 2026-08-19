@@ -3,9 +3,13 @@ import { expect } from "chai";
 import sinon from "sinon";
 import { terminalDisplay } from "../../../src/core/cli/terminal-display";
 import { Module } from "../../../src/core/module";
-import type { ModuleManager } from "../../../src/core/module-manager";
+import type {
+  ManagedModule,
+  ModuleManager,
+} from "../../../src/core/module-manager";
 import {
   constructAndStartModules,
+  destroyModulesAfterFailure,
   ensureGraphIsValid,
   getWatchDirs,
   registerCoreModuleInterface,
@@ -24,8 +28,11 @@ function createReloadHarness(): ReloadHarness {
     id: "alpha",
     state: "active",
     manifest: { source: { type: "local", path: "/mods/alpha" } },
-    destroy: sinon.stub().resolves(),
+    destroy: sinon.stub(),
   };
+  oldModule.destroy.callsFake(async () => {
+    oldModule.state = "loaded";
+  });
   const entry: any = { module: oldModule, config: { config: {} } };
   const manifest = {
     name: "alpha",
@@ -45,6 +52,7 @@ function createReloadHarness(): ReloadHarness {
         return entry;
       }),
     refreshAssociations: sinon.stub(),
+    constructModules: sinon.stub().callsFake(constructManagedModules),
   };
   const loaderContext = {
     cache: {},
@@ -52,6 +60,14 @@ function createReloadHarness(): ReloadHarness {
     registry: { load: sinon.stub().resolves([manifest]) },
   } as any;
   return { oldModule, entry, manager, loaderContext };
+}
+
+async function constructManagedModules(
+  entries: ManagedModule[],
+): Promise<void> {
+  await Promise.all(
+    entries.map(({ module, config }) => module.construct(config.config)),
+  );
 }
 
 describe("runtime module-loading", () => {
@@ -125,6 +141,7 @@ describe("runtime module-loading", () => {
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
+      constructModules: sinon.stub().callsFake(constructManagedModules),
     } as any;
 
     const manifest = {
@@ -157,6 +174,50 @@ describe("runtime module-loading", () => {
     ).to.equal(true);
     expect(replaceLoadedModuleStub.calledOnce).to.equal(true);
     expect(refreshAssociationsStub.calledOnce).to.equal(true);
+    expect(manager.constructModules.calledOnce).to.equal(true);
+  });
+
+  it("propagates interface compatibility validation during reload", async () => {
+    const entry = {
+      module: {
+        manifest: { source: { type: "local", path: "/mods/alpha" } },
+        destroy: sinon.stub().resolves(),
+      },
+      config: { config: {} },
+    };
+    const compatibilityError = new Error(
+      "Incompatible interface package resolution",
+    );
+    const manager = {
+      getLoadedModuleEntry: sinon.stub().returns(entry),
+      unrequireModuleFiles: sinon.stub(),
+      replaceLoadedModule: sinon.stub().returns(entry),
+      refreshAssociations: sinon.stub(),
+      constructModules: sinon.stub().rejects(compatibilityError),
+    } as any;
+    const manifest = {
+      name: "alpha",
+      version: "1.0.0",
+      main: __filename,
+      folder: "/mods/alpha",
+      source: { type: "local", path: "/mods/alpha" },
+    } as any;
+    const loaderContext = {
+      cache: {},
+      projectFolder: "/project",
+      registry: { load: sinon.stub().resolves([manifest]) },
+    } as any;
+
+    let thrown: unknown;
+    try {
+      await reloadWatchedModule(manager, "alpha", loaderContext);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.be.instanceOf(AggregateError);
+    expect((thrown as AggregateError).errors[0]).to.equal(compatibilityError);
+    expect(manager.constructModules.calledOnce).to.equal(true);
   });
 
   it("propagates error when registry.load fails during reload", async () => {
@@ -200,6 +261,62 @@ describe("runtime module-loading", () => {
     expect(manager.replaceLoadedModule.called).to.equal(false);
   });
 
+  it("preserves the live module when reload returns no manifest", async () => {
+    const harness = createReloadHarness();
+    harness.loaderContext.registry.load.resolves([]);
+
+    let thrown: unknown;
+    try {
+      await reloadWatchedModule(
+        harness.manager,
+        "alpha",
+        harness.loaderContext,
+      );
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.have.property(
+      "message",
+      "Failed to reload module alpha: no manifest returned",
+    );
+    expect(harness.oldModule.destroy.called).to.equal(false);
+    expect(harness.manager.replaceLoadedModule.called).to.equal(false);
+    expect(harness.entry.module).to.equal(harness.oldModule);
+  });
+
+  it("preserves the live module when the replacement id is invalid", async () => {
+    const harness = createReloadHarness();
+    harness.loaderContext.registry.load.resolves([
+      {
+        name: "different",
+        version: "2.0.0",
+        main: __filename,
+        folder: "/mods/alpha",
+        source: { type: "local", path: "/mods/alpha" },
+      },
+    ]);
+
+    let thrown: unknown;
+    try {
+      await reloadWatchedModule(
+        harness.manager,
+        "alpha",
+        harness.loaderContext,
+      );
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.have.property(
+      "message",
+      "Reloaded module id mismatch: expected alpha, got different",
+    );
+    expect(harness.oldModule.destroy.called).to.equal(false);
+    expect(harness.manager.replaceLoadedModule.called).to.equal(false);
+    expect(harness.entry.module).to.equal(harness.oldModule);
+  });
+
   it("recovers on retry after a failed reload", async () => {
     const destroyStub = sinon.stub().resolves();
     const entry = {
@@ -221,6 +338,7 @@ describe("runtime module-loading", () => {
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
+      constructModules: sinon.stub().callsFake(constructManagedModules),
     } as any;
 
     const manifest = {
@@ -358,6 +476,7 @@ describe("runtime module-loading", () => {
     expect(thrown).to.be.instanceOf(AggregateError);
     expect(harness.oldModule.destroy.calledOnce).to.equal(true);
     expect(harness.entry.module).to.equal(harness.oldModule);
+    expect(harness.oldModule.state).to.equal("loaded");
   });
 
   it("cleans the replacement when association fails", async () => {
@@ -480,6 +599,21 @@ describe("runtime module-loading", () => {
       true,
     );
     expect(failingManager.startAll.called).to.equal(false);
+
+    const startupFailure = new Error("start failed");
+    const startFailingManager = {
+      constructAll: sinon.stub().resolves(),
+      startAll: sinon.stub().rejects(startupFailure),
+    } as any;
+
+    thrown = undefined;
+    try {
+      await constructAndStartModules(startFailingManager);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.equal(startupFailure);
   });
 
   it("resolves only after async start hooks settle", async () => {
@@ -516,6 +650,28 @@ describe("runtime module-loading", () => {
     await pending;
     expect(startSettled).to.equal(true);
     expect(resolved).to.equal(true);
+  });
+
+  it("aggregates startup and cleanup errors", async () => {
+    const startupFailure = new Error("start failed");
+    const manager = {
+      destroyAll: sinon.stub().rejects(new Error("destroy failed")),
+    } as any;
+
+    let thrown: unknown;
+    try {
+      await destroyModulesAfterFailure(manager, startupFailure);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.be.instanceOf(AggregateError);
+    expect((thrown as AggregateError).errors[0]).to.equal(startupFailure);
+    expect((thrown as AggregateError).errors[1]).to.have.property(
+      "message",
+      "destroy failed",
+    );
+    expect(manager.destroyAll.calledOnce).to.equal(true);
   });
 
   it("handles module interface operations and error branches", async () => {

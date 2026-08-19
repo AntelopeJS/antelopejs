@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { satisfies, validRange } from "semver";
 import { ModuleState } from "../types";
 import {
   type InterfaceConnectionRef,
@@ -10,6 +11,12 @@ import type { ModuleManifest } from "./module-manifest";
 import { ModuleRegistry } from "./module-registry";
 import { ModuleTracker } from "./module-tracker";
 import type { UnresolvedInterface } from "./resolution/interface-resolution";
+import {
+  isPathWithin,
+  type ResolvedPackage,
+  resolvePackage,
+  resolvePackageAtRoot,
+} from "./resolution/package-resolution";
 import { PathMapper } from "./resolution/path-mapper";
 import { Resolver } from "./resolution/resolver";
 import { ResolverDetour } from "./resolution/resolver-detour";
@@ -39,7 +46,23 @@ interface ModuleManagerDeps {
   moduleTracker?: ModuleTracker;
 }
 
+interface InterfacePackageConsumer {
+  moduleId: string;
+  range: string;
+  resolvedPackage?: ResolvedPackage;
+}
+
+interface InterfacePackagePlan {
+  canonicalPackage: ResolvedPackage;
+  consumers: InterfacePackageConsumer[];
+}
+
 type ModuleOperation = (module: Module) => Promise<void>;
+
+interface ModuleOperationResults {
+  errors: unknown[];
+  failed: ManagedModule[];
+}
 
 export class ModuleManager {
   public readonly registry: ModuleRegistry;
@@ -50,7 +73,15 @@ export class ModuleManager {
   private readonly resolvedAssociations = new Map<string, Set<string>>();
   private readonly staticModules: ManagedModule[] = [];
   private readonly loaded = new Map<string, ManagedModule>();
-  private readonly stubbedInterfacePaths = new Map<string, string>();
+  private readonly stubbedInterfacePackages = new Map<
+    string,
+    ResolvedPackage
+  >();
+  private readonly interfacePackagePlans = new Map<
+    string,
+    InterfacePackagePlan
+  >();
+  private pendingCleanup: ManagedModule[] = [];
   private startupOrder: string[] = [];
 
   constructor(deps: ModuleManagerDeps = {}) {
@@ -182,48 +213,51 @@ export class ModuleManager {
   }
 
   registerStubbedInterfaces(stubbed: UnresolvedInterface[]): void {
-    for (const { moduleId, interfacePackage, standalone } of stubbed) {
-      if (this.stubbedInterfacePaths.has(interfacePackage)) {
-        continue;
-      }
-      const consumerFolder = this.loaded.get(moduleId)?.module.manifest.folder;
-      if (!consumerFolder) {
-        continue;
-      }
-      const pkgRoot = this.resolveInterfacePackageRoot(
-        interfacePackage,
-        consumerFolder,
+    const packageNames = new Set(
+      stubbed.map((entry) => entry.interfacePackage),
+    );
+    for (const packageName of packageNames) {
+      const entries = stubbed.filter(
+        (entry) => entry.interfacePackage === packageName,
       );
-      if (!pkgRoot) {
-        continue;
-      }
-      this.stubbedInterfacePaths.set(interfacePackage, pkgRoot);
-      this.resolver.interfacePackages.set(interfacePackage, pkgRoot);
-      logStubInterfaceWarningOnce(interfacePackage, standalone);
+      this.registerStubbedInterfacePackage(packageName, entries);
     }
   }
 
-  private resolveInterfacePackageRoot(
-    ifacePkg: string,
-    fromFolder: string,
-  ): string | undefined {
-    try {
-      const mainPath = require.resolve(ifacePkg, { paths: [fromFolder] });
-      return extractPackageRoot(mainPath, ifacePkg);
-    } catch {
-      return undefined;
+  private registerStubbedInterfacePackage(
+    packageName: string,
+    entries: UnresolvedInterface[],
+  ): void {
+    const consumers = this.collectInterfacePackageConsumers(packageName);
+    const canonicalPackage = consumers.find(
+      (consumer) => consumer.resolvedPackage,
+    )?.resolvedPackage;
+    if (!canonicalPackage) {
+      return;
     }
+    this.stubbedInterfacePackages.set(packageName, canonicalPackage);
+    this.interfacePackagePlans.set(packageName, {
+      canonicalPackage,
+      consumers,
+    });
+    this.registerInterfacePackage(packageName, canonicalPackage);
+    logStubInterfaceWarningOnce(
+      packageName,
+      entries.some((entry) => entry.standalone),
+    );
   }
 
   private applyInterfaceStubs(): void {
     const implemented = this.collectImplementedInterfaces();
-    for (const [interfaceName, pkgRoot] of [...this.stubbedInterfacePaths]) {
+    for (const [interfaceName, resolvedPackage] of [
+      ...this.stubbedInterfacePackages,
+    ]) {
       if (implemented.has(interfaceName)) {
-        this.stubbedInterfacePaths.delete(interfaceName);
+        this.stubbedInterfacePackages.delete(interfaceName);
         continue;
       }
       if (!this.resolver.interfacePackages.has(interfaceName)) {
-        this.resolver.interfacePackages.set(interfaceName, pkgRoot);
+        this.registerInterfacePackage(interfaceName, resolvedPackage);
       }
       try {
         require(interfaceName);
@@ -231,7 +265,7 @@ export class ModuleManager {
         Logger.Error(`Failed to load interface '${interfaceName}':`, err);
         continue;
       }
-      neutralizeInterfacePackage(pkgRoot, interfaceName);
+      neutralizeInterfacePackage(resolvedPackage.root, interfaceName);
     }
   }
 
@@ -248,9 +282,21 @@ export class ModuleManager {
   }
 
   async constructAll(): Promise<void> {
+    const leaseAcquired = this.resolverDetour.attach();
     const modules = [...this.loaded.values()];
-    this.resolverDetour.attach();
-    this.applyInterfaceStubs();
+    try {
+      this.validateInterfacePackages();
+      this.applyInterfaceStubs();
+    } catch (error) {
+      if (leaseAcquired) {
+        throw aggregateErrors(
+          [error, ...this.releaseRuntimeState()],
+          "Failed to construct modules",
+        );
+      }
+      throw error;
+    }
+
     const results = await Promise.allSettled(
       modules.map(({ module, config }) =>
         this.constructModule(module, config.config),
@@ -261,16 +307,16 @@ export class ModuleManager {
       return;
     }
 
-    const constructed = modules.filter(
-      ({ module }, index) =>
-        results[index].status === "fulfilled" ||
-        module.state !== ModuleState.Loaded,
+    const cleanupCandidates = modules.filter(
+      ({ module }) => module.state !== ModuleState.Loaded,
     );
     const cleanupErrors = await runModuleOperations(
-      constructed.reverse(),
+      cleanupCandidates.reverse(),
       (module) => module.destroy(),
     );
-    this.resolverDetour.detach();
+    if (leaseAcquired) {
+      cleanupErrors.push(...this.releaseRuntimeState());
+    }
     throw new AggregateError(
       [...errors, ...cleanupErrors],
       "Failed to construct modules",
@@ -278,13 +324,24 @@ export class ModuleManager {
   }
 
   async constructModules(modules: ManagedModule[]): Promise<void> {
-    this.resolverDetour.attach();
-    this.applyInterfaceStubs();
-    await Promise.all(
-      modules.map(({ module, config }) =>
-        this.constructModule(module, config.config),
-      ),
-    );
+    const leaseAcquired = this.resolverDetour.attach();
+    try {
+      this.validateInterfacePackages();
+      this.applyInterfaceStubs();
+      await Promise.all(
+        modules.map(({ module, config }) =>
+          this.constructModule(module, config.config),
+        ),
+      );
+    } catch (error) {
+      if (leaseAcquired) {
+        throw aggregateErrors(
+          [error, ...this.releaseRuntimeState()],
+          "Failed to construct modules",
+        );
+      }
+      throw error;
+    }
   }
 
   async startAll(): Promise<void> {
@@ -330,10 +387,13 @@ export class ModuleManager {
 
   async destroyAll(): Promise<void> {
     const modules = this.getReverseLifecycleModules();
-    const errors = await runModuleOperations(modules, (module) =>
+    const results = await runTrackedModuleOperations(modules, (module) =>
       module.destroy(),
     );
-    this.clearManagedState();
+    this.pendingCleanup = results.failed.filter(
+      ({ module }) => module.state !== ModuleState.Loaded,
+    );
+    const errors = [...results.errors, ...this.clearManagedState()];
     if (errors.length > 0) {
       throw new AggregateError(errors, "Failed to destroy modules");
     }
@@ -362,17 +422,20 @@ export class ModuleManager {
         orderedIds.push(id);
       }
     }
-    return orderedIds.flatMap((id) => {
+    const loadedModules = orderedIds.flatMap((id) => {
       const entry = this.loaded.get(id);
       return entry ? [entry] : [];
     });
+    const loadedInstances = new Set(loadedModules.map(({ module }) => module));
+    return [
+      ...loadedModules,
+      ...this.pendingCleanup.filter(
+        ({ module }) => !loadedInstances.has(module),
+      ),
+    ];
   }
 
-  private clearManagedState(): void {
-    const moduleIds = this.getAllManagedModules().map(
-      ({ module }) => module.id,
-    );
-    this.interfaceRegistry.clear(moduleIds);
+  private clearManagedState(): unknown[] {
     this.loaded.clear();
     this.staticModules.length = 0;
     this.registry.clear();
@@ -380,11 +443,25 @@ export class ModuleManager {
     this.resolver.moduleByFolder.clear();
     this.resolver.modulesById.clear();
     this.resolver.interfacePackages.clear();
-    this.moduleTracker.clear();
+    this.resolver.interfacePackageEntries.clear();
+    this.resolver.interfacePackageResolveFrom.clear();
+    this.interfacePackagePlans.clear();
     this.startupOrder = [];
-    this.stubbedInterfacePaths.clear();
+    return this.releaseRuntimeState();
+  }
+
+  private releaseRuntimeState(): unknown[] {
+    const errors: unknown[] = [];
+    this.stubbedInterfacePackages.clear();
     clearStubInterfaceWarnings();
-    this.resolverDetour.detach();
+    this.moduleTracker.clear();
+    this.interfaceRegistry.clear();
+    try {
+      this.resolverDetour.detach();
+    } catch (error) {
+      errors.push(error);
+    }
+    return errors;
   }
 
   private trackModuleStart(moduleId: string): void {
@@ -401,8 +478,12 @@ export class ModuleManager {
     this.resolver.moduleByFolder.clear();
     this.resolver.modulesById.clear();
     this.resolver.interfacePackages.clear();
+    this.resolver.interfacePackageEntries.clear();
+    this.resolver.interfacePackageResolveFrom.clear();
+    this.interfacePackagePlans.clear();
     this.resolvedAssociations.clear();
     this.moduleTracker.clear();
+    this.interfaceRegistry.clear();
 
     const interfaceSources = new Map<string, Module>();
     for (const { module, config } of this.loaded.values()) {
@@ -439,23 +520,134 @@ export class ModuleManager {
     interfaceSources: Map<string, Module>,
   ): void {
     for (const [ifacePkg, module] of interfaceSources) {
-      // If the module implements its own package, use its folder directly
-      if (module.manifest.manifest.name === ifacePkg) {
-        this.resolver.interfacePackages.set(ifacePkg, module.manifest.folder);
+      const canonicalPackage = this.resolveImplementedPackage(ifacePkg, module);
+      if (!canonicalPackage) {
         continue;
       }
-      try {
-        const mainPath = require.resolve(ifacePkg, {
-          paths: [module.manifest.folder],
-        });
-        const pkgRoot = extractPackageRoot(mainPath, ifacePkg);
-        if (pkgRoot) {
-          this.resolver.interfacePackages.set(ifacePkg, pkgRoot);
-        }
-      } catch {
-        // Not an installable npm package (old-style name like "greeter@v1") — skip
-      }
+      this.interfacePackagePlans.set(ifacePkg, {
+        canonicalPackage,
+        consumers: this.collectInterfacePackageConsumers(ifacePkg),
+      });
+      this.registerInterfacePackage(ifacePkg, canonicalPackage);
     }
+    for (const [packageName, canonicalPackage] of this
+      .stubbedInterfacePackages) {
+      if (interfaceSources.has(packageName)) {
+        continue;
+      }
+      this.interfacePackagePlans.set(packageName, {
+        canonicalPackage,
+        consumers: this.collectInterfacePackageConsumers(packageName),
+      });
+      this.registerInterfacePackage(packageName, canonicalPackage);
+    }
+  }
+
+  private resolveImplementedPackage(
+    packageName: string,
+    module: Module,
+  ): ResolvedPackage | undefined {
+    const resolvedPackage = resolvePackage(packageName, module.manifest.folder);
+    if (resolvedPackage) {
+      return resolvedPackage;
+    }
+    if (module.manifest.manifest.name !== packageName) {
+      return undefined;
+    }
+    return resolvePackageAtRoot(
+      packageName,
+      module.manifest.folder,
+      module.manifest.version,
+    );
+  }
+
+  private collectInterfacePackageConsumers(
+    packageName: string,
+  ): InterfacePackageConsumer[] {
+    const consumers: InterfacePackageConsumer[] = [];
+    for (const { module } of this.loaded.values()) {
+      const manifest = module.manifest.manifest;
+      const range =
+        manifest.dependencies?.[packageName] ??
+        manifest.optionalDependencies?.[packageName];
+      if (!range) {
+        continue;
+      }
+      consumers.push({
+        moduleId: module.id,
+        range,
+        resolvedPackage: resolvePackage(packageName, module.manifest.folder),
+      });
+    }
+    return consumers;
+  }
+
+  private registerInterfacePackage(
+    packageName: string,
+    resolvedPackage: ResolvedPackage,
+  ): void {
+    this.resolver.interfacePackages.set(packageName, resolvedPackage.root);
+    this.resolver.interfacePackageEntries.set(
+      packageName,
+      resolvedPackage.entry,
+    );
+    this.resolver.interfacePackageResolveFrom.set(
+      packageName,
+      resolvedPackage.resolveFrom,
+    );
+  }
+
+  private validateInterfacePackages(): void {
+    const errors = [...this.interfacePackagePlans].flatMap(([name, plan]) => [
+      ...this.findVersionErrors(name, plan),
+      ...this.findPreloadedCopyErrors(name, plan),
+    ]);
+    if (errors.length === 0) {
+      return;
+    }
+    throw new Error(
+      `Incompatible interface package resolution:\n${errors.join("\n")}`,
+    );
+  }
+
+  private findVersionErrors(
+    packageName: string,
+    plan: InterfacePackagePlan,
+  ): string[] {
+    return plan.consumers.flatMap((consumer) => {
+      const range = validRange(consumer.range);
+      if (!range || satisfies(plan.canonicalPackage.version, range)) {
+        return [];
+      }
+      const installed = consumer.resolvedPackage
+        ? `${consumer.resolvedPackage.version} at ${consumer.resolvedPackage.root}`
+        : "not installed from the consumer";
+      return [
+        `  - ${consumer.moduleId} requires ${packageName}@${consumer.range}, but the canonical package is ${plan.canonicalPackage.version} at ${plan.canonicalPackage.root} (consumer copy: ${installed})`,
+      ];
+    });
+  }
+
+  private findPreloadedCopyErrors(
+    packageName: string,
+    plan: InterfacePackagePlan,
+  ): string[] {
+    const canonicalRoot = plan.canonicalPackage.realRoot;
+    const copies = plan.consumers
+      .map((consumer) => consumer.resolvedPackage)
+      .filter((resolvedPackage): resolvedPackage is ResolvedPackage =>
+        Boolean(resolvedPackage && resolvedPackage.realRoot !== canonicalRoot),
+      );
+    return copies.flatMap((copy) => {
+      const loadedFile = Object.keys(require.cache).find((filePath) =>
+        isPathWithin(filePath, copy.root),
+      );
+      return loadedFile
+        ? [
+            `  - ${packageName}@${copy.version} was loaded from ${copy.root} before the canonical copy at ${plan.canonicalPackage.root}; preloaded interface copies cannot be redirected (${loadedFile})`,
+          ]
+        : [];
+    });
   }
 
   private buildModuleAssociations(interfaceSources: Map<string, Module>): void {
@@ -518,12 +710,7 @@ export class ModuleManager {
   }
 
   private isPathWithin(filePath: string, dirPath: string): boolean {
-    const normalizedDir = path.resolve(dirPath);
-    const normalizedFile = path.resolve(filePath);
-    if (normalizedFile === normalizedDir) {
-      return true;
-    }
-    return normalizedFile.startsWith(normalizedDir + path.sep);
+    return isPathWithin(filePath, dirPath);
   }
 }
 
@@ -539,29 +726,30 @@ function unpackErrors(error: unknown): unknown[] {
   return error instanceof AggregateError ? error.errors : [error];
 }
 
+function aggregateErrors(errors: unknown[], message: string): unknown {
+  return errors.length === 1 ? errors[0] : new AggregateError(errors, message);
+}
+
 async function runModuleOperations(
   modules: ManagedModule[],
   operation: ModuleOperation,
 ): Promise<unknown[]> {
-  const errors: unknown[] = [];
-  for (const { module } of modules) {
-    try {
-      await operation(module);
-    } catch (error) {
-      errors.push(error);
-    }
-  }
-  return errors;
+  return (await runTrackedModuleOperations(modules, operation)).errors;
 }
 
-function extractPackageRoot(
-  mainPath: string,
-  ifacePkg: string,
-): string | undefined {
-  const marker = `${path.sep}${ifacePkg.replace("/", path.sep)}${path.sep}`;
-  const scopeIndex = mainPath.indexOf(marker);
-  if (scopeIndex === -1) {
-    return undefined;
+async function runTrackedModuleOperations(
+  modules: ManagedModule[],
+  operation: ModuleOperation,
+): Promise<ModuleOperationResults> {
+  const errors: unknown[] = [];
+  const failed: ManagedModule[] = [];
+  for (const entry of modules) {
+    try {
+      await operation(entry.module);
+    } catch (error) {
+      errors.push(...unpackErrors(error));
+      failed.push(entry);
+    }
   }
-  return mainPath.substring(0, scopeIndex + marker.length - 1);
+  return { errors, failed };
 }

@@ -143,35 +143,18 @@ export async function runLaunchSequence(
   options: LaunchOptions,
 ): Promise<StartedProject> {
   const shutdownManager = new ShutdownManager();
+  const manager = new ModuleManager();
   setupProcessHandlers(shutdownManager);
 
-  let manager: ModuleManager | undefined;
   try {
-    const project = await prepare(projectFolder, env);
-
-    setupAntelopeProjectLogging(project.logging);
-    applyVerboseChannels(options.verbose);
-
-    await project.verify();
-
-    await registerCoreRuntimeInterface({
-      dev: project.dev,
-      projectPath: projectFolder,
+    return await completeLaunchSequence(
+      prepare,
+      projectFolder,
       env,
-      fs: project.fs,
+      options,
       shutdownManager,
-    });
-
-    manager = new ModuleManager();
-    await startModuleManager(manager, project);
-
-    return {
       manager,
-      dev: project.dev,
-      loadContext: project.loadContext,
-      fs: project.fs,
-      shutdownManager,
-    };
+    );
   } catch (error) {
     const cleanupErrors = await cleanupFailedLaunch(manager, shutdownManager);
     releaseProcessShutdownManager(shutdownManager);
@@ -179,45 +162,79 @@ export async function runLaunchSequence(
       throw error;
     }
     throw new AggregateError(
-      [...unpackLaunchErrors(error), ...cleanupErrors],
+      [...unpackErrors(error), ...cleanupErrors],
       "Failed to launch project",
     );
   }
 }
 
-async function startModuleManager(
+async function completeLaunchSequence(
+  prepare: ProjectPreparer,
+  projectFolder: string,
+  env: string,
+  options: LaunchOptions,
+  shutdownManager: ShutdownManager,
   manager: ModuleManager,
+): Promise<StartedProject> {
+  const project = await prepare(projectFolder, env);
+
+  setupAntelopeProjectLogging(project.logging);
+  applyVerboseChannels(options.verbose);
+
+  await project.verify();
+
+  await registerCoreRuntimeInterface({
+    dev: project.dev,
+    projectPath: projectFolder,
+    env,
+    fs: project.fs,
+    shutdownManager,
+  });
+
+  await startProjectModules(manager, project);
+
+  return {
+    manager,
+    dev: project.dev,
+    loadContext: project.loadContext,
+    fs: project.fs,
+    shutdownManager,
+  };
+}
+
+async function startProjectModules(
+  moduleManager: ModuleManager,
   project: PreparedProject,
 ): Promise<void> {
   await withRaisedMaxListeners(async () => {
-    registerCoreModuleInterface(manager, project.loadContext);
-    await registerCoreInterfaces(manager);
+    registerCoreModuleInterface(moduleManager, project.loadContext);
+    await registerCoreInterfaces(moduleManager);
 
-    manager.addModules(await project.createEntries());
+    moduleManager.addModules(await project.createEntries());
 
-    ensureGraphIsValid(manager);
-    await constructAndStartModules(manager);
+    ensureGraphIsValid(moduleManager);
+    await constructAndStartModules(moduleManager);
   });
 }
 
 async function cleanupFailedLaunch(
-  manager: ModuleManager | undefined,
+  manager: ModuleManager,
   shutdownManager: ShutdownManager,
 ): Promise<unknown[]> {
   const errors: unknown[] = [];
   try {
-    await manager?.destroyAll();
+    await manager.destroyAll();
   } catch (error) {
-    errors.push(error);
+    errors.push(...unpackErrors(error));
   }
   try {
     await shutdownManager.shutdown();
   } catch (error) {
-    errors.push(error);
+    errors.push(...unpackErrors(error));
   }
   return errors;
 }
 
-function unpackLaunchErrors(error: unknown): unknown[] {
+function unpackErrors(error: unknown): unknown[] {
   return error instanceof AggregateError ? error.errors : [error];
 }

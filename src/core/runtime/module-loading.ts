@@ -374,7 +374,7 @@ async function reloadLoadedModuleFromSource(
       previousWasActive,
     );
     throw new AggregateError(
-      [error, ...recoveryErrors],
+      [...unpackErrors(error), ...recoveryErrors],
       `Failed to destroy module ${moduleId} during reload`,
     );
   }
@@ -411,14 +411,16 @@ async function activateReplacement(
       throw new Error(`Failed to replace module ${replacement.id}`);
     }
     manager.refreshAssociations();
-    await replacement.construct(entry.config.config);
+    await manager.constructModules([
+      { module: replacement, config: entry.config },
+    ]);
     await replacement.start();
   } catch (error) {
     const cleanupErrors = replacementInstalled
       ? await cleanupReplacement(replacement)
       : [];
     throw new AggregateError(
-      [...unpackReloadErrors(error), ...cleanupErrors],
+      [...unpackErrors(error), ...cleanupErrors],
       `Failed to activate replacement module ${replacement.id}`,
     );
   }
@@ -429,11 +431,11 @@ async function cleanupReplacement(replacement: Module): Promise<unknown[]> {
     await replacement.destroy();
     return [];
   } catch (error) {
-    return [error];
+    return unpackErrors(error);
   }
 }
 
-function unpackReloadErrors(error: unknown): unknown[] {
+function unpackErrors(error: unknown): unknown[] {
   return error instanceof AggregateError ? error.errors : [error];
 }
 
@@ -478,6 +480,25 @@ export async function constructAndStartModules(
 
   await terminalDisplay.stopSpinner(`Done loading`);
   await manager.startAll();
+}
+
+export async function destroyModulesAfterFailure(
+  manager: ModuleManager,
+  error: unknown,
+): Promise<never> {
+  try {
+    await manager.destroyAll();
+  } catch (cleanupError) {
+    Logger.Error(
+      "Failed to clean up modules after startup failure:",
+      cleanupError,
+    );
+    throw new AggregateError(
+      [...unpackErrors(error), ...unpackErrors(cleanupError)],
+      "Failed to start and clean up modules",
+    );
+  }
+  throw error;
 }
 
 export function ensureGraphIsValid(manager: ModuleManager): void {
