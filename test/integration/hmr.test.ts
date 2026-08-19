@@ -47,11 +47,12 @@ async function assertStableStartCount(
   }
 }
 
-function moduleSource(version: string): string {
+function nativeEsmModuleSource(): string {
   return `import fs from "node:fs";
+import { version } from "./version.js";
 let cfg;
 export const construct = (c) => { cfg = c; };
-export const start = () => { fs.writeFileSync(cfg.markerPath, "${version}"); };
+export const start = () => { fs.writeFileSync(cfg.markerPath, version); };
 export const stop = () => {};
 export const destroy = () => {};
 `;
@@ -65,6 +66,7 @@ describe("HMR end-to-end", () => {
     const modulePath = path.join(projectFolder, "mod");
     const markerPath = path.join(projectFolder, "marker.txt");
     const indexPath = path.join(modulePath, "index.js");
+    const versionPath = path.join(modulePath, "version.js");
 
     await fs.mkdir(modulePath, { recursive: true });
     await fs.writeFile(
@@ -77,7 +79,8 @@ describe("HMR end-to-end", () => {
         exports: "./index.js",
       }),
     );
-    await fs.writeFile(indexPath, moduleSource("v1"));
+    await fs.writeFile(indexPath, nativeEsmModuleSource());
+    await fs.writeFile(versionPath, 'export const version = "v1";\n');
 
     const config = {
       name: "hmr-test",
@@ -99,7 +102,7 @@ describe("HMR end-to-end", () => {
 
       await waitFor(async () => (await readMarker(markerPath)) === "v1", 2000);
 
-      await fs.writeFile(indexPath, moduleSource("v2"));
+      await fs.writeFile(versionPath, 'export const version = "v2";\n');
 
       await waitFor(
         async () => (await readMarker(markerPath)) === "v2",

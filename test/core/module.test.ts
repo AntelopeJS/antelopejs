@@ -237,7 +237,7 @@ exports.start = () => fs.writeFileSync(config.markerPath, "commonjs");
     }
   });
 
-  it("uses a fresh native ESM generation after source changes", async () => {
+  it("uses a fresh native ESM generation for child imports", async () => {
     const folder = await fs.mkdtemp(path.join(os.tmpdir(), "ajs-esm-fresh-"));
     const markerPath = path.join(folder, "marker.txt");
     try {
@@ -247,22 +247,25 @@ exports.start = () => fs.writeFileSync(config.markerPath, "commonjs");
       );
       await fs.writeFile(
         path.join(folder, "value.js"),
-        'export const importedValue = "value";\n',
+        'export const importedValue = "v1";\n',
       );
       const entryPath = path.join(folder, "index.js");
-      await fs.writeFile(entryPath, esmSource("v1"));
+      await fs.writeFile(entryPath, esmSource("entry"));
 
       const first = new Module(createManifest(folder));
       await first.construct({ markerPath } satisfies NativeModuleConfig);
       await first.start();
       await first.destroy();
-      await fs.writeFile(entryPath, esmSource("v2"));
+      await fs.writeFile(
+        path.join(folder, "value.js"),
+        'export const importedValue = "v2";\n',
+      );
 
       const second = new Module(createManifest(folder));
       await second.construct({ markerPath } satisfies NativeModuleConfig);
       await second.start();
 
-      expect(await fs.readFile(markerPath, "utf-8")).to.equal("value:v2");
+      expect(await fs.readFile(markerPath, "utf-8")).to.equal("v2:entry");
     } finally {
       await fs.rm(folder, { recursive: true, force: true });
     }

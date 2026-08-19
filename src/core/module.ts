@@ -1,3 +1,4 @@
+import { register } from "node:module";
 import { pathToFileURL } from "node:url";
 import { Logging } from "@antelopejs/interface-core/logging";
 import { type ModuleCallbacks, ModuleState } from "../types";
@@ -8,11 +9,25 @@ export type ModuleLoader = (mainPath: string) => Promise<ModuleCallbacks>;
 
 const Logger = new Logging.Channel("loader.module");
 const IMPORT_GENERATION_PARAM = "antelopeImportGeneration";
+const ESM_RESOLVE_HOOK = `
+export async function resolve(specifier, context, nextResolve) {
+  const resolved = await nextResolve(specifier, context);
+  if (!context.parentURL || !specifier.startsWith(".")) return resolved;
+  const parentUrl = new URL(context.parentURL);
+  const generation = parentUrl.searchParams.get("${IMPORT_GENERATION_PARAM}");
+  if (generation === null || !resolved.url.startsWith("file:")) return resolved;
+  const resolvedUrl = new URL(resolved.url);
+  resolvedUrl.searchParams.set("${IMPORT_GENERATION_PARAM}", generation);
+  return { ...resolved, url: resolvedUrl.href };
+}
+`;
 const nativeImport = new Function(
   "specifier",
   "return import(specifier)",
 ) as ModuleLoader;
 let importGeneration = 0;
+
+register(`data:text/javascript,${encodeURIComponent(ESM_RESOLVE_HOOK)}`);
 
 function createImportUrl(mainPath: string): string {
   const resolvedPath = require.resolve(mainPath);
