@@ -19,5 +19,12 @@ export default defineConfig({
       },
       config: { target: "World" },
     },
+    "module-esm": {
+      source: {
+        type: "local",
+        path: "./modules/module-esm",
+      },
+      config: { message: "Native ESM" },
+    },
   },
 });

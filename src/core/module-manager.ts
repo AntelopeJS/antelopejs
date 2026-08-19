@@ -19,6 +19,8 @@ import {
 } from "./resolution/stub-interface-runtime";
 
 const Logger = new Logging.Channel("loader");
+const CORE_INTERFACE_PACKAGE = "@antelopejs/interface-core";
+const ESM_EXTENSIONS = new Set([".mjs", ".mts"]);
 
 export interface ModuleConfig {
   config?: unknown;
@@ -232,6 +234,41 @@ export class ModuleManager {
     }
   }
 
+  private validateNativeEsmModules(): void {
+    for (const { module } of this.loaded.values()) {
+      if (!this.isNativeEsmModule(module)) {
+        continue;
+      }
+      const interfaceImports = this.getInterfaceImports(module);
+      if (interfaceImports.length === 0) {
+        continue;
+      }
+      throw new Error(
+        `Native ESM module '${module.id}' imports unsupported AntelopeJS interfaces: ${interfaceImports.join(", ")}. Native ESM interface imports require the companion runtime-identity support before they can be enabled safely.`,
+      );
+    }
+  }
+
+  private isNativeEsmModule(module: Module): boolean {
+    return (
+      module.manifest.manifest.type === "module" ||
+      ESM_EXTENSIONS.has(path.extname(module.manifest.main))
+    );
+  }
+
+  private getInterfaceImports(module: Module): string[] {
+    const manifest = module.manifest.manifest;
+    const dependencies = {
+      ...manifest.dependencies,
+      ...manifest.optionalDependencies,
+    };
+    return Object.keys(dependencies).filter(
+      (dependency) =>
+        dependency === CORE_INTERFACE_PACKAGE ||
+        this.resolver.interfacePackages.has(dependency),
+    );
+  }
+
   private collectImplementedInterfaces(): Set<string> {
     const implemented = new Set<string>();
     for (const { module, config } of this.getAllManagedModules()) {
@@ -248,6 +285,7 @@ export class ModuleManager {
     this.resolverDetour.attach();
     this.applyInterfaceStubs();
     try {
+      this.validateNativeEsmModules();
       await Promise.all(
         [...this.loaded.values()].map(({ module, config }) =>
           module.construct(config.config).catch((err) => {
@@ -268,6 +306,7 @@ export class ModuleManager {
   async constructModules(modules: ManagedModule[]): Promise<void> {
     this.resolverDetour.attach();
     this.applyInterfaceStubs();
+    this.validateNativeEsmModules();
     await Promise.all(
       modules.map(({ module, config }) =>
         module.construct(config.config).catch((err) => {

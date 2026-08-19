@@ -6,16 +6,19 @@ on:
 jobs:
   ubuntu:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['20', '22', '24']
     env:
       COREPACK_DEFAULT_TO_LATEST: 0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
       - run: npm i -g --force corepack && corepack enable
       - run: npm i -g @antelopejs/core
-      - run: pnpm install
+      - run: pnpm install --engine-strict
       - run: pnpm prepack
       - run: pnpm lint
       - run: pnpm test

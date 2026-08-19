@@ -43,7 +43,7 @@ describe("launch", () => {
           {
             name: id,
             version: "1.0.0",
-            main: __filename,
+            main: require.resolve("chai"),
             folder: `/mods/${id}`,
             manifest: { name: id, version: "1.0.0" },
             source: { type: "local", path: `/mods/${id}`, watchDir },

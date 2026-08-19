@@ -48,12 +48,12 @@ async function assertStableStartCount(
 }
 
 function moduleSource(version: string): string {
-  return `const fs = require("node:fs");
+  return `import fs from "node:fs";
 let cfg;
-exports.construct = (c) => { cfg = c; };
-exports.start = () => { fs.writeFileSync(cfg.markerPath, "${version}"); };
-exports.stop = () => {};
-exports.destroy = () => {};
+export const construct = (c) => { cfg = c; };
+export const start = () => { fs.writeFileSync(cfg.markerPath, "${version}"); };
+export const stop = () => {};
+export const destroy = () => {};
 `;
 }
 
@@ -69,7 +69,13 @@ describe("HMR end-to-end", () => {
     await fs.mkdir(modulePath, { recursive: true });
     await fs.writeFile(
       path.join(modulePath, "package.json"),
-      JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
+      JSON.stringify({
+        name: "mod",
+        version: "1.0.0",
+        type: "module",
+        main: "index.js",
+        exports: "./index.js",
+      }),
     );
     await fs.writeFile(indexPath, moduleSource("v1"));
 

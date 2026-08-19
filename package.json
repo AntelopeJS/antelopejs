@@ -7,6 +7,9 @@
     "url": "git+https://github.com/AntelopeJS/antelopejs.git"
   },
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {

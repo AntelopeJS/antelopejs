@@ -85,7 +85,7 @@ describe("runtime module-loading", () => {
     const manifest = {
       name: "alpha",
       version: "1.0.0",
-      main: __filename,
+      main: require.resolve("chai"),
       folder: "/mods/alpha",
       imports: [],
       source: { type: "local", path: "/mods/alpha" },
@@ -177,7 +177,7 @@ describe("runtime module-loading", () => {
     const manifest = {
       name: "alpha",
       version: "1.0.0",
-      main: __filename,
+      main: require.resolve("chai"),
       folder: "/mods/alpha",
       imports: [],
       source: { type: "local", path: "/mods/alpha" },

@@ -11,6 +11,7 @@ import { NodeFileSystem } from "./filesystem";
 export interface ModulePackageJson {
   name: string;
   version: string;
+  type?: "commonjs" | "module";
   description?: string;
   author?: string | string[];
 

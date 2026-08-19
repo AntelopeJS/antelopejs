@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import { Logging } from "@antelopejs/interface-core/logging";
 import { type ModuleCallbacks, ModuleState } from "../types";
 import { ModuleLifecycle } from "./module-lifecycle";
@@ -6,10 +7,23 @@ import type { ModuleManifest } from "./module-manifest";
 export type ModuleLoader = (mainPath: string) => Promise<ModuleCallbacks>;
 
 const Logger = new Logging.Channel("loader.module");
+const IMPORT_GENERATION_PARAM = "antelopeImportGeneration";
+const nativeImport = new Function(
+  "specifier",
+  "return import(specifier)",
+) as ModuleLoader;
+let importGeneration = 0;
+
+function createImportUrl(mainPath: string): string {
+  const resolvedPath = require.resolve(mainPath);
+  const importUrl = pathToFileURL(resolvedPath);
+  importUrl.searchParams.set(IMPORT_GENERATION_PARAM, String(importGeneration));
+  importGeneration += 1;
+  return importUrl.href;
+}
 
 async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
-  const mod = await import(mainPath);
-  return mod as ModuleCallbacks;
+  return nativeImport(createImportUrl(mainPath));
 }
 
 export class Module {

@@ -117,6 +117,48 @@ describe("build and launchFromBuild", () => {
     expect(Object.keys(artifact.modules)).to.have.length(0);
   });
 
+  it("launches a native ESM module from a build artifact", async () => {
+    const projectFolder = makeTempDir("antelope-build-esm-");
+    tempDirs.push(projectFolder);
+    const moduleFolder = path.join(projectFolder, "esm-module");
+    const markerPath = path.join(projectFolder, "esm-started.txt");
+    fs.mkdirSync(moduleFolder, { recursive: true });
+    writeJson(path.join(moduleFolder, "package.json"), {
+      name: "esm-module",
+      version: "1.0.0",
+      type: "module",
+      main: "index.js",
+      exports: "./index.js",
+    });
+    fs.writeFileSync(
+      path.join(moduleFolder, "index.js"),
+      `import fs from "node:fs/promises";
+const ready = await Promise.resolve(true);
+let config;
+export function construct(moduleConfig) { config = moduleConfig; }
+export async function start() { if (ready) await fs.writeFile(config.markerPath, "started"); }
+`,
+    );
+    writeTsConfig(projectFolder, {
+      name: "esm-build-test",
+      modules: {
+        esm: {
+          source: { type: "local", path: "./esm-module" },
+          config: { markerPath },
+        },
+      },
+    });
+
+    await build(projectFolder);
+    const manager = await launchFromBuild(projectFolder);
+    try {
+      expect(fs.readFileSync(markerPath, "utf-8")).to.equal("started");
+    } finally {
+      await manager.stopAll();
+      await manager.destroyAll();
+    }
+  });
+
   it("launchFromBuild throws when build artifact is missing", async () => {
     const projectFolder = makeTempDir("antelope-start-missing-");
     tempDirs.push(projectFolder);

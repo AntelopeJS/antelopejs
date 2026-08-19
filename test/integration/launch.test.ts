@@ -24,6 +24,58 @@ async function writeProjectConfig(
 }
 
 describe("Launch Function", () => {
+  it("rejects native ESM interface imports until identities are canonicalized", async () => {
+    const projectFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-esm-interface-"),
+    );
+    try {
+      const modulePath = path.join(projectFolder, "esm-module");
+      await fs.mkdir(modulePath, { recursive: true });
+      await fs.writeFile(
+        path.join(modulePath, "package.json"),
+        JSON.stringify({
+          name: "esm-module",
+          version: "1.0.0",
+          type: "module",
+          main: "index.js",
+          dependencies: { "@antelopejs/interface-core": "*" },
+        }),
+      );
+      await fs.writeFile(
+        path.join(modulePath, "index.js"),
+        'import "@antelopejs/interface-core";\n',
+      );
+      await writeProjectConfig(projectFolder, {
+        name: "esm-interface-test",
+        modules: {
+          esm: {
+            source: {
+              type: "local",
+              path: "./esm-module",
+              main: "index.js",
+            },
+          },
+        },
+      });
+
+      let thrown: unknown;
+      try {
+        await launch(projectFolder);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect((thrown as Error).message).to.include(
+        "Native ESM module 'esm' imports unsupported AntelopeJS interfaces: @antelopejs/interface-core",
+      );
+      expect((thrown as Error).message).to.include(
+        "companion runtime-identity support",
+      );
+    } finally {
+      await fs.rm(projectFolder, { recursive: true, force: true });
+    }
+  });
+
   it("should return ModuleManager instance", async () => {
     const projectFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-project-"),

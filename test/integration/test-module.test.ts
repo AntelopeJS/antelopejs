@@ -20,6 +20,63 @@ async function writeMinimalAntelopeModule(folder: string): Promise<void> {
 }
 
 describe("TestModule Function", () => {
+  it("runs tests after starting a native ESM module", async () => {
+    const moduleFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-test-esm-"),
+    );
+    const markerPath = path.join(moduleFolder, "started.txt");
+    try {
+      await fs.writeFile(
+        path.join(moduleFolder, "package.json"),
+        JSON.stringify({
+          name: "esm-test-module",
+          version: "1.0.0",
+          type: "module",
+          main: "index.js",
+          exports: "./index.js",
+          antelopeJs: { test: "./antelope.test.config.ts" },
+        }),
+      );
+      await fs.writeFile(
+        path.join(moduleFolder, "index.js"),
+        `import fs from "node:fs/promises";
+await Promise.resolve();
+let config;
+export function construct(moduleConfig) { config = moduleConfig; }
+export async function start() { await fs.writeFile(config.markerPath, "started"); }
+`,
+      );
+      await fs.writeFile(
+        path.join(moduleFolder, "antelope.test.config.ts"),
+        `export default ${JSON.stringify({
+          name: "esm-test",
+          modules: {
+            esm: {
+              source: { type: "local", path: ".", main: "index.js" },
+              config: { markerPath },
+            },
+          },
+        })};\n`,
+      );
+      const testFile = path.join(moduleFolder, "lifecycle.test.cjs");
+      await fs.writeFile(
+        testFile,
+        `const assert = require("node:assert");
+const fs = require("node:fs");
+describe("native ESM test module", () => {
+  it("starts before tests run", () => assert.equal(fs.readFileSync(${JSON.stringify(markerPath)}, "utf-8"), "started"));
+});
+`,
+      );
+
+      const failures = await TestModule(moduleFolder, [testFile]);
+
+      expect(failures).to.equal(0);
+    } finally {
+      await fs.rm(moduleFolder, { recursive: true, force: true });
+    }
+  });
+
   it("should run tests and return success code", async () => {
     const moduleFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-module-"),

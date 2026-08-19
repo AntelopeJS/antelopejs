@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { expect } from "chai";
 import sinon from "sinon";
 import { Module } from "../../src/core/module";
@@ -8,6 +11,32 @@ const manifest = {
   version: "1.0.0",
   main: "/mod/index.js",
 } as any;
+
+interface NativeModuleConfig {
+  markerPath: string;
+}
+
+function createManifest(main: string) {
+  return {
+    name: "native-module",
+    version: "1.0.0",
+    main,
+  } as any;
+}
+
+function esmSource(value: string): string {
+  return `import fs from "node:fs/promises";
+import { importedValue } from "./value.js";
+const topLevelValue = await Promise.resolve("${value}");
+let config;
+export function construct(moduleConfig) { config = moduleConfig; }
+export async function start() {
+  await fs.writeFile(config.markerPath, importedValue + ":" + topLevelValue);
+}
+export function stop() {}
+export function destroy() {}
+`;
+}
 
 describe("Module", () => {
   it("exposes current state", () => {
@@ -134,5 +163,108 @@ describe("Module", () => {
     await mod.stop();
 
     expect(stopResolved).to.equal(true);
+  });
+
+  it("loads native ESM imports, top-level await, and lifecycle exports", async () => {
+    const folder = await fs.mkdtemp(path.join(os.tmpdir(), "ajs esm module "));
+    const markerPath = path.join(folder, "marker.txt");
+    try {
+      await fs.writeFile(
+        path.join(folder, "package.json"),
+        JSON.stringify({ type: "module" }),
+      );
+      await fs.writeFile(
+        path.join(folder, "value.js"),
+        'export const importedValue = "imported";\n',
+      );
+      await fs.writeFile(path.join(folder, "index.js"), esmSource("awaited"));
+
+      const mod = new Module(createManifest(folder));
+      await mod.construct({ markerPath } satisfies NativeModuleConfig);
+      await mod.start();
+
+      expect(await fs.readFile(markerPath, "utf-8")).to.equal(
+        "imported:awaited",
+      );
+    } finally {
+      await fs.rm(folder, { recursive: true, force: true });
+    }
+  });
+
+  it("continues to load CommonJS lifecycle exports", async () => {
+    const folder = await fs.mkdtemp(path.join(os.tmpdir(), "ajs-cjs-module-"));
+    const markerPath = path.join(folder, "marker.txt");
+    try {
+      await fs.writeFile(
+        path.join(folder, "index.js"),
+        `const fs = require("node:fs");
+let config;
+exports.construct = (moduleConfig) => { config = moduleConfig; };
+exports.start = () => fs.writeFileSync(config.markerPath, "commonjs");
+`,
+      );
+
+      const mod = new Module(createManifest(folder));
+      await mod.construct({ markerPath } satisfies NativeModuleConfig);
+      await mod.start();
+
+      expect(await fs.readFile(markerPath, "utf-8")).to.equal("commonjs");
+    } finally {
+      await fs.rm(folder, { recursive: true, force: true });
+    }
+  });
+
+  it("propagates native ESM syntax errors", async () => {
+    const folder = await fs.mkdtemp(path.join(os.tmpdir(), "ajs-esm-syntax-"));
+    try {
+      await fs.writeFile(
+        path.join(folder, "package.json"),
+        JSON.stringify({ type: "module" }),
+      );
+      await fs.writeFile(path.join(folder, "index.js"), "export const = ;\n");
+      const mod = new Module(createManifest(folder));
+
+      let thrown: unknown;
+      try {
+        await mod.construct({});
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).to.be.instanceOf(SyntaxError);
+    } finally {
+      await fs.rm(folder, { recursive: true, force: true });
+    }
+  });
+
+  it("uses a fresh native ESM generation after source changes", async () => {
+    const folder = await fs.mkdtemp(path.join(os.tmpdir(), "ajs-esm-fresh-"));
+    const markerPath = path.join(folder, "marker.txt");
+    try {
+      await fs.writeFile(
+        path.join(folder, "package.json"),
+        JSON.stringify({ type: "module" }),
+      );
+      await fs.writeFile(
+        path.join(folder, "value.js"),
+        'export const importedValue = "value";\n',
+      );
+      const entryPath = path.join(folder, "index.js");
+      await fs.writeFile(entryPath, esmSource("v1"));
+
+      const first = new Module(createManifest(folder));
+      await first.construct({ markerPath } satisfies NativeModuleConfig);
+      await first.start();
+      await first.destroy();
+      await fs.writeFile(entryPath, esmSource("v2"));
+
+      const second = new Module(createManifest(folder));
+      await second.construct({ markerPath } satisfies NativeModuleConfig);
+      await second.start();
+
+      expect(await fs.readFile(markerPath, "utf-8")).to.equal("value:v2");
+    } finally {
+      await fs.rm(folder, { recursive: true, force: true });
+    }
   });
 });
