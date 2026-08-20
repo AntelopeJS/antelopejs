@@ -3,7 +3,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { LaunchOptions } from "../../types";
 import { DEFAULT_ENV, tryFindConfigPath } from "../config/config-paths";
 import type { NodeFileSystem } from "../filesystem";
-import { ModuleManager } from "../module-manager";
+import type { ModuleManager } from "../module-manager";
 import type { ShutdownManager } from "../shutdown";
 import {
   prepareFromArtifact,

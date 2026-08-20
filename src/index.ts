@@ -16,8 +16,6 @@ import {
   checkOutdatedModules,
   warnOutdatedModules,
 } from "./core/version-checker";
-import { FileWatcher } from "./core/watch/file-watcher";
-import { HotReload } from "./core/watch/hot-reload";
 import type { LaunchOptions } from "./types";
 
 export { ConfigLoader } from "./core/config/config-loader";

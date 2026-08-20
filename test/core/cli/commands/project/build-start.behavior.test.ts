@@ -5,8 +5,8 @@ import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import cmdBuild from "../../../../../src/core/cli/commands/project/build";
 import cmdStart from "../../../../../src/core/cli/commands/project/start";
 import * as common from "../../../../../src/core/cli/common";
-import * as indexModule from "../../../../../src/index";
 import * as projectLaunch from "../../../../../src/core/runtime/project-launch";
+import * as indexModule from "../../../../../src/index";
 
 describe("project build/start behavior", () => {
   afterEach(() => {
