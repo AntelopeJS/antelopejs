@@ -4,7 +4,6 @@ import type { LaunchOptions } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../module-manager";
 import { ShutdownManager } from "../shutdown";
-import { checkOutdatedModules, warnOutdatedModules } from "../version-checker";
 import {
   ensureBuildModulesExist,
   logEnvironmentMismatch,
@@ -86,6 +85,9 @@ export const prepareFromConfig: ProjectPreparer = async (
     logging: normalizedConfig.logging,
     loadContext,
     verify: async () => {
+      const { checkOutdatedModules, warnOutdatedModules } = await import(
+        "../version-checker"
+      );
       warnOutdatedModules(await checkOutdatedModules(normalizedConfig.modules));
     },
     createEntries: async () =>

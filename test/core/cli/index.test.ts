@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { createCLI } from "../../../src/core/cli";
+import { createCLI } from "../../../src/core/cli/full-cli";
 
 function commandNames(cmd: any): string[] {
   return cmd.commands.map((c: any) => c.name()).sort();

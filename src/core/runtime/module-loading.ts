@@ -9,11 +9,6 @@ import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import { ModuleState } from "../../types";
 import { terminalDisplay } from "../cli/terminal-display";
 import type { ExpandedModuleConfig } from "../config/config-parser";
-import { registerGitDownloader } from "../downloaders/git";
-import { registerLocalDownloader } from "../downloaders/local";
-import { registerLocalFolderDownloader } from "../downloaders/local-folder";
-import { registerPackageDownloader } from "../downloaders/package";
-import { DownloaderRegistry } from "../downloaders/registry";
 import { NodeFileSystem } from "../filesystem";
 import { Module } from "../module";
 import { ModuleCache } from "../module-cache";
@@ -104,14 +99,22 @@ export async function createLoaderContext(
   config: LoaderConfig,
   fs: NodeFileSystem = new NodeFileSystem(),
 ): Promise<LoaderContext> {
+  const [{ DownloaderRegistry }, git, local, localFolder, packageDownloader] =
+    await Promise.all([
+      import("../downloaders/registry"),
+      import("../downloaders/git"),
+      import("../downloaders/local"),
+      import("../downloaders/local-folder"),
+      import("../downloaders/package"),
+    ]);
   const cache = new ModuleCache(config.cacheFolder, fs);
   await cache.load();
 
   const registry = new DownloaderRegistry();
-  registerLocalDownloader(registry, { fs });
-  registerLocalFolderDownloader(registry, { fs });
-  registerPackageDownloader(registry, { fs });
-  registerGitDownloader(registry, { fs });
+  local.registerLocalDownloader(registry, { fs });
+  localFolder.registerLocalFolderDownloader(registry, { fs });
+  packageDownloader.registerPackageDownloader(registry, { fs });
+  git.registerGitDownloader(registry, { fs });
 
   return {
     fs,
