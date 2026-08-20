@@ -18,21 +18,27 @@ describe("Package Manager Utils", () => {
       const fs = new InMemoryFileSystem();
       await fs.writeFile(
         "/project/package.json",
-        JSON.stringify({ packageManager: "pnpm@10.6.5" }),
+        JSON.stringify({ packageManager: "pnpm@10.6.5+sha256.47c8bca4" }),
       );
-      expect(await getModulePackageManager("/project", fs)).to.equal("pnpm");
+      expect(await getModulePackageManager("/project", fs)).to.equal(
+        "pnpm@10.6.5+sha256.47c8bca4",
+      );
 
       await fs.writeFile(
         "/project/package.json",
         JSON.stringify({ packageManager: "yarn@1.22.21" }),
       );
-      expect(await getModulePackageManager("/project", fs)).to.equal("yarn");
+      expect(await getModulePackageManager("/project", fs)).to.equal(
+        "yarn@1.22.21",
+      );
 
       await fs.writeFile(
         "/project/package.json",
         JSON.stringify({ packageManager: "npm@10.2.4" }),
       );
-      expect(await getModulePackageManager("/project", fs)).to.equal("npm");
+      expect(await getModulePackageManager("/project", fs)).to.equal(
+        "npm@10.2.4",
+      );
     });
 
     it("returns undefined for invalid content", async () => {
@@ -48,7 +54,10 @@ describe("Package Manager Utils", () => {
   });
 
   describe("install command builders", () => {
+    afterEach(() => sinon.restore());
+
     it("builds install commands for each package manager", async () => {
+      sinon.stub(require("node:child_process"), "execSync").returns("0.20.0");
       const fs = new InMemoryFileSystem();
 
       await fs.writeFile(
@@ -56,7 +65,7 @@ describe("Package Manager Utils", () => {
         JSON.stringify({ packageManager: "pnpm@10.6.5" }),
       );
       expect(await getInstallCommand("/project", true, fs)).to.include(
-        "pnpm install",
+        "corepack pnpm@10.6.5 install",
       );
       expect(
         await getInstallPackagesCommand(["a"], true, "/project", fs),
@@ -67,18 +76,18 @@ describe("Package Manager Utils", () => {
         JSON.stringify({ packageManager: "yarn@1.22.21" }),
       );
       expect(await getInstallCommand("/project", true, fs)).to.include(
-        "--production",
+        "corepack yarn@1.22.21 install --production",
       );
       expect(
         await getInstallPackagesCommand(["a"], false, "/project", fs),
-      ).to.include("yarn add");
+      ).to.include("corepack yarn@1.22.21 add");
 
       await fs.writeFile(
         "/project/package.json",
         JSON.stringify({ packageManager: "npm@10.2.4" }),
       );
       expect(await getInstallCommand("/project", true, fs)).to.include(
-        "--omit=dev",
+        "corepack npm@10.2.4 install --omit=dev",
       );
       expect(
         await getInstallPackagesCommand(["a"], true, "/project", fs),
@@ -108,6 +117,108 @@ describe("Package Manager Utils", () => {
       expect(
         await getInstallPackagesCommand(["a"], false, "/project", fs),
       ).to.include("npm install");
+    });
+
+    it("uses global binaries when Corepack is unavailable", async () => {
+      sinon
+        .stub(require("node:child_process"), "execSync")
+        .throws(new Error("corepack not found"));
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/project/package.json",
+        JSON.stringify({ packageManager: "pnpm@10.6.5" }),
+      );
+
+      expect(await getInstallCommand("/project", false, fs)).to.equal(
+        "pnpm install --ignore-workspace",
+      );
+    });
+
+    it("uses frozen lockfiles and prefers the local cache", async () => {
+      sinon.stub(require("node:child_process"), "execSync").returns("0.20.0");
+      const fs = new InMemoryFileSystem();
+      const cases = [
+        {
+          command:
+            "corepack pnpm@10.6.5 install --prod --ignore-workspace --frozen-lockfile --prefer-offline",
+          lockfile: "pnpm-lock.yaml",
+          packageManager: "pnpm@10.6.5",
+        },
+        {
+          command:
+            "corepack yarn@1.22.21 install --production --frozen-lockfile --prefer-offline",
+          lockfile: "yarn.lock",
+          packageManager: "yarn@1.22.21",
+        },
+        {
+          command: "corepack npm@10.2.4 ci --prefer-offline --omit=dev",
+          lockfile: "package-lock.json",
+          packageManager: "npm@10.2.4",
+        },
+      ];
+
+      for (const testCase of cases) {
+        await fs.writeFile(
+          "/project/package.json",
+          JSON.stringify({ packageManager: testCase.packageManager }),
+        );
+        await fs.writeFile(`/project/${testCase.lockfile}`, "lock");
+        expect(await getInstallCommand("/project", true, fs)).to.equal(
+          testCase.command,
+        );
+        await fs.rm(`/project/${testCase.lockfile}`);
+      }
+    });
+
+    it("updates copied lockfiles during project initialization", async () => {
+      sinon.stub(require("node:child_process"), "execSync").returns("0.20.0");
+      const fs = new InMemoryFileSystem();
+      const cases = [
+        {
+          command:
+            "corepack pnpm@10.6.5 install --ignore-workspace --prefer-offline",
+          lockfile: "pnpm-lock.yaml",
+          packageManager: "pnpm@10.6.5",
+        },
+        {
+          command: "corepack yarn@1.22.21 install --prefer-offline",
+          lockfile: "yarn.lock",
+          packageManager: "yarn@1.22.21",
+        },
+        {
+          command: "corepack npm@10.2.4 install --prefer-offline",
+          lockfile: "package-lock.json",
+          packageManager: "npm@10.2.4",
+        },
+      ];
+
+      for (const testCase of cases) {
+        await fs.writeFile(
+          "/project/package.json",
+          JSON.stringify({
+            dependencies: { "selected-interface": "latest" },
+            packageManager: testCase.packageManager,
+          }),
+        );
+        await fs.writeFile(`/project/${testCase.lockfile}`, "copied-template");
+        expect(
+          await getInstallCommand("/project", false, fs, "update"),
+        ).to.equal(testCase.command);
+        await fs.rm(`/project/${testCase.lockfile}`);
+      }
+    });
+
+    it("ignores malformed versions", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/project/package.json",
+        JSON.stringify({ packageManager: "pnpm@10.6.5; echo unsafe" }),
+      );
+
+      expect(await getModulePackageManager("/project", fs)).to.equal(undefined);
+      expect(await getInstallCommand("/project", false, fs)).to.include(
+        "npm install",
+      );
     });
   });
 

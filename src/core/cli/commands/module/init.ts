@@ -198,7 +198,12 @@ export async function moduleInitCommand(
     // Execute install command
     const installSpinner = new Spinner("Installing dependencies");
     await installSpinner.start();
-    const installCmd = await getInstallCommand(packageJsonPath, false);
+    const installCmd = await getInstallCommand(
+      packageJsonPath,
+      false,
+      undefined,
+      "update",
+    );
     await ExecuteCMD(installCmd, { cwd: packageJsonPath });
     await installSpinner.succeed("Dependencies installed");
 
