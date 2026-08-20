@@ -8,6 +8,8 @@ export interface InterfaceConnectionRef {
 interface InterfaceConnectionEntry {
   path: string;
   id?: string;
+  provider: string;
+  selected: boolean;
 }
 
 type ModuleConnections = Record<string, InterfaceConnectionEntry[]>;
@@ -21,12 +23,15 @@ export class InterfaceRegistry {
   setConnections(
     moduleId: string,
     connections: Map<string, InterfaceConnectionRef[]>,
+    selectedProviders: Map<string, string> = new Map(),
   ): void {
     const connectionIDs: ModuleConnections = {};
     for (const [interfaceName, modules] of connections) {
-      connectionIDs[interfaceName] = modules.map(({ id }) => {
+      connectionIDs[interfaceName] = modules.map(({ module, id }) => {
         const entry: InterfaceConnectionEntry = {
           path: interfaceName,
+          provider: module,
+          selected: selectedProviders.get(interfaceName) === module,
         };
         if (id !== undefined) {
           entry.id = id;

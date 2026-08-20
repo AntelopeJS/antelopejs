@@ -63,6 +63,7 @@ describe("launch", () => {
       reload: sinon.stub().resolves(),
       construct: sinon.stub().resolves(),
       start: sinon.stub(),
+      setProviderRoutes: sinon.stub(),
     } as any;
     const localModuleB = {
       id: "modB",
@@ -75,6 +76,7 @@ describe("launch", () => {
       reload: sinon.stub().resolves(),
       construct: sinon.stub().resolves(),
       start: sinon.stub(),
+      setProviderRoutes: sinon.stub(),
     } as any;
 
     const loaded = new Map<string, any>([

@@ -21,11 +21,24 @@ describe("InterfaceRegistry", () => {
       { module: "modB", id: "x" },
     ]);
 
-    registry.setConnections("consumer", connections);
+    registry.setConnections(
+      "consumer",
+      connections,
+      new Map([["core@beta", "modA"]]),
+    );
 
     expect(internal.interfaceConnections.consumer["core@beta"]).to.deep.equal([
-      { path: "core@beta" },
-      { path: "core@beta", id: "x" },
+      {
+        path: "core@beta",
+        provider: "modA",
+        selected: true,
+      },
+      {
+        path: "core@beta",
+        id: "x",
+        provider: "modB",
+        selected: false,
+      },
     ]);
     registry.clear();
   });

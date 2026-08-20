@@ -35,6 +35,7 @@ import type {
 } from "./runtime-types";
 
 const Logger = new Logging.Channel("loader");
+const CORE_MODULE_ID = "antelopejs";
 
 const MODULE_STATUS_MAP: Record<
   string,
@@ -124,71 +125,77 @@ export function registerCoreModuleInterface(
   manager: ModuleManager,
   loadContext: LoaderContextProvider,
 ): void {
-  void coreInterfaceBeta.ImplementInterface(moduleInterfaceBeta, {
-    ListModules: async () => manager.listModules(),
-    GetModuleInfo: async (moduleId: string) => {
-      const entry = manager.getModuleEntry(moduleId);
-      if (!entry) {
-        throw new Error(`Module not found: ${moduleId}`);
-      }
+  moduleInterfaceBeta.RunWithModuleContext(
+    { module: CORE_MODULE_ID, provider: CORE_MODULE_ID },
+    () =>
+      coreInterfaceBeta.ImplementInterface(moduleInterfaceBeta, {
+        ListModules: async () => manager.listModules(),
+        GetModuleInfo: async (moduleId: string) => {
+          const entry = manager.getModuleEntry(moduleId);
+          if (!entry) {
+            throw new Error(`Module not found: ${moduleId}`);
+          }
 
-      return {
-        source: entry.module.manifest.source,
-        config: entry.config.config,
-        disabledExports: [...(entry.config.disabledExports ?? new Set())],
-        importOverrides: exportImportOverrides(entry.config.importOverrides),
-        localPath: entry.module.manifest.folder,
-        status: getModuleStatus(entry.module),
-      };
-    },
-    LoadModule: async (
-      moduleId: string,
-      declaration: moduleInterfaceBeta.ModuleDefinition,
-      autostart = false,
-    ) => {
-      const source = toModuleSource(declaration.source);
-      const loaderContext = await loadContext();
-      const manifests = await loaderContext.registry.load(
-        loaderContext.projectFolder,
-        loaderContext.cache,
-        {
-          ...source,
-          id: moduleId,
+          return {
+            source: entry.module.manifest.source,
+            config: entry.config.config,
+            disabledExports: [...(entry.config.disabledExports ?? new Set())],
+            importOverrides: exportImportOverrides(
+              entry.config.importOverrides,
+            ),
+            localPath: entry.module.manifest.folder,
+            status: getModuleStatus(entry.module),
+          };
         },
-      );
+        LoadModule: async (
+          moduleId: string,
+          declaration: moduleInterfaceBeta.ModuleDefinition,
+          autostart = false,
+        ) => {
+          const source = toModuleSource(declaration.source);
+          const loaderContext = await loadContext();
+          const manifests = await loaderContext.registry.load(
+            loaderContext.projectFolder,
+            loaderContext.cache,
+            {
+              ...source,
+              id: moduleId,
+            },
+          );
 
-      const moduleConfig: ModuleConfig = {
-        config: declaration.config,
-        disabledExports: new Set(declaration.disabledExports ?? []),
-        importOverrides: mapImportOverrides(declaration.importOverrides),
-      };
+          const moduleConfig: ModuleConfig = {
+            config: declaration.config,
+            disabledExports: new Set(declaration.disabledExports ?? []),
+            importOverrides: mapImportOverrides(declaration.importOverrides),
+          };
 
-      const created = manager.addModules(
-        manifests.map((manifest) => ({ manifest, config: moduleConfig })),
-      );
-      await manager.constructModules(created);
-      if (autostart) {
-        await manager.startModules(created);
-      }
-      return created.map(({ module }) => module.id);
-    },
-    StartModule: async (moduleId: string) => {
-      await manager.getModule(moduleId)?.start();
-    },
-    StopModule: async (moduleId: string) => {
-      await manager.getModule(moduleId)?.stop();
-    },
-    DestroyModule: async (moduleId: string) => {
-      await manager.getModule(moduleId)?.destroy();
-    },
-    ReloadModule: async (moduleId: string) => {
-      await reloadLoadedModuleFromSource(
-        manager,
-        await loadContext(),
-        moduleId,
-      );
-    },
-  });
+          const created = manager.addModules(
+            manifests.map((manifest) => ({ manifest, config: moduleConfig })),
+          );
+          await manager.constructModules(created);
+          if (autostart) {
+            await manager.startModules(created);
+          }
+          return created.map(({ module }) => module.id);
+        },
+        StartModule: async (moduleId: string) => {
+          await manager.getModule(moduleId)?.start();
+        },
+        StopModule: async (moduleId: string) => {
+          await manager.getModule(moduleId)?.stop();
+        },
+        DestroyModule: async (moduleId: string) => {
+          await manager.getModule(moduleId)?.destroy();
+        },
+        ReloadModule: async (moduleId: string) => {
+          await reloadLoadedModuleFromSource(
+            manager,
+            await loadContext(),
+            moduleId,
+          );
+        },
+      }),
+  );
 }
 
 export async function registerCoreInterfaces(
