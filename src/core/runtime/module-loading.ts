@@ -521,12 +521,12 @@ export function ensureGraphIsValid(manager: ModuleManager): void {
     disabledExports: config.disabledExports,
   }));
 
-  // Static modules handle their own interface deps — treat them as resolved
-  const staticDeps = allModules
+  const staticPackages = allModules
     .filter(({ module }) => !loadedIds.has(module.id))
-    .flatMap(({ module }) =>
-      Object.keys(module.manifest.manifest.dependencies ?? {}),
-    );
+    .flatMap(({ module }) => [
+      module.manifest.manifest.name,
+      ...Object.keys(module.manifest.manifest.dependencies ?? {}),
+    ]);
 
   const consumers = loadedModules.map(({ module }) => ({
     id: module.id,
@@ -538,7 +538,7 @@ export function ensureGraphIsValid(manager: ModuleManager): void {
   const { unresolved, stubbed } = findUnresolvedInterfaces(
     providers,
     consumers,
-    staticDeps,
+    staticPackages,
   );
   if (unresolved.length > 0) {
     const details = unresolved

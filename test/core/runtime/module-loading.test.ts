@@ -105,6 +105,42 @@ describe("runtime module-loading", () => {
     expect(() => ensureGraphIsValid(manager)).to.not.throw();
   });
 
+  it("treats a static module package as an available dependency", () => {
+    const staticEntry = {
+      module: {
+        id: "antelopejs",
+        manifest: {
+          name: "antelopejs",
+          folder: process.cwd(),
+          implements: ["@antelopejs/interface-core"],
+          manifest: {
+            name: "@antelopejs/core",
+            version: "1.4.7",
+            dependencies: { "@antelopejs/interface-core": "*" },
+          },
+        },
+      },
+      config: {},
+    };
+    const loadedEntry = {
+      module: {
+        id: "app",
+        manifest: {
+          folder: process.cwd(),
+          implements: [],
+          manifest: { dependencies: { "@antelopejs/core": "*" } },
+        },
+      },
+      config: {},
+    };
+    const manager = {
+      getAllManagedModules: () => [staticEntry, loadedEntry],
+      getLoadedModules: () => [loadedEntry].values(),
+    } as any;
+
+    expect(() => ensureGraphIsValid(manager)).to.not.throw();
+  });
+
   it("reloads watched modules and ignores unknown ones", async () => {
     const managerWithoutEntry = {
       getLoadedModuleEntry: sinon.stub().returns(undefined),
