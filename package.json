@@ -16,8 +16,7 @@
     }
   },
   "bin": {
-    "ajs": "dist/core/cli/index.js",
-    "ajs-start": "dist/core/production-launcher.js"
+    "ajs": "dist/core/cli/index.js"
   },
   "files": [
     "dist"

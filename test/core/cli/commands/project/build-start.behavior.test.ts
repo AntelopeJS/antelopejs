@@ -6,6 +6,7 @@ import cmdBuild from "../../../../../src/core/cli/commands/project/build";
 import cmdStart from "../../../../../src/core/cli/commands/project/start";
 import * as common from "../../../../../src/core/cli/common";
 import * as indexModule from "../../../../../src/index";
+import * as projectLaunch from "../../../../../src/core/runtime/project-launch";
 
 describe("project build/start behavior", () => {
   afterEach(() => {
@@ -64,7 +65,7 @@ describe("project build/start behavior", () => {
   it("runs start command from build artifact", async () => {
     sinon.stub(common, "readConfig").resolves({ name: "project" } as any);
     const startStub = sinon
-      .stub(indexModule, "launchFromBuild")
+      .stub(projectLaunch, "launchFromBuild")
       .resolves({} as any);
 
     stubProjectSpinners();
@@ -95,7 +96,7 @@ describe("project build/start behavior", () => {
 
   it("sets exit code when start command fails", async () => {
     sinon.stub(common, "readConfig").resolves({ name: "project" } as any);
-    sinon.stub(indexModule, "launchFromBuild").rejects(new Error("boom"));
+    sinon.stub(projectLaunch, "launchFromBuild").rejects(new Error("boom"));
 
     stubProjectSpinners();
     sinon.stub(cliUi, "displayBox").resolves();

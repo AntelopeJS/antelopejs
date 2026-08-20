@@ -2,8 +2,8 @@ import fs from "node:fs";
 import { expect } from "chai";
 import { Command } from "commander";
 import sinon from "sinon";
-import { runCLI } from "../../../src/core/cli";
 import * as cliUi from "../../../src/core/cli/cli-ui";
+import { runCLI } from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
 import * as logging from "../../../src/logging";
 

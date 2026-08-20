@@ -1,10 +1,9 @@
-#!/usr/bin/env node
-
 import path from "node:path";
 import { parseArgs } from "node:util";
-import * as core from "..";
+import { DEFAULT_ENV } from "../config/config-paths";
+import { launchFromBuild } from "../runtime/project-launch";
 
-interface ProductionLauncherOptions {
+export interface ProductionStartOptions {
   concurrency?: number;
   env: string;
   help: boolean;
@@ -12,7 +11,7 @@ interface ProductionLauncherOptions {
   verbose?: string[];
 }
 
-const HELP = `Usage: ajs-start [options]
+const HELP = `Usage: ajs project start [options]
 
 Start an AntelopeJS project from .antelope/build/build.json without loading
 the development CLI or checking the npm registry.
@@ -21,7 +20,7 @@ Options:
   -p, --project <path>       Path to the AntelopeJS project
   -e, --env <environment>   Runtime environment (default: default)
   -c, --concurrency <count> Number of modules to load concurrently
-      --verbose <channels>  Comma-separated TRACE log channels
+      --verbose [channels]  TRACE logging, optionally scoped by comma-separated channels
   -h, --help                Display help
 `;
 
@@ -43,11 +42,25 @@ function parseVerbose(value?: string): string[] | undefined {
   return value.replaceAll(/%/g, "*").split(",");
 }
 
-export function parseProductionLauncherArgs(
+function normalizeVerboseArgument(args: string[]): string[] {
+  const verboseIndex = args.indexOf("--verbose");
+  if (verboseIndex < 0) {
+    return args;
+  }
+  const value = args[verboseIndex + 1];
+  const normalizedValue = value?.startsWith("-") ? undefined : value;
+  return [
+    ...args.slice(0, verboseIndex),
+    `--verbose=${normalizedValue ?? "*"}`,
+    ...args.slice(verboseIndex + (normalizedValue ? 2 : 1)),
+  ];
+}
+
+export function parseProductionStartArgs(
   args: string[],
-): ProductionLauncherOptions {
+): ProductionStartOptions {
   const { values } = parseArgs({
-    args,
+    args: normalizeVerboseArgument(args),
     options: {
       project: { type: "string", short: "p" },
       env: { type: "string", short: "e" },
@@ -60,30 +73,27 @@ export function parseProductionLauncherArgs(
     project: path.resolve(
       values.project ?? process.env.ANTELOPEJS_PROJECT ?? process.cwd(),
     ),
-    env: values.env ?? process.env.ANTELOPEJS_LAUNCH_ENV ?? core.DEFAULT_ENV,
+    env: values.env ?? process.env.ANTELOPEJS_LAUNCH_ENV ?? DEFAULT_ENV,
     concurrency: parseConcurrency(values.concurrency),
     verbose: parseVerbose(values.verbose ?? process.env.ANTELOPEJS_VERBOSE),
     help: values.help ?? false,
   };
 }
 
-export async function runProductionLauncher(args: string[]): Promise<void> {
-  const options = parseProductionLauncherArgs(args);
-  if (options.help) {
-    process.stdout.write(HELP);
-    return;
-  }
-  await core.launchFromBuild(options.project, options.env, {
+export async function startFromBuild(
+  options: ProductionStartOptions,
+): Promise<void> {
+  await launchFromBuild(options.project, options.env, {
     concurrency: options.concurrency,
     verbose: options.verbose,
   });
 }
 
-if (require.main === module) {
-  runProductionLauncher(process.argv.slice(2)).catch((error) => {
-    console.error(
-      error instanceof Error ? (error.stack ?? error.message) : error,
-    );
-    process.exitCode = 1;
-  });
+export async function runProductionStart(args: string[]): Promise<void> {
+  const options = parseProductionStartArgs(args);
+  if (options.help) {
+    process.stdout.write(HELP);
+    return;
+  }
+  await startFromBuild(options);
 }

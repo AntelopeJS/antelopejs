@@ -5,7 +5,9 @@ import { ListModules } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
 import type { BuildArtifact } from "../src/core/build/build-artifact";
+import { DownloaderRegistry } from "../src/core/downloaders/registry";
 import { ModuleCache } from "../src/core/module-cache";
+import { FileWatcher } from "../src/core/watch/file-watcher";
 import { build, launchFromBuild } from "../src/index";
 import { cleanupTempDir, makeTempDir, writeJson } from "./helpers/temp";
 
@@ -183,6 +185,23 @@ describe("build and launchFromBuild", () => {
       "ListModules() never settled: no provider for @antelopejs/interface-core/modules",
     );
     expect(result).to.be.an("array");
+  });
+
+  it("launchFromBuild skips download and watch paths", async () => {
+    const projectFolder = makeTempDir("antelope-start-production-");
+    tempDirs.push(projectFolder);
+    writeTsConfig(projectFolder, { name: "sample", modules: {} });
+    writeJson(
+      path.join(projectFolder, ".antelope", "build", "build.json"),
+      createArtifact(projectFolder, "abc123"),
+    );
+    const download = sinon.stub(DownloaderRegistry.prototype, "load");
+    const watch = sinon.stub(FileWatcher.prototype, "startWatching");
+
+    await launchFromBuild(projectFolder, "production");
+
+    expect(download.called).to.equal(false);
+    expect(watch.called).to.equal(false);
   });
 
   it("launchFromBuild throws when a module folder is missing", async () => {

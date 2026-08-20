@@ -1,8 +1,9 @@
 import chalk from "chalk";
 import { Command, Option } from "commander";
-import { DEFAULT_ENV, type LaunchOptions, launchFromBuild } from "../../../..";
+import { DEFAULT_ENV, type LaunchOptions } from "../../../..";
 import { displayBox, error, info } from "../../cli-ui";
 import { Options } from "../../common";
+import { startFromBuild } from "../../production-start";
 import {
   type ProjectCommandOptions,
   resolveInheritedVerbose,
@@ -73,14 +74,13 @@ export default function () {
       info(`Starting AntelopeJS project from build artifact`);
 
       try {
-        await launchFromBuild(
-          commandOptions.project,
-          commandOptions.env ?? DEFAULT_ENV,
-          {
-            concurrency: commandOptions.concurrency,
-            verbose: commandOptions.verbose,
-          },
-        );
+        await startFromBuild({
+          project: commandOptions.project,
+          env: commandOptions.env ?? DEFAULT_ENV,
+          concurrency: commandOptions.concurrency,
+          verbose: commandOptions.verbose,
+          help: false,
+        });
       } catch (err) {
         error(err instanceof Error ? err : String(err));
         process.exitCode = 1;
