@@ -1,8 +1,0 @@
-packages:
-  - "."
-  - "playground"
-  - "playground/modules/*"
-  - "playground/packages/*"
-
-patchedDependencies:
-  "@antelopejs/interface-core@0.0.8": patches/@antelopejs__interface-core@0.0.8.patch

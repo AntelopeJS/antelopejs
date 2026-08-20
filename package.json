@@ -43,14 +43,15 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "test": "pnpm test:unit && pnpm test:playground",
+    "test": "pnpm test:unit && pnpm test:package-consumer && pnpm test:playground",
     "test:unit": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
+    "test:package-consumer": "pnpm build && ts-node test/package-consumer/run.ts",
     "test:playground": "pnpm build && pnpm --dir playground install && ts-node playground/test-playground.ts",
     "test:watch": "mocha --require ts-node/register --require test/setup.ts --watch --watch-extensions ts 'test/**/*.test.ts'",
     "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 90 --statements 90 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit"
   },
   "dependencies": {
-    "@antelopejs/interface-core": "github:AntelopeJS/interface-core#fb88a4065e36206dd346bbe58890ec18c50c344c",
+    "@antelopejs/interface-core": "^0.0.11",
     "@types/proper-lockfile": "^4.1.4",
     "boxen": "^8.0.1",
     "chalk": "^4.1.2",

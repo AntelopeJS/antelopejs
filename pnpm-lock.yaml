@@ -4,18 +4,13 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  '@antelopejs/interface-core@0.0.8':
-    hash: 2989799a73aca8b482691f7d599c885d3e16662d87a8b4fdffc887dd4c77956e
-    path: patches/@antelopejs__interface-core@0.0.8.patch
-
 importers:
 
   .:
     dependencies:
       '@antelopejs/interface-core':
-        specifier: github:AntelopeJS/interface-core#fb88a4065e36206dd346bbe58890ec18c50c344c
-        version: https://codeload.github.com/AntelopeJS/interface-core/tar.gz/fb88a4065e36206dd346bbe58890ec18c50c344c(patch_hash=2989799a73aca8b482691f7d599c885d3e16662d87a8b4fdffc887dd4c77956e)
+        specifier: ^0.0.11
+        version: 0.0.11
       '@types/proper-lockfile':
         specifier: ^4.1.4
         version: 4.1.4
@@ -133,12 +128,11 @@ importers:
 
 packages:
 
+  '@antelopejs/interface-core@0.0.11':
+    resolution: {integrity: sha512-eKE3F9XY0eIzdLBXms8QAY4BHmA8+XXZnta0vZ411q9GiSbI2S1Q3lfYzmnXU4ZK9i+/SIYPplOsA02gIdxODg==}
+
   '@antelopejs/interface-core@0.0.6':
     resolution: {integrity: sha512-OMna86iT/ylL6wJl6FCPw9ieddULXGs4jTmeiDBNEXYQ9acnVXjS/+SaN0UR0h7oY7WTD9VwKXVwG95qjNIA1w==}
-
-  '@antelopejs/interface-core@https://codeload.github.com/AntelopeJS/interface-core/tar.gz/fb88a4065e36206dd346bbe58890ec18c50c344c':
-    resolution: {tarball: https://codeload.github.com/AntelopeJS/interface-core/tar.gz/fb88a4065e36206dd346bbe58890ec18c50c344c}
-    version: 0.0.8
 
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
@@ -1795,11 +1789,11 @@ packages:
 
 snapshots:
 
-  '@antelopejs/interface-core@0.0.6':
+  '@antelopejs/interface-core@0.0.11':
     dependencies:
       reflect-metadata: 0.2.2
 
-  '@antelopejs/interface-core@https://codeload.github.com/AntelopeJS/interface-core/tar.gz/fb88a4065e36206dd346bbe58890ec18c50c344c(patch_hash=2989799a73aca8b482691f7d599c885d3e16662d87a8b4fdffc887dd4c77956e)':
+  '@antelopejs/interface-core@0.0.6':
     dependencies:
       reflect-metadata: 0.2.2
 

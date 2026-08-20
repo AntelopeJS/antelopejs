@@ -1,5 +1,4 @@
 import {
-  BindInterfaceProxyIdentities,
   GetInterfaceProxyIdentity,
   IsInterfaceProxy,
 } from "@antelopejs/interface-core";
@@ -55,8 +54,7 @@ function loadInterfaceDeclaration(route: InterfaceProviderRoute): unknown {
   }
 
   try {
-    const declaration = require(route.packageEntry);
-    return BindInterfaceProxyIdentities(declaration, route.interfaceName);
+    return require(route.packageEntry);
   } catch (error) {
     throw new Error(
       `Failed to prepare provider routing for '${route.interfaceName}' from '${route.packageEntry}'.`,

@@ -1,4 +1,8 @@
-import { GetModuleContext } from "@antelopejs/interface-core/modules";
+import {
+  Events,
+  GetModuleContext,
+  type ModuleExecutionContext,
+} from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
 import { Module } from "../../src/core/module";
@@ -39,10 +43,13 @@ describe("Module", () => {
     expect(callbacks.destroy.calledOnce).to.be.true;
   });
 
-  it("runs loading and every lifecycle callback in module context", async () => {
-    const contexts: string[] = [];
+  it("runs a generation in one stable module context", async () => {
+    const contexts: ModuleExecutionContext[] = [];
     const capture = () => {
-      contexts.push(GetModuleContext()?.module ?? "missing");
+      const context = GetModuleContext();
+      if (context) {
+        contexts.push(context);
+      }
     };
     const mod = new Module(
       { ...manifest, name: "context-module" },
@@ -62,7 +69,57 @@ describe("Module", () => {
     await mod.stop();
     await mod.destroy();
 
-    expect(contexts).to.deep.equal(Array(5).fill("context-module"));
+    expect(contexts.map(({ module }) => module)).to.deep.equal(
+      Array(5).fill("context-module"),
+    );
+    expect(new Set(contexts.map(({ owner }) => owner)).size).to.equal(1);
+    expect(contexts[0].owner).to.match(/^context-module#\d+$/);
+  });
+
+  it("uses distinct owners for replacement generations", async () => {
+    const owners: Array<string | undefined> = [];
+    const createModule = () =>
+      new Module({ ...manifest, name: "replacement" }, async () => ({
+        construct: () => {
+          owners.push(GetModuleContext()?.owner);
+        },
+      }));
+    const oldModule = createModule();
+    const replacement = createModule();
+
+    await oldModule.construct({});
+    await replacement.construct({});
+
+    expect(owners[0]).to.not.equal(owners[1]);
+  });
+
+  it("emits successful destroy from the generation context after retry", async () => {
+    const contexts: ModuleExecutionContext[] = [];
+    const emit = Events.ModuleDestroyed.emit.bind(Events.ModuleDestroyed);
+    const destroyed = sinon
+      .stub(Events.ModuleDestroyed, "emit")
+      .callsFake((moduleId) => {
+        const context = GetModuleContext();
+        if (context) {
+          contexts.push(context);
+        }
+        emit(moduleId);
+      });
+    const destroy = sinon.stub();
+    destroy.onFirstCall().rejects(new Error("destroy failed"));
+    destroy.onSecondCall().resolves();
+    const mod = new Module(manifest, sinon.stub().resolves({ destroy }));
+
+    try {
+      await mod.construct({});
+      await mod.destroy().catch(() => undefined);
+      await mod.destroy();
+      expect(destroyed.calledOnce).to.equal(true);
+      expect(contexts[0]).to.include({ module: "mod" });
+      expect(contexts[0].owner).to.match(/^mod#\d+$/);
+    } finally {
+      destroyed.restore();
+    }
   });
 
   it("should not reload callbacks when already constructed", async () => {
