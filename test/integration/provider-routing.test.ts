@@ -6,18 +6,26 @@ import {
   ImplementInterface,
   InterfaceFunction,
 } from "@antelopejs/interface-core";
+import * as moduleInterface from "@antelopejs/interface-core/modules";
+import * as runtimeInterface from "@antelopejs/interface-core/runtime";
 import { expect } from "chai";
-import launch, { type ModuleManager } from "../../src";
+import launch, { ModuleManager } from "../../src";
 import { Module } from "../../src/core/module";
 import { buildProviderRoutes } from "../../src/core/module-context";
+import { registerCoreRuntimeInterface } from "../../src/core/runtime/dev-server-registry";
 import {
   createLoaderContext,
+  registerCoreInterfaces,
+  registerCoreModuleInterface,
   reloadWatchedModule,
 } from "../../src/core/runtime/module-loading";
+import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 const ROUTING_RESULTS_KEY = "__antelopeProviderRouting";
 const INTERFACE_NAME = "routing-interface";
 const STRESS_ITERATIONS = 40;
+const CORE_MODULE_ID = "antelopejs";
+const REAL_CONSUMER_ID = "cms";
 
 interface RoutingResult {
   module: string;
@@ -218,6 +226,17 @@ function routingResults(): RoutingResults {
   ] as RoutingResults;
 }
 
+async function unavailableLoaderContext(): Promise<never> {
+  throw new Error("Loader context is unavailable in the routing test");
+}
+
+function destroyCoreProviders(): void {
+  moduleInterface.RunWithModuleContext(
+    { module: CORE_MODULE_ID, provider: CORE_MODULE_ID },
+    () => moduleInterface.Events.ModuleDestroyed.emit(CORE_MODULE_ID),
+  );
+}
+
 async function destroyProject(
   manager: ModuleManager | undefined,
   folder: string,
@@ -231,6 +250,47 @@ async function destroyProject(
 }
 
 describe("provider-aware runtime", () => {
+  it("discovers core runtime and module providers from the canonical root", async () => {
+    const manager = new ModuleManager();
+    await registerCoreInterfaces(manager);
+    registerCoreModuleInterface(manager, unavailableLoaderContext);
+    await registerCoreRuntimeInterface({
+      dev: false,
+      env: "production",
+      fs: new InMemoryFileSystem(),
+      projectPath: process.cwd(),
+    });
+
+    try {
+      const providerRoutes = buildProviderRoutes(REAL_CONSUMER_ID, [
+        {
+          interfaceName: "@antelopejs/interface-core",
+          packageEntry: require.resolve("@antelopejs/interface-core"),
+          provider: CORE_MODULE_ID,
+          providerCount: 1,
+        },
+      ]);
+      const runtimeInfo = await moduleInterface.RunWithModuleContext(
+        { module: REAL_CONSUMER_ID, providerRoutes },
+        () => runtimeInterface.GetRuntimeInfo(),
+      );
+      const modules = await moduleInterface.RunWithModuleContext(
+        { module: REAL_CONSUMER_ID, providerRoutes },
+        () => moduleInterface.ListModules(),
+      );
+
+      expect(runtimeInfo).to.include({ dev: false, env: "production" });
+      expect(modules).to.include(CORE_MODULE_ID);
+      expect(providerRoutes).to.include({
+        "async:runtime.GetRuntimeInfo": CORE_MODULE_ID,
+        "async:runtime.RegisterDevServer": CORE_MODULE_ID,
+        "async:modules.ListModules": CORE_MODULE_ID,
+      });
+    } finally {
+      destroyCoreProviders();
+    }
+  });
+
   it("routes explicit and default providers independently of construct timing", async function () {
     this.timeout(20000);
     const project = await createRoutingProject();
