@@ -129,7 +129,7 @@ importers:
 packages:
 
   '@antelopejs/interface-core@0.0.13':
-    resolution: {integrity: sha512-Y5TSlO2N1KywdJB/NpwRtybxFPro1rqSDUzs4PXUc7IDy4Zd/PZFE7RSq287Fq/7n4DwhxeC/GVrPxXJPXw4Qg==}
+    resolution: {integrity: sha512-/QdBq0jcEqQtjkzdZkmmkjn76T8RqiM9ZTFlh8+O6N3vxGW+UxJAGF9ZEJzAhOgtzuLDtnhSLrIYuEZmYQJH8g==}
 
   '@antelopejs/interface-core@0.0.6':
     resolution: {integrity: sha512-OMna86iT/ylL6wJl6FCPw9ieddULXGs4jTmeiDBNEXYQ9acnVXjS/+SaN0UR0h7oY7WTD9VwKXVwG95qjNIA1w==}
