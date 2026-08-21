@@ -12,6 +12,7 @@ import type { AttachmentLease } from "@antelopejs/interface-core/proxies";
 import { expect } from "chai";
 import { ModuleManager } from "../../src/core/module-manager";
 import { ModuleManifest } from "../../src/core/module-manifest";
+import { reloadWatchedModule } from "../../src/core/runtime/module-loading";
 
 const PROVIDER_ID = "self-interface";
 const CONSUMER_ID = "provider-consumer";
@@ -19,6 +20,9 @@ const STATE_KEY = "__antelopeSelfInterfaceState";
 
 interface RuntimeState {
   evaluations: Array<ModuleExecutionContext | undefined>;
+  applicationEvaluations: string[];
+  declarationEvaluations: string[];
+  declarationReferences: unknown[][];
   sequence: string[];
   registered: string[];
   unregistered: string[];
@@ -50,6 +54,7 @@ interface SelfInterfaceFixture {
   providerFolder: string;
   consumerFolder: string;
   registrationEntry: string;
+  applicationEntries: string[];
 }
 
 interface FixturePackageJson {
@@ -70,6 +75,9 @@ function createRuntimeState(): RuntimeState {
   const [replayCompleted, resolveReplayCompleted] = createDeferred();
   return {
     evaluations: [],
+    applicationEvaluations: [],
+    declarationEvaluations: [],
+    declarationReferences: [],
     sequence: [],
     registered: [],
     unregistered: [],
@@ -121,15 +129,23 @@ async function writeProviderDeclarations(
 ): Promise<void> {
   await fs.writeFile(
     path.join(folder, "registering.js"),
-    `const { RegisteringProxy } = require("@antelopejs/interface-core"); exports.Registrations = new RegisteringProxy(${JSON.stringify(`${identity}.registering`)});`,
+    `global.${STATE_KEY}.declarationEvaluations.push("registering"); const { RegisteringProxy } = require("@antelopejs/interface-core"); exports.Registrations = new RegisteringProxy(${JSON.stringify(`${identity}.registering`)});`,
   );
   await fs.writeFile(
     path.join(folder, "nested.js"),
-    `const { InterfaceFunction } = require("@antelopejs/interface-core"); exports.GetModule = InterfaceFunction(${JSON.stringify(`${identity}.nested`)});`,
+    `global.${STATE_KEY}.declarationEvaluations.push("nested"); const { InterfaceFunction } = require("@antelopejs/interface-core"); exports.GetModule = InterfaceFunction(${JSON.stringify(`${identity}.nested`)});`,
   );
   await fs.writeFile(
     path.join(folder, "interface-declarations.js"),
-    `exports.Registration = require("./registering");`,
+    `global.${STATE_KEY}.declarationEvaluations.push("interface-declarations"); exports.Registration = require("./registering"); exports.Nested = require("./nested");`,
+  );
+  await fs.writeFile(
+    path.join(folder, "routes.js"),
+    `global.${STATE_KEY}.applicationEvaluations.push("routes");`,
+  );
+  await fs.writeFile(
+    path.join(folder, "db.js"),
+    `global.${STATE_KEY}.applicationEvaluations.push("db");`,
   );
 }
 
@@ -189,6 +205,9 @@ async function createFixture(
     providerFolder,
     consumerFolder,
     registrationEntry: path.join(providerFolder, "registering.js"),
+    applicationEntries: ["index.js", "routes.js", "db.js"].map((fileName) =>
+      path.join(providerFolder, fileName),
+    ),
   };
 }
 
@@ -203,11 +222,18 @@ async function createManifest(
 async function createManager(
   fixture: SelfInterfaceFixture,
 ): Promise<ModuleManager> {
+  const manager = new ModuleManager();
+  await addFixtureModules(manager, fixture);
+  return manager;
+}
+
+async function addFixtureModules(
+  manager: ModuleManager,
+  fixture: SelfInterfaceFixture,
+): Promise<void> {
   const provider = await createManifest(fixture.providerFolder, PROVIDER_ID);
   const consumer = await createManifest(fixture.consumerFolder, CONSUMER_ID);
-  const manager = new ModuleManager();
   manager.addModules([{ manifest: provider }, { manifest: consumer }]);
-  return manager;
 }
 
 async function removeDeclarationExport(
@@ -227,6 +253,12 @@ function clearFixtureModules(root: string): void {
     .forEach((entry) => {
       delete require.cache[entry];
     });
+}
+
+function assertApplicationCacheCleared(fixture: SelfInterfaceFixture): void {
+  fixture.applicationEntries.forEach((entry) => {
+    expect(require.cache[entry]).to.be.undefined;
+  });
 }
 
 async function removeFixture(fixture: SelfInterfaceFixture): Promise<void> {
@@ -258,14 +290,16 @@ async function verifySideEffectLifecycle(
   manager: ModuleManager,
   fixture: SelfInterfaceFixture,
 ): Promise<void> {
-  expect(getRuntimeState().evaluations).to.deep.equal([]);
+  const evaluationIndex = getRuntimeState().evaluations.length;
   await manager.constructAll();
   const state = getRuntimeState();
-  expect(state.evaluations[0]).to.include({
+  expect(state.evaluations[evaluationIndex]).to.include({
     module: PROVIDER_ID,
     provider: PROVIDER_ID,
   });
-  expect(state.evaluations[0]?.owner).to.match(/^self-interface#/);
+  expect(state.evaluations[evaluationIndex]?.owner).to.match(
+    /^self-interface#\d+$/,
+  );
   expect(state.result).to.equal(PROVIDER_ID);
   await manager.destroyAll();
   expect(replayRegistrations(fixture)).to.deep.equal([]);
@@ -296,18 +330,89 @@ async function verifyEarlyRegistrationLifecycle(
   expect(state.runtimeErrors).to.deep.equal([]);
 }
 
+async function reloadProvider(
+  manager: ModuleManager,
+  fixture: SelfInterfaceFixture,
+): Promise<void> {
+  const manifest = await createManifest(fixture.providerFolder, PROVIDER_ID);
+  const loaderContext = {
+    cache: {},
+    projectFolder: fixture.root,
+    registry: { load: async () => [manifest] },
+  } as any;
+  await reloadWatchedModule(manager, PROVIDER_ID, loaderContext);
+}
+
+async function exerciseSideEffectRelaunches(
+  fixture: SelfInterfaceFixture,
+): Promise<RuntimeState> {
+  let manager: ModuleManager | undefined;
+  try {
+    manager = await createManager(fixture);
+    assertApplicationCacheCleared(fixture);
+    await verifySideEffectLifecycle(manager, fixture);
+    await addFixtureModules(manager, fixture);
+    assertApplicationCacheCleared(fixture);
+    await verifySideEffectLifecycle(manager, fixture);
+    manager = await createManager(fixture);
+    assertApplicationCacheCleared(fixture);
+    await verifySideEffectLifecycle(manager, fixture);
+    manager = undefined;
+    return getRuntimeState();
+  } finally {
+    if (manager) {
+      await manager.destroyAll();
+    }
+  }
+}
+
+function assertSideEffectRelaunches(state: RuntimeState): void {
+  expect(state.applicationEvaluations).to.deep.equal([
+    "routes",
+    "db",
+    "main",
+    "routes",
+    "db",
+    "main",
+    "routes",
+    "db",
+    "main",
+  ]);
+  expect(state.declarationEvaluations).to.deep.equal([
+    "interface-declarations",
+    "registering",
+    "nested",
+  ]);
+  expect(
+    new Set(state.evaluations.map((context) => context?.owner)).size,
+  ).to.equal(3);
+  for (const references of state.declarationReferences.slice(1)) {
+    expect(references).to.deep.equal(state.declarationReferences[0]);
+    references.forEach((reference, index) => {
+      expect(reference).to.equal(state.declarationReferences[0][index]);
+    });
+  }
+}
+
 const SIDE_EFFECT_PROVIDER_SOURCE = `
 const { ImplementInterface } = require("@antelopejs/interface-core");
 const { BindToCurrentModuleContext, GetModuleContext } = require("@antelopejs/interface-core/modules");
 const declarations = require("./interface-declarations");
-const nested = require("./nested");
+require("./routes");
+require("./db");
 const state = global.${STATE_KEY};
+state.applicationEvaluations.push("main");
 state.evaluations.push(GetModuleContext());
-const routeCallback = BindToCurrentModuleContext(() => nested.GetModule());
+state.declarationReferences.push([
+  declarations,
+  declarations.Registration.Registrations,
+  declarations.Nested.GetModule,
+]);
+const routeCallback = BindToCurrentModuleContext(() => declarations.Nested.GetModule());
 declarations.Registration.Registrations.register("route", routeCallback);
 exports.InterfaceDeclarations = declarations;
 exports.construct = () => {
-  ImplementInterface(nested, { GetModule: () => GetModuleContext().module });
+  ImplementInterface(declarations.Nested, { GetModule: () => GetModuleContext().module });
   declarations.Registration.Registrations.onHandlers((id, callback) => {
     state.registered.push(id);
     state.routeCallback = callback;
@@ -403,15 +508,9 @@ describe("interface declaration routing for self-implemented packages", () => {
       SIDE_EFFECT_PROVIDER_SOURCE,
       SIDE_EFFECT_CONSUMER_SOURCE,
     );
-    let manager: ModuleManager | undefined;
     try {
-      manager = await createManager(fixture);
-      await verifySideEffectLifecycle(manager, fixture);
-      manager = undefined;
+      assertSideEffectRelaunches(await exerciseSideEffectRelaunches(fixture));
     } finally {
-      if (manager) {
-        await manager.destroyAll();
-      }
       await removeFixture(fixture);
     }
   });
@@ -426,6 +525,47 @@ describe("interface declaration routing for self-implemented packages", () => {
       manager = await createManager(fixture);
       await verifyEarlyRegistrationLifecycle(manager);
       manager = undefined;
+    } finally {
+      if (manager) {
+        await manager.destroyAll();
+      }
+      await removeFixture(fixture);
+    }
+  });
+
+  it("preserves declaration identities while hot reloading application files", async () => {
+    const fixture = await createFixture(
+      SIDE_EFFECT_PROVIDER_SOURCE,
+      SIDE_EFFECT_CONSUMER_SOURCE,
+    );
+    let manager: ModuleManager | undefined;
+    try {
+      manager = await createManager(fixture);
+      await manager.constructAll();
+      await reloadProvider(manager, fixture);
+
+      const state = getRuntimeState();
+      expect(state.applicationEvaluations).to.deep.equal([
+        "routes",
+        "db",
+        "main",
+        "routes",
+        "db",
+        "main",
+      ]);
+      expect(state.declarationEvaluations).to.deep.equal([
+        "interface-declarations",
+        "registering",
+        "nested",
+      ]);
+      expect(state.evaluations[0]?.owner).to.not.equal(
+        state.evaluations[1]?.owner,
+      );
+      expect(await state.routeCallback?.()).to.equal(PROVIDER_ID);
+      await manager.destroyAll();
+      manager = undefined;
+      expect(replayRegistrations(fixture)).to.deep.equal([]);
+      expect(state.runtimeErrors).to.deep.equal([]);
     } finally {
       if (manager) {
         await manager.destroyAll();

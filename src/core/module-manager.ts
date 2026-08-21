@@ -71,6 +71,27 @@ interface ModuleOperationResults {
   failed: ManagedModule[];
 }
 
+function collectCachedModuleClosure(
+  entryPath: string,
+  files: Set<string>,
+): void {
+  const entry = require.cache[require.resolve(entryPath)];
+  if (!entry) {
+    return;
+  }
+  const pending = [entry];
+  const visited = new Set<NodeModule>();
+  while (pending.length > 0) {
+    const loaded = pending.pop();
+    if (!loaded || visited.has(loaded)) {
+      continue;
+    }
+    visited.add(loaded);
+    files.add(loaded.filename);
+    pending.push(...loaded.children);
+  }
+}
+
 export class ModuleManager {
   public readonly registry: ModuleRegistry;
   public readonly resolver: Resolver;
@@ -95,6 +116,7 @@ export class ModuleManager {
     InterfacePackagePlan
   >();
   private readonly interfaceDeclarationEntries = new Map<string, string>();
+  private readonly interfaceDeclarationFiles = new Set<string>();
   private pendingCleanup: ManagedModule[] = [];
   private startupOrder: string[] = [];
 
@@ -138,6 +160,7 @@ export class ModuleManager {
     }
 
     this.rebuildAssociations();
+    this.prepareModuleFiles(created);
     return created;
   }
 
@@ -193,6 +216,9 @@ export class ModuleManager {
 
     for (const filePath of Object.keys(require.cache)) {
       if (!this.isPathWithin(filePath, moduleFolder)) {
+        continue;
+      }
+      if (this.interfaceDeclarationFiles.has(filePath)) {
         continue;
       }
       let shouldDelete = true;
@@ -359,6 +385,7 @@ export class ModuleManager {
     try {
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
+      this.prepareModuleFiles(modules);
     } catch (error) {
       if (leaseAcquired) {
         throw aggregateErrors(
@@ -400,6 +427,7 @@ export class ModuleManager {
     try {
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
+      this.prepareModuleFiles(modules);
       await Promise.all(
         modules.map(({ module, config }) =>
           this.constructModule(module, config.config),
@@ -518,6 +546,7 @@ export class ModuleManager {
     this.resolver.interfacePackageEntries.clear();
     this.resolver.interfacePackageResolveFrom.clear();
     this.interfaceDeclarationEntries.clear();
+    this.interfaceDeclarationFiles.clear();
     this.interfacePackagePlans.clear();
     this.startupOrder = [];
     return this.releaseRuntimeState();
@@ -561,6 +590,7 @@ export class ModuleManager {
     this.resolver.interfacePackages.clear();
     this.resolver.interfacePackageEntries.clear();
     this.resolver.interfacePackageResolveFrom.clear();
+    this.interfaceDeclarationEntries.clear();
     this.interfacePackagePlans.clear();
     this.resolvedAssociations.clear();
     this.resolvedConnections.clear();
@@ -905,6 +935,28 @@ export class ModuleManager {
         buildProviderRoutes(module.id, routes),
         this.isProvider({ module, config }),
       );
+    }
+    this.refreshInterfaceDeclarationFiles();
+  }
+
+  private refreshInterfaceDeclarationFiles(): void {
+    const files = new Set<string>();
+    const entries = new Set(this.interfaceDeclarationEntries.values());
+    for (const entry of entries) {
+      collectCachedModuleClosure(entry, files);
+    }
+    this.interfaceDeclarationFiles.clear();
+    for (const filePath of files) {
+      this.interfaceDeclarationFiles.add(filePath);
+    }
+  }
+
+  private prepareModuleFiles(modules: ManagedModule[]): void {
+    this.refreshInterfaceDeclarationFiles();
+    for (const { module } of modules) {
+      if (module.state === ModuleState.Loaded && module.manifest?.folder) {
+        this.unrequireModuleFiles(module.id);
+      }
     }
   }
 

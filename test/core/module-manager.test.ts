@@ -978,15 +978,20 @@ describe("ModuleManager", () => {
     expect(resolver.interfacePackages.size).to.equal(0);
   });
 
-  it("clears require cache for module files while preserving submodules", () => {
+  it("clears application cache while preserving declarations and submodules", () => {
     const manager = new ModuleManager();
     const moduleFolder = path.resolve("test", "module");
     const submoduleFolder = path.join(moduleFolder, "child");
     const nodeModulesFolder = path.join(moduleFolder, "node_modules");
+    const declarationEntries = [
+      path.join(moduleFolder, "interface-declarations.js"),
+      path.join(moduleFolder, "interfaces", "nested.js"),
+    ];
 
     const cacheEntries = [
       path.join(moduleFolder, "index.js"),
       path.join(moduleFolder, "src", "util.js"),
+      ...declarationEntries,
       path.join(submoduleFolder, "index.js"),
       path.join(nodeModulesFolder, "dep.js"),
       path.resolve("other", "file.js"),
@@ -1010,12 +1015,18 @@ describe("ModuleManager", () => {
       },
       config: {},
     });
+    declarationEntries.forEach((entry) => {
+      (manager as any).interfaceDeclarationFiles.add(entry);
+    });
 
     manager.unrequireModuleFiles("test");
 
     expect(require.cache[path.join(moduleFolder, "index.js")]).to.be.undefined;
     expect(require.cache[path.join(moduleFolder, "src", "util.js")]).to.be
       .undefined;
+    declarationEntries.forEach((entry) => {
+      expect(require.cache[entry]).to.not.be.undefined;
+    });
     expect(require.cache[path.join(submoduleFolder, "index.js")]).to.not.be
       .undefined;
     expect(require.cache[path.join(nodeModulesFolder, "dep.js")]).to.not.be
