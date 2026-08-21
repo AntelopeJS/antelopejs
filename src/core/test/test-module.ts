@@ -129,6 +129,7 @@ export async function setupTestEnvironment(
         fs,
       });
       await constructAndStartModules(manager);
+      manager.applyTestInterfaceStubs();
       internal.testStubMode = true;
       registerTestDir(path.resolve(moduleRoot), manager);
       return manager;

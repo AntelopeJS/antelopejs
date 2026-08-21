@@ -256,7 +256,7 @@ export class ModuleManager {
     );
   }
 
-  private applyInterfaceStubs(): void {
+  private applyInterfaceStubs(shouldNeutralizeRegistrations = false): void {
     const implemented = this.collectImplementedInterfaces();
     for (const [interfaceName, resolvedPackage] of [
       ...this.stubbedInterfacePackages,
@@ -274,8 +274,16 @@ export class ModuleManager {
         Logger.Error(`Failed to load interface '${interfaceName}':`, err);
         continue;
       }
-      neutralizeInterfacePackage(resolvedPackage.root, interfaceName);
+      neutralizeInterfacePackage(
+        resolvedPackage.root,
+        interfaceName,
+        shouldNeutralizeRegistrations,
+      );
     }
+  }
+
+  public applyTestInterfaceStubs(): void {
+    this.applyInterfaceStubs(true);
   }
 
   private collectImplementedInterfaces(): Set<string> {

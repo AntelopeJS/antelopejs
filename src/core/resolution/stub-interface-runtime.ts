@@ -23,10 +23,23 @@ function neutralizeAsyncProxy(proxy: AsyncProxy, interfaceName: string): void {
   proxy.onCall(() => makeRejection(interfaceName), true);
 }
 
+function neutralizeRegisteringProxy(
+  proxy: RegisteringProxy,
+  interfaceName: string,
+): void {
+  proxy.onRegister((id) => {
+    Logger.Trace(
+      `Interface '${interfaceName}' has no provider; registration '${String(id)}' recorded but inert.`,
+    );
+  }, true);
+  proxy.onUnregister(() => {});
+}
+
 function walk(
   value: unknown,
   interfaceName: string,
   seen: WeakSet<object>,
+  shouldNeutralizeRegistrations: boolean,
 ): void {
   if (value === null || value === undefined) {
     return;
@@ -51,6 +64,9 @@ function walk(
     return;
   }
   if (value instanceof RegisteringProxy) {
+    if (shouldNeutralizeRegistrations) {
+      neutralizeRegisteringProxy(value, interfaceName);
+    }
     return;
   }
   // EventProxy needs no neutralization: register() never requires a provider
@@ -60,7 +76,12 @@ function walk(
   }
 
   for (const key of Object.keys(value as Record<string, unknown>)) {
-    walk((value as Record<string, unknown>)[key], interfaceName, seen);
+    walk(
+      (value as Record<string, unknown>)[key],
+      interfaceName,
+      seen,
+      shouldNeutralizeRegistrations,
+    );
   }
 }
 
@@ -68,7 +89,14 @@ export function neutralizeInterfaceAsyncProxies(
   exports: unknown,
   interfaceName: string,
 ): void {
-  walk(exports, interfaceName, new WeakSet());
+  walk(exports, interfaceName, new WeakSet(), false);
+}
+
+export function neutralizeInterfaceTestProxies(
+  exports: unknown,
+  interfaceName: string,
+): void {
+  walk(exports, interfaceName, new WeakSet(), true);
 }
 
 function isWithin(filePath: string, dirPath: string): boolean {
@@ -83,6 +111,7 @@ function isWithin(filePath: string, dirPath: string): boolean {
 export function neutralizeInterfacePackage(
   packageRoot: string,
   interfaceName: string,
+  shouldNeutralizeRegistrations = false,
 ): void {
   const cache = (Module as unknown as { _cache: Record<string, NodeModule> })
     ._cache;
@@ -92,7 +121,12 @@ export function neutralizeInterfacePackage(
       continue;
     }
     const cachedModule = cache[filename];
-    walk(cachedModule.exports, interfaceName, seen);
+    walk(
+      cachedModule.exports,
+      interfaceName,
+      seen,
+      shouldNeutralizeRegistrations,
+    );
   }
 }
 
