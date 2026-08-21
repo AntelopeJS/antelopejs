@@ -1,9 +1,14 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { internal } from "@antelopejs/interface-core/internal";
+import { RunWithModuleContext } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
 import { TestModule } from "../../src";
+
+const PROVIDER_CONSUMER_ID = "provider-consumer";
+const STUB_INTERFACE_ID = "optional-test-interface";
 
 async function writeMinimalAntelopeModule(folder: string): Promise<void> {
   await fs.writeFile(
@@ -16,6 +21,64 @@ async function writeMinimalAntelopeModule(folder: string): Promise<void> {
   await fs.writeFile(
     path.join(folder, "antelope.test.config.ts"),
     `export default ${JSON.stringify({ name: "tmp-module", modules: {} })};\n`,
+  );
+}
+
+async function writeProviderConsumerModule(folder: string): Promise<string> {
+  const interfaceFolder = path.join(folder, STUB_INTERFACE_ID);
+  const interfaceLink = path.join(folder, "node_modules", STUB_INTERFACE_ID);
+  await fs.mkdir(interfaceFolder, { recursive: true });
+  await fs.mkdir(path.dirname(interfaceLink), { recursive: true });
+  await fs.writeFile(
+    path.join(interfaceFolder, "package.json"),
+    JSON.stringify({
+      name: STUB_INTERFACE_ID,
+      version: "1.0.0",
+      main: "index.js",
+      antelopeJs: {},
+    }),
+  );
+  await fs.writeFile(
+    path.join(interfaceFolder, "index.js"),
+    `const { RegisteringProxy } = require("@antelopejs/interface-core"); exports.Registrations = new RegisteringProxy();`,
+  );
+  await fs.symlink(interfaceFolder, interfaceLink);
+  await writeProviderConsumerFiles(folder);
+  return path.join(folder, "provider-consumer.test.js");
+}
+
+async function writeProviderConsumerFiles(folder: string): Promise<void> {
+  await fs.writeFile(
+    path.join(folder, "package.json"),
+    JSON.stringify({
+      name: PROVIDER_CONSUMER_ID,
+      version: "1.0.0",
+      main: "index.js",
+      optionalDependencies: { [STUB_INTERFACE_ID]: "*" },
+      antelopeJs: {
+        implements: ["provider-consumer-interface"],
+        test: "./antelope.test.config.ts",
+      },
+    }),
+  );
+  await fs.writeFile(
+    path.join(folder, "index.js"),
+    `const iface = require("${STUB_INTERFACE_ID}"); const { GetModuleContext } = require("@antelopejs/interface-core/modules"); global.__testStubInterface = iface; exports.start = () => { global.__testStubContext = GetModuleContext(); iface.Registrations.register("during-start"); };`,
+  );
+  await fs.writeFile(
+    path.join(folder, "antelope.test.config.ts"),
+    `export default ${JSON.stringify({
+      name: PROVIDER_CONSUMER_ID,
+      modules: {
+        [PROVIDER_CONSUMER_ID]: {
+          source: { type: "local", path: ".", main: "index.js" },
+        },
+      },
+    })};\n`,
+  );
+  await fs.writeFile(
+    path.join(folder, "provider-consumer.test.js"),
+    `const assert = require("assert"); const { RegisteringProxy } = require("@antelopejs/interface-core"); const { RunWithModuleContext } = require("@antelopejs/interface-core/modules"); describe("provider consumer test stubs", () => { it("routes only the optional registration to its test stub", () => { assert.doesNotThrow(() => RunWithModuleContext(global.__testStubContext, () => global.__testStubInterface.Registrations.register("during-test"))); const unrelated = new RegisteringProxy(); assert.throws(() => RunWithModuleContext(global.__testStubContext, () => unrelated.register("missing")), { code: "ERR_NO_PROVIDER" }); }); });`,
   );
 }
 
@@ -67,6 +130,37 @@ describe("TestModule Function", () => {
       const failures = await TestModule(moduleFolder, [selectedFile]);
       expect(failures).to.equal(0);
     } finally {
+      await fs.rm(moduleFolder, { recursive: true, force: true });
+    }
+  });
+
+  it("routes explicit registration stubs for provider consumers", async () => {
+    const moduleFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-provider-consumer-"),
+    );
+    const previousReporter = internal.runtimeErrorReporter;
+    const runtimeErrors: unknown[] = [];
+    internal.runtimeErrorReporter = (error) => runtimeErrors.push(error);
+    try {
+      const testFile = await writeProviderConsumerModule(moduleFolder);
+      expect(await TestModule(moduleFolder, [testFile])).to.equal(0);
+
+      const registrations = (global as any).__testStubInterface.Registrations;
+      internal.testStubMode = true;
+      expect(() =>
+        RunWithModuleContext(
+          { module: PROVIDER_CONSUMER_ID, provider: PROVIDER_CONSUMER_ID },
+          () => registrations.register("after-destroy"),
+        ),
+      )
+        .to.throw()
+        .with.property("code", "ERR_NO_PROVIDER");
+      expect(runtimeErrors).to.deep.equal([]);
+    } finally {
+      internal.testStubMode = false;
+      internal.runtimeErrorReporter = previousReporter;
+      delete (global as any).__testStubInterface;
+      delete (global as any).__testStubContext;
       await fs.rm(moduleFolder, { recursive: true, force: true });
     }
   });

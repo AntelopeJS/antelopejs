@@ -20,6 +20,7 @@ import {
   type ResolvedPackage,
   resolvePackage,
   resolvePackageAtRoot,
+  resolvePackageSubpath,
 } from "./resolution/package-resolution";
 import { PathMapper } from "./resolution/path-mapper";
 import { Resolver } from "./resolution/resolver";
@@ -28,9 +29,11 @@ import {
   clearStubInterfaceWarnings,
   logStubInterfaceWarningOnce,
   neutralizeInterfacePackage,
+  type StubInterfaceCleanup,
 } from "./resolution/stub-interface-runtime";
 
 const Logger = new Logging.Channel("loader");
+const INTERFACE_DECLARATIONS_SUBPATH = "interface-declarations";
 
 export interface ModuleConfig {
   config?: unknown;
@@ -68,12 +71,34 @@ interface ModuleOperationResults {
   failed: ManagedModule[];
 }
 
+function collectCachedModuleClosure(
+  entryPath: string,
+  files: Set<string>,
+): void {
+  const entry = require.cache[require.resolve(entryPath)];
+  if (!entry) {
+    return;
+  }
+  const pending = [entry];
+  const visited = new Set<NodeModule>();
+  while (pending.length > 0) {
+    const loaded = pending.pop();
+    if (!loaded || visited.has(loaded)) {
+      continue;
+    }
+    visited.add(loaded);
+    files.add(loaded.filename);
+    pending.push(...loaded.children);
+  }
+}
+
 export class ModuleManager {
   public readonly registry: ModuleRegistry;
   public readonly resolver: Resolver;
   private readonly interfaceRegistry: InterfaceRegistry;
   private readonly moduleTracker: ModuleTracker;
   private readonly resolverDetour: ResolverDetour;
+  private readonly interfaceStubCleanups: StubInterfaceCleanup[] = [];
   private readonly resolvedAssociations = new Map<string, Set<string>>();
   private readonly resolvedConnections = new Map<
     string,
@@ -90,6 +115,8 @@ export class ModuleManager {
     string,
     InterfacePackagePlan
   >();
+  private readonly interfaceDeclarationEntries = new Map<string, string>();
+  private readonly interfaceDeclarationFiles = new Set<string>();
   private pendingCleanup: ManagedModule[] = [];
   private startupOrder: string[] = [];
 
@@ -133,6 +160,7 @@ export class ModuleManager {
     }
 
     this.rebuildAssociations();
+    this.prepareModuleFiles(created);
     return created;
   }
 
@@ -188,6 +216,9 @@ export class ModuleManager {
 
     for (const filePath of Object.keys(require.cache)) {
       if (!this.isPathWithin(filePath, moduleFolder)) {
+        continue;
+      }
+      if (this.interfaceDeclarationFiles.has(filePath)) {
         continue;
       }
       let shouldDelete = true;
@@ -256,7 +287,7 @@ export class ModuleManager {
     );
   }
 
-  private applyInterfaceStubs(): void {
+  private applyInterfaceStubs(shouldNeutralizeRegistrations = false): void {
     const implemented = this.collectImplementedInterfaces();
     for (const [interfaceName, resolvedPackage] of [
       ...this.stubbedInterfacePackages,
@@ -274,8 +305,66 @@ export class ModuleManager {
         Logger.Error(`Failed to load interface '${interfaceName}':`, err);
         continue;
       }
-      neutralizeInterfacePackage(resolvedPackage.root, interfaceName);
+      this.neutralizeStubbedInterface(
+        interfaceName,
+        resolvedPackage,
+        shouldNeutralizeRegistrations,
+      );
     }
+  }
+
+  private neutralizeStubbedInterface(
+    interfaceName: string,
+    resolvedPackage: ResolvedPackage,
+    shouldNeutralizeRegistrations: boolean,
+  ) {
+    const providers = shouldNeutralizeRegistrations
+      ? this.collectTestStubProviders(interfaceName)
+      : [];
+    if (!providers.length) {
+      this.interfaceStubCleanups.push(
+        ...neutralizeInterfacePackage(
+          resolvedPackage.root,
+          interfaceName,
+          shouldNeutralizeRegistrations,
+        ),
+      );
+      return;
+    }
+    providers.forEach((provider) => {
+      this.interfaceStubCleanups.push(
+        ...neutralizeInterfacePackage(
+          resolvedPackage.root,
+          interfaceName,
+          true,
+          provider,
+        ),
+      );
+    });
+  }
+
+  private collectTestStubProviders(interfaceName: string): string[] {
+    const consumers = new Set(
+      this.collectInterfacePackageConsumers(interfaceName).map(
+        ({ moduleId }) => moduleId,
+      ),
+    );
+    return this.getAllManagedModules()
+      .filter(
+        (managed) =>
+          consumers.has(managed.module.id) && this.isProvider(managed),
+      )
+      .map(({ module }) => module.id);
+  }
+
+  private isProvider({ module, config }: ManagedModule): boolean {
+    return (module.manifest.implements ?? []).some(
+      (interfaceName) => !config.disabledExports?.has(interfaceName),
+    );
+  }
+
+  public applyTestInterfaceStubs(): void {
+    this.applyInterfaceStubs(true);
   }
 
   private collectImplementedInterfaces(): Set<string> {
@@ -296,6 +385,7 @@ export class ModuleManager {
     try {
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
+      this.prepareModuleFiles(modules);
     } catch (error) {
       if (leaseAcquired) {
         throw aggregateErrors(
@@ -337,6 +427,7 @@ export class ModuleManager {
     try {
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
+      this.prepareModuleFiles(modules);
       await Promise.all(
         modules.map(({ module, config }) =>
           this.constructModule(module, config.config),
@@ -454,6 +545,8 @@ export class ModuleManager {
     this.resolver.interfacePackages.clear();
     this.resolver.interfacePackageEntries.clear();
     this.resolver.interfacePackageResolveFrom.clear();
+    this.interfaceDeclarationEntries.clear();
+    this.interfaceDeclarationFiles.clear();
     this.interfacePackagePlans.clear();
     this.startupOrder = [];
     return this.releaseRuntimeState();
@@ -465,6 +558,13 @@ export class ModuleManager {
     clearStubInterfaceWarnings();
     this.moduleTracker.clear();
     this.interfaceRegistry.clear();
+    for (const cleanup of this.interfaceStubCleanups.splice(0)) {
+      try {
+        cleanup();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
     try {
       this.resolverDetour.detach();
     } catch (error) {
@@ -490,6 +590,7 @@ export class ModuleManager {
     this.resolver.interfacePackages.clear();
     this.resolver.interfacePackageEntries.clear();
     this.resolver.interfacePackageResolveFrom.clear();
+    this.interfaceDeclarationEntries.clear();
     this.interfacePackagePlans.clear();
     this.resolvedAssociations.clear();
     this.resolvedConnections.clear();
@@ -546,7 +647,17 @@ export class ModuleManager {
         canonicalPackage,
         consumers: this.collectInterfacePackageConsumers(ifacePkg),
       });
-      this.registerInterfacePackage(ifacePkg, canonicalPackage);
+      this.registerInterfacePackage(
+        ifacePkg,
+        canonicalPackage,
+        this.resolveInterfaceDeclarationEntry(
+          ifacePkg,
+          canonicalPackage,
+          modules.some(
+            (provider) => provider.manifest.manifest.name === ifacePkg,
+          ),
+        ),
+      );
     }
     for (const [packageName, canonicalPackage] of this
       .stubbedInterfacePackages) {
@@ -557,8 +668,33 @@ export class ModuleManager {
         canonicalPackage,
         consumers: this.collectInterfacePackageConsumers(packageName),
       });
-      this.registerInterfacePackage(packageName, canonicalPackage);
+      this.registerInterfacePackage(
+        packageName,
+        canonicalPackage,
+        canonicalPackage.entry,
+      );
     }
+  }
+
+  private resolveInterfaceDeclarationEntry(
+    packageName: string,
+    resolvedPackage: ResolvedPackage,
+    isSelfImplemented: boolean,
+  ): string {
+    if (!isSelfImplemented) {
+      return resolvedPackage.entry;
+    }
+    const declarationEntry = resolvePackageSubpath(
+      packageName,
+      INTERFACE_DECLARATIONS_SUBPATH,
+      resolvedPackage,
+    );
+    if (declarationEntry) {
+      return declarationEntry;
+    }
+    throw new Error(
+      `Self-implemented interface package '${packageName}' must export a side-effect-free './${INTERFACE_DECLARATIONS_SUBPATH}' entry.`,
+    );
   }
 
   private resolveImplementedPackage(
@@ -603,6 +739,7 @@ export class ModuleManager {
   private registerInterfacePackage(
     packageName: string,
     resolvedPackage: ResolvedPackage,
+    declarationEntry = resolvedPackage.entry,
   ): void {
     this.resolver.interfacePackages.set(packageName, resolvedPackage.root);
     this.resolver.interfacePackageEntries.set(
@@ -613,6 +750,7 @@ export class ModuleManager {
       packageName,
       resolvedPackage.resolveFrom,
     );
+    this.interfaceDeclarationEntries.set(packageName, declarationEntry);
   }
 
   private validateInterfacePackages(): void {
@@ -786,21 +924,39 @@ export class ModuleManager {
       const routes: InterfaceProviderRoute[] = [...selected].map(
         ([interfaceName, provider]) => ({
           interfaceName,
-          packageEntry:
-            this.resolver.interfacePackageEntries.get(interfaceName),
+          declarationEntry: this.interfaceDeclarationEntries.get(interfaceName),
           provider,
           providerCount: new Set(
             connections.get(interfaceName)?.map(({ module }) => module),
           ).size,
         }),
       );
-      const isProvider = (module.manifest.implements ?? []).some(
-        (interfaceName) => !config.disabledExports?.has(interfaceName),
-      );
       module.setProviderRoutes(
         buildProviderRoutes(module.id, routes),
-        isProvider,
+        this.isProvider({ module, config }),
       );
+    }
+    this.refreshInterfaceDeclarationFiles();
+  }
+
+  private refreshInterfaceDeclarationFiles(): void {
+    const files = new Set<string>();
+    const entries = new Set(this.interfaceDeclarationEntries.values());
+    for (const entry of entries) {
+      collectCachedModuleClosure(entry, files);
+    }
+    this.interfaceDeclarationFiles.clear();
+    for (const filePath of files) {
+      this.interfaceDeclarationFiles.add(filePath);
+    }
+  }
+
+  private prepareModuleFiles(modules: ManagedModule[]): void {
+    this.refreshInterfaceDeclarationFiles();
+    for (const { module } of modules) {
+      if (module.state === ModuleState.Loaded && module.manifest?.folder) {
+        this.unrequireModuleFiles(module.id);
+      }
     }
   }
 

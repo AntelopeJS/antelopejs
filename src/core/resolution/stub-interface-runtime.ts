@@ -6,9 +6,12 @@ import {
   RegisteringProxy,
 } from "@antelopejs/interface-core";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { RunWithModuleContext } from "@antelopejs/interface-core/modules";
 
 const Logger = new Logging.Channel("loader");
 const warned = new Set<string>();
+
+export type StubInterfaceCleanup = () => void;
 
 function makeRejection(interfaceName: string): Promise<never> {
   return Promise.reject(
@@ -19,26 +22,38 @@ function makeRejection(interfaceName: string): Promise<never> {
   );
 }
 
-function neutralizeAsyncProxy(proxy: AsyncProxy, interfaceName: string): void {
-  proxy.onCall(() => makeRejection(interfaceName), true);
+function neutralizeAsyncProxy(
+  proxy: AsyncProxy,
+  interfaceName: string,
+): StubInterfaceCleanup {
+  const lease = proxy.onCall(() => makeRejection(interfaceName), true);
+  return () => proxy.detach(lease);
 }
 
 function neutralizeRegisteringProxy(
   proxy: RegisteringProxy,
   interfaceName: string,
-): void {
-  proxy.onRegister((id) => {
+  provider?: string,
+): StubInterfaceCleanup {
+  const register = (id: unknown) => {
     Logger.Trace(
       `Interface '${interfaceName}' has no provider; registration '${String(id)}' recorded but inert.`,
     );
-  }, true);
-  proxy.onUnregister(() => {});
+  };
+  const attach = () => proxy.onHandlers(register, () => {}, true);
+  const lease = provider
+    ? RunWithModuleContext({ module: provider, provider }, attach)
+    : attach();
+  return () => proxy.detach(lease);
 }
 
 function walk(
   value: unknown,
   interfaceName: string,
   seen: WeakSet<object>,
+  shouldNeutralizeRegistrations: boolean,
+  cleanups: StubInterfaceCleanup[],
+  registrationProvider?: string,
 ): void {
   if (value === null || value === undefined) {
     return;
@@ -46,7 +61,9 @@ function walk(
   if (typeof value === "function") {
     const maybeProxy = (value as { proxy?: unknown }).proxy;
     if (maybeProxy instanceof AsyncProxy) {
-      neutralizeAsyncProxy(maybeProxy as AsyncProxy, interfaceName);
+      cleanups.push(
+        neutralizeAsyncProxy(maybeProxy as AsyncProxy, interfaceName),
+      );
     }
     return;
   }
@@ -59,11 +76,15 @@ function walk(
   seen.add(value as object);
 
   if (value instanceof AsyncProxy) {
-    neutralizeAsyncProxy(value, interfaceName);
+    cleanups.push(neutralizeAsyncProxy(value, interfaceName));
     return;
   }
   if (value instanceof RegisteringProxy) {
-    neutralizeRegisteringProxy(value, interfaceName);
+    if (shouldNeutralizeRegistrations) {
+      cleanups.push(
+        neutralizeRegisteringProxy(value, interfaceName, registrationProvider),
+      );
+    }
     return;
   }
   // EventProxy needs no neutralization: register() never requires a provider
@@ -73,15 +94,41 @@ function walk(
   }
 
   for (const key of Object.keys(value as Record<string, unknown>)) {
-    walk((value as Record<string, unknown>)[key], interfaceName, seen);
+    walk(
+      (value as Record<string, unknown>)[key],
+      interfaceName,
+      seen,
+      shouldNeutralizeRegistrations,
+      cleanups,
+      registrationProvider,
+    );
   }
 }
 
 export function neutralizeInterfaceAsyncProxies(
   exports: unknown,
   interfaceName: string,
-): void {
-  walk(exports, interfaceName, new WeakSet());
+): StubInterfaceCleanup[] {
+  const cleanups: StubInterfaceCleanup[] = [];
+  walk(exports, interfaceName, new WeakSet(), false, cleanups);
+  return cleanups;
+}
+
+export function neutralizeInterfaceTestProxies(
+  exports: unknown,
+  interfaceName: string,
+  registrationProvider?: string,
+): StubInterfaceCleanup[] {
+  const cleanups: StubInterfaceCleanup[] = [];
+  walk(
+    exports,
+    interfaceName,
+    new WeakSet(),
+    true,
+    cleanups,
+    registrationProvider,
+  );
+  return cleanups;
 }
 
 function isWithin(filePath: string, dirPath: string): boolean {
@@ -96,17 +143,28 @@ function isWithin(filePath: string, dirPath: string): boolean {
 export function neutralizeInterfacePackage(
   packageRoot: string,
   interfaceName: string,
-): void {
+  shouldNeutralizeRegistrations = false,
+  registrationProvider?: string,
+): StubInterfaceCleanup[] {
   const cache = (Module as unknown as { _cache: Record<string, NodeModule> })
     ._cache;
   const seen = new WeakSet<object>();
+  const cleanups: StubInterfaceCleanup[] = [];
   for (const filename of Object.keys(cache)) {
     if (!isWithin(filename, packageRoot)) {
       continue;
     }
     const cachedModule = cache[filename];
-    walk(cachedModule.exports, interfaceName, seen);
+    walk(
+      cachedModule.exports,
+      interfaceName,
+      seen,
+      shouldNeutralizeRegistrations,
+      cleanups,
+      registrationProvider,
+    );
   }
+  return cleanups;
 }
 
 export function logStubInterfaceWarningOnce(

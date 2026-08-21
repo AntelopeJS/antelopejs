@@ -112,6 +112,21 @@ export function resolvePackage(
   }
 }
 
+export function resolvePackageSubpath(
+  packageName: string,
+  subpath: string,
+  resolvedPackage: ResolvedPackage,
+): string | undefined {
+  try {
+    const entry = createRequire(
+      path.join(resolvedPackage.root, "__antelope_resolver__.js"),
+    ).resolve(`${packageName}/${subpath}`);
+    return isPathWithin(entry, resolvedPackage.root) ? entry : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function resolvePackageAtRoot(
   packageName: string,
   packageRoot: string,
