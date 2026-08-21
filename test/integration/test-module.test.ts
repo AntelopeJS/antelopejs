@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { internal } from "@antelopejs/interface-core/internal";
 import { RunWithModuleContext } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
@@ -137,19 +138,27 @@ describe("TestModule Function", () => {
     const moduleFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-provider-consumer-"),
     );
+    const previousReporter = internal.runtimeErrorReporter;
+    const runtimeErrors: unknown[] = [];
+    internal.runtimeErrorReporter = (error) => runtimeErrors.push(error);
     try {
       const testFile = await writeProviderConsumerModule(moduleFolder);
       expect(await TestModule(moduleFolder, [testFile])).to.equal(0);
 
       const registrations = (global as any).__testStubInterface.Registrations;
-      const replayed: string[] = [];
-      const lease = RunWithModuleContext(
-        { module: PROVIDER_CONSUMER_ID, provider: PROVIDER_CONSUMER_ID },
-        () => registrations.onRegister((id: string) => replayed.push(id), true),
-      );
-      expect(replayed).to.deep.equal([]);
-      registrations.detach(lease);
+      internal.testStubMode = true;
+      expect(() =>
+        RunWithModuleContext(
+          { module: PROVIDER_CONSUMER_ID, provider: PROVIDER_CONSUMER_ID },
+          () => registrations.register("after-destroy"),
+        ),
+      )
+        .to.throw()
+        .with.property("code", "ERR_NO_PROVIDER");
+      expect(runtimeErrors).to.deep.equal([]);
     } finally {
+      internal.testStubMode = false;
+      internal.runtimeErrorReporter = previousReporter;
       delete (global as any).__testStubInterface;
       delete (global as any).__testStubContext;
       await fs.rm(moduleFolder, { recursive: true, force: true });

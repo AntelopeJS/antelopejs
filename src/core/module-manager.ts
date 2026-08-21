@@ -28,6 +28,7 @@ import {
   clearStubInterfaceWarnings,
   logStubInterfaceWarningOnce,
   neutralizeInterfacePackage,
+  type StubInterfaceCleanup,
 } from "./resolution/stub-interface-runtime";
 
 const Logger = new Logging.Channel("loader");
@@ -74,6 +75,7 @@ export class ModuleManager {
   private readonly interfaceRegistry: InterfaceRegistry;
   private readonly moduleTracker: ModuleTracker;
   private readonly resolverDetour: ResolverDetour;
+  private readonly interfaceStubCleanups: StubInterfaceCleanup[] = [];
   private readonly resolvedAssociations = new Map<string, Set<string>>();
   private readonly resolvedConnections = new Map<
     string,
@@ -291,19 +293,23 @@ export class ModuleManager {
       ? this.collectTestStubProviders(interfaceName)
       : [];
     if (!providers.length) {
-      neutralizeInterfacePackage(
-        resolvedPackage.root,
-        interfaceName,
-        shouldNeutralizeRegistrations,
+      this.interfaceStubCleanups.push(
+        ...neutralizeInterfacePackage(
+          resolvedPackage.root,
+          interfaceName,
+          shouldNeutralizeRegistrations,
+        ),
       );
       return;
     }
     providers.forEach((provider) => {
-      neutralizeInterfacePackage(
-        resolvedPackage.root,
-        interfaceName,
-        true,
-        provider,
+      this.interfaceStubCleanups.push(
+        ...neutralizeInterfacePackage(
+          resolvedPackage.root,
+          interfaceName,
+          true,
+          provider,
+        ),
       );
     });
   }
@@ -519,6 +525,13 @@ export class ModuleManager {
     clearStubInterfaceWarnings();
     this.moduleTracker.clear();
     this.interfaceRegistry.clear();
+    for (const cleanup of this.interfaceStubCleanups.splice(0)) {
+      try {
+        cleanup();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
     try {
       this.resolverDetour.detach();
     } catch (error) {
