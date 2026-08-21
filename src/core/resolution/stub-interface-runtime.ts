@@ -6,6 +6,7 @@ import {
   RegisteringProxy,
 } from "@antelopejs/interface-core";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { RunWithModuleContext } from "@antelopejs/interface-core/modules";
 
 const Logger = new Logging.Channel("loader");
 const warned = new Set<string>();
@@ -26,13 +27,21 @@ function neutralizeAsyncProxy(proxy: AsyncProxy, interfaceName: string): void {
 function neutralizeRegisteringProxy(
   proxy: RegisteringProxy,
   interfaceName: string,
+  provider?: string,
 ): void {
-  proxy.onRegister((id) => {
-    Logger.Trace(
-      `Interface '${interfaceName}' has no provider; registration '${String(id)}' recorded but inert.`,
-    );
-  }, true);
-  proxy.onUnregister(() => {});
+  const neutralize = () => {
+    proxy.onRegister((id) => {
+      Logger.Trace(
+        `Interface '${interfaceName}' has no provider; registration '${String(id)}' recorded but inert.`,
+      );
+    }, true);
+    proxy.onUnregister(() => {});
+  };
+  if (!provider) {
+    neutralize();
+    return;
+  }
+  RunWithModuleContext({ module: provider, provider }, neutralize);
 }
 
 function walk(
@@ -40,6 +49,7 @@ function walk(
   interfaceName: string,
   seen: WeakSet<object>,
   shouldNeutralizeRegistrations: boolean,
+  registrationProvider?: string,
 ): void {
   if (value === null || value === undefined) {
     return;
@@ -65,7 +75,7 @@ function walk(
   }
   if (value instanceof RegisteringProxy) {
     if (shouldNeutralizeRegistrations) {
-      neutralizeRegisteringProxy(value, interfaceName);
+      neutralizeRegisteringProxy(value, interfaceName, registrationProvider);
     }
     return;
   }
@@ -81,6 +91,7 @@ function walk(
       interfaceName,
       seen,
       shouldNeutralizeRegistrations,
+      registrationProvider,
     );
   }
 }
@@ -95,8 +106,9 @@ export function neutralizeInterfaceAsyncProxies(
 export function neutralizeInterfaceTestProxies(
   exports: unknown,
   interfaceName: string,
+  registrationProvider?: string,
 ): void {
-  walk(exports, interfaceName, new WeakSet(), true);
+  walk(exports, interfaceName, new WeakSet(), true, registrationProvider);
 }
 
 function isWithin(filePath: string, dirPath: string): boolean {
@@ -112,6 +124,7 @@ export function neutralizeInterfacePackage(
   packageRoot: string,
   interfaceName: string,
   shouldNeutralizeRegistrations = false,
+  registrationProvider?: string,
 ): void {
   const cache = (Module as unknown as { _cache: Record<string, NodeModule> })
     ._cache;
@@ -126,6 +139,7 @@ export function neutralizeInterfacePackage(
       interfaceName,
       seen,
       shouldNeutralizeRegistrations,
+      registrationProvider,
     );
   }
 }

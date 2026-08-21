@@ -274,12 +274,58 @@ export class ModuleManager {
         Logger.Error(`Failed to load interface '${interfaceName}':`, err);
         continue;
       }
+      this.neutralizeStubbedInterface(
+        interfaceName,
+        resolvedPackage,
+        shouldNeutralizeRegistrations,
+      );
+    }
+  }
+
+  private neutralizeStubbedInterface(
+    interfaceName: string,
+    resolvedPackage: ResolvedPackage,
+    shouldNeutralizeRegistrations: boolean,
+  ) {
+    const providers = shouldNeutralizeRegistrations
+      ? this.collectTestStubProviders(interfaceName)
+      : [];
+    if (!providers.length) {
       neutralizeInterfacePackage(
         resolvedPackage.root,
         interfaceName,
         shouldNeutralizeRegistrations,
       );
+      return;
     }
+    providers.forEach((provider) => {
+      neutralizeInterfacePackage(
+        resolvedPackage.root,
+        interfaceName,
+        true,
+        provider,
+      );
+    });
+  }
+
+  private collectTestStubProviders(interfaceName: string): string[] {
+    const consumers = new Set(
+      this.collectInterfacePackageConsumers(interfaceName).map(
+        ({ moduleId }) => moduleId,
+      ),
+    );
+    return this.getAllManagedModules()
+      .filter(
+        (managed) =>
+          consumers.has(managed.module.id) && this.isProvider(managed),
+      )
+      .map(({ module }) => module.id);
+  }
+
+  private isProvider({ module, config }: ManagedModule): boolean {
+    return (module.manifest.implements ?? []).some(
+      (interfaceName) => !config.disabledExports?.has(interfaceName),
+    );
   }
 
   public applyTestInterfaceStubs(): void {
@@ -802,12 +848,9 @@ export class ModuleManager {
           ).size,
         }),
       );
-      const isProvider = (module.manifest.implements ?? []).some(
-        (interfaceName) => !config.disabledExports?.has(interfaceName),
-      );
       module.setProviderRoutes(
         buildProviderRoutes(module.id, routes),
-        isProvider,
+        this.isProvider({ module, config }),
       );
     }
   }
