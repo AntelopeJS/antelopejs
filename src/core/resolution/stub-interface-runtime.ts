@@ -23,18 +23,6 @@ function neutralizeAsyncProxy(proxy: AsyncProxy, interfaceName: string): void {
   proxy.onCall(() => makeRejection(interfaceName), true);
 }
 
-function neutralizeRegisteringProxy(
-  proxy: RegisteringProxy,
-  interfaceName: string,
-): void {
-  proxy.onRegister((id) => {
-    Logger.Trace(
-      `Interface '${interfaceName}' has no provider; registration '${String(id)}' recorded but inert.`,
-    );
-  }, true);
-  proxy.onUnregister(() => {});
-}
-
 function walk(
   value: unknown,
   interfaceName: string,
@@ -63,7 +51,6 @@ function walk(
     return;
   }
   if (value instanceof RegisteringProxy) {
-    neutralizeRegisteringProxy(value, interfaceName);
     return;
   }
   // EventProxy needs no neutralization: register() never requires a provider

@@ -47,14 +47,14 @@ describe("neutralizeInterfaceAsyncProxies", () => {
     expect(rejected).to.equal(true);
   });
 
-  it("makes RegisteringProxy.register() a no-op in test stub mode", () => {
+  it("leaves RegisteringProxy behavior unchanged in test stub mode", () => {
     const reg = new RegisteringProxy<(id: string) => void>();
     const iface = { reg };
     neutralizeInterfaceAsyncProxies(iface, "reg-iface");
 
     internal.testStubMode = true;
     try {
-      expect(() => reg.register("id-1")).to.not.throw();
+      expect(() => reg.register("id-1")).to.throw();
       expect(() => reg.unregister("id-1")).to.not.throw();
     } finally {
       internal.testStubMode = false;
@@ -90,7 +90,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
     internal.testStubMode = true;
     try {
       expect(lifecycle.state).to.equal(ModuleState.Active);
-      expect(() => reg.register("trigger-2")).to.not.throw();
+      expect(() => reg.register("trigger-2")).to.throw();
     } finally {
       internal.testStubMode = false;
     }

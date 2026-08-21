@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { RunWithModuleContext } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import launch, { ModuleManager } from "../../src";
 
@@ -130,6 +131,7 @@ describe("Launch Function", () => {
             name: "consumer",
             version: "1.0.0",
             main: "index.js",
+            antelopeJs: { implements: ["interface-consumer"] },
             optionalDependencies: { "iface-pkg": "*" },
           },
           null,
@@ -143,6 +145,9 @@ describe("Launch Function", () => {
         module.exports = {
           construct() {
             global.__antelopeStubTest = iface;
+          },
+          start() {
+            iface.OnThing.register("during-start");
           },
         };
         `,
@@ -177,14 +182,32 @@ describe("Launch Function", () => {
         const captured = (global as any).__antelopeStubTest;
         expect(captured).to.exist;
         expect(captured.Iface.fetch).to.be.a("function");
+        expect(
+          (manager.getModule("consumer") as any).executionContext
+            .providerRoutes,
+        ).to.deep.equal({});
 
         // RegisteringProxy is sync and should not be neutralized
         let registered = false;
-        captured.OnThing.onRegister(() => {
+        const defaultLease = captured.OnThing.onRegister(() => {
           registered = true;
         }, true);
+        expect(registered).to.equal(false);
         captured.OnThing.register("id-1");
         expect(registered).to.equal(true);
+        captured.OnThing.detach(defaultLease);
+
+        const lateRegistrations: string[] = [];
+        const lateLease = RunWithModuleContext(
+          { module: "late-provider", provider: "late-provider" },
+          () =>
+            captured.OnThing.onRegister(
+              (id: string) => lateRegistrations.push(id),
+              true,
+            ),
+        );
+        expect(lateRegistrations).to.deep.equal([]);
+        captured.OnThing.detach(lateLease);
 
         // AsyncProxy-backed call should reject promptly instead of hanging
         let asyncError: Error | undefined;
@@ -201,9 +224,21 @@ describe("Launch Function", () => {
         expect(asyncError?.message ?? "").to.match(/iface-pkg/);
         expect(asyncError?.message ?? "").to.not.match(/HANG/);
       } finally {
-        delete (global as any).__antelopeStubTest;
+        const captured = (global as any).__antelopeStubTest;
         await manager.stopAll();
         await manager.destroyAll();
+        const replayedAfterDestroy: string[] = [];
+        const cleanupLease = RunWithModuleContext(
+          { module: "consumer", provider: "consumer" },
+          () =>
+            captured.OnThing.onRegister(
+              (id: string) => replayedAfterDestroy.push(id),
+              true,
+            ),
+        );
+        expect(replayedAfterDestroy).to.deep.equal([]);
+        captured.OnThing.detach(cleanupLease);
+        delete (global as any).__antelopeStubTest;
       }
     } finally {
       await fs.rm(projectFolder, { recursive: true, force: true });
