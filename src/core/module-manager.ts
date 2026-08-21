@@ -20,6 +20,7 @@ import {
   type ResolvedPackage,
   resolvePackage,
   resolvePackageAtRoot,
+  resolvePackageSubpath,
 } from "./resolution/package-resolution";
 import { PathMapper } from "./resolution/path-mapper";
 import { Resolver } from "./resolution/resolver";
@@ -32,6 +33,7 @@ import {
 } from "./resolution/stub-interface-runtime";
 
 const Logger = new Logging.Channel("loader");
+const INTERFACE_DECLARATIONS_SUBPATH = "interface-declarations";
 
 export interface ModuleConfig {
   config?: unknown;
@@ -92,6 +94,7 @@ export class ModuleManager {
     string,
     InterfacePackagePlan
   >();
+  private readonly interfaceDeclarationEntries = new Map<string, string>();
   private pendingCleanup: ManagedModule[] = [];
   private startupOrder: string[] = [];
 
@@ -514,6 +517,7 @@ export class ModuleManager {
     this.resolver.interfacePackages.clear();
     this.resolver.interfacePackageEntries.clear();
     this.resolver.interfacePackageResolveFrom.clear();
+    this.interfaceDeclarationEntries.clear();
     this.interfacePackagePlans.clear();
     this.startupOrder = [];
     return this.releaseRuntimeState();
@@ -613,7 +617,17 @@ export class ModuleManager {
         canonicalPackage,
         consumers: this.collectInterfacePackageConsumers(ifacePkg),
       });
-      this.registerInterfacePackage(ifacePkg, canonicalPackage);
+      this.registerInterfacePackage(
+        ifacePkg,
+        canonicalPackage,
+        this.resolveInterfaceDeclarationEntry(
+          ifacePkg,
+          canonicalPackage,
+          modules.some(
+            (provider) => provider.manifest.manifest.name === ifacePkg,
+          ),
+        ),
+      );
     }
     for (const [packageName, canonicalPackage] of this
       .stubbedInterfacePackages) {
@@ -624,8 +638,33 @@ export class ModuleManager {
         canonicalPackage,
         consumers: this.collectInterfacePackageConsumers(packageName),
       });
-      this.registerInterfacePackage(packageName, canonicalPackage);
+      this.registerInterfacePackage(
+        packageName,
+        canonicalPackage,
+        canonicalPackage.entry,
+      );
     }
+  }
+
+  private resolveInterfaceDeclarationEntry(
+    packageName: string,
+    resolvedPackage: ResolvedPackage,
+    isSelfImplemented: boolean,
+  ): string {
+    if (!isSelfImplemented) {
+      return resolvedPackage.entry;
+    }
+    const declarationEntry = resolvePackageSubpath(
+      packageName,
+      INTERFACE_DECLARATIONS_SUBPATH,
+      resolvedPackage,
+    );
+    if (declarationEntry) {
+      return declarationEntry;
+    }
+    throw new Error(
+      `Self-implemented interface package '${packageName}' must export a side-effect-free './${INTERFACE_DECLARATIONS_SUBPATH}' entry.`,
+    );
   }
 
   private resolveImplementedPackage(
@@ -670,6 +709,7 @@ export class ModuleManager {
   private registerInterfacePackage(
     packageName: string,
     resolvedPackage: ResolvedPackage,
+    declarationEntry = resolvedPackage.entry,
   ): void {
     this.resolver.interfacePackages.set(packageName, resolvedPackage.root);
     this.resolver.interfacePackageEntries.set(
@@ -680,6 +720,7 @@ export class ModuleManager {
       packageName,
       resolvedPackage.resolveFrom,
     );
+    this.interfaceDeclarationEntries.set(packageName, declarationEntry);
   }
 
   private validateInterfacePackages(): void {
@@ -853,8 +894,7 @@ export class ModuleManager {
       const routes: InterfaceProviderRoute[] = [...selected].map(
         ([interfaceName, provider]) => ({
           interfaceName,
-          packageEntry:
-            this.resolver.interfacePackageEntries.get(interfaceName),
+          declarationEntry: this.interfaceDeclarationEntries.get(interfaceName),
           provider,
           providerCount: new Set(
             connections.get(interfaceName)?.map(({ module }) => module),

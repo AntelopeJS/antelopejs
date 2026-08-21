@@ -265,7 +265,7 @@ describe("provider-aware runtime", () => {
       const providerRoutes = buildProviderRoutes(REAL_CONSUMER_ID, [
         {
           interfaceName: "@antelopejs/interface-core",
-          packageEntry: require.resolve("@antelopejs/interface-core"),
+          declarationEntry: require.resolve("@antelopejs/interface-core"),
           provider: CORE_MODULE_ID,
           providerCount: 1,
         },
@@ -493,13 +493,13 @@ describe("provider-aware runtime", () => {
       buildProviderRoutes("consumer", [
         {
           interfaceName: "first-interface",
-          packageEntry: packageRoot,
+          declarationEntry: packageRoot,
           provider: "provider-a",
           providerCount: 2,
         },
         {
           interfaceName: "second-interface",
-          packageEntry: packageRoot,
+          declarationEntry: packageRoot,
           provider: "provider-b",
           providerCount: 2,
         },
