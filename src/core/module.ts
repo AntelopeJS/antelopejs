@@ -47,13 +47,18 @@ export class Module {
   setProviderRoutes(
     providerRoutes: Readonly<Record<string, string>>,
     isProvider: boolean,
-  ): void {
+  ): ModuleExecutionContext {
     this.executionContext = {
       module: this.id,
       owner: this.executionContext.owner,
       provider: isProvider ? this.id : undefined,
       providerRoutes,
     };
+    return this.executionContext;
+  }
+
+  runWithContext<T>(callback: () => T): T {
+    return RunWithModuleContext(this.executionContext, callback);
   }
 
   async reload(): Promise<void> {

@@ -200,6 +200,8 @@ export class ModuleManager {
       return;
     }
 
+    this.resolver.clearModuleFacades(moduleId);
+
     const moduleFolder = path.resolve(entry.module.manifest.folder);
     const avoidedFolders = new Set<string>();
 
@@ -545,6 +547,7 @@ export class ModuleManager {
     this.resolver.interfacePackages.clear();
     this.resolver.interfacePackageEntries.clear();
     this.resolver.interfacePackageResolveFrom.clear();
+    this.resolver.clearFacades();
     this.interfaceDeclarationEntries.clear();
     this.interfaceDeclarationFiles.clear();
     this.interfacePackagePlans.clear();
@@ -931,9 +934,12 @@ export class ModuleManager {
           ).size,
         }),
       );
-      module.setProviderRoutes(
-        buildProviderRoutes(module.id, routes),
-        this.isProvider({ module, config }),
+      this.resolver.setModuleContext(
+        module.id,
+        module.setProviderRoutes(
+          buildProviderRoutes(module.id, routes),
+          this.isProvider({ module, config }),
+        ),
       );
     }
     this.refreshInterfaceDeclarationFiles();

@@ -396,7 +396,7 @@ function assertSideEffectRelaunches(state: RuntimeState): void {
 
 const SIDE_EFFECT_PROVIDER_SOURCE = `
 const { ImplementInterface } = require("@antelopejs/interface-core");
-const { BindToCurrentModuleContext, GetModuleContext } = require("@antelopejs/interface-core/modules");
+const { GetModuleContext } = require("@antelopejs/interface-core/modules");
 const declarations = require("./interface-declarations");
 require("./routes");
 require("./db");
@@ -408,8 +408,6 @@ state.declarationReferences.push([
   declarations.Registration.Registrations,
   declarations.Nested.GetModule,
 ]);
-const routeCallback = BindToCurrentModuleContext(() => declarations.Nested.GetModule());
-declarations.Registration.Registrations.register("route", routeCallback);
 exports.InterfaceDeclarations = declarations;
 exports.construct = () => {
   ImplementInterface(declarations.Nested, { GetModule: () => GetModuleContext().module });
@@ -423,7 +421,10 @@ exports.destroy = () => {};
 `;
 
 const SIDE_EFFECT_CONSUMER_SOURCE = `
+const declarations = require("${PROVIDER_ID}/interface-declarations");
 const state = global.${STATE_KEY};
+const routeCallback = () => declarations.Nested.GetModule();
+declarations.Registration.Registrations.register("route", routeCallback);
 exports.construct = async () => {
   await state.registrationReady;
   state.result = await state.routeCallback();

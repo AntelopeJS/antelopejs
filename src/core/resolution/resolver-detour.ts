@@ -81,15 +81,27 @@ class ResolverDetourCoordinator {
         options,
       ) as string;
     }
+    if (result.exact) {
+      return result.resolvedPath;
+    }
     const contextParent = result.resolveFrom
       ? { ...parent, filename: path.join(result.resolveFrom, "_") }
       : parent;
-    return this.originalResolver?.(
+    const resolvedPath = this.originalResolver?.(
       result.resolvedPath,
       contextParent,
       isMain,
       options,
     ) as string;
+    if (!result.facadeModuleId) {
+      return resolvedPath;
+    }
+    return (
+      activeResolver?.createInterfaceFacade(
+        resolvedPath,
+        result.facadeModuleId,
+      ) ?? resolvedPath
+    );
   }
 }
 

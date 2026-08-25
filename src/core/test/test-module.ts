@@ -212,9 +212,12 @@ export async function executeTests(
     mocha.addFile(file);
   }
 
-  return new Promise<number>((resolve) => {
-    mocha.run((count) => resolve(count));
-  });
+  const run = () =>
+    new Promise<number>((resolve) => {
+      mocha.run((count) => resolve(count));
+    });
+  const firstModule = manager?.getAllManagedModules()[0]?.module;
+  return firstModule ? firstModule.runWithContext(run) : run();
 }
 
 async function discoverTestFiles(

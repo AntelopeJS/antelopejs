@@ -76,6 +76,27 @@ describe("Module", () => {
     expect(contexts[0].owner).to.match(/^context-module#\d+$/);
   });
 
+  it("runs test work in the configured module context", async () => {
+    const mod = new Module(
+      { ...manifest, name: "test-context" },
+      sinon.stub().resolves({}),
+    );
+    mod.setProviderRoutes({ "async:example": "provider" }, false);
+
+    const context = await mod.runWithContext(async () => {
+      await Promise.resolve();
+      return GetModuleContext();
+    });
+
+    expect(context).to.include({
+      module: "test-context",
+      provider: undefined,
+    });
+    expect(context?.providerRoutes).to.deep.equal({
+      "async:example": "provider",
+    });
+  });
+
   it("uses distinct owners for replacement generations", async () => {
     const owners: Array<string | undefined> = [];
     const createModule = () =>

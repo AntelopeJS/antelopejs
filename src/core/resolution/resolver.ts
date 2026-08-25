@@ -1,3 +1,8 @@
+import { createHash } from "node:crypto";
+import Module from "node:module";
+import path from "node:path";
+import { CreateInterfaceFacade } from "@antelopejs/interface-core/facades";
+import type { ModuleExecutionContext } from "@antelopejs/interface-core/modules";
 import type { ModuleManifest } from "../module-manifest";
 import { isPathWithin, resolvePackage } from "./package-resolution";
 import type { PathMapper } from "./path-mapper";
@@ -10,6 +15,8 @@ export interface ModuleRef {
 export interface ResolveResult {
   resolvedPath: string;
   resolveFrom?: string;
+  exact?: boolean;
+  facadeModuleId?: string;
 }
 
 const CORE_PKG = "@antelopejs/interface-core";
@@ -24,6 +31,8 @@ export class Resolver {
   public readonly interfacePackageEntries = new Map<string, string>();
   public readonly interfacePackageResolveFrom = new Map<string, string>();
   public stubModulePath?: string;
+  private readonly moduleContexts = new Map<string, ModuleExecutionContext>();
+  private readonly facadePaths = new Map<string, Set<string>>();
 
   constructor(private pathMapper: PathMapper) {}
 
@@ -46,10 +55,32 @@ export class Resolver {
 
     const interfaceResult = this.resolveInterfacePackage(request);
     if (interfaceResult) {
-      return interfaceResult;
+      return matchingModule &&
+        this.moduleContexts.has(matchingModule.id) &&
+        !this.isImplementedInterfaceRequest(request, matchingModule)
+        ? { ...interfaceResult, facadeModuleId: matchingModule.id }
+        : interfaceResult;
     }
 
     return undefined;
+  }
+
+  setModuleContext(moduleId: string, context: ModuleExecutionContext): void {
+    this.moduleContexts.set(moduleId, context);
+  }
+
+  clearModuleFacades(moduleId: string): void {
+    for (const facadePath of this.facadePaths.get(moduleId) ?? []) {
+      delete require.cache[facadePath];
+    }
+    this.facadePaths.delete(moduleId);
+  }
+
+  clearFacades(): void {
+    for (const moduleId of this.facadePaths.keys()) {
+      this.clearModuleFacades(moduleId);
+    }
+    this.moduleContexts.clear();
   }
 
   private resolveInterfaceCore(request: string): ResolveResult | undefined {
@@ -60,6 +91,51 @@ export class Resolver {
       return { resolvedPath: request, resolveFrom: CORE_RESOLVE_FROM };
     }
     return undefined;
+  }
+
+  createInterfaceFacade(entry: string, moduleId: string): string | undefined {
+    const context = this.moduleContexts.get(moduleId);
+    if (!context) {
+      return undefined;
+    }
+    const facadePath = this.getFacadePath(entry, moduleId, context.owner);
+    if (!require.cache[facadePath]) {
+      const declaration = require(entry) as Record<string, unknown>;
+      const facade = CreateInterfaceFacade(declaration, context);
+      if (facade === declaration) {
+        return undefined;
+      }
+      const facadeModule = new Module(facadePath);
+      facadeModule.filename = facadePath;
+      facadeModule.paths = (Module as any)._nodeModulePaths(
+        path.dirname(entry),
+      );
+      facadeModule.exports = facade;
+      facadeModule.loaded = true;
+      require.cache[facadePath] = facadeModule;
+      const paths = this.facadePaths.get(moduleId) ?? new Set<string>();
+      paths.add(facadePath);
+      this.facadePaths.set(moduleId, paths);
+    }
+    return facadePath;
+  }
+
+  private getFacadePath(
+    entry: string,
+    moduleId: string,
+    owner = moduleId,
+  ): string {
+    const generation = Buffer.from(owner).toString("base64url");
+    const consumer = Buffer.from(moduleId).toString("base64url");
+    const declaration = createHash("sha256")
+      .update(entry)
+      .digest("hex")
+      .slice(0, 16);
+    return path.join(
+      path.dirname(entry),
+      ".antelope-facades",
+      `${declaration}-${consumer}-${generation}.cjs`,
+    );
   }
 
   private resolveInterfacePackage(request: string): ResolveResult | undefined {
@@ -77,6 +153,16 @@ export class Resolver {
       }
     }
     return undefined;
+  }
+
+  private isImplementedInterfaceRequest(
+    request: string,
+    module: ModuleRef,
+  ): boolean {
+    return (module.manifest.implements ?? []).some(
+      (interfaceName) =>
+        request === interfaceName || request.startsWith(`${interfaceName}/`),
+    );
   }
 
   private resolveLocalModule(fileName?: string): ModuleRef | undefined {
