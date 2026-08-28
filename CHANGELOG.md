@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.4.8
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.7...v1.4.8)
+
+### 🔥 Performance
+
+- **cli:** Fast-path project start in production ([#96](https://github.com/AntelopeJS/antelopejs/pull/96))
+
+### 🩹 Fixes
+
+- **core:** Make interface package resolution deterministic ([#97](https://github.com/AntelopeJS/antelopejs/pull/97))
+- **runtime:** Coordinate process-global ownership ([#98](https://github.com/AntelopeJS/antelopejs/pull/98))
+- **runtime:** Make lifecycle transitions transactional ([#100](https://github.com/AntelopeJS/antelopejs/pull/100))
+- **runtime:** Route interface calls to selected providers ([#101](https://github.com/AntelopeJS/antelopejs/pull/101))
+- **cli:** Honor declared package manager versions ([#95](https://github.com/AntelopeJS/antelopejs/pull/95))
+- **runtime:** Resolve static module package dependencies ([#102](https://github.com/AntelopeJS/antelopejs/pull/102))
+- **runtime:** Bind interface imports to selected providers ([#105](https://github.com/AntelopeJS/antelopejs/pull/105))
+
+### 📖 Documentation
+
+- **config:** Use real package names in configuration examples ([1e6f914](https://github.com/AntelopeJS/antelopejs/commit/1e6f914))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.4.7
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.6...v1.4.7)
