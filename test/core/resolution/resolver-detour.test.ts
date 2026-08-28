@@ -69,6 +69,40 @@ describe("ResolverDetour", () => {
     expect((Module as any)._resolveFilename).to.equal(originalResolver);
   });
 
+  it("uses the resolver that owns the requesting module", () => {
+    const firstResolver = createResolver("first");
+    const secondResolver = createResolver("second");
+    firstResolver.ownsResolutionContext = (_request, parent) =>
+      parent?.filename === "/first/index.js";
+    secondResolver.ownsResolutionContext = (_request, parent) =>
+      parent?.filename === "/second/index.js";
+    const first = new ResolverDetour(firstResolver);
+    const second = new ResolverDetour(secondResolver);
+
+    first.attach();
+    second.attach();
+
+    expect(
+      (Module as any)._resolveFilename(
+        "request",
+        { filename: "/first/index.js" },
+        false,
+        {},
+      ),
+    ).to.equal("first");
+    expect(
+      (Module as any)._resolveFilename(
+        "request",
+        { filename: "/second/index.js" },
+        false,
+        {},
+      ),
+    ).to.equal("second");
+
+    second.detach();
+    first.detach();
+  });
+
   it("attaches and detaches each lease idempotently", () => {
     const detour = new ResolverDetour(createResolver());
 

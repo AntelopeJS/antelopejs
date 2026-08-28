@@ -125,6 +125,31 @@ describe("Resolver", () => {
     );
   });
 
+  it("allocates unique interface graph paths across concurrent resolvers", () => {
+    const packageName = "@antelopejs/interface-db";
+    const packageRoot = __dirname;
+    const packageEntry = __filename;
+    const aliases = ["first", "second"].map((id) => {
+      const resolver = new Resolver(new PathMapper(() => false));
+      resolver.interfacePackages.set(packageName, packageRoot);
+      resolver.interfacePackageEntries.set(packageName, packageEntry);
+      resolver.moduleByFolder.set(`/modules/${id}`, {
+        id,
+        manifest: {
+          implements: [packageName],
+          paths: [],
+          srcAliases: [],
+        } as any,
+      });
+      const result = resolver.resolve(packageName, {
+        filename: `/modules/${id}/index.js`,
+      });
+      return resolver.applyAlias(result?.resolvedPath as string, result?.alias);
+    });
+
+    expect(aliases[0]).not.to.equal(aliases[1]);
+  });
+
   it("does not redirect unknown packages", () => {
     const resolver = new Resolver(new PathMapper(() => false));
     resolver.interfacePackages.set(
