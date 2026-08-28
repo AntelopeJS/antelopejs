@@ -16,6 +16,10 @@ import {
 } from "../../src/core/runtime/module-loading";
 
 const ROUTING_RESULTS_KEY = "__antelopeProviderRouting";
+const ROUTING_CLOSURES_KEY = "__antelopeProviderRoutingClosures";
+const ROUTING_REGISTRATIONS_KEY = "__antelopeProviderRoutingRegistrations";
+const ROUTING_EMITTERS_KEY = "__antelopeProviderRoutingEmitters";
+const ROUTING_EVENTS_KEY = "__antelopeProviderRoutingEvents";
 const INTERFACE_NAME = "routing-interface";
 const STRESS_ITERATIONS = 40;
 
@@ -40,6 +44,14 @@ interface RoutingResults {
   [consumer: string]: RoutingResult;
 }
 
+interface RoutingClosures {
+  [consumer: string]: () => Promise<RoutingResult>;
+}
+
+interface RoutingEmits {
+  [provider: string]: (value: string) => void;
+}
+
 interface RoutingProject {
   folder: string;
   consumerAIndex: string;
@@ -59,7 +71,12 @@ exports.construct = async () => {
   await new Promise((resolve) => setTimeout(resolve, ${delayMs}));
   ImplementInterface(declaration, {
     GetValue: () => ({ value: ${JSON.stringify(value)}, module: GetModuleContext().module }),
+    RegisterValue: {
+      register: (id, registeredValue) => global[${JSON.stringify(ROUTING_REGISTRATIONS_KEY)}][${JSON.stringify(value)}].push([id, registeredValue]),
+      unregister: (id) => global[${JSON.stringify(ROUTING_REGISTRATIONS_KEY)}][${JSON.stringify(value)}].push([id, "unregistered"]),
+    },
   });
+  global[${JSON.stringify(ROUTING_EMITTERS_KEY)}][${JSON.stringify(value)}] = (eventValue) => declaration.ValueEvent.emit(eventValue);
 };
 exports.destroy = () => {};
 `;
@@ -71,6 +88,9 @@ const { GetInterfaceInstance, GetInterfaceInstances } = require("@antelopejs/int
 const declaration = require(${JSON.stringify(INTERFACE_NAME)});
 exports.construct = async () => {
   const result = await declaration.GetValue();
+  declaration.RegisterValue.register("shared", ${JSON.stringify(consumer)});
+  declaration.ValueEvent.register((value) => global[${JSON.stringify(ROUTING_EVENTS_KEY)}][${JSON.stringify(consumer)}].push(value));
+  global[${JSON.stringify(ROUTING_CLOSURES_KEY)}][${JSON.stringify(consumer)}] = declaration.CreateDeferred();
   global[${JSON.stringify(ROUTING_RESULTS_KEY)}][${JSON.stringify(consumer)}] = {
     ...result,
     connections: GetInterfaceInstances(${JSON.stringify(INTERFACE_NAME)}),
@@ -182,7 +202,11 @@ async function createRoutingProject(
   );
   await fs.writeFile(
     path.join(interfaceFolder, "index.js"),
-    `const { InterfaceFunction } = require(${JSON.stringify(interfaceCoreImport)}); exports.GetValue = InterfaceFunction();`,
+    `const declarations = require("./private"); Object.assign(exports, declarations); exports.CreateDeferred = () => () => require("./private").GetValue();`,
+  );
+  await fs.writeFile(
+    path.join(interfaceFolder, "private.js"),
+    `const { EventProxy, InterfaceFunction, RegisteringProxy } = require(${JSON.stringify(interfaceCoreImport)}); exports.GetValue = InterfaceFunction("routing.GetValue"); exports.RegisterValue = new RegisteringProxy("routing.RegisterValue"); exports.ValueEvent = new EventProxy("routing.ValueEvent");`,
   );
   await linkInterfaceCore(interfaceFolder);
 
@@ -218,6 +242,32 @@ function routingResults(): RoutingResults {
   ] as RoutingResults;
 }
 
+function routingClosures(): RoutingClosures {
+  return (global as Record<string, unknown>)[
+    ROUTING_CLOSURES_KEY
+  ] as RoutingClosures;
+}
+
+function routingEmitters(): RoutingEmits {
+  return (global as Record<string, unknown>)[
+    ROUTING_EMITTERS_KEY
+  ] as RoutingEmits;
+}
+
+function initializeRoutingGlobals(): void {
+  const globals = global as Record<string, unknown>;
+  globals[ROUTING_RESULTS_KEY] = {};
+  globals[ROUTING_CLOSURES_KEY] = {};
+  globals[ROUTING_REGISTRATIONS_KEY] = { a: [], b: [] };
+  globals[ROUTING_EMITTERS_KEY] = {};
+  globals[ROUTING_EVENTS_KEY] = {
+    "consumer-a": [],
+    "consumer-b": [],
+    "consumer-default": [],
+    "consumer-reloaded": [],
+  };
+}
+
 async function destroyProject(
   manager: ModuleManager | undefined,
   folder: string,
@@ -227,6 +277,10 @@ async function destroyProject(
     await manager.destroyAll();
   }
   delete (global as Record<string, unknown>)[ROUTING_RESULTS_KEY];
+  delete (global as Record<string, unknown>)[ROUTING_CLOSURES_KEY];
+  delete (global as Record<string, unknown>)[ROUTING_REGISTRATIONS_KEY];
+  delete (global as Record<string, unknown>)[ROUTING_EMITTERS_KEY];
+  delete (global as Record<string, unknown>)[ROUTING_EVENTS_KEY];
   await fs.rm(folder, { recursive: true, force: true });
 }
 
@@ -234,7 +288,7 @@ describe("provider-aware runtime", () => {
   it("routes explicit and default providers independently of construct timing", async function () {
     this.timeout(20000);
     const project = await createRoutingProject();
-    (global as Record<string, unknown>)[ROUTING_RESULTS_KEY] = {};
+    initializeRoutingGlobals();
     let manager: ModuleManager | undefined;
     try {
       manager = await launch(project.folder);
@@ -271,6 +325,32 @@ describe("provider-aware runtime", () => {
         provider: "provider-a",
         selected: true,
       });
+      expect(await routingClosures()["consumer-a"]()).to.include({
+        value: "a",
+        module: "provider-a",
+      });
+      expect(await routingClosures()["consumer-b"]()).to.include({
+        value: "b",
+        module: "provider-b",
+      });
+      expect(
+        (global as Record<string, any>)[ROUTING_REGISTRATIONS_KEY],
+      ).to.deep.equal({
+        a: [
+          ["shared", "consumer-default"],
+          ["shared", "consumer-a"],
+        ],
+        b: [["shared", "consumer-b"]],
+      });
+      routingEmitters().a("event-a");
+      routingEmitters().b("event-b");
+      expect(
+        (global as Record<string, any>)[ROUTING_EVENTS_KEY],
+      ).to.deep.include({
+        "consumer-a": ["event-a"],
+        "consumer-b": ["event-b"],
+        "consumer-default": ["event-a"],
+      });
     } finally {
       await destroyProject(manager, project.folder);
     }
@@ -279,7 +359,7 @@ describe("provider-aware runtime", () => {
   it("updates a selected provider through the hot-reload replacement path", async function () {
     this.timeout(20000);
     const project = await createRoutingProject();
-    (global as Record<string, unknown>)[ROUTING_RESULTS_KEY] = {};
+    initializeRoutingGlobals();
     let manager: ModuleManager | undefined;
     try {
       manager = await launch(project.folder);
@@ -322,13 +402,17 @@ describe("provider-aware runtime", () => {
     );
     require(copiedCore);
     const project = await createRoutingProject(copiedCore);
-    (global as Record<string, unknown>)[ROUTING_RESULTS_KEY] = {};
+    initializeRoutingGlobals();
     let manager: ModuleManager | undefined;
     try {
       manager = await launch(project.folder);
       expect(routingResults()["consumer-a"]).to.include({
         value: "a",
         module: "provider-a",
+      });
+      expect(await routingClosures()["consumer-b"]()).to.include({
+        value: "b",
+        module: "provider-b",
       });
     } finally {
       await destroyProject(manager, project.folder);
