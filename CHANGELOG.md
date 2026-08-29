@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.4.10
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.9...v1.4.10)
+
+### 🩹 Fixes
+
+- **runtime:** Canonicalize interface declarations ([#107](https://github.com/AntelopeJS/antelopejs/pull/107))
+- **deps:** Require interface-core 0.0.12 ([#108](https://github.com/AntelopeJS/antelopejs/pull/108))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.4.9
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.8...v1.4.9)
