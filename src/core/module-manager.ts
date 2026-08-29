@@ -294,6 +294,7 @@ export class ModuleManager {
     const leaseAcquired = this.resolverDetour.attach();
     const modules = [...this.loaded.values()];
     try {
+      this.configureModuleContexts();
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
     } catch (error) {
@@ -335,6 +336,7 @@ export class ModuleManager {
   async constructModules(modules: ManagedModule[]): Promise<void> {
     const leaseAcquired = this.resolverDetour.attach();
     try {
+      this.configureModuleContexts();
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
       await Promise.all(
@@ -481,7 +483,6 @@ export class ModuleManager {
   private rebuildAssociations(): void {
     const interfaceSources = this.collectInterfaceSources();
     this.buildModuleAssociations(interfaceSources);
-    this.configureModuleContexts();
   }
 
   private collectInterfaceSources(): Map<string, Module[]> {

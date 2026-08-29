@@ -67,6 +67,7 @@ async function writeInterfacePackage(
   packageRoot: string,
   packageName: string,
   version: string,
+  source = `module.exports = ${JSON.stringify(version)};`,
 ): Promise<void> {
   await mkdir(path.join(packageRoot, "dist"), { recursive: true });
   await writeFile(
@@ -78,10 +79,7 @@ async function writeInterfacePackage(
       antelopeJs: {},
     }),
   );
-  await writeFile(
-    path.join(packageRoot, "dist", "index.js"),
-    `module.exports = ${JSON.stringify(version)};`,
-  );
+  await writeFile(path.join(packageRoot, "dist", "index.js"), source);
 }
 
 async function createResolutionFixture(
@@ -166,6 +164,124 @@ async function createResolutionManager(
     sinon.stub(module, "construct").resolves();
   });
   return manager;
+}
+
+async function writeModulePackage(
+  folder: string,
+  name: string,
+  dependencies: Record<string, string>,
+  implementedInterface?: string,
+): Promise<void> {
+  await mkdir(folder, { recursive: true });
+  await writeFile(
+    path.join(folder, "package.json"),
+    JSON.stringify({
+      name,
+      version: "1.0.0",
+      dependencies,
+      antelopeJs: implementedInterface
+        ? { implements: [implementedInterface] }
+        : undefined,
+    }),
+  );
+}
+
+interface NestedInterfacePaths {
+  parentProvider: string;
+  childProvider: string;
+  consumer: string;
+  parentRoot: string;
+  localChildRoot: string;
+  canonicalChildRoot: string;
+}
+
+interface NestedInterfaceFixture {
+  root: string;
+  modulePaths: string[];
+  noncanonicalEntry: string;
+}
+
+function createNestedInterfacePaths(root: string): NestedInterfacePaths {
+  const parentProvider = path.join(root, "parent-provider");
+  const childProvider = path.join(root, "child-provider");
+  return {
+    parentProvider,
+    childProvider,
+    consumer: path.join(root, "consumer"),
+    parentRoot: path.join(parentProvider, "node_modules", "interface-parent"),
+    localChildRoot: path.join(
+      parentProvider,
+      "node_modules",
+      "interface-child",
+    ),
+    canonicalChildRoot: path.join(
+      childProvider,
+      "node_modules",
+      "interface-child",
+    ),
+  };
+}
+
+async function writeNestedModulePackages(
+  paths: NestedInterfacePaths,
+): Promise<void> {
+  await writeModulePackage(
+    paths.parentProvider,
+    "parent-provider",
+    { "interface-parent": "*", "interface-child": "*" },
+    "interface-parent",
+  );
+  await writeModulePackage(
+    paths.childProvider,
+    "child-provider",
+    { "interface-child": "*" },
+    "interface-child",
+  );
+  await writeModulePackage(paths.consumer, "consumer", {
+    "interface-parent": "*",
+  });
+}
+
+async function writeNestedInterfacePackages(
+  paths: NestedInterfacePaths,
+): Promise<void> {
+  await writeInterfacePackage(
+    paths.parentRoot,
+    "interface-parent",
+    "1.0.0",
+    'module.exports = require("interface-child");',
+  );
+  await writeInterfacePackage(paths.localChildRoot, "interface-child", "1.0.0");
+  await writeInterfacePackage(
+    paths.canonicalChildRoot,
+    "interface-child",
+    "1.0.0",
+  );
+}
+
+async function createNestedInterfaceFixture(): Promise<NestedInterfaceFixture> {
+  const root = await mkdtemp(path.join(tmpdir(), "ajs-interface-nested-"));
+  const paths = createNestedInterfacePaths(root);
+  await writeNestedModulePackages(paths);
+  await writeNestedInterfacePackages(paths);
+  return {
+    root,
+    modulePaths: [paths.parentProvider, paths.childProvider, paths.consumer],
+    noncanonicalEntry: path.join(paths.localChildRoot, "dist", "index.js"),
+  };
+}
+
+async function createLocalManifest(folder: string): Promise<ModuleManifest> {
+  const source: ModuleSourceLocal = { type: "local", path: folder };
+  return ModuleManifest.create(folder, source, path.basename(folder));
+}
+
+function clearRequireCacheWithin(root: string): void {
+  Object.keys(require.cache)
+    .filter((entry) => entry.startsWith(root))
+    .forEach((entry) => {
+      delete require.cache[entry];
+    });
 }
 
 describe("ModuleManager", () => {
@@ -658,6 +774,7 @@ describe("ModuleManager", () => {
   it("waits for sibling constructs and aggregates rollback errors", async () => {
     const calls: string[] = [];
     const manager = new ModuleManager();
+    sinon.stub(manager as any, "configureModuleContexts");
     const detour = (manager as any).resolverDetour;
     const detach = sinon.stub(detour, "detach");
     sinon.stub(detour, "attach").returns(true);
@@ -892,6 +1009,30 @@ describe("ModuleManager", () => {
       ).to.equal(path.join(fixture.providerPackageRoot, "dist", "index.js"));
       await manager.destroyAll();
     } finally {
+      await rm(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  it("canonicalizes nested interface imports while preparing routes", async () => {
+    const fixture = await createNestedInterfaceFixture();
+    try {
+      const manifests = await Promise.all(
+        fixture.modulePaths.map(createLocalManifest),
+      );
+      const manager = new ModuleManager();
+      const modules = manager.addModules(
+        manifests.map((manifest) => ({ manifest })),
+      );
+      modules.forEach(({ module }) => {
+        sinon.stub(module, "construct").resolves();
+      });
+
+      await manager.constructAll();
+
+      expect(require.cache[fixture.noncanonicalEntry]).to.equal(undefined);
+      await manager.destroyAll();
+    } finally {
+      clearRequireCacheWithin(fixture.root);
       await rm(fixture.root, { recursive: true, force: true });
     }
   });
