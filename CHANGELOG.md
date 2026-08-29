@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.9
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.8...v1.4.9)
+
+### 🩹 Fixes
+
+- **config:** Canonicalize interface-core config imports ([#106](https://github.com/AntelopeJS/antelopejs/pull/106))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.4.8
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.7...v1.4.8)
