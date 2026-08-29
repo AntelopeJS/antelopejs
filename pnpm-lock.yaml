@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@antelopejs/interface-core':
-        specifier: ^0.0.12
+        specifier: '>=0.0.12 <1.0.0'
         version: 0.0.12
       '@types/proper-lockfile':
         specifier: ^4.1.4

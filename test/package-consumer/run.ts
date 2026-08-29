@@ -36,8 +36,12 @@ function packCore(): string {
 function inspectManifest(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
   const manifest = JSON.parse(content) as PackedManifest;
-  if (manifest.dependencies?.["@antelopejs/interface-core"] !== "^0.0.12") {
-    throw new Error("Packed core does not depend on interface-core ^0.0.12.");
+  if (
+    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.0.12 <1.0.0"
+  ) {
+    throw new Error(
+      "Packed core does not support compatible interface-core 0.x releases.",
+    );
   }
   if (/github:AntelopeJS\/interface-core|patches\//.test(content)) {
     throw new Error(
