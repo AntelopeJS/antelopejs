@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   GetInterfaceProxyIdentity,
+  GetRuntimeInfo,
   ImplementInterface,
   InterfaceFunction,
 } from "@antelopejs/interface-core";
@@ -21,6 +22,8 @@ const ROUTING_REGISTRATIONS_KEY = "__antelopeProviderRoutingRegistrations";
 const ROUTING_EMITTERS_KEY = "__antelopeProviderRoutingEmitters";
 const ROUTING_EVENTS_KEY = "__antelopeProviderRoutingEvents";
 const INTERFACE_NAME = "routing-interface";
+const CORE_INTERFACE_NAME = "@antelopejs/interface-core";
+const CORE_PROVIDER_ID = "antelopejs";
 const STRESS_ITERATIONS = 40;
 
 interface RoutingResult {
@@ -529,6 +532,23 @@ describe("provider-aware runtime", () => {
         },
       ]),
     ).to.throw(/resolves proxy.+both.+provider-a.+provider-b/);
+  });
+
+  it("discovers core runtime routes from the package root", () => {
+    const runtimeInfo = GetRuntimeInfo as unknown as RoutedFunction;
+    const runtimeInfoIdentity = GetInterfaceProxyIdentity(runtimeInfo.proxy);
+    const providerRoutes = buildProviderRoutes("api", [
+      {
+        interfaceName: CORE_INTERFACE_NAME,
+        packageEntry: require.resolve(CORE_INTERFACE_NAME),
+        provider: CORE_PROVIDER_ID,
+        providerCount: 1,
+      },
+    ]);
+
+    expect(providerRoutes[runtimeInfoIdentity as string]).to.equal(
+      CORE_PROVIDER_ID,
+    );
   });
 
   it("rejects an override whose module does not provide the interface", async () => {
