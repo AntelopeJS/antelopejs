@@ -1,3 +1,6 @@
+import { promises as nodeFs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
@@ -262,5 +265,47 @@ describe("ConfigLoader", () => {
         expect(error.message).to.include("antelope.config.ts");
       }
     });
+  });
+});
+
+describe("loadTsConfigFile", () => {
+  it("loads the recommended config helper from the core copy", async () => {
+    const root = await nodeFs.mkdtemp(path.join(os.tmpdir(), "ajs-config-"));
+    const packageRoot = path.join(
+      root,
+      "node_modules",
+      "@antelopejs",
+      "interface-core",
+    );
+    const sourceRoot = path.dirname(
+      require.resolve("@antelopejs/interface-core/package.json"),
+    );
+    const configPath = path.join(root, "antelope.config.ts");
+
+    try {
+      await nodeFs.mkdir(path.dirname(packageRoot), { recursive: true });
+      await nodeFs.cp(sourceRoot, packageRoot, { recursive: true });
+      await nodeFs.writeFile(
+        configPath,
+        `import { defineConfig } from "@antelopejs/interface-core/config";
+export default defineConfig({
+  name: require.resolve("@antelopejs/interface-core/config"),
+  modules: {},
+});`,
+      );
+
+      const loaded = await configLoader.loadTsConfigFile(configPath);
+
+      expect(loaded.name).to.equal(
+        require.resolve("@antelopejs/interface-core/config"),
+      );
+      expect(
+        Object.keys(require.cache).some((entry) =>
+          entry.startsWith(packageRoot),
+        ),
+      ).to.equal(false);
+    } finally {
+      await nodeFs.rm(root, { recursive: true, force: true });
+    }
   });
 });

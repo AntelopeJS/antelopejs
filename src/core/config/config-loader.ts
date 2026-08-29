@@ -16,6 +16,9 @@ import {
   getModuleConfigPath,
 } from "./config-paths";
 
+const CORE_CONFIG_PACKAGE = "@antelopejs/interface-core/config";
+const CORE_CONFIG_ENTRY = require.resolve(CORE_CONFIG_PACKAGE);
+
 export interface LoadedConfig {
   name: string;
   cacheFolder: string;
@@ -29,7 +32,9 @@ export async function loadTsConfigFile(
   configPath: string,
   environment?: string,
 ): Promise<AntelopeConfig> {
-  const jiti = createJiti(configPath);
+  const jiti = createJiti(configPath, {
+    alias: { [CORE_CONFIG_PACKAGE]: CORE_CONFIG_ENTRY },
+  });
   const loaded = await jiti.import(configPath);
   const configInput: ConfigInput = (loaded as any).default ?? loaded;
 
