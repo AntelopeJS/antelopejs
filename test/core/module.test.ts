@@ -93,6 +93,31 @@ describe("Module", () => {
     expect(owners[0]).to.not.equal(owners[1]);
   });
 
+  it("updates routes captured by the current module generation", async () => {
+    let constructedContext: ModuleExecutionContext | undefined;
+    let startedContext: ModuleExecutionContext | undefined;
+    const mod = new Module(manifest, async () => ({
+      construct: () => {
+        constructedContext = GetModuleContext();
+      },
+      start: () => {
+        startedContext = GetModuleContext();
+      },
+    }));
+    mod.setProviderRoutes({ proxy: "provider-a" }, false);
+    await mod.construct({});
+
+    mod.setProviderRoutes({ proxy: "provider-b" }, false);
+    await mod.start();
+
+    expect(constructedContext?.providerRoutes).to.deep.equal({
+      proxy: "provider-b",
+    });
+    expect(startedContext?.providerRoutes).to.equal(
+      constructedContext?.providerRoutes,
+    );
+  });
+
   it("emits successful destroy from the generation context after retry", async () => {
     const contexts: ModuleExecutionContext[] = [];
     const emit = Events.ModuleDestroyed.emit.bind(Events.ModuleDestroyed);

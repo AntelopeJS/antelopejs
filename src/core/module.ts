@@ -48,12 +48,28 @@ export class Module {
     providerRoutes: Readonly<Record<string, string>>,
     isProvider: boolean,
   ): void {
+    const activeRoutes = this.updateProviderRoutes(providerRoutes);
     this.executionContext = {
       module: this.id,
       owner: this.executionContext.owner,
       provider: isProvider ? this.id : undefined,
-      providerRoutes,
+      providerRoutes: activeRoutes,
     };
+  }
+
+  private updateProviderRoutes(
+    providerRoutes: Readonly<Record<string, string>>,
+  ): Readonly<Record<string, string>> {
+    const nextRoutes = { ...providerRoutes };
+    const activeRoutes = (this.executionContext.providerRoutes ?? {}) as Record<
+      string,
+      string
+    >;
+    for (const identity of Object.keys(activeRoutes)) {
+      delete activeRoutes[identity];
+    }
+    Object.assign(activeRoutes, nextRoutes);
+    return activeRoutes;
   }
 
   async reload(): Promise<void> {
