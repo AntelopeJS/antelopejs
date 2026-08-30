@@ -1,6 +1,6 @@
 import Module from "node:module";
 import path from "node:path";
-import type { Resolver } from "./resolver";
+import type { ResolveResult, Resolver } from "./resolver";
 
 type ModuleResolver = (
   request: string,
@@ -87,14 +87,51 @@ class ResolverDetourCoordinator {
     if (!activeResolver?.requiresPreResolution(request, parent)) {
       return this.originalLoader?.(request, parent, isMain);
     }
-    const resolvedPath = this.resolveWith(
+    const result = activeResolver.resolve(request, parent);
+    if (!result) {
+      return this.originalLoader?.(request, parent, isMain);
+    }
+    const resolvedPath = this.resolveResult(
       activeResolver,
-      request,
+      result,
       parent,
       isMain,
       undefined,
     );
-    return this.originalLoader?.(resolvedPath, parent, isMain);
+    this.primeInterfaceEntry(
+      activeResolver,
+      result,
+      resolvedPath,
+      parent,
+      isMain,
+    );
+    const isCircularImport = require.cache[resolvedPath]?.loaded === false;
+    const value = this.originalLoader?.(resolvedPath, parent, isMain);
+    return isCircularImport
+      ? value
+      : activeResolver.bindProviderRoutes(result, value);
+  }
+
+  private primeInterfaceEntry(
+    resolver: Resolver,
+    result: ResolveResult,
+    resolvedPath: string,
+    parent: any,
+    isMain: boolean,
+  ): void {
+    const entryResult = resolver.getInterfaceEntryToPrime(result, resolvedPath);
+    if (!entryResult) {
+      return;
+    }
+    const entryPath = this.resolveResult(
+      resolver,
+      entryResult,
+      parent,
+      isMain,
+      undefined,
+    );
+    const value = this.originalLoader?.(entryPath, parent, isMain);
+    resolver.bindProviderRoutes(entryResult, value);
   }
 
   private resolve(
@@ -115,7 +152,7 @@ class ResolverDetourCoordinator {
     options: any,
   ): string {
     const result = activeResolver?.resolve(request, parent);
-    if (!result) {
+    if (!activeResolver || !result) {
       return this.originalResolver?.(
         request,
         parent,
@@ -123,23 +160,39 @@ class ResolverDetourCoordinator {
         options,
       ) as string;
     }
-    if (result.exact) {
-      return result.resolvedPath;
-    }
-    const contextParent = result.resolveFrom
-      ? { ...parent, filename: path.join(result.resolveFrom, "_") }
-      : result.parentFilename
-        ? { ...parent, filename: result.parentFilename }
-        : parent;
+    return this.resolveResult(activeResolver, result, parent, isMain, options);
+  }
+
+  private resolveResult(
+    activeResolver: Resolver,
+    result: ResolveResult,
+    parent: any,
+    isMain: boolean,
+    options: any,
+  ): string {
+    const contextParent = this.createResolutionParent(
+      parent,
+      result.resolveFrom,
+    );
     const resolvedPath = this.originalResolver?.(
       result.resolvedPath,
       contextParent,
       isMain,
       options,
     ) as string;
-    return (
-      activeResolver?.applyAlias(resolvedPath, result.alias) ?? resolvedPath
-    );
+    activeResolver.trackInterfaceFile(result, resolvedPath);
+    return resolvedPath;
+  }
+
+  private createResolutionParent(parent: any, resolveFrom?: string): any {
+    if (!resolveFrom) {
+      return parent;
+    }
+    return {
+      ...parent,
+      filename: path.join(resolveFrom, "_"),
+      paths: (Module as any)._nodeModulePaths(resolveFrom),
+    };
   }
 
   private findResolver(request: string, parent: any): Resolver | undefined {

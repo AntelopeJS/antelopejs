@@ -7,10 +7,6 @@ import {
   InterfaceRegistry,
 } from "./interface-registry";
 import { Module } from "./module";
-import {
-  buildProviderRoutes,
-  type InterfaceProviderRoute,
-} from "./module-context";
 import type { ModuleManifest } from "./module-manifest";
 import { ModuleRegistry } from "./module-registry";
 import { ModuleTracker } from "./module-tracker";
@@ -190,6 +186,12 @@ export class ModuleManager {
       if (!this.isPathWithin(filePath, moduleFolder)) {
         continue;
       }
+      if (
+        filePath !== entry.module.manifest.main &&
+        this.resolver.isInterfaceGraphFile(filePath)
+      ) {
+        continue;
+      }
       let shouldDelete = true;
       for (const avoided of avoidedFolders) {
         if (this.isPathWithin(filePath, avoided)) {
@@ -249,7 +251,7 @@ export class ModuleManager {
       canonicalPackage,
       consumers,
     });
-    this.registerInterfacePackage(packageName, canonicalPackage);
+    this.registerInterfacePackage(packageName, canonicalPackage, true);
     logStubInterfaceWarningOnce(
       packageName,
       entries.some((entry) => entry.standalone),
@@ -263,10 +265,11 @@ export class ModuleManager {
     ]) {
       if (implemented.has(interfaceName)) {
         this.stubbedInterfacePackages.delete(interfaceName);
+        this.resolver.stubbedInterfacePackages.delete(interfaceName);
         continue;
       }
       if (!this.resolver.interfacePackages.has(interfaceName)) {
-        this.registerInterfacePackage(interfaceName, resolvedPackage);
+        this.registerInterfacePackage(interfaceName, resolvedPackage, true);
       }
       try {
         require(interfaceName);
@@ -404,6 +407,9 @@ export class ModuleManager {
     this.pendingCleanup = results.failed.filter(
       ({ module }) => module.state !== ModuleState.Loaded,
     );
+    for (const id of this.loaded.keys()) {
+      this.unrequireModuleFiles(id);
+    }
     const errors = [...results.errors, ...this.clearManagedState()];
     if (errors.length > 0) {
       throw new AggregateError(errors, "Failed to destroy modules");
@@ -456,6 +462,7 @@ export class ModuleManager {
     this.resolver.interfacePackages.clear();
     this.resolver.interfacePackageEntries.clear();
     this.resolver.interfacePackageResolveFrom.clear();
+    this.resolver.lifecycleInterfacePackages.clear();
     this.interfacePackagePlans.clear();
     this.startupOrder = [];
     return this.releaseRuntimeState();
@@ -464,6 +471,7 @@ export class ModuleManager {
   private releaseRuntimeState(): unknown[] {
     const errors: unknown[] = [];
     this.stubbedInterfacePackages.clear();
+    this.resolver.stubbedInterfacePackages.clear();
     clearStubInterfaceWarnings();
     this.moduleTracker.clear();
     this.interfaceRegistry.clear();
@@ -491,6 +499,8 @@ export class ModuleManager {
     this.resolver.interfacePackages.clear();
     this.resolver.interfacePackageEntries.clear();
     this.resolver.interfacePackageResolveFrom.clear();
+    this.resolver.lifecycleInterfacePackages.clear();
+    this.resolver.stubbedInterfacePackages.clear();
     this.interfacePackagePlans.clear();
     this.resolvedAssociations.clear();
     this.resolvedConnections.clear();
@@ -547,7 +557,7 @@ export class ModuleManager {
         canonicalPackage,
         consumers: this.collectInterfacePackageConsumers(ifacePkg),
       });
-      this.registerInterfacePackage(ifacePkg, canonicalPackage);
+      this.registerInterfacePackage(ifacePkg, canonicalPackage, false);
     }
     for (const [packageName, canonicalPackage] of this
       .stubbedInterfacePackages) {
@@ -558,7 +568,7 @@ export class ModuleManager {
         canonicalPackage,
         consumers: this.collectInterfacePackageConsumers(packageName),
       });
-      this.registerInterfacePackage(packageName, canonicalPackage);
+      this.registerInterfacePackage(packageName, canonicalPackage, true);
     }
   }
 
@@ -573,11 +583,14 @@ export class ModuleManager {
     if (module.manifest.manifest.name !== packageName) {
       return undefined;
     }
-    return resolvePackageAtRoot(
-      packageName,
-      module.manifest.folder,
-      module.manifest.version,
-    );
+    return {
+      ...resolvePackageAtRoot(
+        packageName,
+        module.manifest.folder,
+        module.manifest.version,
+      ),
+      antelopeJs: module.manifest.manifest.antelopeJs,
+    };
   }
 
   private collectInterfacePackageConsumers(
@@ -604,6 +617,7 @@ export class ModuleManager {
   private registerInterfacePackage(
     packageName: string,
     resolvedPackage: ResolvedPackage,
+    isStubbed = false,
   ): void {
     this.resolver.interfacePackages.set(packageName, resolvedPackage.root);
     this.resolver.interfacePackageEntries.set(
@@ -614,6 +628,20 @@ export class ModuleManager {
       packageName,
       resolvedPackage.resolveFrom,
     );
+    if (isStubbed) {
+      this.resolver.stubbedInterfacePackages.add(packageName);
+    } else {
+      this.resolver.stubbedInterfacePackages.delete(packageName);
+    }
+    const implementations = resolvedPackage.antelopeJs?.implements;
+    if (
+      Array.isArray(implementations) &&
+      implementations.includes(packageName)
+    ) {
+      this.resolver.lifecycleInterfacePackages.add(packageName);
+      return;
+    }
+    this.resolver.lifecycleInterfacePackages.delete(packageName);
   }
 
   private validateInterfacePackages(): void {
@@ -779,27 +807,11 @@ export class ModuleManager {
 
   private configureModuleContexts(): void {
     for (const { module, config } of this.getAllManagedModules()) {
-      const selected =
-        this.selectedProviders.get(module.id) ?? new Map<string, string>();
-      const connections =
-        this.resolvedConnections.get(module.id) ??
-        new Map<string, InterfaceConnectionRef[]>();
-      const routes: InterfaceProviderRoute[] = [...selected].map(
-        ([interfaceName, provider]) => ({
-          interfaceName,
-          packageEntry:
-            this.resolver.interfacePackageEntries.get(interfaceName),
-          provider,
-          providerCount: new Set(
-            connections.get(interfaceName)?.map(({ module }) => module),
-          ).size,
-        }),
-      );
       const isProvider = (module.manifest.implements ?? []).some(
         (interfaceName) => !config.disabledExports?.has(interfaceName),
       );
       module.setProviderRoutes(
-        buildProviderRoutes(module.id, routes),
+        this.resolver.buildProviderRoutes(module.id),
         isProvider,
       );
     }

@@ -847,6 +847,10 @@ describe("ModuleManager", () => {
     const manager = new ModuleManager();
     const makeModule = (id: string, shouldFail: boolean) => ({
       id,
+      manifest: {
+        folder: path.resolve("test", "fixtures", id),
+        main: path.resolve("test", "fixtures", id, "index.js"),
+      },
       destroy: async () => {
         calls.push(id);
         if (shouldFail) {
@@ -889,6 +893,10 @@ describe("ModuleManager", () => {
     const makeModule = (id: string, failOnce: boolean) => ({
       id,
       state: "constructed",
+      manifest: {
+        folder: path.resolve("test", "fixtures", id),
+        main: path.resolve("test", "fixtures", id, "index.js"),
+      },
       destroy: sinon.stub().callsFake(async function (this: any) {
         calls.push(id);
         if (failOnce && this.destroy.callCount === 1) {
@@ -1119,15 +1127,21 @@ describe("ModuleManager", () => {
     expect(resolver.interfacePackages.size).to.equal(0);
   });
 
-  it("clears require cache for module files while preserving submodules", () => {
+  it("clears module files while preserving submodules and declarations", () => {
     const manager = new ModuleManager();
     const moduleFolder = path.resolve("test", "module");
     const submoduleFolder = path.join(moduleFolder, "child");
     const nodeModulesFolder = path.join(moduleFolder, "node_modules");
+    const declarationEntry = path.join(
+      moduleFolder,
+      "interfaces",
+      "declaration.js",
+    );
 
     const cacheEntries = [
       path.join(moduleFolder, "index.js"),
       path.join(moduleFolder, "src", "util.js"),
+      declarationEntry,
       path.join(submoduleFolder, "index.js"),
       path.join(nodeModulesFolder, "dep.js"),
       path.resolve("other", "file.js"),
@@ -1140,7 +1154,12 @@ describe("ModuleManager", () => {
     }
 
     (manager as any).loaded.set("test", {
-      module: { manifest: { folder: moduleFolder } },
+      module: {
+        manifest: {
+          folder: moduleFolder,
+          main: path.join(moduleFolder, "index.js"),
+        },
+      },
       config: {},
     });
     (manager as any).loaded.set("test.child", {
@@ -1151,12 +1170,17 @@ describe("ModuleManager", () => {
       },
       config: {},
     });
+    (manager as any).resolver.trackInterfaceFile(
+      { interfaceName: "interface-test", resolvedPath: declarationEntry },
+      declarationEntry,
+    );
 
     manager.unrequireModuleFiles("test");
 
     expect(require.cache[path.join(moduleFolder, "index.js")]).to.be.undefined;
     expect(require.cache[path.join(moduleFolder, "src", "util.js")]).to.be
       .undefined;
+    expect(require.cache[declarationEntry]).to.not.be.undefined;
     expect(require.cache[path.join(submoduleFolder, "index.js")]).to.not.be
       .undefined;
     expect(require.cache[path.join(nodeModulesFolder, "dep.js")]).to.not.be
