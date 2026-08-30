@@ -162,7 +162,10 @@ export class ModuleManager {
     return [...this.staticModules, ...this.loaded.values()];
   }
 
-  unrequireModuleFiles(moduleId: string): void {
+  unrequireModuleFiles(
+    moduleId: string,
+    shouldPreserveInterfaceGraph = true,
+  ): void {
     const entry = this.loaded.get(moduleId);
     if (!entry) {
       return;
@@ -187,6 +190,7 @@ export class ModuleManager {
         continue;
       }
       if (
+        shouldPreserveInterfaceGraph &&
         filePath !== entry.module.manifest.main &&
         this.resolver.isInterfaceGraphFile(filePath)
       ) {
@@ -408,7 +412,7 @@ export class ModuleManager {
       ({ module }) => module.state !== ModuleState.Loaded,
     );
     for (const id of this.loaded.keys()) {
-      this.unrequireModuleFiles(id);
+      this.unrequireModuleFiles(id, false);
     }
     const errors = [...results.errors, ...this.clearManagedState()];
     if (errors.length > 0) {

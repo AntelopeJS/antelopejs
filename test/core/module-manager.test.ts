@@ -1127,7 +1127,7 @@ describe("ModuleManager", () => {
     expect(resolver.interfacePackages.size).to.equal(0);
   });
 
-  it("clears module files while preserving submodules and declarations", () => {
+  it("preserves declarations for reload and clears them for teardown", () => {
     const manager = new ModuleManager();
     const moduleFolder = path.resolve("test", "module");
     const submoduleFolder = path.join(moduleFolder, "child");
@@ -1186,6 +1186,10 @@ describe("ModuleManager", () => {
     expect(require.cache[path.join(nodeModulesFolder, "dep.js")]).to.not.be
       .undefined;
     expect(require.cache[path.resolve("other", "file.js")]).to.not.be.undefined;
+
+    manager.unrequireModuleFiles("test", false);
+
+    expect(require.cache[declarationEntry]).to.be.undefined;
 
     for (const entry of cacheEntries) {
       if (previous[entry]) {
