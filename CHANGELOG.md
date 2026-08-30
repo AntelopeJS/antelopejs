@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.11
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.10...v1.4.11)
+
+### 🩹 Fixes
+
+- **core:** Preserve provider routing across canonical interfaces ([#109](https://github.com/AntelopeJS/antelopejs/pull/109))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <upd4ting@gmail.com>
+
 ## v1.4.10
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.9...v1.4.10)
