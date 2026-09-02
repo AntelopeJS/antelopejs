@@ -23,6 +23,16 @@ const attachImplementation = ImplementInterface as unknown as InterfaceAttacher;
 
 const Logger = new Logging.Channel("loader.embedded");
 
+function findInterfacePackage(
+  started: StartedProject,
+  request: string,
+): string | undefined {
+  return [...started.manager.resolver.interfacePackages.keys()].find(
+    (packageName) =>
+      request === packageName || request.startsWith(`${packageName}/`),
+  );
+}
+
 const NOT_STARTED_MESSAGE =
   "The embedded runtime has not been started. Call start() first.";
 
@@ -130,15 +140,15 @@ export class AntelopeRuntime {
     }
   }
 
-  /** Returns the runtime's own copy of an interface package, provider-bound for the host. */
-  use<T>(packageName: string): T {
+  /** Returns the runtime's own copy of an interface package or one of its subpaths, provider-bound for the host. */
+  use<T>(request: string): T {
     const started = this.requireStarted();
-    if (!started.manager.resolver.interfacePackages.has(packageName)) {
+    if (!findInterfacePackage(started, request)) {
       throw new Error(
-        `Interface '${packageName}' is not provided by any loaded module. Declare it in 'uses' and load a module that implements it.`,
+        `Interface '${request}' is not provided by any loaded module. Declare it in 'uses' and load a module that implements it.`,
       );
     }
-    return this.hostModule().runInContext(() => require(packageName) as T);
+    return this.hostModule().runInContext(() => require(request) as T);
   }
 
   /** Implements an interface from host code, released through the returned handle. */

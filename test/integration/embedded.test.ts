@@ -10,6 +10,7 @@ import {
   type EmbeddedFixture,
   HOST_INTERFACE_PACKAGE,
   INTERFACE_PACKAGE,
+  INTERFACE_SUBPATH,
   PROVIDER_MODULE,
   removeEmbeddedFixture,
 } from "../helpers/embedded-fixture";
@@ -73,6 +74,26 @@ describe("Embedded runtime", () => {
     expect(await withHangGuard(greeter.Greeter.greet("world"))).to.equal(
       "Hello world",
     );
+  });
+
+  it("routes a host call made through an interface package subpath", async () => {
+    runtime = startEmbedded(fixture);
+    await runtime.start();
+
+    const greeter = runtime.use<GreeterInterface>(
+      `${INTERFACE_PACKAGE}/${INTERFACE_SUBPATH}`,
+    );
+
+    expect(await withHangGuard(greeter.Greeter.greet("world"))).to.equal(
+      "Hello world",
+    );
+  });
+
+  it("rejects a subpath of an interface no loaded module provides", async () => {
+    runtime = startEmbedded(fixture);
+    await runtime.start();
+
+    expect(() => runtime?.use("missing-pkg/sub")).to.throw(/not provided/);
   });
 
   it("rejects an interface no loaded module provides", async () => {

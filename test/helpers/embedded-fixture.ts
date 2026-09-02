@@ -6,6 +6,7 @@ export const INTERFACE_PACKAGE = "iface-pkg";
 export const HOST_INTERFACE_PACKAGE = "host-pkg";
 export const PROVIDER_MODULE = "provider-mod";
 export const DEFAULT_PREFIX = "Hello";
+export const INTERFACE_SUBPATH = "greeting";
 
 export interface EmbeddedFixture {
   projectFolder: string;
@@ -18,6 +19,7 @@ export interface InterfacePackageOptions {
   name: string;
   source: string;
   version?: string;
+  subpaths?: Record<string, string>;
 }
 
 const GREETER_SOURCE = `
@@ -25,6 +27,10 @@ const core = require("@antelopejs/interface-core");
 exports.Greeter = {
   greet: core.InterfaceFunction("iface-pkg.greet"),
 };
+`;
+
+const GREETER_SUBPATH_SOURCE = `
+exports.Greeter = require("./index.js").Greeter;
 `;
 
 const HOST_CLOCK_SOURCE = `
@@ -77,6 +83,9 @@ export async function createInterfacePackage(
     antelopeJs: {},
   });
   await fs.writeFile(path.join(folder, "index.js"), options.source);
+  for (const [name, source] of Object.entries(options.subpaths ?? {})) {
+    await fs.writeFile(path.join(folder, `${name}.js`), source);
+  }
   return folder;
 }
 
@@ -114,6 +123,7 @@ export async function createEmbeddedFixture(
     name: INTERFACE_PACKAGE,
     source: GREETER_SOURCE,
     version: options.interfaceVersion,
+    subpaths: { [INTERFACE_SUBPATH]: GREETER_SUBPATH_SOURCE },
   });
   const hostInterfaceFolder = await createInterfacePackage(projectFolder, {
     name: HOST_INTERFACE_PACKAGE,
