@@ -215,7 +215,7 @@ export async function registerCoreInterfaces(
   return coreManifest;
 }
 
-function buildModuleOverrides(
+export function buildModuleOverrides(
   importOverrides?: ExpandedModuleConfig["importOverrides"],
 ): ModuleOverrideMap {
   const overrides: ModuleOverrideMap = new Map();

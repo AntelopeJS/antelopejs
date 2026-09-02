@@ -57,6 +57,11 @@ export class Module {
     };
   }
 
+  /** Runs a callback under this module's execution context. */
+  runInContext<T>(callback: () => T): T {
+    return RunWithModuleContext(this.executionContext, callback);
+  }
+
   private updateProviderRoutes(
     providerRoutes: Readonly<Record<string, string>>,
   ): Readonly<Record<string, string>> {

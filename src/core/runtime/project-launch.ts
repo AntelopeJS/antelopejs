@@ -11,6 +11,7 @@ import {
   runLaunchSequence,
 } from "./launch-sequence";
 import { releaseProcessShutdownManager } from "./runtime-bootstrap";
+import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
 import type {
   LoaderContext,
   ProjectPreparer,
@@ -171,7 +172,9 @@ async function setupPostLaunchFeatures(
     repl.start(INTERACTIVE_PROMPT);
   }
 
-  setActiveShutdownManager(shutdownManager);
+  if (started.policy.signals) {
+    setActiveShutdownManager(shutdownManager);
+  }
 }
 
 export async function startProject(
@@ -179,11 +182,18 @@ export async function startProject(
   projectFolder: string,
   env: string,
   options: LaunchOptions,
-): Promise<ModuleManager> {
-  const started = await runLaunchSequence(prepare, projectFolder, env, options);
+  policy: RuntimePolicy = DEFAULT_RUNTIME_POLICY,
+): Promise<StartedProject> {
+  const started = await runLaunchSequence(
+    prepare,
+    projectFolder,
+    env,
+    options,
+    policy,
+  );
   try {
     await setupPostLaunchFeatures(started, projectFolder, env, options);
-    return started.manager;
+    return started;
   } catch (error) {
     await started.shutdownManager.shutdown();
     throw error;
@@ -217,10 +227,11 @@ export async function launchFromBuild(
   env: string = DEFAULT_ENV,
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {
-  return startProject(
+  const started = await startProject(
     prepareFromArtifact,
     projectFolder,
     env || DEFAULT_ENV,
     options,
   );
+  return started.manager;
 }

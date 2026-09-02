@@ -7,6 +7,7 @@ import type { ModuleCache } from "../module-cache";
 import type { ModuleConfig, ModuleManager } from "../module-manager";
 import type { ModuleManifest } from "../module-manifest";
 import type { ShutdownManager } from "../shutdown";
+import type { RuntimePolicy } from "./runtime-policy";
 
 export interface ModuleOverrideRef {
   module: string;
@@ -79,4 +80,5 @@ export interface StartedProject {
   loadContext: LoaderContextProvider;
   fs: NodeFileSystem;
   shutdownManager: ShutdownManager;
+  policy: RuntimePolicy;
 }

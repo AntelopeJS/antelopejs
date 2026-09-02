@@ -1,6 +1,7 @@
 import path from "node:path";
 import { setupAntelopeProjectLogging } from "../../logging";
 import type { LaunchOptions } from "../../types";
+import { terminalDisplay } from "../cli/terminal-display";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../module-manager";
 import { ShutdownManager } from "../shutdown";
@@ -27,6 +28,7 @@ import {
   setupProcessHandlers,
   withRaisedMaxListeners,
 } from "./runtime-bootstrap";
+import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
 import type {
   LoaderConfig,
   LoaderContext,
@@ -36,12 +38,22 @@ import type {
   StartedProject,
 } from "./runtime-types";
 
-function memoize(create: () => Promise<LoaderContext>): LoaderContextProvider {
+export function memoizeLoaderContext(
+  create: () => Promise<LoaderContext>,
+): LoaderContextProvider {
   let pending: Promise<LoaderContext> | undefined;
   return () => {
     pending ??= create();
     return pending;
   };
+}
+
+interface LaunchRequest {
+  prepare: ProjectPreparer;
+  projectFolder: string;
+  env: string;
+  options: LaunchOptions;
+  policy: RuntimePolicy;
 }
 
 function resolveRuntimeLoaderConfig(
@@ -77,7 +89,9 @@ export const prepareFromConfig: ProjectPreparer = async (
   env,
 ) => {
   const { fs, normalizedConfig } = await loadProjectConfig(projectFolder, env);
-  const loadContext = memoize(() => createLoaderContext(normalizedConfig, fs));
+  const loadContext = memoizeLoaderContext(() =>
+    createLoaderContext(normalizedConfig, fs),
+  );
 
   return {
     fs,
@@ -116,7 +130,9 @@ export const prepareFromArtifact: ProjectPreparer = async (
     fs,
     dev: false,
     logging: artifact.config.logging,
-    loadContext: memoize(() => createLoaderContext(loaderConfig, fs)),
+    loadContext: memoizeLoaderContext(() =>
+      createLoaderContext(loaderConfig, fs),
+    ),
     verify: async () => {
       logEnvironmentMismatch(env, artifact.env);
       await warnIfBuildIsStale(projectFolder, artifact, fs);
@@ -143,20 +159,25 @@ export async function runLaunchSequence(
   projectFolder: string,
   env: string,
   options: LaunchOptions,
+  policy: RuntimePolicy = DEFAULT_RUNTIME_POLICY,
 ): Promise<StartedProject> {
   const shutdownManager = new ShutdownManager();
   const manager = new ModuleManager();
-  setupProcessHandlers(shutdownManager);
+  const request: LaunchRequest = {
+    prepare,
+    projectFolder,
+    env,
+    options,
+    policy,
+  };
+  if (policy.processHandlers) {
+    setupProcessHandlers(shutdownManager);
+  }
 
+  const previouslySilent = terminalDisplay.isSilent();
+  terminalDisplay.setSilent(!policy.terminal);
   try {
-    return await completeLaunchSequence(
-      prepare,
-      projectFolder,
-      env,
-      options,
-      shutdownManager,
-      manager,
-    );
+    return await completeLaunchSequence(request, shutdownManager, manager);
   } catch (error) {
     const cleanupErrors = await cleanupFailedLaunch(manager, shutdownManager);
     releaseProcessShutdownManager(shutdownManager);
@@ -167,21 +188,23 @@ export async function runLaunchSequence(
       [...unpackErrors(error), ...cleanupErrors],
       "Failed to launch project",
     );
+  } finally {
+    terminalDisplay.setSilent(previouslySilent);
   }
 }
 
 async function completeLaunchSequence(
-  prepare: ProjectPreparer,
-  projectFolder: string,
-  env: string,
-  options: LaunchOptions,
+  request: LaunchRequest,
   shutdownManager: ShutdownManager,
   manager: ModuleManager,
 ): Promise<StartedProject> {
-  const project = await prepare(projectFolder, env);
+  const { projectFolder, env, options, policy } = request;
+  const project = await request.prepare(projectFolder, env);
 
-  setupAntelopeProjectLogging(project.logging);
-  applyVerboseChannels(options.verbose);
+  if (policy.logging) {
+    setupAntelopeProjectLogging(project.logging);
+    applyVerboseChannels(options.verbose);
+  }
 
   await project.verify();
 
@@ -201,6 +224,7 @@ async function completeLaunchSequence(
     loadContext: project.loadContext,
     fs: project.fs,
     shutdownManager,
+    policy,
   };
 }
 

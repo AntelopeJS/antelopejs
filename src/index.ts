@@ -21,11 +21,21 @@ import type { LaunchOptions } from "./types";
 export { ConfigLoader } from "./core/config/config-loader";
 export { DEFAULT_ENV } from "./core/config/config-paths";
 export { DownloaderRegistry } from "./core/downloaders/registry";
+export {
+  AntelopeRuntime,
+  createRuntime,
+} from "./core/embedded/runtime";
+export type {
+  EmbeddedModuleConfig,
+  EmbeddedRuntimeOptions,
+  ProvideHandle,
+} from "./core/embedded/types";
 export { Module } from "./core/module";
 export { ModuleCache } from "./core/module-cache";
 export { ModuleManager } from "./core/module-manager";
 export { ModuleManifest } from "./core/module-manifest";
 export { launchFromBuild } from "./core/runtime/project-launch";
+export type { RuntimePolicy } from "./core/runtime/runtime-policy";
 export type { BuildOptions } from "./core/runtime/runtime-types";
 export { TestModule } from "./core/test/test-module";
 export { LaunchOptions } from "./types";
@@ -35,7 +45,13 @@ export async function launch(
   env: string = DEFAULT_ENV,
   options: LaunchOptions = {},
 ): Promise<ModuleManager> {
-  return startProject(prepareFromConfig, projectFolder, env, options);
+  const started = await startProject(
+    prepareFromConfig,
+    projectFolder,
+    env,
+    options,
+  );
+  return started.manager;
 }
 
 export async function build(

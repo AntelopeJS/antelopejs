@@ -3,6 +3,19 @@ import { Spinner } from "./cli-ui";
 export class TerminalDisplay {
   private currentSpinner?: Spinner;
   private currentSpinnerTexts: string[] = [];
+  private silent = false;
+
+  setSilent(silent: boolean): void {
+    this.silent = silent;
+    if (silent) {
+      this.currentSpinnerTexts = [];
+      this.destroySpinner();
+    }
+  }
+
+  isSilent(): boolean {
+    return this.silent;
+  }
 
   private updateSpinnerText(): void {
     if (this.currentSpinnerTexts.length > 0) {
@@ -40,6 +53,9 @@ export class TerminalDisplay {
   }
 
   async startSpinner(text: string): Promise<void> {
+    if (this.silent) {
+      return;
+    }
     this.currentSpinnerTexts.push(text);
 
     if (!this.currentSpinner) {
