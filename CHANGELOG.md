@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.5.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.11...v1.5.0)
+
+### 🚀 Enhancements
+
+- **embedded:** Run the runtime as a guest of another framework ([#110](https://github.com/AntelopeJS/antelopejs/pull/110))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+
 ## v1.4.11
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.10...v1.4.11)
