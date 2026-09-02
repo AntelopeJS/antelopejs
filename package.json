@@ -43,12 +43,13 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "test": "pnpm test:unit && pnpm test:package-consumer && pnpm test:playground",
+    "test": "pnpm test:unit && pnpm test:embedded && pnpm test:package-consumer && pnpm test:playground",
     "test:unit": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
     "test:package-consumer": "pnpm build && ts-node test/package-consumer/run.ts",
     "test:playground": "pnpm build && pnpm --dir playground install && ts-node playground/test-playground.ts",
     "test:watch": "mocha --require ts-node/register --require test/setup.ts --watch --watch-extensions ts 'test/**/*.test.ts'",
-    "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 90 --statements 90 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit"
+    "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 90 --statements 90 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
+    "test:embedded": "pnpm build && ts-node test/embedded/run.ts"
   },
   "dependencies": {
     "@antelopejs/interface-core": ">=0.0.12 <1.0.0",
