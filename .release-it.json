@@ -1,12 +1,17 @@
 {
   "git": {
     "commitMessage": "chore(release): v${version}",
-    "tagName": "v${version}"
+    "tagName": "v${version}",
+    "requireBranch": "main",
+    "requireCommits": true
   },
   "github": {
     "release": true,
-    "releaseName": "v${version}",
-    "web": true
+    "releaseName": "v${version}"
+  },
+  "npm": {
+    "publish": true,
+    "skipChecks": true
   },
   "hooks": {
     "before:init": ["pnpm lint"],

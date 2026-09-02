@@ -22,7 +22,8 @@
     "dist"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "packageManager": "pnpm@10.6.5",
   "antelopeJs": {
