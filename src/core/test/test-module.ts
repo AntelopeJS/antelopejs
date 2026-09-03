@@ -188,6 +188,21 @@ function registerTestDir(testDir: string, manager: ModuleManager): void {
   }
 }
 
+export function runInTestModuleContext<T>(
+  moduleRoot: string,
+  manager: ModuleManager | null,
+  callback: () => T,
+): T {
+  const loadedModules = [...(manager?.getLoadedModules() ?? [])];
+  const resolvedModuleRoot = path.resolve(moduleRoot);
+  const testModule =
+    loadedModules.find(
+      ({ module }) =>
+        path.resolve(module.manifest.folder) === resolvedModuleRoot,
+    )?.module ?? loadedModules[0]?.module;
+  return testModule ? testModule.runInContext(callback) : callback();
+}
+
 export async function executeTests(
   moduleRoot: string,
   test: AntelopeTestConfig,
@@ -211,9 +226,14 @@ export async function executeTests(
     mocha.addFile(file);
   }
 
-  return new Promise<number>((resolve) => {
-    mocha.run((count) => resolve(count));
-  });
+  return runInTestModuleContext(
+    moduleRoot,
+    manager,
+    () =>
+      new Promise<number>((resolve) => {
+        mocha.run((count) => resolve(count));
+      }),
+  );
 }
 
 async function discoverTestFiles(
