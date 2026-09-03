@@ -44,11 +44,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Publish stable release
         if: inputs.channel == 'latest'
-        run: pnpm release -- --ci
+        run: pnpm release --ci
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
       - name: Publish next release
         if: inputs.channel == 'next'
-        run: pnpm release -- --ci --preRelease=next
+        run: pnpm release --ci --preRelease=next
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
