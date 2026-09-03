@@ -1,4 +1,8 @@
 import path from "node:path";
+import {
+  GetModuleContext,
+  RunWithModuleContext,
+} from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
 import { ConfigLoader } from "../../../src/core/config/config-loader";
@@ -21,6 +25,10 @@ function resetProxy(interfaceFunction: unknown): void {
   const { proxy } = interfaceFunction as ProxiedInterfaceFunction;
   proxy.onCall(() => undefined, true);
   proxy.detach();
+}
+
+function runInLocalContext<T>(callback: () => T): T {
+  return RunWithModuleContext({ module: "local", provider: "local" }, callback);
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -416,6 +424,30 @@ describe("test-module", () => {
       const result = await testModule.TestModule("/module");
 
       expect(result).to.equal(0);
+    });
+  });
+
+  describe("runInTestModuleContext", () => {
+    it("preserves the tested module context across asynchronous test work", async () => {
+      const module = {
+        manifest: { folder: "/module" },
+        runInContext: runInLocalContext,
+      };
+      const manager = {
+        getLoadedModules: () => new Map([["local", { module }]]).values(),
+      };
+
+      let activeModule: string | undefined;
+      await testModule.runInTestModuleContext(
+        "/module",
+        manager as ModuleManager,
+        async () => {
+          await Promise.resolve();
+          activeModule = GetModuleContext()?.module;
+        },
+      );
+
+      expect(activeModule).to.equal("local");
     });
   });
 
