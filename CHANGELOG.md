@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.5.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.5.0...v1.5.1)
+
+### 🩹 Fixes
+
+- **test:** Run module tests in provider context ([#114](https://github.com/AntelopeJS/antelopejs/pull/114))
+- **ci:** Pass release arguments correctly ([#115](https://github.com/AntelopeJS/antelopejs/pull/115))
+
+### 🤖 CI
+
+- Automate secure npm releases ([#111](https://github.com/AntelopeJS/antelopejs/pull/111))
+- Use Node 24 action runtimes ([#112](https://github.com/AntelopeJS/antelopejs/pull/112))
+- Authenticate protected release pushes ([#113](https://github.com/AntelopeJS/antelopejs/pull/113))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.5.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.4.11...v1.5.0)
