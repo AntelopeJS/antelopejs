@@ -13,21 +13,41 @@
 
 </div>
 
-AntelopeJS is a production-ready TypeScript framework designed for developing high-performance, robust, and scalable Node.js applications. Its innovative interface-based architecture enables developers to create modular, extensible applications with clear separation of concerns.
+## Hexagonal architecture. Beyond your own code.
 
-## Philosophy
+AntelopeJS is a TypeScript framework and CLI for Node.js applications. It extends the ports-and-adapters model across your application and the ecosystem modules you install: consumers depend on explicit contracts, provider modules implement them, and your application selects the implementations.
 
-AntelopeJS addresses common framework challenges through its unique approach:
+You already separate business behavior from integrations. AntelopeJS supplies the interface binding, module lifecycle and assembly mechanisms, so you do not have to rebuild that infrastructure for each project.
 
-- **Minimal Core**: Unlike frameworks that implement too many features at the core level, AntelopeJS keeps its core minimal and unopinionated, delegating functionality to modules
-- **Interface-Based Design**: Clean separation between modules through well-defined interface contracts
-- **Seamless Upgrades**: Run multiple versions of the same interface side-by-side, allowing gradual upgrades without breaking changes
-- **Modular Architecture**: Build applications with independent, swappable components
+## One contract model, across the ecosystem
+
+The dependency boundary stays the same whether you write the provider or install it:
+
+```text
+Business module ──depends on──▶ Contract ◀──implements── Provider module
+```
+
+- **Contracts describe capabilities.** Interface packages expose the public API that consumers and implementations agree on.
+- **Providers own integrations.** A provider module registers its implementation with the runtime. Consumers call the contract instead of importing that provider.
+- **The application owns the choice.** Configure local, package or Git module sources in `antelope.config.ts`, outside consuming business modules.
+- **The runtime handles the connections.** AntelopeJS manages interface bindings and module lifecycle through the same mechanisms for local and ecosystem modules.
+
+For example, the [MongoDB](https://github.com/AntelopeJS/mongodb) and [RethinkDB](https://github.com/AntelopeJS/rethinkdb) modules both declare the shared [database contract](https://github.com/AntelopeJS/interface-database). They also expose provider-specific interfaces: using those deliberately ties that consumer to the provider.
+
+## Change implementations, with explicit limits
+
+A replacement can leave consuming code unchanged when it supports the required contract version, capabilities and behavior. Provider configuration, credentials, data migrations and operational differences still need attention. Matching types alone does not establish compatibility.
+
+AntelopeJS provides the mechanisms for these boundaries; it does not prevent your code from bypassing them. Consumers still depend on their contracts, and the framework does not automatically make your business code framework-independent.
+
+Development hot module reloading is a separate workflow feature, not a promise of live production migration between providers.
 
 ## Installation
 
+Install `@antelopejs/core`, which provides the `ajs` CLI:
+
 ```bash
-npm install -g @antelopejs/core
+pnpm add -g @antelopejs/core
 ```
 
 ## Getting Started
@@ -40,7 +60,12 @@ ajs project init <project-name>
 
 ## Documentation
 
-For complete documentation, visit [AntelopeJS](https://antelopejs.com/)
+- [Introduction](https://antelopejs.com/docs/get-started/introduction) — Why the same boundaries matter across your application and its dependencies
+- [Quick Start](https://antelopejs.com/docs/get-started/quick-start) — Create your first project
+- [Architecture](https://antelopejs.com/docs/get-started/architecture) — Contracts, implementations and application assembly
+- [Interfaces](https://antelopejs.com/docs/concepts/interfaces) — Define and implement a capability
+- [Module configuration](https://antelopejs.com/docs/concepts/configuration) — Select module sources and configure implementations
+- [Explore the ecosystem](https://antelopejs.com/modules) — Find modules for your application
 
 ## License
 
