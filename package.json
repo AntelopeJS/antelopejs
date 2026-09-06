@@ -1,7 +1,7 @@
 {
   "name": "@antelopejs/core",
   "version": "1.5.1",
-  "description": "Modular Node.js framework with interface-based architecture for building extensible applications",
+  "description": "TypeScript framework extending hexagonal architecture across your application and its ecosystem through explicit contracts and replaceable modules.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AntelopeJS/antelopejs.git"
