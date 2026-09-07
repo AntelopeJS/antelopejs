@@ -1,28 +1,29 @@
 import path from "node:path";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
+
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManifest } from "../module-manifest";
 import { resolvePackage } from "../resolution/package-resolution";
 import { memoizeLoaderContext } from "../runtime/launch-sequence";
-import {
-  buildModuleOverrides,
-  createLoaderContext,
-} from "../runtime/module-loading";
+import type { EmbeddedModuleConfig, EmbeddedRuntimeOptions } from "./types";
 import type {
   ModuleManifestEntry,
   ProjectPreparer,
 } from "../runtime/runtime-types";
-import type { EmbeddedModuleConfig, EmbeddedRuntimeOptions } from "./types";
+import {
+  buildModuleOverrides,
+  createLoaderContext,
+} from "../runtime/module-loading";
 
 export const HOST_MODULE_ID = "__antelope_host__";
-export const HOST_MODULE_VERSION = "0.0.0";
+const HOST_MODULE_VERSION = "0.0.0";
 
 const HOST_FOLDER_SEGMENTS = [".antelope", "host"];
 const HOST_MODULE_ENTRY = path.join(__dirname, "host-module");
 const EMBEDDED_CACHE_SEGMENTS = [".antelope", "embedded-cache"];
 const HOST_DEPENDENCY_RANGE = "latest";
 
-export function getHostModuleFolder(projectFolder: string): string {
+function getHostModuleFolder(projectFolder: string): string {
   return path.join(projectFolder, ...HOST_FOLDER_SEGMENTS);
 }
 

@@ -1,8 +1,9 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import * as path from "node:path";
 import { expect } from "chai";
-import { PathMapper } from "../../../src/core/resolution/path-mapper";
+import * as path from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { PathMapper } from "../../../src/core/resolution/path-mapper";
 
 const manifest = {
   srcAliases: [{ alias: "@src", replace: "/mod/src" }],

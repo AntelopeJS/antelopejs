@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
-    "moduleResolution": "node",
     "target": "esnext",
     "module": "commonjs",
     "lib": ["ES2022"],
     "allowJs": true,
     "checkJs": false,
     "outDir": "dist",
+    "rootDir": "src",
     "strict": true,
     "noImplicitAny": true,
     "esModuleInterop": true,

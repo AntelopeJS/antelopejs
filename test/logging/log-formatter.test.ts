@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import { LogFormatter, LogLevel } from "../../src/logging/log-formatter";
 
 describe("LogFormatter", () => {

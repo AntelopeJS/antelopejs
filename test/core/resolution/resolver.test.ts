@@ -1,18 +1,19 @@
 import path from "node:path";
+import { expect } from "chai";
+import { internal } from "@antelopejs/interface-core/internal";
+import {
+  GetModuleContext,
+  RunWithModuleContext,
+} from "@antelopejs/interface-core/modules";
 import {
   type AsyncProxy,
   GetInterfaceProxyIdentity,
   InterfaceFunction,
   RegisteringProxy,
 } from "@antelopejs/interface-core";
-import { internal } from "@antelopejs/interface-core/internal";
-import {
-  GetModuleContext,
-  RunWithModuleContext,
-} from "@antelopejs/interface-core/modules";
-import { expect } from "chai";
-import { PathMapper } from "../../../src/core/resolution/path-mapper";
+
 import { Resolver } from "../../../src/core/resolution/resolver";
+import { PathMapper } from "../../../src/core/resolution/path-mapper";
 import { neutralizeInterfaceAsyncProxies } from "../../../src/core/resolution/stub-interface-runtime";
 
 const CORE_PKG = "@antelopejs/interface-core";

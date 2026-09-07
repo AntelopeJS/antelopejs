@@ -1,15 +1,16 @@
 import * as path from "node:path";
-import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
-import type { IFileSystem } from "../../types";
+import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
+
 import { ExecuteCMD } from "../cli/command";
-import { terminalDisplay } from "../cli/terminal-display";
+import { runInstallCommands } from "./utils";
+import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import type { ModuleCache } from "../module-cache";
 import { ModuleManifest } from "../module-manifest";
 import type { DownloaderRegistry } from "./registry";
+import { terminalDisplay } from "../cli/terminal-display";
 import type { CommandResult, CommandRunner } from "./types";
-import { runInstallCommands } from "./utils";
 
 const Logger = new Logging.Channel("loader.git");
 

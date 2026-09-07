@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import { ConfigParser } from "../../../src/core/config/config-parser";
 
 describe("ConfigParser", () => {

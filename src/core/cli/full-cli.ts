@@ -1,18 +1,19 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import chalk from "chalk";
+import { join } from "node:path";
 import { Command } from "commander";
+import { readFileSync } from "node:fs";
+
+import { Options } from "./common";
+import { displayBanner } from "./cli-ui";
+import cmdConfig from "./commands/config";
+import cmdModule from "./commands/module";
+import cmdProject from "./commands/project";
+import { warnIfOutdated } from "./version-check";
 import {
   addChannelFilter,
   defaultConfigLogging,
   setupAntelopeProjectLogging,
 } from "../../logging";
-import { displayBanner } from "./cli-ui";
-import cmdConfig from "./commands/config";
-import cmdModule from "./commands/module";
-import cmdProject from "./commands/project";
-import { Options } from "./common";
-import { warnIfOutdated } from "./version-check";
 
 export function createCLI(version: string) {
   return new Command()

@@ -1,9 +1,10 @@
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
-import { registerPackageDownloader } from "../../../src/core/downloaders/package";
-import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+
 import { ModuleCache } from "../../../src/core/module-cache";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
+import { registerPackageDownloader } from "../../../src/core/downloaders/package";
 
 function createExecSpy() {
   const calls: Array<{ command: string; cwd?: string }> = [];
@@ -151,7 +152,7 @@ describe("PackageDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result[0].manifest.version).to.equal("1.1.0");
-    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.be.false;
+    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(false);
   });
 
   it("falls back to the cached version when the registry is unreachable", async () => {
@@ -191,7 +192,7 @@ describe("PackageDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result[0].manifest.version).to.equal("1.0.0");
-    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.be.false;
+    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(false);
   });
 
   it("falls back to the cached version for a dist-tag when the registry is unreachable", async () => {
@@ -231,7 +232,7 @@ describe("PackageDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result[0].manifest.version).to.equal("2.0.0");
-    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.be.false;
+    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(false);
   });
 
   it("re-downloads when the cached folder is missing node_modules despite declared dependencies", async () => {
@@ -336,7 +337,7 @@ describe("PackageDownloader", () => {
     } catch (err) {
       expect(err).to.be.instanceOf(Error);
     }
-    expect(cache.getVersion("pkg")).to.be.undefined;
+    expect(cache.getVersion("pkg")).to.equal(undefined);
   });
 
   it("throws when the registry is unreachable and nothing satisfying is cached", async () => {
@@ -413,7 +414,7 @@ describe("PackageDownloader", () => {
 
     expect(result[0].manifest.version).to.equal("2.0.0");
     expect(execCalls).to.include('npm view "pkg@latest" version --json');
-    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.be.false;
+    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(false);
   });
 
   it("downloads and commits the resolved version for a dist-tag on an empty cache", async () => {
@@ -640,7 +641,7 @@ describe("PackageDownloader", () => {
     } catch (err) {
       expect(err).to.be.instanceOf(Error);
     }
-    expect(cache.getVersion("pkg")).to.be.undefined;
+    expect(cache.getVersion("pkg")).to.equal(undefined);
   });
 
   it("uses the default extractor when no custom extract is provided", async () => {

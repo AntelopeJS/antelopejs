@@ -1,9 +1,10 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import * as cliUi from "../../../../../../src/core/cli/cli-ui";
-import cmdList from "../../../../../../src/core/cli/commands/project/modules/list";
 import * as common from "../../../../../../src/core/cli/common";
 import { ConfigLoader } from "../../../../../../src/core/config";
+import cmdList from "../../../../../../src/core/cli/commands/project/modules/list";
 
 describe("project modules list behavior", () => {
   afterEach(() => {

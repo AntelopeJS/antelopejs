@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import { mergeDeep, set } from "../../src/utils/object";
 
 describe("Object Utilities", () => {

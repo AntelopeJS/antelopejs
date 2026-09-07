@@ -1,11 +1,12 @@
-import { promises as nodeFs } from "node:fs";
 import os from "node:os";
-import path from "node:path";
-import type { AntelopeConfig } from "@antelopejs/interface-core/config";
-import { expect } from "chai";
 import sinon from "sinon";
-import * as configLoader from "../../../src/core/config/config-loader";
+import path from "node:path";
+import { expect } from "chai";
+import { promises as nodeFs } from "node:fs";
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
+
 import { ConfigLoader } from "../../../src/core/config/config-loader";
+import * as configLoader from "../../../src/core/config/config-loader";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 describe("ConfigLoader", () => {

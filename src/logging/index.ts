@@ -3,11 +3,12 @@ import type { AntelopeLogging } from "@antelopejs/interface-core/config";
 import eventLog, {
   type Log,
 } from "@antelopejs/interface-core/logging/listener";
-import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
-import { terminalDisplay } from "../core/cli/terminal-display";
-import { mergeDeep } from "../utils/object";
-import { LogLevel } from "./log-formatter";
+
 import { Logger } from "./logger";
+import { LogLevel } from "./log-formatter";
+import { mergeDeep } from "../utils/object";
+import { terminalDisplay } from "../core/cli/terminal-display";
+import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
 
 export { LogFilter } from "./log-filter";
 export type { LogEntry } from "./log-formatter";

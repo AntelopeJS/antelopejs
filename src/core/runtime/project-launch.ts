@@ -1,22 +1,23 @@
 import { Writable } from "node:stream";
 import { Logging } from "@antelopejs/interface-core/logging";
+
 import type { LaunchOptions } from "../../types";
-import { DEFAULT_ENV, tryFindConfigPath } from "../config/config-paths";
+import type { ShutdownManager } from "../shutdown";
 import type { NodeFileSystem } from "../filesystem";
 import type { ModuleManager } from "../module-manager";
-import type { ShutdownManager } from "../shutdown";
-import {
-  prepareFromArtifact,
-  prepareFromConfig,
-  runLaunchSequence,
-} from "./launch-sequence";
 import { releaseProcessShutdownManager } from "./runtime-bootstrap";
+import { DEFAULT_ENV, tryFindConfigPath } from "../config/config-paths";
 import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
 import type {
   LoaderContext,
   ProjectPreparer,
   StartedProject,
 } from "./runtime-types";
+import {
+  prepareFromArtifact,
+  prepareFromConfig,
+  runLaunchSequence,
+} from "./launch-sequence";
 
 const Logger = new Logging.Channel("loader");
 

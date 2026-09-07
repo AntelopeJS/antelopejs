@@ -1,6 +1,7 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
+import { tmpdir } from "node:os";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { FileWatcher } from "../../../src/core/watch/file-watcher";
 

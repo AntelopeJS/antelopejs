@@ -1,7 +1,8 @@
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { satisfies, validRange } from "semver";
-import { info as infoMessage, warning } from "./cli/cli-ui";
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+
 import { ExecuteCMD } from "./cli/command";
+import { info as infoMessage, warning } from "./cli/cli-ui";
 import { parsePackageInfoOutput } from "./cli/package-manager";
 import type { ExpandedModuleConfig } from "./config/config-parser";
 

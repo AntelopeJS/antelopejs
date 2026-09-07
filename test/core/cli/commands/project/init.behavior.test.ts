@@ -1,14 +1,15 @@
-import { readFile } from "node:fs/promises";
+import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
 import inquirer from "inquirer";
-import sinon from "sinon";
+import { readFile } from "node:fs/promises";
+
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import * as moduleInitModule from "../../../../../src/core/cli/commands/module/init";
-import cmdInit from "../../../../../src/core/cli/commands/project/init";
-import * as projectModulesAddModule from "../../../../../src/core/cli/commands/project/modules/add";
 import * as common from "../../../../../src/core/cli/common";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
+import cmdInit from "../../../../../src/core/cli/commands/project/init";
+import * as moduleInitModule from "../../../../../src/core/cli/commands/module/init";
+import * as projectModulesAddModule from "../../../../../src/core/cli/commands/project/modules/add";
 
 describe("project init behavior", () => {
   afterEach(() => {

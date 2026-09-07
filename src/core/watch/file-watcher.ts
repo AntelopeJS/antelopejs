@@ -1,8 +1,9 @@
+import * as path from "node:path";
 import { createHash } from "node:crypto";
 import { type FSWatcher, watch } from "node:fs";
-import * as path from "node:path";
-import type { IFileSystem } from "../../types";
+
 import { FileHasher } from "./file-hasher";
+import type { IFileSystem } from "../../types";
 
 export type ModuleChangeListener = (moduleId: string) => void;
 export type FileChangeListener = (filePath: string) => void;

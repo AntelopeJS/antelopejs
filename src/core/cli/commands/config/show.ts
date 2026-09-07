@@ -1,7 +1,8 @@
 import chalk from "chalk";
 import { Command } from "commander";
-import { displayBox, keyValue } from "../../cli-ui";
+
 import { readUserConfig } from "../../common";
+import { displayBox, keyValue } from "../../cli-ui";
 
 export default function () {
   return new Command("show")

@@ -1,9 +1,10 @@
+import sinon from "sinon";
+import { expect } from "chai";
 import type {
   ModuleSourceLocal,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
-import { expect } from "chai";
-import sinon from "sinon";
+
 import * as cliUi from "../../src/core/cli/cli-ui";
 import * as command from "../../src/core/cli/command";
 import type { ExpandedModuleConfig } from "../../src/core/config/config-parser";

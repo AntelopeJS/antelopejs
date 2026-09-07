@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+
 import type { IFileSystem } from "../../types";
 
 export class FileHasher {

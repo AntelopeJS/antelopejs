@@ -1,6 +1,7 @@
 import os from "node:os";
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import { expandHome } from "../../../src/core/downloaders/utils";
 
 describe("Downloader utils", () => {

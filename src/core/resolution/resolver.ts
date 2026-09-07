@@ -12,9 +12,10 @@ import {
   internal,
   runWithCapturedModuleContext,
 } from "@antelopejs/interface-core/internal";
+
+import type { PathMapper } from "./path-mapper";
 import type { ModuleManifest } from "../module-manifest";
 import { isPathWithin, resolvePackage } from "./package-resolution";
-import type { PathMapper } from "./path-mapper";
 
 export interface ModuleRef {
   id: string;

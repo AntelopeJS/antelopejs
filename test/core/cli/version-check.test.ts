@@ -1,5 +1,6 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import { warnIfOutdated } from "../../../src/core/cli/version-check";
 

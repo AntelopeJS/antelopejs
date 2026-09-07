@@ -1,8 +1,9 @@
-import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
-import { expect } from "chai";
 import sinon from "sinon";
-import { terminalDisplay } from "../../../src/core/cli/terminal-display";
+import { expect } from "chai";
+import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
+
 import { Module } from "../../../src/core/module";
+import { terminalDisplay } from "../../../src/core/cli/terminal-display";
 import type {
   ManagedModule,
   ModuleManager,

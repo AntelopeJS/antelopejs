@@ -1,7 +1,8 @@
-import fs from "node:fs/promises";
 import path from "node:path";
-import { internal } from "@antelopejs/interface-core/internal";
 import { expect } from "chai";
+import fs from "node:fs/promises";
+import { internal } from "@antelopejs/interface-core/internal";
+
 import { type AntelopeRuntime, createRuntime } from "../../src";
 import { terminalDisplay } from "../../src/core/cli/terminal-display";
 import { HOST_MODULE_ID } from "../../src/core/embedded/prepare-embedded";

@@ -1,5 +1,6 @@
-import { type ExecSyncOptions, execSync } from "node:child_process";
 import semver from "semver";
+import { type ExecSyncOptions, execSync } from "node:child_process";
+
 import { info, warning } from "./cli-ui";
 
 export async function warnIfOutdated(

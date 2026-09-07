@@ -1,7 +1,8 @@
 import chalk from "chalk";
 import { Command } from "commander";
-import { displayBox, error, keyValue, warning } from "../../cli-ui";
+
 import { readUserConfig, type UserConfig } from "../../common";
+import { displayBox, error, keyValue, warning } from "../../cli-ui";
 
 const VALID_KEYS = ["git"];
 

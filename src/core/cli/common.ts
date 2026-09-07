@@ -1,17 +1,18 @@
+import chalk from "chalk";
+import path from "node:path";
+import * as ts from "typescript";
+import { homedir } from "node:os";
+import { Option } from "commander";
 import { mkdirSync } from "node:fs";
 import { stat, writeFile as writeFileNode } from "node:fs/promises";
-import { homedir } from "node:os";
-import path from "node:path";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
-import chalk from "chalk";
-import { Option } from "commander";
-import * as ts from "typescript";
-import type { IFileSystem } from "../../types";
-import { loadTsConfigFile } from "../config/config-loader";
-import { TS_CONFIG_FILE, tryFindConfigPath } from "../config/config-paths";
-import { NodeFileSystem } from "../filesystem";
-import type { ModulePackageJson } from "../module-manifest";
+
 import { warning } from "./cli-ui";
+import type { IFileSystem } from "../../types";
+import { NodeFileSystem } from "../filesystem";
+import { loadTsConfigFile } from "../config/config-loader";
+import type { ModulePackageJson } from "../module-manifest";
+import { TS_CONFIG_FILE, tryFindConfigPath } from "../config/config-paths";
 
 const DEFAULT_INDENTATION = "  ";
 const DEFINE_CONFIG_IMPORT_LINE =
@@ -70,13 +71,6 @@ export namespace Options {
   )
     .default(path.resolve(process.cwd()))
     .env("ANTELOPEJS_PROJECT")
-    .argParser((val) => path.resolve(val));
-  export const module = new Option(
-    "-m, --module <path>",
-    "Path to AntelopeJS module",
-  )
-    .default(path.resolve(process.cwd()))
-    .env("ANTELOPEJS_MODULE")
     .argParser((val) => path.resolve(val));
   export const git = new Option("-g, --git <url>", "URL to git interfaces").env(
     "ANTELOPEJS_GIT",

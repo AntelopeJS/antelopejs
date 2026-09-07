@@ -1,5 +1,6 @@
-import { internal } from "@antelopejs/interface-core/internal";
 import { expect } from "chai";
+import { internal } from "@antelopejs/interface-core/internal";
+
 import { InterfaceRegistry } from "../../src/core/interface-registry";
 
 describe("InterfaceRegistry", () => {

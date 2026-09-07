@@ -1,11 +1,12 @@
-import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
+
+import { ModuleCache } from "../../../src/core/module-cache";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import { terminalDisplay } from "../../../src/core/cli/terminal-display";
 import { registerGitDownloader } from "../../../src/core/downloaders/git";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
-import { ModuleCache } from "../../../src/core/module-cache";
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 function sanitize(remote: string): string {
   return remote.replace(/[^a-zA-Z0-9_]/g, "_");
@@ -71,8 +72,7 @@ describe("GitDownloader", () => {
 
     const cacheKey = sanitize(source.remote);
     expect(cache.getVersion(cacheKey)).to.equal("git:main:abcdef");
-    expect(execCalls.some((call) => call.command.startsWith("git clone"))).to.be
-      .true;
+    expect(execCalls.some((call) => call.command.startsWith("git clone"))).to.equal(true);
   });
 
   it("checks out a branch when cloning", async () => {
@@ -211,7 +211,7 @@ describe("GitDownloader", () => {
 
     expect(result).to.have.length(1);
     expect(cache.getVersion(cacheKey)).to.equal("git:main:oldcommit");
-    expect(execCalls.some((call) => call.startsWith("git reset"))).to.be.false;
+    expect(execCalls.some((call) => call.startsWith("git reset"))).to.equal(false);
   });
 
   it("resets to the origin branch after a force-push", async () => {
@@ -300,7 +300,7 @@ describe("GitDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result).to.have.length(1);
-    expect(execCalls.some((call) => call.startsWith("git clone"))).to.be.true;
+    expect(execCalls.some((call) => call.startsWith("git clone"))).to.equal(true);
     expect(cache.getVersion(cacheKey)).to.equal("git:main:abcdef");
   });
 
@@ -372,7 +372,7 @@ describe("GitDownloader", () => {
     } catch (err) {
       expect(String(err)).to.include("Unsafe characters");
     }
-    expect(execCalls.some((call) => call.startsWith("git clone"))).to.be.false;
+    expect(execCalls.some((call) => call.startsWith("git clone"))).to.equal(false);
   });
 
   it("rejects a branch containing shell metacharacters", async () => {

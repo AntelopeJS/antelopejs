@@ -1,5 +1,6 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import { HotReload } from "../../../src/core/watch/hot-reload";
 
 describe("HotReload", () => {

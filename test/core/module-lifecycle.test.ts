@@ -1,7 +1,8 @@
-import { expect } from "chai";
 import sinon from "sinon";
-import { ModuleLifecycle } from "../../src/core/module-lifecycle";
+import { expect } from "chai";
+
 import { ModuleState } from "../../src/types";
+import { ModuleLifecycle } from "../../src/core/module-lifecycle";
 
 describe("ModuleLifecycle", () => {
   it("should transition through lifecycle states", async () => {

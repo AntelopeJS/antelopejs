@@ -1,6 +1,7 @@
 import { expect } from "chai";
-import { type LogEntry, LogLevel } from "../../src/logging/log-formatter";
+
 import { Logger } from "../../src/logging/logger";
+import { type LogEntry, LogLevel } from "../../src/logging/log-formatter";
 
 describe("Logger", () => {
   let logger: Logger;

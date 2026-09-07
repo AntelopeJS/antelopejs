@@ -1,17 +1,18 @@
-import * as path from "node:path";
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
-import { Logging } from "@antelopejs/interface-core/logging";
 // @ts-expect-error
 import inly from "inly";
+import * as path from "node:path";
+import { Logging } from "@antelopejs/interface-core/logging";
 import { maxSatisfying, satisfies, valid, validRange } from "semver";
-import type { IFileSystem } from "../../types";
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+
 import { ExecuteCMD } from "../cli/command";
-import { getInstallCommand } from "../cli/package-manager";
-import { NodeFileSystem } from "../filesystem";
-import { ModuleCache } from "../module-cache";
-import { ModuleManifest, type ModulePackageJson } from "../module-manifest";
-import type { DownloaderRegistry } from "./registry";
 import type { CommandRunner } from "./types";
+import { ModuleCache } from "../module-cache";
+import type { IFileSystem } from "../../types";
+import { NodeFileSystem } from "../filesystem";
+import type { DownloaderRegistry } from "./registry";
+import { getInstallCommand } from "../cli/package-manager";
+import { ModuleManifest, type ModulePackageJson } from "../module-manifest";
 
 export interface PackageDownloaderDeps {
   fs?: IFileSystem;

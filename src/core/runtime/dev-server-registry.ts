@@ -1,13 +1,14 @@
 import path from "node:path";
 import * as coreInterfaceBeta from "@antelopejs/interface-core";
 import { RunWithModuleContext } from "@antelopejs/interface-core/modules";
+import * as runtimeInterfaceBeta from "@antelopejs/interface-core/runtime";
 import type {
   DevServerEndpoint,
   DevServerEntry,
   DevServerRegistry,
   RuntimeInfo,
 } from "@antelopejs/interface-core/runtime";
-import * as runtimeInterfaceBeta from "@antelopejs/interface-core/runtime";
+
 import type { IFileSystem } from "../../types";
 import type { ShutdownManager } from "../shutdown";
 
@@ -17,9 +18,9 @@ const SHUTDOWN_PRIORITY_DEV_REGISTRY = 10;
 const PERMISSION_DENIED_CODE = "EPERM";
 const CORE_MODULE_ID = "antelopejs";
 
-export type PidProbe = (pid: number) => boolean;
+type PidProbe = (pid: number) => boolean;
 
-export function isProcessAlive(pid: number): boolean {
+function isProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;

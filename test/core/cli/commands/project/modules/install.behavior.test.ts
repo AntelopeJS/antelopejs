@@ -1,21 +1,22 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
 import inquirer from "inquirer";
-import sinon from "sinon";
+import { tmpdir } from "node:os";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+
 import * as cliUi from "../../../../../../src/core/cli/cli-ui";
+import * as common from "../../../../../../src/core/cli/common";
+import { ConfigLoader } from "../../../../../../src/core/config";
+import { ModuleCache } from "../../../../../../src/core/module-cache";
+import * as gitOps from "../../../../../../src/core/cli/git-operations";
+import { ModuleManifest } from "../../../../../../src/core/module-manifest";
+import { terminalDisplay } from "../../../../../../src/core/cli/terminal-display";
+import { DownloaderRegistry } from "../../../../../../src/core/downloaders/registry";
 import * as projectModulesAddModule from "../../../../../../src/core/cli/commands/project/modules/add";
 import cmdInstall, {
   resolveInstallIdentifier,
 } from "../../../../../../src/core/cli/commands/project/modules/install";
-import * as common from "../../../../../../src/core/cli/common";
-import * as gitOps from "../../../../../../src/core/cli/git-operations";
-import { terminalDisplay } from "../../../../../../src/core/cli/terminal-display";
-import { ConfigLoader } from "../../../../../../src/core/config";
-import { DownloaderRegistry } from "../../../../../../src/core/downloaders/registry";
-import { ModuleCache } from "../../../../../../src/core/module-cache";
-import { ModuleManifest } from "../../../../../../src/core/module-manifest";
 
 describe("project modules install behavior", () => {
   let tempModuleDir: string;

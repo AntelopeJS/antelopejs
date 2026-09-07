@@ -1,13 +1,18 @@
+import { createJiti } from "jiti";
 import type {
   AntelopeConfig,
   AntelopeLogging,
   AntelopeTestConfig,
   ConfigInput,
 } from "@antelopejs/interface-core/config";
-import { createJiti } from "jiti";
+
+/* The namespace self-import is the seam the unit tests stub through: calls below
+   go via `self.` so `sinon.stub(module, "fn")` is honoured. Removing it silently
+   disables those stubs. */
+// oxlint-disable-next-line import/no-self-import, import/no-cycle -- see above
+import * as self from "./config-loader";
 import type { IFileSystem } from "../../types";
 import { mergeDeep } from "../../utils/object";
-import * as self from "./config-loader";
 import { ConfigParser, type ExpandedModuleConfig } from "./config-parser";
 import {
   DEFAULT_CACHE_DIR,

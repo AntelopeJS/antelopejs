@@ -1,11 +1,12 @@
 import path from "node:path";
 import { expect } from "chai";
+
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   findConfigPath,
   getModuleConfigPath,
   tryFindConfigPath,
 } from "../../../src/core/config/config-paths";
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 describe("config-paths", () => {
   let fs: InMemoryFileSystem;
@@ -46,7 +47,7 @@ describe("config-paths", () => {
     it("returns undefined when neither exists", async () => {
       const result = await tryFindConfigPath("/project", fs);
 
-      expect(result).to.be.undefined;
+      expect(result).to.equal(undefined);
     });
   });
 

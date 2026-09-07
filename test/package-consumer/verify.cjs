@@ -1,6 +1,6 @@
-const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
+const fs = require("node:fs/promises");
 const { createRequire } = require("node:module");
 
 const INTERFACE = "package-consumer-interface";

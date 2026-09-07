@@ -1,11 +1,12 @@
+import sinon from "sinon";
 import { expect } from "chai";
 import { Command } from "commander";
-import sinon from "sinon";
+
+import * as indexModule from "../../../../../src/index";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import cmdRun from "../../../../../src/core/cli/commands/project/run";
 import * as common from "../../../../../src/core/cli/common";
 import { ModuleCache } from "../../../../../src/core/module-cache";
-import * as indexModule from "../../../../../src/index";
+import cmdRun from "../../../../../src/core/cli/commands/project/run";
 
 const fsPromises = require("node:fs").promises;
 const childProcess = require("node:child_process");

@@ -1,6 +1,7 @@
-import type { Options as BoxenOptions } from "boxen";
 import chalk from "chalk";
 import figlet from "figlet";
+import type { Options as BoxenOptions } from "boxen";
+
 import { isTerminalOutput } from "./logging-utils";
 
 const clearLine = () => process.stdout.write("\r\x1b[K");
@@ -111,6 +112,11 @@ export async function displayBox(
   title?: string,
   options?: BoxenOptions,
 ): Promise<void> {
+  /* `boxen` is ESM-only and this package emits CommonJS, so a literal `import()`
+     would be downlevelled by tsc into `require()` and fail at run time. Building
+     the importer through `new Function` hides it from the compiler so it stays a
+     real ESM import. */
+  // oxlint-disable-next-line typescript/no-implied-eval -- see above
   const dynamicImport = new Function("specifier", "return import(specifier)");
   const boxen = (await dynamicImport("boxen")).default as (
     input: string,

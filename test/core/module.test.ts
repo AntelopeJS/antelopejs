@@ -1,12 +1,13 @@
+import sinon from "sinon";
+import { expect } from "chai";
 import {
   Events,
   GetModuleContext,
   type ModuleExecutionContext,
 } from "@antelopejs/interface-core/modules";
-import { expect } from "chai";
-import sinon from "sinon";
-import { Module } from "../../src/core/module";
+
 import { ModuleState } from "../../src/types";
+import { Module } from "../../src/core/module";
 
 const manifest = {
   name: "mod",
@@ -36,11 +37,11 @@ describe("Module", () => {
     await mod.stop();
     await mod.destroy();
 
-    expect(loader.calledOnce).to.be.true;
-    expect(callbacks.construct.calledOnce).to.be.true;
-    expect(callbacks.start.calledOnce).to.be.true;
-    expect(callbacks.stop.calledOnce).to.be.true;
-    expect(callbacks.destroy.calledOnce).to.be.true;
+    expect(loader.calledOnce).to.equal(true);
+    expect(callbacks.construct.calledOnce).to.equal(true);
+    expect(callbacks.start.calledOnce).to.equal(true);
+    expect(callbacks.stop.calledOnce).to.equal(true);
+    expect(callbacks.destroy.calledOnce).to.equal(true);
   });
 
   it("runs a generation in one stable module context", async () => {

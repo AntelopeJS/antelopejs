@@ -1,8 +1,9 @@
-import * as path from "node:path";
 import { expect } from "chai";
-import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
+import * as path from "node:path";
+
 import { ModuleCache } from "../../../src/core/module-cache";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
 
 describe("DownloaderRegistry", () => {
   it("should register and load a downloader", async () => {
@@ -36,7 +37,7 @@ describe("DownloaderRegistry", () => {
     });
 
     await new Promise((r) => setTimeout(r, 10));
-    expect(resolved).to.be.false;
+    expect(resolved).to.equal(false);
 
     const manifest = { name: "mod" } as any;
     registry.register("delayed", "id", async () => [manifest]);

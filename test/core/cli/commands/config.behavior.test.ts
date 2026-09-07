@@ -1,12 +1,13 @@
+import sinon from "sinon";
 import { expect } from "chai";
 import inquirer from "inquirer";
-import sinon from "sinon";
+
 import * as cliUi from "../../../../src/core/cli/cli-ui";
+import * as common from "../../../../src/core/cli/common";
 import cmdGet from "../../../../src/core/cli/commands/config/get";
-import cmdReset from "../../../../src/core/cli/commands/config/reset";
 import cmdSet from "../../../../src/core/cli/commands/config/set";
 import cmdShow from "../../../../src/core/cli/commands/config/show";
-import * as common from "../../../../src/core/cli/common";
+import cmdReset from "../../../../src/core/cli/commands/config/reset";
 
 describe("config commands behavior", () => {
   afterEach(() => {

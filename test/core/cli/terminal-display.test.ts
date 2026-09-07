@@ -1,5 +1,6 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import { Spinner } from "../../../src/core/cli/cli-ui";
 import { TerminalDisplay } from "../../../src/core/cli/terminal-display";
 
@@ -25,7 +26,7 @@ describe("TerminalDisplay", () => {
   });
 
   it("should track spinner state", () => {
-    expect(display.isSpinnerActive()).to.be.false;
+    expect(display.isSpinnerActive()).to.equal(false);
   });
 
   it("should log through active spinner", async () => {

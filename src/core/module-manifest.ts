@@ -1,12 +1,13 @@
 import * as path from "node:path";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
+
 import type { IFileSystem } from "../types";
+import { NodeFileSystem } from "./filesystem";
 import type {
   BuildAliasEntry,
   BuildModuleEntry,
   BuildPathEntry,
 } from "./build/build-artifact";
-import { NodeFileSystem } from "./filesystem";
 
 export interface ModulePackageJson {
   name: string;

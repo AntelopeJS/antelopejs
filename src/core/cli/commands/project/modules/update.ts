@@ -1,15 +1,16 @@
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import chalk from "chalk";
 import { Command, Option } from "commander";
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+
 import { ConfigLoader } from "../../../../config";
 import { NodeFileSystem } from "../../../../filesystem";
+import { Options, readConfig, writeConfig } from "../../../common";
+import { error as errorUI, info, success, warning } from "../../../cli-ui";
 import {
   bumpVersionSpec,
   checkOutdatedModules,
   type OutdatedModule,
 } from "../../../../version-checker";
-import { error as errorUI, info, success, warning } from "../../../cli-ui";
-import { Options, readConfig, writeConfig } from "../../../common";
 
 interface UpdateOptions {
   project: string;

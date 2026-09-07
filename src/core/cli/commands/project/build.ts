@@ -1,9 +1,10 @@
 import chalk from "chalk";
 import { Command, Option } from "commander";
-import { build, DEFAULT_ENV } from "../../../..";
-import { readBuildArtifact } from "../../../build/build-artifact";
-import { displayBox, error, info, success } from "../../cli-ui";
+
 import { Options } from "../../common";
+import { build, DEFAULT_ENV } from "../../../..";
+import { displayBox, error, info, success } from "../../cli-ui";
+import { readBuildArtifact } from "../../../build/build-artifact";
 import {
   type ProjectCommandOptions,
   resolveInheritedVerbose,

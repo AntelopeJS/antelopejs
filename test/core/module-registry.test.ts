@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import { Module } from "../../src/core/module";
 import { ModuleRegistry } from "../../src/core/module-registry";
 

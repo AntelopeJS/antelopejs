@@ -1,11 +1,12 @@
+import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import sinon from "sinon";
+
+import * as projectLaunch from "../../../src/core/runtime/project-launch";
 import {
   parseProductionStartArgs,
   runProductionStart,
 } from "../../../src/core/cli/production-start";
-import * as projectLaunch from "../../../src/core/runtime/project-launch";
 
 describe("production start", () => {
   const originalProject = process.env.ANTELOPEJS_PROJECT;

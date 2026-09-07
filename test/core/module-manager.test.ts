@@ -1,16 +1,17 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import sinon from "sinon";
+import path from "node:path";
+import { expect } from "chai";
 import Module from "node:module";
 import { tmpdir } from "node:os";
-import path from "node:path";
-import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 import { internal } from "@antelopejs/interface-core/internal";
-import { expect } from "chai";
-import sinon from "sinon";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
+
 import { Module as CoreModule } from "../../src/core/module";
 import { ModuleManager } from "../../src/core/module-manager";
+import { Resolver } from "../../src/core/resolution/resolver";
 import { ModuleManifest } from "../../src/core/module-manifest";
 import { PathMapper } from "../../src/core/resolution/path-mapper";
-import { Resolver } from "../../src/core/resolution/resolver";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 async function createTempModuleWithInterfacePkg(): Promise<{
@@ -1177,19 +1178,16 @@ describe("ModuleManager", () => {
 
     manager.unrequireModuleFiles("test");
 
-    expect(require.cache[path.join(moduleFolder, "index.js")]).to.be.undefined;
-    expect(require.cache[path.join(moduleFolder, "src", "util.js")]).to.be
-      .undefined;
-    expect(require.cache[declarationEntry]).to.not.be.undefined;
-    expect(require.cache[path.join(submoduleFolder, "index.js")]).to.not.be
-      .undefined;
-    expect(require.cache[path.join(nodeModulesFolder, "dep.js")]).to.not.be
-      .undefined;
-    expect(require.cache[path.resolve("other", "file.js")]).to.not.be.undefined;
+    expect(require.cache[path.join(moduleFolder, "index.js")]).to.equal(undefined);
+    expect(require.cache[path.join(moduleFolder, "src", "util.js")]).to.equal(undefined);
+    expect(require.cache[declarationEntry]).to.not.equal(undefined);
+    expect(require.cache[path.join(submoduleFolder, "index.js")]).to.not.equal(undefined);
+    expect(require.cache[path.join(nodeModulesFolder, "dep.js")]).to.not.equal(undefined);
+    expect(require.cache[path.resolve("other", "file.js")]).to.not.equal(undefined);
 
     manager.unrequireModuleFiles("test", false);
 
-    expect(require.cache[declarationEntry]).to.be.undefined;
+    expect(require.cache[declarationEntry]).to.equal(undefined);
 
     for (const entry of cacheEntries) {
       if (previous[entry]) {

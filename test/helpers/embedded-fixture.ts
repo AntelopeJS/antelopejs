@@ -1,11 +1,11 @@
-import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import fs from "node:fs/promises";
 
 export const INTERFACE_PACKAGE = "iface-pkg";
 export const HOST_INTERFACE_PACKAGE = "host-pkg";
 export const PROVIDER_MODULE = "provider-mod";
-export const DEFAULT_PREFIX = "Hello";
+const DEFAULT_PREFIX = "Hello";
 export const INTERFACE_SUBPATH = "greeting";
 
 export interface EmbeddedFixture {
@@ -15,7 +15,7 @@ export interface EmbeddedFixture {
   providerFolder: string;
 }
 
-export interface InterfacePackageOptions {
+interface InterfacePackageOptions {
   name: string;
   source: string;
   version?: string;
@@ -60,7 +60,7 @@ async function writeJson(
   await fs.writeFile(filePath, JSON.stringify(value, null, 2));
 }
 
-export async function linkInto(
+async function linkInto(
   consumerFolder: string,
   target: string,
   name: string,
@@ -70,7 +70,7 @@ export async function linkInto(
   await fs.symlink(target, path.join(modulesFolder, name));
 }
 
-export async function createInterfacePackage(
+async function createInterfacePackage(
   projectFolder: string,
   options: InterfacePackageOptions,
 ): Promise<string> {
@@ -89,7 +89,7 @@ export async function createInterfacePackage(
   return folder;
 }
 
-export async function createProviderModule(
+async function createProviderModule(
   projectFolder: string,
   interfaceFolder: string,
   interfaceRange = "*",

@@ -1,6 +1,7 @@
 import { expect } from "chai";
-import { TestContext } from "../../../src/core/test/test-context";
+
 import { TestRunner } from "../../../src/core/test/test-runner";
+import { TestContext } from "../../../src/core/test/test-context";
 
 describe("TestRunner", () => {
   it("should run tests and call setup/cleanup", async () => {

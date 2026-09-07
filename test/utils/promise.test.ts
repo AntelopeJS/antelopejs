@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import { CreateDetour, Detour } from "../../src/utils/promise";
 
 describe("Promise Utilities", () => {

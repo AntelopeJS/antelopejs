@@ -1,6 +1,6 @@
-import { readFileSync, realpathSync, statSync } from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
+import { createRequire } from "node:module";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 
 export interface ResolvedPackage {
   name: string;
@@ -27,7 +27,7 @@ function normalizeExistingPath(filePath: string): string {
   }
 }
 
-export function getPathVariants(filePath: string): string[] {
+function getPathVariants(filePath: string): string[] {
   const logicalPath = path.resolve(filePath);
   const realPath = normalizeExistingPath(logicalPath);
   return logicalPath === realPath ? [logicalPath] : [logicalPath, realPath];

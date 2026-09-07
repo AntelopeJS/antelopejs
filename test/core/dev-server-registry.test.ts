@@ -1,16 +1,17 @@
+import { expect } from "chai";
 import {
   DEV_REGISTRY_PATH,
   type DevServerEndpoint,
   GetRuntimeInfo,
   RegisterDevServer,
 } from "@antelopejs/interface-core/runtime";
-import { expect } from "chai";
+
+import { ShutdownManager } from "../../src/core/shutdown";
+import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import {
   DevRegistryStore,
   registerCoreRuntimeInterface,
 } from "../../src/core/runtime/dev-server-registry";
-import { ShutdownManager } from "../../src/core/shutdown";
-import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 interface ResettableProxy {
   onCall(callback: () => undefined, manualDetach?: boolean): void;

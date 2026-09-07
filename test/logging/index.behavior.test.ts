@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+
 import {
   addChannelFilter,
   getLogger,
@@ -26,12 +27,12 @@ describe("Logging Module", () => {
   describe("setupAntelopeProjectLogging", () => {
     it("should create a logger when enabled", () => {
       setupAntelopeProjectLogging({ enabled: true });
-      expect(getLogger()).to.not.be.null;
+      expect(getLogger()).to.not.equal(null);
     });
 
     it("should not create a logger when disabled", () => {
       setupAntelopeProjectLogging({ enabled: false });
-      expect(getLogger()).to.be.null;
+      expect(getLogger()).to.equal(null);
     });
   });
 

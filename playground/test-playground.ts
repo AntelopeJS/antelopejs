@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
 import path from "node:path";
+import fs from "node:fs/promises";
 import { build, launch, launchFromBuild } from "@antelopejs/core";
 
 const PLAYGROUND_DIR = path.resolve(__dirname);
@@ -8,7 +8,7 @@ const ANTELOPE_DIR = path.join(PLAYGROUND_DIR, ".antelope");
 async function phaseLaunch(): Promise<void> {
   console.log("[playground] Phase 1: Launch...");
   const manager = await launch(PLAYGROUND_DIR);
-  manager.stopAll();
+  await manager.stopAll();
   await manager.destroyAll();
   console.log("[playground] Phase 1: OK");
 }
@@ -22,7 +22,7 @@ async function phaseBuild(): Promise<void> {
 async function phaseLaunchFromBuild(): Promise<void> {
   console.log("[playground] Phase 3: Launch from build...");
   const manager = await launchFromBuild(PLAYGROUND_DIR);
-  manager.stopAll();
+  await manager.stopAll();
   await manager.destroyAll();
   console.log("[playground] Phase 3: OK");
 }

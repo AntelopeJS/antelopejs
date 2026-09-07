@@ -1,9 +1,10 @@
-import path from "node:path";
 import chalk from "chalk";
+import path from "node:path";
 import { Command, Option } from "commander";
+
 import { TestModule } from "../../../..";
-import { error, info, Spinner } from "../../cli-ui";
 import { readModuleManifest } from "../../common";
+import { error, info, Spinner } from "../../cli-ui";
 
 interface TestOptions {
   file?: string[];

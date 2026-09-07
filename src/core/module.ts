@@ -4,9 +4,10 @@ import {
   type ModuleExecutionContext,
   RunWithModuleContext,
 } from "@antelopejs/interface-core/modules";
-import { type ModuleCallbacks, ModuleState } from "../types";
+
 import { ModuleLifecycle } from "./module-lifecycle";
 import type { ModuleManifest } from "./module-manifest";
+import { type ModuleCallbacks, ModuleState } from "../types";
 
 export type ModuleLoader = (mainPath: string) => Promise<ModuleCallbacks>;
 

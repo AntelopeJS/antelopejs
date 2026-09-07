@@ -4,6 +4,7 @@ import type {
   ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+
 import { isObject, set } from "../../utils/object";
 
 export interface ExpandedModuleConfig {

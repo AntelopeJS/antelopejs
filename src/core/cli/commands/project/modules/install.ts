@@ -1,35 +1,36 @@
+import chalk from "chalk";
 import path from "node:path";
+import inquirer from "inquirer";
+import { Command, Option } from "commander";
 import type {
   ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
-import chalk from "chalk";
-import { Command, Option } from "commander";
-import inquirer from "inquirer";
-import { ConfigLoader, type LoadedConfig } from "../../../../config";
-import { registerGitDownloader } from "../../../../downloaders/git";
-import { registerLocalDownloader } from "../../../../downloaders/local";
-import { registerLocalFolderDownloader } from "../../../../downloaders/local-folder";
-import { registerPackageDownloader } from "../../../../downloaders/package";
-import { DownloaderRegistry } from "../../../../downloaders/registry";
-import { NodeFileSystem } from "../../../../filesystem";
-import { ModuleCache } from "../../../../module-cache";
-import { ModuleManifest } from "../../../../module-manifest";
-import { findUnresolvedInterfaces } from "../../../../resolution/interface-resolution";
-import { error, info, success, warning } from "../../../cli-ui";
+
 import { ExecuteCMD } from "../../../command";
+import { projectModulesAddCommand } from "./add";
+import { ModuleCache } from "../../../../module-cache";
+import { NodeFileSystem } from "../../../../filesystem";
+import { terminalDisplay } from "../../../terminal-display";
+import { ModuleManifest } from "../../../../module-manifest";
+import { error, info, success, warning } from "../../../cli-ui";
+import { registerGitDownloader } from "../../../../downloaders/git";
+import { ConfigLoader, type LoadedConfig } from "../../../../config";
+import { DownloaderRegistry } from "../../../../downloaders/registry";
+import { registerLocalDownloader } from "../../../../downloaders/local";
+import { registerPackageDownloader } from "../../../../downloaders/package";
+import { registerLocalFolderDownloader } from "../../../../downloaders/local-folder";
+import { findUnresolvedInterfaces } from "../../../../resolution/interface-resolution";
+import {
+  loadInterfaceFromGit,
+  loadManifestFromGit,
+} from "../../../git-operations";
 import {
   displayNonDefaultGitWarning,
   Options,
   readConfig,
   readUserConfig,
 } from "../../../common";
-import {
-  loadInterfaceFromGit,
-  loadManifestFromGit,
-} from "../../../git-operations";
-import { terminalDisplay } from "../../../terminal-display";
-import { projectModulesAddCommand } from "./add";
 
 interface InstallOptions {
   project: string;

@@ -1,7 +1,8 @@
-import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { expect } from "chai";
+import fs from "node:fs/promises";
+
 import launch, { ModuleManager } from "../../src";
 
 async function createModule(folder: string, name: string) {
@@ -175,7 +176,7 @@ describe("Launch Function", () => {
           true,
         );
         const captured = (global as any).__antelopeStubTest;
-        expect(captured).to.exist;
+        expect(captured).to.not.equal(undefined);
         expect(captured.Iface.fetch).to.be.a("function");
 
         // RegisteringProxy is sync and should not be neutralized
@@ -298,7 +299,7 @@ describe("Launch Function", () => {
           manager.resolver.interfacePackages.has("iface-standalone"),
         ).to.equal(true);
         const captured = (global as any).__antelopeStandaloneTest;
-        expect(captured).to.exist;
+        expect(captured).to.not.equal(undefined);
 
         // Sync RegisteringProxy surface works as normal (not neutralized).
         let registered = false;

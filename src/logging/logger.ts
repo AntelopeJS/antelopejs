@@ -134,4 +134,4 @@ export class LogChannel {
   }
 }
 
-export { LogEntry, LogLevel } from "./log-formatter";
+export { LogLevel } from "./log-formatter";

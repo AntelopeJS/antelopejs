@@ -1,25 +1,26 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import * as command from "../../../../../src/core/cli/command";
-import {
-  handlers,
-  projectModulesAddCommand,
-} from "../../../../../src/core/cli/commands/project/modules/add";
-import cmdList from "../../../../../src/core/cli/commands/project/modules/list";
-import { projectModulesRemoveCommand } from "../../../../../src/core/cli/commands/project/modules/remove";
-import cmdUpdate from "../../../../../src/core/cli/commands/project/modules/update";
 import * as common from "../../../../../src/core/cli/common";
-import { stripAnsi } from "../../../../../src/core/cli/logging-utils";
 import { ConfigLoader } from "../../../../../src/core/config";
+import * as command from "../../../../../src/core/cli/command";
+import { ModuleCache } from "../../../../../src/core/module-cache";
+import { stripAnsi } from "../../../../../src/core/cli/logging-utils";
+import cmdList from "../../../../../src/core/cli/commands/project/modules/list";
 import * as packageDownloader from "../../../../../src/core/downloaders/package";
 import { DownloaderRegistry } from "../../../../../src/core/downloaders/registry";
-import { ModuleCache } from "../../../../../src/core/module-cache";
+import cmdUpdate from "../../../../../src/core/cli/commands/project/modules/update";
 import {
   cleanupTempDir,
   makeTempDir,
   writeJson,
 } from "../../../../helpers/temp";
+import { projectModulesRemoveCommand } from "../../../../../src/core/cli/commands/project/modules/remove";
+import {
+  handlers,
+  projectModulesAddCommand,
+} from "../../../../../src/core/cli/commands/project/modules/add";
 
 describe("project modules behavior", () => {
   afterEach(() => {

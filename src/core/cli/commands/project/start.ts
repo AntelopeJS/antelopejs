@@ -1,9 +1,10 @@
 import chalk from "chalk";
 import { Command, Option } from "commander";
-import { DEFAULT_ENV, type LaunchOptions } from "../../../..";
-import { displayBox, error, info } from "../../cli-ui";
+
 import { Options } from "../../common";
+import { displayBox, error, info } from "../../cli-ui";
 import { startFromBuild } from "../../production-start";
+import { DEFAULT_ENV, type LaunchOptions } from "../../../..";
 import {
   type ProjectCommandOptions,
   resolveInheritedVerbose,

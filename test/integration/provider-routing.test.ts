@@ -1,15 +1,16 @@
-import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { expect } from "chai";
+import fs from "node:fs/promises";
 import {
   GetInterfaceProxyIdentity,
   ImplementInterface,
   InterfaceFunction,
   MODULE_CONTEXT_INVALIDATED_CODE,
 } from "@antelopejs/interface-core";
-import { expect } from "chai";
-import launch, { type ModuleManager } from "../../src";
+
 import { Module } from "../../src/core/module";
+import launch, { type ModuleManager } from "../../src";
 import {
   createLoaderContext,
   reloadWatchedModule,
