@@ -152,7 +152,9 @@ describe("PackageDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result[0].manifest.version).to.equal("1.1.0");
-    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(false);
+    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(
+      false,
+    );
   });
 
   it("falls back to the cached version when the registry is unreachable", async () => {
@@ -192,7 +194,9 @@ describe("PackageDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result[0].manifest.version).to.equal("1.0.0");
-    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(false);
+    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(
+      false,
+    );
   });
 
   it("falls back to the cached version for a dist-tag when the registry is unreachable", async () => {
@@ -232,7 +236,9 @@ describe("PackageDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result[0].manifest.version).to.equal("2.0.0");
-    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(false);
+    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(
+      false,
+    );
   });
 
   it("re-downloads when the cached folder is missing node_modules despite declared dependencies", async () => {
@@ -414,7 +420,9 @@ describe("PackageDownloader", () => {
 
     expect(result[0].manifest.version).to.equal("2.0.0");
     expect(execCalls).to.include('npm view "pkg@latest" version --json');
-    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(false);
+    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(
+      false,
+    );
   });
 
   it("downloads and commits the resolved version for a dist-tag on an empty cache", async () => {
@@ -646,9 +654,8 @@ describe("PackageDownloader", () => {
 
   it("uses the default extractor when no custom extract is provided", async () => {
     const inlyPath = require.resolve("inly");
-    const packagePath = require.resolve(
-      "../../../src/core/downloaders/package",
-    );
+    const packagePath =
+      require.resolve("../../../src/core/downloaders/package");
     const originalInly = require.cache[inlyPath];
     const originalPackage = require.cache[packagePath];
 
@@ -662,9 +669,8 @@ describe("PackageDownloader", () => {
     require.cache[inlyPath] = { exports: fakeInly } as any;
     delete require.cache[packagePath];
 
-    const { registerPackageDownloader: registerWithDefault } = await import(
-      "../../../src/core/downloaders/package"
-    );
+    const { registerPackageDownloader: registerWithDefault } =
+      await import("../../../src/core/downloaders/package");
 
     try {
       const fs = new InMemoryFileSystem();

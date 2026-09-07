@@ -21,10 +21,7 @@ import {
 export { ConfigLoader } from "./core/config/config-loader";
 export { DEFAULT_ENV } from "./core/config/config-paths";
 export { DownloaderRegistry } from "./core/downloaders/registry";
-export {
-  AntelopeRuntime,
-  createRuntime,
-} from "./core/embedded/runtime";
+export { AntelopeRuntime, createRuntime } from "./core/embedded/runtime";
 export type {
   EmbeddedModuleConfig,
   EmbeddedRuntimeOptions,

@@ -39,9 +39,8 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
 }
 
 function loadBootstrapModule() {
-  const modulePath = require.resolve(
-    "../../../src/core/runtime/runtime-bootstrap",
-  );
+  const modulePath =
+    require.resolve("../../../src/core/runtime/runtime-bootstrap");
   delete require.cache[modulePath];
   return require(
     modulePath,

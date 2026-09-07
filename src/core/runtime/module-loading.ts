@@ -51,9 +51,9 @@ function mapImportOverrides(
   }
 
   for (const [interfaceName, modules] of Object.entries(overrides)) {
-    const overrideEntries = modules.map(
-      (module): ModuleOverrideRef => ({ module }),
-    );
+    const overrideEntries = modules.map((module): ModuleOverrideRef => ({
+      module,
+    }));
     mapped.set(interfaceName, overrideEntries);
   }
 

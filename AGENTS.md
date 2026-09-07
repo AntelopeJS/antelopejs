@@ -8,7 +8,7 @@
 | --------------------- | --------------------------------------------------------------------------------------- |
 | English only          | All code must be in English: variable names, function names, comments                   |
 | PNPM only             | Always use pnpm, never npm or yarn                                                      |
-| NO COMMENTS | Code must be self-documenting through clear naming. TSDoc is allowed for public APIs              |
+| NO COMMENTS           | Code must be self-documenting through clear naming. TSDoc is allowed for public APIs    |
 | NO switch/case        | Use objects, maps, or arrays instead                                                    |
 | NO inline types       | Define proper interfaces/types, never use anonymous types like `{a: string, b: number}` |
 | Functions ≤ 40 lines  | Split into subfunctions if longer                                                       |
@@ -35,23 +35,23 @@ Never use `switch/case` or `if param === 'XXX'` chains. Instead:
 // BAD
 function getStatus(code: string) {
   switch (code) {
-    case 'A':
-      return 'Active';
-    case 'I':
-      return 'Inactive';
+    case "A":
+      return "Active";
+    case "I":
+      return "Inactive";
     default:
-      return 'Unknown';
+      return "Unknown";
   }
 }
 
 // GOOD
 const STATUS_MAP: Record<string, string> = {
-  A: 'Active',
-  I: 'Inactive',
+  A: "Active",
+  I: "Inactive",
 };
 
 function getStatus(code: string) {
-  return STATUS_MAP[code] ?? 'Unknown';
+  return STATUS_MAP[code] ?? "Unknown";
 }
 ```
 

@@ -100,9 +100,8 @@ export const prepareFromConfig: ProjectPreparer = async (
     logging: normalizedConfig.logging,
     loadContext,
     verify: async () => {
-      const { checkOutdatedModules, warnOutdatedModules } = await import(
-        "../version-checker"
-      );
+      const { checkOutdatedModules, warnOutdatedModules } =
+        await import("../version-checker");
       warnOutdatedModules(await checkOutdatedModules(normalizedConfig.modules));
     },
     createEntries: async () =>

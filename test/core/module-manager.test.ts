@@ -1178,12 +1178,22 @@ describe("ModuleManager", () => {
 
     manager.unrequireModuleFiles("test");
 
-    expect(require.cache[path.join(moduleFolder, "index.js")]).to.equal(undefined);
-    expect(require.cache[path.join(moduleFolder, "src", "util.js")]).to.equal(undefined);
+    expect(require.cache[path.join(moduleFolder, "index.js")]).to.equal(
+      undefined,
+    );
+    expect(require.cache[path.join(moduleFolder, "src", "util.js")]).to.equal(
+      undefined,
+    );
     expect(require.cache[declarationEntry]).to.not.equal(undefined);
-    expect(require.cache[path.join(submoduleFolder, "index.js")]).to.not.equal(undefined);
-    expect(require.cache[path.join(nodeModulesFolder, "dep.js")]).to.not.equal(undefined);
-    expect(require.cache[path.resolve("other", "file.js")]).to.not.equal(undefined);
+    expect(require.cache[path.join(submoduleFolder, "index.js")]).to.not.equal(
+      undefined,
+    );
+    expect(require.cache[path.join(nodeModulesFolder, "dep.js")]).to.not.equal(
+      undefined,
+    );
+    expect(require.cache[path.resolve("other", "file.js")]).to.not.equal(
+      undefined,
+    );
 
     manager.unrequireModuleFiles("test", false);
 

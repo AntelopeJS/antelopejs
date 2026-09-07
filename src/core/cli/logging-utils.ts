@@ -21,7 +21,6 @@ const COLOR_FUNCTIONS: Record<string, (text: string) => string> = {
   white: chalk.white,
 };
 
-
 // map created this way because Logging.Level is undefined on firsts calls
 export const getLevelInfo = (() => {
   let map: Record<number, { name: string; color: string }> | undefined;

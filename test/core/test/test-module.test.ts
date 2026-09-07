@@ -654,9 +654,8 @@ describe("test-module", () => {
 
     it("registers the core runtime interface so GetRuntimeInfo resolves instead of hanging", async () => {
       const { internal } = await import("@antelopejs/interface-core/internal");
-      const { GetRuntimeInfo } = await import(
-        "@antelopejs/interface-core/runtime"
-      );
+      const { GetRuntimeInfo } =
+        await import("@antelopejs/interface-core/runtime");
       const moduleLoading = require("../../../src/core/runtime/module-loading");
 
       sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);

@@ -2,11 +2,23 @@
   "name": "@antelopejs/core",
   "version": "1.5.1",
   "description": "TypeScript framework extending hexagonal architecture across your application and its ecosystem through explicit contracts and replaceable modules.",
+  "keywords": [
+    "antelopejs",
+    "framework",
+    "modular",
+    "typescript"
+  ],
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AntelopeJS/antelopejs.git"
   },
-  "license": "Apache-2.0",
+  "bin": {
+    "ajs": "dist/core/cli/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -15,28 +27,10 @@
       "default": "./dist/index.js"
     }
   },
-  "bin": {
-    "ajs": "dist/core/cli/index.js"
-  },
-  "files": [
-    "dist"
-  ],
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
-  "packageManager": "pnpm@10.6.5",
-  "antelopeJs": {
-    "implements": [
-      "@antelopejs/interface-core"
-    ]
-  },
-  "keywords": [
-    "antelopejs",
-    "framework",
-    "typescript",
-    "modular"
-  ],
   "scripts": {
     "build": "rimraf dist && tsc",
     "prepack": "pnpm run build",
@@ -91,16 +85,22 @@
     "ts-node": "^10.9.2"
   },
   "c8": {
-    "include": [
-      "src/**/*.ts"
-    ],
     "exclude": [
       "src/**/*.d.ts"
     ],
+    "include": [
+      "src/**/*.ts"
+    ],
+    "report-dir": "coverage",
     "reporter": [
       "text",
       "html"
-    ],
-    "report-dir": "coverage"
+    ]
+  },
+  "packageManager": "pnpm@10.6.5",
+  "antelopeJs": {
+    "implements": [
+      "@antelopejs/interface-core"
+    ]
   }
 }

@@ -1,12 +1,12 @@
 {
   "name": "interface-greeter",
   "version": "1.0.0",
-  "main": "index.js",
-  "types": "index.d.ts",
   "files": [
     "index.js",
     "index.d.ts"
   ],
+  "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "prepare": "npx tsc"
   }
