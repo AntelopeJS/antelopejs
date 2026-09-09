@@ -15,6 +15,7 @@ import {
   registerCoreModuleInterface,
   reloadWatchedModule,
 } from "../../../src/core/runtime/module-loading";
+import { recordModuleDiagnostics } from "../../helpers/diagnostics-recorder";
 
 interface ReloadHarness {
   oldModule: any;
@@ -196,7 +197,30 @@ describe("runtime module-loading", () => {
       registry: { load: registryLoadStub },
     } as any;
 
-    await reloadWatchedModule(manager, "alpha", loaderContext);
+    const recorder = recordModuleDiagnostics("alpha");
+    try {
+      await reloadWatchedModule(manager, "alpha", loaderContext);
+    } finally {
+      recorder.restore();
+    }
+
+    expect(recorder.trace()).to.deep.equal([
+      "load:start",
+      "load:end",
+      "load:asyncStart",
+      "load:asyncEnd",
+      "construct:start",
+      "construct:end",
+      "construct:asyncStart",
+      "construct:asyncEnd",
+      "start:start",
+      "start:end",
+      "start:asyncStart",
+      "start:asyncEnd",
+    ]);
+    for (const { payload } of recorder.events) {
+      expect(payload.moduleVersion).to.equal("1.0.0");
+    }
 
     expect((entry.module as any).destroy.calledOnce).to.equal(true);
     expect(manager.unrequireModuleFiles.calledWith("alpha")).to.equal(true);
