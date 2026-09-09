@@ -237,6 +237,55 @@ describe("runtime module-loading", () => {
     expect(manager.constructModules.calledOnce).to.equal(true);
   });
 
+  it("publishes only a failed load span when a replacement cannot load", async () => {
+    const entry = {
+      module: {
+        id: "alpha",
+        state: "active",
+        manifest: { source: { type: "local", path: "/mods/alpha" } },
+        destroy: sinon.stub().resolves(),
+      },
+      config: { config: {} },
+    };
+    const manager = {
+      getLoadedModuleEntry: sinon.stub().returns(entry),
+      unrequireModuleFiles: sinon.stub(),
+      replaceLoadedModule: sinon.stub().returns(entry),
+      refreshAssociations: sinon.stub(),
+      constructModules: sinon.stub().callsFake(constructManagedModules),
+    } as any;
+    const manifest = {
+      name: "alpha",
+      version: "1.0.0",
+      main: "/mods/alpha/no-such-module-entry.js",
+      folder: "/mods/alpha",
+      imports: [],
+      source: { type: "local", path: "/mods/alpha" },
+    } as any;
+    const loaderContext = {
+      cache: {},
+      projectFolder: "/project",
+      registry: { load: sinon.stub().resolves([manifest]) },
+    } as any;
+
+    const recorder = recordModuleDiagnostics("alpha");
+    try {
+      await reloadWatchedModule(manager, "alpha", loaderContext).catch(
+        () => undefined,
+      );
+    } finally {
+      recorder.restore();
+    }
+
+    expect(recorder.trace()).to.deep.equal([
+      "load:start",
+      "load:end",
+      "load:error",
+      "load:asyncStart",
+      "load:asyncEnd",
+    ]);
+  });
+
   it("propagates interface compatibility validation during reload", async () => {
     const entry = {
       module: {
