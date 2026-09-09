@@ -13,7 +13,7 @@ export class ModuleLifecycle {
 
   constructor(
     private moduleId: string,
-    private moduleVersion: string,
+    private moduleVersion: string | undefined,
   ) {}
 
   get state(): ModuleState {
@@ -24,7 +24,7 @@ export class ModuleLifecycle {
     this.callbacks = callbacks;
   }
 
-  setVersion(version: string): void {
+  setVersion(version: string | undefined): void {
     this.moduleVersion = version;
   }
 

@@ -251,6 +251,8 @@ describe("Module", () => {
   });
 });
 
+const SPANS_PER_CONSTRUCT = 2;
+
 const diagnosticsManifest = {
   ...manifest,
   name: "diagnostics-module",
@@ -338,6 +340,24 @@ describe("Module diagnostics", () => {
       "load:asyncStart",
       "load:asyncEnd",
     ]);
+  });
+
+  it("publishes an undefined version when the manifest declares none", async () => {
+    const versionlessManifest = {
+      ...diagnosticsManifest,
+      version: undefined,
+    } as any;
+    const mod = new Module(versionlessManifest, sinon.stub().resolves({}));
+
+    await mod.construct({});
+
+    expect(recorder.events).to.have.length(
+      SPAN_EVENT_COUNT * SPANS_PER_CONSTRUCT,
+    );
+    for (const { payload } of recorder.events) {
+      expect(payload.moduleId).to.equal(diagnosticsManifest.name);
+      expect(payload.moduleVersion).to.equal(undefined);
+    }
   });
 
   it("publishes nothing when construct is called on a constructed module", async () => {

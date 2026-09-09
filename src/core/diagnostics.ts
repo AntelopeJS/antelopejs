@@ -1,9 +1,14 @@
 import { type TracingChannel, tracingChannel } from "node:diagnostics_channel";
 
-/** Payload published on every module lifecycle tracing channel. */
+/**
+ * Payload published on every module lifecycle tracing channel.
+ *
+ * `moduleVersion` is whatever the module's package.json declared, which is not
+ * validated on the way in: it is undefined for a module that declares no version.
+ */
 export interface ModuleDiagnosticsContext {
   moduleId: string;
-  moduleVersion: string;
+  moduleVersion: string | undefined;
 }
 
 export type ModuleTracingChannel = TracingChannel<
@@ -22,7 +27,7 @@ export interface ModuleDiagnosticsChannels {
 
 export function moduleDiagnosticsContext(
   moduleId: string,
-  moduleVersion: string,
+  moduleVersion: string | undefined,
 ): ModuleDiagnosticsContext {
   return { moduleId, moduleVersion };
 }
