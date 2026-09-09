@@ -5,8 +5,13 @@ import {
 } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
-import { Module } from "../../src/core/module";
+import { Module, type ModuleLoader } from "../../src/core/module";
 import { ModuleState } from "../../src/types";
+import {
+  type DiagnosticsRecorder,
+  recordModuleDiagnostics,
+  SPAN_EVENT_COUNT,
+} from "../helpers/diagnostics-recorder";
 
 const manifest = {
   name: "mod",
@@ -243,5 +248,129 @@ describe("Module", () => {
     await mod.stop();
 
     expect(stopResolved).to.equal(true);
+  });
+});
+
+const diagnosticsManifest = {
+  ...manifest,
+  name: "diagnostics-module",
+} as any;
+
+describe("Module diagnostics", () => {
+  let recorder: DiagnosticsRecorder;
+
+  beforeEach(() => {
+    recorder = recordModuleDiagnostics(diagnosticsManifest.name);
+  });
+
+  afterEach(() => {
+    recorder.restore();
+  });
+
+  it("publishes the load span before the construct span", async () => {
+    const mod = new Module(diagnosticsManifest, sinon.stub().resolves({}));
+
+    await mod.construct({});
+
+    expect(recorder.trace()).to.deep.equal([
+      "load:start",
+      "load:end",
+      "load:asyncStart",
+      "load:asyncEnd",
+      "construct:start",
+      "construct:end",
+      "construct:asyncStart",
+      "construct:asyncEnd",
+    ]);
+  });
+
+  it("publishes the loaded callbacks as the load span result", async () => {
+    const callbacks = { start: sinon.spy() };
+    const mod = new Module(
+      diagnosticsManifest,
+      sinon.stub().resolves(callbacks),
+    );
+
+    await mod.construct({});
+
+    const asyncEnd = recorder.events.find(
+      ({ operation, event }) => operation === "load" && event === "asyncEnd",
+    );
+    expect(asyncEnd?.payload.result).to.equal(callbacks);
+    expect(asyncEnd?.payload).to.include({
+      moduleId: diagnosticsManifest.name,
+      moduleVersion: diagnosticsManifest.version,
+    });
+  });
+
+  it("publishes an error on the load span when the loader fails", async () => {
+    const mod = new Module(
+      diagnosticsManifest,
+      sinon.stub().rejects(new Error("load failed")),
+    );
+
+    await mod.construct({}).catch(() => undefined);
+
+    const errors = recorder.events.filter(({ event }) => event === "error");
+    expect(errors).to.have.length(1);
+    expect(errors[0].operation).to.equal("load");
+    expect(errors[0].payload.error).to.have.property("message", "load failed");
+    expect(
+      recorder.events.some(({ operation }) => operation === "construct"),
+    ).to.equal(false);
+  });
+
+  it("publishes a well-formed span when the loader throws synchronously", async () => {
+    const loader = () => {
+      throw new Error("sync load failed");
+    };
+    const mod = new Module(
+      diagnosticsManifest,
+      loader as unknown as ModuleLoader,
+    );
+
+    await mod.construct({}).catch(() => undefined);
+
+    expect(recorder.trace()).to.deep.equal([
+      "load:start",
+      "load:end",
+      "load:error",
+      "load:asyncStart",
+      "load:asyncEnd",
+    ]);
+  });
+
+  it("publishes nothing when construct is called on a constructed module", async () => {
+    const mod = new Module(diagnosticsManifest, sinon.stub().resolves({}));
+
+    await mod.construct({});
+    recorder.events.length = 0;
+    await mod.construct({});
+
+    expect(recorder.trace()).to.deep.equal([]);
+  });
+
+  it("publishes the pre-reload version on a destroy span raised by reload", async () => {
+    const reloadManifest = {
+      ...diagnosticsManifest,
+      version: "1.0.0",
+      reload: sinon.stub(),
+    } as any;
+    reloadManifest.reload.callsFake(async () => {
+      reloadManifest.version = "1.0.1";
+    });
+    const mod = new Module(reloadManifest, sinon.stub().resolves({}));
+
+    await mod.construct({});
+    await mod.reload();
+
+    const destroyed = recorder.events.filter(
+      ({ operation }) => operation === "destroy",
+    );
+    expect(destroyed).to.have.length(SPAN_EVENT_COUNT);
+    for (const { payload } of destroyed) {
+      expect(payload.moduleVersion).to.equal("1.0.0");
+    }
+    expect(mod.version).to.equal("1.0.1");
   });
 });
