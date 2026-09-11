@@ -1,4 +1,5 @@
 import type * as fsSync from "node:fs";
+
 import type { IFileSystem } from "../../src/types";
 
 interface MemoryNode {

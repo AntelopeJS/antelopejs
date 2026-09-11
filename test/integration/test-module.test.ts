@@ -1,8 +1,9 @@
-import fs from "node:fs/promises";
 import os from "node:os";
+import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import sinon from "sinon";
+import fs from "node:fs/promises";
+
 import { TestModule } from "../../src";
 
 async function writeMinimalAntelopeModule(folder: string): Promise<void> {

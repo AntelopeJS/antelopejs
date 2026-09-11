@@ -1,11 +1,12 @@
-import EventEmitter from "node:events";
 import path from "node:path";
+import EventEmitter from "node:events";
 import { Logging } from "@antelopejs/interface-core/logging";
-import { addChannelFilter, setupAntelopeProjectLogging } from "../../logging";
-import type { LaunchOptions } from "../../types";
-import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
+
 import { NodeFileSystem } from "../filesystem";
+import type { LaunchOptions } from "../../types";
 import type { ShutdownManager } from "../shutdown";
+import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
+import { addChannelFilter, setupAntelopeProjectLogging } from "../../logging";
 import type {
   BuildOptions,
   NormalizedLoadedConfig,

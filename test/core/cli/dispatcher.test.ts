@@ -1,9 +1,10 @@
+import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import sinon from "sinon";
-import { isProductionStartInvocation, runCLI } from "../../../src/core/cli";
+
 import * as fullCLI from "../../../src/core/cli/full-cli";
 import * as projectLaunch from "../../../src/core/runtime/project-launch";
+import { isProductionStartInvocation, runCLI } from "../../../src/core/cli";
 
 describe("CLI dispatcher", () => {
   afterEach(() => {

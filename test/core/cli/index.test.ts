@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import { createCLI } from "../../../src/core/cli/full-cli";
 
 function commandNames(cmd: any): string[] {
@@ -15,7 +16,7 @@ describe("CLI Entry Point", () => {
     ]);
 
     const project = program.commands.find((c: any) => c.name() === "project");
-    expect(project).to.be.ok;
+    expect(project).to.not.equal(undefined);
     if (!project) throw new Error("project command missing");
 
     expect(commandNames(project)).to.include.members([
@@ -43,13 +44,13 @@ describe("CLI Entry Point", () => {
     expect(commandNames(logging)).to.include.members(["set", "show"]);
 
     const mod = program.commands.find((c: any) => c.name() === "module");
-    expect(mod).to.be.ok;
+    expect(mod).to.not.equal(undefined);
     if (!mod) throw new Error("module command missing");
 
     expect(commandNames(mod)).to.include.members(["init", "test"]);
 
     const config = program.commands.find((c: any) => c.name() === "config");
-    expect(config).to.be.ok;
+    expect(config).to.not.equal(undefined);
     if (!config) throw new Error("config command missing");
 
     expect(commandNames(config)).to.include.members([

@@ -1,7 +1,8 @@
-import * as fsPromises from "node:fs/promises";
+import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import sinon from "sinon";
+import * as fsPromises from "node:fs/promises";
+
 import * as command from "../../../src/core/cli/command";
 import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 

@@ -26,5 +26,7 @@ jobs:
           echo "$PR_TITLE" | grep -Eq '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([^)]+\))?!?: .+'
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm knip
       - run: pnpm test
       - run: pnpm test:coverage

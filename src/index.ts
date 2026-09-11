@@ -1,30 +1,27 @@
-import { DEFAULT_ENV } from "./core/config/config-paths";
+import type { LaunchOptions } from "./types";
 import { ModuleManager } from "./core/module-manager";
-import { writeProjectBuildArtifact } from "./core/runtime/build-runtime";
-import { prepareFromConfig } from "./core/runtime/launch-sequence";
-import {
-  ensureGraphIsValid,
-  loadModuleEntriesForManager,
-} from "./core/runtime/module-loading";
+import { DEFAULT_ENV } from "./core/config/config-paths";
 import { startProject } from "./core/runtime/project-launch";
-import {
-  loadProjectRuntimeConfig,
-  withRaisedMaxListeners,
-} from "./core/runtime/runtime-bootstrap";
 import type { BuildOptions } from "./core/runtime/runtime-types";
+import { prepareFromConfig } from "./core/runtime/launch-sequence";
+import { writeProjectBuildArtifact } from "./core/runtime/build-runtime";
 import {
   checkOutdatedModules,
   warnOutdatedModules,
 } from "./core/version-checker";
-import type { LaunchOptions } from "./types";
+import {
+  ensureGraphIsValid,
+  loadModuleEntriesForManager,
+} from "./core/runtime/module-loading";
+import {
+  loadProjectRuntimeConfig,
+  withRaisedMaxListeners,
+} from "./core/runtime/runtime-bootstrap";
 
 export { ConfigLoader } from "./core/config/config-loader";
 export { DEFAULT_ENV } from "./core/config/config-paths";
 export { DownloaderRegistry } from "./core/downloaders/registry";
-export {
-  AntelopeRuntime,
-  createRuntime,
-} from "./core/embedded/runtime";
+export { AntelopeRuntime, createRuntime } from "./core/embedded/runtime";
 export type {
   EmbeddedModuleConfig,
   EmbeddedRuntimeOptions,

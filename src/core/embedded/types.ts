@@ -2,6 +2,7 @@ import type {
   AntelopeLogging,
   ImportOverride,
 } from "@antelopejs/interface-core/config";
+
 import type { RuntimePolicy } from "../runtime/runtime-policy";
 
 /** One module the embedded runtime should load, keyed by its package name. */

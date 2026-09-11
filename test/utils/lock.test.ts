@@ -1,5 +1,6 @@
-import lockfile from "proper-lockfile";
 import sinon from "sinon";
+import lockfile from "proper-lockfile";
+
 import { acquireLock } from "../../src/utils/lock";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 

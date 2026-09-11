@@ -1,8 +1,10 @@
-import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
-import { expect } from "chai";
 import sinon from "sinon";
-import { terminalDisplay } from "../../../src/core/cli/terminal-display";
+import { expect } from "chai";
+import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
+
 import { Module } from "../../../src/core/module";
+import { terminalDisplay } from "../../../src/core/cli/terminal-display";
+import { recordModuleDiagnostics } from "../../helpers/diagnostics-recorder";
 import type {
   ManagedModule,
   ModuleManager,
@@ -15,7 +17,6 @@ import {
   registerCoreModuleInterface,
   reloadWatchedModule,
 } from "../../../src/core/runtime/module-loading";
-import { recordModuleDiagnostics } from "../../helpers/diagnostics-recorder";
 
 interface ReloadHarness {
   oldModule: any;

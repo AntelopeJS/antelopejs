@@ -1,15 +1,16 @@
+import chalk from "chalk";
+import { Command, Option } from "commander";
 import type {
   ModuleSourceGit,
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
-import chalk from "chalk";
-import { Command, Option } from "commander";
+
 import { ConfigLoader } from "../../../../config";
+import { Options, readConfig } from "../../../common";
 import { NodeFileSystem } from "../../../../filesystem";
 import { displayBox, error, info, keyValue, warning } from "../../../cli-ui";
-import { Options, readConfig } from "../../../common";
 
 interface ListOptions {
   project: string;

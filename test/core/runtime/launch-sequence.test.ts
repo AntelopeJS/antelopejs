@@ -1,16 +1,17 @@
-import fs from "node:fs/promises";
-import Module from "node:module";
 import os from "node:os";
-import path from "node:path";
-import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
-import * as runtimeInterface from "@antelopejs/interface-core/runtime";
-import { expect } from "chai";
 import sinon from "sinon";
+import path from "node:path";
+import { expect } from "chai";
+import Module from "node:module";
+import fs from "node:fs/promises";
+import * as runtimeInterface from "@antelopejs/interface-core/runtime";
+import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
+
+import { ShutdownManager } from "../../../src/core/shutdown";
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { ModuleManifest } from "../../../src/core/module-manifest";
 import { runLaunchSequence } from "../../../src/core/runtime/launch-sequence";
 import type { ProjectPreparer } from "../../../src/core/runtime/runtime-types";
-import { ShutdownManager } from "../../../src/core/shutdown";
 
 describe("runtime launch-sequence", () => {
   afterEach(() => {

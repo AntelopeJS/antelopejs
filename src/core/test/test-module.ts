@@ -1,28 +1,33 @@
 import path from "node:path";
+import { internal } from "@antelopejs/interface-core/internal";
 import type {
   AntelopeConfig,
   AntelopeTestConfig,
 } from "@antelopejs/interface-core/config";
-import { internal } from "@antelopejs/interface-core/internal";
-import { setupAntelopeProjectLogging } from "../../logging";
+
+/* The namespace self-import is the seam the unit tests stub through: calls below
+   go via `self.` so `sinon.stub(module, "fn")` is honoured. Removing it silently
+   disables those stubs. */
+// oxlint-disable-next-line import/no-self-import, import/no-cycle -- see above
+import * as self from "./test-module";
 import type { IFileSystem } from "../../types";
 import { mergeDeep } from "../../utils/object";
-import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
-import { DEFAULT_ENV } from "../config/config-paths";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../module-manager";
+import { DEFAULT_ENV } from "../config/config-paths";
+import { setupAntelopeProjectLogging } from "../../logging";
+import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
 import { registerCoreRuntimeInterface } from "../runtime/dev-server-registry";
+import {
+  normalizeLoadedConfig,
+  withRaisedMaxListeners,
+} from "../runtime/runtime-bootstrap";
 import {
   constructAndStartModules,
   destroyModulesAfterFailure,
   ensureGraphIsValid,
   loadModuleEntriesForManager,
 } from "../runtime/module-loading";
-import {
-  normalizeLoadedConfig,
-  withRaisedMaxListeners,
-} from "../runtime/runtime-bootstrap";
-import * as self from "./test-module";
 
 const EXIT_CODE_ERROR = 1;
 const DEFAULT_TEST_FOLDER = "test";
@@ -35,7 +40,7 @@ interface LoadedTestConfig {
   test: AntelopeTestConfig;
 }
 
-export async function collectTestFiles(
+async function collectTestFiles(
   folder: string,
   pattern: RegExp,
   fs: IFileSystem,

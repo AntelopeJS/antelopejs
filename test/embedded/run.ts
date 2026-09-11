@@ -1,6 +1,7 @@
-import { spawn } from "node:child_process";
-import fs from "node:fs/promises";
 import path from "node:path";
+import fs from "node:fs/promises";
+import { spawn } from "node:child_process";
+
 import {
   createEmbeddedFixture,
   type EmbeddedFixture,

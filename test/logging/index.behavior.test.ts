@@ -1,7 +1,8 @@
-import { RunWithResponsibleModule } from "@antelopejs/interface-core";
-import { Logging } from "@antelopejs/interface-core/logging";
 import { expect } from "chai";
 import * as sinon from "sinon";
+import { Logging } from "@antelopejs/interface-core/logging";
+import { RunWithResponsibleModule } from "@antelopejs/interface-core";
+
 import {
   addChannelFilter,
   levelMap,

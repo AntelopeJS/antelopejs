@@ -1,5 +1,6 @@
-import { accessSync, constants } from "node:fs";
 import * as path from "node:path";
+import { accessSync, constants } from "node:fs";
+
 import type { ModuleManifest } from "../module-manifest";
 
 export type ExistsSync = (filePath: string) => boolean;

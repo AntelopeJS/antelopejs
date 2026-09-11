@@ -1,13 +1,13 @@
 import fs from "node:fs";
+import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
 import { Command } from "commander";
-import sinon from "sinon";
+const Module = require("node:module");
+
+import * as logging from "../../../src/logging";
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import * as versionCheck from "../../../src/core/cli/version-check";
-import * as logging from "../../../src/logging";
-
-const Module = require("node:module");
 
 describe("CLI main guard", () => {
   const cliPath = require.resolve("../../../src/core/cli/index");

@@ -3,9 +3,10 @@ import type { AntelopeLogging } from "@antelopejs/interface-core/config";
 import eventLog, {
   type Log,
 } from "@antelopejs/interface-core/logging/listener";
-import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
-import { terminalDisplay } from "../core/cli/terminal-display";
+
 import { mergeDeep } from "../utils/object";
+import { terminalDisplay } from "../core/cli/terminal-display";
+import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
 
 const DEFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 const CORE_MODULE_NAME = "core";

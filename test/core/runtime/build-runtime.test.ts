@@ -1,11 +1,17 @@
-import { Logging } from "@antelopejs/interface-core/logging";
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+import { Logging } from "@antelopejs/interface-core/logging";
+
+import * as buildArtifact from "../../../src/core/build/build-artifact";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import type {
   BuildArtifact,
   BuildModuleEntry,
 } from "../../../src/core/build/build-artifact";
-import * as buildArtifact from "../../../src/core/build/build-artifact";
+import type {
+  ModuleManifestEntry,
+  NormalizedLoadedConfig,
+} from "../../../src/core/runtime/runtime-types";
 import {
   ensureBuildModulesExist,
   mapArtifactModuleEntries,
@@ -13,11 +19,6 @@ import {
   warnIfBuildIsStale,
   writeProjectBuildArtifact,
 } from "../../../src/core/runtime/build-runtime";
-import type {
-  ModuleManifestEntry,
-  NormalizedLoadedConfig,
-} from "../../../src/core/runtime/runtime-types";
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 function createBuildModuleEntry(
   overrides?: Partial<BuildModuleEntry>,

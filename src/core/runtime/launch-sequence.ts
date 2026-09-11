@@ -1,33 +1,12 @@
 import path from "node:path";
-import { setupAntelopeProjectLogging } from "../../logging";
-import type { LaunchOptions } from "../../types";
-import { terminalDisplay } from "../cli/terminal-display";
-import { NodeFileSystem } from "../filesystem";
-import { ModuleManager } from "../module-manager";
+
 import { ShutdownManager } from "../shutdown";
-import {
-  ensureBuildModulesExist,
-  logEnvironmentMismatch,
-  mapArtifactModuleEntries,
-  readBuildArtifactOrThrow,
-  warnIfBuildIsStale,
-} from "./build-runtime";
+import { NodeFileSystem } from "../filesystem";
+import type { LaunchOptions } from "../../types";
+import { ModuleManager } from "../module-manager";
+import { terminalDisplay } from "../cli/terminal-display";
+import { setupAntelopeProjectLogging } from "../../logging";
 import { registerCoreRuntimeInterface } from "./dev-server-registry";
-import {
-  buildModuleConfigs,
-  constructAndStartModules,
-  createLoaderContext,
-  ensureGraphIsValid,
-  registerCoreInterfaces,
-  registerCoreModuleInterface,
-} from "./module-loading";
-import {
-  applyVerboseChannels,
-  loadProjectConfig,
-  releaseProcessShutdownManager,
-  setupProcessHandlers,
-  withRaisedMaxListeners,
-} from "./runtime-bootstrap";
 import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
 import type {
   LoaderConfig,
@@ -37,6 +16,28 @@ import type {
   ProjectPreparer,
   StartedProject,
 } from "./runtime-types";
+import {
+  ensureBuildModulesExist,
+  logEnvironmentMismatch,
+  mapArtifactModuleEntries,
+  readBuildArtifactOrThrow,
+  warnIfBuildIsStale,
+} from "./build-runtime";
+import {
+  applyVerboseChannels,
+  loadProjectConfig,
+  releaseProcessShutdownManager,
+  setupProcessHandlers,
+  withRaisedMaxListeners,
+} from "./runtime-bootstrap";
+import {
+  buildModuleConfigs,
+  constructAndStartModules,
+  createLoaderContext,
+  ensureGraphIsValid,
+  registerCoreInterfaces,
+  registerCoreModuleInterface,
+} from "./module-loading";
 
 export function memoizeLoaderContext(
   create: () => Promise<LoaderContext>,
@@ -99,9 +100,8 @@ export const prepareFromConfig: ProjectPreparer = async (
     logging: normalizedConfig.logging,
     loadContext,
     verify: async () => {
-      const { checkOutdatedModules, warnOutdatedModules } = await import(
-        "../version-checker"
-      );
+      const { checkOutdatedModules, warnOutdatedModules } =
+        await import("../version-checker");
       warnOutdatedModules(await checkOutdatedModules(normalizedConfig.modules));
     },
     createEntries: async () =>

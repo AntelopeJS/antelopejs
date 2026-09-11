@@ -1,5 +1,6 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import { ReplSession } from "../../../src/core/repl/repl-session";
 
 describe("ReplSession", () => {
@@ -19,11 +20,11 @@ describe("ReplSession", () => {
     const session = new ReplSession({ moduleManager: "mm" }, replFactory);
     const server = session.start("> ");
 
-    expect(server).to.be.ok;
+    expect(server).to.not.equal(undefined);
     expect(capturedPrompt).to.equal("> ");
     expect(context.moduleManager).to.equal("mm");
 
     session.close();
-    expect(closeSpy.calledOnce).to.be.true;
+    expect(closeSpy.calledOnce).to.equal(true);
   });
 });

@@ -1,5 +1,6 @@
 import type * as fsSync from "node:fs";
 import * as fs from "node:fs/promises";
+
 import type { IFileSystem } from "../types";
 
 export class NodeFileSystem implements IFileSystem {

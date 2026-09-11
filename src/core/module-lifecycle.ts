@@ -1,4 +1,5 @@
 import { Events } from "@antelopejs/interface-core/modules";
+
 import { type ModuleCallbacks, ModuleState } from "../types";
 import {
   ModuleDiagnostics,

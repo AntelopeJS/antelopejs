@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import { ExecuteCMD } from "../../../src/core/cli/command";
 
 describe("Command Execution", () => {

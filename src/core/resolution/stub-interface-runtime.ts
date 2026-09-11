@@ -1,11 +1,11 @@
-import Module from "node:module";
 import path from "node:path";
+import Module from "node:module";
+import { Logging } from "@antelopejs/interface-core/logging";
 import {
   AsyncProxy,
   EventProxy,
   RegisteringProxy,
 } from "@antelopejs/interface-core";
-import { Logging } from "@antelopejs/interface-core/logging";
 
 const Logger = new Logging.Channel("loader");
 const warned = new Set<string>();

@@ -1,5 +1,6 @@
-import Module from "node:module";
 import path from "node:path";
+import Module from "node:module";
+
 import type { ResolveResult, Resolver } from "./resolver";
 
 type ModuleResolver = (

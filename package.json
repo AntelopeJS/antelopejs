@@ -2,11 +2,23 @@
   "name": "@antelopejs/core",
   "version": "1.5.1",
   "description": "TypeScript framework extending hexagonal architecture across your application and its ecosystem through explicit contracts and replaceable modules.",
+  "keywords": [
+    "antelopejs",
+    "framework",
+    "modular",
+    "typescript"
+  ],
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AntelopeJS/antelopejs.git"
   },
-  "license": "Apache-2.0",
+  "bin": {
+    "ajs": "dist/core/cli/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -15,35 +27,19 @@
       "default": "./dist/index.js"
     }
   },
-  "bin": {
-    "ajs": "dist/core/cli/index.js"
-  },
-  "files": [
-    "dist"
-  ],
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
-  "packageManager": "pnpm@10.6.5",
-  "antelopeJs": {
-    "implements": [
-      "@antelopejs/interface-core"
-    ]
-  },
-  "keywords": [
-    "antelopejs",
-    "framework",
-    "typescript",
-    "modular"
-  ],
   "scripts": {
     "build": "rimraf dist && tsc",
     "prepack": "pnpm run build",
     "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "knip": "knip",
     "test": "pnpm test:unit && pnpm test:embedded && pnpm test:package-consumer && pnpm test:playground",
     "test:unit": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
     "test:package-consumer": "pnpm build && ts-node test/package-consumer/run.ts",
@@ -57,7 +53,6 @@
     "@types/proper-lockfile": "^4.1.4",
     "boxen": "^8.0.1",
     "chalk": "^4.1.2",
-    "cli-progress": "^3.12.0",
     "commander": "^13.1.0",
     "figlet": "^1.11.0",
     "inly": "^5.0.1",
@@ -70,17 +65,19 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.2",
+    "@antelopejs/tooling-configs": "^0.0.4",
     "@types/chai": "^4.3.20",
-    "@types/cli-progress": "^3.11.6",
-    "@types/figlet": "^1.7.0",
-    "@types/inquirer": "^9.0.9",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.15",
     "@types/semver": "^7.7.1",
     "@types/sinon": "^17.0.4",
     "c8": "^10.1.3",
     "chai": "^4.5.0",
+    "eslint-plugin-perfectionist": "^5.11.0",
+    "knip": "^6.34.0",
+    "oxfmt": "^0.66.0",
+    "oxlint": "1.81.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "release-it": "^19.2.4",
     "release-it-changelogen": "^0.1.0",
     "rimraf": "^6.1.3",
@@ -88,16 +85,22 @@
     "ts-node": "^10.9.2"
   },
   "c8": {
-    "include": [
-      "src/**/*.ts"
-    ],
     "exclude": [
       "src/**/*.d.ts"
     ],
+    "include": [
+      "src/**/*.ts"
+    ],
+    "report-dir": "coverage",
     "reporter": [
       "text",
       "html"
-    ],
-    "report-dir": "coverage"
+    ]
+  },
+  "packageManager": "pnpm@10.6.5",
+  "antelopeJs": {
+    "implements": [
+      "@antelopejs/interface-core"
+    ]
   }
 }

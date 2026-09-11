@@ -1,11 +1,10 @@
 import * as os from "node:os";
 import type { ModuleInstallCommand } from "@antelopejs/interface-core/config";
+
 import { terminalDisplay } from "../cli/terminal-display";
 import type { CommandRunner, DebugLogger } from "./types";
 
-export function normalizeCommands(
-  installCommand?: ModuleInstallCommand,
-): string[] {
+function normalizeCommands(installCommand?: ModuleInstallCommand): string[] {
   if (!installCommand) {
     return [];
   }

@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import type { Command } from "commander";
+
 import { Spinner } from "../../cli-ui";
 import { readConfig } from "../../common";
 

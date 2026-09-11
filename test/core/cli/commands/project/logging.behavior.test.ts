@@ -1,11 +1,12 @@
+import sinon from "sinon";
 import { expect } from "chai";
 import inquirer from "inquirer";
-import sinon from "sinon";
+
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import cmdSet from "../../../../../src/core/cli/commands/project/logging/set";
-import cmdShow from "../../../../../src/core/cli/commands/project/logging/show";
 import * as common from "../../../../../src/core/cli/common";
 import { ConfigLoader } from "../../../../../src/core/config";
+import cmdSet from "../../../../../src/core/cli/commands/project/logging/set";
+import cmdShow from "../../../../../src/core/cli/commands/project/logging/show";
 
 describe("project logging behavior", () => {
   afterEach(() => {
@@ -332,7 +333,7 @@ describe("project logging behavior", () => {
 
     expect(writeStub.calledOnce).to.equal(true);
     expect(displayStub.calledOnce).to.equal(true);
-    expect(config.logging.moduleTracking).to.exist;
+    expect(config.logging.moduleTracking).to.not.equal(undefined);
     expect(config.logging.formatter).to.have.property("20");
   });
 

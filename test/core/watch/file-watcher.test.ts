@@ -1,5 +1,6 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import { FileWatcher } from "../../../src/core/watch/file-watcher";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 

@@ -1,11 +1,12 @@
 import chalk from "chalk";
 import { Command, Option } from "commander";
-import { defaultConfigLogging, levelNames } from "../../../../../logging";
-import { mergeDeep } from "../../../../../utils/object";
+
 import { ConfigLoader } from "../../../../config";
-import { NodeFileSystem } from "../../../../filesystem";
-import { displayBox, error, header, keyValue, warning } from "../../../cli-ui";
 import { Options, readConfig } from "../../../common";
+import { mergeDeep } from "../../../../../utils/object";
+import { NodeFileSystem } from "../../../../filesystem";
+import { defaultConfigLogging, levelNames } from "../../../../../logging";
+import { displayBox, error, header, keyValue, warning } from "../../../cli-ui";
 
 interface ShowOptions {
   project: string;

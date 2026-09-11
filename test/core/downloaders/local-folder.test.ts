@@ -1,14 +1,15 @@
+import { expect } from "chai";
 import { mkdirSync, writeFileSync } from "node:fs";
 import type {
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
 } from "@antelopejs/interface-core/config";
-import { expect } from "chai";
-import { registerLocalFolderDownloader } from "../../../src/core/downloaders/local-folder";
-import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
+
 import { ModuleCache } from "../../../src/core/module-cache";
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
+import { registerLocalFolderDownloader } from "../../../src/core/downloaders/local-folder";
 
 function createExecSpy() {
   const calls: Array<{ command: string; cwd?: string }> = [];

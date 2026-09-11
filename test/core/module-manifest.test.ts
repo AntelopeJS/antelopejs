@@ -1,12 +1,13 @@
+import { expect } from "chai";
 import * as path from "node:path";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
-import { expect } from "chai";
+
+import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import type { BuildModuleEntry } from "../../src/core/build/build-artifact";
 import {
   ModuleManifest,
   type ModulePackageJson,
 } from "../../src/core/module-manifest";
-import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 describe("ModuleManifest", () => {
   it("throws when package.json is missing", async () => {

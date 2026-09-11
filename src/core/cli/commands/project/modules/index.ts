@@ -1,10 +1,10 @@
 import { Command } from "commander";
 
 import cmdAdd from "./add";
-import cmdInstall from "./install";
 import cmdList from "./list";
 import cmdRemove from "./remove";
 import cmdUpdate from "./update";
+import cmdInstall from "./install";
 
 export default function () {
   return new Command("modules")

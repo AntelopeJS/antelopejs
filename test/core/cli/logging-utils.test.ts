@@ -1,5 +1,6 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import * as loggingUtils from "../../../src/core/cli/logging-utils";
 import {
   formatDate,

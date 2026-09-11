@@ -1,9 +1,10 @@
 import chalk from "chalk";
-import { Command, Option } from "commander";
 import inquirer from "inquirer";
+import { Command, Option } from "commander";
+
 import { defaultConfigLogging } from "../../../../../logging";
-import { displayBox, error, info, success, warning } from "../../../cli-ui";
 import { Options, readConfig, writeConfig } from "../../../common";
+import { displayBox, error, info, success, warning } from "../../../cli-ui";
 
 interface SetOptions {
   project: string;

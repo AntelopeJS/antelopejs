@@ -1,6 +1,7 @@
 import * as os from "node:os";
-import * as path from "node:path";
 import { expect } from "chai";
+import * as path from "node:path";
+
 import { NodeFileSystem } from "../../src/core/filesystem";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 

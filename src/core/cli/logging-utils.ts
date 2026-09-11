@@ -1,5 +1,5 @@
-import type { AntelopeLogging } from "@antelopejs/interface-core/config";
 import chalk from "chalk";
+import type { AntelopeLogging } from "@antelopejs/interface-core/config";
 
 const LOG_LEVELS = {
   ERROR: 40,
@@ -20,10 +20,6 @@ const COLOR_FUNCTIONS: Record<string, (text: string) => string> = {
   magenta: chalk.magenta,
   white: chalk.white,
 };
-
-// Terminal control sequences
-const NEWLINE = "\n";
-const OVERWRITE_CURRENT_LINE = "\r\x1b[K";
 
 // map created this way because Logging.Level is undefined on firsts calls
 export const getLevelInfo = (() => {
@@ -62,6 +58,9 @@ export function isTerminalOutput(): boolean {
  * @returns The string without ANSI codes
  */
 export function stripAnsiCodes(str: string): string {
+  /* Matching the ESC control character is the entire point of an ANSI
+     escape-sequence stripper. */
+  // oxlint-disable-next-line eslint/no-control-regex -- see above
   const ansiRegex = /\u001b\[[0-9;]*m/g;
   return str.replace(ansiRegex, "");
 }

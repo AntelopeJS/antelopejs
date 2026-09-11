@@ -1,13 +1,14 @@
+import sinon from "sinon";
 import { expect } from "chai";
 import inquirer from "inquirer";
-import sinon from "sinon";
+
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import * as command from "../../../../../src/core/cli/command";
-import { moduleInitCommand } from "../../../../../src/core/cli/commands/module/init";
 import * as common from "../../../../../src/core/cli/common";
+import * as command from "../../../../../src/core/cli/command";
 import * as gitOps from "../../../../../src/core/cli/git-operations";
-import * as pkgManager from "../../../../../src/core/cli/package-manager";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
+import * as pkgManager from "../../../../../src/core/cli/package-manager";
+import { moduleInitCommand } from "../../../../../src/core/cli/commands/module/init";
 
 describe("module init behavior", () => {
   afterEach(() => {

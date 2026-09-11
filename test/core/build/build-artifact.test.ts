@@ -1,13 +1,14 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
+import * as configLoader from "../../../src/core/config/config-loader";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   computeConfigHash,
   createBuildArtifact,
   readBuildArtifact,
   writeBuildArtifact,
 } from "../../../src/core/build/build-artifact";
-import * as configLoader from "../../../src/core/config/config-loader";
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 describe("build artifact", () => {
   afterEach(() => {

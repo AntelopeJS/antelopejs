@@ -1,13 +1,14 @@
+import sinon from "sinon";
 import path from "node:path";
+import { expect } from "chai";
 import {
   GetModuleContext,
   RunWithModuleContext,
 } from "@antelopejs/interface-core/modules";
-import { expect } from "chai";
-import sinon from "sinon";
-import { ConfigLoader } from "../../../src/core/config/config-loader";
+
 import { ModuleManager } from "../../../src/core/module-manager";
 import * as testModule from "../../../src/core/test/test-module";
+import { ConfigLoader } from "../../../src/core/config/config-loader";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 const RUNTIME_INFO_TIMEOUT_MS = 1000;
@@ -653,9 +654,8 @@ describe("test-module", () => {
 
     it("registers the core runtime interface so GetRuntimeInfo resolves instead of hanging", async () => {
       const { internal } = await import("@antelopejs/interface-core/internal");
-      const { GetRuntimeInfo } = await import(
-        "@antelopejs/interface-core/runtime"
-      );
+      const { GetRuntimeInfo } =
+        await import("@antelopejs/interface-core/runtime");
       const moduleLoading = require("../../../src/core/runtime/module-loading");
 
       sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);

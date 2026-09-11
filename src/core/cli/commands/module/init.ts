@@ -1,9 +1,16 @@
+import chalk from "chalk";
+import path from "node:path";
+import inquirer from "inquirer";
+import { Command } from "commander";
 import * as childProcess from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import chalk from "chalk";
-import { Command } from "commander";
-import inquirer from "inquirer";
+
+import { ExecuteCMD } from "../../command";
+import {
+  displayNonDefaultGitWarning,
+  Options,
+  readUserConfig,
+} from "../../common";
 import {
   displayBox,
   error,
@@ -12,21 +19,15 @@ import {
   success,
   warning,
 } from "../../cli-ui";
-import { ExecuteCMD } from "../../command";
 import {
-  displayNonDefaultGitWarning,
-  Options,
-  readUserConfig,
-} from "../../common";
+  getInstallCommand,
+  savePackageManagerToPackageJson,
+} from "../../package-manager";
 import {
   copyTemplate,
   loadInterfacesFromGit,
   loadManifestFromGit,
 } from "../../git-operations";
-import {
-  getInstallCommand,
-  savePackageManagerToPackageJson,
-} from "../../package-manager";
 
 interface InitOptions {
   git?: string;

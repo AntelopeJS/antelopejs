@@ -11,7 +11,7 @@ export interface ModuleDiagnosticsContext {
   moduleVersion: string | undefined;
 }
 
-export type ModuleTracingChannel = TracingChannel<
+type ModuleTracingChannel = TracingChannel<
   ModuleDiagnosticsContext,
   ModuleDiagnosticsContext
 >;

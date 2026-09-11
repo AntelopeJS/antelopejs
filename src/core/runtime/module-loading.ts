@@ -1,24 +1,25 @@
 import path from "node:path";
+import { Logging } from "@antelopejs/interface-core/logging";
 import * as coreInterfaceBeta from "@antelopejs/interface-core";
+import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import type {
   ModuleSource,
   ModuleSourceLocal,
 } from "@antelopejs/interface-core/config";
-import { Logging } from "@antelopejs/interface-core/logging";
-import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
+
+import { Module } from "../module";
 import { ModuleState } from "../../types";
+import { ModuleCache } from "../module-cache";
+import { NodeFileSystem } from "../filesystem";
+import { ModuleManifest } from "../module-manifest";
 import { terminalDisplay } from "../cli/terminal-display";
 import type { ExpandedModuleConfig } from "../config/config-parser";
-import { NodeFileSystem } from "../filesystem";
-import { Module } from "../module";
-import { ModuleCache } from "../module-cache";
+import { findUnresolvedInterfaces } from "../resolution/interface-resolution";
 import type {
   ManagedModule,
   ModuleConfig,
   ModuleManager,
 } from "../module-manager";
-import { ModuleManifest } from "../module-manifest";
-import { findUnresolvedInterfaces } from "../resolution/interface-resolution";
 import type {
   LoaderConfig,
   LoaderContext,
@@ -50,9 +51,9 @@ function mapImportOverrides(
   }
 
   for (const [interfaceName, modules] of Object.entries(overrides)) {
-    const overrideEntries = modules.map(
-      (module): ModuleOverrideRef => ({ module }),
-    );
+    const overrideEntries = modules.map((module): ModuleOverrideRef => ({
+      module,
+    }));
     mapped.set(interfaceName, overrideEntries);
   }
 

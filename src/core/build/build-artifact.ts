@@ -1,12 +1,13 @@
-import crypto from "node:crypto";
 import path from "node:path";
+import crypto from "node:crypto";
 import type {
   AntelopeLogging,
   ModuleSource,
 } from "@antelopejs/interface-core/config";
+
 import type { IFileSystem } from "../../types";
-import { ConfigLoader } from "../config/config-loader";
 import { NodeFileSystem } from "../filesystem";
+import { ConfigLoader } from "../config/config-loader";
 import type { ModulePackageJson } from "../module-manifest";
 
 const BUILD_ARTIFACT_VERSION = "1";

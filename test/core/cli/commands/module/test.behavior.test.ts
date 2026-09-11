@@ -1,12 +1,13 @@
+import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import sinon from "sinon";
+
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
+import * as common from "../../../../../src/core/cli/common";
+import * as testModuleModule from "../../../../../src/core/test/test-module";
 import cmdTest, {
   moduleTestCommand,
 } from "../../../../../src/core/cli/commands/module/test";
-import * as common from "../../../../../src/core/cli/common";
-import * as testModuleModule from "../../../../../src/core/test/test-module";
 
 describe("module test behavior", () => {
   afterEach(() => {

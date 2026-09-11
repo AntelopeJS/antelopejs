@@ -1,25 +1,21 @@
 import type { TracingChannelSubscribers } from "node:diagnostics_channel";
+
 import {
   ModuleDiagnostics,
   type ModuleDiagnosticsChannels,
   type ModuleDiagnosticsContext,
 } from "../../src/core/diagnostics";
 
-export type ModuleOperation = keyof ModuleDiagnosticsChannels;
+type ModuleOperation = keyof ModuleDiagnosticsChannels;
 
-export type SpanEventName =
-  | "start"
-  | "end"
-  | "asyncStart"
-  | "asyncEnd"
-  | "error";
+type SpanEventName = "start" | "end" | "asyncStart" | "asyncEnd" | "error";
 
-export interface RecordedPayload extends ModuleDiagnosticsContext {
+interface RecordedPayload extends ModuleDiagnosticsContext {
   result?: unknown;
   error?: unknown;
 }
 
-export interface RecordedEvent {
+interface RecordedEvent {
   operation: ModuleOperation;
   event: SpanEventName;
   payload: RecordedPayload;

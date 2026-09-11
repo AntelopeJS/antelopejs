@@ -1,12 +1,13 @@
-import { expect } from "chai";
 import sinon from "sinon";
-import * as buildArtifactModule from "../../../../../src/core/build/build-artifact";
+import { expect } from "chai";
+
+import * as indexModule from "../../../../../src/index";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
+import * as common from "../../../../../src/core/cli/common";
 import cmdBuild from "../../../../../src/core/cli/commands/project/build";
 import cmdStart from "../../../../../src/core/cli/commands/project/start";
-import * as common from "../../../../../src/core/cli/common";
 import * as projectLaunch from "../../../../../src/core/runtime/project-launch";
-import * as indexModule from "../../../../../src/index";
+import * as buildArtifactModule from "../../../../../src/core/build/build-artifact";
 
 describe("project build/start behavior", () => {
   afterEach(() => {

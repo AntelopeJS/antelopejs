@@ -1,5 +1,6 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import { terminateChildProcess } from "../../../../../src/core/cli/commands/project/dev";
 
 describe("dev command child process", () => {

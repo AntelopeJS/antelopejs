@@ -1,8 +1,9 @@
 import { Command } from "commander";
+
 import cmdGet from "./get";
-import cmdReset from "./reset";
 import cmdSet from "./set";
 import cmdShow from "./show";
+import cmdReset from "./reset";
 
 export default function () {
   return new Command("config")

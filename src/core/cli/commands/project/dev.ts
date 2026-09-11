@@ -1,16 +1,17 @@
-import { type ChildProcess, fork } from "node:child_process";
-import fs, { unlinkSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import chalk from "chalk";
+import path from "node:path";
 import { Command, Option } from "commander";
-import startAntelope, { DEFAULT_ENV, type LaunchOptions } from "../../../..";
+import fs, { unlinkSync, writeFileSync } from "node:fs";
+import { type ChildProcess, fork } from "node:child_process";
+
+import { Options } from "../../common";
 import { ModuleCache } from "../../../module-cache";
+import { displayBox, error, info, warning } from "../../cli-ui";
+import startAntelope, { DEFAULT_ENV, type LaunchOptions } from "../../../..";
 import {
   DEFAULT_SHUTDOWN_TIMEOUT_MS,
   ShutdownManager,
 } from "../../../shutdown";
-import { displayBox, error, info, warning } from "../../cli-ui";
-import { Options } from "../../common";
 import {
   resolveInheritedVerbose,
   validateProjectExists,
@@ -24,7 +25,7 @@ interface RunnerEnv extends NodeJS.ProcessEnv {
   ANTELOPE_VERBOSE?: string;
 }
 
-export interface DevCommandOptions extends LaunchOptions {
+interface DevCommandOptions extends LaunchOptions {
   project: string;
   env?: string;
   inspect?: string | boolean;
@@ -75,7 +76,7 @@ const DEV_COMMAND_DEFINITION: DevCommandDefinition = {
     `Starts your application by loading and connecting all modules defined in your project.`,
 };
 
-export function withDevCommandOptions(command: Command): Command {
+function withDevCommandOptions(command: Command): Command {
   return command
     .addOption(Options.project)
     .addOption(Options.verbose)
@@ -260,7 +261,7 @@ function withCommandVerbose(
   };
 }
 
-export async function executeDevCommand(
+async function executeDevCommand(
   this: Command,
   options: DevCommandOptions,
 ): Promise<void> {

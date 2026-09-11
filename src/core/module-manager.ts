@@ -1,25 +1,26 @@
 import * as path from "node:path";
-import { Logging } from "@antelopejs/interface-core/logging";
 import { satisfies, validRange } from "semver";
+import { Logging } from "@antelopejs/interface-core/logging";
+
+import { Module } from "./module";
 import { ModuleState } from "../types";
+import { ModuleTracker } from "./module-tracker";
+import { Resolver } from "./resolution/resolver";
+import { ModuleRegistry } from "./module-registry";
+import { PathMapper } from "./resolution/path-mapper";
+import type { ModuleManifest } from "./module-manifest";
+import { ResolverDetour } from "./resolution/resolver-detour";
+import type { UnresolvedInterface } from "./resolution/interface-resolution";
 import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
 } from "./interface-registry";
-import { Module } from "./module";
-import type { ModuleManifest } from "./module-manifest";
-import { ModuleRegistry } from "./module-registry";
-import { ModuleTracker } from "./module-tracker";
-import type { UnresolvedInterface } from "./resolution/interface-resolution";
 import {
   isPathWithin,
   type ResolvedPackage,
   resolvePackage,
   resolvePackageAtRoot,
 } from "./resolution/package-resolution";
-import { PathMapper } from "./resolution/path-mapper";
-import { Resolver } from "./resolution/resolver";
-import { ResolverDetour } from "./resolution/resolver-detour";
 import {
   clearStubInterfaceWarnings,
   logStubInterfaceWarningOnce,
@@ -264,9 +265,10 @@ export class ModuleManager {
 
   private applyInterfaceStubs(): void {
     const implemented = this.collectImplementedInterfaces();
-    for (const [interfaceName, resolvedPackage] of [
-      ...this.stubbedInterfacePackages,
-    ]) {
+    /* The loop body deletes from `stubbedInterfacePackages`, so it must iterate
+       over a snapshot rather than the live map. */
+    const stubbed = Array.from(this.stubbedInterfacePackages);
+    for (const [interfaceName, resolvedPackage] of stubbed) {
       if (implemented.has(interfaceName)) {
         this.stubbedInterfacePackages.delete(interfaceName);
         this.resolver.stubbedInterfacePackages.delete(interfaceName);

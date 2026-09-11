@@ -1,5 +1,6 @@
-import { expect } from "chai";
 import sinon from "sinon";
+import { expect } from "chai";
+
 import { ShutdownManager } from "../../../src/core/shutdown/shutdown-manager";
 
 const WAIT_FOR_SIGNAL_MS = 10;

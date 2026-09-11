@@ -1,5 +1,5 @@
-import { ImplementInterface } from "@antelopejs/interface-core";
 import { Greeter } from "interface-greeter";
+import { ImplementInterface } from "@antelopejs/interface-core";
 
 let config: { prefix: string };
 

@@ -1,11 +1,12 @@
 import fs from "node:fs";
+import sinon from "sinon";
 import { expect } from "chai";
 import { Command } from "commander";
-import sinon from "sinon";
+
+import * as logging from "../../../src/logging";
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import { runCLI } from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
-import * as logging from "../../../src/logging";
 
 describe("runCLI behavior", () => {
   const originalArgv = process.argv.slice();

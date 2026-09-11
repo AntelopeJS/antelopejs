@@ -1,10 +1,11 @@
-import fs, { mkdirSync, rmSync } from "node:fs";
-import { stat } from "node:fs/promises";
-import { homedir } from "node:os";
 import path from "node:path";
+import { homedir } from "node:os";
+import { stat } from "node:fs/promises";
+import fs, { mkdirSync, rmSync } from "node:fs";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
-import { acquireLock } from "../../utils/lock";
+
 import { ExecuteCMD } from "./command";
+import { acquireLock } from "../../utils/lock";
 
 async function setupGit(
   cachePath: string,

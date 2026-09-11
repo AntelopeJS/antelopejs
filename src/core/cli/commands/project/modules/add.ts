@@ -1,26 +1,27 @@
-import assert from "node:assert";
-import { readFile, stat } from "node:fs/promises";
-import path from "node:path";
-import type { AntelopeModuleConfig } from "@antelopejs/interface-core/config";
 import chalk from "chalk";
+import path from "node:path";
+import assert from "node:assert";
 import { Command, Option } from "commander";
+import { readFile, stat } from "node:fs/promises";
+import type { AntelopeModuleConfig } from "@antelopejs/interface-core/config";
+
+import { ExecuteCMD } from "../../../command";
 import { ConfigLoader } from "../../../../config";
-import { registerGitDownloader } from "../../../../downloaders/git";
-import { registerLocalDownloader } from "../../../../downloaders/local";
-import { registerLocalFolderDownloader } from "../../../../downloaders/local-folder";
-import { registerPackageDownloader } from "../../../../downloaders/package";
-import { DownloaderRegistry } from "../../../../downloaders/registry";
-import { NodeFileSystem } from "../../../../filesystem";
 import { ModuleCache } from "../../../../module-cache";
+import { NodeFileSystem } from "../../../../filesystem";
+import { Options, readConfig, writeConfig } from "../../../common";
+import { registerGitDownloader } from "../../../../downloaders/git";
 import type { ModulePackageJson } from "../../../../module-manifest";
+import { DownloaderRegistry } from "../../../../downloaders/registry";
+import { registerLocalDownloader } from "../../../../downloaders/local";
+import { registerPackageDownloader } from "../../../../downloaders/package";
+import { displayBox, error, info, success, warning } from "../../../cli-ui";
+import { registerLocalFolderDownloader } from "../../../../downloaders/local-folder";
 import {
   fetchLatestVersion,
   toFloatingSpec,
   validateVersionSpec,
 } from "../../../../version-checker";
-import { displayBox, error, info, success, warning } from "../../../cli-ui";
-import { ExecuteCMD } from "../../../command";
-import { Options, readConfig, writeConfig } from "../../../common";
 
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
 const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];

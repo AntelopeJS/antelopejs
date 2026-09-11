@@ -1,10 +1,11 @@
-import { execSync } from "node:child_process";
 import fs from "node:fs";
-import path from "node:path";
 import chalk from "chalk";
+import path from "node:path";
+import { execSync } from "node:child_process";
+
+import { info, warning } from "./cli-ui";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import { info, warning } from "./cli-ui";
 
 const VALID_PACKAGE_MANAGERS = ["npm", "yarn", "pnpm"] as const;
 type PackageManagerName = (typeof VALID_PACKAGE_MANAGERS)[number];

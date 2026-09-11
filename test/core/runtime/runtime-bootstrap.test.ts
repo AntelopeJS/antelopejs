@@ -1,10 +1,11 @@
+import sinon from "sinon";
+import { expect } from "chai";
 import EventEmitter from "node:events";
 import { Logging } from "@antelopejs/interface-core/logging";
-import { expect } from "chai";
-import sinon from "sinon";
-import { ConfigLoader } from "../../../src/core/config/config-loader";
-import { ShutdownManager } from "../../../src/core/shutdown";
+
 import * as logging from "../../../src/logging";
+import { ShutdownManager } from "../../../src/core/shutdown";
+import { ConfigLoader } from "../../../src/core/config/config-loader";
 
 type ProcessEventName = "uncaughtException" | "unhandledRejection" | "warning";
 
@@ -38,9 +39,8 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
 }
 
 function loadBootstrapModule() {
-  const modulePath = require.resolve(
-    "../../../src/core/runtime/runtime-bootstrap",
-  );
+  const modulePath =
+    require.resolve("../../../src/core/runtime/runtime-bootstrap");
   delete require.cache[modulePath];
   return require(
     modulePath,
@@ -97,7 +97,7 @@ describe("runtime runtime-bootstrap", () => {
         (a: unknown[]) => a[0] === "Warning:" && a[1] instanceof Error,
       );
       expect(warnedErr).to.not.equal(undefined);
-      expect((warnedErr?.[1] as Error).message).to.equal("warned");
+      expect((warnedErr![1] as Error).message).to.equal("warned");
       expect(exitStub.calledWith(1)).to.equal(true);
     } finally {
       restoreProcessListeners(originalListeners);

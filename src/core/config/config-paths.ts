@@ -1,4 +1,5 @@
 import path from "node:path";
+
 import type { IFileSystem } from "../../types";
 
 export const TS_CONFIG_FILE = "antelope.config.ts";

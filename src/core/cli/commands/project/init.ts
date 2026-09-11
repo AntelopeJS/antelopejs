@@ -1,13 +1,14 @@
-import { mkdir, stat } from "node:fs/promises";
-import path from "node:path";
-import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import chalk from "chalk";
-import { Command } from "commander";
+import path from "node:path";
 import inquirer from "inquirer";
-import { displayBox, error, info, Spinner, warning } from "../../cli-ui";
-import { readConfig, writeConfig } from "../../common";
+import { Command } from "commander";
+import { mkdir, stat } from "node:fs/promises";
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
+
 import { moduleInitCommand } from "../module/init";
+import { readConfig, writeConfig } from "../../common";
 import { handlers, projectModulesAddCommand } from "./modules/add";
+import { displayBox, error, info, Spinner, warning } from "../../cli-ui";
 
 interface ProjectInitAnswers {
   name: string;

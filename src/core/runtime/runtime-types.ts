@@ -1,13 +1,14 @@
 import type { AntelopeLogging } from "@antelopejs/interface-core/config";
-import type { LoadedConfig } from "../config/config-loader";
-import type { ExpandedModuleConfig } from "../config/config-parser";
-import type { DownloaderRegistry } from "../downloaders/registry";
-import type { NodeFileSystem } from "../filesystem";
+
 import type { ModuleCache } from "../module-cache";
-import type { ModuleConfig, ModuleManager } from "../module-manager";
-import type { ModuleManifest } from "../module-manifest";
 import type { ShutdownManager } from "../shutdown";
+import type { NodeFileSystem } from "../filesystem";
 import type { RuntimePolicy } from "./runtime-policy";
+import type { ModuleManifest } from "../module-manifest";
+import type { LoadedConfig } from "../config/config-loader";
+import type { DownloaderRegistry } from "../downloaders/registry";
+import type { ExpandedModuleConfig } from "../config/config-parser";
+import type { ModuleConfig, ModuleManager } from "../module-manager";
 
 export interface ModuleOverrideRef {
   module: string;
