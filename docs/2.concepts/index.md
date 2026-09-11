@@ -35,4 +35,8 @@ Inspect the runtime environment and register development servers for discovery b
 ::card{icon="i-ph-book-open-text" title="Glossary" to="/docs/concepts/glossary"}
 Key terms and definitions used throughout the AntelopeJS documentation.
 ::
+
+::card{icon="i-ph-pulse" title="Diagnostics" to="/docs/concepts/diagnostics"}
+Subscribe to module lifecycle spans on node:diagnostics_channel for tracing and metrics.
+::
 ::

@@ -75,7 +75,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
     const reg = new RegisteringProxy<(id: string) => void>();
     neutralizeInterfaceAsyncProxies({ reg }, "optional-iface");
 
-    const lifecycle = new ModuleLifecycle("mod-async-start");
+    const lifecycle = new ModuleLifecycle("mod-async-start", "1.0.0");
     lifecycle.setCallbacks({
       start: async () => {
         await new Promise((resolve) => {

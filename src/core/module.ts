@@ -5,6 +5,11 @@ import {
   RunWithModuleContext,
 } from "@antelopejs/interface-core/modules";
 import { type ModuleCallbacks, ModuleState } from "../types";
+import {
+  ModuleDiagnostics,
+  type ModuleDiagnosticsContext,
+  moduleDiagnosticsContext,
+} from "./diagnostics";
 import { ModuleLifecycle } from "./module-lifecycle";
 import type { ModuleManifest } from "./module-manifest";
 
@@ -33,7 +38,7 @@ export class Module {
   ) {
     this.id = this.manifest.name;
     this.version = this.manifest.version;
-    this.lifecycle = new ModuleLifecycle(this.id);
+    this.lifecycle = new ModuleLifecycle(this.id, this.version);
     this.executionContext = {
       module: this.id,
       owner: `${this.id}${MODULE_OWNER_SEPARATOR}${nextModuleOwner++}`,
@@ -42,6 +47,10 @@ export class Module {
 
   get state(): ModuleLifecycle["state"] {
     return this.lifecycle.state;
+  }
+
+  private diagnosticsContext(): ModuleDiagnosticsContext {
+    return moduleDiagnosticsContext(this.id, this.version);
   }
 
   setProviderRoutes(
@@ -83,6 +92,7 @@ export class Module {
       try {
         await this.manifest.reload();
         this.version = this.manifest.version;
+        this.lifecycle.setVersion(this.version);
       } catch (err) {
         Logger.Error(err);
         throw err;
@@ -98,7 +108,10 @@ export class Module {
 
     await RunWithModuleContext(this.executionContext, async () => {
       try {
-        this.callbacks = await this.loader(this.manifest.main);
+        this.callbacks = await ModuleDiagnostics.load.tracePromise(
+          async () => this.loader(this.manifest.main),
+          this.diagnosticsContext(),
+        );
         Logger.Debug(`Successfully loaded module ${this.id}`);
       } catch (err) {
         Logger.Error(`Failed to load module ${this.id}`, err);
