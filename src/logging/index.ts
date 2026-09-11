@@ -6,16 +6,9 @@ import eventLog, {
 import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
 import { terminalDisplay } from "../core/cli/terminal-display";
 import { mergeDeep } from "../utils/object";
-import { LogLevel } from "./log-formatter";
-import { Logger } from "./logger";
-
-export { LogFilter } from "./log-filter";
-export type { LogEntry } from "./log-formatter";
-export { LogFormatter, LogLevel } from "./log-formatter";
-export type { LogTransport } from "./logger";
-export { Logger } from "./logger";
 
 const DEFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+const CORE_MODULE_NAME = "core";
 const LOG_SUFFIX = "{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}";
 
 export const levelNames: Record<number, string> = {
@@ -48,7 +41,6 @@ export const defaultConfigLogging: AntelopeLogging = {
   dateFormat: DEFAULT_DATE_FORMAT,
 };
 
-let globalLogger: Logger | null = null;
 let eventLogUnregister: (() => void) | null = null;
 let loggingConfig: AntelopeLogging = defaultConfigLogging;
 
@@ -102,24 +94,15 @@ function shouldIgnoreChannel(log: Log): boolean {
   return filter > log.levelId;
 }
 
-function shouldIgnoreModule(module?: string): boolean {
-  const tracking = loggingConfig.moduleTracking;
-  if (!tracking?.enabled) {
-    return false;
+function shouldIgnoreModule(module: string): boolean {
+  const excludes = loggingConfig.moduleTracking?.excludes ?? [];
+  const includes = loggingConfig.moduleTracking?.includes ?? [];
+
+  if (excludes.includes(module)) {
+    return true;
   }
 
-  const excludes = tracking.excludes ?? [];
-  const includes = tracking.includes ?? [];
-
-  if (excludes.length > 0) {
-    return excludes.includes(module ?? "");
-  }
-
-  if (includes.length > 0) {
-    return !includes.includes(module ?? "");
-  }
-
-  return false;
+  return includes.length > 0 && !includes.includes(module);
 }
 
 function clearChannelCache(): void {
@@ -141,30 +124,28 @@ function configureFilters(): void {
   }
 }
 
-function createDefaultTransport(): void {
-  if (!globalLogger) {
+function writeLogLine(log: Log, module?: string): void {
+  const message = formatLogMessageWithRightAlignedDate(
+    loggingConfig,
+    log,
+    module,
+  );
+
+  if (terminalDisplay.isSpinnerActive()) {
+    terminalDisplay.log(message);
     return;
   }
-  globalLogger.addTransport((entry) => {
-    const log: Log = {
-      time: entry.time.getTime(),
-      channel: entry.channel,
-      levelId: entry.level,
-      args: entry.args,
-    };
-    const message = formatLogMessageWithRightAlignedDate(
-      loggingConfig,
-      log,
-      entry.module,
-    );
-    const stream =
-      entry.level >= LogLevel.ERROR ? process.stderr : process.stdout;
-    if (terminalDisplay.isSpinnerActive()) {
-      terminalDisplay.log(message);
-    } else {
-      stream.write(`${message}\n`);
-    }
-  });
+
+  const stream =
+    log.levelId >= levelMap.error ? process.stderr : process.stdout;
+  stream.write(`${message}\n`);
+}
+
+function resolveResponsibleModule(): string | undefined {
+  if (!loggingConfig.moduleTracking?.enabled) {
+    return undefined;
+  }
+  return GetResponsibleModule() || CORE_MODULE_NAME;
 }
 
 function registerLogHandler(): void {
@@ -172,78 +153,39 @@ function registerLogHandler(): void {
     if (shouldIgnoreChannel(log)) {
       return;
     }
-    const module = loggingConfig.moduleTracking?.enabled
-      ? GetResponsibleModule()
-      : undefined;
-    if (shouldIgnoreModule(module) || !globalLogger) {
+    const module = resolveResponsibleModule();
+    if (module !== undefined && shouldIgnoreModule(module)) {
       return;
     }
-    globalLogger.write(log.levelId as LogLevel, log.channel, log.args, module);
+    writeLogLine(log, module);
   };
   eventLog.register(handler);
   eventLogUnregister = () => eventLog.unregister(handler);
-}
-
-function initializeLogger(): void {
-  globalLogger = new Logger();
-  globalLogger.setMinLevel(LogLevel.INFO);
-  if (loggingConfig.channelFilter) {
-    for (const [channel, level] of Object.entries(
-      loggingConfig.channelFilter,
-    )) {
-      globalLogger.setChannelLevel(
-        channel,
-        resolveLevelValue(level) as LogLevel,
-      );
-    }
-  }
-  if (loggingConfig.moduleTracking?.enabled) {
-    globalLogger.setModuleTracking(true);
-    globalLogger.setModuleIncludes(loggingConfig.moduleTracking.includes ?? []);
-    globalLogger.setModuleExcludes(loggingConfig.moduleTracking.excludes ?? []);
-  }
-  createDefaultTransport();
-  registerLogHandler();
 }
 
 export function setupAntelopeProjectLogging(config?: AntelopeLogging): void {
   loggingConfig = mergeDeep({}, defaultConfigLogging, config);
   clearChannelCache();
 
-  if (!loggingConfig.enabled) {
-    if (eventLogUnregister) {
-      eventLogUnregister();
-      eventLogUnregister = null;
-    }
-    globalLogger = null;
-    return;
-  }
-
   if (eventLogUnregister) {
     eventLogUnregister();
     eventLogUnregister = null;
   }
 
+  if (!loggingConfig.enabled) {
+    return;
+  }
+
   configureFilters();
-  initializeLogger();
+  registerLogHandler();
 }
 
 export function addChannelFilter(channel: string, level: number): void {
   channelFilters[channel] = level;
   clearChannelCache();
 
-  if (loggingConfig) {
-    if (!loggingConfig.channelFilter) {
-      loggingConfig.channelFilter = {};
-    }
-    loggingConfig.channelFilter[channel] = level;
+  if (!loggingConfig.channelFilter) {
+    loggingConfig.channelFilter = {};
   }
-
-  if (globalLogger) {
-    globalLogger.setChannelLevel(channel, resolveLevelValue(level) as LogLevel);
-  }
-}
-
-export function getLogger(): Logger | null {
-  return globalLogger;
+  loggingConfig.channelFilter[channel] = level;
 }
