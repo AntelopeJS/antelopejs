@@ -21,9 +21,26 @@ describe("Version Check", () => {
     const warnStub = sinon.stub(cliUi, "warning");
     const execStub = () => Buffer.from("2.0.0");
 
-    await warnIfOutdated("1.0.0", execStub);
+    await warnIfOutdated("1.0.0", execStub, "npm");
 
-    expect(warnStub.callCount).to.equal(3);
+    expect(warnStub.callCount).to.equal(4);
+    expect(warnStub.getCall(2).args[0]).to.equal(
+      "Please update by running: ajs update",
+    );
+    expect(warnStub.getCall(3).args[0]).to.equal(
+      "Or update it directly with: npm install -g @antelopejs/core@latest",
+    );
+  });
+
+  it("suggests the detected package manager command", async () => {
+    const warnStub = sinon.stub(cliUi, "warning");
+    const execStub = () => Buffer.from("2.0.0");
+
+    await warnIfOutdated("1.0.0", execStub, "pnpm");
+
+    expect(warnStub.getCall(3).args[0]).to.equal(
+      "Or update it directly with: pnpm add -g @antelopejs/core@latest",
+    );
   });
 
   it("does not warn when up to date", async () => {
