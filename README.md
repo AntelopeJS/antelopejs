@@ -99,6 +99,8 @@ ajs update        # core plus every installed official plugin
 ajs update dms    # a single plugin
 ```
 
+`ajs update` reuses the package manager that installed the CLI globally: npm, pnpm, or Yarn Classic (Yarn 1, `yarn global add`). It updates one package at a time and stops at the first failure. When the CLI is not installed globally (a project dependency or a source checkout), it refuses to touch a global installation and asks you to update `@antelopejs/core` in the project instead.
+
 Plugins declare the core versions they support through `peerDependencies` on `@antelopejs/core`. When the installed plugin does not support the running CLI, the command stops with an error naming both versions instead of delegating.
 
 ## Documentation
