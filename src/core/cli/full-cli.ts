@@ -17,6 +17,8 @@ import {
   setupAntelopeProjectLogging,
 } from "../../logging";
 
+const HELP_COMMAND_NAME = "help";
+
 export function createCLI(version: string) {
   return new Command()
     .name("ajs")
@@ -43,7 +45,19 @@ export function createCLI(version: string) {
     .addCommand(cmdConfig())
     .addCommand(cmdUpdate())
     .addCommand(cmdPlugins())
-    .helpCommand("help [command]", `Display help for command`);
+    .helpCommand(`${HELP_COMMAND_NAME} [command]`, `Display help for command`);
+}
+
+export function coreCommandNames(
+  program: Command = createCLI(getCoreVersion()),
+): string[] {
+  return [
+    HELP_COMMAND_NAME,
+    ...program.commands.flatMap((command) => [
+      command.name(),
+      ...command.aliases(),
+    ]),
+  ];
 }
 
 // Main CLI function

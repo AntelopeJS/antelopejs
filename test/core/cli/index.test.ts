@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { createCLI } from "../../../src/core/cli/full-cli";
+import { coreCommandNames, createCLI } from "../../../src/core/cli/full-cli";
 import { formatOfficialPluginsHelp } from "../../../src/core/cli/plugin-registry";
 
 function commandNames(cmd: any): string[] {
@@ -8,6 +8,20 @@ function commandNames(cmd: any): string[] {
 }
 
 describe("CLI Entry Point", () => {
+  it("derives the never-delegated command names from the program", () => {
+    const names = coreCommandNames(createCLI("0.0.1"));
+
+    expect(names).to.include.members([
+      "config",
+      "help",
+      "module",
+      "plugin",
+      "plugins",
+      "project",
+      "update",
+    ]);
+  });
+
   it("lists official plugins in the root help", () => {
     expect(createCLI("0.0.1").description()).to.contain(
       formatOfficialPluginsHelp(),
