@@ -1,14 +1,16 @@
 import chalk from "chalk";
-import { join } from "node:path";
 import { Command } from "commander";
-import { readFileSync } from "node:fs";
 
 import { Options } from "./common";
 import { displayBanner } from "./cli-ui";
 import cmdConfig from "./commands/config";
 import cmdModule from "./commands/module";
+import cmdUpdate from "./commands/update";
+import cmdPlugins from "./commands/plugins";
 import cmdProject from "./commands/project";
+import { getCoreVersion } from "./core-version";
 import { warnIfOutdated } from "./version-check";
+import { formatOfficialPluginsHelp } from "./plugin-registry";
 import {
   addChannelFilter,
   defaultConfigLogging,
@@ -24,7 +26,11 @@ export function createCLI(version: string) {
         chalk.yellow`Commands:\n` +
         `  project    Create and manage AntelopeJS projects\n` +
         `  module     Work with individual modules and their interfaces\n` +
-        `  config     Configure CLI settings\n\n` +
+        `  config     Configure CLI settings\n` +
+        `  update     Update the CLI and its official plugins\n` +
+        `  plugins    List official plugins\n\n` +
+        chalk.yellow`Plugins:\n` +
+        `${formatOfficialPluginsHelp()}\n\n` +
         chalk.yellow`Examples:\n` +
         `  $ ajs project init my-app         Create a new project\n` +
         `  $ ajs module init my-module       Create a new module\n` +
@@ -35,17 +41,15 @@ export function createCLI(version: string) {
     .addCommand(cmdProject())
     .addCommand(cmdModule())
     .addCommand(cmdConfig())
+    .addCommand(cmdUpdate())
+    .addCommand(cmdPlugins())
     .helpCommand("help [command]", `Display help for command`);
 }
 
 // Main CLI function
 export const runCLI = async () => {
   try {
-    // Read version from package.json
-    const packageJson = JSON.parse(
-      readFileSync(join(__dirname, "../../../package.json"), "utf8"),
-    );
-    const version = packageJson.version;
+    const version = getCoreVersion();
 
     // Initialize logging with default configuration
     setupAntelopeProjectLogging(defaultConfigLogging);

@@ -42,6 +42,17 @@ describe("CLI dispatcher", () => {
     expect(runFullCLI.called).to.equal(false);
   });
 
+  it("keeps plugin management commands on the full CLI", async () => {
+    const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
+
+    await runCLI(["update"]);
+    await runCLI(["update", "dms"]);
+    await runCLI(["plugins"]);
+    await runCLI(["plugin", "list"]);
+
+    expect(runFullCLI.callCount).to.equal(4);
+  });
+
   it("keeps run, dev, and build on the full CLI workflows", async () => {
     const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
 
