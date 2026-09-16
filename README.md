@@ -58,6 +58,49 @@ To create a new project with the CLI:
 ajs project init <project-name>
 ```
 
+## Plugins
+
+Official plugins ship as separate global packages that add command groups to the `ajs` CLI. They are versioned and updated independently of the core.
+
+| Plugin | Package                    | Description           |
+| ------ | -------------------------- | --------------------- |
+| `dms`  | `@antelopejs/dms-frontend` | DMS frontend commands |
+
+Run a plugin command through the CLI:
+
+```bash
+ajs dms <command>
+```
+
+If the plugin is not installed, the CLI offers to install it globally with the same package manager that installed `@antelopejs/core`. You can also install it yourself:
+
+```bash
+pnpm add -g @antelopejs/dms-frontend
+```
+
+Each plugin also installs its own executable, so package scripts can call it directly:
+
+```bash
+ajs-dms <command>
+```
+
+Arguments, exit codes and termination signals pass through unchanged in both forms.
+
+List the official plugins and see which ones are installed:
+
+```bash
+ajs plugins
+```
+
+Keep the CLI and its plugins up to date:
+
+```bash
+ajs update        # core plus every installed official plugin
+ajs update dms    # a single plugin
+```
+
+Plugins declare the core versions they support through `peerDependencies` on `@antelopejs/core`. When the installed plugin does not support the running CLI, the command stops with an error naming both versions instead of delegating.
+
 ## Documentation
 
 - [Introduction](https://antelopejs.com/docs/get-started/introduction) — Why the same boundaries matter across your application and its dependencies
