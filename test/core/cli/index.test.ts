@@ -1,19 +1,47 @@
 import { expect } from "chai";
 
-import { createCLI } from "../../../src/core/cli/full-cli";
+import { coreCommandNames, createCLI } from "../../../src/core/cli/full-cli";
+import { formatOfficialPluginsHelp } from "../../../src/core/cli/plugin-registry";
 
 function commandNames(cmd: any): string[] {
   return cmd.commands.map((c: any) => c.name()).sort();
 }
 
 describe("CLI Entry Point", () => {
+  it("derives the never-delegated command names from the program", () => {
+    const names = coreCommandNames(createCLI("0.0.1"));
+
+    expect(names).to.include.members([
+      "config",
+      "help",
+      "module",
+      "plugin",
+      "plugins",
+      "project",
+      "update",
+    ]);
+  });
+
+  it("lists official plugins in the root help", () => {
+    expect(createCLI("0.0.1").description()).to.contain(
+      formatOfficialPluginsHelp(),
+    );
+  });
+
   it("should register all commands", () => {
     const program = createCLI("0.0.1");
     expect(commandNames(program)).to.include.members([
       "config",
       "module",
+      "plugins",
       "project",
+      "update",
     ]);
+
+    const plugins = program.commands.find((c: any) => c.name() === "plugins");
+    if (!plugins) throw new Error("plugins command missing");
+    expect(plugins.aliases()).to.include("plugin");
+    expect(commandNames(plugins)).to.include.members(["list"]);
 
     const project = program.commands.find((c: any) => c.name() === "project");
     expect(project).to.not.equal(undefined);

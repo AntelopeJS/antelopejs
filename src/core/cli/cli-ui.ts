@@ -147,6 +147,16 @@ export function error(message: string | Error): void {
   console.log(`${chalk.red.bold("✗")} ${text}`);
 }
 
+function failure(message: string | Error): void {
+  const text = message instanceof Error ? message.message : message;
+  console.error(`${chalk.red.bold("✗")} ${text}`);
+}
+
+export interface CommandOutput {
+  info(message: string): void;
+  error(message: string): void;
+}
+
 export function warning(message: string | Error): void {
   const text =
     message instanceof Error ? (message.stack ?? message.message) : message;
@@ -169,3 +179,8 @@ export function keyValue(
 ): string {
   return `${chalk.cyan(key)}: ${value}`;
 }
+
+export const consoleOutput: CommandOutput = {
+  info: (message: string) => info(message),
+  error: (message: string) => failure(message),
+};

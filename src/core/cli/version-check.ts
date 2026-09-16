@@ -2,6 +2,16 @@ import semver from "semver";
 import { type ExecSyncOptions, execSync } from "node:child_process";
 
 import { info, warning } from "./cli-ui";
+import { CORE_PACKAGE_NAME } from "./core-version";
+import type { PackageManagerName } from "./package-manager-name";
+import {
+  detectGlobalPackageManager,
+  formatGlobalCommand,
+  getGlobalInstallCommand,
+  getLatestPackageSpec,
+} from "./global-package-manager";
+
+const UPDATE_COMMAND = "ajs update";
 
 export async function warnIfOutdated(
   currentVersion: string,
@@ -9,6 +19,7 @@ export async function warnIfOutdated(
     command: string,
     options: ExecSyncOptions,
   ) => Buffer | string = execSync,
+  packageManager: PackageManagerName = detectGlobalPackageManager(),
 ): Promise<void> {
   try {
     const latestVersion = exec("npm view @antelopejs/core version", {
@@ -22,8 +33,14 @@ export async function warnIfOutdated(
         `You are using an outdated version of AntelopeJS (${currentVersion}).`,
       );
       warning(`The latest version is ${latestVersion}.`);
+      warning(`Please update by running: ${UPDATE_COMMAND}`);
       warning(
-        "Please update by running: npm install -g @antelopejs/core@latest",
+        `Or update it directly with: ${formatGlobalCommand(
+          getGlobalInstallCommand(
+            getLatestPackageSpec(CORE_PACKAGE_NAME),
+            packageManager,
+          ),
+        )}`,
       );
     }
   } catch (error) {
