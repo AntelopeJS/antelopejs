@@ -2,6 +2,16 @@
 
 const START_COMMAND = "start";
 const PROJECT_COMMAND = "project";
+const CORE_COMMANDS = new Set([
+  "config",
+  "help",
+  "module",
+  "project",
+  "--help",
+  "--version",
+  "-h",
+  "-v",
+]);
 
 export function isProductionStartInvocation(args: string[]): boolean {
   return args[0] === PROJECT_COMMAND && args[1] === START_COMMAND;
@@ -10,6 +20,14 @@ export function isProductionStartInvocation(args: string[]): boolean {
 export async function runCLI(
   args: string[] = process.argv.slice(2),
 ): Promise<void> {
+  if (!CORE_COMMANDS.has(args[0] ?? "")) {
+    const { delegateToPlugin } = await import("./plugin");
+    const result = await delegateToPlugin(args);
+    if (result.isDelegated) {
+      process.exitCode = result.exitCode;
+      return;
+    }
+  }
   if (isProductionStartInvocation(args)) {
     const { runProductionStart } = await import("./production-start");
     await runProductionStart(args.slice(2));
