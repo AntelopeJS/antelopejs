@@ -6,11 +6,11 @@ import { execSync } from "node:child_process";
 import { info, warning } from "./cli-ui";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-
-const VALID_PACKAGE_MANAGERS = ["npm", "yarn", "pnpm"] as const;
-type PackageManagerName = (typeof VALID_PACKAGE_MANAGERS)[number];
-
-const DEFAULT_PACKAGE_MANAGER: PackageManagerName = "npm";
+import {
+  DEFAULT_PACKAGE_MANAGER,
+  PACKAGE_MANAGER_NAMES,
+  type PackageManagerName,
+} from "./package-manager-name";
 const PACKAGE_MANAGER_PATTERN = /^(npm|yarn|pnpm)@([0-9A-Za-z._+-]+)$/;
 const LOCKFILES: Record<PackageManagerName, string[]> = {
   npm: ["npm-shrinkwrap.json", "package-lock.json"],
@@ -93,7 +93,7 @@ function normalizePackageManager(packageManager?: string): PackageManagerName {
   if (!packageManager) {
     return DEFAULT_PACKAGE_MANAGER;
   }
-  return VALID_PACKAGE_MANAGERS.includes(packageManager as PackageManagerName)
+  return PACKAGE_MANAGER_NAMES.includes(packageManager as PackageManagerName)
     ? (packageManager as PackageManagerName)
     : DEFAULT_PACKAGE_MANAGER;
 }
@@ -145,7 +145,7 @@ export async function getModulePackageManager(
       return undefined;
     }
     return PACKAGE_MANAGER_PATTERN.test(packageJson.packageManager) ||
-      VALID_PACKAGE_MANAGERS.includes(packageJson.packageManager)
+      PACKAGE_MANAGER_NAMES.includes(packageJson.packageManager)
       ? packageJson.packageManager
       : undefined;
   } catch {

@@ -1,30 +1,28 @@
 import chalk from "chalk";
 
 import { CORE_PACKAGE_NAME } from "./core-version";
+import { runGlobalInstall } from "./command-runner";
 import { consoleOutput, type CommandOutput } from "./cli-ui";
+import type { InheritedProcessOptions } from "./process-runner";
+import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./exit-codes";
 import { findExecutable, type ExecutableLookup } from "./executable-lookup";
-import { readPluginPackage, type PluginPackageLookup } from "./plugin-package";
 import {
-  nodeProcessRunner,
-  runInheritedProcess,
-  type ProcessRunner,
-} from "./process-runner";
+  resolvePluginPackage,
+  type PluginPackageLookup,
+} from "./plugin-package";
 import {
   findOfficialPlugin,
   listOfficialPlugins,
   officialPluginNames,
+  PLUGIN_NAME_COLUMN_WIDTH,
   type OfficialPlugin,
 } from "./plugin-registry";
 import {
-  detectGlobalPackageManager,
-  formatGlobalCommand,
-  getGlobalInstallCommand,
-  type GlobalPackageManagerName,
+  detectGlobalInstallation,
+  getLatestPackageSpec,
+  type GlobalInstallation,
+  type GlobalInstallationDetector,
 } from "./global-package-manager";
-
-const LATEST_TAG = "latest";
-const SUCCESS_EXIT_CODE = 0;
-const FAILURE_EXIT_CODE = 1;
 
 export interface PluginStatus {
   plugin: OfficialPlugin;
@@ -38,10 +36,15 @@ export interface PluginStatusDependencies {
 }
 
 export interface PluginManagementDependencies extends PluginStatusDependencies {
-  processRunner?: ProcessRunner;
-  packageManager?: GlobalPackageManagerName;
+  processOptions?: InheritedProcessOptions;
+  detectInstallation?: GlobalInstallationDetector;
   output?: CommandOutput;
 }
+
+const NOT_GLOBAL_MESSAGES = [
+  "ajs is not installed globally; update it in the project instead.",
+  `Run your project package manager to update ${CORE_PACKAGE_NAME} in this project.`,
+];
 
 async function readPluginStatus(
   plugin: OfficialPlugin,
@@ -52,10 +55,11 @@ async function readPluginStatus(
   if (!executablePath) {
     return { plugin };
   }
-  const packageJson = await readPluginPackage(executablePath, {
-    ...dependencies.packageLookup,
-    expectedName: plugin.package,
-  });
+  const packageJson = await resolvePluginPackage(
+    plugin.package,
+    executablePath,
+    dependencies.packageLookup,
+  );
   return { plugin, executablePath, version: packageJson?.version };
 }
 
@@ -73,29 +77,25 @@ export function formatPluginStatus(status: PluginStatus): string {
   const state = status.executablePath
     ? chalk.green(`installed${status.version ? ` (${status.version})` : ""}`)
     : chalk.dim("not installed");
-  return `  ${chalk.cyan(status.plugin.name.padEnd(10))} ${status.plugin.package} - ${state}\n    ${chalk.dim(status.plugin.description)}`;
+  return `  ${chalk.cyan(status.plugin.name.padEnd(PLUGIN_NAME_COLUMN_WIDTH))} ${status.plugin.package} - ${state}\n    ${chalk.dim(status.plugin.description)}`;
 }
 
-async function runGlobalInstall(
+async function updatePackage(
   packageName: string,
+  installation: GlobalInstallation,
   dependencies: PluginManagementDependencies,
 ): Promise<number> {
   const output = dependencies.output ?? consoleOutput;
-  const command = getGlobalInstallCommand(
-    `${packageName}@${LATEST_TAG}`,
-    dependencies.packageManager ?? detectGlobalPackageManager(),
-  );
-  const formatted = formatGlobalCommand(command);
-  output.info(`Running: ${formatted}`);
-  const exitCode = await runInheritedProcess(
-    command.executable,
-    command.args,
-    dependencies.processRunner ?? nodeProcessRunner,
-  );
-  if (exitCode !== SUCCESS_EXIT_CODE) {
-    output.error(`Update failed: ${formatted}`);
+  const execution = await runGlobalInstall({
+    packageSpec: getLatestPackageSpec(packageName),
+    packageManager: installation.packageManager,
+    output,
+    processOptions: dependencies.processOptions,
+  });
+  if (execution.exitCode !== SUCCESS_EXIT_CODE) {
+    output.error(`Update failed: ${execution.command}`);
   }
-  return exitCode;
+  return execution.exitCode;
 }
 
 async function resolveUpdateTargets(
@@ -126,12 +126,21 @@ export async function runUpdate(
   pluginName: string | undefined,
   dependencies: PluginManagementDependencies = {},
 ): Promise<number> {
+  const output = dependencies.output ?? consoleOutput;
+  const detectInstallation =
+    dependencies.detectInstallation ?? (() => detectGlobalInstallation());
+  const installation = detectInstallation();
+  if (!installation) {
+    NOT_GLOBAL_MESSAGES.forEach((message) => output.error(message));
+    return FAILURE_EXIT_CODE;
+  }
+
   const targets = await resolveUpdateTargets(pluginName, dependencies);
   if (!targets) {
     return FAILURE_EXIT_CODE;
   }
   for (const target of targets) {
-    const exitCode = await runGlobalInstall(target, dependencies);
+    const exitCode = await updatePackage(target, installation, dependencies);
     if (exitCode !== SUCCESS_EXIT_CODE) {
       return exitCode;
     }

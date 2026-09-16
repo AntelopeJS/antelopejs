@@ -1,3 +1,5 @@
+export const PLUGIN_NAME_COLUMN_WIDTH = 10;
+
 interface OfficialPluginDefinition {
   package: string;
   bin: string;
@@ -39,7 +41,7 @@ export function formatOfficialPluginsHelp(): string {
   return listOfficialPlugins()
     .map(
       (plugin) =>
-        `  ${plugin.name.padEnd(10)} ${plugin.description} (${plugin.package})`,
+        `  ${plugin.name.padEnd(PLUGIN_NAME_COLUMN_WIDTH)} ${plugin.description} (${plugin.package})`,
     )
     .join("\n");
 }

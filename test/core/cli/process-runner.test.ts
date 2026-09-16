@@ -1,94 +1,21 @@
 import { expect } from "chai";
-import type { spawn } from "node:child_process";
 
+import { runInheritedProcess } from "../../../src/core/cli/process-runner";
 import {
-  runInheritedProcess,
-  type ProcessRunner,
-  type SignalTarget,
-} from "../../../src/core/cli/process-runner";
-
-interface FakeSignalTarget extends SignalTarget {
-  emit(signal: NodeJS.Signals): void;
-  listenerCount(signal: NodeJS.Signals): number;
-}
-
-function createSignalTarget(): FakeSignalTarget {
-  const listeners = new Map<NodeJS.Signals, (() => void)[]>();
-  return {
-    on: (signal, listener) =>
-      listeners.set(signal, [...(listeners.get(signal) ?? []), listener]),
-    off: (signal, listener) =>
-      listeners.set(
-        signal,
-        (listeners.get(signal) ?? []).filter((entry) => entry !== listener),
-      ),
-    emit: (signal) => (listeners.get(signal) ?? []).forEach((entry) => entry()),
-    listenerCount: (signal) => (listeners.get(signal) ?? []).length,
-  };
-}
-
-type CloseHandler = (
-  code: number | null,
-  signal: NodeJS.Signals | null,
-) => void;
-type ErrorHandler = (error: Error) => void;
-
-interface ControllableChild {
-  kills: NodeJS.Signals[];
-  close(code: number | null, signal?: NodeJS.Signals | null): void;
-  fail(error: Error): void;
-}
-
-interface ControllableRunner {
-  runner: ProcessRunner;
-  calls: { executable: string; args: string[]; options: unknown }[];
-  child: ControllableChild;
-}
-
-function createControllableRunner(): ControllableRunner {
-  const calls: { executable: string; args: string[]; options: unknown }[] = [];
-  const kills: NodeJS.Signals[] = [];
-  let closeHandler: CloseHandler | undefined;
-  let errorHandler: ErrorHandler | undefined;
-
-  const child = {
-    kill(signal: NodeJS.Signals) {
-      kills.push(signal);
-      return true;
-    },
-    once(event: string, handler: CloseHandler | ErrorHandler) {
-      if (event === "close") closeHandler = handler as CloseHandler;
-      if (event === "error") errorHandler = handler as ErrorHandler;
-      return child;
-    },
-  };
-
-  return {
-    calls,
-    child: {
-      kills,
-      close: (code, signal = null) => closeHandler?.(code, signal),
-      fail: (error) => errorHandler?.(error),
-    },
-    runner: {
-      spawn: ((executable: string, args: string[], options: unknown) => {
-        calls.push({ executable, args, options });
-        return child;
-      }) as unknown as typeof spawn,
-    },
-  };
-}
+  createControllableProcessRunner,
+  createSignalTarget,
+} from "../../helpers/cli-plugins";
 
 describe("Inherited process runner", () => {
   it("spawns with inherited stdio and verbatim arguments", async () => {
-    const { runner, calls, child } = createControllableRunner();
+    const { runner, calls, close } = createControllableProcessRunner();
 
     const result = runInheritedProcess(
       "ajs-dms",
       ["build", "--", "--flag", "value with spaces"],
-      runner,
+      { processRunner: runner, platform: "linux" },
     );
-    child.close(0);
+    close(0);
 
     expect(await result).to.equal(0);
     expect(calls).to.deep.equal([
@@ -101,54 +28,67 @@ describe("Inherited process runner", () => {
   });
 
   it("propagates the child exit code", async () => {
-    const { runner, child } = createControllableRunner();
+    const { runner, close } = createControllableProcessRunner();
 
-    const result = runInheritedProcess("ajs-dms", [], runner);
-    child.close(42);
+    const result = runInheritedProcess("ajs-dms", [], {
+      processRunner: runner,
+    });
+    close(42);
 
     expect(await result).to.equal(42);
   });
 
   it("converts a terminating signal into a shell exit code", async () => {
-    const { runner, child } = createControllableRunner();
+    const { runner, close } = createControllableProcessRunner();
 
-    const result = runInheritedProcess("ajs-dms", [], runner);
-    child.close(null, "SIGTERM");
+    const result = runInheritedProcess("ajs-dms", [], {
+      processRunner: runner,
+    });
+    close(null, "SIGTERM");
 
     expect(await result).to.equal(143);
   });
 
   it("falls back to a failure code when neither code nor signal is reported", async () => {
-    const { runner, child } = createControllableRunner();
+    const { runner, close } = createControllableProcessRunner();
 
-    const result = runInheritedProcess("ajs-dms", [], runner);
-    child.close(null, null);
+    const result = runInheritedProcess("ajs-dms", [], {
+      processRunner: runner,
+    });
+    close(null, null);
 
     expect(await result).to.equal(1);
   });
 
   it("forwards signals to the child and stops listening after exit", async () => {
-    const { runner, child } = createControllableRunner();
-    const signals = createSignalTarget();
+    const { runner, kills, close } = createControllableProcessRunner();
+    const signalTarget = createSignalTarget();
 
-    const result = runInheritedProcess("ajs-dms", [], runner, signals);
-    signals.emit("SIGINT");
-    expect(child.kills).to.deep.equal(["SIGINT"]);
-    expect(signals.listenerCount("SIGTERM")).to.equal(1);
+    const result = runInheritedProcess("ajs-dms", [], {
+      processRunner: runner,
+      signalTarget,
+    });
+    signalTarget.emit("SIGINT");
 
-    child.close(null, "SIGINT");
+    expect(kills).to.deep.equal(["SIGINT"]);
+    expect(signalTarget.listenerCount("SIGTERM")).to.equal(1);
+
+    close(null, "SIGINT");
 
     expect(await result).to.equal(130);
-    expect(signals.listenerCount("SIGINT")).to.equal(0);
-    expect(signals.listenerCount("SIGTERM")).to.equal(0);
+    expect(signalTarget.listenerCount("SIGINT")).to.equal(0);
+    expect(signalTarget.listenerCount("SIGTERM")).to.equal(0);
   });
 
   it("rejects when the child cannot be spawned", async () => {
-    const { runner, child } = createControllableRunner();
-    const signals = createSignalTarget();
+    const { runner, fail } = createControllableProcessRunner();
+    const signalTarget = createSignalTarget();
 
-    const result = runInheritedProcess("ajs-dms", [], runner, signals);
-    child.fail(new Error("spawn failed"));
+    const result = runInheritedProcess("ajs-dms", [], {
+      processRunner: runner,
+      signalTarget,
+    });
+    fail(new Error("spawn failed"));
 
     let thrown: unknown;
     try {
@@ -158,6 +98,50 @@ describe("Inherited process runner", () => {
     }
 
     expect((thrown as Error)?.message).to.equal("spawn failed");
-    expect(signals.listenerCount("SIGINT")).to.equal(0);
+    expect(signalTarget.listenerCount("SIGINT")).to.equal(0);
+  });
+
+  describe("on Windows", () => {
+    it("runs shell script shims through the shell", async () => {
+      const { runner, calls, close } = createControllableProcessRunner();
+
+      const result = runInheritedProcess("npm.cmd", ["install", "-g", "pkg"], {
+        processRunner: runner,
+        platform: "win32",
+      });
+      close(0);
+      await result;
+
+      expect(calls[0].options).to.deep.equal({
+        stdio: "inherit",
+        shell: true,
+      });
+    });
+
+    it("does not use the shell for real executables", async () => {
+      const { runner, calls, close } = createControllableProcessRunner();
+
+      const result = runInheritedProcess("ajs-dms.exe", [], {
+        processRunner: runner,
+        platform: "win32",
+      });
+      close(0);
+      await result;
+
+      expect(calls[0].options).to.deep.equal({ stdio: "inherit" });
+    });
+
+    it("never uses the shell on other platforms", async () => {
+      const { runner, calls, close } = createControllableProcessRunner();
+
+      const result = runInheritedProcess("weird.cmd", [], {
+        processRunner: runner,
+        platform: "linux",
+      });
+      close(0);
+      await result;
+
+      expect(calls[0].options).to.deep.equal({ stdio: "inherit" });
+    });
   });
 });

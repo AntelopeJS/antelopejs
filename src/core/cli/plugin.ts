@@ -1,15 +1,14 @@
 import { getCoreVersion } from "./core-version";
 import type { PluginPackageLookup } from "./plugin-package";
 import { consoleOutput, type CommandOutput } from "./cli-ui";
+import type { InheritedProcessOptions } from "./process-runner";
+import { runCommand, runGlobalInstall } from "./command-runner";
+import type { PackageManagerName } from "./package-manager-name";
+import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./exit-codes";
 import { findExecutable, type ExecutableLookup } from "./executable-lookup";
 import {
-  nodeProcessRunner,
-  runInheritedProcess,
-  type ProcessRunner,
-} from "./process-runner";
-import {
   checkPluginCompatibility,
-  formatIncompatibilityMessages,
+  reportCompatibility,
 } from "./plugin-compatibility";
 import {
   findOfficialPlugin,
@@ -20,41 +19,43 @@ import {
   detectGlobalPackageManager,
   formatGlobalCommand,
   getGlobalInstallCommand,
-  type GlobalPackageManagerName,
 } from "./global-package-manager";
 
 const PLUGIN_PREFIX = "ajs-";
-const PLUGIN_FAILURE_EXIT_CODE = 1;
-const SUCCESS_EXIT_CODE = 0;
 
 type PluginInstallPrompt = (message: string) => Promise<boolean>;
 
-export interface PluginDelegationResult {
-  isDelegated: boolean;
-  exitCode?: number;
+interface InstallConfirmation {
+  confirmed: boolean;
 }
 
+interface DelegatedPluginResult {
+  isDelegated: true;
+  exitCode: number;
+}
+
+interface UndelegatedPluginResult {
+  isDelegated: false;
+}
+
+export type PluginDelegationResult =
+  | DelegatedPluginResult
+  | UndelegatedPluginResult;
+
 export interface PluginDelegationDependencies {
-  processRunner?: ProcessRunner;
+  processOptions?: InheritedProcessOptions;
   lookupExecutable?: ExecutableLookup;
   packageLookup?: PluginPackageLookup;
   confirmInstall?: PluginInstallPrompt;
   isInteractive?: () => boolean;
   coreVersion?: string;
-  packageManager?: GlobalPackageManagerName;
+  packageManager?: PackageManagerName;
   output?: CommandOutput;
 }
 
-interface DelegationContext {
-  processRunner: ProcessRunner;
-  lookupExecutable: ExecutableLookup;
-  packageLookup: PluginPackageLookup;
-  confirmInstall: PluginInstallPrompt;
-  isInteractive: () => boolean;
-  coreVersion: string;
-  packageManager: GlobalPackageManagerName;
-  output: CommandOutput;
-}
+type DelegationContext = Required<PluginDelegationDependencies>;
+
+const NOT_DELEGATED: UndelegatedPluginResult = { isDelegated: false };
 
 function pluginBinary(command: string): string {
   return `${PLUGIN_PREFIX}${command}`;
@@ -66,7 +67,7 @@ function isInteractiveTerminal(): boolean {
 
 async function promptForInstall(message: string): Promise<boolean> {
   const inquirer = (await import("inquirer")).default;
-  const { confirmed } = await inquirer.prompt<{ confirmed: boolean }>([
+  const { confirmed } = await inquirer.prompt<InstallConfirmation>([
     { type: "confirm", name: "confirmed", message, default: true },
   ]);
   return confirmed;
@@ -75,27 +76,35 @@ async function promptForInstall(message: string): Promise<boolean> {
 function createContext(
   dependencies: PluginDelegationDependencies,
 ): DelegationContext {
+  const packageManager =
+    dependencies.packageManager ?? detectGlobalPackageManager();
   return {
-    processRunner: dependencies.processRunner ?? nodeProcessRunner,
+    processOptions: dependencies.processOptions ?? {},
     lookupExecutable: dependencies.lookupExecutable ?? findExecutable,
-    packageLookup: dependencies.packageLookup ?? {},
+    packageLookup: dependencies.packageLookup ?? { packageManager },
     confirmInstall: dependencies.confirmInstall ?? promptForInstall,
     isInteractive: dependencies.isInteractive ?? isInteractiveTerminal,
     coreVersion: dependencies.coreVersion ?? getCoreVersion(),
-    packageManager: dependencies.packageManager ?? detectGlobalPackageManager(),
+    packageManager,
     output: dependencies.output ?? consoleOutput,
   };
+}
+
+function delegated(exitCode: number): DelegatedPluginResult {
+  return { isDelegated: true, exitCode };
 }
 
 async function installPlugin(
   plugin: OfficialPlugin,
   context: DelegationContext,
 ): Promise<boolean> {
-  const command = getGlobalInstallCommand(
-    plugin.package,
-    context.packageManager,
+  const formatted = formatGlobalCommand(
+    getGlobalInstallCommand(
+      plugin.package,
+      context.packageManager,
+      context.processOptions.platform,
+    ),
   );
-  const formatted = formatGlobalCommand(command);
   const label = officialPluginLabel(plugin);
 
   if (!context.isInteractive()) {
@@ -112,14 +121,14 @@ async function installPlugin(
     return false;
   }
 
-  context.output.info(`Running: ${formatted}`);
-  const exitCode = await runInheritedProcess(
-    command.executable,
-    command.args,
-    context.processRunner,
-  );
-  if (exitCode !== SUCCESS_EXIT_CODE) {
-    context.output.error(`Installation failed: ${formatted}`);
+  const execution = await runGlobalInstall({
+    packageSpec: plugin.package,
+    packageManager: context.packageManager,
+    output: context.output,
+    processOptions: context.processOptions,
+  });
+  if (execution.exitCode !== SUCCESS_EXIT_CODE) {
+    context.output.error(`Installation failed: ${execution.command}`);
     return false;
   }
   return true;
@@ -152,32 +161,28 @@ async function isCompatible(
     plugin,
     context.packageLookup,
   );
-  if (compatibility.isCompatible) {
-    return true;
-  }
-  for (const message of formatIncompatibilityMessages(
+  const report = reportCompatibility(
     plugin,
     context.coreVersion,
     compatibility,
-  )) {
-    context.output.error(message);
-  }
-  return false;
+  );
+  report.messages.forEach((message) => context.output.error(message));
+  return report.canDelegate;
 }
 
 async function runPlugin(
   executable: string,
   args: string[],
   context: DelegationContext,
-): Promise<PluginDelegationResult> {
-  return {
-    isDelegated: true,
-    exitCode: await runInheritedProcess(
+): Promise<DelegatedPluginResult> {
+  return delegated(
+    await runCommand(
       executable,
       args.slice(1),
-      context.processRunner,
+      context.output,
+      context.processOptions,
     ),
-  };
+  );
 }
 
 async function delegateToOfficialPlugin(
@@ -188,7 +193,7 @@ async function delegateToOfficialPlugin(
 ): Promise<PluginDelegationResult> {
   const resolved = executable ?? (await installAndLocate(plugin, context));
   if (!resolved || !(await isCompatible(resolved, plugin, context))) {
-    return { isDelegated: true, exitCode: PLUGIN_FAILURE_EXIT_CODE };
+    return delegated(FAILURE_EXIT_CODE);
   }
   return runPlugin(resolved, args, context);
 }
@@ -199,7 +204,7 @@ export async function delegateToPlugin(
 ): Promise<PluginDelegationResult> {
   const command = args[0];
   if (!command || command.startsWith("-")) {
-    return { isDelegated: false };
+    return NOT_DELEGATED;
   }
 
   const context = createContext(dependencies);
@@ -209,9 +214,7 @@ export async function delegateToPlugin(
   );
 
   if (!plugin) {
-    return executable
-      ? runPlugin(executable, args, context)
-      : { isDelegated: false };
+    return executable ? runPlugin(executable, args, context) : NOT_DELEGATED;
   }
   return delegateToOfficialPlugin(plugin, executable, args, context);
 }

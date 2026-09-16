@@ -1,55 +1,89 @@
 import { constants } from "node:os";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn } from "node:child_process";
 
-const DEFAULT_FAILURE_EXIT_CODE = 1;
-const SIGNAL_EXIT_CODE_OFFSET = 128;
-const FORWARDED_SIGNALS: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP"];
+import { requiresShell } from "./global-package-manager";
+import { FAILURE_EXIT_CODE, SIGNAL_EXIT_CODE_OFFSET } from "./exit-codes";
+
+const FORWARDED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+const SIGNAL_NUMBERS: Record<string, number> = constants.signals;
+
+export type ForwardedSignal = (typeof FORWARDED_SIGNALS)[number];
+
+export type ProcessCloseListener = (
+  code: number | null,
+  signal: string | null,
+) => void;
+
+export type ProcessErrorListener = (error: Error) => void;
+
+export interface SpawnedProcess {
+  once(event: "error", listener: ProcessErrorListener): unknown;
+  once(event: "close", listener: ProcessCloseListener): unknown;
+  kill(signal: ForwardedSignal): unknown;
+}
+
+export interface InheritedSpawnOptions {
+  stdio: "inherit";
+  shell?: boolean;
+}
 
 export interface ProcessRunner {
-  spawn: typeof spawn;
+  spawn(
+    executable: string,
+    args: string[],
+    options: InheritedSpawnOptions,
+  ): SpawnedProcess;
 }
 
 export interface SignalTarget {
-  on(signal: NodeJS.Signals, listener: () => void): unknown;
-  off(signal: NodeJS.Signals, listener: () => void): unknown;
+  on(signal: ForwardedSignal, listener: () => void): unknown;
+  off(signal: ForwardedSignal, listener: () => void): unknown;
 }
 
-export const nodeProcessRunner: ProcessRunner = { spawn };
+export interface InheritedProcessOptions {
+  processRunner?: ProcessRunner;
+  signalTarget?: SignalTarget;
+  platform?: NodeJS.Platform;
+}
 
-function exitCodeFromSignal(signal: NodeJS.Signals): number {
-  const signalNumber = constants.signals[signal];
+interface SignalForwarder {
+  signal: ForwardedSignal;
+  handler: () => void;
+}
+
+const nodeProcessRunner: ProcessRunner = { spawn };
+
+function exitCodeFromSignal(signal: string): number {
+  const signalNumber = SIGNAL_NUMBERS[signal];
   return signalNumber
     ? SIGNAL_EXIT_CODE_OFFSET + signalNumber
-    : DEFAULT_FAILURE_EXIT_CODE;
+    : FAILURE_EXIT_CODE;
 }
 
-function exitCodeFromClose(
-  code: number | null,
-  signal: NodeJS.Signals | null,
-): number {
+function exitCodeFromClose(code: number | null, signal: string | null): number {
   if (code !== null) {
     return code;
   }
-  return signal ? exitCodeFromSignal(signal) : DEFAULT_FAILURE_EXIT_CODE;
+  return signal ? exitCodeFromSignal(signal) : FAILURE_EXIT_CODE;
 }
 
 function forwardSignals(
-  child: ChildProcess,
+  child: SpawnedProcess,
   signalTarget: SignalTarget,
 ): () => void {
-  const handlers = FORWARDED_SIGNALS.map(
-    (signal): [NodeJS.Signals, () => void] => [
-      signal,
-      () => child.kill(signal),
-    ],
-  );
-  handlers.forEach(([signal, handler]) => signalTarget.on(signal, handler));
+  const forwarders: SignalForwarder[] = FORWARDED_SIGNALS.map((signal) => ({
+    signal,
+    handler: () => child.kill(signal),
+  }));
+  forwarders.forEach(({ signal, handler }) => signalTarget.on(signal, handler));
   return () =>
-    handlers.forEach(([signal, handler]) => signalTarget.off(signal, handler));
+    forwarders.forEach(({ signal, handler }) =>
+      signalTarget.off(signal, handler),
+    );
 }
 
 function waitForExit(
-  child: ChildProcess,
+  child: SpawnedProcess,
   signalTarget: SignalTarget,
 ): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -68,9 +102,13 @@ function waitForExit(
 export async function runInheritedProcess(
   executable: string,
   args: string[],
-  processRunner: ProcessRunner = nodeProcessRunner,
-  signalTarget: SignalTarget = process,
+  options: InheritedProcessOptions = {},
 ): Promise<number> {
-  const child = processRunner.spawn(executable, args, { stdio: "inherit" });
-  return waitForExit(child, signalTarget);
+  const processRunner = options.processRunner ?? nodeProcessRunner;
+  const spawnOptions: InheritedSpawnOptions = { stdio: "inherit" };
+  if (requiresShell(executable, options.platform ?? process.platform)) {
+    spawnOptions.shell = true;
+  }
+  const child = processRunner.spawn(executable, args, spawnOptions);
+  return waitForExit(child, options.signalTarget ?? process);
 }

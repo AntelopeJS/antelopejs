@@ -1,56 +1,78 @@
 import path from "node:path";
 import { expect } from "chai";
 
-import { createPackageReader } from "../../helpers/cli-plugins";
-import { readPluginPackage } from "../../../src/core/cli/plugin-package";
+import { resolvePluginPackage } from "../../../src/core/cli/plugin-package";
+import {
+  createGlobalRootResolver,
+  createPackageReader,
+} from "../../helpers/cli-plugins";
+import {
+  createInstalledReader,
+  createShimReader,
+  DMS_EXECUTABLE,
+  DMS_PACKAGE_DIRECTORY,
+  DMS_PACKAGE_NAME,
+  GLOBAL_ROOT,
+  pluginPackageJson,
+} from "../../helpers/official-plugin";
 
-const PACKAGE_DIRECTORY = "/usr/lib/node_modules/@antelopejs/dms-frontend";
-const EXECUTABLE = "/usr/bin/ajs-dms";
-
-describe("Plugin package lookup", () => {
+describe("Plugin package resolution", () => {
   it("walks up from the resolved binary to the plugin package.json", async () => {
-    const reader = createPackageReader(
-      {
-        [path.join(PACKAGE_DIRECTORY, "package.json")]: JSON.stringify({
-          name: "@antelopejs/dms-frontend",
-          version: "3.1.0",
-        }),
-      },
-      { [EXECUTABLE]: path.join(PACKAGE_DIRECTORY, "dist/bin/cli.js") },
+    const packageJson = await resolvePluginPackage(
+      DMS_PACKAGE_NAME,
+      DMS_EXECUTABLE,
+      { reader: createInstalledReader({ version: "3.1.0" }) },
     );
-
-    const packageJson = await readPluginPackage(EXECUTABLE, { reader });
 
     expect(packageJson?.version).to.equal("3.1.0");
   });
 
-  it("skips package.json files that do not match the expected name", async () => {
+  it("skips package.json files that do not belong to the plugin", async () => {
     const reader = createPackageReader(
       {
-        [path.join(PACKAGE_DIRECTORY, "dist/package.json")]: JSON.stringify({
-          name: "dist-artifacts",
-          version: "0.0.0",
-        }),
-        [path.join(PACKAGE_DIRECTORY, "package.json")]: JSON.stringify({
-          name: "@antelopejs/dms-frontend",
+        [path.join(DMS_PACKAGE_DIRECTORY, "dist", "package.json")]:
+          JSON.stringify({ name: "dist-artifacts", version: "0.0.0" }),
+        [path.join(DMS_PACKAGE_DIRECTORY, "package.json")]: pluginPackageJson({
           version: "3.1.0",
         }),
       },
-      { [EXECUTABLE]: path.join(PACKAGE_DIRECTORY, "dist/cli.js") },
+      { [DMS_EXECUTABLE]: path.join(DMS_PACKAGE_DIRECTORY, "dist", "cli.js") },
     );
 
-    const packageJson = await readPluginPackage(EXECUTABLE, {
-      reader,
-      expectedName: "@antelopejs/dms-frontend",
-    });
+    const packageJson = await resolvePluginPackage(
+      DMS_PACKAGE_NAME,
+      DMS_EXECUTABLE,
+      { reader },
+    );
 
     expect(packageJson?.version).to.equal("3.1.0");
   });
 
-  it("returns undefined when no package.json is reachable", async () => {
-    const reader = createPackageReader({});
+  it("falls back to the global root when the binary is a shim", async () => {
+    const packageJson = await resolvePluginPackage(
+      DMS_PACKAGE_NAME,
+      "/home/user/.local/share/pnpm/ajs-dms",
+      {
+        reader: createShimReader({ version: "4.2.0" }),
+        packageManager: "pnpm",
+        resolveGlobalRoot: createGlobalRootResolver(GLOBAL_ROOT),
+      },
+    );
 
-    expect(await readPluginPackage(EXECUTABLE, { reader })).to.equal(undefined);
+    expect(packageJson?.version).to.equal("4.2.0");
+  });
+
+  it("returns undefined when neither the binary nor the global root resolve", async () => {
+    const packageJson = await resolvePluginPackage(
+      DMS_PACKAGE_NAME,
+      DMS_EXECUTABLE,
+      {
+        reader: createPackageReader({}),
+        resolveGlobalRoot: createGlobalRootResolver(),
+      },
+    );
+
+    expect(packageJson).to.equal(undefined);
   });
 
   it("falls back to the raw path when realpath fails", async () => {
@@ -59,15 +81,19 @@ describe("Plugin package lookup", () => {
         throw new Error("ENOENT");
       },
       readFile: async (target: string) => {
-        if (target === "/usr/bin/package.json") {
-          return JSON.stringify({ name: "shim", version: "1.0.0" });
+        if (target === path.join("/usr/bin", "package.json")) {
+          return pluginPackageJson({ version: "5.0.0" });
         }
         throw new Error("ENOENT");
       },
     };
 
-    const packageJson = await readPluginPackage(EXECUTABLE, { reader });
+    const packageJson = await resolvePluginPackage(
+      DMS_PACKAGE_NAME,
+      DMS_EXECUTABLE,
+      { reader, resolveGlobalRoot: createGlobalRootResolver() },
+    );
 
-    expect(packageJson?.name).to.equal("shim");
+    expect(packageJson?.version).to.equal("5.0.0");
   });
 });

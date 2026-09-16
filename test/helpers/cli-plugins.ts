@@ -1,12 +1,20 @@
-import type { spawn } from "node:child_process";
-
 import type { CommandOutput } from "../../src/core/cli/cli-ui";
-import type { ProcessRunner } from "../../src/core/cli/process-runner";
 import type { PluginPackageReader } from "../../src/core/cli/plugin-package";
+import type { GlobalRootResolver } from "../../src/core/cli/global-package-manager";
+import type {
+  ForwardedSignal,
+  InheritedSpawnOptions,
+  ProcessCloseListener,
+  ProcessErrorListener,
+  ProcessRunner,
+  SignalTarget,
+  SpawnedProcess,
+} from "../../src/core/cli/process-runner";
 
-interface SpawnCall {
+export interface SpawnCall {
   executable: string;
   args: string[];
+  options: InheritedSpawnOptions;
 }
 
 export interface FakeProcessRunner {
@@ -14,16 +22,43 @@ export interface FakeProcessRunner {
   calls: SpawnCall[];
 }
 
-function createChild(exitCode: number) {
-  const child = {
-    once(event: string, handler: (code?: number) => void) {
-      if (event === "close") {
-        setImmediate(() => handler(exitCode));
+type CloseChild = (code: number | null, signal?: string | null) => void;
+
+type FailChild = (error: Error) => void;
+
+export interface ControllableProcessRunner extends FakeProcessRunner {
+  kills: ForwardedSignal[];
+  spawned: Promise<SpawnCall>;
+  close: CloseChild;
+  fail: FailChild;
+}
+
+interface ChildListeners {
+  error?: ProcessErrorListener;
+  close?: ProcessCloseListener;
+}
+
+function createChild(
+  listeners: ChildListeners,
+  kills: ForwardedSignal[],
+): SpawnedProcess {
+  return {
+    once(
+      event: "error" | "close",
+      listener: ProcessErrorListener | ProcessCloseListener,
+    ) {
+      if (event === "error") {
+        listeners.error = listener as ProcessErrorListener;
+        return undefined;
       }
-      return child;
+      listeners.close = listener as ProcessCloseListener;
+      return undefined;
+    },
+    kill(signal: ForwardedSignal) {
+      kills.push(signal);
+      return true;
     },
   };
-  return child;
 }
 
 export function createProcessRunner(
@@ -31,13 +66,63 @@ export function createProcessRunner(
 ): FakeProcessRunner {
   const calls: SpawnCall[] = [];
   const pending = [...exitCodes];
-  const runner = {
-    spawn: ((executable: string, args: string[]) => {
-      calls.push({ executable, args });
-      return createChild(pending.shift() ?? 0);
-    }) as unknown as typeof spawn,
+  return {
+    calls,
+    runner: {
+      spawn(executable, args, options) {
+        calls.push({ executable, args, options });
+        const listeners: ChildListeners = {};
+        const exitCode = pending.shift() ?? 0;
+        setImmediate(() => listeners.close?.(exitCode, null));
+        return createChild(listeners, []);
+      },
+    },
   };
-  return { runner, calls };
+}
+
+export function createControllableProcessRunner(): ControllableProcessRunner {
+  const calls: SpawnCall[] = [];
+  const kills: ForwardedSignal[] = [];
+  const listeners: ChildListeners = {};
+  let announceSpawn: (call: SpawnCall) => void = () => undefined;
+  const spawned = new Promise<SpawnCall>((resolve) => {
+    announceSpawn = resolve;
+  });
+  return {
+    calls,
+    kills,
+    spawned,
+    close: (code, signal = null) => listeners.close?.(code, signal),
+    fail: (error) => listeners.error?.(error),
+    runner: {
+      spawn(executable, args, options) {
+        const call: SpawnCall = { executable, args, options };
+        calls.push(call);
+        announceSpawn(call);
+        return createChild(listeners, kills);
+      },
+    },
+  };
+}
+
+export interface FakeSignalTarget extends SignalTarget {
+  emit(signal: ForwardedSignal): void;
+  listenerCount(signal: ForwardedSignal): number;
+}
+
+export function createSignalTarget(): FakeSignalTarget {
+  const listeners = new Map<ForwardedSignal, (() => void)[]>();
+  return {
+    on: (signal, listener) =>
+      listeners.set(signal, [...(listeners.get(signal) ?? []), listener]),
+    off: (signal, listener) =>
+      listeners.set(
+        signal,
+        (listeners.get(signal) ?? []).filter((entry) => entry !== listener),
+      ),
+    emit: (signal) => (listeners.get(signal) ?? []).forEach((entry) => entry()),
+    listenerCount: (signal) => (listeners.get(signal) ?? []).length,
+  };
 }
 
 export interface FakeOutput extends CommandOutput {
@@ -70,4 +155,12 @@ export function createPackageReader(
       return content;
     },
   };
+}
+
+export function createGlobalRootResolver(root?: string): GlobalRootResolver {
+  return async () => root;
+}
+
+export function formatSpawnCalls(calls: SpawnCall[]): string[] {
+  return calls.map((call) => [call.executable, ...call.args].join(" "));
 }
