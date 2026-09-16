@@ -632,10 +632,10 @@ async function createProviderStartProject(): Promise<string> {
   );
   const databaseFolder = await writeDatabaseProvider(folder);
   const interfaces = await writeStartInterfaces(folder, databaseFolder);
-  await writeStartProvider(folder, "cms", interfaces, databaseFolder, true);
+  await writeStartProvider(folder, "dms", interfaces, databaseFolder, true);
   await writeStartProvider(
     folder,
-    "cms-saas",
+    "dms-saas",
     interfaces,
     databaseFolder,
     false,
@@ -646,8 +646,8 @@ async function createProviderStartProject(): Promise<string> {
       [DATABASE_INTERFACE_NAME]: {
         source: { type: "local", path: `./${DATABASE_INTERFACE_NAME}` },
       },
-      cms: { source: { type: "local", path: "./cms" } },
-      "cms-saas": { source: { type: "local", path: "./cms-saas" } },
+      dms: { source: { type: "local", path: "./dms" } },
+      "dms-saas": { source: { type: "local", path: "./dms-saas" } },
     },
   });
   return folder;
@@ -749,10 +749,10 @@ describe("provider-aware runtime", () => {
       manager = await launch(folder);
       expect(
         (global as Record<string, unknown>)[TRANSITIVE_REGISTRATIONS_KEY],
-      ).to.deep.equal(["cms-schema"]);
+      ).to.deep.equal(["dms-schema"]);
       expect(
         (global as Record<string, unknown>)[STARTED_CONSUMERS_KEY],
-      ).to.have.members(["cms", "cms-saas"]);
+      ).to.have.members(["dms", "dms-saas"]);
     } finally {
       await destroyProject(manager, folder);
       delete (global as Record<string, unknown>)[TRANSITIVE_REGISTRATIONS_KEY];
