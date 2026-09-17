@@ -1,4 +1,5 @@
 import path from "node:path";
+import { types as utilTypes } from "node:util";
 import { expect } from "chai";
 import {
   internal,
@@ -221,6 +222,10 @@ const SHARED_PAGE_FILE = "/interfaces/pages/page/controllers.js";
 interface SharedApiExports {
   Controller(): string | undefined;
   MakeDecorator(): () => string | undefined;
+  Provider(): string | undefined;
+  Capture(value: unknown): unknown;
+  Reflect(value: unknown): unknown;
+  PLAIN_DATA: unknown[];
 }
 
 interface SharedInterfaceSetup {
@@ -236,9 +241,13 @@ interface SharedInterfaceSetup {
  * "Mode A" layout, where a consumer is loaded before the module implementing
  * the interface and therefore evaluates the shared interface file first.
  */
+const PLAIN_DATA: unknown[] = [{ rights: ["read"] }];
+let captured: unknown[] = [];
+
 function loadSharedInterfaceFacade(
   firstLoader = "consumer-a",
 ): SharedInterfaceSetup {
+  captured = [];
   const resolver = new Resolver(new PathMapper(() => false));
   const consumers = ["consumer-a", "consumer-b"];
   resolver.interfacePackages.set(SHARED_API_PACKAGE, "/interfaces/api");
@@ -257,6 +266,13 @@ function loadSharedInterfaceFacade(
   const apiExports: SharedApiExports = {
     Controller: () => GetModuleContext()?.module,
     MakeDecorator: () => () => GetModuleContext()?.module,
+    Provider: () => GetModuleContext()?.provider,
+    Capture: (value) => {
+      captured.push(value);
+      return value;
+    },
+    Reflect: (value) => value,
+    PLAIN_DATA: PLAIN_DATA,
   };
   const facade = RunWithModuleContext(
     { module: firstLoader, provider: firstLoader, providerRoutes: {} },
@@ -288,6 +304,22 @@ function callSharedFacade(setup: SharedInterfaceSetup, consumer: string) {
   return RunWithModuleContext(
     { module: consumer, provider: consumer, providerRoutes: {} },
     () => setup.facade.Controller(),
+  );
+}
+
+/**
+ * Runs `call` the way a consumer's own code does while it is busy serving
+ * another interface: the ambient context carries that other interface's
+ * provider as the unrouted-proxy fallback.
+ */
+function callWhileServing<T>(
+  consumer: string,
+  servingProvider: string,
+  call: () => T,
+): T {
+  return RunWithModuleContext(
+    { module: consumer, provider: servingProvider, providerRoutes: {} },
+    call,
   );
 }
 
@@ -674,6 +706,130 @@ describe("Resolver", () => {
     );
 
     expect(observed).to.equal("consumer-b");
+  });
+
+  it("resolves a shared facade's own interface provider, not the caller's", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      // `provider` is the fallback an unrouted proxy resolves to, and it only
+      // ever means "the provider of the interface these exports belong to".
+      // Adopting the caller's own `provider` made every proxy reached through
+      // this facade resolve to the provider of whatever interface the caller
+      // happened to be serving.
+      const observed = callWhileServing("consumer-a", "api", () =>
+        setup.facade.Provider(),
+      );
+
+      expect(observed).to.equal("consumer-a-api");
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("keeps the load-time provider when the caller declares no connection", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const observed = callWhileServing("outsider", "api", () =>
+        setup.facade.Provider(),
+      );
+
+      expect(observed).to.equal("consumer-a");
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("passes plain data through a shared facade without rebinding it", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const payload = { rootAcl: [{ subject: "curators" }] };
+
+      const returned = callWhileServing("consumer-b", "api", () =>
+        setup.facade.Capture(payload),
+      );
+
+      expect(captured[0]).to.equal(payload);
+      expect(returned).to.equal(payload);
+      expect(utilTypes.isProxy(captured[0])).to.equal(false);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("reads plain data off a shared facade without rebinding it", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const observed = callWhileServing(
+        "consumer-b",
+        "api",
+        () => setup.facade.PLAIN_DATA,
+      );
+
+      expect(observed).to.equal(PLAIN_DATA);
+      expect(utilTypes.isProxy(observed)).to.equal(false);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("still binds function arguments crossing a shared facade", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const callback = () => GetModuleContext()?.module;
+
+      const bound = callWhileServing("consumer-b", "api", () =>
+        setup.facade.Reflect(callback),
+      );
+
+      expect(bound).to.not.equal(callback);
+      expect(utilTypes.isProxy(bound)).to.equal(true);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("still binds a plain object that carries a function", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const payload = { handler: () => GetModuleContext()?.module };
+
+      const bound = callWhileServing("consumer-b", "api", () =>
+        setup.facade.Reflect(payload),
+      );
+
+      expect(bound).to.not.equal(payload);
+      expect(utilTypes.isProxy(bound)).to.equal(true);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("hands out the same facade for a value passed twice", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      // `unregister(handler)` followed by `register(handler)` only cancels
+      // out when both calls see the same bound handler, whichever consumer
+      // and whichever call is running.
+      const handler = () => undefined;
+
+      const first = callWhileServing("consumer-a", "api", () =>
+        setup.facade.Reflect(handler),
+      );
+      const second = callWhileServing("consumer-b", "pages", () =>
+        setup.facade.Reflect(handler),
+      );
+
+      expect(second).to.equal(first);
+    } finally {
+      setup.restore();
+    }
   });
 
   it("keeps a module's own interface imports owned by that module", () => {
