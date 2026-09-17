@@ -30,8 +30,20 @@ export interface ResolveResult {
   resolvedPath: string;
   resolveFrom?: string;
   bindExports?: boolean;
+  /**
+   * The importer is itself a file of an interface package, so the bound
+   * exports are kept by a file instance shared by every consumer that
+   * outlives each of their generations. Such a facade owns no consumer
+   * context: it adopts the caller's context at call time.
+   */
+  sharedExports?: boolean;
   interfaceName?: string;
   provider?: string;
+}
+
+interface ExportBinding {
+  bindExports: boolean;
+  sharedExports: boolean;
 }
 
 interface InterfacePackageRequest {
@@ -155,6 +167,11 @@ export class Resolver {
     CapturedModuleContext,
     Map<string, CapturedModuleContext>
   >();
+  private readonly sharedInterfaceContexts = new WeakMap<
+    CapturedModuleContext,
+    Map<string, CapturedModuleContext>
+  >();
+  private readonly sharedContexts = new WeakSet<CapturedModuleContext>();
   private readonly stubbedContexts = new WeakSet<CapturedModuleContext>();
 
   constructor(private pathMapper: PathMapper) {}
@@ -172,7 +189,7 @@ export class Resolver {
       return this.bindResultProvider(
         coreResult,
         CORE_PKG,
-        false,
+        { bindExports: false, sharedExports: false },
         parent,
         parentModule,
       );
@@ -186,8 +203,12 @@ export class Resolver {
       return this.bindResultProvider(
         interfaceRequest.result,
         interfaceRequest.packageName,
-        this.interfaceGraphFiles.get(parent?.filename ?? "") !==
-          interfaceRequest.packageName,
+        {
+          bindExports:
+            this.interfaceGraphFiles.get(parent?.filename ?? "") !==
+            interfaceRequest.packageName,
+          sharedExports: this.isInterfacePackageFile(parent?.filename),
+        },
         parent,
         parentModule,
       );
@@ -221,7 +242,13 @@ export class Resolver {
       return this.bindStubbedInterfaceValue(result, value, context);
     }
     this.bindImportedRoutes(context, result, references);
-    return result.bindExports ? this.bindInterfaceValue(value, context) : value;
+    if (!result.bindExports) {
+      return value;
+    }
+    return this.bindInterfaceValue(
+      value,
+      this.getBindingContext(result, context),
+    );
   }
 
   trackInterfaceFile(result: ResolveResult, resolvedPath: string): void {
@@ -419,7 +446,10 @@ export class Resolver {
     return this.bindResultProvider(
       { resolvedPath: request },
       packageName,
-      !this.interfaceGraphFiles.has(parent.filename),
+      {
+        bindExports: !this.interfaceGraphFiles.has(parent.filename),
+        sharedExports: true,
+      },
       parent,
       parentModule,
     );
@@ -428,7 +458,7 @@ export class Resolver {
   private bindResultProvider(
     result: ResolveResult,
     packageName: string,
-    bindExports: boolean,
+    binding: ExportBinding,
     parent: ResolverParent | undefined,
     parentModule: ModuleRef | undefined,
   ): ResolveResult {
@@ -439,10 +469,26 @@ export class Resolver {
     );
     return {
       ...result,
-      bindExports,
+      bindExports: binding.bindExports,
+      sharedExports: binding.sharedExports,
       interfaceName: packageName,
       provider,
     };
+  }
+
+  /**
+   * Whether `filename` belongs to an interface package, either because the
+   * resolver brought it in through an interface import graph or because it
+   * sits inside an interface package root.
+   */
+  private isInterfacePackageFile(filename: string | undefined): boolean {
+    if (!filename) {
+      return false;
+    }
+    return (
+      this.interfaceGraphFiles.has(filename) ||
+      this.findInterfacePackageByPath(filename) !== undefined
+    );
   }
 
   private resolveProvider(
@@ -658,6 +704,51 @@ export class Resolver {
     return this.bindInterfaceValue(value, providerless);
   }
 
+  /**
+   * Context a set of interface exports is bound to.
+   *
+   * Exports imported by a module are owned by that module: its context is the
+   * right one, and dies with it. Exports imported by an interface package
+   * file are kept by a single shared instance that every consumer reaches and
+   * that survives their reloads, so no consumer may own them: they get a
+   * detached copy of the importing context, used only as a fallback for work
+   * that runs without any ambient context.
+   */
+  private getBindingContext(
+    result: ResolveResult,
+    context: CapturedModuleContext,
+  ): CapturedModuleContext {
+    if (!result.sharedExports) {
+      return context;
+    }
+    const interfaceName = result.interfaceName ?? "";
+    const contexts = this.sharedInterfaceContexts.get(context) ?? new Map();
+    const existing = contexts.get(interfaceName);
+    if (existing) {
+      return existing;
+    }
+    const shared = { ...context };
+    contexts.set(interfaceName, shared);
+    this.sharedInterfaceContexts.set(context, contexts);
+    this.sharedContexts.add(shared);
+    return shared;
+  }
+
+  /**
+   * Context a facade call actually runs in: the live caller context for a
+   * shared interface facade, the owning context otherwise. Falling back to
+   * the captured context keeps the hard failure for orphaned asynchronous
+   * work, which has no ambient context to adopt.
+   */
+  private effectiveContext(
+    context: CapturedModuleContext,
+  ): CapturedModuleContext {
+    if (!this.sharedContexts.has(context)) {
+      return context;
+    }
+    return captureModuleContext() ?? context;
+  }
+
   private getProviderlessContext(
     context: CapturedModuleContext,
     interfaceName: string,
@@ -786,19 +877,20 @@ export class Resolver {
           (!facadeThis || thisArg === facadeThis || thisArg === undefined)
             ? boundThis
             : thisArg;
-        const result = runWithCapturedModuleContext(context, () =>
+        const callContext = this.effectiveContext(context);
+        const result = runWithCapturedModuleContext(callContext, () =>
           Reflect.apply(
             target,
             receiver,
             argumentsList.map((argument) =>
-              this.bindInterfaceValue(argument, context),
+              this.bindInterfaceValue(argument, callContext),
             ),
           ),
         );
-        return this.bindFunctionResult(result, context);
+        return this.bindFunctionResult(result, callContext);
       },
       construct: (target, argumentsList, newTarget) =>
-        runWithCapturedModuleContext(context, () =>
+        runWithCapturedModuleContext(this.effectiveContext(context), () =>
           Reflect.construct(target, argumentsList, newTarget),
         ),
       get: (target, property) => {
@@ -875,13 +967,17 @@ export class Resolver {
   ): EventProxy {
     const handlers = new WeakMap<BindableFunction, BindableFunction>();
     const register = (handler: BindableFunction) => {
+      const callContext = this.effectiveContext(context);
       const bound =
-        handlers.get(handler) ?? this.createFunctionFacade(handler, context);
+        handlers.get(handler) ??
+        this.createFunctionFacade(handler, callContext);
       handlers.set(handler, bound);
-      return runWithCapturedModuleContext(context, () => event.register(bound));
+      return runWithCapturedModuleContext(callContext, () =>
+        event.register(bound),
+      );
     };
     const unregister = (handler: BindableFunction) =>
-      runWithCapturedModuleContext(context, () =>
+      runWithCapturedModuleContext(this.effectiveContext(context), () =>
         event.unregister(handlers.get(handler) ?? handler),
       );
     const emit = this.createFunctionFacade(event.emit, context, event);

@@ -1,6 +1,9 @@
 import path from "node:path";
 import { expect } from "chai";
-import { internal } from "@antelopejs/interface-core/internal";
+import {
+  internal,
+  invalidateModuleContext,
+} from "@antelopejs/interface-core/internal";
 import {
   GetModuleContext,
   RunWithModuleContext,
@@ -209,6 +212,81 @@ async function invokeDeferredRoutes(
     expect(controllerContexts.get(consumer.id)).to.equal(consumer.id);
     expect(queryContexts.get(consumer.id)).to.equal(consumer.databaseProvider);
   }
+}
+
+const SHARED_API_PACKAGE = "interface-api";
+const SHARED_PAGE_PACKAGE = "interface-pages";
+const SHARED_PAGE_FILE = "/interfaces/pages/page/controllers.js";
+
+interface SharedApiExports {
+  Controller(): string | undefined;
+}
+
+interface SharedInterfaceSetup {
+  consumers: string[];
+  facade: SharedApiExports;
+  resolver: Resolver;
+  restore(): void;
+}
+
+/**
+ * Loads the shared `interface-pages` file that imports `interface-api` at
+ * module level, under the context of `firstLoader`. Reproduces the hot reload
+ * "Mode A" layout, where a consumer is loaded before the module implementing
+ * the interface and therefore evaluates the shared interface file first.
+ */
+function loadSharedInterfaceFacade(
+  firstLoader = "consumer-a",
+): SharedInterfaceSetup {
+  const resolver = new Resolver(new PathMapper(() => false));
+  const consumers = ["consumer-a", "consumer-b"];
+  resolver.interfacePackages.set(SHARED_API_PACKAGE, "/interfaces/api");
+  resolver.interfacePackages.set(SHARED_PAGE_PACKAGE, "/interfaces/pages");
+  resolver.trackInterfaceFile(
+    { interfaceName: SHARED_PAGE_PACKAGE, resolvedPath: SHARED_PAGE_FILE },
+    SHARED_PAGE_FILE,
+  );
+  for (const id of consumers) {
+    resolver.modulesById.set(id, { id, manifest: {} as any });
+    internal.interfaceConnections[id] = {
+      [SHARED_API_PACKAGE]: selectedProvider(`${id}-api`),
+      [SHARED_PAGE_PACKAGE]: selectedProvider("pages"),
+    };
+  }
+  const apiExports: SharedApiExports = {
+    Controller: () => GetModuleContext()?.module,
+  };
+  const facade = RunWithModuleContext(
+    { module: firstLoader, provider: firstLoader, providerRoutes: {} },
+    () => {
+      const result = resolver.resolve(SHARED_API_PACKAGE, {
+        filename: SHARED_PAGE_FILE,
+      });
+      expect(result?.bindExports).to.equal(true);
+      expect(result?.sharedExports).to.equal(true);
+      return resolver.bindProviderRoutes(
+        result as NonNullable<typeof result>,
+        apiExports,
+      ) as SharedApiExports;
+    },
+  );
+  return {
+    consumers,
+    facade,
+    resolver,
+    restore: () => {
+      for (const id of consumers) {
+        delete internal.interfaceConnections[id];
+      }
+    },
+  };
+}
+
+function callSharedFacade(setup: SharedInterfaceSetup, consumer: string) {
+  return RunWithModuleContext(
+    { module: consumer, provider: consumer, providerRoutes: {} },
+    () => setup.facade.Controller(),
+  );
 }
 
 const moduleA = {
@@ -491,6 +569,76 @@ describe("Resolver", () => {
       for (const id of outerProviders) {
         delete internal.interfaceConnections[id];
       }
+    }
+  });
+
+  it("runs interface package internals in the calling consumer context", () => {
+    for (const firstLoader of ["consumer-a", "consumer-b"]) {
+      const setup = loadSharedInterfaceFacade(firstLoader);
+
+      try {
+        const observed = setup.consumers.map((consumer) =>
+          callSharedFacade(setup, consumer),
+        );
+
+        expect(observed).to.deep.equal(setup.consumers);
+      } finally {
+        setup.restore();
+      }
+    }
+  });
+
+  it("keeps interface package internals callable after a consumer reloads", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      expect(callSharedFacade(setup, "consumer-a")).to.equal("consumer-a");
+      invalidateModuleContext("consumer-a");
+
+      expect(callSharedFacade(setup, "consumer-a")).to.equal("consumer-a");
+      expect(callSharedFacade(setup, "consumer-b")).to.equal("consumer-b");
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("falls back to the load-time context without an ambient context", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      expect(setup.facade.Controller()).to.equal("consumer-a");
+      invalidateModuleContext("consumer-a");
+
+      expect(() => setup.facade.Controller()).to.throw(/invalidated/);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("keeps a module's own interface imports owned by that module", () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.interfacePackages.set(SHARED_API_PACKAGE, "/interfaces/api");
+    resolver.modulesById.set("consumer-a", {
+      id: "consumer-a",
+      manifest: {} as any,
+    });
+    internal.interfaceConnections["consumer-a"] = {
+      [SHARED_API_PACKAGE]: selectedProvider("consumer-a-api"),
+    };
+
+    try {
+      const result = RunWithModuleContext(
+        { module: "consumer-a", provider: "consumer-a", providerRoutes: {} },
+        () =>
+          resolver.resolve(SHARED_API_PACKAGE, {
+            filename: "/modules/consumer-a/dist/index.js",
+          }),
+      );
+
+      expect(result?.bindExports).to.equal(true);
+      expect(result?.sharedExports).to.equal(false);
+    } finally {
+      delete internal.interfaceConnections["consumer-a"];
     }
   });
 
