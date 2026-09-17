@@ -171,7 +171,15 @@ export class Resolver {
     CapturedModuleContext,
     Map<string, CapturedModuleContext>
   >();
-  private readonly sharedContexts = new WeakSet<CapturedModuleContext>();
+  /**
+   * Shared facade contexts, mapped to the interface package whose exports they
+   * were bound for. The interface name is what tells a facade which provider
+   * its own proxies resolve to, whoever the caller is.
+   */
+  private readonly sharedContexts = new WeakMap<
+    CapturedModuleContext,
+    string
+  >();
   private readonly sharedStubInterfaces = new WeakMap<
     CapturedModuleContext,
     string
@@ -694,6 +702,51 @@ export class Resolver {
     return bound;
   }
 
+  /**
+   * Binds a value that merely travels through a facade: an argument of a
+   * facade call, or a member read off a facaded object.
+   *
+   * Only values that need the facade machinery get one: functions, whose body
+   * must run in the right module context, interface proxies, which must be
+   * routed, and containers of those. Plain data crosses untouched, so `===`,
+   * `Map`/`Set` keys and caller-visible mutation keep working across a module
+   * boundary the way they do inside one.
+   */
+  private bindPassedValue(
+    value: unknown,
+    context: CapturedModuleContext,
+  ): unknown {
+    return this.needsFacade(value)
+      ? this.bindInterfaceValue(value, context)
+      : value;
+  }
+
+  /**
+   * Whether `value` is, or transitively holds, something a facade has to wrap:
+   * a function or an interface proxy. The walk only descends into plain
+   * objects and arrays, the same shapes `isBindableValue` accepts, so it stops
+   * at every class instance.
+   */
+  private needsFacade(value: unknown, visited?: WeakSet<object>): boolean {
+    if (typeof value === "function") {
+      return true;
+    }
+    if (!this.isBindableValue(value)) {
+      return false;
+    }
+    if (isRecognizedInterfaceProxy(value)) {
+      return true;
+    }
+    const seen = visited ?? new WeakSet<object>();
+    if (seen.has(value)) {
+      return false;
+    }
+    seen.add(value);
+    return Object.values(value).some((member) =>
+      this.needsFacade(member, seen),
+    );
+  }
+
   private bindStubbedInterfaceValue(
     result: ResolveResult,
     value: unknown,
@@ -738,7 +791,7 @@ export class Resolver {
     const shared = { ...context };
     contexts.set(interfaceName, shared);
     this.sharedInterfaceContexts.set(context, contexts);
-    this.sharedContexts.add(shared);
+    this.sharedContexts.set(shared, interfaceName);
     return shared;
   }
 
@@ -752,14 +805,15 @@ export class Resolver {
   private effectiveContext(
     context: CapturedModuleContext,
   ): CapturedModuleContext {
-    if (!this.sharedContexts.has(context)) {
+    const sharedInterface = this.sharedContexts.get(context);
+    if (sharedInterface === undefined) {
       return context;
     }
     const ambient = captureModuleContext();
     if (!ambient) {
       return context;
     }
-    const adopted = this.getAdoptedContext(context, ambient);
+    const adopted = this.getAdoptedContext(context, ambient, sharedInterface);
     const stubbed = this.sharedStubInterfaces.get(context);
     return stubbed ? this.getProviderlessContext(adopted, stubbed) : adopted;
   }
@@ -769,10 +823,18 @@ export class Resolver {
    * execution, so its module, owner and routes win; the routes the interface
    * package was loaded with fill in the proxies the caller never resolved
    * itself, which are the ones only reachable through this package.
+   *
+   * The `provider` field is NOT a route: it is the fallback a proxy without a
+   * route resolves to, and it only ever means "the provider of the interface
+   * these exports belong to". Adopting the caller's own `provider` would make
+   * every unrouted proxy reached through this facade resolve to the provider
+   * of whatever interface the caller happened to be running for, so it is
+   * recomputed for the facade's own interface instead.
    */
   private getAdoptedContext(
     shared: CapturedModuleContext,
     ambient: CapturedModuleContext,
+    interfaceName: string,
   ): CapturedModuleContext {
     const cached = this.adoptedContexts.get(shared)?.get(ambient);
     if (cached) {
@@ -780,7 +842,7 @@ export class Resolver {
     }
     const adopted = {
       ...ambient,
-      provider: ambient.provider ?? shared.provider,
+      provider: this.adoptedProvider(interfaceName, ambient, shared),
       providerRoutes: this.chainProviderRoutes(
         ambient.providerRoutes,
         shared.providerRoutes,
@@ -792,6 +854,23 @@ export class Resolver {
     contexts.set(ambient, adopted);
     this.adoptedContexts.set(shared, contexts);
     return adopted;
+  }
+
+  /**
+   * Provider the facade's own interface resolves to for the calling module,
+   * falling back to the provider the interface package was loaded with when
+   * the caller declares no connection of its own.
+   */
+  private adoptedProvider(
+    interfaceName: string,
+    ambient: CapturedModuleContext,
+    shared: CapturedModuleContext,
+  ): string | undefined {
+    const consumer = this.modulesById.get(ambient.module);
+    const direct = consumer
+      ? this.resolveProvider(consumer, interfaceName)
+      : undefined;
+    return direct ?? shared.provider;
   }
 
   private chainProviderRoutes(
@@ -824,8 +903,9 @@ export class Resolver {
     contexts.set(interfaceName, providerless);
     this.providerlessContexts.set(context, contexts);
     this.stubbedContexts.add(providerless);
-    if (this.sharedContexts.has(context)) {
-      this.sharedContexts.add(providerless);
+    const sharedInterface = this.sharedContexts.get(context);
+    if (sharedInterface !== undefined) {
+      this.sharedContexts.set(providerless, sharedInterface);
       this.sharedStubInterfaces.set(providerless, interfaceName);
     }
     return providerless;
@@ -902,7 +982,7 @@ export class Resolver {
         const bound =
           typeof member === "function" && !this.isClass(member)
             ? this.bindObjectFunction(member, target, facade, property, context)
-            : this.bindInterfaceValue(member, context);
+            : this.bindPassedValue(member, context);
         members.set(property, { bound, source: member });
         return bound;
       },
@@ -939,6 +1019,12 @@ export class Resolver {
           (!facadeThis || thisArg === facadeThis || thisArg === undefined)
             ? boundThis
             : thisArg;
+        // The call runs in the caller's context, but the values crossing the
+        // facade stay bound to the facade's own context: binding them to the
+        // live caller context would hand out a different facade for the same
+        // value on every call, and callers that pair a value with itself
+        // across calls -- `unregister(handler)` then `register(handler)` --
+        // would no longer match.
         const result = runWithCapturedModuleContext(
           this.effectiveContext(context),
           () =>
@@ -946,7 +1032,7 @@ export class Resolver {
               target,
               receiver,
               argumentsList.map((argument) =>
-                this.bindInterfaceValue(argument, context),
+                this.bindPassedValue(argument, context),
               ),
             ),
         );
