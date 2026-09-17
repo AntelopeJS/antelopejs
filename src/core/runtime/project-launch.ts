@@ -2,11 +2,11 @@ import { Writable } from "node:stream";
 import { Logging } from "@antelopejs/interface-core/logging";
 
 import type { LaunchOptions } from "../../types";
-import type { ShutdownManager } from "../shutdown";
 import type { NodeFileSystem } from "../filesystem";
 import type { ModuleManager } from "../module-manager";
 import { releaseProcessShutdownManager } from "./runtime-bootstrap";
 import { DEFAULT_ENV, tryFindConfigPath } from "../config/config-paths";
+import { type ShutdownManager, terminateProcessTree } from "../shutdown";
 import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
 import type {
   LoaderContext,
@@ -25,6 +25,7 @@ const MAX_STREAM_LISTENERS = 20;
 const INTERACTIVE_PROMPT = "> ";
 const SHUTDOWN_PRIORITY_MODULES = 30;
 const SHUTDOWN_PRIORITY_RESOURCES = 20;
+const SHUTDOWN_PRIORITY_CHILD_PROCESSES = 15;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
 const UNSUPPORTED_ARTIFACT_OPTIONS_WARNING =
   "Watch and interactive modes are only available when launching from configuration; ignoring them for this build artifact launch.";
@@ -78,6 +79,24 @@ async function shutdownModules(manager: ModuleManager): Promise<void> {
   if (errors.length > 0) {
     throw new AggregateError(errors, "Shutdown failed");
   }
+}
+
+/**
+ * Kills the processes modules spawned and did not reap themselves.
+ *
+ * Registered after the module handlers so modules keep the chance to stop their
+ * own children gracefully; whatever is left would otherwise be reparented to
+ * init and survive the process.
+ */
+function registerChildProcessCleanup(shutdownManager: ShutdownManager): void {
+  shutdownManager.register(async () => {
+    const terminated = await terminateProcessTree();
+    if (terminated.length > 0) {
+      Logger.Debug(
+        `Terminated ${terminated.length} leftover child process(es): ${terminated.join(", ")}`,
+      );
+    }
+  }, SHUTDOWN_PRIORITY_CHILD_PROCESSES);
 }
 
 function registerShutdownCleanup(shutdownManager: ShutdownManager): void {
@@ -146,6 +165,9 @@ async function setupPostLaunchFeatures(
   const { manager, shutdownManager } = started;
 
   registerModuleShutdownHandler(shutdownManager, manager);
+  if (started.policy.signals) {
+    registerChildProcessCleanup(shutdownManager);
+  }
   registerShutdownCleanup(shutdownManager);
 
   if (!started.dev && (options.watch || options.interactive)) {
