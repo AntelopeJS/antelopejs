@@ -1,6 +1,6 @@
 import path from "node:path";
-import { types as utilTypes } from "node:util";
 import { expect } from "chai";
+import { types as utilTypes } from "node:util";
 import {
   internal,
   invalidateModuleContext,
