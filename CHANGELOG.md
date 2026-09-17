@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.6.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.5.1...v1.6.0)
+
+### 🚀 Enhancements
+
+- Publish module lifecycle spans on node:diagnostics_channel ([#120](https://github.com/AntelopeJS/antelopejs/pull/120))
+- **cli:** Official plugins, delegation, update and compatibility checks ([#125](https://github.com/AntelopeJS/antelopejs/pull/125))
+
+### 💅 Refactors
+
+- **logging:** Collapse the internal logger into one pipeline ([#121](https://github.com/AntelopeJS/antelopejs/pull/121))
+
+### 📖 Documentation
+
+- Position hexagonal architecture across the ecosystem ([#116](https://github.com/AntelopeJS/antelopejs/pull/116))
+- Explain hexagonal architecture across the ecosystem ([#117](https://github.com/AntelopeJS/antelopejs/pull/117))
+- Align package description with hexagonal positioning ([#118](https://github.com/AntelopeJS/antelopejs/pull/118))
+
+### 🏡 Chore
+
+- Replace Biome with oxlint, oxfmt and Knip ([#119](https://github.com/AntelopeJS/antelopejs/pull/119))
+
+### 🤖 CI
+
+- Use shared npm release workflow ([#123](https://github.com/AntelopeJS/antelopejs/pull/123))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+
 ## v1.5.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.5.0...v1.5.1)
