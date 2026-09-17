@@ -1,6 +1,6 @@
 {
   "name": "@antelopejs/core",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "description": "TypeScript framework extending hexagonal architecture across your application and its ecosystem through explicit contracts and replaceable modules.",
   "keywords": [
     "antelopejs",
