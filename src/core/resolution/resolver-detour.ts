@@ -86,7 +86,7 @@ class ResolverDetourCoordinator {
   private load(request: string, parent: any, isMain: boolean): unknown {
     const activeResolver = this.findResolver(request, parent);
     if (!activeResolver?.requiresPreResolution(request, parent)) {
-      return this.originalLoader?.(request, parent, isMain);
+      return this.loadOwnedFile(activeResolver, request, parent, isMain);
     }
     const result = activeResolver.resolve(request, parent);
     if (!result) {
@@ -111,6 +111,43 @@ class ResolverDetourCoordinator {
     return isCircularImport
       ? value
       : activeResolver.bindProviderRoutes(result, value);
+  }
+
+  /**
+   * Loads a request that no interface package claims, under the context of the
+   * module that owns the resolved file rather than the one requiring it.
+   *
+   * Only a first evaluation needs it: a cached file registered nothing this
+   * time, and every require nested in the evaluation inherits the context
+   * through the async local storage.
+   */
+  private loadOwnedFile(
+    activeResolver: Resolver | undefined,
+    request: string,
+    parent: any,
+    isMain: boolean,
+  ): unknown {
+    const load = () => this.originalLoader?.(request, parent, isMain);
+    if (!activeResolver?.requiresOwnershipCheck(request)) {
+      return load();
+    }
+    const resolvedPath = this.tryResolveFilename(request, parent, isMain);
+    if (!resolvedPath || require.cache[resolvedPath]) {
+      return load();
+    }
+    return activeResolver.claimFileOwnership(resolvedPath, load);
+  }
+
+  private tryResolveFilename(
+    request: string,
+    parent: any,
+    isMain: boolean,
+  ): string | undefined {
+    try {
+      return this.originalResolver?.(request, parent, isMain, undefined);
+    } catch {
+      return undefined;
+    }
   }
 
   private primeInterfaceEntry(

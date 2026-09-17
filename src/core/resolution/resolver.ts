@@ -1,3 +1,5 @@
+import path from "node:path";
+import Module from "node:module";
 import { types as utilTypes } from "node:util";
 import {
   AsyncProxy,
@@ -16,10 +18,15 @@ import {
 import type { PathMapper } from "./path-mapper";
 import type { ModuleManifest } from "../module-manifest";
 import { isPathWithin, resolvePackage } from "./package-resolution";
+import {
+  clearForeignPackageWarnings,
+  warnForeignPackageEvaluationOnce,
+} from "./foreign-package-warning";
 
 export interface ModuleRef {
   id: string;
   manifest: ModuleManifest;
+  runInContext?<T>(callback: () => T): T;
 }
 
 interface ResolverParent {
@@ -71,6 +78,7 @@ const CORE_PACKAGE = resolvePackage(CORE_PKG, __dirname);
 const CORE_RESOLVE_FROM = CORE_PACKAGE?.root ?? __dirname;
 const CORE_ENTRY = CORE_PACKAGE?.entry ?? CORE_PKG;
 const CLASS_PREFIX = "class ";
+const NODE_MODULES_DIR = "node_modules";
 const PROXY_ATTACHMENT_METHODS = new Set<PropertyKey>([
   "detach",
   "onCall",
@@ -244,6 +252,42 @@ export class Resolver {
     return Boolean(this.findRequestedInterface(request, parent?.filename));
   }
 
+  /**
+   * Whether a request may end up evaluating a file owned by another module,
+   * and therefore deserves the extra filename resolution `claimFileOwnership`
+   * needs. Builtins never do, and neither does anything required outside a
+   * module execution context.
+   */
+  requiresOwnershipCheck(request: string): boolean {
+    if (Module.isBuiltin(request)) {
+      return false;
+    }
+    return Boolean(getModuleContext()?.module);
+  }
+
+  /**
+   * Evaluates a file under the context of the module that owns it.
+   *
+   * A file belongs to the module whose package ships it, not to whichever
+   * module happened to require it first: everything the file registers on
+   * evaluation — pages, routes, controllers — is torn down with the owning
+   * module generation and recreated when that module reloads and re-evaluates
+   * it. Attributing it to a foreign consumer makes the consumer's teardown
+   * unregister entries nothing will ever register again.
+   */
+  claimFileOwnership<T>(filePath: string, evaluate: () => T): T {
+    const consumer = getModuleContext()?.module;
+    if (!consumer) {
+      return evaluate();
+    }
+    const owner = this.findFileOwner(filePath, consumer);
+    if (!owner?.runInContext) {
+      return evaluate();
+    }
+    warnForeignPackageEvaluationOnce(consumer, owner.id, filePath);
+    return owner.runInContext(evaluate);
+  }
+
   bindProviderRoutes(result: ResolveResult, value: unknown): unknown {
     const references = collectProxyReferences(value);
     if (result.interfaceName) {
@@ -330,6 +374,42 @@ export class Resolver {
     this.interfaceGraphFiles.clear();
     this.interfaceDependencies.clear();
     this.proxyOwners.clear();
+    clearForeignPackageWarnings();
+  }
+
+  /**
+   * Loaded module a file belongs to, when that module is not the one already
+   * being evaluated.
+   */
+  private findFileOwner(
+    filePath: string,
+    consumer: string,
+  ): ModuleRef | undefined {
+    const owner = this.resolveLocalModule(filePath);
+    if (!owner || owner.id === consumer) {
+      return undefined;
+    }
+    return this.isReloadableModuleFile(owner, filePath) ? owner : undefined;
+  }
+
+  /**
+   * Whether a file is one the owning module re-evaluates when it reloads,
+   * which is what makes attributing it to that module safe: the registrations
+   * it produces come back with the module.
+   *
+   * Two sets are left out, matching what `unrequireModuleFiles` keeps cached.
+   * Dependencies installed under the module (`node_modules`) are shared
+   * instances no reload evicts. Interface package files are shared on purpose
+   * too: they belong to every consumer and to none, and the resolver already
+   * runs them under an adopted context rather than an owning one.
+   */
+  private isReloadableModuleFile(owner: ModuleRef, filePath: string): boolean {
+    if (
+      isPathWithin(filePath, path.join(owner.manifest.folder, NODE_MODULES_DIR))
+    ) {
+      return false;
+    }
+    return !this.isInterfacePackageFile(filePath);
   }
 
   private registerProxyOwners(
