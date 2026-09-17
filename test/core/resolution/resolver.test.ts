@@ -220,6 +220,7 @@ const SHARED_PAGE_FILE = "/interfaces/pages/page/controllers.js";
 
 interface SharedApiExports {
   Controller(): string | undefined;
+  MakeDecorator(): () => string | undefined;
 }
 
 interface SharedInterfaceSetup {
@@ -255,6 +256,7 @@ function loadSharedInterfaceFacade(
   }
   const apiExports: SharedApiExports = {
     Controller: () => GetModuleContext()?.module,
+    MakeDecorator: () => () => GetModuleContext()?.module,
   };
   const facade = RunWithModuleContext(
     { module: firstLoader, provider: firstLoader, providerRoutes: {} },
@@ -602,6 +604,27 @@ describe("Resolver", () => {
     }
   });
 
+  it("keeps values derived from a shared interface facade callable", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const decorator = RunWithModuleContext(
+        { module: "consumer-a", provider: "consumer-a", providerRoutes: {} },
+        () => setup.facade.MakeDecorator(),
+      );
+      invalidateModuleContext("consumer-a");
+
+      const observed = RunWithModuleContext(
+        { module: "consumer-b", provider: "consumer-b", providerRoutes: {} },
+        () => decorator(),
+      );
+
+      expect(observed).to.equal("consumer-b");
+    } finally {
+      setup.restore();
+    }
+  });
+
   it("falls back to the load-time context without an ambient context", () => {
     const setup = loadSharedInterfaceFacade();
 
@@ -613,6 +636,44 @@ describe("Resolver", () => {
     } finally {
       setup.restore();
     }
+  });
+
+  it("keeps a stubbed interface shared by an interface package callable", () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    const optionalPackage = "interface-optional";
+    resolver.interfacePackages.set(optionalPackage, "/interfaces/optional");
+    resolver.interfacePackages.set(SHARED_PAGE_PACKAGE, "/interfaces/pages");
+    resolver.stubbedInterfacePackages.add(optionalPackage);
+    resolver.trackInterfaceFile(
+      { interfaceName: SHARED_PAGE_PACKAGE, resolvedPath: SHARED_PAGE_FILE },
+      SHARED_PAGE_FILE,
+    );
+    const optionalExports = {
+      Model: () => GetModuleContext()?.module,
+    };
+
+    const facade = RunWithModuleContext(
+      { module: "consumer-a", provider: "consumer-a", providerRoutes: {} },
+      () => {
+        const result = resolver.resolve(optionalPackage, {
+          filename: SHARED_PAGE_FILE,
+        });
+        expect(result?.provider).to.equal(undefined);
+        expect(result?.sharedExports).to.equal(true);
+        return resolver.bindProviderRoutes(
+          result as NonNullable<typeof result>,
+          optionalExports,
+        ) as typeof optionalExports;
+      },
+    );
+    invalidateModuleContext("consumer-a");
+
+    const observed = RunWithModuleContext(
+      { module: "consumer-b", provider: "consumer-b", providerRoutes: {} },
+      () => facade.Model(),
+    );
+
+    expect(observed).to.equal("consumer-b");
   });
 
   it("keeps a module's own interface imports owned by that module", () => {

@@ -172,6 +172,14 @@ export class Resolver {
     Map<string, CapturedModuleContext>
   >();
   private readonly sharedContexts = new WeakSet<CapturedModuleContext>();
+  private readonly sharedStubInterfaces = new WeakMap<
+    CapturedModuleContext,
+    string
+  >();
+  private readonly adoptedContexts = new WeakMap<
+    CapturedModuleContext,
+    WeakMap<CapturedModuleContext, CapturedModuleContext>
+  >();
   private readonly stubbedContexts = new WeakSet<CapturedModuleContext>();
 
   constructor(private pathMapper: PathMapper) {}
@@ -698,7 +706,7 @@ export class Resolver {
       return value;
     }
     const providerless = this.getProviderlessContext(
-      context,
+      this.getBindingContext(result, context),
       result.interfaceName,
     );
     return this.bindInterfaceValue(value, providerless);
@@ -735,10 +743,11 @@ export class Resolver {
   }
 
   /**
-   * Context a facade call actually runs in: the live caller context for a
-   * shared interface facade, the owning context otherwise. Falling back to
-   * the captured context keeps the hard failure for orphaned asynchronous
-   * work, which has no ambient context to adopt.
+   * Context a facade call actually runs in: the owning context for a facade a
+   * module owns, the live caller context for a shared interface facade, which
+   * belongs to no module. Falling back to the load-time context keeps the
+   * hard failure for orphaned asynchronous work, which has no ambient context
+   * to adopt.
    */
   private effectiveContext(
     context: CapturedModuleContext,
@@ -746,7 +755,56 @@ export class Resolver {
     if (!this.sharedContexts.has(context)) {
       return context;
     }
-    return captureModuleContext() ?? context;
+    const ambient = captureModuleContext();
+    if (!ambient) {
+      return context;
+    }
+    const adopted = this.getAdoptedContext(context, ambient);
+    const stubbed = this.sharedStubInterfaces.get(context);
+    return stubbed ? this.getProviderlessContext(adopted, stubbed) : adopted;
+  }
+
+  /**
+   * Caller context a shared interface facade runs in. The caller owns the
+   * execution, so its module, owner and routes win; the routes the interface
+   * package was loaded with fill in the proxies the caller never resolved
+   * itself, which are the ones only reachable through this package.
+   */
+  private getAdoptedContext(
+    shared: CapturedModuleContext,
+    ambient: CapturedModuleContext,
+  ): CapturedModuleContext {
+    const cached = this.adoptedContexts.get(shared)?.get(ambient);
+    if (cached) {
+      return cached;
+    }
+    const adopted = {
+      ...ambient,
+      provider: ambient.provider ?? shared.provider,
+      providerRoutes: this.chainProviderRoutes(
+        ambient.providerRoutes,
+        shared.providerRoutes,
+      ),
+    };
+    const contexts =
+      this.adoptedContexts.get(shared) ??
+      new WeakMap<CapturedModuleContext, CapturedModuleContext>();
+    contexts.set(ambient, adopted);
+    this.adoptedContexts.set(shared, contexts);
+    return adopted;
+  }
+
+  private chainProviderRoutes(
+    routes: Readonly<Record<string, string>> | undefined,
+    fallback: Readonly<Record<string, string>> | undefined,
+  ): Readonly<Record<string, string>> | undefined {
+    if (!routes || !fallback) {
+      return routes ?? fallback;
+    }
+    return new Proxy(routes, {
+      get: (target, identity) =>
+        Reflect.get(target, identity) ?? Reflect.get(fallback, identity),
+    });
   }
 
   private getProviderlessContext(
@@ -766,6 +824,10 @@ export class Resolver {
     contexts.set(interfaceName, providerless);
     this.providerlessContexts.set(context, contexts);
     this.stubbedContexts.add(providerless);
+    if (this.sharedContexts.has(context)) {
+      this.sharedContexts.add(providerless);
+      this.sharedStubInterfaces.set(providerless, interfaceName);
+    }
     return providerless;
   }
 
@@ -877,17 +939,18 @@ export class Resolver {
           (!facadeThis || thisArg === facadeThis || thisArg === undefined)
             ? boundThis
             : thisArg;
-        const callContext = this.effectiveContext(context);
-        const result = runWithCapturedModuleContext(callContext, () =>
-          Reflect.apply(
-            target,
-            receiver,
-            argumentsList.map((argument) =>
-              this.bindInterfaceValue(argument, callContext),
+        const result = runWithCapturedModuleContext(
+          this.effectiveContext(context),
+          () =>
+            Reflect.apply(
+              target,
+              receiver,
+              argumentsList.map((argument) =>
+                this.bindInterfaceValue(argument, context),
+              ),
             ),
-          ),
         );
-        return this.bindFunctionResult(result, callContext);
+        return this.bindFunctionResult(result, context);
       },
       construct: (target, argumentsList, newTarget) =>
         runWithCapturedModuleContext(this.effectiveContext(context), () =>
@@ -967,12 +1030,10 @@ export class Resolver {
   ): EventProxy {
     const handlers = new WeakMap<BindableFunction, BindableFunction>();
     const register = (handler: BindableFunction) => {
-      const callContext = this.effectiveContext(context);
       const bound =
-        handlers.get(handler) ??
-        this.createFunctionFacade(handler, callContext);
+        handlers.get(handler) ?? this.createFunctionFacade(handler, context);
       handlers.set(handler, bound);
-      return runWithCapturedModuleContext(callContext, () =>
+      return runWithCapturedModuleContext(this.effectiveContext(context), () =>
         event.register(bound),
       );
     };
