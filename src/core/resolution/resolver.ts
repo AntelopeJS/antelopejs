@@ -250,8 +250,23 @@ export class Resolver {
     };
   }
 
-  isInterfaceGraphFile(filePath: string): boolean {
-    return this.interfaceGraphFiles.has(filePath);
+  /**
+   * Root directory of the interface package whose own import graph brought
+   * `filePath` in, or undefined when the file is not part of one.
+   *
+   * Callers need the root, not just a yes/no: whether a cached file may
+   * survive a module reload depends on where the interface package sits
+   * relative to the module being reloaded.
+   */
+  getInterfaceGraphRoot(filePath: string): string | undefined {
+    const packageName = this.interfaceGraphFiles.get(filePath);
+    if (!packageName) {
+      return undefined;
+    }
+    if (packageName === CORE_PKG) {
+      return CORE_PACKAGE?.root;
+    }
+    return this.interfacePackages.get(packageName);
   }
 
   buildProviderRoutes(moduleId: string): Readonly<Record<string, string>> {

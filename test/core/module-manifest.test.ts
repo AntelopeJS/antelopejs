@@ -1,12 +1,15 @@
 import { expect } from "chai";
 import * as path from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
+import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import type { BuildModuleEntry } from "../../src/core/build/build-artifact";
 import {
   ModuleManifest,
   type ModulePackageJson,
+  resolveManifestEntryFile,
 } from "../../src/core/module-manifest";
 
 describe("ModuleManifest", () => {
@@ -287,5 +290,45 @@ describe("ModuleManifest", () => {
     expect(rebuiltEntry.implements).to.deep.equal(entry.implements);
     expect(rebuiltEntry.baseUrl).to.equal(entry.baseUrl);
     expect(rebuiltEntry.paths).to.deep.equal(entry.paths);
+  });
+});
+
+describe("resolveManifestEntryFile", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = makeTempDir("ajs-manifest-entry-");
+  });
+
+  afterEach(() => {
+    cleanupTempDir(root);
+  });
+
+  it("returns the entry file a module folder stands for", () => {
+    writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "nested", version: "1.0.0", main: "dist/mod.js" }),
+    );
+    mkdirSync(path.join(root, "dist"), { recursive: true });
+    writeFileSync(path.join(root, "dist", "mod.js"), "module.exports = {};");
+
+    expect(resolveManifestEntryFile({ main: root })).to.equal(
+      path.join(root, "dist", "mod.js"),
+    );
+  });
+
+  it("leaves an entry that already names a file alone", () => {
+    const entry = path.join(root, "index.js");
+    writeFileSync(entry, "module.exports = {};");
+
+    expect(resolveManifestEntryFile({ main: entry })).to.equal(entry);
+  });
+
+  it("falls back to the folder when no entry can be resolved yet", () => {
+    expect(resolveManifestEntryFile({ main: root })).to.equal(root);
+  });
+
+  it("returns undefined when the manifest names no entry", () => {
+    expect(resolveManifestEntryFile({})).to.equal(undefined);
   });
 });

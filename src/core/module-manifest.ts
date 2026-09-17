@@ -1,4 +1,6 @@
 import * as path from "node:path";
+import { statSync } from "node:fs";
+import { createRequire } from "node:module";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
 
 import type { IFileSystem } from "../types";
@@ -73,6 +75,35 @@ function cloneAliasEntries(
     alias: entry.alias,
     replace: entry.replace,
   }));
+}
+
+/**
+ * The file `manifest.main` names, as it lands in `require.cache`.
+ *
+ * `main` holds the module folder itself when the source declares no entry —
+ * Node resolves the package from there just fine, but the cache is keyed by
+ * files, so comparing a cached path against a folder never matches. Resolving
+ * the directory to the entry file it stands for gives callers something they
+ * can compare. Deliberately lazy: a watched module is rebuilt between
+ * reloads, and its entry may not exist when the manifest is first read.
+ */
+export function resolveManifestEntryFile(manifest: {
+  main?: string;
+}): string | undefined {
+  if (!manifest.main) {
+    return undefined;
+  }
+  const main = path.resolve(manifest.main);
+  try {
+    if (!statSync(main).isDirectory()) {
+      return main;
+    }
+    return path.resolve(
+      createRequire(path.join(main, "__antelope_entry__.js")).resolve(main),
+    );
+  } catch {
+    return main;
+  }
 }
 
 function resolveMainPath(folder: string, source: ModuleSource): string {

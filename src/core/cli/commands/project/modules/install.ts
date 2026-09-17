@@ -100,6 +100,7 @@ async function analyzeConfig(
   }
 
   const providers = manifests.map((m) => ({
+    name: m.manifest.name,
     implements: m.implements ?? [],
   }));
 

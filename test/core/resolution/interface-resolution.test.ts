@@ -240,3 +240,90 @@ describe("findUnresolvedInterfaces (standalone interfaces)", () => {
     ]);
   });
 });
+
+describe("findUnresolvedInterfaces (runtime modules are not interfaces)", () => {
+  const RUNTIME_PKG = "@antelopejs/runtime-fixture";
+  const IFACE_PKG = "@antelopejs/interface-runtime-fixture";
+  const SELF_HOSTING_PKG = "@antelopejs/self-hosting-fixture";
+  let consumerFolder: string;
+
+  function writePackage(
+    root: string,
+    name: string,
+    antelopeJs: Record<string, unknown>,
+  ): void {
+    const dir = path.join(root, "node_modules", ...name.split("/"));
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      path.join(dir, "package.json"),
+      JSON.stringify({
+        name,
+        version: "1.0.0",
+        exports: { ".": "./index.js" },
+        antelopeJs,
+      }),
+    );
+    writeFileSync(path.join(dir, "index.js"), "module.exports = {};");
+  }
+
+  beforeEach(() => {
+    consumerFolder = makeTempDir("ajs-iface-runtime-");
+    writePackage(consumerFolder, RUNTIME_PKG, { implements: [IFACE_PKG] });
+    writePackage(consumerFolder, SELF_HOSTING_PKG, {
+      implements: [SELF_HOSTING_PKG],
+    });
+  });
+
+  afterEach(() => {
+    cleanupTempDir(consumerFolder);
+  });
+
+  it("ignores a dependency on a package that implements interfaces", () => {
+    const consumers: InterfaceConsumer[] = [
+      {
+        id: "playground",
+        folder: consumerFolder,
+        dependencies: { [RUNTIME_PKG]: "*" },
+      },
+    ];
+
+    const result = findUnresolvedInterfaces([], consumers);
+
+    expect(result.unresolved).to.have.lengthOf(0);
+    expect(result.stubbed).to.have.lengthOf(0);
+  });
+
+  it("ignores a dependency on a package loaded as a module of the project", () => {
+    const providers: InterfaceProvider[] = [
+      { name: SELF_HOSTING_PKG, implements: [SELF_HOSTING_PKG] },
+    ];
+    const consumers: InterfaceConsumer[] = [
+      {
+        id: "playground",
+        folder: consumerFolder,
+        dependencies: { [SELF_HOSTING_PKG]: "*" },
+      },
+    ];
+
+    const result = findUnresolvedInterfaces(providers, consumers, []);
+
+    expect(result.unresolved).to.have.lengthOf(0);
+    expect(result.stubbed).to.have.lengthOf(0);
+  });
+
+  it("still reports a self-hosting interface package nobody loads", () => {
+    const consumers: InterfaceConsumer[] = [
+      {
+        id: "playground",
+        folder: consumerFolder,
+        dependencies: { [SELF_HOSTING_PKG]: "*" },
+      },
+    ];
+
+    const result = findUnresolvedInterfaces([], consumers);
+
+    expect(result.unresolved).to.deep.equal([
+      { moduleId: "playground", interfacePackage: SELF_HOSTING_PKG },
+    ]);
+  });
+});
