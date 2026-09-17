@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@antelopejs/interface-core':
         specifier: '>=0.0.12 <1.0.0'
-        version: 0.0.12
+        version: 0.0.13
       '@types/proper-lockfile':
         specifier: ^4.1.4
         version: 4.1.4
@@ -131,8 +131,8 @@ importers:
 
 packages:
 
-  '@antelopejs/interface-core@0.0.12':
-    resolution: {integrity: sha512-SuHSQXOFEa04JEErN3PprdwT/jrtXGP6Eiwrk19wZ9QRSjaYkq54xpwFnq9NkYh3BG2EdNmIB9CIwadiCZUsaw==}
+  '@antelopejs/interface-core@0.0.13':
+    resolution: {integrity: sha512-zMVhW5OefmVNRLHvd3rPQTaShy+k9w6+cOhqOryyfxgVyRZ18nBlV8VSq9TuPkFIo5OGNAXFybOf54DRSnPVsw==}
 
   '@antelopejs/interface-core@0.0.6':
     resolution: {integrity: sha512-OMna86iT/ylL6wJl6FCPw9ieddULXGs4jTmeiDBNEXYQ9acnVXjS/+SaN0UR0h7oY7WTD9VwKXVwG95qjNIA1w==}
@@ -2606,7 +2606,7 @@ packages:
 
 snapshots:
 
-  '@antelopejs/interface-core@0.0.12':
+  '@antelopejs/interface-core@0.0.13':
     dependencies:
       reflect-metadata: 0.2.2
 
