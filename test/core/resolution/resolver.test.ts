@@ -123,7 +123,7 @@ function createDeferredConsumers(
   controllerContexts: Map<string, string>,
   queryContexts: Map<string, string>,
 ): DeferredConsumer[] {
-  return ["cms", "cms-saas"].map((id) => {
+  return ["dms", "dms-saas"].map((id) => {
     class ConsumerController {
       userModel!: DeferredUserModel;
 
@@ -865,11 +865,11 @@ describe("Resolver", () => {
       "resolver.transitive-registering",
     );
     const identity = GetInterfaceProxyIdentity(registrations) as string;
-    resolver.modulesById.set("cms", { id: "cms", manifest: {} as any });
-    internal.interfaceConnections.cms = {
+    resolver.modulesById.set("dms", { id: "dms", manifest: {} as any });
+    internal.interfaceConnections.dms = {
       "interface-database": selectedProvider("mongodb"),
     };
-    const routes = resolver.buildProviderRoutes("cms") as Record<
+    const routes = resolver.buildProviderRoutes("dms") as Record<
       string,
       string
     >;
@@ -887,7 +887,7 @@ describe("Resolver", () => {
         registrations.onRegister((id) => received.push(id), true),
       );
       RunWithModuleContext(
-        { module: "cms", provider: "cms", providerRoutes: routes },
+        { module: "dms", provider: "dms", providerRoutes: routes },
         () =>
           resolver.bindProviderRoutes(
             {
@@ -895,18 +895,18 @@ describe("Resolver", () => {
               interfaceName: "interface-database-decorators",
               bindExports: true,
             },
-            { RegisterSchema: () => registrations.register("cms-schema") },
+            { RegisterSchema: () => registrations.register("dms-schema") },
           ),
       );
       expect(routes).to.deep.equal({ [identity]: "mongodb" });
       RunWithModuleContext(
-        { module: "cms", provider: "cms", providerRoutes: routes },
-        () => registrations.register("cms-schema"),
+        { module: "dms", provider: "dms", providerRoutes: routes },
+        () => registrations.register("dms-schema"),
       );
-      expect(received).to.deep.equal(["cms-schema"]);
+      expect(received).to.deep.equal(["dms-schema"]);
     } finally {
       registrations.detach();
-      delete internal.interfaceConnections.cms;
+      delete internal.interfaceConnections.dms;
     }
   });
 
@@ -928,7 +928,7 @@ describe("Resolver", () => {
       },
       { registrations },
     );
-    const consumers = ["cms", "cms-saas"];
+    const consumers = ["dms", "dms-saas"];
     const facades = new Map<string, OptionalInterfaceExports>();
 
     try {
@@ -1033,7 +1033,7 @@ describe("Resolver", () => {
     const apiExports = createMutableRequestExports(observations);
 
     const body = await RunWithModuleContext(
-      { module: "cms", provider: "cms", providerRoutes: {} },
+      { module: "dms", provider: "dms", providerRoutes: {} },
       () => {
         const facade = resolver.bindProviderRoutes(
           { resolvedPath: "api", provider: "api", bindExports: true },
@@ -1062,12 +1062,12 @@ describe("Resolver", () => {
     };
 
     const category = RunWithModuleContext(
-      { module: "cms", provider: "cms", providerRoutes: {} },
+      { module: "dms", provider: "dms", providerRoutes: {} },
       () => {
         const facade = resolver.bindProviderRoutes(
           {
             resolvedPath: "notifications",
-            provider: "cms-notifications",
+            provider: "dms-notifications",
             bindExports: true,
           },
           notificationExports,
