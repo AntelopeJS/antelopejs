@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.7.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.7.0...v1.7.1)
+
+### 🩹 Fixes
+
+- Unblock module installs on peer-heavy packages and stop orphaning module child processes ([#136](https://github.com/AntelopeJS/antelopejs/pull/136))
+
+### 📖 Documentation
+
+- **changelog:** List the 1.7.0 changes since 1.6.0 ([#135](https://github.com/AntelopeJS/antelopejs/pull/135))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.7.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.6.0...v1.7.0)
