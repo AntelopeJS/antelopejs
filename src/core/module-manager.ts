@@ -8,9 +8,12 @@ import { ModuleTracker } from "./module-tracker";
 import { Resolver } from "./resolution/resolver";
 import { ModuleRegistry } from "./module-registry";
 import { PathMapper } from "./resolution/path-mapper";
-import type { ModuleManifest } from "./module-manifest";
 import { ResolverDetour } from "./resolution/resolver-detour";
 import type { UnresolvedInterface } from "./resolution/interface-resolution";
+import {
+  type ModuleManifest,
+  resolveManifestEntryFile,
+} from "./module-manifest";
 import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
@@ -173,6 +176,7 @@ export class ModuleManager {
     }
 
     const moduleFolder = path.resolve(entry.module.manifest.folder);
+    const moduleEntryFile = resolveManifestEntryFile(entry.module.manifest);
     const avoidedFolders = new Set<string>();
 
     avoidedFolders.add(path.join(moduleFolder, "node_modules"));
@@ -192,8 +196,8 @@ export class ModuleManager {
       }
       if (
         shouldPreserveInterfaceGraph &&
-        filePath !== entry.module.manifest.main &&
-        this.resolver.isInterfaceGraphFile(filePath)
+        filePath !== moduleEntryFile &&
+        this.belongsToInterfacePackageTree(filePath, moduleFolder)
       ) {
         continue;
       }
@@ -208,6 +212,36 @@ export class ModuleManager {
         delete require.cache[filePath];
       }
     }
+  }
+
+  /**
+   * Whether a cached file under the reloading module belongs to an interface
+   * package's OWN tree, and must therefore survive the reload.
+   *
+   * Interface modules are shared instances: evicting one would hand the
+   * reloaded module a second copy of a contract its peers still hold — a
+   * second proxy identity, a second decorator metadata key, a second class.
+   * That argument covers an interface package whose root is the module folder
+   * (a module shipping its own interface) or sits inside it (a nested
+   * interface package).
+   *
+   * It does not cover an interface package whose root CONTAINS the module
+   * folder. A module nested inside another package's tree — a playground
+   * shipped inside the runtime package it exercises — owns every file under
+   * its own folder, even though the resolver tags them: their relative
+   * imports resolve off the enclosing root, so the interface graph swallows
+   * the whole module. Preserving those files makes a hot reload re-run only
+   * the entry point and serve the previous build forever.
+   */
+  private belongsToInterfacePackageTree(
+    filePath: string,
+    moduleFolder: string,
+  ): boolean {
+    const root = this.resolver.getInterfaceGraphRoot(filePath);
+    if (!root) {
+      return false;
+    }
+    return this.isPathWithin(path.resolve(root), moduleFolder);
   }
 
   replaceLoadedModule(id: string, module: Module): ManagedModule | undefined {

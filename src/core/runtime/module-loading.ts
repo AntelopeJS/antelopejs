@@ -518,6 +518,7 @@ export function ensureGraphIsValid(manager: ModuleManager): void {
   const loadedIds = new Set(loadedModules.map(({ module }) => module.id));
 
   const providers = allModules.map(({ module, config }) => ({
+    name: module.manifest.manifest.name,
     implements: module.manifest.implements ?? [],
     disabledExports: config.disabledExports,
   }));

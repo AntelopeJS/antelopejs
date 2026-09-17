@@ -1,6 +1,12 @@
 import { resolvePackage } from "./package-resolution";
 
 export interface InterfaceProvider {
+  /**
+   * Package name of the runtime module, when known. A package loaded as a
+   * module of the project is never an interface package, whatever its
+   * manifest looks like: depending on it is a plain package dependency.
+   */
+  name?: string;
   implements: string[];
   disabledExports?: Set<string>;
 }
@@ -33,17 +39,55 @@ export interface InterfaceResolutionResult {
   stubbed: UnresolvedInterface[];
 }
 
+const NOT_AN_INTERFACE: InterfacePackageInfo = {
+  isInterface: false,
+  standalone: false,
+};
+
+/**
+ * Tells an interface package from a runtime module by the shape of its
+ * `antelopeJs` manifest key.
+ *
+ * Both kinds carry that key, so its mere presence says nothing. What
+ * separates them is `implements`: a package that declares which interfaces it
+ * implements is a runtime module — it is loaded, started and stopped, and
+ * other packages depend on it the way they depend on any library. An
+ * interface package implements nothing; it only describes a contract.
+ *
+ * The one crossover is a package that lists ITSELF in `implements`: a runtime
+ * module that also ships its own interface (the lifecycle-interface pattern
+ * the resolver tracks in `lifecycleInterfacePackages`). That one is both, and
+ * still counts as an interface package here.
+ */
+function isInterfacePackageManifest(
+  packageName: string,
+  antelopeJs: Record<string, unknown>,
+): boolean {
+  const implemented = antelopeJs.implements;
+  if (!Array.isArray(implemented) || implemented.length === 0) {
+    return true;
+  }
+  return implemented.every((name) => name === packageName);
+}
+
 function readInterfacePackageInfo(
   dep: string,
   consumerFolder: string,
+  modulePackages: ReadonlySet<string>,
 ): InterfacePackageInfo {
+  if (modulePackages.has(dep)) {
+    return NOT_AN_INTERFACE;
+  }
   const resolvedPackage = resolvePackage(dep, consumerFolder);
-  if (!resolvedPackage) {
-    return { isInterface: false, standalone: false };
+  if (!resolvedPackage?.antelopeJs) {
+    return NOT_AN_INTERFACE;
+  }
+  if (!isInterfacePackageManifest(dep, resolvedPackage.antelopeJs)) {
+    return NOT_AN_INTERFACE;
   }
   return {
-    isInterface: Boolean(resolvedPackage.antelopeJs),
-    standalone: Boolean(resolvedPackage.antelopeJs?.standalone),
+    isInterface: true,
+    standalone: Boolean(resolvedPackage.antelopeJs.standalone),
   };
 }
 
@@ -61,12 +105,20 @@ export function findUnresolvedInterfaces(
     }
   }
 
+  const modulePackages = new Set(
+    providers.flatMap((provider) => (provider.name ? [provider.name] : [])),
+  );
+
   const unresolved: UnresolvedInterface[] = [];
   const stubbed: UnresolvedInterface[] = [];
   for (const consumer of consumers) {
     for (const dep of Object.keys(consumer.dependencies)) {
       if (implementedInterfaces.has(dep)) continue;
-      const info = readInterfacePackageInfo(dep, consumer.folder);
+      const info = readInterfacePackageInfo(
+        dep,
+        consumer.folder,
+        modulePackages,
+      );
       if (!info.isInterface) continue;
       // A standalone interface with no implementer self-hosts instead of
       // blocking startup — route it through the stub/self-host path.
@@ -84,7 +136,11 @@ export function findUnresolvedInterfaces(
     const optional = consumer.optionalDependencies ?? {};
     for (const dep of Object.keys(optional)) {
       if (implementedInterfaces.has(dep)) continue;
-      const info = readInterfacePackageInfo(dep, consumer.folder);
+      const info = readInterfacePackageInfo(
+        dep,
+        consumer.folder,
+        modulePackages,
+      );
       if (!info.isInterface) continue;
       stubbed.push({
         moduleId: consumer.id,

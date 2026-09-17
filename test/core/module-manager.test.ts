@@ -1133,11 +1133,8 @@ describe("ModuleManager", () => {
     const moduleFolder = path.resolve("test", "module");
     const submoduleFolder = path.join(moduleFolder, "child");
     const nodeModulesFolder = path.join(moduleFolder, "node_modules");
-    const declarationEntry = path.join(
-      moduleFolder,
-      "interfaces",
-      "declaration.js",
-    );
+    const interfaceRoot = path.join(moduleFolder, "interfaces");
+    const declarationEntry = path.join(interfaceRoot, "declaration.js");
 
     const cacheEntries = [
       path.join(moduleFolder, "index.js"),
@@ -1175,6 +1172,10 @@ describe("ModuleManager", () => {
       { interfaceName: "interface-test", resolvedPath: declarationEntry },
       declarationEntry,
     );
+    (manager as any).resolver.interfacePackages.set(
+      "interface-test",
+      interfaceRoot,
+    );
 
     manager.unrequireModuleFiles("test");
 
@@ -1198,6 +1199,97 @@ describe("ModuleManager", () => {
     manager.unrequireModuleFiles("test", false);
 
     expect(require.cache[declarationEntry]).to.equal(undefined);
+
+    for (const entry of cacheEntries) {
+      if (previous[entry]) {
+        require.cache[entry] = previous[entry];
+      } else {
+        delete require.cache[entry];
+      }
+    }
+  });
+
+  it("re-evaluates a module nested inside an interface package root", () => {
+    // The playground shipped inside its own runtime package: every relative
+    // import under the playground resolves off the runtime package's root, so
+    // the interface resolver tags it — but those files are the playground's,
+    // and a reload that keeps them serves the previous build forever.
+    const manager = new ModuleManager();
+    const interfaceRoot = path.resolve("test", "runtime-package");
+    const moduleFolder = path.join(interfaceRoot, "playground");
+    const pageEntry = path.join(moduleFolder, "dist", "page.js");
+    const entryFile = path.join(moduleFolder, "dist", "index.js");
+
+    const cacheEntries = [entryFile, pageEntry];
+    const previous: Record<string, any> = {};
+    for (const entry of cacheEntries) {
+      previous[entry] = require.cache[entry];
+      require.cache[entry] = {} as any;
+    }
+
+    (manager as any).loaded.set("playground", {
+      module: { manifest: { folder: moduleFolder, main: entryFile } },
+      config: {},
+    });
+    for (const entry of cacheEntries) {
+      (manager as any).resolver.trackInterfaceFile(
+        { interfaceName: "@scope/runtime", resolvedPath: entry },
+        entry,
+      );
+    }
+    (manager as any).resolver.interfacePackages.set(
+      "@scope/runtime",
+      interfaceRoot,
+    );
+
+    manager.unrequireModuleFiles("playground");
+
+    expect(require.cache[entryFile]).to.equal(undefined);
+    expect(require.cache[pageEntry]).to.equal(undefined);
+
+    for (const entry of cacheEntries) {
+      if (previous[entry]) {
+        require.cache[entry] = previous[entry];
+      } else {
+        delete require.cache[entry];
+      }
+    }
+  });
+
+  it("keeps the shared graph of a module that ships its own interface", () => {
+    const manager = new ModuleManager();
+    const moduleFolder = path.resolve("test", "self-hosting");
+    const entryFile = path.join(moduleFolder, "dist", "index.js");
+    const leafEntry = path.join(moduleFolder, "dist", "leaf.js");
+
+    const cacheEntries = [entryFile, leafEntry];
+    const previous: Record<string, any> = {};
+    for (const entry of cacheEntries) {
+      previous[entry] = require.cache[entry];
+      require.cache[entry] = {} as any;
+    }
+
+    (manager as any).loaded.set("self", {
+      module: { manifest: { folder: moduleFolder, main: entryFile } },
+      config: {},
+    });
+    for (const entry of cacheEntries) {
+      (manager as any).resolver.trackInterfaceFile(
+        { interfaceName: "@scope/self", resolvedPath: entry },
+        entry,
+      );
+    }
+    (manager as any).resolver.interfacePackages.set(
+      "@scope/self",
+      moduleFolder,
+    );
+
+    manager.unrequireModuleFiles("self");
+
+    // The entry re-runs so the module reloads; the contract it shares with
+    // every other module keeps its identity.
+    expect(require.cache[entryFile]).to.equal(undefined);
+    expect(require.cache[leafEntry]).to.not.equal(undefined);
 
     for (const entry of cacheEntries) {
       if (previous[entry]) {
