@@ -1,34 +1,5 @@
 # Changelog
 
-## v2.0.1
-
-[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v2.0.0...v2.0.1)
-
-### 🩹 Fixes
-
-- **resolution:** Keep a shared facade on its own interface and data intact ([#132](https://github.com/AntelopeJS/antelopejs/pull/132))
-
-### ❤️ Contributors
-
-- Antony Rizzitelli <rizzitelli.antony@pm.me>
-
-## v2.0.0
-
-[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.6.0...v2.0.0)
-
-### 🩹 Fixes
-
-- **runtime:** ⚠️  Re-evaluate nested modules on hot reload and stop treating runtime packages as interfaces ([#126](https://github.com/AntelopeJS/antelopejs/pull/126))
-- **resolution:** Stop pinning shared interface facades to one consumer ([#130](https://github.com/AntelopeJS/antelopejs/pull/130))
-
-#### ⚠️ Breaking Changes
-
-- **runtime:** ⚠️  Re-evaluate nested modules on hot reload and stop treating runtime packages as interfaces ([#126](https://github.com/AntelopeJS/antelopejs/pull/126))
-
-### ❤️ Contributors
-
-- Antony Rizzitelli <rizzitelli.antony@pm.me>
-
 ## v1.6.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.5.1...v1.6.0)
