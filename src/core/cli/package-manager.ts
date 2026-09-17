@@ -35,6 +35,11 @@ interface InstallDependenciesParams {
   hasLockfile: boolean;
   isLockfileFrozen: boolean;
   isProduction: boolean;
+  /**
+   * Relax peer dependency resolution. Only npm understands this flag; the other
+   * package managers ignore peer conflicts or resolve them on their own.
+   */
+  useLegacyPeerDeps: boolean;
 }
 
 interface PackageManager {
@@ -83,9 +88,15 @@ const UNINSTALL_COMMANDS: Record<
     compactCommand(
       `${executable} install ${isProduction ? "--production" : ""}${isLockfileFrozen ? " --frozen-lockfile" : ""}${hasLockfile ? " --prefer-offline" : ""}`,
     ),
-  npm: ({ executable, hasLockfile, isLockfileFrozen, isProduction }) =>
+  npm: ({
+    executable,
+    hasLockfile,
+    isLockfileFrozen,
+    isProduction,
+    useLegacyPeerDeps,
+  }) =>
     compactCommand(
-      `${executable} ${isLockfileFrozen ? "ci --prefer-offline" : `install${hasLockfile ? " --prefer-offline" : ""}`} ${isProduction ? "--omit=dev" : ""}`,
+      `${executable} ${isLockfileFrozen ? "ci --prefer-offline" : `install${hasLockfile ? " --prefer-offline" : ""}`} ${isProduction ? "--omit=dev" : ""} ${useLegacyPeerDeps ? "--legacy-peer-deps" : ""}`,
     ),
 };
 
@@ -220,6 +231,7 @@ export async function getInstallCommand(
   isProduction = true,
   fileSystem: IFileSystem = new NodeFileSystem(),
   lockfileMode: LockfileMode = "frozen",
+  useLegacyPeerDeps = false,
 ): Promise<string> {
   const packageManager = resolvePackageManager(
     await getModulePackageManager(directory, fileSystem),
@@ -234,7 +246,24 @@ export async function getInstallCommand(
     hasLockfile,
     isLockfileFrozen: hasLockfile && lockfileMode === "frozen",
     isProduction,
+    useLegacyPeerDeps,
   });
+}
+
+/**
+ * Install command for a module downloaded into the module cache.
+ *
+ * Cached modules are installed standalone, outside of the project they belong
+ * to, so their peer dependencies are almost never satisfiable. npm's resolver
+ * chokes on such graphs (it can even crash with
+ * "Cannot read properties of null (reading 'edgesOut')"), so peer resolution is
+ * relaxed. Only the runtime dependencies of the module are needed at that point.
+ */
+export function getModuleCacheInstallCommand(
+  directory: string = ".",
+  fileSystem: IFileSystem = new NodeFileSystem(),
+): Promise<string> {
+  return getInstallCommand(directory, true, fileSystem, "frozen", true);
 }
 
 export function parsePackageInfoOutput(output: string): string {

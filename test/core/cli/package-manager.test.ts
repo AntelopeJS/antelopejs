@@ -7,6 +7,7 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 import {
   getInstallCommand,
   getInstallPackagesCommand,
+  getModuleCacheInstallCommand,
   getModulePackageManager,
   getPackageManagerWithVersion,
   parsePackageInfoOutput,
@@ -207,6 +208,53 @@ describe("Package Manager Utils", () => {
         ).to.equal(testCase.command);
         await fs.rm(`/project/${testCase.lockfile}`);
       }
+    });
+
+    it("relaxes peer resolution for npm module cache installs", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile("/module/package.json", JSON.stringify({}));
+
+      expect(await getModuleCacheInstallCommand("/module", fs)).to.equal(
+        "npm install --omit=dev --legacy-peer-deps",
+      );
+
+      await fs.writeFile("/module/package-lock.json", "lock");
+      expect(await getModuleCacheInstallCommand("/module", fs)).to.equal(
+        "npm ci --prefer-offline --omit=dev --legacy-peer-deps",
+      );
+    });
+
+    it("keeps peer resolution untouched for other package managers", async () => {
+      sinon.stub(require("node:child_process"), "execSync").returns("0.20.0");
+      const fs = new InMemoryFileSystem();
+
+      await fs.writeFile(
+        "/module/package.json",
+        JSON.stringify({ packageManager: "pnpm@10.6.5" }),
+      );
+      expect(await getModuleCacheInstallCommand("/module", fs)).to.equal(
+        "corepack pnpm@10.6.5 install --prod --ignore-workspace",
+      );
+
+      await fs.writeFile(
+        "/module/package.json",
+        JSON.stringify({ packageManager: "yarn@1.22.21" }),
+      );
+      expect(await getModuleCacheInstallCommand("/module", fs)).to.equal(
+        "corepack yarn@1.22.21 install --production",
+      );
+    });
+
+    it("keeps project installs free of --legacy-peer-deps", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile("/project/package.json", JSON.stringify({}));
+
+      expect(await getInstallCommand("/project", true, fs)).to.not.include(
+        "--legacy-peer-deps",
+      );
+      expect(
+        await getInstallCommand("/project", false, fs, "update"),
+      ).to.not.include("--legacy-peer-deps");
     });
 
     it("ignores malformed versions", async () => {

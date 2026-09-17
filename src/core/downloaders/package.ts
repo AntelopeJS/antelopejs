@@ -11,7 +11,7 @@ import { ModuleCache } from "../module-cache";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import type { DownloaderRegistry } from "./registry";
-import { getInstallCommand } from "../cli/package-manager";
+import { getModuleCacheInstallCommand } from "../cli/package-manager";
 import { ModuleManifest, type ModulePackageJson } from "../module-manifest";
 
 export interface PackageDownloaderDeps {
@@ -225,7 +225,7 @@ export function registerPackageDownloader(
     fs: deps.fs ?? new NodeFileSystem(),
     exec: deps.exec ?? ExecuteCMD,
     extract: deps.extract ?? defaultExtract,
-    getInstallCommand: deps.getInstallCommand ?? getInstallCommand,
+    getInstallCommand: deps.getInstallCommand ?? getModuleCacheInstallCommand,
     getTemp: deps.getTemp ?? (() => ModuleCache.getTemp()),
   };
   const fetchVersion = memoizeVersionFetcher(ctx.exec);
