@@ -14,7 +14,12 @@ async function listPlugins(): Promise<void> {
   console.log("");
   console.log(
     chalk.dim(
-      `Install or update a plugin with: ${chalk.cyan("ajs update <plugin>")}`,
+      `Plugins resolve from the nearest node_modules/.bin, then from PATH.`,
+    ),
+  );
+  console.log(
+    chalk.dim(
+      `Install or update a global plugin with: ${chalk.cyan("ajs update <plugin>")}`,
     ),
   );
 }
@@ -24,7 +29,9 @@ export default function () {
     .alias("plugin")
     .description(
       `List official AntelopeJS plugins\n` +
-        `Shows which plugins are installed globally and their versions.`,
+        `Shows where each plugin resolves from and its version.\n` +
+        `Resolution order: node_modules/.bin of the current directory or one of\n` +
+        `its parents ("local"), then PATH ("global").`,
     )
     .action(listPlugins)
     .addCommand(

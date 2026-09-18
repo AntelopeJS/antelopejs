@@ -7,17 +7,22 @@ import {
   runUpdate,
 } from "../../../src/core/cli/plugin-management";
 import {
-  createInstalledReader,
-  createShimReader,
-  DMS_EXECUTABLE,
-  GLOBAL_ROOT,
-} from "../../helpers/official-plugin";
-import {
   createGlobalRootResolver,
   createOutput,
   createProcessRunner,
   formatSpawnCalls,
 } from "../../helpers/cli-plugins";
+import {
+  createInstalledReader,
+  createLocalReader,
+  createShimReader,
+  DMS_EXECUTABLE,
+  GLOBAL_DMS,
+  GLOBAL_ROOT,
+  globalExecutable,
+  LOCAL_DMS_EXECUTABLE,
+  localExecutable,
+} from "../../helpers/official-plugin";
 
 const NPM_INSTALLATION: GlobalInstallation = {
   packageManager: "npm",
@@ -27,7 +32,7 @@ const NPM_INSTALLATION: GlobalInstallation = {
 describe("Official plugin statuses", () => {
   it("reports an installed plugin with its version", async () => {
     const statuses = await getPluginStatuses({
-      lookupExecutable: async () => DMS_EXECUTABLE,
+      lookupExecutable: async () => GLOBAL_DMS,
       packageLookup: { reader: createInstalledReader({ version: "2.0.1" }) },
     });
 
@@ -35,12 +40,14 @@ describe("Official plugin statuses", () => {
     expect(statuses[0].plugin.name).to.equal("dms");
     expect(statuses[0].executablePath).to.equal(DMS_EXECUTABLE);
     expect(statuses[0].version).to.equal("2.0.1");
-    expect(formatPluginStatus(statuses[0])).to.contain("installed (2.0.1)");
+    expect(statuses[0].source).to.equal("path");
+    expect(formatPluginStatus(statuses[0])).to.contain("global (2.0.1)");
   });
 
   it("reads the version from the global root behind a shim", async () => {
     const statuses = await getPluginStatuses({
-      lookupExecutable: async () => "/home/user/.local/share/pnpm/ajs-dms",
+      lookupExecutable: async () =>
+        globalExecutable("/home/user/.local/share/pnpm/ajs-dms"),
       packageLookup: {
         reader: createShimReader({ version: "3.3.3" }),
         packageManager: "pnpm",
@@ -49,6 +56,20 @@ describe("Official plugin statuses", () => {
     });
 
     expect(statuses[0].version).to.equal("3.3.3");
+  });
+
+  it("reports a plugin resolved from the project node_modules", async () => {
+    const statuses = await getPluginStatuses({
+      lookupExecutable: async () => localExecutable(LOCAL_DMS_EXECUTABLE),
+      packageLookup: { reader: createLocalReader({ version: "1.4.0" }) },
+    });
+
+    expect(statuses[0].source).to.equal("local");
+    expect(statuses[0].executablePath).to.equal(LOCAL_DMS_EXECUTABLE);
+    expect(statuses[0].version).to.equal("1.4.0");
+    expect(formatPluginStatus(statuses[0])).to.contain(
+      `local (${LOCAL_DMS_EXECUTABLE}) (1.4.0)`,
+    );
   });
 
   it("reports a missing plugin", async () => {
@@ -69,7 +90,7 @@ describe("Official plugin update", () => {
 
     const exitCode = await runUpdate(undefined, {
       detectInstallation: () => NPM_INSTALLATION,
-      lookupExecutable: async () => DMS_EXECUTABLE,
+      lookupExecutable: async () => GLOBAL_DMS,
       packageLookup: { reader: createInstalledReader() },
       processOptions: { processRunner: runner, platform: "linux" },
       output,
@@ -102,6 +123,23 @@ describe("Official plugin update", () => {
     expect(exitCode).to.equal(0);
     expect(formatSpawnCalls(calls)).to.deep.equal([
       "pnpm add -g @antelopejs/core@latest",
+    ]);
+  });
+
+  it("leaves a locally resolved plugin to the project package manager", async () => {
+    const { runner, calls } = createProcessRunner([0]);
+
+    const exitCode = await runUpdate(undefined, {
+      detectInstallation: () => NPM_INSTALLATION,
+      lookupExecutable: async () => localExecutable(LOCAL_DMS_EXECUTABLE),
+      packageLookup: { reader: createLocalReader() },
+      processOptions: { processRunner: runner, platform: "linux" },
+      output: createOutput(),
+    });
+
+    expect(exitCode).to.equal(0);
+    expect(formatSpawnCalls(calls)).to.deep.equal([
+      "npm install -g @antelopejs/core@latest",
     ]);
   });
 
@@ -163,7 +201,7 @@ describe("Official plugin update", () => {
 
     const exitCode = await runUpdate(undefined, {
       detectInstallation: () => NPM_INSTALLATION,
-      lookupExecutable: async () => DMS_EXECUTABLE,
+      lookupExecutable: async () => GLOBAL_DMS,
       packageLookup: { reader: createInstalledReader() },
       processOptions: { processRunner: runner, platform: "linux" },
       output,

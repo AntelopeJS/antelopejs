@@ -2,6 +2,7 @@ import chalk from "chalk";
 import semver from "semver";
 
 import { CORE_PACKAGE_NAME } from "./core-version";
+import type { ResolvedExecutable } from "./executable-lookup";
 import { type OfficialPlugin, officialPluginLabel } from "./plugin-registry";
 import {
   resolvePluginPackage,
@@ -28,14 +29,14 @@ export type PluginCompatibility =
   | IncompatiblePluginResult;
 
 export async function checkPluginCompatibility(
-  executablePath: string,
+  executable: ResolvedExecutable,
   coreVersion: string,
   plugin: OfficialPlugin,
   lookup: PluginPackageLookup = {},
 ): Promise<PluginCompatibility> {
   const packageJson = await resolvePluginPackage(
     plugin.package,
-    executablePath,
+    executable,
     lookup,
   );
   if (!packageJson) {

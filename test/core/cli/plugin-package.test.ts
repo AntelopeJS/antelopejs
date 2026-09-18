@@ -8,11 +8,16 @@ import {
 } from "../../helpers/cli-plugins";
 import {
   createInstalledReader,
+  createLocalReader,
   createShimReader,
   DMS_EXECUTABLE,
   DMS_PACKAGE_DIRECTORY,
   DMS_PACKAGE_NAME,
+  GLOBAL_DMS,
   GLOBAL_ROOT,
+  globalExecutable,
+  LOCAL_DMS_EXECUTABLE,
+  localExecutable,
   pluginPackageJson,
 } from "../../helpers/official-plugin";
 
@@ -20,7 +25,7 @@ describe("Plugin package resolution", () => {
   it("walks up from the resolved binary to the plugin package.json", async () => {
     const packageJson = await resolvePluginPackage(
       DMS_PACKAGE_NAME,
-      DMS_EXECUTABLE,
+      GLOBAL_DMS,
       { reader: createInstalledReader({ version: "3.1.0" }) },
     );
 
@@ -41,7 +46,7 @@ describe("Plugin package resolution", () => {
 
     const packageJson = await resolvePluginPackage(
       DMS_PACKAGE_NAME,
-      DMS_EXECUTABLE,
+      GLOBAL_DMS,
       { reader },
     );
 
@@ -51,7 +56,7 @@ describe("Plugin package resolution", () => {
   it("falls back to the global root when the binary is a shim", async () => {
     const packageJson = await resolvePluginPackage(
       DMS_PACKAGE_NAME,
-      "/home/user/.local/share/pnpm/ajs-dms",
+      globalExecutable("/home/user/.local/share/pnpm/ajs-dms"),
       {
         reader: createShimReader({ version: "4.2.0" }),
         packageManager: "pnpm",
@@ -65,10 +70,34 @@ describe("Plugin package resolution", () => {
   it("returns undefined when neither the binary nor the global root resolve", async () => {
     const packageJson = await resolvePluginPackage(
       DMS_PACKAGE_NAME,
-      DMS_EXECUTABLE,
+      GLOBAL_DMS,
       {
         reader: createPackageReader({}),
         resolveGlobalRoot: createGlobalRootResolver(),
+      },
+    );
+
+    expect(packageJson).to.equal(undefined);
+  });
+
+  it("resolves a package-manager shim through the project node_modules", async () => {
+    const packageJson = await resolvePluginPackage(
+      DMS_PACKAGE_NAME,
+      localExecutable(LOCAL_DMS_EXECUTABLE),
+      { reader: createLocalReader({ version: "1.4.0" }) },
+    );
+
+    expect(packageJson?.version).to.equal("1.4.0");
+  });
+
+  it("never falls back to the global root for a local binary", async () => {
+    const packageJson = await resolvePluginPackage(
+      DMS_PACKAGE_NAME,
+      localExecutable("/project/node_modules/.bin/ajs-dms"),
+      {
+        reader: createShimReader({ version: "4.2.0" }),
+        packageManager: "pnpm",
+        resolveGlobalRoot: createGlobalRootResolver(GLOBAL_ROOT),
       },
     );
 
@@ -90,7 +119,7 @@ describe("Plugin package resolution", () => {
 
     const packageJson = await resolvePluginPackage(
       DMS_PACKAGE_NAME,
-      DMS_EXECUTABLE,
+      GLOBAL_DMS,
       { reader, resolveGlobalRoot: createGlobalRootResolver() },
     );
 
