@@ -38,8 +38,26 @@ interface InstallOptions {
   git?: string;
 }
 
+export interface UnresolvedImport {
+  interfacePackage: string;
+  moduleId: string;
+  version?: string;
+}
+
 interface ConfigAnalyze {
-  unresolvedImports: string[];
+  unresolvedImports: UnresolvedImport[];
+}
+
+export function describeUnresolvedImport(imp: UnresolvedImport): string {
+  const version = imp.version ? `@${imp.version}` : "";
+  return `${imp.interfacePackage}${version} (required by ${imp.moduleId})`;
+}
+
+export function unresolvedImportWarning(
+  imp: UnresolvedImport,
+  git: string,
+): string {
+  return `${describeUnresolvedImport(imp)}: no module found implementing it in repository ${git}`;
 }
 
 const PACKAGE_SOURCE_TYPE = "package";
@@ -111,9 +129,20 @@ async function analyzeConfig(
     optionalDependencies: m.manifest.optionalDependencies ?? {},
   }));
 
+  const requiredVersions = new Map(
+    consumers.map((consumer) => [
+      consumer.id,
+      { ...consumer.dependencies, ...consumer.optionalDependencies },
+    ]),
+  );
+
   const { unresolved } = findUnresolvedInterfaces(providers, consumers);
   return {
-    unresolvedImports: unresolved.map((u) => u.interfacePackage),
+    unresolvedImports: unresolved.map((u) => ({
+      interfacePackage: u.interfacePackage,
+      moduleId: u.moduleId,
+      version: requiredVersions.get(u.moduleId)?.[u.interfacePackage],
+    })),
   };
 }
 
@@ -187,7 +216,7 @@ export default function () {
         await terminalDisplay.startSpinner(`Analyzing environment: ${env}`);
 
         const config = await loader.load(options.project, env);
-        let unresolvedImports: string[] = [];
+        let unresolvedImports: UnresolvedImport[] = [];
         try {
           ({ unresolvedImports } = await analyzeConfig(
             options.project,
@@ -210,7 +239,8 @@ export default function () {
 
           for (const imp of unresolvedImports) {
             // Look for modules implementing this interface
-            const interfaceDirName = gitManifest.interfaces[imp];
+            const interfaceName = imp.interfacePackage;
+            const interfaceDirName = gitManifest.interfaces[interfaceName];
             const interfaceInfo = interfaceDirName
               ? await loadInterfaceFromGit(git, interfaceDirName)
               : undefined;
@@ -226,7 +256,9 @@ export default function () {
             );
 
             if (interfaceInfo && choices.length > 0 && !alreadySelectedModule) {
-              info(`  ${chalk.yellow("•")} ${chalk.bold(imp)}`);
+              info(
+                `  ${chalk.yellow("•")} ${chalk.bold(describeUnresolvedImport(imp))}`,
+              );
 
               // Suggest modules that implement this interface
               info(
@@ -243,7 +275,7 @@ export default function () {
                 {
                   type: "list",
                   name: "moduleName",
-                  message: `Select a module to add for ${imp}:`,
+                  message: `Select a module to add for ${interfaceName}:`,
                   choices,
                 },
               ]);
@@ -262,7 +294,7 @@ export default function () {
 
                 if (loaderIdentifier) {
                   success(
-                    `    ${chalk.green("↳")} Selected module: ${chalk.bold(moduleName)} for ${imp}`,
+                    `    ${chalk.green("↳")} Selected module: ${chalk.bold(moduleName)} for ${interfaceName}`,
                   );
 
                   // Add to modules to install
@@ -273,24 +305,26 @@ export default function () {
                     ),
                     mode,
                     moduleName,
-                    imports: [imp],
+                    imports: [interfaceName],
                     env,
                   });
 
-                  addedModules[moduleName] = [imp];
+                  addedModules[moduleName] = [interfaceName];
                 }
               } else {
                 warning(
-                  `    ${chalk.yellow("↳")} No modules found implementing this interface in repository ${git}`,
+                  `  ${chalk.yellow("-")} ${unresolvedImportWarning(imp, git)}`,
                 );
               }
             } else if (alreadySelectedModule) {
               // Module already selected for another import, just track the import
-              alreadySelectedModule.imports.push(imp);
-              addedModules[alreadySelectedModule.moduleName].push(imp);
+              alreadySelectedModule.imports.push(interfaceName);
+              addedModules[alreadySelectedModule.moduleName].push(
+                interfaceName,
+              );
             } else {
               warning(
-                `    ${chalk.yellow("↳")} No modules found implementing this interface in repository ${git}`,
+                `  ${chalk.yellow("-")} ${unresolvedImportWarning(imp, git)}`,
               );
             }
           }
