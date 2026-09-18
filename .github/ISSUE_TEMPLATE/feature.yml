@@ -1,0 +1,35 @@
+name: Feature request
+description: Propose an improvement to an AntelopeJS project
+title: "feat: "
+body:
+  - type: input
+    id: repository
+    attributes:
+      label: Package or repository
+      description: Which AntelopeJS package or repository should change?
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem or limitation are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the desired behavior, including an example when useful.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Which alternatives or workarounds have you considered?
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any relevant links, screenshots, or prior art.
