@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a reproducible problem in an AntelopeJS project
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not disclose security vulnerabilities here. Follow the repository's
+        security policy instead.
+  - type: input
+    id: repository
+    attributes:
+      label: Package or repository
+      description: Which AntelopeJS package or repository is affected?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Which released version or commit are you using?
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide the smallest repository, code sample, or steps that reproduce the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include relevant Node.js, package-manager, operating-system, and runtime versions.
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add logs, screenshots, or other context. Remove credentials and private data.
