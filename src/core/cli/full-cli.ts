@@ -32,7 +32,8 @@ export function createCLI(version: string) {
         `  update     Update the CLI and its official plugins\n` +
         `  plugins    List official plugins\n\n` +
         chalk.yellow`Plugins:\n` +
-        `${formatOfficialPluginsHelp()}\n\n` +
+        `${formatOfficialPluginsHelp()}\n` +
+        `  Resolved from the nearest node_modules/.bin, then from PATH.\n\n` +
         chalk.yellow`Examples:\n` +
         `  $ ajs project init my-app         Create a new project\n` +
         `  $ ajs module init my-module       Create a new module\n` +

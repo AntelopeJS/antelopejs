@@ -2,6 +2,7 @@ import { expect } from "chai";
 
 import { delegateToPlugin } from "../../../src/core/cli/plugin";
 import {
+  createGlobalRootResolver,
   createOutput,
   createProcessRunner,
   formatSpawnCalls,
@@ -9,7 +10,12 @@ import {
 import {
   createInstalledReader,
   CORE_VERSION,
+  createLocalReader,
   DMS_EXECUTABLE,
+  GLOBAL_DMS,
+  GLOBAL_ROOT,
+  LOCAL_DMS_EXECUTABLE,
+  localExecutable,
 } from "../../helpers/official-plugin";
 
 describe("Official plugin installation", () => {
@@ -42,7 +48,7 @@ describe("Official plugin installation", () => {
     const result = await delegateToPlugin(["dms", "build"], {
       lookupExecutable: async () => {
         lookupCount += 1;
-        return lookupCount === 1 ? undefined : DMS_EXECUTABLE;
+        return lookupCount === 1 ? undefined : GLOBAL_DMS;
       },
       packageLookup: { reader: createInstalledReader() },
       coreVersion: CORE_VERSION,
@@ -120,6 +126,36 @@ describe("Official plugin installation", () => {
     expect(output.errors).to.deep.equal([
       "Installation failed: npm install -g @antelopejs/dms-frontend",
     ]);
+  });
+
+  it("never offers a global install when the plugin resolves locally", async () => {
+    const output = createOutput();
+    const { runner, calls } = createProcessRunner([0]);
+    const executablePath = LOCAL_DMS_EXECUTABLE;
+    let prompted = false;
+
+    const result = await delegateToPlugin(["dms", "dev"], {
+      lookupExecutable: async () => localExecutable(executablePath),
+      packageLookup: {
+        reader: createLocalReader({ peerRange: "^1.5.0" }),
+        packageManager: "npm",
+        resolveGlobalRoot: createGlobalRootResolver(GLOBAL_ROOT),
+      },
+      coreVersion: CORE_VERSION,
+      isInteractive: () => true,
+      packageManager: "npm",
+      processOptions: { processRunner: runner, platform: "linux" },
+      confirmInstall: async () => {
+        prompted = true;
+        return true;
+      },
+      output,
+    });
+
+    expect(prompted).to.equal(false);
+    expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
+    expect(formatSpawnCalls(calls)).to.deep.equal([`${executablePath} dev`]);
+    expect(output.errors).to.deep.equal([]);
   });
 
   it("reports when the installed plugin stays out of PATH", async () => {

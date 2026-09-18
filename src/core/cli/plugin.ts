@@ -5,7 +5,6 @@ import type { InheritedProcessOptions } from "./process-runner";
 import { runCommand, runGlobalInstall } from "./command-runner";
 import type { PackageManagerName } from "./package-manager-name";
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./exit-codes";
-import { findExecutable, type ExecutableLookup } from "./executable-lookup";
 import {
   checkPluginCompatibility,
   reportCompatibility,
@@ -15,6 +14,11 @@ import {
   officialPluginLabel,
   type OfficialPlugin,
 } from "./plugin-registry";
+import {
+  resolveExecutable,
+  type ExecutableLookup,
+  type ResolvedExecutable,
+} from "./executable-lookup";
 import {
   detectGlobalPackageManager,
   formatGlobalCommand,
@@ -80,7 +84,7 @@ function createContext(
     dependencies.packageManager ?? detectGlobalPackageManager();
   return {
     processOptions: dependencies.processOptions ?? {},
-    lookupExecutable: dependencies.lookupExecutable ?? findExecutable,
+    lookupExecutable: dependencies.lookupExecutable ?? resolveExecutable,
     packageLookup: dependencies.packageLookup ?? { packageManager },
     confirmInstall: dependencies.confirmInstall ?? promptForInstall,
     isInteractive: dependencies.isInteractive ?? isInteractiveTerminal,
@@ -137,7 +141,7 @@ async function installPlugin(
 async function installAndLocate(
   plugin: OfficialPlugin,
   context: DelegationContext,
-): Promise<string | undefined> {
+): Promise<ResolvedExecutable | undefined> {
   if (!(await installPlugin(plugin, context))) {
     return undefined;
   }
@@ -151,7 +155,7 @@ async function installAndLocate(
 }
 
 async function isCompatible(
-  executable: string,
+  executable: ResolvedExecutable,
   plugin: OfficialPlugin,
   context: DelegationContext,
 ): Promise<boolean> {
@@ -171,13 +175,13 @@ async function isCompatible(
 }
 
 async function runPlugin(
-  executable: string,
+  executable: ResolvedExecutable,
   args: string[],
   context: DelegationContext,
 ): Promise<DelegatedPluginResult> {
   return delegated(
     await runCommand(
-      executable,
+      executable.path,
       args.slice(1),
       context.output,
       context.processOptions,
@@ -187,7 +191,7 @@ async function runPlugin(
 
 async function delegateToOfficialPlugin(
   plugin: OfficialPlugin,
-  executable: string | undefined,
+  executable: ResolvedExecutable | undefined,
   args: string[],
   context: DelegationContext,
 ): Promise<PluginDelegationResult> {

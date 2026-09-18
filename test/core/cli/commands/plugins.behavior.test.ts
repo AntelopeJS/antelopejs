@@ -42,6 +42,7 @@ describe("plugin commands behavior", () => {
           description: "DMS frontend commands",
         },
         executablePath: "/usr/bin/ajs-dms",
+        source: "path",
         version: "1.0.0",
       },
     ]);
@@ -50,7 +51,7 @@ describe("plugin commands behavior", () => {
 
     const output = logStub.getCalls().map((call) => String(call.args[0]));
     expect(output.join("\n")).to.contain("@antelopejs/dms-frontend");
-    expect(output.join("\n")).to.contain("installed (1.0.0)");
+    expect(output.join("\n")).to.contain("global (1.0.0)");
   });
 
   it("lists official plugins through the list subcommand", async () => {

@@ -5,7 +5,6 @@ import { runGlobalInstall } from "./command-runner";
 import { consoleOutput, type CommandOutput } from "./cli-ui";
 import type { InheritedProcessOptions } from "./process-runner";
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./exit-codes";
-import { findExecutable, type ExecutableLookup } from "./executable-lookup";
 import {
   resolvePluginPackage,
   type PluginPackageLookup,
@@ -23,10 +22,18 @@ import {
   type GlobalInstallation,
   type GlobalInstallationDetector,
 } from "./global-package-manager";
+import {
+  LOCAL_EXECUTABLE_SOURCE,
+  PATH_EXECUTABLE_SOURCE,
+  resolveExecutable,
+  type ExecutableLookup,
+  type ExecutableSource,
+} from "./executable-lookup";
 
 export interface PluginStatus {
   plugin: OfficialPlugin;
   executablePath?: string;
+  source?: ExecutableSource;
   version?: string;
 }
 
@@ -50,17 +57,22 @@ async function readPluginStatus(
   plugin: OfficialPlugin,
   dependencies: PluginStatusDependencies,
 ): Promise<PluginStatus> {
-  const lookupExecutable = dependencies.lookupExecutable ?? findExecutable;
-  const executablePath = await lookupExecutable(plugin.bin);
-  if (!executablePath) {
+  const lookupExecutable = dependencies.lookupExecutable ?? resolveExecutable;
+  const executable = await lookupExecutable(plugin.bin);
+  if (!executable) {
     return { plugin };
   }
   const packageJson = await resolvePluginPackage(
     plugin.package,
-    executablePath,
+    executable,
     dependencies.packageLookup,
   );
-  return { plugin, executablePath, version: packageJson?.version };
+  return {
+    plugin,
+    executablePath: executable.path,
+    source: executable.source,
+    version: packageJson?.version,
+  };
 }
 
 export async function getPluginStatuses(
@@ -73,11 +85,23 @@ export async function getPluginStatuses(
   );
 }
 
+const RESOLUTION_LABELS: Record<ExecutableSource, (path: string) => string> = {
+  [LOCAL_EXECUTABLE_SOURCE]: (path) => `local (${path})`,
+  [PATH_EXECUTABLE_SOURCE]: () => "global",
+};
+
+function formatResolution(status: PluginStatus): string {
+  if (!status.executablePath || !status.source) {
+    return chalk.dim("not installed");
+  }
+  const version = status.version ? ` (${status.version})` : "";
+  return chalk.green(
+    `${RESOLUTION_LABELS[status.source](status.executablePath)}${version}`,
+  );
+}
+
 export function formatPluginStatus(status: PluginStatus): string {
-  const state = status.executablePath
-    ? chalk.green(`installed${status.version ? ` (${status.version})` : ""}`)
-    : chalk.dim("not installed");
-  return `  ${chalk.cyan(status.plugin.name.padEnd(PLUGIN_NAME_COLUMN_WIDTH))} ${status.plugin.package} - ${state}\n    ${chalk.dim(status.plugin.description)}`;
+  return `  ${chalk.cyan(status.plugin.name.padEnd(PLUGIN_NAME_COLUMN_WIDTH))} ${status.plugin.package} - ${formatResolution(status)}\n    ${chalk.dim(status.plugin.description)}`;
 }
 
 async function updatePackage(
@@ -107,7 +131,7 @@ async function resolveUpdateTargets(
     return [
       CORE_PACKAGE_NAME,
       ...statuses
-        .filter((status) => status.executablePath)
+        .filter((status) => status.source === PATH_EXECUTABLE_SOURCE)
         .map((status) => status.plugin.package),
     ];
   }
