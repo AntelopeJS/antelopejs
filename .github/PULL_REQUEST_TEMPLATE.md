@@ -1,31 +1,19 @@
-<!---
-☝️ PR title should follow conventional commits (https://conventionalcommits.org)
--->
+## Summary
 
-### 🔗 Linked issue
+<!-- Explain the problem and the solution. -->
 
-### ❓ Type of change
+## Related issue
 
-<!-- What types of changes does your code introduce? Put an `x` in all the boxes that apply. -->
+<!-- Link an issue or discussion, or explain why one is not needed. -->
 
-- [ ] 📖 Documentation (updates to the documentation or readme)
-- [ ] 🐞 Bug fix (a non-breaking change that fixes an issue)
-- [ ] 👌 Enhancement (improving an existing functionality like performance)
-- [ ] ✨ New feature (a non-breaking change that adds functionality)
-- [ ] ⚠️ Breaking change (fix or feature that would cause existing functionality to change)
+## Verification
 
-### 📚 Description
+<!-- List the commands, tests, or manual checks you ran. -->
 
-<!-- Describe your changes in detail -->
-<!-- Why is this change required? What problem does it solve? -->
-<!-- If it resolves an open issue, please link to the issue here. For example "Resolves #1337" -->
+## Checklist
 
-### 📝 Checklist
-
-<!-- Put an `x` in all the boxes that apply. -->
-<!-- If your change requires a documentation PR, please link it appropriately -->
-<!-- If you're unsure about any of these, don't hesitate to ask. We're here to help! -->
-
-- [ ] I have linked an issue or discussion.
-- [ ] I have updated the documentation accordingly.
-- [ ] I have run `ajs module exports generate` and committed any updated interface files.
+- [ ] The pull request title follows Conventional Commits.
+- [ ] I added or updated tests when behavior changed.
+- [ ] I updated documentation when users or contributors are affected.
+- [ ] I documented breaking changes and migration steps.
+- [ ] I did not include credentials or unrelated changes.
