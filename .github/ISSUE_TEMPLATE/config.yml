@@ -1,7 +1,11 @@
+blank_issues_enabled: false
 contact_links:
-  - name: 📚 Documentation
+  - name: Documentation
     url: https://antelopejs.com/
-    about: Check documentation for usage
-  - name: 💬 Discussions
+    about: Read the documentation before opening a usage issue.
+  - name: Questions and ideas
     url: https://github.com/AntelopeJS/antelopejs/discussions
-    about: Use discussions if you have an idea for improvement and asking questions
+    about: Ask for help or discuss an idea with the community.
+  - name: Security vulnerability
+    url: https://github.com/AntelopeJS/.github/blob/main/SECURITY.md
+    about: Read the private reporting instructions. Do not open a public issue.
