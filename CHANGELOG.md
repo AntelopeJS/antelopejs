@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.8.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.7.2...v1.8.0)
+
+### 🚀 Enhancements
+
+- **cli:** Prefer the project-local plugin binary over the global one ([#139](https://github.com/AntelopeJS/antelopejs/pull/139))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.7.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.7.1...v1.7.2)
