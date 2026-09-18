@@ -2,7 +2,24 @@ import os from "node:os";
 import sinon from "sinon";
 import { expect } from "chai";
 
-import { expandHome } from "../../../src/core/downloaders/utils";
+import { ExecuteCMD } from "../../../src/core/cli/command";
+import type { CommandResult } from "../../../src/core/downloaders/types";
+import {
+  expandHome,
+  installFailureMessage,
+  runInstallCommands,
+} from "../../../src/core/downloaders/utils";
+
+const silentLogger = { Debug: () => {} };
+
+async function captureRejection(promise: Promise<unknown>): Promise<string> {
+  try {
+    await promise;
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  throw new Error("Expected the promise to reject");
+}
 
 describe("Downloader utils", () => {
   afterEach(() => {
@@ -32,5 +49,74 @@ describe("Downloader utils", () => {
     sinon.stub(os, "homedir").returns("/home/test");
 
     expect(expandHome("/opt/project")).to.equal("/opt/project");
+  });
+});
+
+describe("Install command execution", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("names the module and the command in the failure message", () => {
+    expect(installFailureMessage("demo", "pnpm install", "boom")).to.equal(
+      "Failed to install dependencies for demo (command: pnpm install): boom",
+    );
+  });
+
+  it("omits the reason when the command said nothing", () => {
+    expect(installFailureMessage("demo", "pnpm install", "  ")).to.equal(
+      "Failed to install dependencies for demo (command: pnpm install)",
+    );
+  });
+
+  it("reports the failing command of a module", async () => {
+    const failing: CommandResult = {
+      stdout: "",
+      stderr: "nope",
+      code: 1,
+    };
+    const exec = sinon.stub().resolves(failing);
+
+    const message = await captureRejection(
+      runInstallCommands(exec, silentLogger, "demo", "/tmp", [
+        "pnpm install",
+        "pnpm build",
+      ]),
+    );
+
+    expect(message).to.equal(
+      "Failed to install dependencies for demo (command: pnpm install): nope",
+    );
+    expect(exec.callCount).to.equal(1);
+  });
+
+  it("reports a rejected command runner", async () => {
+    const exec = sinon.stub().rejects(new Error("spawn failed"));
+
+    const message = await captureRejection(
+      runInstallCommands(exec, silentLogger, "demo", "/tmp", "pnpm install"),
+    );
+
+    expect(message).to.equal(
+      "Failed to install dependencies for demo (command: pnpm install): spawn failed",
+    );
+  });
+
+  it("fails instead of hanging when the install command reads stdin", async function () {
+    this.timeout(10000);
+
+    const message = await captureRejection(
+      runInstallCommands(
+        ExecuteCMD,
+        silentLogger,
+        "demo",
+        process.cwd(),
+        "sh -c 'read answer'",
+      ),
+    );
+
+    expect(message).to.contain(
+      "Failed to install dependencies for demo (command: sh -c 'read answer')",
+    );
   });
 });

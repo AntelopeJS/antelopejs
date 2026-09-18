@@ -10,6 +10,7 @@ import type { CommandRunner } from "./types";
 import { ModuleCache } from "../module-cache";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
+import { installFailureMessage } from "./utils";
 import type { DownloaderRegistry } from "./registry";
 import { getModuleCacheInstallCommand } from "../cli/package-manager";
 import { ModuleManifest, type ModulePackageJson } from "../module-manifest";
@@ -191,7 +192,13 @@ async function downloadPackage(
   const cmd = await ctx.getInstallCommand(folder);
   const installResult = await ctx.exec(cmd, { cwd: folder });
   if (installResult.code !== 0) {
-    throw new Error(`Failed to install dependencies: ${installResult.stderr}`);
+    throw new Error(
+      installFailureMessage(
+        `${source.package}@${version}`,
+        cmd,
+        installResult.stderr || installResult.stdout,
+      ),
+    );
   }
   await cache.commitVersion(source.package, manifest.version);
   return folder;
