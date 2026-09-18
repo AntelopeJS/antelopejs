@@ -47,15 +47,15 @@ export function registerLocalDownloader(
         ? (source.reloadCommand ?? source.installCommand)
         : source.installCommand;
 
+      const name = source.id ?? path.basename(formattedPath);
+
       await runInstallCommands(
         exec,
         Logger,
-        formattedPath,
+        name,
         formattedPath,
         installCommand,
       );
-
-      const name = source.id ?? path.basename(formattedPath);
       const manifest = await ModuleManifest.create(
         formattedPath,
         source,
