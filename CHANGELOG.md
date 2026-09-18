@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.7.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.7.1...v1.7.2)
+
+### 🩹 Fixes
+
+- **cli:** Stop module installs hanging on package-manager prompts and name unresolved interfaces ([#138](https://github.com/AntelopeJS/antelopejs/pull/138))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.7.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.7.0...v1.7.1)
