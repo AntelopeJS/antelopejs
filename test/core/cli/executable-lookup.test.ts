@@ -3,7 +3,7 @@ import path, { delimiter } from "node:path";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
-import { requiresShell } from "../../../src/core/cli/global-package-manager";
+import { requiresShell } from "../../../src/core/cli/windows-command-line";
 import {
   findExecutable,
   resolveExecutable,
