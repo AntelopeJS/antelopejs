@@ -1,17 +1,16 @@
 import { join } from "node:path";
 import { realpathSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 
+import { buildProcessInvocation } from "./windows-command-line";
 import {
   DEFAULT_PACKAGE_MANAGER,
   packageManagerExecutable,
-  WINDOWS_PLATFORM,
   type PackageManagerName,
 } from "./package-manager-name";
 
 const LATEST_TAG = "latest";
 const GLOBAL_ROOT_TIMEOUT_MS = 5000;
-const SHELL_SCRIPT_EXTENSIONS = [".cmd", ".bat"];
 
 export interface GlobalCommand {
   executable: string;
@@ -67,19 +66,6 @@ const GLOBAL_LOCATION_MARKERS: GlobalLocationMarker[] = [
   { packageManager: "npm", pattern: /[\\/]lib[\\/]node_modules[\\/]/i },
   { packageManager: "npm", pattern: /[\\/]npm[\\/]node_modules[\\/]/i },
 ];
-
-export function requiresShell(
-  executable: string,
-  platform: NodeJS.Platform = process.platform,
-): boolean {
-  if (platform !== WINDOWS_PLATFORM) {
-    return false;
-  }
-  const lowercased = executable.toLowerCase();
-  return SHELL_SCRIPT_EXTENSIONS.some((extension) =>
-    lowercased.endsWith(extension),
-  );
-}
 
 function resolveBinaryPath(
   binaryPath: string,
@@ -157,17 +143,18 @@ export const nodeGlobalRootResolver: GlobalRootResolver = async (
   packageManager,
 ) => {
   const command = getGlobalRootCommand(packageManager);
-  try {
-    const output = execFileSync(command.executable, command.args, {
-      encoding: "utf8",
-      timeout: GLOBAL_ROOT_TIMEOUT_MS,
-      stdio: ["ignore", "pipe", "ignore"],
-      shell: requiresShell(command.executable),
-    }).trim();
-    return output
-      ? join(output, ...GLOBAL_ROOT_SEGMENTS[packageManager])
-      : undefined;
-  } catch {
+  const invocation = buildProcessInvocation(command.executable, command.args);
+  const result = spawnSync(invocation.executable, invocation.args, {
+    encoding: "utf8",
+    timeout: GLOBAL_ROOT_TIMEOUT_MS,
+    stdio: ["ignore", "pipe", "ignore"],
+    windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+  });
+  if (result.error || result.status !== 0) {
     return undefined;
   }
+  const output = result.stdout.trim();
+  return output
+    ? join(output, ...GLOBAL_ROOT_SEGMENTS[packageManager])
+    : undefined;
 };

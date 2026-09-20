@@ -1,7 +1,7 @@
 import { constants } from "node:os";
 import { spawn } from "node:child_process";
 
-import { requiresShell } from "./global-package-manager";
+import { buildProcessInvocation } from "./windows-command-line";
 import { FAILURE_EXIT_CODE, SIGNAL_EXIT_CODE_OFFSET } from "./exit-codes";
 
 const FORWARDED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
@@ -24,7 +24,7 @@ export interface SpawnedProcess {
 
 export interface InheritedSpawnOptions {
   stdio: "inherit";
-  shell?: boolean;
+  windowsVerbatimArguments?: boolean;
 }
 
 export interface ProcessRunner {
@@ -105,10 +105,19 @@ export async function runInheritedProcess(
   options: InheritedProcessOptions = {},
 ): Promise<number> {
   const processRunner = options.processRunner ?? nodeProcessRunner;
+  const invocation = buildProcessInvocation(
+    executable,
+    args,
+    options.platform ?? process.platform,
+  );
   const spawnOptions: InheritedSpawnOptions = { stdio: "inherit" };
-  if (requiresShell(executable, options.platform ?? process.platform)) {
-    spawnOptions.shell = true;
+  if (invocation.windowsVerbatimArguments) {
+    spawnOptions.windowsVerbatimArguments = true;
   }
-  const child = processRunner.spawn(executable, args, spawnOptions);
+  const child = processRunner.spawn(
+    invocation.executable,
+    invocation.args,
+    spawnOptions,
+  );
   return waitForExit(child, options.signalTarget ?? process);
 }
