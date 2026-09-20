@@ -100,48 +100,83 @@ describe("Inherited process runner", () => {
     expect((thrown as Error)?.message).to.equal("spawn failed");
     expect(signalTarget.listenerCount("SIGINT")).to.equal(0);
   });
+});
 
-  describe("on Windows", () => {
-    it("runs shell script shims through the shell", async () => {
-      const { runner, calls, close } = createControllableProcessRunner();
+describe("Inherited process runner on Windows", () => {
+  async function spawnCall(executable: string, args: string[]) {
+    const { runner, calls, close } = createControllableProcessRunner();
 
-      const result = runInheritedProcess("npm.cmd", ["install", "-g", "pkg"], {
-        processRunner: runner,
-        platform: "win32",
-      });
-      close(0);
-      await result;
-
-      expect(calls[0].options).to.deep.equal({
-        stdio: "inherit",
-        shell: true,
-      });
+    const result = runInheritedProcess(executable, args, {
+      processRunner: runner,
+      platform: "win32",
     });
+    close(0);
+    await result;
 
-    it("does not use the shell for real executables", async () => {
-      const { runner, calls, close } = createControllableProcessRunner();
+    return calls[0];
+  }
 
-      const result = runInheritedProcess("ajs-dms.exe", [], {
-        processRunner: runner,
-        platform: "win32",
-      });
-      close(0);
-      await result;
+  it("runs shell script shims through cmd.exe with quoted arguments", async () => {
+    const call = await spawnCall("npm.cmd", [
+      "install",
+      "-g",
+      "C:\\Program Files\\my module",
+    ]);
 
-      expect(calls[0].options).to.deep.equal({ stdio: "inherit" });
+    expect(call.executable.toLowerCase()).to.match(/cmd\.exe$/);
+    expect(call.args).to.deep.equal([
+      "/d",
+      "/s",
+      "/c",
+      '"npm.cmd ^"install^" ^"-g^" ^"C:\\Program^ Files\\my^ module^""',
+    ]);
+    expect(call.options).to.deep.equal({
+      stdio: "inherit",
+      windowsVerbatimArguments: true,
     });
+  });
 
-    it("never uses the shell on other platforms", async () => {
-      const { runner, calls, close } = createControllableProcessRunner();
+  it("neutralizes the cmd metacharacters of an argument", async () => {
+    const call = await spawnCall("npm.cmd", ["install", "-g", "pkg&whoami"]);
 
-      const result = runInheritedProcess("weird.cmd", [], {
-        processRunner: runner,
-        platform: "linux",
-      });
-      close(0);
-      await result;
+    expect(call.args[3]).to.equal(
+      '"npm.cmd ^"install^" ^"-g^" ^"pkg^&whoami^""',
+    );
+  });
 
-      expect(calls[0].options).to.deep.equal({ stdio: "inherit" });
+  it("quotes an executable path containing spaces", async () => {
+    const call = await spawnCall("C:\\Program Files\\nodejs\\npm.cmd", [
+      "--version",
+    ]);
+
+    expect(call.args[3]).to.equal(
+      '"C:\\Program^ Files\\nodejs\\npm.cmd ^"--version^""',
+    );
+  });
+
+  it("does not use the shell for real executables", async () => {
+    const call = await spawnCall("ajs-dms.exe", ["build", "a b"]);
+
+    expect(call.executable).to.equal("ajs-dms.exe");
+    expect(call.args).to.deep.equal(["build", "a b"]);
+    expect(call.options).to.deep.equal({ stdio: "inherit" });
+  });
+
+  it("never rewrites the invocation on other platforms", async () => {
+    const { runner, calls, close } = createControllableProcessRunner();
+
+    const result = runInheritedProcess(
+      "weird.cmd",
+      ["build", "a b", "pkg&whoami"],
+      { processRunner: runner, platform: "linux" },
+    );
+    close(0);
+    await result;
+
+    expect(calls[0]).to.deep.equal({
+      executable: "weird.cmd",
+      args: ["build", "a b", "pkg&whoami"],
+      options: { stdio: "inherit" },
     });
   });
 });
