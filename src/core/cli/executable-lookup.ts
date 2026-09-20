@@ -36,25 +36,51 @@ interface ExecutableLookupInputs {
   candidates: string[];
 }
 
-const nodeIsExecutable: ExecutablePredicate = async (target) => {
-  try {
-    await access(target, constants.X_OK);
-    return true;
-  } catch {
-    return false;
-  }
-};
+/**
+ * Windows has no execute permission bit, and Node maps `X_OK` to `F_OK` there,
+ * so the mode is picked per platform to keep the check meaningful instead of
+ * silently degrading to an existence test.
+ */
+function nodeExecutableMode(platform: NodeJS.Platform): number {
+  return platform === WINDOWS_PLATFORM ? constants.F_OK : constants.X_OK;
+}
 
+function nodeExecutablePredicate(
+  platform: NodeJS.Platform,
+): ExecutablePredicate {
+  const mode = nodeExecutableMode(platform);
+  return async (target) => {
+    try {
+      await access(target, mode);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+}
+
+function hasWindowsExecutableExtension(name: string): boolean {
+  const lowercased = name.toLowerCase();
+  return WINDOWS_EXECUTABLE_EXTENSIONS.some((extension) =>
+    lowercased.endsWith(extension),
+  );
+}
+
+/**
+ * On Windows the extension carries the executability, so the suffixed
+ * candidates come first: package managers also drop an extension-less shell
+ * script in `node_modules/.bin` for Git Bash, and `spawn` cannot run it.
+ */
 function executableCandidates(
   name: string,
   platform: NodeJS.Platform,
 ): string[] {
-  if (platform !== WINDOWS_PLATFORM) {
+  if (platform !== WINDOWS_PLATFORM || hasWindowsExecutableExtension(name)) {
     return [name];
   }
   return [
-    name,
     ...WINDOWS_EXECUTABLE_EXTENSIONS.map((extension) => `${name}${extension}`),
+    name,
   ];
 }
 
@@ -95,12 +121,10 @@ function lookupInputs(
   name: string,
   options: ExecutableLookupOptions,
 ): ExecutableLookupInputs {
+  const platform = options.platform ?? process.platform;
   return {
-    isExecutable: options.isExecutable ?? nodeIsExecutable,
-    candidates: executableCandidates(
-      name,
-      options.platform ?? process.platform,
-    ),
+    isExecutable: options.isExecutable ?? nodeExecutablePredicate(platform),
+    candidates: executableCandidates(name, platform),
   };
 }
 
