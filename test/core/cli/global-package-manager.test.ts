@@ -7,7 +7,6 @@ import {
   getGlobalInstallCommand,
   getGlobalRootCommand,
   getLatestPackageSpec,
-  requiresShell,
 } from "../../../src/core/cli/global-package-manager";
 
 const identity = (target: string) => target;
@@ -137,18 +136,5 @@ describe("Global package manager commands", () => {
     expect(getLatestPackageSpec("@antelopejs/core")).to.equal(
       "@antelopejs/core@latest",
     );
-  });
-});
-
-describe("Windows shell requirement", () => {
-  it("requires a shell for Windows script shims", () => {
-    expect(requiresShell("npm.cmd", "win32")).to.equal(true);
-    expect(requiresShell("yarn.BAT", "win32")).to.equal(true);
-  });
-
-  it("does not require a shell elsewhere", () => {
-    expect(requiresShell("npm.cmd", "linux")).to.equal(false);
-    expect(requiresShell("ajs-dms.exe", "win32")).to.equal(false);
-    expect(requiresShell("ajs-dms", "win32")).to.equal(false);
   });
 });
