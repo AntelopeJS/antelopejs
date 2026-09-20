@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.8.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.8.0...v1.8.1)
+
+### 🩹 Fixes
+
+- **cli:** Quote Windows shell invocations instead of relying on shell: true ([#142](https://github.com/AntelopeJS/antelopejs/pull/142))
+- **cli:** Resolve the Windows shim before the extension-less bin script ([#141](https://github.com/AntelopeJS/antelopejs/pull/141))
+
+### 🏡 Chore
+
+- Align community files with the organization defaults ([#140](https://github.com/AntelopeJS/antelopejs/pull/140))
+
+### ✅ Tests
+
+- **cli:** Import requiresShell from the module that now exports it ([#143](https://github.com/AntelopeJS/antelopejs/pull/143))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.8.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.7.2...v1.8.0)
