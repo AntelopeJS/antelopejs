@@ -37,7 +37,7 @@ function inspectManifest(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
   const manifest = JSON.parse(content) as PackedManifest;
   if (
-    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.0.12 <1.0.0"
+    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.0.14 <1.0.0"
   ) {
     throw new Error(
       "Packed core does not support compatible interface-core 0.x releases.",
@@ -58,7 +58,7 @@ function installConsumer(tarball: string): void {
       private: true,
       dependencies: {
         "@antelopejs/core": `file:${tarball}`,
-        "@antelopejs/interface-core": "0.0.12",
+        "@antelopejs/interface-core": "0.0.14",
         "reflect-metadata": "0.2.2",
       },
     }),
