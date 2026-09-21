@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.9.0-next.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.8.1...v1.9.0-next.0)
+
+### 🚀 Enhancements
+
+- **config:** Resolve module-provided config variables before construct ([#144](https://github.com/AntelopeJS/antelopejs/pull/144))
+
+### 🩹 Fixes
+
+- **core:** Pick the canonical stubbed interface package deterministically ([#145](https://github.com/AntelopeJS/antelopejs/pull/145))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.8.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.8.0...v1.8.1)
