@@ -32,6 +32,10 @@ import {
 
 const Logger = new Logging.Channel("loader");
 
+function compareModuleIds(left: string, right: string): number {
+  return left.localeCompare(right);
+}
+
 export interface ModuleConfig {
   config?: unknown;
   importOverrides?: Map<string, InterfaceConnectionRef[]>;
@@ -279,9 +283,9 @@ export class ModuleManager {
     entries: UnresolvedInterface[],
   ): void {
     const consumers = this.collectInterfacePackageConsumers(packageName);
-    const canonicalPackage = consumers.find(
-      (consumer) => consumer.resolvedPackage,
-    )?.resolvedPackage;
+    const canonicalPackage = [...consumers]
+      .sort((left, right) => compareModuleIds(left.moduleId, right.moduleId))
+      .find((consumer) => consumer.resolvedPackage)?.resolvedPackage;
     if (!canonicalPackage) {
       return;
     }
@@ -584,7 +588,7 @@ export class ModuleManager {
   ): void {
     for (const [ifacePkg, modules] of interfaceSources) {
       const module = [...modules].sort((left, right) =>
-        left.id.localeCompare(right.id),
+        compareModuleIds(left.id, right.id),
       )[0];
       if (!module) {
         continue;

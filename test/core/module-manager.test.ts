@@ -272,6 +272,59 @@ async function createNestedInterfaceFixture(): Promise<NestedInterfaceFixture> {
   };
 }
 
+interface StubbedConsumersFixture {
+  root: string;
+  packageName: string;
+  moduleFolders: Record<string, string>;
+  packageRoots: Record<string, string>;
+}
+
+const STUBBED_CONSUMER_NAMES = ["alpha-consumer", "zeta-consumer"];
+
+async function createStubbedConsumersFixture(): Promise<StubbedConsumersFixture> {
+  const root = await mkdtemp(path.join(tmpdir(), "ajs-interface-stubbed-"));
+  const packageName = "interface-stubbed";
+  const moduleFolders: Record<string, string> = {};
+  const packageRoots: Record<string, string> = {};
+  for (const name of STUBBED_CONSUMER_NAMES) {
+    const folder = path.join(root, name);
+    const packageRoot = path.join(folder, "node_modules", packageName);
+    moduleFolders[name] = folder;
+    packageRoots[name] = packageRoot;
+    await mkdir(folder, { recursive: true });
+    await writeFile(
+      path.join(folder, "package.json"),
+      JSON.stringify({
+        name,
+        version: "1.0.0",
+        optionalDependencies: { [packageName]: "^1.0.0" },
+      }),
+    );
+    await writeInterfacePackage(packageRoot, packageName, "1.0.0");
+  }
+  return { root, packageName, moduleFolders, packageRoots };
+}
+
+async function resolveStubbedCanonicalRoot(
+  fixture: StubbedConsumersFixture,
+  declarationOrder: string[],
+): Promise<string | undefined> {
+  const manifests = await Promise.all(
+    declarationOrder.map((name) =>
+      createLocalManifest(fixture.moduleFolders[name]),
+    ),
+  );
+  const manager = new ModuleManager();
+  manager.addModules(manifests.map((manifest) => ({ manifest })));
+  manager.registerStubbedInterfaces(
+    declarationOrder.map((name) => ({
+      moduleId: name,
+      interfacePackage: fixture.packageName,
+    })),
+  );
+  return manager.resolver.interfacePackages.get(fixture.packageName);
+}
+
 async function createLocalManifest(folder: string): Promise<ModuleManifest> {
   const source: ModuleSourceLocal = { type: "local", path: folder };
   return ModuleManifest.create(folder, source, path.basename(folder));
@@ -996,6 +1049,25 @@ describe("ModuleManager", () => {
       );
     } finally {
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("picks the same canonical stubbed package whatever the declaration order", async () => {
+    const fixture = await createStubbedConsumersFixture();
+    try {
+      const forward = await resolveStubbedCanonicalRoot(fixture, [
+        "alpha-consumer",
+        "zeta-consumer",
+      ]);
+      const reversed = await resolveStubbedCanonicalRoot(fixture, [
+        "zeta-consumer",
+        "alpha-consumer",
+      ]);
+
+      expect(forward).to.equal(fixture.packageRoots["alpha-consumer"]);
+      expect(reversed).to.equal(forward);
+    } finally {
+      await rm(fixture.root, { recursive: true, force: true });
     }
   });
 
