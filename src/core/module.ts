@@ -1,4 +1,5 @@
 import { Logging } from "@antelopejs/interface-core/logging";
+import type { ConfigVars } from "@antelopejs/interface-core/config";
 import {
   Events,
   type ModuleExecutionContext,
@@ -101,13 +102,13 @@ export class Module {
     });
   }
 
-  async construct(config: unknown): Promise<void> {
+  async construct(config: unknown): Promise<ConfigVars | void> {
     if (this.lifecycle.state !== ModuleState.Loaded) {
       Logger.Info(`Module ${this.id} already constructed`);
       return;
     }
 
-    await RunWithModuleContext(this.executionContext, async () => {
+    return RunWithModuleContext(this.executionContext, async () => {
       try {
         this.callbacks = await ModuleDiagnostics.load.tracePromise(
           async () => this.loader(this.manifest.main),
@@ -120,7 +121,7 @@ export class Module {
         throw err;
       }
       this.lifecycle.setCallbacks(this.callbacks);
-      await this.lifecycle.construct(config);
+      return this.lifecycle.construct(config);
     });
   }
 

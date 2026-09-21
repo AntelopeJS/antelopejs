@@ -1,14 +1,22 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
+import { ConfigLoader } from "../../../src/core/config/config-loader";
 import * as configLoader from "../../../src/core/config/config-loader";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { ConfigVarStore } from "../../../src/core/config/config-var-store";
 import {
   computeConfigHash,
   createBuildArtifact,
   readBuildArtifact,
   writeBuildArtifact,
 } from "../../../src/core/build/build-artifact";
+
+function resolveWith(config: unknown, port: number): unknown {
+  const store = new ConfigVarStore();
+  store.record("api", ["API_PORT"], { API_PORT: port });
+  return store.resolve("dms", config);
+}
 
 describe("build artifact", () => {
   afterEach(() => {
@@ -40,6 +48,34 @@ describe("build artifact", () => {
 
     expect(hashA).to.equal(hashB);
     expect(hashA).to.not.equal(hashC);
+  });
+
+  it("keeps the hash stable when a config variable resolves to a new value", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/antelope.config.ts", "");
+    sinon.stub(configLoader, "loadTsConfigFile").resolves({
+      name: "sample",
+      modules: {
+        api: { source: { type: "local", path: "./api" } },
+        dms: {
+          source: { type: "local", path: "./dms" },
+          config: { apiBaseUrl: "http://127.0.0.1:${@api.API_PORT}" },
+        },
+      },
+    });
+
+    const hashA = await computeConfigHash("/project", "default", fs);
+    const hashB = await computeConfigHash("/project", "default", fs);
+    const config = await new ConfigLoader(fs).load("/project", "default");
+    const template = config.modules.dms.config;
+
+    expect(template).to.deep.equal({
+      apiBaseUrl: "http://127.0.0.1:${@api.API_PORT}",
+    });
+    expect(resolveWith(template, 5010)).to.not.deep.equal(
+      resolveWith(template, 5011),
+    );
+    expect(hashA).to.equal(hashB);
   });
 
   it("includes resolved TS module overrides in hash", async () => {

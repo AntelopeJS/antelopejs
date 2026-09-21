@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import { satisfies, validRange } from "semver";
 import { Logging } from "@antelopejs/interface-core/logging";
+import type { ConfigVars } from "@antelopejs/interface-core/config";
 
 import { Module } from "./module";
 import { ModuleState } from "../types";
@@ -8,12 +9,18 @@ import { ModuleTracker } from "./module-tracker";
 import { Resolver } from "./resolution/resolver";
 import { ModuleRegistry } from "./module-registry";
 import { PathMapper } from "./resolution/path-mapper";
+import { declaredConfigVars } from "./config/config-vars";
+import { ConfigVarStore } from "./config/config-var-store";
 import { ResolverDetour } from "./resolution/resolver-detour";
 import type { UnresolvedInterface } from "./resolution/interface-resolution";
 import {
   type ModuleManifest,
   resolveManifestEntryFile,
 } from "./module-manifest";
+import {
+  buildConfigVarPlan,
+  type ConfigVarPlan,
+} from "./config/config-var-graph";
 import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
@@ -94,6 +101,7 @@ export class ModuleManager {
     string,
     InterfacePackagePlan
   >();
+  private readonly configVars = new ConfigVarStore();
   private pendingCleanup: ManagedModule[] = [];
   private startupOrder: string[] = [];
 
@@ -340,10 +348,12 @@ export class ModuleManager {
   async constructAll(): Promise<void> {
     const leaseAcquired = this.resolverDetour.attach();
     const modules = [...this.loaded.values()];
+    let plan: ConfigVarPlan;
     try {
       this.configureModuleContexts();
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
+      plan = this.planConfigVars(modules);
     } catch (error) {
       if (leaseAcquired) {
         throw aggregateErrors(
@@ -354,12 +364,7 @@ export class ModuleManager {
       throw error;
     }
 
-    const results = await Promise.allSettled(
-      modules.map(({ module, config }) =>
-        this.constructModule(module, config.config),
-      ),
-    );
-    const errors = collectRejectedErrors(results);
+    const errors = await this.constructStages(modules, plan);
     if (errors.length === 0) {
       return;
     }
@@ -386,11 +391,7 @@ export class ModuleManager {
       this.configureModuleContexts();
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
-      await Promise.all(
-        modules.map(({ module, config }) =>
-          this.constructModule(module, config.config),
-        ),
-      );
+      await Promise.all(modules.map((entry) => this.constructEntry(entry)));
     } catch (error) {
       if (leaseAcquired) {
         throw aggregateErrors(
@@ -463,9 +464,9 @@ export class ModuleManager {
   private async constructModule(
     module: Module,
     config: unknown,
-  ): Promise<void> {
+  ): Promise<ConfigVars | void> {
     try {
-      await module.construct(config);
+      return await module.construct(config);
     } catch (error) {
       Logger.Error(`Failed to construct module:`);
       Logger.Error(`  - ID: ${module.id}`);
@@ -473,6 +474,83 @@ export class ModuleManager {
       Logger.Error("  - Error:", error);
       throw error;
     }
+  }
+
+  private planConfigVars(modules: ManagedModule[]): ConfigVarPlan {
+    return buildConfigVarPlan(
+      modules.map(({ module, config }) => ({
+        id: module.id,
+        declared: declaredConfigVars(module.manifest),
+        config: config.config,
+      })),
+    );
+  }
+
+  /**
+   * Constructs every module stage by stage, following the config variable graph.
+   *
+   * A stage holds modules that no longer wait on any variable, so they still
+   * construct concurrently; the next stage only runs once the providers it
+   * reads from published their values. A module whose provider failed is never
+   * constructed with an unresolved configuration: it is reported as failed and
+   * so are the modules reading from it.
+   */
+  private async constructStages(
+    modules: ManagedModule[],
+    plan: ConfigVarPlan,
+  ): Promise<unknown[]> {
+    const entries = new Map(modules.map((entry) => [entry.module.id, entry]));
+    const errors: unknown[] = [];
+    const failed = new Set<string>();
+
+    for (const stage of plan.stages) {
+      const runnable = stage.filter((id) => {
+        const blocker = this.findFailedProvider(plan, id, failed);
+        if (!blocker) {
+          return true;
+        }
+        failed.add(id);
+        errors.push(
+          new Error(
+            `Module '${id}' did not construct: provider '${blocker}' failed.`,
+          ),
+        );
+        return false;
+      });
+
+      const results = await Promise.allSettled(
+        runnable.map((id) => this.constructEntry(entries.get(id)!)),
+      );
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          failed.add(runnable[index]);
+          errors.push(result.reason);
+        }
+      });
+    }
+
+    return errors;
+  }
+
+  private findFailedProvider(
+    plan: ConfigVarPlan,
+    moduleId: string,
+    failed: Set<string>,
+  ): string | undefined {
+    return [...(plan.dependencies.get(moduleId) ?? [])].find((provider) =>
+      failed.has(provider),
+    );
+  }
+
+  private async constructEntry(entry: ManagedModule): Promise<void> {
+    const { module, config } = entry;
+    config.config = this.configVars.resolve(module.id, config.config);
+    const published = await this.constructModule(module, config.config);
+    this.configVars.record(
+      module.id,
+      declaredConfigVars(module.manifest),
+      published,
+    );
   }
 
   private getReverseLifecycleModules(): ManagedModule[] {
@@ -514,6 +592,7 @@ export class ModuleManager {
 
   private releaseRuntimeState(): unknown[] {
     const errors: unknown[] = [];
+    this.configVars.clear();
     this.stubbedInterfacePackages.clear();
     this.resolver.stubbedInterfacePackages.clear();
     clearStubInterfaceWarnings();

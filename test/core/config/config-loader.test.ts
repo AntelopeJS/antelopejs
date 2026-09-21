@@ -62,6 +62,51 @@ describe("ConfigLoader", () => {
       expect(config.cacheFolder).to.equal("/var/cache");
     });
 
+    it("keeps config variable references verbatim through the whole load", async () => {
+      await mockTsConfig({
+        name: "test",
+        modules: {
+          api: "1.0.0",
+          dms: {
+            version: "1.0.0",
+            config: {
+              apiBaseUrl: "http://127.0.0.1:${@api.API_PORT}",
+              servers: [{ port: "${@api.API_PORT}" }],
+            },
+          },
+        },
+        envOverrides: { DMS_HOST: "modules.dms.config.host" },
+        environments: {
+          production: {
+            modules: {
+              dms: {
+                config: { publicUrl: "https://example.com:${@api.API_PORT}" },
+              },
+            },
+          },
+        },
+      });
+      await fs.writeFile(
+        "/project/antelope.dms.json",
+        JSON.stringify({ sidecarUrl: "http://127.0.0.1:${@api.API_PORT}/v1" }),
+      );
+      process.env.DMS_HOST = "dms.internal";
+
+      try {
+        const config = await loader.load("/project", "production");
+
+        expect(config.modules.dms.config).to.deep.equal({
+          apiBaseUrl: "http://127.0.0.1:${@api.API_PORT}",
+          servers: [{ port: "${@api.API_PORT}" }],
+          publicUrl: "https://example.com:${@api.API_PORT}",
+          sidecarUrl: "http://127.0.0.1:${@api.API_PORT}/v1",
+          host: "dms.internal",
+        });
+      } finally {
+        delete process.env.DMS_HOST;
+      }
+    });
+
     it("loads module-specific config files", async () => {
       await mockTsConfig({
         name: "test",

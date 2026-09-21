@@ -5,6 +5,7 @@ import type {
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 
+import { isConfigVarKey } from "./config-vars";
 import { isObject, set } from "../../utils/object";
 
 export interface ExpandedModuleConfig {
@@ -71,6 +72,9 @@ export class ConfigParser {
     const pureMatch = str.match(/^\$\{([^}]+)\}$/);
     if (pureMatch) {
       const key = pureMatch[1];
+      if (isConfigVarKey(key)) {
+        return str;
+      }
       if (key in values) {
         try {
           return JSON.parse(values[key]);
@@ -81,7 +85,10 @@ export class ConfigParser {
       return str;
     }
 
-    return str.replace(/\$\{([^}]+)\}/g, (_, key) => {
+    return str.replace(/\$\{([^}]+)\}/g, (token, key) => {
+      if (isConfigVarKey(key)) {
+        return token;
+      }
       return values[key] ?? "";
     });
   }
