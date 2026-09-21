@@ -86,6 +86,76 @@ describe("Launch Function", () => {
     }
   });
 
+  it("resolves a config variable only once its provider constructed", async () => {
+    const projectFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-config-vars-"),
+    );
+    const orderFile = path.join(projectFolder, "order.log");
+    const configFile = path.join(projectFolder, "consumer-config.json");
+    try {
+      const providerPath = path.join(projectFolder, "api");
+      const consumerPath = path.join(projectFolder, "dms");
+      await createModule(providerPath, "api");
+      await createModule(consumerPath, "dms");
+      await fs.writeFile(
+        path.join(providerPath, "package.json"),
+        JSON.stringify({
+          name: "api",
+          version: "1.0.0",
+          main: "index.js",
+          antelopeJs: { configVars: ["API_PORT"] },
+        }),
+      );
+      await fs.writeFile(
+        path.join(providerPath, "index.js"),
+        `const fs = require("node:fs");
+exports.construct = async () => {
+  fs.appendFileSync(${JSON.stringify(orderFile)}, "api,");
+  return { API_PORT: 5010 };
+};
+`,
+      );
+      await fs.writeFile(
+        path.join(consumerPath, "index.js"),
+        `const fs = require("node:fs");
+exports.construct = async (config) => {
+  fs.appendFileSync(${JSON.stringify(orderFile)}, "dms,");
+  fs.writeFileSync(${JSON.stringify(configFile)}, JSON.stringify(config));
+};
+`,
+      );
+
+      await writeProjectConfig(projectFolder, {
+        name: "config-vars-project",
+        modules: {
+          api: {
+            source: { type: "local", path: "./api", main: "index.js" },
+          },
+          dms: {
+            source: { type: "local", path: "./dms", main: "index.js" },
+            config: {
+              apiBaseUrl: "http://127.0.0.1:${@api.API_PORT}",
+              servers: [{ port: "${@api.API_PORT}" }],
+            },
+          },
+        },
+      });
+
+      const manager = await launch(projectFolder);
+
+      expect(await fs.readFile(orderFile, "utf8")).to.equal("api,dms,");
+      expect(JSON.parse(await fs.readFile(configFile, "utf8"))).to.deep.equal({
+        apiBaseUrl: "http://127.0.0.1:5010",
+        servers: [{ port: 5010 }],
+      });
+
+      await manager.stopAll();
+      await manager.destroyAll();
+    } finally {
+      await fs.rm(projectFolder, { recursive: true, force: true });
+    }
+  });
+
   it("loads an unimplemented optional interface and stubs its AsyncProxies", async () => {
     const projectFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-project-"),

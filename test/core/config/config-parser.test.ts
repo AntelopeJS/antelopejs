@@ -114,6 +114,34 @@ describe("ConfigParser", () => {
 
       expect(result.value).to.equal("hello ");
     });
+
+    it("leaves a config variable reference verbatim", () => {
+      const config = {
+        port: 3000,
+        apiBaseUrl: "http://127.0.0.1:${@api.API_PORT}",
+        rawPort: "${@api.API_PORT}",
+        servers: [{ url: "http://${host}:${@api.API_PORT}" }],
+        host: "127.0.0.1",
+      };
+
+      const result = parser.processTemplates(config);
+
+      expect(result.apiBaseUrl).to.equal("http://127.0.0.1:${@api.API_PORT}");
+      expect(result.rawPort).to.equal("${@api.API_PORT}");
+      expect(result.servers[0].url).to.equal(
+        "http://127.0.0.1:${@api.API_PORT}",
+      );
+    });
+
+    it("leaves a reserved token verbatim even when it is malformed", () => {
+      const config = {
+        value: "${@api}",
+      };
+
+      const result = parser.processTemplates(config);
+
+      expect(result.value).to.equal("${@api}");
+    });
   });
 
   describe("applyEnvOverrides", () => {

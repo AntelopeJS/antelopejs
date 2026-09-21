@@ -29,6 +29,8 @@ export interface ModulePackageJson {
     moduleAliases?: Record<string, string>;
 
     defaultConfig?: Record<string, unknown>;
+
+    configVars?: string[];
   };
 
   _moduleAliases?: Record<string, string>;

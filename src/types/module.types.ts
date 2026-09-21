@@ -1,3 +1,5 @@
+import type { ConfigVars } from "@antelopejs/interface-core/config";
+
 export enum ModuleState {
   Loaded = "loaded",
   Constructed = "constructed",
@@ -5,7 +7,7 @@ export enum ModuleState {
 }
 
 export interface ModuleCallbacks {
-  construct?(config: unknown): Promise<void> | void;
+  construct?(config: unknown): Promise<ConfigVars | void> | ConfigVars | void;
   destroy?(): Promise<void> | void;
   start?(): Promise<void> | void;
   stop?(): Promise<void> | void;

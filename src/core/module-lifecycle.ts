@@ -1,4 +1,5 @@
 import { Events } from "@antelopejs/interface-core/modules";
+import type { ConfigVars } from "@antelopejs/interface-core/config";
 
 import { type ModuleCallbacks, ModuleState } from "../types";
 import {
@@ -10,7 +11,7 @@ import {
 export class ModuleLifecycle {
   private callbacks?: ModuleCallbacks;
   private _state: ModuleState = ModuleState.Loaded;
-  private transition: Promise<void> = Promise.resolve();
+  private transition: Promise<unknown> = Promise.resolve();
 
   constructor(
     private moduleId: string,
@@ -29,11 +30,11 @@ export class ModuleLifecycle {
     this.moduleVersion = version;
   }
 
-  construct(config: unknown): Promise<void> {
+  construct(config: unknown): Promise<ConfigVars | void> {
     return this.enqueue(() => this.runConstruct(config));
   }
 
-  private runConstruct(config: unknown): Promise<void> {
+  private runConstruct(config: unknown): Promise<ConfigVars | void> {
     if (this._state !== ModuleState.Loaded) {
       return Promise.resolve();
     }
@@ -44,13 +45,12 @@ export class ModuleLifecycle {
     );
   }
 
-  private async applyConstruct(config: unknown): Promise<void> {
+  private async applyConstruct(config: unknown): Promise<ConfigVars | void> {
     this._state = ModuleState.Constructed;
-    if (this.callbacks?.construct) {
-      await this.callbacks.construct(config);
-    }
+    const configVars = await this.callbacks?.construct?.(config);
 
     Events.ModuleConstructed.emit(this.moduleId);
+    return configVars ?? undefined;
   }
 
   start(): Promise<void> {
@@ -149,7 +149,7 @@ export class ModuleLifecycle {
     return moduleDiagnosticsContext(this.moduleId, this.moduleVersion);
   }
 
-  private enqueue(operation: () => Promise<void>): Promise<void> {
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
     const result = this.transition.then(operation, operation);
     this.transition = result.catch(() => undefined);
     return result;
