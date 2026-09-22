@@ -107,7 +107,9 @@ class ResolverDetourCoordinator {
       isMain,
     );
     const isCircularImport = require.cache[resolvedPath]?.loaded === false;
-    const value = this.originalLoader?.(resolvedPath, parent, isMain);
+    const value = activeResolver.runInInterfaceContext(result, () =>
+      this.originalLoader?.(resolvedPath, parent, isMain),
+    );
     return isCircularImport
       ? value
       : activeResolver.bindProviderRoutes(result, value);
@@ -131,7 +133,9 @@ class ResolverDetourCoordinator {
       isMain,
       undefined,
     );
-    const value = this.originalLoader?.(entryPath, parent, isMain);
+    const value = resolver.runInInterfaceContext(entryResult, () =>
+      this.originalLoader?.(entryPath, parent, isMain),
+    );
     resolver.bindProviderRoutes(entryResult, value);
   }
 
