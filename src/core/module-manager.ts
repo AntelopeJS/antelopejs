@@ -526,11 +526,9 @@ export class ModuleManager {
           return true;
         }
         failed.add(id);
-        errors.push(
-          new Error(
-            `Module '${id}' did not provide its config variables: provider '${blocker}' failed.`,
-          ),
-        );
+        const message = `Module '${id}' did not provide its config variables: provider '${blocker}' failed.`;
+        Logger.Error(message);
+        errors.push(new Error(message));
         return false;
       });
 
@@ -562,26 +560,116 @@ export class ModuleManager {
     failed: Set<string>,
   ): Promise<unknown[]> {
     const errors: unknown[] = [];
+    const dead = new Set(failed);
     const runnable = modules.filter(({ module }) => {
-      if (failed.has(module.id)) {
+      if (dead.has(module.id)) {
         return false;
       }
       const blocker = this.findFailedProvider(plan, module.id, failed);
       if (!blocker) {
         return true;
       }
-      errors.push(
-        new Error(
-          `Module '${module.id}' did not construct: provider '${blocker}' failed.`,
-        ),
-      );
+      dead.add(module.id);
+      const message = `Module '${module.id}' did not construct: provider '${blocker}' failed.`;
+      Logger.Error(message);
+      errors.push(new Error(message));
       return false;
     });
 
+    this.rejectCallsIntoDeadModules(dead, dead);
     const results = await Promise.allSettled(
-      runnable.map((entry) => this.constructEntry(entry)),
+      runnable.map((entry) => this.constructOrDisable(entry, dead)),
     );
     return [...errors, ...collectRejectedErrors(results)];
+  }
+
+  private async constructOrDisable(
+    entry: ManagedModule,
+    dead: Set<string>,
+  ): Promise<void> {
+    try {
+      await this.constructEntry(entry);
+    } catch (error) {
+      dead.add(entry.module.id);
+      this.rejectCallsIntoDeadModules(dead, [entry.module.id]);
+      throw error;
+    }
+  }
+
+  /**
+   * Stops the interfaces of modules that will never construct being waited on.
+   *
+   * A module skipped because its provider failed, or one whose own construct
+   * threw, still owes the interfaces it declared. Its peers do not read config
+   * variables from it — they call it — and an unanswered interface call queues
+   * forever, so a named configuration failure turned into a silent hang. The
+   * async proxies of those interfaces are neutralized instead: calls, queued
+   * ones included, reject naming the module that died and the interface.
+   */
+  private rejectCallsIntoDeadModules(
+    dead: ReadonlySet<string>,
+    targets: Iterable<string>,
+  ): void {
+    for (const moduleId of targets) {
+      const entry = this.getModuleEntry(moduleId);
+      if (!entry) {
+        continue;
+      }
+      for (const interfaceName of this.orphanedInterfaces(entry, dead)) {
+        this.rejectCallsInto(moduleId, interfaceName);
+      }
+    }
+  }
+
+  /** The interfaces a dead module served and no live module implements. */
+  private orphanedInterfaces(
+    entry: ManagedModule,
+    dead: ReadonlySet<string>,
+  ): string[] {
+    return (entry.module.manifest.implements ?? []).filter(
+      (interfaceName) =>
+        !entry.config.disabledExports?.has(interfaceName) &&
+        !this.hasLiveImplementer(interfaceName, dead),
+    );
+  }
+
+  private hasLiveImplementer(
+    interfaceName: string,
+    dead: ReadonlySet<string>,
+  ): boolean {
+    return this.getAllManagedModules().some(
+      ({ module, config }) =>
+        !dead.has(module.id) &&
+        (module.manifest.implements ?? []).includes(interfaceName) &&
+        !config.disabledExports?.has(interfaceName),
+    );
+  }
+
+  private rejectCallsInto(moduleId: string, interfaceName: string): void {
+    const packageRoot = this.resolver.interfacePackages.get(interfaceName);
+    const entry = this.getModuleEntry(moduleId);
+    if (!packageRoot || !entry) {
+      return;
+    }
+    try {
+      require(interfaceName);
+    } catch (error) {
+      Logger.Trace(
+        `Could not load interface '${interfaceName}' to fail calls into '${moduleId}':`,
+        error,
+      );
+      return;
+    }
+    Logger.Debug(
+      `Interface '${interfaceName}' lost its provider '${moduleId}'; calls into it now reject.`,
+    );
+    entry.module.runInContext(() =>
+      neutralizeInterfacePackage(
+        packageRoot,
+        interfaceName,
+        `has no provider: module '${moduleId}' did not construct`,
+      ),
+    );
   }
 
   private findFailedProvider(

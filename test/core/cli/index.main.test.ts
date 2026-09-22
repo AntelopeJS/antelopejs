@@ -8,6 +8,7 @@ const Module = require("node:module");
 import * as logging from "../../../src/logging";
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import * as versionCheck from "../../../src/core/cli/version-check";
+import { FORCED_EXIT_GRACE_MS } from "../../../src/core/cli/failure-exit";
 
 describe("CLI main guard", () => {
   const cliPath = require.resolve("../../../src/core/cli/index");
@@ -79,6 +80,33 @@ describe("CLI main guard", () => {
       }
       exitStub.restore();
       errorStub.restore();
+    }
+  });
+
+  it("forces the process out when a command reported a failure", async () => {
+    stubRunCliDeps();
+    const previousExitCode = process.exitCode;
+    sinon.stub(Command.prototype, "parseAsync").callsFake(async () => {
+      process.exitCode = 1;
+      return new Command();
+    });
+    const exitStub = sinon.stub(process, "exit");
+    const clock = sinon.useFakeTimers({ shouldAdvanceTime: true });
+    const originalListeners = process.listeners("SIGINT");
+    process.removeAllListeners("SIGINT");
+    const restoreMain = loadCliAsMain();
+    try {
+      await clock.tickAsync(FORCED_EXIT_GRACE_MS);
+      expect(exitStub.calledWith(1)).to.equal(true);
+    } finally {
+      clock.restore();
+      restoreMain();
+      process.removeAllListeners("SIGINT");
+      for (const listener of originalListeners) {
+        process.on("SIGINT", listener);
+      }
+      exitStub.restore();
+      process.exitCode = previousExitCode;
     }
   });
 

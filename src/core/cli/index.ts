@@ -55,8 +55,14 @@ function isExitPromptError(error: unknown): boolean {
   );
 }
 
+async function runCLIAsMain(): Promise<void> {
+  const { forceExitOnFailure } = await import("./failure-exit");
+  await runCLI();
+  forceExitOnFailure();
+}
+
 if (require.main === module) {
-  runCLI().catch((error) => {
+  runCLIAsMain().catch((error) => {
     if (isExitPromptError(error)) {
       process.exit(0);
     }
