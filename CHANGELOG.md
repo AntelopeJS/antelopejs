@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.9.0-next.4
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.3...v1.9.0-next.4)
+
+### 🩹 Fixes
+
+- **logging:** Stop module attribution from recursing through its own warning ([#150](https://github.com/AntelopeJS/antelopejs/pull/150))
+
+### ✅ Tests
+
+- Stop a shutdown from ending the run before mocha reports it ([#149](https://github.com/AntelopeJS/antelopejs/pull/149))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.9.0-next.3
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.2...v1.9.0-next.3)
