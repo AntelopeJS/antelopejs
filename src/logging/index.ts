@@ -142,11 +142,36 @@ function writeLogLine(log: Log, module?: string): void {
   stream.write(`${message}\n`);
 }
 
+/**
+ * The module a log line is attributed to, `undefined` when tracking is off.
+ *
+ * Asking for the responsible module can itself log: `GetResponsibleModule`
+ * reports an async-context warning through this very logger whenever the call
+ * comes from a timer callback, and handling that warning would ask for the
+ * responsible module again, and again, until the process runs out of memory.
+ *
+ * A nested line is still emitted, and still filtered like any other — it
+ * simply does not go looking for an owner a second time. It belongs to the
+ * core module: it is the framework reporting on itself, never a module's own
+ * message. Nothing awaits between the flag being raised and lowered, so a
+ * single flag is enough to tell a nested call from a fresh one.
+ */
+let attributingModule = false;
+
 function resolveResponsibleModule(): string | undefined {
   if (!loggingConfig.moduleTracking?.enabled) {
     return undefined;
   }
-  return GetResponsibleModule() || CORE_MODULE_NAME;
+  if (attributingModule) {
+    return CORE_MODULE_NAME;
+  }
+
+  attributingModule = true;
+  try {
+    return GetResponsibleModule() || CORE_MODULE_NAME;
+  } finally {
+    attributingModule = false;
+  }
 }
 
 function registerLogHandler(): void {
