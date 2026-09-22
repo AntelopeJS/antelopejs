@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.9.0-next.3
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.2...v1.9.0-next.3)
+
+### 🩹 Fixes
+
+- **core:** Fail interface calls into modules that never construct ([#148](https://github.com/AntelopeJS/antelopejs/pull/148))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.9.0-next.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.1...v1.9.0-next.2)
