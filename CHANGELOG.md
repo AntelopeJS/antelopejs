@@ -4,9 +4,28 @@
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.4...v1.9.0)
 
+This release promotes the `1.9.0-next` line to stable. It carries everything published from `v1.9.0-next.0` to `v1.9.0-next.4`, summarised here and listed version by version in the sections below.
+
+### 🚀 Enhancements
+
+- **config:** Module-provided config variables: a module declares the names it publishes under `antelopeJs.configVars`, other modules reference them in their own configuration as `${@module.VAR_NAME}`, and the core resolves the whole graph before anything constructs ([#144](https://github.com/AntelopeJS/antelopejs/pull/144))
+
+### 🩹 Fixes
+
+- **config:** Publish config variables in a provide phase, before construct: staging construction on the variable graph raced the interface graph, which orders the same modules the other way round, and a boot could wait on itself ([#147](https://github.com/AntelopeJS/antelopejs/pull/147))
+- **config:** Stop configuration traversal rebuilding values it cannot clone: a `RegExp` in a module config came out as `{}`, which silently turned a regex origin allow-list into an allow-all ([#147](https://github.com/AntelopeJS/antelopejs/pull/147))
+- **core:** Fail interface calls into modules that never construct, naming the module that died and the interface, and leave a failed boot with a non-zero exit code instead of a process that lingers ([#148](https://github.com/AntelopeJS/antelopejs/pull/148))
+- **core:** Pick the canonical stubbed interface package deterministically, whatever order the modules are declared in ([#145](https://github.com/AntelopeJS/antelopejs/pull/145))
+- **resolution:** Load an interface package under its own provider, so a package that hosts its own implementation agrees with its callers whoever imports it first ([#146](https://github.com/AntelopeJS/antelopejs/pull/146))
+- **logging:** Stop module attribution from recursing through its own warning, which emitted it dozens of times for a single log line and exhausted the heap ([#150](https://github.com/AntelopeJS/antelopejs/pull/150))
+
 ### 🏡 Chore
 
 - **release:** Allow a release with no commits since the last tag ([#151](https://github.com/AntelopeJS/antelopejs/pull/151))
+
+### ✅ Tests
+
+- Stop a shutdown from ending the run before mocha reports it: the unit runner could exit 0 with tests failing, and ten suites went unreported ([#149](https://github.com/AntelopeJS/antelopejs/pull/149))
 
 ### ❤️ Contributors
 
