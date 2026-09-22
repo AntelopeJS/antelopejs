@@ -708,6 +708,37 @@ describe("Resolver", () => {
     expect(observed).to.equal("consumer-b");
   });
 
+  it("loads an interface package under its own provider, not the importer's", () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    resolver.interfacePackages.set(SHARED_API_PACKAGE, "/interfaces/api");
+    resolver.modulesById.set("consumer-a", {
+      id: "consumer-a",
+      manifest: {} as any,
+    });
+    internal.interfaceConnections["consumer-a"] = {
+      [SHARED_API_PACKAGE]: selectedProvider("consumer-a-api"),
+    };
+
+    try {
+      const observed = RunWithModuleContext(
+        { module: "consumer-a", provider: "consumer-a", providerRoutes: {} },
+        () => {
+          const result = resolver.resolve(SHARED_API_PACKAGE, {
+            filename: "/modules/consumer-a/index.js",
+          });
+          return resolver.runInInterfaceContext(
+            result as NonNullable<typeof result>,
+            () => GetModuleContext()?.provider,
+          );
+        },
+      );
+
+      expect(observed).to.equal("consumer-a-api");
+    } finally {
+      delete internal.interfaceConnections["consumer-a"];
+    }
+  });
+
   it("resolves a shared facade's own interface provider, not the caller's", () => {
     const setup = loadSharedInterfaceFacade();
 
@@ -727,15 +758,18 @@ describe("Resolver", () => {
     }
   });
 
-  it("keeps the load-time provider when the caller declares no connection", () => {
+  it("falls back to the interface's load-time provider when the caller declares no connection", () => {
     const setup = loadSharedInterfaceFacade();
 
     try {
+      // The fallback still means "the provider of the interface these exports
+      // belong to", resolved when the package was loaded. The module that
+      // happened to load it first is not that provider.
       const observed = callWhileServing("outsider", "api", () =>
         setup.facade.Provider(),
       );
 
-      expect(observed).to.equal("consumer-a");
+      expect(observed).to.equal("consumer-a-api");
     } finally {
       setup.restore();
     }

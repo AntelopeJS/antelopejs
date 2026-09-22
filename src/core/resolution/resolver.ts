@@ -267,6 +267,36 @@ export class Resolver {
     );
   }
 
+  /**
+   * Runs the module body of an interface package file in the context its own
+   * files are shared under.
+   *
+   * A self-hosted interface attaches its implementation at module scope, and
+   * the runtime reads that attachment route from the ambient context. Loading
+   * the file in the importing module's context would route the attachment to
+   * whichever module imported the interface first, while every registration
+   * later routes to the interface's declared provider.
+   */
+  runInInterfaceContext<T>(result: ResolveResult, load: () => T): T {
+    const context = captureModuleContext();
+    if (!context || !this.isSharedInterfaceLoad(result)) {
+      return load();
+    }
+    return runWithCapturedModuleContext(
+      this.getSharedInterfaceContext(result, context),
+      load,
+    );
+  }
+
+  private isSharedInterfaceLoad(result: ResolveResult): boolean {
+    return Boolean(
+      result.interfaceName &&
+      result.interfaceName !== CORE_PKG &&
+      result.provider &&
+      !this.lifecycleInterfacePackages.has(result.interfaceName),
+    );
+  }
+
   trackInterfaceFile(result: ResolveResult, resolvedPath: string): void {
     if (result.interfaceName) {
       this.interfaceGraphFiles.set(resolvedPath, result.interfaceName);
@@ -782,13 +812,29 @@ export class Resolver {
     if (!result.sharedExports) {
       return context;
     }
+    return this.getSharedInterfaceContext(result, context);
+  }
+
+  /**
+   * Single context an interface package's own files are shared under.
+   *
+   * Its `provider` is the one the interface resolves to, never the one the
+   * importing module happens to run for: the shared instance answers every
+   * consumer, so the importer's own provider would leak into work the
+   * interface performs for all of them, and an attachment the interface makes
+   * for itself would land on a route no consumer ever requests.
+   */
+  private getSharedInterfaceContext(
+    result: ResolveResult,
+    context: CapturedModuleContext,
+  ): CapturedModuleContext {
     const interfaceName = result.interfaceName ?? "";
     const contexts = this.sharedInterfaceContexts.get(context) ?? new Map();
     const existing = contexts.get(interfaceName);
     if (existing) {
       return existing;
     }
-    const shared = { ...context };
+    const shared = { ...context, provider: result.provider };
     contexts.set(interfaceName, shared);
     this.sharedInterfaceContexts.set(context, contexts);
     this.sharedContexts.set(shared, interfaceName);
