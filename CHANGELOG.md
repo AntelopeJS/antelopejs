@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.9.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.4...v1.9.0)
+
+### 🏡 Chore
+
+- **release:** Allow a release with no commits since the last tag ([#151](https://github.com/AntelopeJS/antelopejs/pull/151))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.9.0-next.4
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.3...v1.9.0-next.4)
