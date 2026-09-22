@@ -23,6 +23,13 @@ function collectInto(sink: string[]): StreamWrite {
   }) as unknown as StreamWrite;
 }
 
+const ASYNC_CONTEXT_WARNING =
+  "GetResponsibleModule called from within an async context";
+
+function countOccurrences(output: string, needle: string): number {
+  return output.split(needle).length - 1;
+}
+
 function captureOutput(emit: () => void): CapturedOutput {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -145,6 +152,34 @@ describe("Logging Module", () => {
 
       expect(output.stdout).to.contain("unfiltered");
       expect(output.stdout).to.not.contain("(core)");
+    });
+
+    /**
+     * Asking for the responsible module from a timer callback makes
+     * `GetResponsibleModule` warn through this very logger, and handling that
+     * warning used to ask for the responsible module again: a single call
+     * emitted the warning over and over, never emitted the line that asked
+     * for it, and ran the process out of memory.
+     */
+    it("emits one line for a log raised from a timer callback", async () => {
+      setupAntelopeProjectLogging({
+        enabled: true,
+        moduleTracking: { enabled: true, includes: [], excludes: [] },
+      });
+
+      const output = await new Promise<CapturedOutput>((resolve) => {
+        setTimeout(() => {
+          resolve(captureOutput(() => Logging.Info("from a timer callback")));
+        }, 1);
+      });
+
+      expect(countOccurrences(output.stdout, "from a timer callback")).to.equal(
+        1,
+      );
+      expect(output.stdout).to.contain("(core)");
+      expect(
+        countOccurrences(output.stderr, ASYNC_CONTEXT_WARNING),
+      ).to.be.at.most(1);
     });
 
     it("should attribute unmodule logs to the core module", () => {
