@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.9.0-next.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.1...v1.9.0-next.2)
+
+### 🩹 Fixes
+
+- **config:** ⚠️  Publish config variables in a provide phase, before construct ([#147](https://github.com/AntelopeJS/antelopejs/pull/147))
+
+#### ⚠️ Breaking Changes
+
+- **config:** ⚠️  Publish config variables in a provide phase, before construct ([#147](https://github.com/AntelopeJS/antelopejs/pull/147))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.9.0-next.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.0...v1.9.0-next.1)
