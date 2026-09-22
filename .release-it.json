@@ -3,7 +3,7 @@
     "commitMessage": "chore(release): v${version}",
     "tagName": "v${version}",
     "requireBranch": "main",
-    "requireCommits": true
+    "requireCommits": false
   },
   "github": {
     "release": true,
