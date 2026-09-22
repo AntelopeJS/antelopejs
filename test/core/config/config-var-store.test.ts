@@ -31,11 +31,11 @@ describe("ConfigVarStore", () => {
     });
   });
 
-  it("rejects a declared variable the construct did not return", () => {
+  it("rejects a declared variable the provide callback did not return", () => {
     expect(() =>
       store.record("api", ["API_PORT", "API_HOST"], { API_PORT: 5010 }),
     ).to.throw(
-      "Module 'api' declares the config variable(s) 'API_HOST' in antelopeJs.configVars but its construct did not return them.",
+      "Module 'api' declares the config variable(s) 'API_HOST' in antelopeJs.configVars but its provide callback did not return them.",
     );
   });
 

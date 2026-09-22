@@ -9,19 +9,19 @@ import { type ConfigVarReference, substituteConfigVars } from "./config-vars";
 /**
  * The config variables every constructed module published.
  *
- * A value enters the store once, when its provider constructs, and is frozen
+ * A value enters the store once, when its provider publishes it, and is frozen
  * from then on: consumers are resolved against it and never re-resolved.
  */
 export class ConfigVarStore {
   private readonly published = new Map<string, ConfigVars>();
 
-  /** Freezes what a provider returned, once its construct resolved. */
+  /** Freezes what a provider returned, once its `provide` callback resolved. */
   record(moduleId: string, declared: string[], returned: unknown): void {
     const values = isObject(returned) ? (returned as ConfigVars) : {};
     const missing = declared.filter((name) => !(name in values));
     if (missing.length > 0) {
       throw new Error(
-        `Module '${moduleId}' declares the config variable(s) '${missing.join("', '")}' in antelopeJs.configVars but its construct did not return them.`,
+        `Module '${moduleId}' declares the config variable(s) '${missing.join("', '")}' in antelopeJs.configVars but its provide callback did not return them.`,
       );
     }
     this.published.set(moduleId, { ...values });

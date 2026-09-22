@@ -74,6 +74,11 @@ interface InterfacePackagePlan {
 
 type ModuleOperation = (module: Module) => Promise<void>;
 
+interface ProvidePhaseResult {
+  errors: unknown[];
+  failed: Set<string>;
+}
+
 interface ModuleOperationResults {
   errors: unknown[];
   failed: ManagedModule[];
@@ -349,11 +354,13 @@ export class ModuleManager {
     const leaseAcquired = this.resolverDetour.attach();
     const modules = [...this.loaded.values()];
     let plan: ConfigVarPlan;
+    let provided: ProvidePhaseResult;
     try {
       this.configureModuleContexts();
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
       plan = this.planConfigVars(modules);
+      provided = await this.runProvidePhase(modules, plan);
     } catch (error) {
       if (leaseAcquired) {
         throw aggregateErrors(
@@ -364,7 +371,10 @@ export class ModuleManager {
       throw error;
     }
 
-    const errors = await this.constructStages(modules, plan);
+    const errors = [
+      ...provided.errors,
+      ...(await this.constructReadyModules(modules, plan, provided.failed)),
+    ];
     if (errors.length === 0) {
       return;
     }
@@ -391,6 +401,13 @@ export class ModuleManager {
       this.configureModuleContexts();
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
+      await Promise.all(
+        modules
+          .filter(
+            (entry) => declaredConfigVars(entry.module.manifest).length > 0,
+          )
+          .map((entry) => this.provideEntry(entry)),
+      );
       await Promise.all(modules.map((entry) => this.constructEntry(entry)));
     } catch (error) {
       if (leaseAcquired) {
@@ -464,9 +481,9 @@ export class ModuleManager {
   private async constructModule(
     module: Module,
     config: unknown,
-  ): Promise<ConfigVars | void> {
+  ): Promise<void> {
     try {
-      return await module.construct(config);
+      await module.construct(config);
     } catch (error) {
       Logger.Error(`Failed to construct module:`);
       Logger.Error(`  - ID: ${module.id}`);
@@ -487,18 +504,17 @@ export class ModuleManager {
   }
 
   /**
-   * Constructs every module stage by stage, following the config variable graph.
+   * Runs the `provide` phase, stage by stage over the config variable graph.
    *
-   * A stage holds modules that no longer wait on any variable, so they still
-   * construct concurrently; the next stage only runs once the providers it
-   * reads from published their values. A module whose provider failed is never
-   * constructed with an unresolved configuration: it is reported as failed and
-   * so are the modules reading from it.
+   * Providers whose own configuration reads no other variable publish first
+   * and concurrently; a provider reading from another one waits for it. No
+   * module has constructed at this point, which is precisely what frees
+   * construction from this ordering.
    */
-  private async constructStages(
+  private async runProvidePhase(
     modules: ManagedModule[],
     plan: ConfigVarPlan,
-  ): Promise<unknown[]> {
+  ): Promise<ProvidePhaseResult> {
     const entries = new Map(modules.map((entry) => [entry.module.id, entry]));
     const errors: unknown[] = [];
     const failed = new Set<string>();
@@ -512,14 +528,14 @@ export class ModuleManager {
         failed.add(id);
         errors.push(
           new Error(
-            `Module '${id}' did not construct: provider '${blocker}' failed.`,
+            `Module '${id}' did not provide its config variables: provider '${blocker}' failed.`,
           ),
         );
         return false;
       });
 
       const results = await Promise.allSettled(
-        runnable.map((id) => this.constructEntry(entries.get(id)!)),
+        runnable.map((id) => this.provideEntry(entries.get(id)!)),
       );
       results.forEach((result, index) => {
         if (result.status === "rejected") {
@@ -529,7 +545,43 @@ export class ModuleManager {
       });
     }
 
-    return errors;
+    return { errors, failed };
+  }
+
+  /**
+   * Constructs every module whose configuration resolved, all at once.
+   *
+   * Construction is deliberately flat: ordering it by the config variable
+   * graph would race the interface graph, which orders modules the other way
+   * round. A module reading from a provider that failed is reported rather
+   * than constructed with an unresolved configuration.
+   */
+  private async constructReadyModules(
+    modules: ManagedModule[],
+    plan: ConfigVarPlan,
+    failed: Set<string>,
+  ): Promise<unknown[]> {
+    const errors: unknown[] = [];
+    const runnable = modules.filter(({ module }) => {
+      if (failed.has(module.id)) {
+        return false;
+      }
+      const blocker = this.findFailedProvider(plan, module.id, failed);
+      if (!blocker) {
+        return true;
+      }
+      errors.push(
+        new Error(
+          `Module '${module.id}' did not construct: provider '${blocker}' failed.`,
+        ),
+      );
+      return false;
+    });
+
+    const results = await Promise.allSettled(
+      runnable.map((entry) => this.constructEntry(entry)),
+    );
+    return [...errors, ...collectRejectedErrors(results)];
   }
 
   private findFailedProvider(
@@ -542,15 +594,36 @@ export class ModuleManager {
     );
   }
 
-  private async constructEntry(entry: ManagedModule): Promise<void> {
+  private async provideEntry(entry: ManagedModule): Promise<void> {
     const { module, config } = entry;
     config.config = this.configVars.resolve(module.id, config.config);
-    const published = await this.constructModule(module, config.config);
+    const published = await this.provideModule(module, config.config);
     this.configVars.record(
       module.id,
       declaredConfigVars(module.manifest),
       published,
     );
+  }
+
+  private async provideModule(
+    module: Module,
+    config: unknown,
+  ): Promise<ConfigVars | void> {
+    try {
+      return await module.provide(config);
+    } catch (error) {
+      Logger.Error(`Failed to provide config variables:`);
+      Logger.Error(`  - ID: ${module.id}`);
+      Logger.Error(`  - Version: ${module.version}`);
+      Logger.Error("  - Error:", error);
+      throw error;
+    }
+  }
+
+  private async constructEntry(entry: ManagedModule): Promise<void> {
+    const { module, config } = entry;
+    config.config = this.configVars.resolve(module.id, config.config);
+    await this.constructModule(module, config.config);
   }
 
   private getReverseLifecycleModules(): ManagedModule[] {
