@@ -1,10 +1,14 @@
 import sinon from "sinon";
 import { expect } from "chai";
+import { EventEmitter } from "node:events";
 
 import { ShutdownManager } from "../../../src/core/shutdown/shutdown-manager";
 
 const WAIT_FOR_SIGNAL_MS = 10;
 const CUSTOM_TIMEOUT_MS = 500;
+/* Short enough that a shutdown left hanging by a test drains inside the
+   teardown below, instead of exiting the runner ten seconds later. */
+const SUITE_TIMEOUT_MS = 50;
 
 interface Deferred {
   promise: Promise<void>;
@@ -27,13 +31,23 @@ function waitForSignal(): Promise<void> {
 
 describe("ShutdownManager", () => {
   let manager: ShutdownManager;
+  /* Signals are delivered on an emitter of this suite's own rather than on
+     `process`: a real SIGINT reaches every listener the process carries,
+     including managers other suites left armed, and tears down the runner
+     itself ten seconds later. */
+  let signals: EventEmitter;
 
   beforeEach(() => {
-    manager = new ShutdownManager();
+    signals = new EventEmitter();
+    manager = new ShutdownManager(SUITE_TIMEOUT_MS, signals);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     manager.removeSignalHandlers();
+    /* Drains a shutdown a test left in flight while `process.exit` is still
+       stubbed: an abandoned one calls it for real once its handlers time out,
+       taking the runner with it. */
+    await manager.shutdown();
     sinon.restore();
   });
 
@@ -140,20 +154,36 @@ describe("ShutdownManager", () => {
 
   describe("signal handling", () => {
     it("should setup and remove signal listeners", () => {
-      const initialSigintCount = process.listenerCount("SIGINT");
-      const initialSigtermCount = process.listenerCount("SIGTERM");
-
       manager.setupSignalHandlers();
 
-      expect(process.listenerCount("SIGINT")).to.equal(initialSigintCount + 1);
-      expect(process.listenerCount("SIGTERM")).to.equal(
-        initialSigtermCount + 1,
-      );
+      expect(signals.listenerCount("SIGINT")).to.equal(1);
+      expect(signals.listenerCount("SIGTERM")).to.equal(1);
 
       manager.removeSignalHandlers();
 
-      expect(process.listenerCount("SIGINT")).to.equal(initialSigintCount);
-      expect(process.listenerCount("SIGTERM")).to.equal(initialSigtermCount);
+      expect(signals.listenerCount("SIGINT")).to.equal(0);
+      expect(signals.listenerCount("SIGTERM")).to.equal(0);
+    });
+
+    it("should leave the process signal listeners alone", () => {
+      const sigintCount = process.listenerCount("SIGINT");
+      const sigtermCount = process.listenerCount("SIGTERM");
+
+      manager.setupSignalHandlers();
+
+      expect(process.listenerCount("SIGINT")).to.equal(sigintCount);
+      expect(process.listenerCount("SIGTERM")).to.equal(sigtermCount);
+    });
+
+    it("listens on the process by default", () => {
+      const processManager = new ShutdownManager();
+      const sigintCount = process.listenerCount("SIGINT");
+
+      processManager.setupSignalHandlers();
+      expect(process.listenerCount("SIGINT")).to.equal(sigintCount + 1);
+
+      processManager.removeSignalHandlers();
+      expect(process.listenerCount("SIGINT")).to.equal(sigintCount);
     });
 
     it("should trigger shutdown on SIGINT", async () => {
@@ -162,7 +192,7 @@ describe("ShutdownManager", () => {
       manager.register(handler, 0);
       manager.setupSignalHandlers();
 
-      process.emit("SIGINT");
+      signals.emit("SIGINT");
       await waitForSignal();
 
       expect(handler.calledOnce).to.equal(true);
@@ -175,7 +205,7 @@ describe("ShutdownManager", () => {
       manager.register(handler, 0);
       manager.setupSignalHandlers();
 
-      process.emit("SIGTERM");
+      signals.emit("SIGTERM");
       await waitForSignal();
 
       expect(handler.calledOnce).to.equal(true);
@@ -188,10 +218,10 @@ describe("ShutdownManager", () => {
       manager.register(neverResolves, 0);
       manager.setupSignalHandlers();
 
-      process.emit("SIGINT");
+      signals.emit("SIGINT");
       await waitForSignal();
 
-      process.emit("SIGINT");
+      signals.emit("SIGINT");
 
       expect(exitStub.calledWith(1)).to.equal(true);
     });
@@ -203,10 +233,10 @@ describe("ShutdownManager", () => {
       manager.register(handler, 0);
       manager.setupSignalHandlers();
 
-      process.emit("SIGINT");
+      signals.emit("SIGINT");
       await waitForSignal();
 
-      process.emit("SIGTERM");
+      signals.emit("SIGTERM");
       await waitForSignal();
 
       expect(exitStub.calledWith(1)).to.equal(false);
@@ -225,10 +255,10 @@ describe("ShutdownManager", () => {
       manager.register(handler, 0);
       manager.setupSignalHandlers();
 
-      process.emit("SIGTERM");
+      signals.emit("SIGTERM");
       await waitForSignal();
 
-      process.emit("SIGINT");
+      signals.emit("SIGINT");
       await waitForSignal();
 
       expect(exitStub.calledWith(1)).to.equal(false);

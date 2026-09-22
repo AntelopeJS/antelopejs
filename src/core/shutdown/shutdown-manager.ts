@@ -4,6 +4,19 @@ export type ShutdownHandler = () => Promise<void> | void;
 
 type ProcessSignal = "SIGINT" | "SIGTERM";
 
+/**
+ * Where a manager listens for termination signals.
+ *
+ * `process` itself in production. Tests hand over an emitter of their own:
+ * signalling the real process reaches every listener it carries, this
+ * manager's and any other's, which makes a signal test indistinguishable
+ * from a genuine shutdown of the whole runner.
+ */
+export interface ProcessSignalSource {
+  on(signal: ProcessSignal, listener: () => void): unknown;
+  removeListener(signal: ProcessSignal, listener: () => void): unknown;
+}
+
 interface RegisteredHandler {
   handler: ShutdownHandler;
   priority: number;
@@ -24,7 +37,10 @@ export class ShutdownManager {
   private sigtermHandler?: () => void;
   private seenSignals = new Set<ProcessSignal>();
 
-  constructor(private timeoutMs: number = DEFAULT_SHUTDOWN_TIMEOUT_MS) {}
+  constructor(
+    private timeoutMs: number = DEFAULT_SHUTDOWN_TIMEOUT_MS,
+    private signalSource: ProcessSignalSource = process,
+  ) {}
 
   register(handler: ShutdownHandler, priority: number): void {
     this.handlers.push({ handler, priority });
@@ -58,8 +74,8 @@ export class ShutdownManager {
     this.sigintHandler = () => this.handleSignal("SIGINT");
     this.sigtermHandler = () => this.handleSignal("SIGTERM");
 
-    process.on("SIGINT", this.sigintHandler);
-    process.on("SIGTERM", this.sigtermHandler);
+    this.signalSource.on("SIGINT", this.sigintHandler);
+    this.signalSource.on("SIGTERM", this.sigtermHandler);
   }
 
   removeSignalHandlers(): void {
@@ -77,7 +93,7 @@ export class ShutdownManager {
       return;
     }
 
-    process.removeListener(signal, handler);
+    this.signalSource.removeListener(signal, handler);
   }
 
   private handleSignal(signal: ProcessSignal): void {
