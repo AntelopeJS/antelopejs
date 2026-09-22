@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { buildConfigVarPlan } from "../../../src/core/config/config-var-graph";
 
 describe("buildConfigVarPlan", () => {
-  it("keeps unrelated modules in the same stage", () => {
+  it("stages providers only, never their consumers", () => {
     const plan = buildConfigVarPlan([
       { id: "api", declared: ["API_PORT"], config: {} },
       { id: "mailer", declared: [], config: { from: "root@localhost" } },
@@ -14,19 +14,28 @@ describe("buildConfigVarPlan", () => {
       },
     ]);
 
-    expect(plan.stages).to.deep.equal([["api", "mailer"], ["dms"]]);
+    expect(plan.stages).to.deep.equal([["api"]]);
     expect([...(plan.dependencies.get("dms") ?? [])]).to.deep.equal(["api"]);
     expect([...(plan.dependencies.get("mailer") ?? [])]).to.deep.equal([]);
   });
 
-  it("stages a chain of providers", () => {
+  it("stages a chain of providers and leaves the consumer out", () => {
     const plan = buildConfigVarPlan([
       { id: "a", declared: ["A"], config: {} },
       { id: "b", declared: ["B"], config: { value: "${@a.A}" } },
       { id: "c", declared: [], config: { value: "${@b.B}" } },
     ]);
 
-    expect(plan.stages).to.deep.equal([["a"], ["b"], ["c"]]);
+    expect(plan.stages).to.deep.equal([["a"], ["b"]]);
+  });
+
+  it("stages providers that read no variable together", () => {
+    const plan = buildConfigVarPlan([
+      { id: "api", declared: ["API_PORT"], config: {} },
+      { id: "auth", declared: ["AUTH_SECRET"], config: {} },
+    ]);
+
+    expect(plan.stages).to.deep.equal([["api", "auth"]]);
   });
 
   it("rejects a reference to a module that is not loaded", () => {

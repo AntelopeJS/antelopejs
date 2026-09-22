@@ -9,7 +9,8 @@ interface FakeModuleOptions {
   id: string;
   declared?: string[];
   config?: unknown;
-  construct?: (config: unknown) => Promise<ConfigVars | void>;
+  provide?: (config: unknown) => Promise<ConfigVars | void>;
+  construct?: (config: unknown) => Promise<void>;
 }
 
 interface FakeModule {
@@ -17,6 +18,7 @@ interface FakeModule {
   version: string;
   state: ModuleState;
   received: unknown;
+  providedWith: unknown;
   constructed: boolean;
 }
 
@@ -39,6 +41,7 @@ function addModule(
     version: "1.0.0",
     state: ModuleState.Loaded,
     received: undefined as unknown,
+    providedWith: undefined as unknown,
     constructed: false,
     manifest: {
       folder: `/modules/${options.id}`,
@@ -49,11 +52,15 @@ function addModule(
         antelopeJs: { configVars: options.declared ?? [] },
       },
     },
+    provide: async (config: unknown) => {
+      module.providedWith = config;
+      return options.provide?.(config);
+    },
     construct: async (config: unknown) => {
       module.received = config;
       module.constructed = true;
       module.state = ModuleState.Constructed;
-      return options.construct?.(config);
+      await options.construct?.(config);
     },
     destroy: async () => {
       module.state = ModuleState.Loaded;
@@ -80,15 +87,18 @@ describe("ModuleManager config variables", () => {
     sinon.restore();
   });
 
-  it("publishes a provider value into its consumers before they construct", async () => {
+  it("publishes a provider value into its consumers before any construct", async () => {
     const order: string[] = [];
     const manager = createManager();
     const api = addModule(manager, {
       id: "api",
       declared: ["API_PORT"],
-      construct: async () => {
-        order.push("api");
+      provide: async () => {
+        order.push("provide:api");
         return { API_PORT: 5010 };
+      },
+      construct: async () => {
+        order.push("construct:api");
       },
     });
     const dms = addModule(manager, {
@@ -98,13 +108,17 @@ describe("ModuleManager config variables", () => {
         servers: [{ port: "${@api.API_PORT}" }],
       },
       construct: async () => {
-        order.push("dms");
+        order.push("construct:dms");
       },
     });
 
     await manager.constructAll();
 
-    expect(order).to.deep.equal(["api", "dms"]);
+    expect(order[0]).to.equal("provide:api");
+    expect(order.slice(1).sort()).to.deep.equal([
+      "construct:api",
+      "construct:dms",
+    ]);
     expect(api.received).to.equal(undefined);
     expect(dms.received).to.deep.equal({
       apiBaseUrl: "http://127.0.0.1:5010",
@@ -112,49 +126,82 @@ describe("ModuleManager config variables", () => {
     });
   });
 
-  it("constructs modules sharing no variable concurrently", async () => {
-    const order: string[] = [];
+  it("constructs every module concurrently, consumers included", async () => {
+    const started: string[] = [];
     const manager = createManager();
-    let releaseProvider: () => void = () => undefined;
+    let releaseConsumer: () => void = () => undefined;
     addModule(manager, {
       id: "api",
       declared: ["API_PORT"],
-      construct: () =>
-        new Promise((resolve) => {
-          order.push("api:start");
-          releaseProvider = () => resolve({ API_PORT: 5010 });
-        }),
-    });
-    addModule(manager, {
-      id: "mailer",
+      provide: async () => ({ API_PORT: 5010 }),
       construct: async () => {
-        order.push("mailer");
+        started.push("api");
       },
     });
     addModule(manager, {
       id: "dms",
       config: { url: "${@api.API_PORT}" },
+      construct: () =>
+        new Promise((resolve) => {
+          started.push("dms");
+          releaseConsumer = resolve;
+        }),
+    });
+    addModule(manager, {
+      id: "mailer",
       construct: async () => {
-        order.push("dms");
+        started.push("mailer");
       },
     });
 
     const pending = manager.constructAll();
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(order).to.deep.equal(["api:start", "mailer"]);
-    releaseProvider();
+    expect(started.sort()).to.deep.equal(["api", "dms", "mailer"]);
+    releaseConsumer();
     await pending;
-
-    expect(order).to.deep.equal(["api:start", "mailer", "dms"]);
   });
 
-  it("never constructs a consumer whose provider failed", async () => {
+  it("stages provide when a provider reads another provider's variable", async () => {
+    const order: string[] = [];
     const manager = createManager();
     addModule(manager, {
       id: "api",
       declared: ["API_PORT"],
-      construct: async () => {
+      provide: async () => {
+        order.push("api");
+        return { API_PORT: 5010 };
+      },
+    });
+    const gateway = addModule(manager, {
+      id: "gateway",
+      declared: ["GATEWAY_URL"],
+      config: { upstream: "http://127.0.0.1:${@api.API_PORT}" },
+      provide: async (config) => {
+        order.push("gateway");
+        return { GATEWAY_URL: (config as { upstream: string }).upstream };
+      },
+    });
+    const dms = addModule(manager, {
+      id: "dms",
+      config: { url: "${@gateway.GATEWAY_URL}" },
+    });
+
+    await manager.constructAll();
+
+    expect(order).to.deep.equal(["api", "gateway"]);
+    expect(gateway.providedWith).to.deep.equal({
+      upstream: "http://127.0.0.1:5010",
+    });
+    expect(dms.received).to.deep.equal({ url: "http://127.0.0.1:5010" });
+  });
+
+  it("never constructs a consumer whose provider failed", async () => {
+    const manager = createManager();
+    const api = addModule(manager, {
+      id: "api",
+      declared: ["API_PORT"],
+      provide: async () => {
         throw new Error("api boom");
       },
     });
@@ -165,13 +212,47 @@ describe("ModuleManager config variables", () => {
 
     const errors = await constructAllErrors(manager);
 
+    expect(api.constructed).to.equal(false);
     expect(dms.constructed).to.equal(false);
+    expect(errors.map(String)).to.include("Error: api boom");
     expect(errors.map(String)).to.include(
       "Error: Module 'dms' did not construct: provider 'api' failed.",
     );
   });
 
-  it("fails a provider that does not return a declared variable", async () => {
+  it("cascades a failed provider through a provider that reads from it", async () => {
+    const manager = createManager();
+    addModule(manager, {
+      id: "api",
+      declared: ["API_PORT"],
+      provide: async () => {
+        throw new Error("api boom");
+      },
+    });
+    const gateway = addModule(manager, {
+      id: "gateway",
+      declared: ["GATEWAY_URL"],
+      config: { upstream: "${@api.API_PORT}" },
+      provide: async () => ({ GATEWAY_URL: "never" }),
+    });
+    const dms = addModule(manager, {
+      id: "dms",
+      config: { url: "${@gateway.GATEWAY_URL}" },
+    });
+
+    const errors = await constructAllErrors(manager);
+
+    expect(gateway.providedWith).to.equal(undefined);
+    expect(dms.constructed).to.equal(false);
+    expect(errors.map(String).join("\n")).to.include(
+      "Module 'gateway' did not provide its config variables: provider 'api' failed.",
+    );
+    expect(errors.map(String).join("\n")).to.include(
+      "Module 'dms' did not construct: provider 'gateway' failed.",
+    );
+  });
+
+  it("fails a provider that does not publish a declared variable", async () => {
     const manager = createManager();
     addModule(manager, { id: "api", declared: ["API_PORT"] });
     const dms = addModule(manager, {
@@ -183,11 +264,31 @@ describe("ModuleManager config variables", () => {
 
     expect(dms.constructed).to.equal(false);
     expect(errors.map(String).join("\n")).to.include(
-      "Module 'api' declares the config variable(s) 'API_PORT' in antelopeJs.configVars but its construct did not return them.",
+      "Module 'api' declares the config variable(s) 'API_PORT' in antelopeJs.configVars but its provide callback did not return them.",
     );
   });
 
-  it("rejects an unknown reference before constructing anything", async () => {
+  it("ignores a value returned from construct", async () => {
+    const manager = createManager();
+    addModule(manager, {
+      id: "api",
+      declared: ["API_PORT"],
+      construct: async () => ({ API_PORT: 5010 }) as unknown as void,
+    });
+    const dms = addModule(manager, {
+      id: "dms",
+      config: { url: "${@api.API_PORT}" },
+    });
+
+    const errors = await constructAllErrors(manager);
+
+    expect(dms.constructed).to.equal(false);
+    expect(errors.map(String).join("\n")).to.include(
+      "its provide callback did not return them",
+    );
+  });
+
+  it("rejects an unknown reference before anything runs", async () => {
     const manager = createManager();
     const dms = addModule(manager, {
       id: "dms",
@@ -202,7 +303,7 @@ describe("ModuleManager config variables", () => {
     );
   });
 
-  it("rejects a cycle before constructing anything", async () => {
+  it("rejects a cycle before anything runs", async () => {
     const manager = createManager();
     const api = addModule(manager, {
       id: "api",
@@ -217,8 +318,8 @@ describe("ModuleManager config variables", () => {
 
     const errors = await constructAllErrors(manager);
 
-    expect(api.constructed).to.equal(false);
-    expect(dms.constructed).to.equal(false);
+    expect(api.providedWith).to.equal(undefined);
+    expect(dms.providedWith).to.equal(undefined);
     expect(errors.map(String).join("\n")).to.include(
       "Config variable cycle detected: api -> dms -> api",
     );
@@ -233,6 +334,7 @@ describe("ModuleManager config variables", () => {
 
     await manager.constructAll();
 
+    expect(mailer.providedWith).to.equal(undefined);
     expect(mailer.constructed).to.equal(true);
     expect(mailer.received).to.deep.equal({
       from: "root@localhost",
@@ -245,7 +347,7 @@ describe("ModuleManager config variables", () => {
     addModule(manager, {
       id: "api",
       declared: ["API_PORT"],
-      construct: async () => ({ API_PORT: 5010 }),
+      provide: async () => ({ API_PORT: 5010 }),
     });
 
     await manager.constructAll();

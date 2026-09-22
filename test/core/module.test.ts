@@ -26,6 +26,46 @@ describe("Module", () => {
     expect(mod.state).to.equal(ModuleState.Loaded);
   });
 
+  it("publishes config variables and loads the module only once", async () => {
+    const callbacks = {
+      provide: sinon.stub().resolves({ API_PORT: 5010 }),
+      construct: sinon.spy(),
+    };
+    const loader = sinon.stub().resolves(callbacks);
+    const mod = new Module(manifest, loader);
+
+    const published = await mod.provide({ port: 5010 });
+    await mod.construct({ port: 5010 });
+
+    expect(published).to.deep.equal({ API_PORT: 5010 });
+    expect(loader.calledOnce).to.equal(true);
+    expect(callbacks.provide.calledOnce).to.equal(true);
+    expect(callbacks.construct.calledOnce).to.equal(true);
+    expect(mod.state).to.equal(ModuleState.Constructed);
+  });
+
+  it("publishes nothing once the module is constructed", async () => {
+    const callbacks = { provide: sinon.stub().resolves({ API_PORT: 5010 }) };
+    const mod = new Module(manifest, sinon.stub().resolves(callbacks));
+
+    await mod.construct({});
+    const published = await mod.provide({});
+
+    expect(published).to.equal(undefined);
+    expect(callbacks.provide.called).to.equal(false);
+  });
+
+  it("reloads the module code after a destroy", async () => {
+    const loader = sinon.stub().resolves({ construct: sinon.spy() });
+    const mod = new Module(manifest, loader);
+
+    await mod.construct({});
+    await mod.destroy();
+    await mod.construct({});
+
+    expect(loader.calledTwice).to.equal(true);
+  });
+
   it("should load and run lifecycle callbacks", async () => {
     const callbacks = {
       construct: sinon.spy(),

@@ -30,11 +30,30 @@ export class ModuleLifecycle {
     this.moduleVersion = version;
   }
 
-  construct(config: unknown): Promise<ConfigVars | void> {
+  /**
+   * Runs the module's `provide` callback, before any module constructs.
+   *
+   * The state stays `Loaded`: publishing config variables is not a lifecycle
+   * transition, it only feeds the configuration of the modules that reference
+   * them.
+   */
+  provide(config: unknown): Promise<ConfigVars | void> {
+    return this.enqueue(() => this.runProvide(config));
+  }
+
+  private async runProvide(config: unknown): Promise<ConfigVars | void> {
+    if (this._state !== ModuleState.Loaded) {
+      return undefined;
+    }
+
+    return this.callbacks?.provide?.(config) ?? undefined;
+  }
+
+  construct(config: unknown): Promise<void> {
     return this.enqueue(() => this.runConstruct(config));
   }
 
-  private runConstruct(config: unknown): Promise<ConfigVars | void> {
+  private runConstruct(config: unknown): Promise<void> {
     if (this._state !== ModuleState.Loaded) {
       return Promise.resolve();
     }
@@ -45,12 +64,11 @@ export class ModuleLifecycle {
     );
   }
 
-  private async applyConstruct(config: unknown): Promise<ConfigVars | void> {
+  private async applyConstruct(config: unknown): Promise<void> {
     this._state = ModuleState.Constructed;
-    const configVars = await this.callbacks?.construct?.(config);
+    await this.callbacks?.construct?.(config);
 
     Events.ModuleConstructed.emit(this.moduleId);
-    return configVars ?? undefined;
   }
 
   start(): Promise<void> {

@@ -115,6 +115,23 @@ describe("ConfigParser", () => {
       expect(result.value).to.equal("hello ");
     });
 
+    it("keeps values it cannot rebuild, RegExp included", () => {
+      const allowedOrigin = /^https:\/\/[^/]+\.example\.dev$/;
+      const createdAt = new Date(0);
+      const config = {
+        name: "demo",
+        cors: { allowedOrigins: [allowedOrigin] },
+        createdAt,
+        label: "${name}",
+      };
+
+      const result = parser.processTemplates(config);
+
+      expect(result.cors.allowedOrigins[0]).to.equal(allowedOrigin);
+      expect(result.createdAt).to.equal(createdAt);
+      expect(result.label).to.equal("demo");
+    });
+
     it("leaves a config variable reference verbatim", () => {
       const config = {
         port: 3000,
@@ -145,6 +162,15 @@ describe("ConfigParser", () => {
   });
 
   describe("applyEnvOverrides", () => {
+    it("keeps values it cannot rebuild while cloning", () => {
+      const allowedOrigin = /^https:\/\/[^/]+\.example\.dev$/;
+      const config = { cors: { allowedOrigins: [allowedOrigin] } };
+
+      const result = parser.applyEnvOverrides(config, {});
+
+      expect(result.cors.allowedOrigins[0]).to.equal(allowedOrigin);
+    });
+
     it("should override config values from env vars", () => {
       const config = {
         database: { host: "localhost" },

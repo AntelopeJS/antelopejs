@@ -102,27 +102,52 @@ export class Module {
     });
   }
 
-  async construct(config: unknown): Promise<ConfigVars | void> {
+  /**
+   * Publishes this module's config variables, before any module constructs.
+   *
+   * The module code is loaded here rather than in `construct`, because the
+   * callback lives in it; `construct` then reuses the very same instance.
+   */
+  async provide(config: unknown): Promise<ConfigVars | void> {
+    if (this.lifecycle.state !== ModuleState.Loaded) {
+      return;
+    }
+
+    return RunWithModuleContext(this.executionContext, async () => {
+      await this.ensureLoaded();
+      return this.lifecycle.provide(config);
+    });
+  }
+
+  async construct(config: unknown): Promise<void> {
     if (this.lifecycle.state !== ModuleState.Loaded) {
       Logger.Info(`Module ${this.id} already constructed`);
       return;
     }
 
-    return RunWithModuleContext(this.executionContext, async () => {
-      try {
-        this.callbacks = await ModuleDiagnostics.load.tracePromise(
-          async () => this.loader(this.manifest.main),
-          this.diagnosticsContext(),
-        );
-        Logger.Debug(`Successfully loaded module ${this.id}`);
-      } catch (err) {
-        Logger.Error(`Failed to load module ${this.id}`, err);
-        Events.ModuleDestroyed.emit(this.id);
-        throw err;
-      }
-      this.lifecycle.setCallbacks(this.callbacks);
-      return this.lifecycle.construct(config);
+    await RunWithModuleContext(this.executionContext, async () => {
+      await this.ensureLoaded();
+      await this.lifecycle.construct(config);
     });
+  }
+
+  private async ensureLoaded(): Promise<void> {
+    if (this.callbacks) {
+      return;
+    }
+
+    try {
+      this.callbacks = await ModuleDiagnostics.load.tracePromise(
+        async () => this.loader(this.manifest.main),
+        this.diagnosticsContext(),
+      );
+      Logger.Debug(`Successfully loaded module ${this.id}`);
+    } catch (err) {
+      Logger.Error(`Failed to load module ${this.id}`, err);
+      Events.ModuleDestroyed.emit(this.id);
+      throw err;
+    }
+    this.lifecycle.setCallbacks(this.callbacks);
   }
 
   start(): Promise<void> {
@@ -145,6 +170,7 @@ export class Module {
         Logger.Error(err);
         throw err;
       }
+      this.callbacks = undefined;
     });
   }
 }

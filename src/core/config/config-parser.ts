@@ -6,7 +6,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import { isConfigVarKey } from "./config-vars";
-import { isObject, set } from "../../utils/object";
+import { isObject, isPlainObject, set } from "../../utils/object";
 
 export interface ExpandedModuleConfig {
   source: ModuleSource;
@@ -54,7 +54,7 @@ export class ConfigParser {
       return obj.map((item) => this.processObject(item, values));
     }
 
-    if (isObject(obj)) {
+    if (isPlainObject(obj)) {
       const result: Record<string, any> = {};
       for (const [key, value] of Object.entries(obj)) {
         result[key] = this.processObject(value, values);
@@ -117,7 +117,7 @@ export class ConfigParser {
       return value.map((item) => this.cloneValue(item)) as T;
     }
 
-    if (isObject(value)) {
+    if (isPlainObject(value)) {
       const result: Record<string, any> = {};
       for (const [key, item] of Object.entries(value)) {
         result[key] = this.cloneValue(item);

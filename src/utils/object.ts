@@ -2,6 +2,22 @@ export function isObject(item: unknown): item is Record<string, unknown> {
   return item !== null && typeof item === "object" && !Array.isArray(item);
 }
 
+/**
+ * Whether a value is a plain object, safe to rebuild key by key.
+ *
+ * A `RegExp`, a `Date`, a `Map`, a `Buffer` or any class instance carries
+ * state no enumerable key exposes: rebuilding one from its entries returns an
+ * empty husk. Configuration holds such values, so every traversal that clones
+ * has to tell them apart from the object literals it may safely copy.
+ */
+export function isPlainObject(item: unknown): item is Record<string, unknown> {
+  if (!isObject(item)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(item);
+  return prototype === Object.prototype || prototype === null;
+}
+
 export function mergeDeep(
   target: Record<string, any>,
   ...sources: Array<Record<string, any> | undefined>

@@ -16,12 +16,17 @@ type ConfigVarDeclarations = Map<string, Set<string>>;
 const REFERENCE_SHAPE = "${@<module>.<VAR_NAME>}";
 
 /**
- * The staged construction order the config variable graph imposes.
+ * The staged order in which providers publish their config variables.
  *
- * Every reference is checked against the declarations before the first stage
- * is returned, so an unknown provider, an undeclared variable or a cycle is
- * reported before a single module constructs. Modules that share no variable
- * land in the same stage and construct concurrently.
+ * Only providers are staged: a stage holds the providers whose own
+ * configuration no longer waits on another provider, and they publish
+ * concurrently. Consumers never appear here — they read published values,
+ * they do not order anything — which is what keeps construction flat and
+ * free of the interface graph's own ordering.
+ *
+ * Every reference of every module is checked against the declarations before
+ * the first stage is returned, so an unknown provider, an undeclared variable
+ * or a cycle is reported before any module runs.
  */
 export function buildConfigVarPlan(modules: ConfigVarModule[]): ConfigVarPlan {
   const declarations: ConfigVarDeclarations = new Map(
@@ -38,11 +43,10 @@ export function buildConfigVarPlan(modules: ConfigVarModule[]): ConfigVarPlan {
     );
   }
 
-  const stages = buildStages(
-    modules.map((module) => module.id),
-    dependencies,
-  );
-  return { stages, dependencies };
+  const providerIds = modules
+    .filter((module) => module.declared.length > 0)
+    .map((module) => module.id);
+  return { stages: buildStages(providerIds, dependencies), dependencies };
 }
 
 function assertWellFormed(consumerId: string, malformed: string[]): void {
@@ -87,10 +91,10 @@ function assertProvides(
 }
 
 function buildStages(
-  ids: string[],
+  providerIds: string[],
   dependencies: Map<string, Set<string>>,
 ): string[][] {
-  const remaining = new Set(ids);
+  const remaining = new Set(providerIds);
   const stages: string[][] = [];
 
   while (remaining.size > 0) {

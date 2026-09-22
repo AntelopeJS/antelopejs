@@ -15,17 +15,19 @@ const MODULE_VERSION = "1.0.0";
 const RELOADED_VERSION = "2.0.0";
 
 describe("ModuleLifecycle", () => {
-  it("returns the config variables the construct published", async () => {
+  it("returns the config variables the provide callback published", async () => {
     const lifecycle = new ModuleLifecycle(MODULE_ID, MODULE_VERSION);
-    lifecycle.setCallbacks({ construct: () => ({ API_PORT: 5010 }) });
+    lifecycle.setCallbacks({ provide: () => ({ API_PORT: 5010 }) });
 
-    expect(await lifecycle.construct({})).to.deep.equal({ API_PORT: 5010 });
+    expect(await lifecycle.provide({})).to.deep.equal({ API_PORT: 5010 });
+    expect(lifecycle.state).to.equal(ModuleState.Loaded);
   });
 
   it("returns undefined for a module that publishes nothing", async () => {
     const lifecycle = new ModuleLifecycle(MODULE_ID, MODULE_VERSION);
     lifecycle.setCallbacks({ construct: () => undefined });
 
+    expect(await lifecycle.provide({})).to.equal(undefined);
     expect(await lifecycle.construct({})).to.equal(undefined);
   });
 

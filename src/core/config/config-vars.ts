@@ -1,6 +1,6 @@
 import type { ConfigVarValue } from "@antelopejs/interface-core/config";
 
-import { isObject } from "../../utils/object";
+import { isPlainObject } from "../../utils/object";
 
 const RESERVED_PREFIX = "@";
 const REFERENCE_PATTERN = /\$\{@([^{}]+)\.([A-Za-z_][A-Za-z0-9_]*)\}/g;
@@ -58,7 +58,14 @@ export function scanConfigVars(config: unknown): ConfigVarScan {
   return { references: [...references.values()], malformed: [...malformed] };
 }
 
-/** A copy of the configuration with every config variable reference replaced. */
+/**
+ * The configuration with every config variable reference replaced.
+ *
+ * Only the branches that actually hold a reference are rebuilt: everything
+ * else, values the traversal cannot clone without losing them included, comes
+ * back by identity. A configuration that holds no reference is returned as it
+ * came in.
+ */
 export function substituteConfigVars(
   config: unknown,
   lookup: ConfigVarLookup,
@@ -68,19 +75,34 @@ export function substituteConfigVars(
   }
 
   if (Array.isArray(config)) {
-    return config.map((item) => substituteConfigVars(item, lookup));
+    return substituteArray(config, lookup);
   }
 
-  if (isObject(config)) {
-    return Object.fromEntries(
-      Object.entries(config).map(([key, value]) => [
-        key,
-        substituteConfigVars(value, lookup),
-      ]),
-    );
+  if (isPlainObject(config)) {
+    return substituteObject(config, lookup);
   }
 
   return config;
+}
+
+function substituteArray(
+  config: unknown[],
+  lookup: ConfigVarLookup,
+): unknown[] {
+  const items = config.map((item) => substituteConfigVars(item, lookup));
+  const changed = items.some((item, index) => item !== config[index]);
+  return changed ? items : config;
+}
+
+function substituteObject(
+  config: Record<string, unknown>,
+  lookup: ConfigVarLookup,
+): Record<string, unknown> {
+  const entries = Object.entries(config).map(
+    ([key, value]) => [key, substituteConfigVars(value, lookup)] as const,
+  );
+  const changed = entries.some(([key, value]) => value !== config[key]);
+  return changed ? Object.fromEntries(entries) : config;
 }
 
 function substituteString(value: string, lookup: ConfigVarLookup): unknown {
@@ -111,7 +133,7 @@ function visitStrings(value: unknown, visit: (value: string) => void): void {
     return;
   }
 
-  if (isObject(value)) {
+  if (isPlainObject(value)) {
     Object.values(value).forEach((item) => visitStrings(item, visit));
   }
 }

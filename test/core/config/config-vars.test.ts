@@ -91,6 +91,82 @@ describe("config vars", () => {
     });
   });
 
+  describe("substituteConfigVars, values it must not rebuild", () => {
+    it("passes a RegExp through untouched", () => {
+      const allowedOrigin = /^https:\/\/[^/]+\.example\.dev$/;
+      const config = {
+        cors: { allowedOrigins: [allowedOrigin, "http://localhost"] },
+        port: "${@api.API_PORT}",
+      };
+
+      const result = substituteConfigVars(config, lookup) as typeof config;
+
+      expect(result.cors.allowedOrigins[0]).to.equal(allowedOrigin);
+      expect(result.cors.allowedOrigins[0]).to.be.instanceOf(RegExp);
+      expect(
+        (result.cors.allowedOrigins[0] as RegExp).test(
+          "https://app.example.dev",
+        ),
+      ).to.equal(true);
+      expect(result.port).to.equal(5010);
+    });
+
+    it("passes other non-plain values through by identity", () => {
+      const date = new Date(0);
+      const map = new Map([["key", "value"]]);
+      const set = new Set([1, 2]);
+      const buffer = Buffer.from("payload");
+      class Credentials {
+        constructor(public readonly token: string) {}
+      }
+      const credentials = new Credentials("secret");
+      const nullPrototype = Object.assign(Object.create(null), { keep: true });
+      const config = {
+        date,
+        map,
+        set,
+        buffer,
+        credentials,
+        nullPrototype,
+        url: "http://127.0.0.1:${@api.API_PORT}",
+      };
+
+      const result = substituteConfigVars(config, lookup) as typeof config;
+
+      expect(result.date).to.equal(date);
+      expect(result.map).to.equal(map);
+      expect(result.set).to.equal(set);
+      expect(result.buffer).to.equal(buffer);
+      expect(result.credentials).to.equal(credentials);
+      expect(result.nullPrototype).to.equal(nullPrototype);
+      expect(result.url).to.equal("http://127.0.0.1:5010");
+    });
+
+    it("returns a configuration holding no reference by identity", () => {
+      const nested = { deep: [1, { flag: true }] };
+      const config = { nested, legacy: "${host}", pattern: /abc/ };
+
+      const result = substituteConfigVars(config, lookup);
+
+      expect(result).to.equal(config);
+      expect((result as typeof config).nested).to.equal(nested);
+    });
+
+    it("rebuilds only the branch that holds a reference", () => {
+      const untouched = { host: "127.0.0.1" };
+      const config = {
+        untouched,
+        touched: { port: "${@api.API_PORT}" },
+      };
+
+      const result = substituteConfigVars(config, lookup) as typeof config;
+
+      expect(result).to.not.equal(config);
+      expect(result.untouched).to.equal(untouched);
+      expect(result.touched).to.not.equal(config.touched);
+    });
+  });
+
   describe("declaredConfigVars", () => {
     it("reads the names declared in the module manifest", () => {
       const declared = declaredConfigVars({
