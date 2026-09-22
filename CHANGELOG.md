@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.9.0-next.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.0...v1.9.0-next.1)
+
+### 🩹 Fixes
+
+- **resolution:** Load an interface package under its own provider ([#146](https://github.com/AntelopeJS/antelopejs/pull/146))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.9.0-next.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.8.1...v1.9.0-next.0)
