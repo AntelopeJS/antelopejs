@@ -58,7 +58,7 @@ function installConsumer(tarball: string): void {
       private: true,
       dependencies: {
         "@antelopejs/core": `file:${tarball}`,
-        "@antelopejs/interface-core": "0.0.15",
+        "@antelopejs/interface-core": "0.1.0",
         "reflect-metadata": "0.2.2",
       },
     }),
