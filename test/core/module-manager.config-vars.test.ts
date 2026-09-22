@@ -8,6 +8,7 @@ import { ModuleManager } from "../../src/core/module-manager";
 interface FakeModuleOptions {
   id: string;
   declared?: string[];
+  implements?: string[];
   config?: unknown;
   provide?: (config: unknown) => Promise<ConfigVars | void>;
   construct?: (config: unknown) => Promise<void>;
@@ -46,6 +47,7 @@ function addModule(
     manifest: {
       folder: `/modules/${options.id}`,
       main: `/modules/${options.id}/index.js`,
+      implements: options.implements ?? [],
       manifest: {
         name: options.id,
         version: "1.0.0",
@@ -322,6 +324,33 @@ describe("ModuleManager config variables", () => {
     expect(dms.providedWith).to.equal(undefined);
     expect(errors.map(String).join("\n")).to.include(
       "Config variable cycle detected: api -> dms -> api",
+    );
+  });
+
+  it("survives an interface of a skipped module that cannot be loaded", async () => {
+    const manager = createManager();
+    manager.resolver.interfacePackages.set(
+      "ghost-interface",
+      "/modules/ghost/never-installed",
+    );
+    addModule(manager, {
+      id: "api",
+      declared: ["API_PORT"],
+      provide: async () => {
+        throw new Error("api boom");
+      },
+    });
+    const dms = addModule(manager, {
+      id: "dms",
+      implements: ["ghost-interface"],
+      config: { url: "${@api.API_PORT}" },
+    });
+
+    const errors = await constructAllErrors(manager);
+
+    expect(dms.constructed).to.equal(false);
+    expect(errors.map(String).join("\n")).to.include(
+      "Module 'dms' did not construct: provider 'api' failed.",
     );
   });
 
