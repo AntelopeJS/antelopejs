@@ -102,11 +102,26 @@ function isRecognizedInterfaceProxy(
   ) {
     return IsInterfaceProxy(value, kind);
   }
+  return isBrandedInterfaceProxy(value, kind);
+}
+
+function isBrandedInterfaceProxy(
+  value: unknown,
+  kind?: InterfaceProxyKind,
+): boolean {
   try {
     return IsInterfaceProxy(value, kind);
   } catch {
     return false;
   }
+}
+
+function isPlainContainer(value: object): boolean {
+  if (Array.isArray(value)) {
+    return true;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function getProxyCandidate(candidate: object): unknown {
@@ -771,24 +786,39 @@ export class Resolver {
    * objects and arrays, the same shapes `isBindableValue` accepts, so it stops
    * at every class instance.
    */
-  private needsFacade(value: unknown, visited?: WeakSet<object>): boolean {
+  private needsFacade(value: unknown, visited?: Set<object>): boolean {
     if (typeof value === "function") {
       return true;
     }
-    if (!this.isBindableValue(value)) {
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      utilTypes.isProxy(value)
+    ) {
       return false;
     }
-    if (isRecognizedInterfaceProxy(value)) {
-      return true;
+    if (!isPlainContainer(value)) {
+      return isRecognizedInterfaceProxy(value);
     }
-    const seen = visited ?? new WeakSet<object>();
-    if (seen.has(value)) {
-      return false;
-    }
-    seen.add(value);
-    return Object.values(value).some((member) =>
-      this.needsFacade(member, seen),
+    return (
+      isBrandedInterfaceProxy(value) || this.holdsFacadeMember(value, visited)
     );
+  }
+
+  private holdsFacadeMember(
+    container: object,
+    visited = new Set<object>(),
+  ): boolean {
+    if (visited.has(container)) {
+      return false;
+    }
+    visited.add(container);
+    for (const member of Object.values(container)) {
+      if (this.needsFacade(member, visited)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private bindStubbedInterfaceValue(
@@ -1006,12 +1036,7 @@ export class Resolver {
     if (typeof value === "function" || isRecognizedInterfaceProxy(value)) {
       return true;
     }
-    const prototype = Object.getPrototypeOf(value);
-    return (
-      Array.isArray(value) ||
-      prototype === Object.prototype ||
-      prototype === null
-    );
+    return isPlainContainer(value);
   }
 
   private isClass(value: BindableFunction): boolean {

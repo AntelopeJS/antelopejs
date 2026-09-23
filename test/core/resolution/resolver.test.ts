@@ -797,6 +797,78 @@ describe("Resolver", () => {
     }
   });
 
+  it("passes cyclic plain data through a shared facade without rebinding it", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const shared = { label: "shared" };
+      const payload: Record<string, unknown> = { items: [shared, shared] };
+      payload.self = payload;
+
+      callWhileServing("consumer-b", "api", () =>
+        setup.facade.Capture(payload),
+      );
+
+      expect(captured[0]).to.equal(payload);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("passes class instances through a shared facade without walking them", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      class Holder {
+        callback = () => "held";
+      }
+      const payload = [new Holder(), new Date()];
+
+      callWhileServing("consumer-b", "api", () =>
+        setup.facade.Capture(payload),
+      );
+
+      expect(captured[0]).to.equal(payload);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("binds plain data that nests a function deep in an array", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const payload = { rows: [{ id: 1 }, { id: 2, onSelect: () => 2 }] };
+
+      callWhileServing("consumer-b", "api", () =>
+        setup.facade.Capture(payload),
+      );
+
+      expect(captured[0]).to.not.equal(payload);
+      expect(utilTypes.isProxy(captured[0])).to.equal(true);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("binds plain data that nests an interface proxy", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const call = InterfaceFunction("resolver.nested-proxy") as ProxyFunction;
+      const payload = { handlers: [{ proxy: call.proxy }] };
+
+      callWhileServing("consumer-b", "api", () =>
+        setup.facade.Capture(payload),
+      );
+
+      expect(captured[0]).to.not.equal(payload);
+      expect(utilTypes.isProxy(captured[0])).to.equal(true);
+    } finally {
+      setup.restore();
+    }
+  });
+
   it("reads plain data off a shared facade without rebinding it", () => {
     const setup = loadSharedInterfaceFacade();
 
