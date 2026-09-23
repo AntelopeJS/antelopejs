@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.9.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0...v1.9.1)
+
+### 🔥 Performance
+
+- **resolution:** Cache realpath lookups and speed up interface call binding ([#156](https://github.com/AntelopeJS/antelopejs/pull/156))
+
+### 📖 Documentation
+
+- Summarise the 1.9.0 prerelease line in the stable entry ([#152](https://github.com/AntelopeJS/antelopejs/pull/152))
+- **readme:** Remove social card image ([#153](https://github.com/AntelopeJS/antelopejs/pull/153))
+
+### 🏡 Chore
+
+- Remove .git-blame-ignore-revs ([#154](https://github.com/AntelopeJS/antelopejs/pull/154))
+
+### 🤖 CI
+
+- **release:** Release next from a dedicated branch and restore requireCommits ([#155](https://github.com/AntelopeJS/antelopejs/pull/155))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.9.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0-next.4...v1.9.0)
