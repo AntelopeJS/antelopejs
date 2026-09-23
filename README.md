@@ -1,9 +1,4 @@
 <div align="center">
-  <a href="https://antelopejs.com">
-    <picture>
-      <img alt="AntelopeJS logo" src=".github/social-card.png">
-    </picture>
-  </a>
   <h1>AntelopeJS</h1>
 
 <a href="https://www.npmjs.com/package/@antelopejs/core"><img alt="NPM version" src="https://img.shields.io/npm/v/@antelopejs/core.svg?style=for-the-badge&labelColor=000000"></a>
