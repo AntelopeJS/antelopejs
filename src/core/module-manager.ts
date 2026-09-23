@@ -26,16 +26,18 @@ import {
   InterfaceRegistry,
 } from "./interface-registry";
 import {
-  isPathWithin,
-  type ResolvedPackage,
-  resolvePackage,
-  resolvePackageAtRoot,
-} from "./resolution/package-resolution";
-import {
   clearStubInterfaceWarnings,
   logStubInterfaceWarningOnce,
   neutralizeInterfacePackage,
 } from "./resolution/stub-interface-runtime";
+import {
+  clearPathResolutionCache,
+  createPathWithinMatcher,
+  type PathMatcher,
+  type ResolvedPackage,
+  resolvePackage,
+  resolvePackageAtRoot,
+} from "./resolution/package-resolution";
 
 const Logger = new Logging.Channel("loader");
 
@@ -187,6 +189,14 @@ export class ModuleManager {
     moduleId: string,
     shouldPreserveInterfaceGraph = true,
   ): void {
+    clearPathResolutionCache();
+    this.evictModuleFiles(moduleId, shouldPreserveInterfaceGraph);
+  }
+
+  private evictModuleFiles(
+    moduleId: string,
+    shouldPreserveInterfaceGraph: boolean,
+  ): void {
     const entry = this.loaded.get(moduleId);
     if (!entry) {
       return;
@@ -194,41 +204,44 @@ export class ModuleManager {
 
     const moduleFolder = path.resolve(entry.module.manifest.folder);
     const moduleEntryFile = resolveManifestEntryFile(entry.module.manifest);
-    const avoidedFolders = new Set<string>();
-
-    avoidedFolders.add(path.join(moduleFolder, "node_modules"));
-
-    for (const [id, other] of this.loaded) {
-      if (id === moduleId) {
-        continue;
-      }
-      if (this.isPathWithin(other.module.manifest.folder, moduleFolder)) {
-        avoidedFolders.add(path.resolve(other.module.manifest.folder));
-      }
-    }
+    const isInModule = createPathWithinMatcher(moduleFolder);
+    const avoidedMatchers = this.collectAvoidedFolders(
+      moduleId,
+      moduleFolder,
+      isInModule,
+    ).map((folder) => createPathWithinMatcher(folder));
 
     for (const filePath of Object.keys(require.cache)) {
-      if (!this.isPathWithin(filePath, moduleFolder)) {
+      if (!isInModule(filePath)) {
         continue;
       }
       if (
         shouldPreserveInterfaceGraph &&
         filePath !== moduleEntryFile &&
-        this.belongsToInterfacePackageTree(filePath, moduleFolder)
+        this.belongsToInterfacePackageTree(filePath, isInModule)
       ) {
         continue;
       }
-      let shouldDelete = true;
-      for (const avoided of avoidedFolders) {
-        if (this.isPathWithin(filePath, avoided)) {
-          shouldDelete = false;
-          break;
-        }
-      }
-      if (shouldDelete) {
+      if (!avoidedMatchers.some((isAvoided) => isAvoided(filePath))) {
         delete require.cache[filePath];
       }
     }
+  }
+
+  private collectAvoidedFolders(
+    moduleId: string,
+    moduleFolder: string,
+    isInModule: PathMatcher,
+  ): string[] {
+    const avoidedFolders = new Set<string>([
+      path.join(moduleFolder, "node_modules"),
+    ]);
+    for (const [id, other] of this.loaded) {
+      if (id !== moduleId && isInModule(other.module.manifest.folder)) {
+        avoidedFolders.add(path.resolve(other.module.manifest.folder));
+      }
+    }
+    return [...avoidedFolders];
   }
 
   /**
@@ -252,13 +265,13 @@ export class ModuleManager {
    */
   private belongsToInterfacePackageTree(
     filePath: string,
-    moduleFolder: string,
+    isInModule: PathMatcher,
   ): boolean {
     const root = this.resolver.getInterfaceGraphRoot(filePath);
     if (!root) {
       return false;
     }
-    return this.isPathWithin(path.resolve(root), moduleFolder);
+    return isInModule(path.resolve(root));
   }
 
   replaceLoadedModule(id: string, module: Module): ManagedModule | undefined {
@@ -469,8 +482,9 @@ export class ModuleManager {
     this.pendingCleanup = results.failed.filter(
       ({ module }) => module.state !== ModuleState.Loaded,
     );
+    clearPathResolutionCache();
     for (const id of this.loaded.keys()) {
-      this.unrequireModuleFiles(id, false);
+      this.evictModuleFiles(id, false);
     }
     const errors = [...results.errors, ...this.clearManagedState()];
     if (errors.length > 0) {
@@ -773,6 +787,7 @@ export class ModuleManager {
   }
 
   private rebuildAssociations(): void {
+    clearPathResolutionCache();
     const interfaceSources = this.collectInterfaceSources();
     this.buildModuleAssociations(interfaceSources);
   }
@@ -969,10 +984,10 @@ export class ModuleManager {
       .filter((resolvedPackage): resolvedPackage is ResolvedPackage =>
         Boolean(resolvedPackage && resolvedPackage.realRoot !== canonicalRoot),
       );
+    const loadedFiles = Object.keys(require.cache);
     return copies.flatMap((copy) => {
-      const loadedFile = Object.keys(require.cache).find((filePath) =>
-        isPathWithin(filePath, copy.root),
-      );
+      const isInCopy = createPathWithinMatcher(copy.root);
+      const loadedFile = loadedFiles.find((filePath) => isInCopy(filePath));
       return loadedFile
         ? [
             `  - ${packageName}@${copy.version} was loaded from ${copy.root} before the canonical copy at ${plan.canonicalPackage.root}; preloaded interface copies cannot be redirected (${loadedFile})`,
@@ -1099,10 +1114,6 @@ export class ModuleManager {
         isProvider,
       );
     }
-  }
-
-  private isPathWithin(filePath: string, dirPath: string): boolean {
-    return isPathWithin(filePath, dirPath);
   }
 }
 

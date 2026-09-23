@@ -14,8 +14,10 @@ import {
 } from "@antelopejs/interface-core/internal";
 
 import type { PathMapper } from "./path-mapper";
+import { ObservableMap } from "./observable-map";
+import { resolvePackage } from "./package-resolution";
 import type { ModuleManifest } from "../module-manifest";
-import { isPathWithin, resolvePackage } from "./package-resolution";
+import { PathOwnerIndex, type PathOwnerRoot } from "./path-owner-index";
 
 export interface ModuleRef {
   id: string;
@@ -146,15 +148,25 @@ function collectProxyReferences(value: unknown): ProxyReference[] {
 }
 
 export class Resolver {
-  public readonly moduleByFolder = new Map<string, ModuleRef>();
+  public readonly moduleByFolder: Map<string, ModuleRef> = new ObservableMap(
+    () => this.localModuleOwners.invalidate(),
+  );
   public readonly modulesById = new Map<string, ModuleRef>();
-  public readonly interfacePackages = new Map<string, string>();
+  public readonly interfacePackages: Map<string, string> = new ObservableMap(
+    () => this.interfacePackageOwners.invalidate(),
+  );
   public readonly interfacePackageEntries = new Map<string, string>();
   public readonly interfacePackageResolveFrom = new Map<string, string>();
   public readonly lifecycleInterfacePackages = new Set<string>();
   public readonly stubbedInterfacePackages = new Set<string>();
   public stubModulePath?: string;
   private readonly resolverIdentity = nextResolverIdentity++;
+  private readonly localModuleOwners = new PathOwnerIndex(() =>
+    this.listModuleRoots(),
+  );
+  private readonly interfacePackageOwners = new PathOwnerIndex(() =>
+    this.listInterfacePackageRoots(),
+  );
   private readonly interfaceGraphFiles = new Map<string, string>();
   private readonly interfaceDependencies = new Map<string, Set<string>>();
   private readonly boundValues = new WeakMap<
@@ -360,6 +372,8 @@ export class Resolver {
     this.interfaceGraphFiles.clear();
     this.interfaceDependencies.clear();
     this.proxyOwners.clear();
+    this.localModuleOwners.invalidate();
+    this.interfacePackageOwners.invalidate();
   }
 
   private registerProxyOwners(
@@ -687,17 +701,17 @@ export class Resolver {
   }
 
   private findInterfacePackageByPath(fileName: string): string | undefined {
-    const coreRoot = CORE_PACKAGE?.root ?? "";
-    let matchingRoot =
-      coreRoot && isPathWithin(fileName, coreRoot) ? coreRoot : "";
-    let matchingPackage = matchingRoot ? CORE_PKG : undefined;
-    for (const [packageName, root] of this.interfacePackages) {
-      if (isPathWithin(fileName, root) && root.length > matchingRoot.length) {
-        matchingRoot = root;
-        matchingPackage = packageName;
-      }
-    }
-    return matchingPackage;
+    return this.interfacePackageOwners.findOwner(fileName);
+  }
+
+  private listInterfacePackageRoots(): PathOwnerRoot<string>[] {
+    const coreRoots = CORE_PACKAGE
+      ? [{ root: CORE_PACKAGE.root, owner: CORE_PKG }]
+      : [];
+    const packageRoots = [...this.interfacePackages].map(
+      ([packageName, root]) => ({ root, owner: packageName }),
+    );
+    return [...coreRoots, ...packageRoots];
   }
 
   private bindInterfaceValue(
@@ -1194,17 +1208,10 @@ export class Resolver {
     if (!fileName) {
       return undefined;
     }
-    let matchingFolder = "";
-    let matchingModule: ModuleRef | undefined;
-    for (const [folder, module] of this.moduleByFolder) {
-      if (
-        isPathWithin(fileName, folder) &&
-        folder.length > matchingFolder.length
-      ) {
-        matchingFolder = folder;
-        matchingModule = module;
-      }
-    }
-    return matchingModule;
+    return this.localModuleOwners.findOwner(fileName);
+  }
+
+  private listModuleRoots(): PathOwnerRoot<ModuleRef>[] {
+    return [...this.moduleByFolder].map(([root, owner]) => ({ root, owner }));
   }
 }
