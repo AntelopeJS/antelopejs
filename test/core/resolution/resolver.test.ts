@@ -1,6 +1,8 @@
+import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
 import { types as utilTypes } from "node:util";
+import fs, { mkdirSync, writeFileSync } from "node:fs";
 import {
   internal,
   invalidateModuleContext,
@@ -17,7 +19,9 @@ import {
 } from "@antelopejs/interface-core";
 
 import { Resolver } from "../../../src/core/resolution/resolver";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { PathMapper } from "../../../src/core/resolution/path-mapper";
+import { clearPathResolutionCache } from "../../../src/core/resolution/package-resolution";
 import { neutralizeInterfaceAsyncProxies } from "../../../src/core/resolution/stub-interface-runtime";
 
 const CORE_PKG = "@antelopejs/interface-core";
@@ -793,6 +797,78 @@ describe("Resolver", () => {
     }
   });
 
+  it("passes cyclic plain data through a shared facade without rebinding it", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const shared = { label: "shared" };
+      const payload: Record<string, unknown> = { items: [shared, shared] };
+      payload.self = payload;
+
+      callWhileServing("consumer-b", "api", () =>
+        setup.facade.Capture(payload),
+      );
+
+      expect(captured[0]).to.equal(payload);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("passes class instances through a shared facade without walking them", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      class Holder {
+        callback = () => "held";
+      }
+      const payload = [new Holder(), new Date()];
+
+      callWhileServing("consumer-b", "api", () =>
+        setup.facade.Capture(payload),
+      );
+
+      expect(captured[0]).to.equal(payload);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("binds plain data that nests a function deep in an array", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const payload = { rows: [{ id: 1 }, { id: 2, onSelect: () => 2 }] };
+
+      callWhileServing("consumer-b", "api", () =>
+        setup.facade.Capture(payload),
+      );
+
+      expect(captured[0]).to.not.equal(payload);
+      expect(utilTypes.isProxy(captured[0])).to.equal(true);
+    } finally {
+      setup.restore();
+    }
+  });
+
+  it("binds plain data that nests an interface proxy", () => {
+    const setup = loadSharedInterfaceFacade();
+
+    try {
+      const call = InterfaceFunction("resolver.nested-proxy") as ProxyFunction;
+      const payload = { handlers: [{ proxy: call.proxy }] };
+
+      callWhileServing("consumer-b", "api", () =>
+        setup.facade.Capture(payload),
+      );
+
+      expect(captured[0]).to.not.equal(payload);
+      expect(utilTypes.isProxy(captured[0])).to.equal(true);
+    } finally {
+      setup.restore();
+    }
+  });
+
   it("reads plain data off a shared facade without rebinding it", () => {
     const setup = loadSharedInterfaceFacade();
 
@@ -1181,5 +1257,67 @@ describe("Resolver", () => {
         ),
       ),
     ).to.throw(/resolves proxy.+both.+provider-a.+provider-b/);
+  });
+});
+
+describe("Resolver path ownership cache", () => {
+  it("sees modules added or removed after a lookup", () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    const parent = { filename: "/modA/src/index.js" };
+    expect(resolver.resolve("@src/utils", parent)).to.equal(undefined);
+
+    resolver.moduleByFolder.set("/modA", moduleA);
+    expect(resolver.resolve("@src/utils", parent)?.resolvedPath).to.equal(
+      "/modA/src/utils",
+    );
+
+    resolver.moduleByFolder.clear();
+    expect(resolver.resolve("@src/utils", parent)).to.equal(undefined);
+  });
+
+  it("sees interface packages added or removed after a lookup", () => {
+    const resolver = new Resolver(new PathMapper(() => false));
+    const parent = { filename: "/interfaces/cached/lib/index.js" };
+    expect(resolver.resolve("./sibling", parent)).to.equal(undefined);
+
+    resolver.interfacePackages.set("interface-cached", "/interfaces/cached");
+    expect(resolver.resolve("./sibling", parent)?.interfaceName).to.equal(
+      "interface-cached",
+    );
+
+    resolver.interfacePackages.delete("interface-cached");
+    expect(resolver.resolve("./sibling", parent)).to.equal(undefined);
+  });
+
+  it("calls realpath at most once per distinct path when resolving N files against M roots", () => {
+    const dir = makeTempDir("ajs-resolver-cache-");
+    const resolver = new Resolver(new PathMapper(() => false));
+    const fileCount = 30;
+    const rootCount = 6;
+    const files = Array.from({ length: rootCount }).flatMap((_, rootIndex) => {
+      const root = path.join(dir, `module-${rootIndex}`);
+      mkdirSync(root);
+      resolver.moduleByFolder.set(root, moduleA);
+      resolver.interfacePackages.set(`interface-${rootIndex}`, root);
+      return Array.from({ length: fileCount / rootCount }, (_, fileIndex) => {
+        const file = path.join(root, `file-${fileIndex}.js`);
+        writeFileSync(file, "");
+        return file;
+      });
+    });
+    clearPathResolutionCache();
+    const realpathSpy = sinon.spy(fs.realpathSync, "native");
+    try {
+      for (let pass = 0; pass < 3; pass += 1) {
+        files.forEach((filename) =>
+          resolver.resolve("./sibling", { filename }),
+        );
+      }
+
+      expect(realpathSpy.callCount).to.be.at.most(fileCount + rootCount + 1);
+    } finally {
+      realpathSpy.restore();
+      cleanupTempDir(dir);
+    }
   });
 });

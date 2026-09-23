@@ -12,39 +12,90 @@ export interface ResolvedPackage {
   antelopeJs?: Record<string, unknown>;
 }
 
+export type PathMatcher = (filePath: string) => boolean;
+
 interface PackageJson {
   name?: string;
   version?: string;
   antelopeJs?: Record<string, unknown>;
 }
 
+const realPathCache = new Map<string, string>();
+let pathCacheGeneration = 0;
+
+/**
+ * Forgets every cached `realpath` lookup.
+ *
+ * Call it whenever the file layout may have changed on disk (a module was
+ * installed, reinstalled or reloaded), so symlinks are resolved again.
+ */
+export function clearPathResolutionCache(): void {
+  realPathCache.clear();
+  pathCacheGeneration += 1;
+}
+
+/**
+ * Increases each time the `realpath` cache is cleared, so derived caches can
+ * tell they are stale.
+ */
+export function getPathResolutionCacheGeneration(): number {
+  return pathCacheGeneration;
+}
+
 function normalizeExistingPath(filePath: string): string {
   const resolvedPath = path.resolve(filePath);
+  const cachedPath = realPathCache.get(resolvedPath);
+  if (cachedPath !== undefined) {
+    return cachedPath;
+  }
   try {
-    return realpathSync.native(resolvedPath);
+    const realPath = realpathSync.native(resolvedPath);
+    realPathCache.set(resolvedPath, realPath);
+    return realPath;
   } catch {
     return resolvedPath;
   }
 }
 
-function getPathVariants(filePath: string): string[] {
+export function getPathVariants(filePath: string): string[] {
   const logicalPath = path.resolve(filePath);
   const realPath = normalizeExistingPath(logicalPath);
   return logicalPath === realPath ? [logicalPath] : [logicalPath, realPath];
 }
 
-export function isPathWithin(filePath: string, folderPath: string): boolean {
-  return getPathVariants(filePath).some((fileVariant) =>
-    getPathVariants(folderPath).some((folderVariant) => {
-      const relativePath = path.relative(folderVariant, fileVariant);
-      return (
-        relativePath === "" ||
-        (!relativePath.startsWith(`..${path.sep}`) &&
-          relativePath !== ".." &&
-          !path.isAbsolute(relativePath))
-      );
-    }),
+function isVariantWithin(fileVariant: string, folderVariant: string): boolean {
+  const relativePath = path.relative(folderVariant, fileVariant);
+  return (
+    relativePath === "" ||
+    (!relativePath.startsWith(`..${path.sep}`) &&
+      relativePath !== ".." &&
+      !path.isAbsolute(relativePath))
   );
+}
+
+export function areVariantsWithin(
+  fileVariants: readonly string[],
+  folderVariants: readonly string[],
+): boolean {
+  return fileVariants.some((fileVariant) =>
+    folderVariants.some((folderVariant) =>
+      isVariantWithin(fileVariant, folderVariant),
+    ),
+  );
+}
+
+/**
+ * Builds a reusable test for "is this file inside `folderPath`", resolving
+ * the folder's path variants once instead of on every call.
+ */
+export function createPathWithinMatcher(folderPath: string): PathMatcher {
+  const folderVariants = getPathVariants(folderPath);
+  return (filePath) =>
+    areVariantsWithin(getPathVariants(filePath), folderVariants);
+}
+
+export function isPathWithin(filePath: string, folderPath: string): boolean {
+  return createPathWithinMatcher(folderPath)(filePath);
 }
 
 function readPackageJson(packageRoot: string): PackageJson | undefined {
