@@ -52,8 +52,8 @@ importers:
         version: 5.9.3
     devDependencies:
       '@antelopejs/tooling-configs':
-        specifier: ^0.0.4
-        version: 0.0.4(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: ^0.0.6
+        version: 0.0.6(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       '@types/chai':
         specifier: ^4.3.20
         version: 4.3.20
@@ -112,8 +112,8 @@ importers:
         specifier: link:..
         version: link:..
       '@antelopejs/interface-core':
-        specifier: ^0.0.6
-        version: 0.0.6
+        specifier: ^0.1.1
+        version: 0.1.1
 
   playground/modules/module-a:
     dependencies:
@@ -131,14 +131,11 @@ importers:
 
 packages:
 
-  '@antelopejs/interface-core@0.0.6':
-    resolution: {integrity: sha512-OMna86iT/ylL6wJl6FCPw9ieddULXGs4jTmeiDBNEXYQ9acnVXjS/+SaN0UR0h7oY7WTD9VwKXVwG95qjNIA1w==}
-
   '@antelopejs/interface-core@0.1.1':
     resolution: {integrity: sha512-nGxElt51KGWIwGsUcFdGT7ikQEqDB+mLj4NQ/eFL/DI1+j65GJqq9PdkVT4x3/YKchNA48iMbzXyW7bKUsQ8Iw==}
 
-  '@antelopejs/tooling-configs@0.0.4':
-    resolution: {integrity: sha512-Nfv71Z9DF78mFu817SwTZnzfF/oWhjXWhAY/zhBV9ArevV3ZwJ/JhZD+3QiLf9fXIS2pXCrmCCYGclpc598psA==}
+  '@antelopejs/tooling-configs@0.0.6':
+    resolution: {integrity: sha512-K8ysTXwxfGRQpM1JxJMehbwmQZqkE+7hCJiGoL2G0n9ut5MyszCsychUhfG5e+N+/EOwZ4QPN1XwNw8qNnQT3w==}
     engines: {node: '>=22.18.0'}
     peerDependencies:
       '@nuxt/eslint-config': '>=1.2.0'
@@ -2606,15 +2603,11 @@ packages:
 
 snapshots:
 
-  '@antelopejs/interface-core@0.0.6':
-    dependencies:
-      reflect-metadata: 0.2.2
-
   '@antelopejs/interface-core@0.1.1':
     dependencies:
       reflect-metadata: 0.2.2
 
-  '@antelopejs/tooling-configs@0.0.4(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
+  '@antelopejs/tooling-configs@0.0.6(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
     dependencies:
       '@oxlint/plugins': 1.81.0
     optionalDependencies:
