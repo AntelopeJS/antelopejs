@@ -28,5 +28,9 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm knip
-      - run: pnpm test
       - run: pnpm test:coverage
+      - run: pnpm build
+      - run: pnpm exec ts-node test/embedded/run.ts
+      - run: pnpm exec ts-node test/package-consumer/run.ts
+      - run: pnpm --dir playground install
+      - run: pnpm exec ts-node playground/test-playground.ts

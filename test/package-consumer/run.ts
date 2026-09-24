@@ -12,6 +12,7 @@ const temp = fs.mkdtempSync(path.join(os.tmpdir(), "ajs-package-consumer-"));
 const packFolder = path.join(temp, "pack");
 const consumerFolder = path.join(temp, "consumer");
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const builtEntry = path.join(root, "dist", "index.js");
 
 function run(command: string, args: string[], cwd: string): string {
   return execFileSync(command, args, {
@@ -21,9 +22,28 @@ function run(command: string, args: string[], cwd: string): string {
   });
 }
 
+function assertBuilt(): void {
+  if (!fs.existsSync(builtEntry)) {
+    throw new Error(
+      `Missing ${path.relative(root, builtEntry)}; run pnpm build before packing.`,
+    );
+  }
+}
+
 function packCore(): string {
+  assertBuilt();
   fs.mkdirSync(packFolder, { recursive: true });
-  run(pnpm, ["pack", "--pack-destination", packFolder, "--json"], root);
+  run(
+    pnpm,
+    [
+      "pack",
+      "--config.ignore-scripts=true",
+      "--pack-destination",
+      packFolder,
+      "--json",
+    ],
+    root,
+  );
   const tarball = fs
     .readdirSync(packFolder)
     .find((file) => file.endsWith(".tgz"));
