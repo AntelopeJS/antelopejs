@@ -46,11 +46,6 @@ export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
 
   process.on("unhandledRejection", (reason: any) => {
     Logging.Error("Unhandled rejection:", reason);
-    if (reason instanceof AggregateError && reason.errors) {
-      for (const err of reason.errors) {
-        Logging.Error("  -", err);
-      }
-    }
     shutdownProcess(EXIT_CODE_ERROR);
   });
 
