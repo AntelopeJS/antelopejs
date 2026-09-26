@@ -1,6 +1,7 @@
 import path from "node:path";
 import EventEmitter from "node:events";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { MODULE_CONTEXT_INVALIDATED_CODE } from "@antelopejs/interface-core";
 
 import { NodeFileSystem } from "../filesystem";
 import type { LaunchOptions } from "../../types";
@@ -16,6 +17,7 @@ import type {
 const EXIT_CODE_ERROR = 1;
 const DEFAULT_MAX_EVENT_LISTENERS = 50;
 let processHandlersReady = false;
+let invalidatedWorkTolerance = 0;
 const shutdownManagers: ShutdownManager[] = [];
 
 function shutdownProcess(exitCode: number): void {
@@ -26,6 +28,55 @@ function shutdownProcess(exitCode: number): void {
   }
 
   process.exit(exitCode);
+}
+
+function isInvalidatedModuleWork(reason: unknown): boolean {
+  return (
+    invalidatedWorkTolerance > 0 &&
+    reason instanceof Error &&
+    "code" in reason &&
+    reason.code === MODULE_CONTEXT_INVALIDATED_CODE
+  );
+}
+
+/**
+ * Reports a failure of work left behind by a destroyed module generation
+ * without shutting the process down, when that is tolerated.
+ */
+function reportInvalidatedModuleWork(kind: string, reason: unknown): boolean {
+  if (!isInvalidatedModuleWork(reason)) {
+    return false;
+  }
+  Logging.Error(
+    `${kind} in work of a destroyed module generation; the process keeps running:`,
+    reason,
+  );
+  return true;
+}
+
+/**
+ * Keeps the process running when work left behind by a destroyed module
+ * generation fails, for as long as modules are hot reloaded.
+ *
+ * A reload destroys the previous generation of a module, and the replacement
+ * when it fails to construct or start. Asynchronous work either one left
+ * pending then fails with `ModuleContextInvalidatedError` when it resumes: that
+ * failure is what invalidation is for, and it is still reported, but it must
+ * not take the dev process down with it. The module stays reloadable on its
+ * next change. Any other uncaught failure still shuts the process down.
+ *
+ * @returns A function that withdraws this tolerance.
+ */
+export function tolerateInvalidatedModuleWork(): () => void {
+  invalidatedWorkTolerance += 1;
+  let isWithdrawn = false;
+  return () => {
+    if (isWithdrawn) {
+      return;
+    }
+    isWithdrawn = true;
+    invalidatedWorkTolerance -= 1;
+  };
 }
 
 export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
@@ -40,11 +91,17 @@ export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
 
   processHandlersReady = true;
   process.on("uncaughtException", (error: Error) => {
+    if (reportInvalidatedModuleWork("Uncaught exception", error)) {
+      return;
+    }
     Logging.Error("Uncaught exception:", error);
     shutdownProcess(EXIT_CODE_ERROR);
   });
 
   process.on("unhandledRejection", (reason: any) => {
+    if (reportInvalidatedModuleWork("Unhandled rejection", reason)) {
+      return;
+    }
     Logging.Error("Unhandled rejection:", reason);
     if (reason instanceof AggregateError && reason.errors) {
       for (const err of reason.errors) {

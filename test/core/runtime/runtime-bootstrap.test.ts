@@ -2,6 +2,7 @@ import sinon from "sinon";
 import { expect } from "chai";
 import EventEmitter from "node:events";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { ModuleContextInvalidatedError } from "@antelopejs/interface-core";
 
 import * as logging from "../../../src/logging";
 import { ShutdownManager } from "../../../src/core/shutdown";
@@ -100,6 +101,41 @@ describe("runtime runtime-bootstrap", () => {
       expect((warnedErr![1] as Error).message).to.equal("warned");
       expect(exitStub.calledWith(1)).to.equal(true);
     } finally {
+      restoreProcessListeners(originalListeners);
+    }
+  });
+
+  it("keeps the process running when work of a destroyed module generation fails during hot reload", () => {
+    const originalListeners = snapshotProcessListeners();
+    const bootstrap = loadBootstrapModule();
+    const shutdownManager = new ShutdownManager();
+    const shutdownStub = sinon.stub(shutdownManager, "shutdown").resolves();
+    sinon.stub(Logging, "Error");
+    const orphaned = new ModuleContextInvalidatedError("dms");
+
+    try {
+      bootstrap.setupProcessHandlers(shutdownManager);
+      const withdraw = bootstrap.tolerateInvalidatedModuleWork();
+      const current = snapshotProcessListeners();
+      const uncaught = current.uncaughtException.at(-1) as (
+        error: Error,
+      ) => void;
+      const rejection = current.unhandledRejection.at(-1) as (
+        reason: unknown,
+      ) => void;
+
+      uncaught(orphaned);
+      rejection(orphaned);
+      expect(shutdownStub.called).to.equal(false);
+
+      rejection(new Error("unrelated"));
+      expect(shutdownStub.calledOnceWith(1)).to.equal(true);
+
+      withdraw();
+      rejection(orphaned);
+      expect(shutdownStub.calledTwice).to.equal(true);
+    } finally {
+      bootstrap.releaseProcessShutdownManager(shutdownManager);
       restoreProcessListeners(originalListeners);
     }
   });
