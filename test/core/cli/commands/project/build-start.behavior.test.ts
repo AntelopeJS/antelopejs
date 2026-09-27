@@ -7,6 +7,8 @@ import * as common from "../../../../../src/core/cli/common";
 import cmdBuild from "../../../../../src/core/cli/commands/project/build";
 import cmdStart from "../../../../../src/core/cli/commands/project/start";
 import * as projectLaunch from "../../../../../src/core/runtime/project-launch";
+import { BUILD_MODULE_SET_CHANGED_EXIT_CODE } from "../../../../../src/core/cli/exit-codes";
+import { BuildModuleSetChangedError } from "../../../../../src/core/runtime/build-refresh";
 import * as buildArtifactModule from "../../../../../src/core/build/build-artifact";
 
 describe("project build/start behavior", () => {
@@ -92,6 +94,7 @@ describe("project build/start behavior", () => {
     expect(startStub.firstCall.args[2]).to.deep.equal({
       concurrency: 3,
       verbose: undefined,
+      refreshConfig: false,
     });
   });
 
@@ -109,5 +112,52 @@ describe("project build/start behavior", () => {
 
     expect(errorStub.called).to.equal(true);
     expect(process.exitCode).to.equal(1);
+  });
+
+  it("passes --refresh-config to the build artifact launch", async () => {
+    sinon.stub(common, "readConfig").resolves({ name: "project" } as any);
+    const startStub = sinon
+      .stub(projectLaunch, "launchFromBuild")
+      .resolves({} as any);
+
+    stubProjectSpinners();
+    sinon.stub(cliUi, "displayBox").resolves();
+    sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "error");
+
+    const cmd = cmdStart();
+    await cmd.parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/tmp/project",
+      "--refresh-config",
+    ]);
+
+    expect(startStub.firstCall.args[2]).to.include({ refreshConfig: true });
+  });
+
+  it("exits with the module set changed code when the build no longer matches", async () => {
+    sinon.stub(common, "readConfig").resolves({ name: "project" } as any);
+    sinon
+      .stub(projectLaunch, "launchFromBuild")
+      .rejects(new BuildModuleSetChangedError(["api"]));
+
+    stubProjectSpinners();
+    sinon.stub(cliUi, "displayBox").resolves();
+    sinon.stub(cliUi, "info");
+    const errorStub = sinon.stub(cliUi, "error");
+
+    const cmd = cmdStart();
+    await cmd.parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/tmp/project",
+      "--refresh-config",
+    ]);
+
+    expect(errorStub.called).to.equal(true);
+    expect(process.exitCode).to.equal(BUILD_MODULE_SET_CHANGED_EXIT_CODE);
   });
 });

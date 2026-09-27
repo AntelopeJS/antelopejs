@@ -53,6 +53,7 @@ describe("CLI dispatcher", () => {
       launch.calledOnceWith(path.resolve("fixture"), "production", {
         concurrency: undefined,
         verbose: undefined,
+        refreshConfig: false,
       }),
     ).to.equal(true);
     expect(runFullCLI.called).to.equal(false);
