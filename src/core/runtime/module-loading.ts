@@ -233,21 +233,23 @@ export function buildModuleOverrides(
   return overrides;
 }
 
+export function toModuleConfig(
+  moduleConfig: ExpandedModuleConfig,
+): ModuleConfig {
+  return {
+    config: moduleConfig.config,
+    disabledExports: new Set<string>(moduleConfig.disabledExports ?? []),
+    importOverrides: buildModuleOverrides(moduleConfig.importOverrides),
+  };
+}
+
 function buildManifestEntries(
   manifests: ModuleManifest[],
   moduleConfig: ExpandedModuleConfig,
 ): ModuleManifestEntry[] {
-  const overrides = buildModuleOverrides(moduleConfig.importOverrides);
-  const disabledExports = new Set<string>(moduleConfig.disabledExports ?? []);
+  const config = toModuleConfig(moduleConfig);
 
-  return manifests.map((manifest) => ({
-    manifest,
-    config: {
-      config: moduleConfig.config,
-      disabledExports,
-      importOverrides: overrides,
-    },
-  }));
+  return manifests.map((manifest) => ({ manifest, config: { ...config } }));
 }
 
 async function loadModuleEntries(
