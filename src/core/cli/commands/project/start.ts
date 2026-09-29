@@ -3,15 +3,16 @@ import { Command, Option } from "commander";
 
 import { Options } from "../../common";
 import { displayBox, error, info } from "../../cli-ui";
-import { startFromBuild } from "../../production-start";
-import { DEFAULT_ENV, type LaunchOptions } from "../../../..";
+import { startFailureExitCode, startFromBuild } from "../../production-start";
+import { type BuildLaunchOptions, DEFAULT_ENV } from "../../../..";
 import {
   type ProjectCommandOptions,
   resolveInheritedVerbose,
   validateProjectExists,
 } from "../shared/project-command";
 
-interface StartCommandOptions extends ProjectCommandOptions, LaunchOptions {
+interface StartCommandOptions
+  extends ProjectCommandOptions, BuildLaunchOptions {
   project: string;
 }
 const DISABLED_LABEL = "disabled";
@@ -50,7 +51,7 @@ export default function () {
     .addOption(
       new Option(
         "-e, --env <environment>",
-        "Environment for runtime logging (build config is reused)",
+        "Runtime environment (the build configuration is reused unless --refresh-config is set)",
       ).env("ANTELOPEJS_LAUNCH_ENV"),
     )
     .addOption(
@@ -58,6 +59,12 @@ export default function () {
         "-c, --concurrency <number>",
         "Number of modules to load concurrently",
       ).argParser(parseInt),
+    )
+    .addOption(
+      new Option(
+        "--refresh-config",
+        "Start with antelope.config.ts resolved for the environment instead of the build configuration (exits with code 3 when the module set differs from the build)",
+      ),
     )
     .action(async function (this: Command, options: StartCommandOptions) {
       const commandOptions = normalizeOptions(this, options);
@@ -80,11 +87,12 @@ export default function () {
           env: commandOptions.env ?? DEFAULT_ENV,
           concurrency: commandOptions.concurrency,
           verbose: commandOptions.verbose,
+          refreshConfig: commandOptions.refreshConfig ?? false,
           help: false,
         });
       } catch (err) {
         error(err instanceof Error ? err : String(err));
-        process.exitCode = 1;
+        process.exitCode = startFailureExitCode(err);
       }
     });
 }

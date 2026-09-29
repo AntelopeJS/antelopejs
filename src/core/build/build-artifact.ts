@@ -7,7 +7,7 @@ import type {
 
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import { ConfigLoader } from "../config/config-loader";
+import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
 import type { ModulePackageJson } from "../module-manifest";
 
 const BUILD_ARTIFACT_VERSION = "1";
@@ -94,6 +94,14 @@ function toStableHashValue(value: unknown): unknown {
   );
 }
 
+/**
+ * Serialise a value with object keys sorted, so equal values always produce
+ * the same string whatever their key insertion order.
+ */
+export function toStableJson(value: unknown): string {
+  return JSON.stringify(toStableHashValue(value));
+}
+
 export function getBuildFolderPath(projectFolder: string): string {
   return path.join(path.resolve(projectFolder), BUILD_FOLDER);
 }
@@ -109,8 +117,18 @@ export async function computeConfigHash(
 ): Promise<string> {
   const loader = new ConfigLoader(fs);
   const resolvedConfig = await loader.load(projectFolder, env);
-  const stableConfig = JSON.stringify(toStableHashValue(resolvedConfig));
-  const hashParts: string[] = [stableConfig, env];
+  return hashResolvedConfig(resolvedConfig, env);
+}
+
+/**
+ * Hash a configuration already resolved by the {@link ConfigLoader} the way
+ * {@link computeConfigHash} does, for callers that loaded it themselves.
+ */
+export function hashResolvedConfig(
+  resolvedConfig: LoadedConfig,
+  env: string,
+): string {
+  const hashParts: string[] = [toStableJson(resolvedConfig), env];
 
   return crypto
     .createHash("sha256")

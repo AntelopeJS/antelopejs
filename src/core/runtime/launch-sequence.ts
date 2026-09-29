@@ -6,6 +6,8 @@ import type { LaunchOptions } from "../../types";
 import { ModuleManager } from "../module-manager";
 import { terminalDisplay } from "../cli/terminal-display";
 import { setupAntelopeProjectLogging } from "../../logging";
+import { readRefreshedBuildArtifact } from "./build-refresh";
+import type { BuildArtifact } from "../build/build-artifact";
 import { registerCoreRuntimeInterface } from "./dev-server-registry";
 import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
 import type {
@@ -109,18 +111,12 @@ export const prepareFromConfig: ProjectPreparer = async (
   };
 };
 
-/**
- * Prepare a project from a pre-built `.antelope/build/build.json` artifact,
- * skipping module resolution entirely.
- *
- * Backs `ajs project start`.
- */
-export const prepareFromArtifact: ProjectPreparer = async (
-  projectFolder,
-  env,
-) => {
-  const fs = new NodeFileSystem();
-  const artifact = await readBuildArtifactOrThrow(projectFolder, fs);
+function prepareFromBuiltArtifact(
+  artifact: BuildArtifact,
+  projectFolder: string,
+  fs: NodeFileSystem,
+  verify: () => Promise<void>,
+): PreparedProject {
   const loaderConfig = resolveRuntimeLoaderConfig(
     artifact.config,
     projectFolder,
@@ -133,13 +129,48 @@ export const prepareFromArtifact: ProjectPreparer = async (
     loadContext: memoizeLoaderContext(() =>
       createLoaderContext(loaderConfig, fs),
     ),
-    verify: async () => {
-      logEnvironmentMismatch(env, artifact.env);
-      await warnIfBuildIsStale(projectFolder, artifact, fs);
-      await ensureBuildModulesExist(artifact, fs);
-    },
+    verify,
     createEntries: async () => mapArtifactModuleEntries(artifact),
   };
+}
+
+/**
+ * Prepare a project from a pre-built `.antelope/build/build.json` artifact,
+ * skipping module resolution entirely.
+ *
+ * Backs `ajs project start`.
+ */
+export const prepareFromArtifact: ProjectPreparer = async (
+  projectFolder,
+  env,
+) => {
+  const fs = new NodeFileSystem();
+  const artifact = await readBuildArtifactOrThrow(projectFolder, fs);
+
+  return prepareFromBuiltArtifact(artifact, projectFolder, fs, async () => {
+    logEnvironmentMismatch(env, artifact.env);
+    await warnIfBuildIsStale(projectFolder, artifact, fs);
+    await ensureBuildModulesExist(artifact, fs);
+  });
+};
+
+/**
+ * Prepare a project from its build artifact, started with the configuration
+ * `antelope.config.ts` resolves to for `env` rather than the one it was built
+ * with. The refreshed artifact stays in memory; `build.json` is not rewritten.
+ *
+ * Backs `ajs project start --refresh-config`.
+ */
+export const prepareFromRefreshedArtifact: ProjectPreparer = async (
+  projectFolder,
+  env,
+) => {
+  const fs = new NodeFileSystem();
+  const artifact = await readRefreshedBuildArtifact(projectFolder, env, fs);
+
+  return prepareFromBuiltArtifact(artifact, projectFolder, fs, () =>
+    ensureBuildModulesExist(artifact, fs),
+  );
 };
 
 /**

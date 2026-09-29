@@ -11,6 +11,9 @@ const LOG_LEVELS = {
 } as const;
 
 const DEFAULT_TERMINAL_WIDTH = 80;
+const INNER_ERROR_MARKER = "  - ";
+const INNER_ERROR_INDENT = "    ";
+const CIRCULAR_ERROR = "[Circular]";
 
 const COLOR_FUNCTIONS: Record<string, (text: string) => string> = {
   red: chalk.red,
@@ -127,6 +130,45 @@ export function stripAnsi(str: string): string {
     .replace(miscTerminalSequenceRegex(), "");
 }
 
+function indentInnerError(text: string): string {
+  return text
+    .split("\n")
+    .map(
+      (line, index) =>
+        `${index === 0 ? INNER_ERROR_MARKER : INNER_ERROR_INDENT}${line}`,
+    )
+    .join("\n");
+}
+
+function serializeInnerError(value: unknown, ancestors: Set<Error>): string {
+  if (!(value instanceof Error)) {
+    return serializeLogValue(value);
+  }
+  return ancestors.has(value)
+    ? CIRCULAR_ERROR
+    : serializeError(value, ancestors);
+}
+
+/**
+ * An error's stack, followed by every error it aggregates, one level deeper.
+ *
+ * The stack of an `AggregateError` names none of the errors it carries, and
+ * they are what explains the failure: a failed module reload, a failed
+ * shutdown or a failed construction all report their causes that way.
+ */
+function serializeError(error: Error, ancestors: Set<Error>): string {
+  const summary = error.stack ?? error.message;
+  if (!(error instanceof AggregateError) || !Array.isArray(error.errors)) {
+    return summary;
+  }
+  ancestors.add(error);
+  const innerErrors = error.errors.map((inner) =>
+    indentInnerError(serializeInnerError(inner, ancestors)),
+  );
+  ancestors.delete(error);
+  return [summary, ...innerErrors].join("\n");
+}
+
 /**
  * Serializes a value for logging, handling objects, arrays, and other types appropriately
  * @param value - The value to serialize
@@ -138,7 +180,7 @@ export function serializeLogValue(value: any): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean")
     return String(value);
-  if (value instanceof Error) return value.stack ?? value.message;
+  if (value instanceof Error) return serializeError(value, new Set());
   if (value instanceof Date) return value.toISOString();
 
   // For objects and arrays, use JSON.stringify with proper formatting

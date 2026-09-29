@@ -3,12 +3,18 @@ import { parseArgs } from "node:util";
 
 import { DEFAULT_ENV } from "../config/config-paths";
 import { launchFromBuild } from "../runtime/project-launch";
+import { findBuildModuleSetChange } from "../runtime/build-refresh";
+import {
+  BUILD_MODULE_SET_CHANGED_EXIT_CODE,
+  FAILURE_EXIT_CODE,
+} from "./exit-codes";
 
 export interface ProductionStartOptions {
   concurrency?: number;
   env: string;
   help: boolean;
   project: string;
+  refreshConfig: boolean;
   verbose?: string[];
 }
 
@@ -21,6 +27,10 @@ Options:
   -p, --project <path>       Path to the AntelopeJS project
   -e, --env <environment>   Runtime environment (default: default)
   -c, --concurrency <count> Number of modules to load concurrently
+      --refresh-config      Start with antelope.config.ts resolved for the
+                            environment instead of the configuration stored
+                            in the build; exits with code 3 when it loads
+                            other modules than the build
       --verbose [channels]  TRACE logging, optionally scoped by comma-separated channels
   -h, --help                Display help
 `;
@@ -67,6 +77,7 @@ export function parseProductionStartArgs(
       env: { type: "string", short: "e" },
       concurrency: { type: "string", short: "c" },
       verbose: { type: "string" },
+      "refresh-config": { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -77,6 +88,7 @@ export function parseProductionStartArgs(
     env: values.env ?? process.env.ANTELOPEJS_LAUNCH_ENV ?? DEFAULT_ENV,
     concurrency: parseConcurrency(values.concurrency),
     verbose: parseVerbose(values.verbose ?? process.env.ANTELOPEJS_VERBOSE),
+    refreshConfig: values["refresh-config"] ?? false,
     help: values.help ?? false,
   };
 }
@@ -87,7 +99,18 @@ export async function startFromBuild(
   await launchFromBuild(options.project, options.env, {
     concurrency: options.concurrency,
     verbose: options.verbose,
+    refreshConfig: options.refreshConfig,
   });
+}
+
+/**
+ * Exit code a failed `ajs project start` reports, telling a module set that
+ * no longer matches the build apart from any other failure.
+ */
+export function startFailureExitCode(error: unknown): number {
+  return findBuildModuleSetChange(error)
+    ? BUILD_MODULE_SET_CHANGED_EXIT_CODE
+    : FAILURE_EXIT_CODE;
 }
 
 export async function runProductionStart(args: string[]): Promise<void> {
@@ -96,5 +119,14 @@ export async function runProductionStart(args: string[]): Promise<void> {
     process.stdout.write(HELP);
     return;
   }
-  await startFromBuild(options);
+  try {
+    await startFromBuild(options);
+  } catch (error) {
+    const moduleSetChange = findBuildModuleSetChange(error);
+    if (!moduleSetChange) {
+      throw error;
+    }
+    process.stderr.write(`${moduleSetChange.message}\n`);
+    process.exitCode = BUILD_MODULE_SET_CHANGED_EXIT_CODE;
+  }
 }

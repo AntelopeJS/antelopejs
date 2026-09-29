@@ -1,7 +1,7 @@
 import { Writable } from "node:stream";
 import { Logging } from "@antelopejs/interface-core/logging";
 
-import type { LaunchOptions } from "../../types";
+import type { BuildLaunchOptions, LaunchOptions } from "../../types";
 import type { NodeFileSystem } from "../filesystem";
 import type { ModuleManager } from "../module-manager";
 import {
@@ -19,6 +19,7 @@ import type {
 import {
   prepareFromArtifact,
   prepareFromConfig,
+  prepareFromRefreshedArtifact,
   runLaunchSequence,
 } from "./launch-sequence";
 
@@ -266,10 +267,10 @@ async function restartProject(
 export async function launchFromBuild(
   projectFolder: string = ".",
   env: string = DEFAULT_ENV,
-  options: LaunchOptions = {},
+  options: BuildLaunchOptions = {},
 ): Promise<ModuleManager> {
   const started = await startProject(
-    prepareFromArtifact,
+    options.refreshConfig ? prepareFromRefreshedArtifact : prepareFromArtifact,
     projectFolder,
     env || DEFAULT_ENV,
     options,
