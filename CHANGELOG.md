@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.10.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.1...v1.10.0)
+
+### 🚀 Enhancements
+
+- **start:** Refresh the build configuration at start with --refresh-config ([#165](https://github.com/AntelopeJS/antelopejs/pull/165))
+
+### 🏡 Chore
+
+- **playground:** Update antelope dependencies to latest ([#160](https://github.com/AntelopeJS/antelopejs/pull/160))
+
+### 🤖 CI
+
+- **release:** Reference the shared release workflows through v1 ([#158](https://github.com/AntelopeJS/antelopejs/pull/158))
+- Stop running the unit suite twice ([#159](https://github.com/AntelopeJS/antelopejs/pull/159))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.9.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.0...v1.9.1)
