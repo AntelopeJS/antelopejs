@@ -10,7 +10,9 @@ import {
   captureModuleContext,
   getModuleContext,
   internal,
+  type ModuleExecutionContext,
   runWithCapturedModuleContext,
+  runWithModuleContext,
 } from "@antelopejs/interface-core/internal";
 
 import type { PathMapper } from "./path-mapper";
@@ -72,6 +74,7 @@ const CORE_PKG = "@antelopejs/interface-core";
 const CORE_PACKAGE = resolvePackage(CORE_PKG, __dirname);
 const CORE_RESOLVE_FROM = CORE_PACKAGE?.root ?? __dirname;
 const CORE_ENTRY = CORE_PACKAGE?.entry ?? CORE_PKG;
+const SHARED_INTERFACE_OWNER_SUFFIX = "#shared";
 const CLASS_PREFIX = "class ";
 const PROXY_ATTACHMENT_METHODS = new Set<PropertyKey>([
   "detach",
@@ -194,9 +197,29 @@ export class Resolver {
     CapturedModuleContext,
     Map<string, CapturedModuleContext>
   >();
+  /**
+   * Shared interface contexts, keyed by the importing context, then by
+   * interface name. Every importer gets its own: a shared context carries the
+   * importer's module and routes, and its owner is what orphaned facade work
+   * falls back to. That keying never leaks into what a package registers while
+   * it is evaluated: the body context of every one of them carries the same
+   * constant `<interface>#shared` owner, whichever importer loads it first.
+   */
   private readonly sharedInterfaceContexts = new WeakMap<
     CapturedModuleContext,
     Map<string, CapturedModuleContext>
+  >();
+  /**
+   * Context an interface package's own files are evaluated in, for each shared
+   * interface context, and the way back from it.
+   */
+  private readonly interfaceBodyContexts = new WeakMap<
+    CapturedModuleContext,
+    CapturedModuleContext
+  >();
+  private readonly interfaceBodySharedContexts = new WeakMap<
+    CapturedModuleContext,
+    CapturedModuleContext
   >();
   /**
    * Shared facade contexts, mapped to the interface package whose exports they
@@ -303,6 +326,11 @@ export class Resolver {
    * the file in the importing module's context would route the attachment to
    * whichever module imported the interface first, while every registration
    * later routes to the interface's declared provider.
+   *
+   * For the same reason, what the file registers or attaches while it is
+   * evaluated is owned by the package, not by the importer's generation: the
+   * file is evaluated once per process, so a registration released with that
+   * generation would never be made again.
    */
   runInInterfaceContext<T>(result: ResolveResult, load: () => T): T {
     const context = captureModuleContext();
@@ -310,7 +338,7 @@ export class Resolver {
       return load();
     }
     return runWithCapturedModuleContext(
-      this.getSharedInterfaceContext(result, context),
+      this.getInterfaceBodyContext(result, context),
       load,
     );
   }
@@ -848,13 +876,17 @@ export class Resolver {
    * that survives their reloads, so no consumer may own them: they get a
    * detached copy of the importing context, used only as a fallback for work
    * that runs without any ambient context.
+   *
+   * That fallback keeps the importer's owner even when the exports are bound
+   * while a package body runs under its own owner: orphaned work must still
+   * fail once the generation that started it is gone.
    */
   private getBindingContext(
     result: ResolveResult,
     context: CapturedModuleContext,
   ): CapturedModuleContext {
     if (!result.sharedExports) {
-      return context;
+      return this.interfaceBodySharedContexts.get(context) ?? context;
     }
     return this.getSharedInterfaceContext(result, context);
   }
@@ -867,22 +899,73 @@ export class Resolver {
    * consumer, so the importer's own provider would leak into work the
    * interface performs for all of them, and an attachment the interface makes
    * for itself would land on a route no consumer ever requests.
+   *
+   * A package body importing another package counts as its importer, so the
+   * nested context derives from the importer's shared context, never from the
+   * body context the package owns.
    */
   private getSharedInterfaceContext(
     result: ResolveResult,
     context: CapturedModuleContext,
   ): CapturedModuleContext {
+    const importer = this.interfaceBodySharedContexts.get(context) ?? context;
     const interfaceName = result.interfaceName ?? "";
-    const contexts = this.sharedInterfaceContexts.get(context) ?? new Map();
+    const contexts = this.sharedInterfaceContexts.get(importer) ?? new Map();
     const existing = contexts.get(interfaceName);
     if (existing) {
       return existing;
     }
-    const shared = { ...context, provider: result.provider };
+    const shared = { ...importer, provider: result.provider };
     contexts.set(interfaceName, shared);
-    this.sharedInterfaceContexts.set(context, contexts);
+    this.sharedInterfaceContexts.set(importer, contexts);
     this.sharedContexts.set(shared, interfaceName);
     return shared;
+  }
+
+  /**
+   * Context an interface package's own files run in while they are evaluated:
+   * the shared interface context, owned by the package itself.
+   *
+   * Everything the package registers, attaches or starts at that point is
+   * released only with the package, which lives as long as the process, so a
+   * reload of whichever module imported it first no longer takes it down.
+   */
+  private getInterfaceBodyContext(
+    result: ResolveResult,
+    context: CapturedModuleContext,
+  ): CapturedModuleContext {
+    const shared = this.getSharedInterfaceContext(result, context);
+    const existing = this.interfaceBodyContexts.get(shared);
+    if (existing) {
+      return existing;
+    }
+    const body = this.createInterfaceBodyContext(
+      shared,
+      result.interfaceName ?? "",
+    );
+    this.interfaceBodyContexts.set(shared, body);
+    this.interfaceBodySharedContexts.set(body, shared);
+    return body;
+  }
+
+  /**
+   * Opens the package's own owner through the runtime, which hands every
+   * context of that owner the same active ownership token.
+   */
+  private createInterfaceBodyContext(
+    shared: CapturedModuleContext,
+    interfaceName: string,
+  ): CapturedModuleContext {
+    const packageContext: ModuleExecutionContext = {
+      module: shared.module,
+      owner: `${interfaceName}${SHARED_INTERFACE_OWNER_SUFFIX}`,
+      provider: shared.provider,
+      providerRoutes: shared.providerRoutes,
+    };
+    return runWithModuleContext(
+      packageContext,
+      () => captureModuleContext() as CapturedModuleContext,
+    );
   }
 
   /**
