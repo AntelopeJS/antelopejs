@@ -156,6 +156,44 @@ describe("Logging Utils", () => {
       expect(serializeLogValue(err)).to.equal("no-stack");
     });
 
+    it("should serialize the errors an AggregateError carries", () => {
+      const result = serializeLogValue(
+        new AggregateError(
+          [new Error("inner-a"), "inner-b"],
+          "Failed to activate replacement module dms",
+        ),
+      );
+
+      expect(result).to.match(
+        /^AggregateError: Failed to activate replacement module dms\n/,
+      );
+      expect(result).to.include("\n  - Error: inner-a\n        at ");
+      expect(result).to.include("\n  - inner-b");
+    });
+
+    it("should serialize nested AggregateErrors one level deeper each", () => {
+      const rootCause = new Error("root cause");
+      rootCause.stack = undefined;
+      const inner = new AggregateError([rootCause], "inner");
+      inner.stack = undefined;
+      const outer = new AggregateError([inner], "outer");
+      outer.stack = undefined;
+
+      expect(serializeLogValue(outer)).to.equal(
+        ["outer", "  - inner", "      - root cause"].join("\n"),
+      );
+    });
+
+    it("should stop at an AggregateError that carries itself", () => {
+      const aggregate = new AggregateError([], "loop");
+      aggregate.stack = undefined;
+      aggregate.errors.push(aggregate);
+
+      expect(serializeLogValue(aggregate)).to.equal(
+        ["loop", "  - [Circular]"].join("\n"),
+      );
+    });
+
     it("should handle circular references", () => {
       const value: any = {};
       value.self = value;

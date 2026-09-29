@@ -267,4 +267,27 @@ describe("runtime runtime-bootstrap", () => {
     expect(normalized.cacheFolder).to.equal("/var/cache");
     expect(normalized.projectFolder).to.equal("/project");
   });
+
+  it("logs an aggregate rejection once, its inner errors with it", () => {
+    const originalListeners = snapshotProcessListeners();
+    const bootstrap = loadBootstrapModule();
+    sinon.stub(process, "exit");
+    const errorStub = sinon.stub(Logging, "Error");
+    const aggregate = new AggregateError([new Error("inner-a")], "agg");
+
+    try {
+      bootstrap.setupProcessHandlers();
+      const listeners = process.listeners("unhandledRejection");
+      const rejection = listeners[listeners.length - 1] as (
+        reason: unknown,
+      ) => void;
+      rejection(aggregate);
+
+      expect(errorStub.args).to.deep.equal([
+        ["Unhandled rejection:", aggregate],
+      ]);
+    } finally {
+      restoreProcessListeners(originalListeners);
+    }
+  });
 });
