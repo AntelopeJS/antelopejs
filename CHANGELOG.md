@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.10.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.10.0...v1.10.1)
+
+### 🩹 Fixes
+
+- **resolution:** Let interface packages own what they register while evaluated ([#162](https://github.com/AntelopeJS/antelopejs/pull/162))
+- **logging:** Print the errors an AggregateError carries ([#163](https://github.com/AntelopeJS/antelopejs/pull/163))
+- **runtime:** Keep the dev process running when a module fails to reload ([#164](https://github.com/AntelopeJS/antelopejs/pull/164))
+
+### ❤️ Contributors
+
+- Alessandro Aloisio ([@alessaloisio](https://github.com/alessaloisio))
+
 ## v1.10.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.9.1...v1.10.0)
