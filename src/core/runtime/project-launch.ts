@@ -4,7 +4,10 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { BuildLaunchOptions, LaunchOptions } from "../../types";
 import type { NodeFileSystem } from "../filesystem";
 import type { ModuleManager } from "../module-manager";
-import { releaseProcessShutdownManager } from "./runtime-bootstrap";
+import {
+  releaseProcessShutdownManager,
+  tolerateInvalidatedModuleWork,
+} from "./runtime-bootstrap";
 import { DEFAULT_ENV, tryFindConfigPath } from "../config/config-paths";
 import { type ShutdownManager, terminateProcessTree } from "../shutdown";
 import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
@@ -107,6 +110,20 @@ function registerShutdownCleanup(shutdownManager: ShutdownManager): void {
   }, SHUTDOWN_PRIORITY_CLEANUP);
 }
 
+/**
+ * Lets a module fail to reload without taking the dev process down, until the
+ * project shuts down: work its destroyed generations left pending may still
+ * fail while the modules are torn down.
+ */
+function keepRunningThroughFailedReloads(
+  shutdownManager: ShutdownManager,
+): void {
+  const withdraw = tolerateInvalidatedModuleWork();
+  shutdownManager.register(async () => {
+    withdraw();
+  }, SHUTDOWN_PRIORITY_CLEANUP);
+}
+
 async function setupWatching(
   manager: ModuleManager,
   fs: NodeFileSystem,
@@ -136,6 +153,7 @@ async function setupWatching(
     hotReload.clear();
     watcher.stopWatching();
   }, SHUTDOWN_PRIORITY_RESOURCES);
+  keepRunningThroughFailedReloads(shutdownManager);
 
   for (const { module } of manager.getLoadedModules()) {
     if (module.manifest?.source?.type === "local") {
