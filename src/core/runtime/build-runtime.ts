@@ -1,7 +1,9 @@
 import path from "node:path";
 import { Logging } from "@antelopejs/interface-core/logging";
 
+import type { IFileSystem } from "../../types";
 import type { NodeFileSystem } from "../filesystem";
+import type { ModuleConfig } from "../module-manager";
 import { ModuleManifest } from "../module-manifest";
 import type { InterfaceConnectionRef } from "../interface-registry";
 import type {
@@ -61,24 +63,32 @@ function mapArtifactImportOverrides(
   return mapped;
 }
 
+export type SerializedModuleConfig = Pick<
+  BuildModuleEntry,
+  "config" | "importOverrides" | "disabledExports"
+>;
+
+export function serializeModuleConfig(
+  config: ModuleConfig,
+): SerializedModuleConfig {
+  return {
+    config: config.config,
+    importOverrides: mapBuildImportOverrides(config.importOverrides),
+    disabledExports: config.disabledExports
+      ? Array.from(config.disabledExports)
+      : undefined,
+  };
+}
+
 function serializeBuildModuleEntries(
   entries: ModuleManifestEntry[],
 ): Record<string, BuildModuleEntry> {
   const modules: Record<string, BuildModuleEntry> = {};
 
   entries.forEach((entry) => {
-    const manifest = entry.manifest.serialize();
-    const importOverrides = mapBuildImportOverrides(
-      entry.config.importOverrides,
-    );
-    const disabledExports = entry.config.disabledExports
-      ? Array.from(entry.config.disabledExports)
-      : undefined;
     modules[entry.manifest.name] = {
-      ...manifest,
-      config: entry.config.config,
-      importOverrides,
-      disabledExports,
+      ...entry.manifest.serialize(),
+      ...serializeModuleConfig(entry.config),
     };
   });
 
@@ -117,7 +127,7 @@ function createMissingBuildError(projectFolder: string): Error {
 
 export async function readBuildArtifactOrThrow(
   projectFolder: string,
-  fs: NodeFileSystem,
+  fs: IFileSystem,
 ): Promise<BuildArtifact> {
   try {
     return await readBuildArtifact(projectFolder, fs);

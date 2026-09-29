@@ -3,9 +3,15 @@ import path from "node:path";
 import { expect } from "chai";
 
 import * as projectLaunch from "../../../src/core/runtime/project-launch";
+import { BuildModuleSetChangedError } from "../../../src/core/runtime/build-refresh";
+import {
+  BUILD_MODULE_SET_CHANGED_EXIT_CODE,
+  FAILURE_EXIT_CODE,
+} from "../../../src/core/cli/exit-codes";
 import {
   parseProductionStartArgs,
   runProductionStart,
+  startFailureExitCode,
 } from "../../../src/core/cli/production-start";
 
 describe("production start", () => {
@@ -15,6 +21,7 @@ describe("production start", () => {
 
   afterEach(() => {
     sinon.restore();
+    process.exitCode = undefined;
     setEnvironment("ANTELOPEJS_PROJECT", originalProject);
     setEnvironment("ANTELOPEJS_LAUNCH_ENV", originalEnv);
     setEnvironment("ANTELOPEJS_VERBOSE", originalVerbose);
@@ -45,6 +52,7 @@ describe("production start", () => {
       env: "production",
       concurrency: 3,
       verbose: ["runtime", "resolution.*"],
+      refreshConfig: false,
       help: false,
     });
   });
@@ -60,6 +68,7 @@ describe("production start", () => {
       launch.calledOnceWith(path.resolve("fixture"), "production", {
         concurrency: undefined,
         verbose: undefined,
+        refreshConfig: false,
       }),
     ).to.equal(true);
   });
@@ -107,7 +116,66 @@ describe("production start", () => {
       env: "staging",
       concurrency: undefined,
       verbose: ["runtime", "resolution.*"],
+      refreshConfig: false,
       help: false,
     });
+  });
+
+  it("parses the configuration refresh flag", () => {
+    expect(
+      parseProductionStartArgs(["--refresh-config"]).refreshConfig,
+    ).to.equal(true);
+  });
+
+  it("launches the build artifact with the refreshed configuration", async () => {
+    const launch = sinon
+      .stub(projectLaunch, "launchFromBuild")
+      .resolves({} as any);
+
+    await runProductionStart(["--project", "fixture", "--refresh-config"]);
+
+    expect(launch.firstCall.args[2]).to.include({ refreshConfig: true });
+  });
+
+  it("exits with the module set changed code when the build no longer matches", async () => {
+    sinon
+      .stub(projectLaunch, "launchFromBuild")
+      .rejects(
+        new AggregateError(
+          [new BuildModuleSetChangedError(["api"])],
+          "Failed to launch project",
+        ),
+      );
+    const stderr = sinon.stub(process.stderr, "write").returns(true);
+
+    try {
+      await runProductionStart(["--refresh-config"]);
+    } finally {
+      stderr.restore();
+    }
+
+    expect(process.exitCode).to.equal(BUILD_MODULE_SET_CHANGED_EXIT_CODE);
+    expect(String(stderr.firstCall.args[0])).to.include("api");
+  });
+
+  it("propagates any other start failure", async () => {
+    sinon.stub(projectLaunch, "launchFromBuild").rejects(new Error("boom"));
+
+    let thrown: unknown;
+    try {
+      await runProductionStart(["--refresh-config"]);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect((thrown as Error).message).to.equal("boom");
+    expect(process.exitCode).to.equal(undefined);
+  });
+
+  it("reports a distinct exit code for a module set change", () => {
+    expect(
+      startFailureExitCode(new BuildModuleSetChangedError(["api"])),
+    ).to.equal(BUILD_MODULE_SET_CHANGED_EXIT_CODE);
+    expect(startFailureExitCode(new Error("boom"))).to.equal(FAILURE_EXIT_CODE);
   });
 });

@@ -32,10 +32,11 @@ export { ModuleCache } from "./core/module-cache";
 export { ModuleManager } from "./core/module-manager";
 export { ModuleManifest } from "./core/module-manifest";
 export { launchFromBuild } from "./core/runtime/project-launch";
+export { BuildModuleSetChangedError } from "./core/runtime/build-refresh";
 export type { RuntimePolicy } from "./core/runtime/runtime-policy";
 export type { BuildOptions } from "./core/runtime/runtime-types";
 export { TestModule } from "./core/test/test-module";
-export { LaunchOptions } from "./types";
+export { BuildLaunchOptions, LaunchOptions } from "./types";
 
 export async function launch(
   projectFolder: string = ".",
