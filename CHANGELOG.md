@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.10.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.10.1...v1.10.2)
+
+### 🩹 Fixes
+
+- **logging:** Print an error's cause chain in log lines ([#168](https://github.com/AntelopeJS/antelopejs/pull/168))
+- **module:** Leave a destroyed module's context closed on a second destroy ([#169](https://github.com/AntelopeJS/antelopejs/pull/169))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.10.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.10.0...v1.10.1)
