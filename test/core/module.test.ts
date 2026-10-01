@@ -6,6 +6,7 @@ import {
   type ModuleExecutionContext,
 } from "@antelopejs/interface-core/modules";
 
+import { internal } from "@antelopejs/interface-core/internal";
 import { ModuleState } from "../../src/types";
 import { Module, type ModuleLoader } from "../../src/core/module";
 import {
@@ -21,6 +22,26 @@ const manifest = {
 } as any;
 
 describe("Module", () => {
+  it("leaves no active owner token when a destroyed module is destroyed again", async () => {
+    const mod = new Module(
+      { ...manifest, name: "twice-destroyed" },
+      sinon.stub().resolves({ construct() {}, destroy() {} }),
+    );
+    const ownerTokens = () =>
+      [...internal.activeOwnerTokens.keys()].filter((owner) =>
+        owner.startsWith("twice-destroyed"),
+      );
+
+    await mod.construct({});
+    expect(ownerTokens()).to.have.length(1);
+    await mod.destroy();
+    expect(ownerTokens()).to.deep.equal([]);
+    await mod.destroy();
+
+    expect(ownerTokens()).to.deep.equal([]);
+    expect(mod.state).to.equal(ModuleState.Loaded);
+  });
+
   it("exposes current state", () => {
     const mod = new Module(manifest, sinon.stub().resolves({}));
     expect(mod.state).to.equal(ModuleState.Loaded);

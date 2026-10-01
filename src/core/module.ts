@@ -163,6 +163,9 @@ export class Module {
   }
 
   async destroy(): Promise<void> {
+    // Entering the context of a module that holds no token creates one: a
+    // destroyed generation would come back to life for nothing to destroy.
+    if (this.lifecycle.state === ModuleState.Loaded) return;
     await RunWithModuleContext(this.executionContext, async () => {
       try {
         await this.lifecycle.destroy();
