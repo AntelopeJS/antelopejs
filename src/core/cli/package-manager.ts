@@ -34,6 +34,7 @@ interface InstallDependenciesParams {
   executable: string;
   hasLockfile: boolean;
   isLockfileFrozen: boolean;
+  isLockfileUpdated: boolean;
   isProduction: boolean;
   /**
    * Relax peer dependency resolution. Only npm understands this flag; the other
@@ -53,6 +54,16 @@ type InstallPackagesCommandBuilder = (params: InstallPackagesParams) => string;
 type InstallDependenciesCommandBuilder = (
   params: InstallDependenciesParams,
 ) => string;
+
+function getLockfileFlag({
+  isLockfileFrozen,
+  isLockfileUpdated,
+}: InstallDependenciesParams): string {
+  if (isLockfileFrozen) {
+    return "--frozen-lockfile";
+  }
+  return isLockfileUpdated ? "--no-frozen-lockfile" : "";
+}
 
 function compactCommand(command: string): string {
   return command.replace(/\s+/g, " ").trim();
@@ -80,13 +91,13 @@ const UNINSTALL_COMMANDS: Record<
   PackageManagerName,
   InstallDependenciesCommandBuilder
 > = {
-  pnpm: ({ executable, hasLockfile, isLockfileFrozen, isProduction }) =>
+  pnpm: (params) =>
     compactCommand(
-      `${executable} install ${isProduction ? "--prod" : ""} --ignore-workspace${isLockfileFrozen ? " --frozen-lockfile" : ""}${hasLockfile ? " --prefer-offline" : ""}`,
+      `${params.executable} install ${params.isProduction ? "--prod" : ""} --ignore-workspace ${getLockfileFlag(params)} ${params.hasLockfile ? "--prefer-offline" : ""}`,
     ),
-  yarn: ({ executable, hasLockfile, isLockfileFrozen, isProduction }) =>
+  yarn: (params) =>
     compactCommand(
-      `${executable} install ${isProduction ? "--production" : ""}${isLockfileFrozen ? " --frozen-lockfile" : ""}${hasLockfile ? " --prefer-offline" : ""}`,
+      `${params.executable} install ${params.isProduction ? "--production" : ""} ${getLockfileFlag(params)} ${params.hasLockfile ? "--prefer-offline" : ""}`,
     ),
   npm: ({
     executable,
@@ -245,6 +256,7 @@ export async function getInstallCommand(
     executable: packageManager.executable,
     hasLockfile,
     isLockfileFrozen: hasLockfile && lockfileMode === "frozen",
+    isLockfileUpdated: lockfileMode === "update",
     isProduction,
     useLegacyPeerDeps,
   });

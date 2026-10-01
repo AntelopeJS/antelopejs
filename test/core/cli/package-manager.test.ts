@@ -178,12 +178,13 @@ describe("Package Manager Utils", () => {
       const cases = [
         {
           command:
-            "corepack pnpm@10.6.5 install --ignore-workspace --prefer-offline",
+            "corepack pnpm@10.6.5 install --ignore-workspace --no-frozen-lockfile --prefer-offline",
           lockfile: "pnpm-lock.yaml",
           packageManager: "pnpm@10.6.5",
         },
         {
-          command: "corepack yarn@1.22.21 install --prefer-offline",
+          command:
+            "corepack yarn@1.22.21 install --no-frozen-lockfile --prefer-offline",
           lockfile: "yarn.lock",
           packageManager: "yarn@1.22.21",
         },
@@ -207,6 +208,36 @@ describe("Package Manager Utils", () => {
           await getInstallCommand("/project", false, fs, "update"),
         ).to.equal(testCase.command);
         await fs.rm(`/project/${testCase.lockfile}`);
+      }
+    });
+
+    it("disables frozen lockfiles in update mode without a lockfile", async () => {
+      sinon.stub(require("node:child_process"), "execSync").returns("0.20.0");
+      const fs = new InMemoryFileSystem();
+      const cases = [
+        {
+          command:
+            "corepack pnpm@10.6.5 install --ignore-workspace --no-frozen-lockfile",
+          packageManager: "pnpm@10.6.5",
+        },
+        {
+          command: "corepack yarn@1.22.21 install --no-frozen-lockfile",
+          packageManager: "yarn@1.22.21",
+        },
+        {
+          command: "corepack npm@10.2.4 install",
+          packageManager: "npm@10.2.4",
+        },
+      ];
+
+      for (const testCase of cases) {
+        await fs.writeFile(
+          "/project/package.json",
+          JSON.stringify({ packageManager: testCase.packageManager }),
+        );
+        expect(
+          await getInstallCommand("/project", false, fs, "update"),
+        ).to.equal(testCase.command);
       }
     });
 
