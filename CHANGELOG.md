@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.10.3
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.10.2...v1.10.3)
+
+### 🩹 Fixes
+
+- **cli:** Disable frozen lockfile explicitly when updating copied lockfiles ([#170](https://github.com/AntelopeJS/antelopejs/pull/170))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.10.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.10.1...v1.10.2)
