@@ -194,6 +194,86 @@ describe("Logging Utils", () => {
       );
     });
 
+    it("should serialize an error's cause one level deeper", () => {
+      const cause = new Error("connect ECONNREFUSED 127.0.0.1:59999");
+      cause.stack = undefined;
+      const error = new TypeError("fetch failed", { cause });
+      error.stack = undefined;
+
+      expect(serializeLogValue(error)).to.equal(
+        [
+          "fetch failed",
+          "  Caused by: connect ECONNREFUSED 127.0.0.1:59999",
+        ].join("\n"),
+      );
+    });
+
+    it("should serialize a cause that is not an error", () => {
+      const error = new Error("lookup failed", {
+        cause: { code: "ENOTFOUND" },
+      });
+      error.stack = undefined;
+
+      expect(serializeLogValue(error)).to.equal(
+        [
+          "lookup failed",
+          "  Caused by: {",
+          '      "code": "ENOTFOUND"',
+          "    }",
+        ].join("\n"),
+      );
+    });
+
+    it("should serialize a cause chain one level deeper each", () => {
+      const root = new Error("ENOENT");
+      root.stack = undefined;
+      const middle = new Error("read config", { cause: root });
+      middle.stack = undefined;
+      const outer = new Error("Failed to load module config", {
+        cause: middle,
+      });
+      outer.stack = undefined;
+
+      expect(serializeLogValue(outer)).to.equal(
+        [
+          "Failed to load module config",
+          "  Caused by: read config",
+          "      Caused by: ENOENT",
+        ].join("\n"),
+      );
+    });
+
+    it("should stop at a cause chain that loops", () => {
+      const first = new Error("first");
+      first.stack = undefined;
+      const second = new Error("second", { cause: first });
+      second.stack = undefined;
+      first.cause = second;
+
+      expect(serializeLogValue(first)).to.equal(
+        ["first", "  Caused by: second", "      Caused by: [Circular]"].join(
+          "\n",
+        ),
+      );
+    });
+
+    it("should serialize the cause of an error an AggregateError carries", () => {
+      const reason = new Error("socket hang up");
+      reason.stack = undefined;
+      const inner = new Error("fetch failed", { cause: reason });
+      inner.stack = undefined;
+      const aggregate = new AggregateError([inner], "reload failed");
+      aggregate.stack = undefined;
+
+      expect(serializeLogValue(aggregate)).to.equal(
+        [
+          "reload failed",
+          "  - fetch failed",
+          "      Caused by: socket hang up",
+        ].join("\n"),
+      );
+    });
+
     it("should handle circular references", () => {
       const value: any = {};
       value.self = value;

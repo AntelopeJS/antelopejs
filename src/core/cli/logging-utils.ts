@@ -14,6 +14,7 @@ const DEFAULT_TERMINAL_WIDTH = 80;
 const INNER_ERROR_MARKER = "  - ";
 const INNER_ERROR_INDENT = "    ";
 const CIRCULAR_ERROR = "[Circular]";
+const CAUSE_MARKER = "  Caused by: ";
 
 const COLOR_FUNCTIONS: Record<string, (text: string) => string> = {
   red: chalk.red,
@@ -140,6 +141,16 @@ function indentInnerError(text: string): string {
     .join("\n");
 }
 
+function indentCause(text: string): string {
+  return text
+    .split("\n")
+    .map(
+      (line, index) =>
+        `${index === 0 ? CAUSE_MARKER : INNER_ERROR_INDENT}${line}`,
+    )
+    .join("\n");
+}
+
 function serializeInnerError(value: unknown, ancestors: Set<Error>): string {
   if (!(value instanceof Error)) {
     return serializeLogValue(value);
@@ -149,24 +160,38 @@ function serializeInnerError(value: unknown, ancestors: Set<Error>): string {
     : serializeError(value, ancestors);
 }
 
+function aggregatedErrors(error: Error, ancestors: Set<Error>): string[] {
+  if (!(error instanceof AggregateError) || !Array.isArray(error.errors)) {
+    return [];
+  }
+  return error.errors.map((inner) =>
+    indentInnerError(serializeInnerError(inner, ancestors)),
+  );
+}
+
+function causeOf(error: Error, ancestors: Set<Error>): string[] {
+  if (error.cause === undefined) return [];
+  return [indentCause(serializeInnerError(error.cause, ancestors))];
+}
+
 /**
- * An error's stack, followed by every error it aggregates, one level deeper.
+ * An error's stack, followed by every error it aggregates and by its cause,
+ * one level deeper each.
  *
- * The stack of an `AggregateError` names none of the errors it carries, and
- * they are what explains the failure: a failed module reload, a failed
- * shutdown or a failed construction all report their causes that way.
+ * Neither shows in a stack, and they are what explains the failure: a failed
+ * module reload, shutdown or construction reports its errors as an
+ * `AggregateError`, and Node's `fetch failed` keeps the actual reason (a
+ * refused connection, a DNS or TLS failure) in its `cause`.
  */
 function serializeError(error: Error, ancestors: Set<Error>): string {
   const summary = error.stack ?? error.message;
-  if (!(error instanceof AggregateError) || !Array.isArray(error.errors)) {
-    return summary;
-  }
   ancestors.add(error);
-  const innerErrors = error.errors.map((inner) =>
-    indentInnerError(serializeInnerError(inner, ancestors)),
-  );
+  const details = [
+    ...aggregatedErrors(error, ancestors),
+    ...causeOf(error, ancestors),
+  ];
   ancestors.delete(error);
-  return [summary, ...innerErrors].join("\n");
+  return [summary, ...details].join("\n");
 }
 
 /**
