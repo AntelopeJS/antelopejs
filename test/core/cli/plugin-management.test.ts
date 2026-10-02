@@ -1,14 +1,24 @@
+import path from "node:path";
 import { expect } from "chai";
 
 import type { GlobalInstallation } from "../../../src/core/cli/global-package-manager";
+import type { ExecutableSource } from "../../../src/core/cli/executable-lookup";
 import {
-  formatPluginStatus,
+  describePluginStatus,
   getPluginStatuses,
+  renderPluginReports,
   runUpdate,
+  type PluginReport,
 } from "../../../src/core/cli/plugin-management";
+import {
+  findOfficialPlugin,
+  type OfficialPlugin,
+} from "../../../src/core/cli/plugin-registry";
+import { createMemoryUi } from "../../helpers/memory-ui";
 import {
   createGlobalRootResolver,
   createOutput,
+  createPackageReader,
   createProcessRunner,
   formatSpawnCalls,
 } from "../../helpers/cli-plugins";
@@ -16,6 +26,7 @@ import {
   createInstalledReader,
   createLocalReader,
   createShimReader,
+  CORE_VERSION,
   DMS_EXECUTABLE,
   GLOBAL_DMS,
   GLOBAL_ROOT,
@@ -34,6 +45,7 @@ describe("Official plugin statuses", () => {
     const statuses = await getPluginStatuses({
       lookupExecutable: async () => GLOBAL_DMS,
       packageLookup: { reader: createInstalledReader({ version: "2.0.1" }) },
+      coreVersion: CORE_VERSION,
     });
 
     expect(statuses).to.have.length(1);
@@ -41,7 +53,16 @@ describe("Official plugin statuses", () => {
     expect(statuses[0].executablePath).to.equal(DMS_EXECUTABLE);
     expect(statuses[0].version).to.equal("2.0.1");
     expect(statuses[0].source).to.equal("path");
-    expect(formatPluginStatus(statuses[0])).to.contain("global (2.0.1)");
+    expect(describePluginStatus(statuses[0])).to.deep.equal({
+      name: "dms",
+      package: "@antelopejs/dms-frontend",
+      description: "DMS frontend commands",
+      state: "compatible",
+      source: "global",
+      path: DMS_EXECUTABLE,
+      version: "2.0.1",
+      requiredCoreRange: null,
+    });
   });
 
   it("reads the version from the global root behind a shim", async () => {
@@ -67,9 +88,36 @@ describe("Official plugin statuses", () => {
     expect(statuses[0].source).to.equal("local");
     expect(statuses[0].executablePath).to.equal(LOCAL_DMS_EXECUTABLE);
     expect(statuses[0].version).to.equal("1.4.0");
-    expect(formatPluginStatus(statuses[0])).to.contain(
-      `local (${LOCAL_DMS_EXECUTABLE}) (1.4.0)`,
-    );
+    expect(describePluginStatus(statuses[0]).source).to.equal("local");
+  });
+
+  it("reports a plugin that does not support the running core", async () => {
+    const statuses = await getPluginStatuses({
+      lookupExecutable: async () => localExecutable(LOCAL_DMS_EXECUTABLE),
+      packageLookup: {
+        reader: createLocalReader({ version: "0.9.0", peerRange: "^2.0.0" }),
+      },
+      coreVersion: CORE_VERSION,
+    });
+
+    expect(describePluginStatus(statuses[0])).to.include({
+      state: "incompatible",
+      version: "0.9.0",
+      requiredCoreRange: "^2.0.0",
+    });
+  });
+
+  it("reports an unknown compatibility when the package.json is unreadable", async () => {
+    const statuses = await getPluginStatuses({
+      lookupExecutable: async () => GLOBAL_DMS,
+      packageLookup: { reader: createPackageReader({}) },
+      coreVersion: CORE_VERSION,
+    });
+
+    expect(describePluginStatus(statuses[0])).to.include({
+      state: "unknown",
+      version: null,
+    });
   });
 
   it("reports a missing plugin", async () => {
@@ -79,7 +127,85 @@ describe("Official plugin statuses", () => {
 
     expect(statuses[0].executablePath).to.equal(undefined);
     expect(statuses[0].version).to.equal(undefined);
-    expect(formatPluginStatus(statuses[0])).to.contain("not installed");
+    expect(describePluginStatus(statuses[0])).to.include({
+      state: "not-installed",
+      source: null,
+      path: null,
+      version: null,
+    });
+  });
+});
+
+describe("Official plugin table", () => {
+  const compatible = describePluginStatus({
+    plugin: findOfficialPlugin("dms") as OfficialPlugin,
+    executablePath: DMS_EXECUTABLE,
+    source: "path",
+    version: "1.0.0",
+    compatibility: { status: "compatible" },
+  });
+
+  function incompatible(source: ExecutableSource): PluginReport {
+    return describePluginStatus({
+      plugin: findOfficialPlugin("dms") as OfficialPlugin,
+      executablePath: path.join(process.cwd(), "node_modules/.bin/ajs-dms"),
+      source,
+      version: "0.9.0",
+      compatibility: { status: "incompatible", requiredRange: "^2.0.0" },
+    });
+  }
+
+  it("aligns plugins with their compatibility on a terminal", () => {
+    const { ui, result, feedback } = createMemoryUi({ isTerminal: true });
+
+    renderPluginReports([compatible], ui);
+
+    expect(result.text.split("\n")).to.deep.equal([
+      "PLUGIN  PACKAGE                   VERSION  SOURCE  STATUS      LOCATION",
+      `dms     @antelopejs/dms-frontend  1.0.0    global  compatible  ${DMS_EXECUTABLE}`,
+      "",
+    ]);
+    expect(feedback.text).to.equal("");
+  });
+
+  it("writes tab-separated rows when piped", () => {
+    const { ui, result } = createMemoryUi();
+
+    renderPluginReports(
+      [
+        describePluginStatus({
+          plugin: findOfficialPlugin("dms") as OfficialPlugin,
+        }),
+      ],
+      ui,
+    );
+
+    expect(result.text).to.equal(
+      "dms\t@antelopejs/dms-frontend\t-\t-\tnot installed\t-\n",
+    );
+  });
+
+  it("flags a project plugin that needs a newer core and how to fix it", () => {
+    const { ui, result, feedback } = createMemoryUi();
+
+    renderPluginReports([incompatible("local")], ui);
+
+    expect(result.text.split("\t").slice(3)).to.deep.equal([
+      "local",
+      "needs @antelopejs/core ^2.0.0",
+      `.${path.sep}${path.join("node_modules", ".bin", "ajs-dms")}\n`,
+    ]);
+    expect(feedback.text).to.equal(
+      "→ Update @antelopejs/dms-frontend in this project's package.json\n",
+    );
+  });
+
+  it("suggests ajs update for a global plugin that needs a newer core", () => {
+    const { ui, feedback } = createMemoryUi();
+
+    renderPluginReports([incompatible("path")], ui);
+
+    expect(feedback.text).to.equal("→ Run ajs update dms to update dms\n");
   });
 });
 
