@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import { Command, Option } from "commander";
 import type {
   ModuleSourceGit,
@@ -10,16 +9,37 @@ import type {
 import { ConfigLoader } from "../../../../config";
 import { Options } from "../../../common";
 import { NodeFileSystem } from "../../../../filesystem";
-import { displayBox, info, keyValue } from "../../../cli-ui";
+import {
+  getProcessUi,
+  pluralize,
+  writeData,
+  type TableColumn,
+  type Ui,
+} from "../../../output";
 import { resolveProjectContext } from "../../shared/project-command";
 
 interface ListOptions {
   project: string;
   env?: string;
+  json?: boolean;
 }
 
 interface ModuleEntry {
   source?: unknown;
+}
+
+interface ModuleListing {
+  name: string;
+  source: unknown;
+}
+
+interface SourceSummary {
+  kind: string;
+  reference: string;
+}
+
+interface ModuleRow extends SourceSummary {
+  name: string;
 }
 
 type KnownModuleSource =
@@ -27,91 +47,107 @@ type KnownModuleSource =
   | ModuleSourceGit
   | ModuleSourceLocal
   | ModuleSourceLocalFolder;
-type SourceDisplayHandler = (source: KnownModuleSource) => string[];
+type SourceSummarizer = (
+  source: KnownModuleSource,
+  moduleName: string,
+) => SourceSummary;
 
-const SOURCE_DISPLAY_HANDLERS: Record<string, SourceDisplayHandler> = {
-  package: (source) => {
-    const packageSource = source as ModuleSourcePackage;
-    return [
-      `  ${keyValue("Type", chalk.green("npm package"))}`,
-      `  ${keyValue("Package", packageSource.package)}`,
-      `  ${keyValue("Version", packageSource.version)}`,
-    ];
-  },
-  git: (source) => {
-    const gitSource = source as ModuleSourceGit;
-    const lines = [
-      `  ${keyValue("Type", chalk.blue("git repository"))}`,
-      `  ${keyValue("Remote", gitSource.remote)}`,
-    ];
-    if (gitSource.branch) {
-      lines.push(`  ${keyValue("Branch", gitSource.branch)}`);
-    }
-    if (gitSource.commit) {
-      lines.push(`  ${keyValue("Commit", gitSource.commit.substring(0, 8))}`);
-    }
-    return lines;
-  },
-  local: (source) => {
-    const localSource = source as ModuleSourceLocal;
-    return [
-      `  ${keyValue("Type", chalk.yellow("local directory"))}`,
-      `  ${keyValue("Path", localSource.path)}`,
-    ];
-  },
-  "local-folder": (source) => {
-    const localSource = source as ModuleSourceLocalFolder;
-    return [
-      `  ${keyValue("Type", chalk.yellow("local directory"))}`,
-      `  ${keyValue("Path", localSource.path)}`,
-    ];
-  },
+const UNKNOWN_SOURCE_KIND = "unknown";
+const MISSING_REFERENCE = "-";
+const SHORT_COMMIT_LENGTH = 8;
+const ADD_MODULE_COMMAND = "ajs project modules add <name>";
+
+function packageReference(
+  source: ModuleSourcePackage,
+  moduleName: string,
+): string {
+  return source.package === moduleName
+    ? source.version
+    : `${source.package}@${source.version}`;
+}
+
+function gitReference(source: ModuleSourceGit): string {
+  const branch = source.branch ? `branch ${source.branch}` : "";
+  const commit = source.commit
+    ? `commit ${source.commit.substring(0, SHORT_COMMIT_LENGTH)}`
+    : "";
+  return [source.remote, branch, commit].filter(Boolean).join(" ");
+}
+
+const SOURCE_SUMMARIZERS: Record<string, SourceSummarizer> = {
+  package: (source, moduleName) => ({
+    kind: "npm",
+    reference: packageReference(source as ModuleSourcePackage, moduleName),
+  }),
+  git: (source) => ({
+    kind: "git",
+    reference: gitReference(source as ModuleSourceGit),
+  }),
+  local: (source) => ({
+    kind: "local",
+    reference: (source as ModuleSourceLocal).path,
+  }),
+  "local-folder": (source) => ({
+    kind: "folder",
+    reference: (source as ModuleSourceLocalFolder).path,
+  }),
 };
 
-function createUnknownSourceLines(source: unknown): string[] {
-  return [
-    `  ${keyValue("Type", chalk.gray("unknown"))}`,
-    `  ${keyValue("Source", JSON.stringify(source))}`,
-  ];
-}
-
-function formatSourceLines(source: unknown): string[] {
-  if (!source || typeof source !== "object") {
-    return createUnknownSourceLines(source);
+function summarizeSource(listing: ModuleListing): SourceSummary {
+  const sourceType = (listing.source as KnownModuleSource | undefined)?.type;
+  const summarize = sourceType ? SOURCE_SUMMARIZERS[sourceType] : undefined;
+  if (!summarize) {
+    return {
+      kind: UNKNOWN_SOURCE_KIND,
+      reference: JSON.stringify(listing.source) ?? MISSING_REFERENCE,
+    };
   }
-  const sourceType = (source as { type?: string }).type;
-  if (!sourceType) {
-    return createUnknownSourceLines(source);
+  return summarize(listing.source as KnownModuleSource, listing.name);
+}
+
+const MODULE_COLUMNS: TableColumn<ModuleRow>[] = [
+  { header: "Name", value: (row) => row.name },
+  { header: "Source", value: (row) => row.kind },
+  { header: "Reference", value: (row) => row.reference },
+];
+
+function renderModuleList(
+  modules: ModuleListing[],
+  location: string,
+  ui: Ui,
+): void {
+  if (modules.length === 0) {
+    ui.message("info", `No modules in ${location}`);
+    ui.message("hint", `Add one with ${ADD_MODULE_COMMAND}`);
+    return;
   }
-  const handler = SOURCE_DISPLAY_HANDLERS[sourceType];
-  return handler
-    ? handler(source as KnownModuleSource)
-    : createUnknownSourceLines(source);
+  const rows = modules.map((listing) => ({
+    name: listing.name,
+    ...summarizeSource(listing),
+  }));
+  ui.message("info", `${pluralize(rows.length, "module")} in ${location}`);
+  ui.table(rows, MODULE_COLUMNS);
 }
 
-function createListTitle(projectName: string, env?: string): string {
-  const environmentSuffix = env ? ` (${chalk.yellow(env)})` : "";
-  return `📦 Installed Modules: ${chalk.cyan(projectName)}${environmentSuffix}`;
+async function listModules(options: ListOptions, ui: Ui): Promise<void> {
+  const { config, environment } = await resolveProjectContext(
+    options.project,
+    options.env,
+  );
+  const loader = new ConfigLoader(new NodeFileSystem());
+  const antelopeConfig = await loader.load(options.project, environment);
+  const modules = Object.entries(
+    antelopeConfig.modules as Record<string, ModuleEntry>,
+  ).map(([name, entry]) => ({ name, source: entry.source }));
+  writeData(ui, {
+    data: modules,
+    isJson: options.json,
+    render: (target) =>
+      renderModuleList(modules, `${config.name} (${environment})`, target),
+  });
 }
 
-function createEmptyContent(): string {
-  return `${chalk.dim("No modules installed in this project.")}\n\nUse ${chalk.bold("ajs project modules add <module>")} to add modules.`;
-}
-
-function appendModuleContent(
-  content: string,
-  moduleName: string,
-  moduleConfig: ModuleEntry,
-): string {
-  const lines = formatSourceLines(moduleConfig.source);
-  const moduleText = [
-    `${chalk.bold.blue("●")} ${chalk.bold(moduleName)}`,
-    ...lines,
-  ].join("\n");
-  return `${content}${moduleText}\n\n`;
-}
-
-export default function () {
+export default function (ui?: Ui) {
   return new Command("list")
     .alias("ls")
     .description(
@@ -125,40 +161,8 @@ export default function () {
         "Environment to list modules from",
       ).env("ANTELOPEJS_LAUNCH_ENV"),
     )
-    .action(async (options: ListOptions) => {
-      const { config, environment } = await resolveProjectContext(
-        options.project,
-        options.env,
-      );
-      console.log("");
-
-      const loader = new ConfigLoader(new NodeFileSystem());
-      const antelopeConfig = await loader.load(options.project, environment);
-      const moduleEntries = Object.entries(
-        antelopeConfig.modules as Record<string, ModuleEntry>,
-      );
-      const title = createListTitle(config.name, options.env);
-
-      if (moduleEntries.length === 0) {
-        await displayBox(createEmptyContent(), title, {
-          padding: 1,
-          borderColor: "yellow",
-        });
-        return;
-      }
-
-      let content = "";
-      for (const [moduleName, moduleConfig] of moduleEntries) {
-        content = appendModuleContent(content, moduleName, moduleConfig);
-      }
-
-      await displayBox(content.trim(), title, {
-        padding: 1,
-        borderColor: "green",
-      });
-
-      info(
-        `Found ${chalk.bold(moduleEntries.length)} module${moduleEntries.length === 1 ? "" : "s"} installed.`,
-      );
-    });
+    .addOption(Options.json)
+    .action((options: ListOptions) =>
+      listModules(options, ui ?? getProcessUi()),
+    );
 }

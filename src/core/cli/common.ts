@@ -84,6 +84,10 @@ export namespace Options {
     .env("ANTELOPEJS_VERBOSE")
     .preset(ALL_LOG_CHANNELS)
     .argParser((val) => val.replaceAll(/%/g, "*").split(","));
+  export const json = new Option(
+    "-j, --json",
+    "Print the result as JSON on stdout",
+  );
 }
 
 async function writeJsonFile(
