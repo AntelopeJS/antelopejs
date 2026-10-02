@@ -1,29 +1,13 @@
 import { Command } from "commander";
 
-import { Options } from "../common";
-import { getProcessUi, writeData, type Ui } from "../output";
-import {
-  describePluginStatus,
-  getPluginStatuses,
-  renderPluginReports,
-} from "../plugin-management";
-
-interface PluginsOptions {
-  json?: boolean;
-}
-
-async function listPlugins(options: PluginsOptions, ui: Ui): Promise<void> {
-  const reports = (await getPluginStatuses()).map(describePluginStatus);
-  writeData(ui, {
-    data: reports,
-    isJson: options.json,
-    render: (target) => renderPluginReports(reports, target),
-  });
-}
+import type { Ui } from "../output";
+import { Options } from "../options";
+import { lazyAction } from "../lazy-action";
 
 function listPluginsAction(ui?: Ui) {
-  return (_options: PluginsOptions, command: Command) =>
-    listPlugins(command.optsWithGlobals(), ui ?? getProcessUi());
+  return lazyAction(async () =>
+    (await import("./plugins-action")).listPluginsAction(ui),
+  );
 }
 
 export default function (ui?: Ui) {

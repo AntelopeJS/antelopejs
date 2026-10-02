@@ -2,7 +2,6 @@ import chalk from "chalk";
 import path from "node:path";
 import type * as TypeScript from "typescript";
 import { homedir } from "node:os";
-import { Option } from "commander";
 import { mkdirSync } from "node:fs";
 import { stat, writeFile as writeFileNode } from "node:fs/promises";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
@@ -62,32 +61,6 @@ export async function displayNonDefaultGitWarning(gitUrl: string) {
     await new Promise((resolve) => setTimeout(resolve, 3000));
     console.log(""); // Add a blank line after the warning
   }
-}
-
-const ALL_LOG_CHANNELS = "*";
-
-export namespace Options {
-  export const project = new Option(
-    "-p, --project <path>",
-    "Path to AntelopeJS project",
-  )
-    .default(path.resolve(process.cwd()))
-    .env("ANTELOPEJS_PROJECT")
-    .argParser((val) => path.resolve(val));
-  export const git = new Option("-g, --git <url>", "URL to git interfaces").env(
-    "ANTELOPEJS_GIT",
-  );
-  export const verbose = new Option(
-    "--verbose [=channels]",
-    "Enable verbose logging (TRACE level) for specific log channels (comma-separated).",
-  )
-    .env("ANTELOPEJS_VERBOSE")
-    .preset(ALL_LOG_CHANNELS)
-    .argParser((val) => val.replaceAll(/%/g, "*").split(","));
-  export const json = new Option(
-    "-j, --json",
-    "Print the result as JSON on stdout",
-  );
 }
 
 async function writeJsonFile(

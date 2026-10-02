@@ -20,16 +20,21 @@ import {
   expectProjectNotFound,
   expectUnknownEnvironment,
 } from "../../../../helpers/cli-error";
-import { projectModulesRemoveCommand } from "../../../../../src/core/cli/commands/project/modules/remove";
+import { projectModulesRemoveCommand } from "../../../../../src/core/cli/commands/project/modules/remove-action";
 import {
   handlers,
   projectModulesAddCommand,
-} from "../../../../../src/core/cli/commands/project/modules/add";
+} from "../../../../../src/core/cli/commands/project/modules/add-action";
+import { MODULE_SOURCE_MODES } from "../../../../../src/core/cli/commands/project/modules/add";
 
 describe("project modules behavior", () => {
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;
+  });
+
+  it("offers every add handler as a --mode choice", () => {
+    expect(MODULE_SOURCE_MODES).to.deep.equal([...handlers.keys()]);
   });
 
   it("errors when project config is missing", async () => {

@@ -13,12 +13,13 @@ import * as gitOps from "../../../../../../src/core/cli/git-operations";
 import { ModuleManifest } from "../../../../../../src/core/module-manifest";
 import { terminalDisplay } from "../../../../../../src/core/cli/terminal-display";
 import { DownloaderRegistry } from "../../../../../../src/core/downloaders/registry";
-import * as projectModulesAddModule from "../../../../../../src/core/cli/commands/project/modules/add";
-import cmdInstall, {
+import * as projectModulesAddModule from "../../../../../../src/core/cli/commands/project/modules/add-action";
+import cmdInstall from "../../../../../../src/core/cli/commands/project/modules/install";
+import {
   describeUnresolvedImport,
   resolveInstallIdentifier,
   unresolvedImportWarning,
-} from "../../../../../../src/core/cli/commands/project/modules/install";
+} from "../../../../../../src/core/cli/commands/project/modules/install-action";
 import {
   expectProjectNotFound,
   expectUnknownEnvironment,

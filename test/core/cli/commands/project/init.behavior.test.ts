@@ -10,8 +10,8 @@ import * as common from "../../../../../src/core/cli/common";
 import { getProcessUi } from "../../../../../src/core/cli/output";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
 import cmdInit from "../../../../../src/core/cli/commands/project/init";
-import * as moduleInitModule from "../../../../../src/core/cli/commands/module/init";
-import * as projectModulesAddModule from "../../../../../src/core/cli/commands/project/modules/add";
+import * as moduleInitModule from "../../../../../src/core/cli/commands/module/init-action";
+import * as projectModulesAddModule from "../../../../../src/core/cli/commands/project/modules/add-action";
 
 describe("project init behavior", () => {
   afterEach(() => {
