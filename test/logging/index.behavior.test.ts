@@ -8,6 +8,7 @@ import {
   levelMap,
   setupAntelopeProjectLogging,
 } from "../../src/logging";
+import { terminalDisplay } from "../../src/core/cli/terminal-display";
 
 interface CapturedOutput {
   stdout: string;
@@ -93,6 +94,20 @@ describe("Logging Module", () => {
 
       expect(output.stderr).to.contain("boom");
       expect(output.stdout).to.equal("");
+    });
+
+    it("should route ERROR to stderr while a spinner is active", () => {
+      setupAntelopeProjectLogging({ enabled: true });
+      sinon.stub(terminalDisplay, "isSpinnerActive").returns(true);
+      const logStub = sinon.stub(terminalDisplay, "log");
+
+      Logging.Error("boom");
+      Logging.Info("ready");
+
+      expect(logStub.firstCall.args[0]).to.contain("boom");
+      expect(logStub.firstCall.args[1]).to.equal(process.stderr);
+      expect(logStub.secondCall.args[0]).to.contain("ready");
+      expect(logStub.secondCall.args[1]).to.equal(process.stdout);
     });
   });
 

@@ -35,7 +35,7 @@ export async function validateProjectExists(
   const config = await readConfig(projectFolder);
   if (!config) {
     await checkSpinner.fail(`No project found at ${chalk.bold(projectFolder)}`);
-    console.log(
+    console.error(
       `Run ${chalk.cyan.bold(`ajs project init <project-name>`)} to create a new project.`,
     );
     process.exitCode = 1;

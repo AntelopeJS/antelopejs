@@ -4,7 +4,7 @@ import type { Options as BoxenOptions } from "boxen";
 
 import { isTerminalOutput } from "./logging-utils";
 
-const clearLine = () => process.stdout.write("\r\x1b[K");
+const clearLine = () => process.stderr.write("\r\x1b[K");
 const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const SPINNER_INTERVAL_MS = 80;
 
@@ -31,7 +31,7 @@ export class Spinner {
     this.interval = setInterval(() => {
       if (this.isRunning) {
         const spinnerChar = spinnerChars[this.currentCharIndex];
-        process.stdout.write(`\r${spinnerChar} ${this.text}`);
+        process.stderr.write(`\r${spinnerChar} ${this.text}`);
         this.currentCharIndex =
           (this.currentCharIndex + 1) % spinnerChars.length;
       }
@@ -50,7 +50,7 @@ export class Spinner {
       clearLine();
       stream.write(`${message}\n`);
       const spinnerChar = spinnerChars[this.currentCharIndex];
-      process.stdout.write(`${spinnerChar} ${this.text}`);
+      process.stderr.write(`${spinnerChar} ${this.text}`);
     } else {
       stream.write(`${message}\n`);
     }
@@ -61,28 +61,28 @@ export class Spinner {
     if (!this.isRunning) return;
     await this.stop();
     const message = text || this.text;
-    console.log(`${chalk.green.bold("✓")} ${message}`);
+    console.error(`${chalk.green.bold("✓")} ${message}`);
   }
 
   async fail(text?: string): Promise<void> {
     if (!this.isRunning) return;
     await this.stop();
     const message = text || this.text;
-    console.log(`${chalk.red.bold("✗")} ${chalk.red(message)}`);
+    console.error(`${chalk.red.bold("✗")} ${chalk.red(message)}`);
   }
 
   async info(text?: string): Promise<void> {
     if (!this.isRunning) return;
     await this.stop();
     const message = text || this.text;
-    console.log(`${chalk.blue.bold("ℹ")} ${message}`);
+    console.error(`${chalk.blue.bold("ℹ")} ${message}`);
   }
 
   async warn(text?: string): Promise<void> {
     if (!this.isRunning) return;
     await this.stop();
     const message = text || this.text;
-    console.log(`${chalk.yellow.bold("⚠")} ${message}`);
+    console.error(`${chalk.yellow.bold("⚠")} ${message}`);
   }
 
   async pause(): Promise<void> {
@@ -135,7 +135,7 @@ export async function displayBox(
 
 export function displayBanner(text: string, font?: figlet.FontName): void {
   const figletText = figlet.textSync(text, { font: font || "Standard" });
-  console.log(chalk.blue(figletText));
+  console.error(chalk.blue(figletText));
 }
 
 export function success(message: string): void {
@@ -143,11 +143,6 @@ export function success(message: string): void {
 }
 
 export function error(message: string | Error): void {
-  const text = message instanceof Error ? message.message : message;
-  console.log(`${chalk.red.bold("✗")} ${text}`);
-}
-
-function failure(message: string | Error): void {
   const text = message instanceof Error ? message.message : message;
   console.error(`${chalk.red.bold("✗")} ${text}`);
 }
@@ -160,11 +155,11 @@ export interface CommandOutput {
 export function warning(message: string | Error): void {
   const text =
     message instanceof Error ? (message.stack ?? message.message) : message;
-  console.log(`${chalk.yellow.bold("⚠")} ${text}`);
+  console.error(`${chalk.yellow.bold("⚠")} ${text}`);
 }
 
 export function info(message: string): void {
-  console.log(`${chalk.blue.bold("ℹ")} ${message}`);
+  console.error(`${chalk.blue.bold("ℹ")} ${message}`);
 }
 
 export function header(text: string): void {
@@ -182,5 +177,5 @@ export function keyValue(
 
 export const consoleOutput: CommandOutput = {
   info: (message: string) => info(message),
-  error: (message: string) => failure(message),
+  error: (message: string) => error(message),
 };

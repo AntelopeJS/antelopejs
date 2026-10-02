@@ -94,7 +94,7 @@ export default function () {
         error(
           `No project configuration found at: ${chalk.bold(options.project)}`,
         );
-        console.log(
+        console.error(
           `Make sure you're in an AntelopeJS project or use the --project option.`,
         );
         process.exitCode = 1;

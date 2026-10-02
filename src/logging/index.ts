@@ -132,13 +132,14 @@ function writeLogLine(log: Log, module?: string): void {
     module,
   );
 
+  const stream =
+    log.levelId >= levelMap.error ? process.stderr : process.stdout;
+
   if (terminalDisplay.isSpinnerActive()) {
-    terminalDisplay.log(message);
+    terminalDisplay.log(message, stream);
     return;
   }
 
-  const stream =
-    log.levelId >= levelMap.error ? process.stderr : process.stdout;
   stream.write(`${message}\n`);
 }
 
