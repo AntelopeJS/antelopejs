@@ -8,7 +8,9 @@ import * as command from "../../../../../src/core/cli/command";
 import * as gitOps from "../../../../../src/core/cli/git-operations";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
 import * as pkgManager from "../../../../../src/core/cli/package-manager";
-import { moduleInitCommand } from "../../../../../src/core/cli/commands/module/init";
+import cmdModuleInit, {
+  moduleInitCommand,
+} from "../../../../../src/core/cli/commands/module/init";
 
 describe("module init behavior", () => {
   afterEach(() => {
@@ -86,6 +88,33 @@ describe("module init behavior", () => {
 
       await moduleInitCommand(moduleDir, {}, false);
 
+      expect(process.exitCode).to.equal(1);
+    } finally {
+      cleanupTempDir(moduleDir);
+    }
+  });
+
+  it("refuses a non-empty directory when invoked through the CLI", async () => {
+    const moduleDir = makeTempDir();
+    try {
+      require("node:fs").writeFileSync(
+        require("node:path").join(moduleDir, "file.txt"),
+        "x",
+      );
+      sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+      const failStub = sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
+      const succeedStub = sinon
+        .stub(cliUi.Spinner.prototype, "succeed")
+        .resolves();
+      sinon.stub(cliUi, "error");
+      sinon.stub(console, "log");
+      const manifestStub = sinon.stub(gitOps, "loadManifestFromGit");
+
+      await cmdModuleInit().parseAsync(["node", "init", moduleDir]);
+
+      expect(failStub.calledWith("Directory is not empty")).to.equal(true);
+      expect(succeedStub.called).to.equal(false);
+      expect(manifestStub.called).to.equal(false);
       expect(process.exitCode).to.equal(1);
     } finally {
       cleanupTempDir(moduleDir);
