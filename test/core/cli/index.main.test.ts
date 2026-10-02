@@ -27,7 +27,7 @@ describe("CLI main guard", () => {
       return (originalReadFileSync as any)(...args);
     });
     sinon.stub(logging, "setupAntelopeProjectLogging");
-    sinon.stub(versionCheck, "warnIfOutdated").resolves();
+    sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
     sinon.stub(cliUi, "displayBanner");
     sinon.stub(Command.prototype, "getOptionValue").returns(undefined);
   }

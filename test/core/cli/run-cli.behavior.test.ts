@@ -21,13 +21,13 @@ describe("runCLI behavior", () => {
       .stub(fs, "readFileSync")
       .returns(JSON.stringify({ version: "0.0.0" }));
     sinon.stub(logging, "setupAntelopeProjectLogging");
-    sinon.stub(versionCheck, "warnIfOutdated").resolves();
-    sinon.stub(Command.prototype, "parseAsync").resolves();
+    sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
+    const parseStub = sinon.stub(Command.prototype, "parseAsync").resolves();
     const getOptionStub = sinon
       .stub(Command.prototype, "getOptionValue")
       .returns(undefined);
     sinon.stub(cliUi, "displayBanner");
-    return { getOptionStub };
+    return { getOptionStub, parseStub };
   }
 
   it("displays banner when no args are provided", async () => {
@@ -52,13 +52,52 @@ describe("runCLI behavior", () => {
     expect(addFilterStub.calledWith("cli", 0)).to.equal(true);
   });
 
+  it("reports an available update after the command and cancels the check", async () => {
+    process.argv = ["node", "ajs", "config", "show"];
+    const { parseStub } = stubCommon();
+    const cancel = sinon.stub();
+    const check = { latestVersion: "1.0.0", cancel };
+    (versionCheck.startUpdateCheck as sinon.SinonStub).returns(check);
+    const reportStub = sinon.stub(versionCheck, "reportAvailableUpdate");
+
+    await runCLI();
+
+    expect(reportStub.calledOnceWithExactly("0.0.0", check as any)).to.equal(
+      true,
+    );
+    expect(reportStub.calledAfter(parseStub)).to.equal(true);
+    expect(cancel.calledAfter(reportStub)).to.equal(true);
+  });
+
+  it("cancels the update check when the command fails", async () => {
+    process.argv = ["node", "ajs", "config", "show"];
+    stubCommon();
+    const cancel = sinon.stub();
+    (versionCheck.startUpdateCheck as sinon.SinonStub).returns({ cancel });
+    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
+      new Error("boom"),
+    );
+    const reportStub = sinon.stub(versionCheck, "reportAvailableUpdate");
+
+    let thrown: unknown;
+    try {
+      await runCLI();
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect((thrown as Error).message).to.equal("boom");
+    expect(reportStub.called).to.equal(false);
+    expect(cancel.calledOnce).to.equal(true);
+  });
+
   it("exits when ExitPromptError is thrown", async () => {
     process.argv = ["node", "ajs"];
     sinon
       .stub(fs, "readFileSync")
       .returns(JSON.stringify({ version: "0.0.0" }));
     sinon.stub(logging, "setupAntelopeProjectLogging");
-    sinon.stub(versionCheck, "warnIfOutdated").resolves();
+    sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
     sinon.stub(cliUi, "displayBanner");
     sinon
       .stub(Command.prototype, "parseAsync")
