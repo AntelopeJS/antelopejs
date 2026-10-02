@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { mergeDeep, set } from "../../src/utils/object";
+import { diffDeep, mergeDeep, set } from "../../src/utils/object";
 
 describe("Object Utilities", () => {
   describe("mergeDeep", () => {
@@ -27,6 +27,31 @@ describe("Object Utilities", () => {
       const result = mergeDeep(target, undefined, { b: 2 });
 
       expect(result).to.deep.equal({ a: 1, b: 2 });
+    });
+  });
+
+  describe("diffDeep", () => {
+    it("keeps only the keys whose value changed", () => {
+      const before = { a: 1, b: { c: 2, d: [1] }, e: "same" };
+      const after = { a: 1, b: { c: 3, d: [1] }, e: "same" };
+
+      expect(diffDeep(before, after)).to.deep.equal({ b: { c: 3 } });
+    });
+
+    it("compares arrays by content and keeps new keys", () => {
+      const before = { list: ["a"], nested: {} };
+      const after = { list: ["a", "b"], nested: { added: true } };
+
+      expect(diffDeep(before, after)).to.deep.equal({
+        list: ["a", "b"],
+        nested: { added: true },
+      });
+    });
+
+    it("returns an empty object when nothing changed", () => {
+      const value = { a: { b: [1, 2] } };
+
+      expect(diffDeep(value, structuredClone(value))).to.deep.equal({});
     });
   });
 
