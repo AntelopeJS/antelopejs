@@ -2,6 +2,7 @@ import sinon from "sinon";
 import { expect } from "chai";
 
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
+import { getProcessUi } from "../../../../../src/core/cli/output";
 import * as common from "../../../../../src/core/cli/common";
 import { ConfigLoader } from "../../../../../src/core/config";
 import * as command from "../../../../../src/core/cli/command";
@@ -264,7 +265,7 @@ describe("project modules behavior", () => {
       .callsFake(() => Promise.reject("boom"));
     sinon.stub(common, "writeConfig").resolves();
 
-    const errorStub = sinon.stub(cliUi, "error");
+    const errorStub = sinon.stub(getProcessUi(), "problem");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
@@ -275,7 +276,7 @@ describe("project modules behavior", () => {
       project: "/tmp/project",
     });
     expect(errorStub.called).to.equal(true);
-    const errorMsg = errorStub.firstCall.args[0] as string;
+    const errorMsg = errorStub.firstCall.args[0].title;
     expect(errorMsg).to.include("boom");
     expect(config.modules).to.not.have.property("pkg");
     expect(process.exitCode).to.equal(1);
@@ -288,7 +289,7 @@ describe("project modules behavior", () => {
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const errorStub = sinon.stub(cliUi, "error");
+    const errorStub = sinon.stub(getProcessUi(), "problem");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "success");
@@ -308,7 +309,7 @@ describe("project modules behavior", () => {
     }
 
     expect(errorStub.called).to.equal(true);
-    const errorMsg = errorStub.firstCall.args[0] as string;
+    const errorMsg = errorStub.firstCall.args[0].title;
     expect(errorMsg).to.include("boom");
   });
 
@@ -326,7 +327,7 @@ describe("project modules behavior", () => {
         });
       });
 
-    const errorStub = sinon.stub(cliUi, "error");
+    const errorStub = sinon.stub(getProcessUi(), "problem");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
@@ -367,7 +368,7 @@ describe("project modules behavior", () => {
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
     const infoStub = sinon.stub(cliUi, "info");
-    const errorStub = sinon.stub(cliUi, "error");
+    const errorStub = sinon.stub(getProcessUi(), "problem");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "displayBox").resolves();
@@ -415,7 +416,7 @@ describe("project modules behavior", () => {
       .stub(DownloaderRegistry.prototype, "load")
       .rejects(new Error("download failed"));
 
-    const errorStub = sinon.stub(cliUi, "error");
+    const errorStub = sinon.stub(getProcessUi(), "problem");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");

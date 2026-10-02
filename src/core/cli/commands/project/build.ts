@@ -3,7 +3,7 @@ import { Command, Option } from "commander";
 
 import { Options } from "../../common";
 import { build } from "../../../..";
-import { displayBox, error, info, success } from "../../cli-ui";
+import { displayBox, info, success } from "../../cli-ui";
 import { readBuildArtifact } from "../../../build/build-artifact";
 import {
   findProject,
@@ -90,17 +90,9 @@ export default function () {
       info(`Building AntelopeJS project`);
 
       const startedAt = Date.now();
-      try {
-        await build(commandOptions.project, context.environment, {
-          verbose: commandOptions.verbose,
-        });
-        await displayBuildSummary(
-          commandOptions.project,
-          Date.now() - startedAt,
-        );
-      } catch (err) {
-        error(err instanceof Error ? err : String(err));
-        process.exitCode = 1;
-      }
+      await build(commandOptions.project, context.environment, {
+        verbose: commandOptions.verbose,
+      });
+      await displayBuildSummary(commandOptions.project, Date.now() - startedAt);
     });
 }

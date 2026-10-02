@@ -1,7 +1,8 @@
 import { satisfies, validRange } from "semver";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
-import { ExecuteCMD } from "./cli/command";
+import { ExecError, ExecuteCMD } from "./cli/command";
+import { describeFailure } from "./cli/output";
 import { info as infoMessage, warning } from "./cli/cli-ui";
 import { parsePackageInfoOutput } from "./cli/package-manager";
 import type { ExpandedModuleConfig } from "./config/config-parser";
@@ -45,14 +46,10 @@ export function toFloatingSpec(version: string): string {
 export async function fetchDistTags(
   packageName: string,
 ): Promise<Record<string, string>> {
-  const result = await ExecuteCMD(
-    `${NPM_VIEW_COMMAND} ${packageName} ${DIST_TAGS_ARGUMENT}`,
-    {},
-  );
+  const command = `${NPM_VIEW_COMMAND} ${packageName} ${DIST_TAGS_ARGUMENT}`;
+  const result = await ExecuteCMD(command, {});
   if (result.code !== 0) {
-    throw new Error(
-      `Failed to fetch dist-tags of ${packageName}: ${result.stderr}`,
-    );
+    throw new ExecError({ ...result, command });
   }
   return JSON.parse(result.stdout) as Record<string, string>;
 }
@@ -74,14 +71,10 @@ export async function validateVersionSpec(
 }
 
 export async function fetchLatestVersion(packageName: string): Promise<string> {
-  const result = await ExecuteCMD(
-    `${NPM_VIEW_COMMAND} ${packageName} ${VERSION_ARGUMENT}`,
-    {},
-  );
+  const command = `${NPM_VIEW_COMMAND} ${packageName} ${VERSION_ARGUMENT}`;
+  const result = await ExecuteCMD(command, {});
   if (result.code !== 0) {
-    throw new Error(
-      `Failed to fetch version of ${packageName}: ${result.stderr}`,
-    );
+    throw new ExecError({ ...result, command });
   }
   return parsePackageInfoOutput(result.stdout);
 }
@@ -122,7 +115,7 @@ export async function checkOutdatedModules(
       const result = results[index];
       const packageName = (info.source as ModuleSourcePackage).package;
       if (result.status === "rejected") {
-        const reason = String(result.reason ?? "unknown error");
+        const reason = describeFailure(result.reason, false).title;
         const truncated =
           reason.length > MAX_REASON_LENGTH
             ? `${reason.slice(0, MAX_REASON_LENGTH)}…`

@@ -4,6 +4,7 @@ import type { ChildProcess } from "node:child_process";
 
 import {
   closeStdin,
+  ExecError,
   ExecuteCMD,
   nonInteractiveOptions,
 } from "../../../src/core/cli/command";
@@ -22,6 +23,7 @@ describe("Command Execution", () => {
 
       expect(options.cwd).to.equal("/tmp");
       expect(options.env?.CI).to.equal("1");
+      expect(options.env?.GIT_TERMINAL_PROMPT).to.equal("0");
       expect(options.env?.FOO).to.equal("bar");
     });
 
@@ -69,33 +71,44 @@ describe("Command Execution", () => {
       expect(result.stderr.trim()).to.equal("error");
     });
 
-    it("should return non-zero code on failure", async () => {
+    it("rejects with an ExecError carrying the command, its output and exit code", async () => {
       try {
-        await ExecuteCMD("exit 1", {});
-        expect.fail("Should have rejected");
-      } catch {
-        // expected
-      }
-    });
-
-    it("should reject with stderr when available", async () => {
-      try {
-        await ExecuteCMD("sh -c 'echo oops 1>&2; exit 1'", {});
+        await ExecuteCMD("sh -c 'echo partial; echo oops 1>&2; exit 3'", {});
         expect.fail("Should have rejected");
       } catch (err) {
-        expect(String(err)).to.include("oops");
-      }
-    });
-
-    it("defaults error code to 1 when missing", async () => {
-      try {
-        await ExecuteCMD(
-          "node -e \"process.kill(process.pid, 'SIGTERM')\"",
-          {},
+        expect(err).to.be.instanceOf(ExecError);
+        const failure = err as ExecError;
+        expect(failure.name).to.equal("ExecError");
+        expect(failure.command).to.equal(
+          "sh -c 'echo partial; echo oops 1>&2; exit 3'",
         );
+        expect(failure.stdout.trim()).to.equal("partial");
+        expect(failure.stderr.trim()).to.equal("oops");
+        expect(failure.exitCode).to.equal(3);
+        expect(failure.output.trim()).to.equal("oops");
+        expect(failure.message).to.equal(
+          "Command 'sh -c 'echo partial; echo oops 1>&2; exit 3'' failed with exit code 3",
+        );
+      }
+    });
+
+    it("falls back to stdout when the command wrote nothing on stderr", () => {
+      const failure = new ExecError({
+        command: "npm install",
+        stdout: "only stdout",
+        stderr: "",
+        code: 1,
+      });
+
+      expect(failure.output).to.equal("only stdout");
+    });
+
+    it("defaults the exit code to 1 when the command was killed", async () => {
+      try {
+        await ExecuteCMD("kill -TERM $$", {});
         expect.fail("Should have rejected");
       } catch (err) {
-        expect(String(err)).to.not.equal("");
+        expect((err as ExecError).exitCode).to.equal(1);
       }
     });
   });

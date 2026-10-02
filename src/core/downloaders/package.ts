@@ -5,12 +5,12 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import { maxSatisfying, satisfies, valid, validRange } from "semver";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
-import { ExecuteCMD } from "../cli/command";
+import { ExecError, ExecuteCMD } from "../cli/command";
 import type { CommandRunner } from "./types";
 import { ModuleCache } from "../module-cache";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import { installFailureMessage } from "./utils";
+import { installFailure } from "./utils";
 import type { DownloaderRegistry } from "./registry";
 import { getModuleCacheInstallCommand } from "../cli/package-manager";
 import { ModuleManifest, type ModulePackageJson } from "../module-manifest";
@@ -168,11 +168,10 @@ async function downloadPackage(
 ): Promise<string> {
   Logger.Trace(`Downloading package ${source.package}@${version}`);
   const tmp = await ctx.getTemp();
-  const result = await ctx.exec(`npm pack "${source.package}@${version}"`, {
-    cwd: tmp,
-  });
+  const packCommand = `npm pack "${source.package}@${version}"`;
+  const result = await ctx.exec(packCommand, { cwd: tmp });
   if (result.code !== 0) {
-    throw new Error(`Failed to pack npm package: ${result.stderr}`);
+    throw new ExecError({ ...result, command: packCommand });
   }
   const packOutput = result.stdout.trim().split("\n");
   const filename = packOutput[packOutput.length - 1].trim();
@@ -192,12 +191,9 @@ async function downloadPackage(
   const cmd = await ctx.getInstallCommand(folder);
   const installResult = await ctx.exec(cmd, { cwd: folder });
   if (installResult.code !== 0) {
-    throw new Error(
-      installFailureMessage(
-        `${source.package}@${version}`,
-        cmd,
-        installResult.stderr || installResult.stdout,
-      ),
+    throw installFailure(
+      `${source.package}@${version}`,
+      new ExecError({ ...installResult, command: cmd }),
     );
   }
   await cache.commitVersion(source.package, manifest.version);

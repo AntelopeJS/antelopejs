@@ -2,7 +2,8 @@ import chalk from "chalk";
 import { Command, Option } from "commander";
 
 import { Options } from "../../common";
-import { displayBox, error, info } from "../../cli-ui";
+import { displayBox, info } from "../../cli-ui";
+import { reportFailure } from "../../output";
 import { startFailureExitCode, startFromBuild } from "../../production-start";
 import { type BuildLaunchOptions, DEFAULT_ENV } from "../../../..";
 import {
@@ -91,7 +92,7 @@ export default function () {
           help: false,
         });
       } catch (err) {
-        error(err instanceof Error ? err : String(err));
+        reportFailure(err);
         process.exitCode = startFailureExitCode(err);
       }
     });

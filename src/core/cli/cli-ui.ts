@@ -150,8 +150,7 @@ export interface CommandOutput {
 }
 
 export function warning(message: string | Error): void {
-  const text =
-    message instanceof Error ? (message.stack ?? message.message) : message;
+  const text = message instanceof Error ? message.message : message;
   getProcessUi().message("warn", text);
 }
 

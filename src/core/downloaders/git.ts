@@ -2,7 +2,7 @@ import * as path from "node:path";
 import { Logging } from "@antelopejs/interface-core/logging";
 import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 
-import { ExecuteCMD } from "../cli/command";
+import { ExecError, ExecuteCMD } from "../cli/command";
 import { runInstallCommands } from "./utils";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
@@ -46,6 +46,9 @@ function validateSource(source: ModuleSourceGit): void {
 }
 
 function toCommandResult(err: unknown): CommandResult {
+  if (err instanceof ExecError) {
+    return { stdout: err.stdout, stderr: err.stderr, code: err.exitCode };
+  }
   return { stdout: "", stderr: String(err), code: 1 };
 }
 
@@ -56,8 +59,8 @@ async function runGitCommand(
 ): Promise<CommandResult> {
   const result = await exec(command, { cwd }).catch(toCommandResult);
   if (result.code !== 0) {
-    await terminalDisplay.failSpinner(`'${command}' failed: ${result.stderr}`);
-    throw new Error(`'${command}' failed: ${result.stderr}`);
+    await terminalDisplay.failSpinner(`'${command}' failed`);
+    throw new ExecError({ ...result, command });
   }
   return result;
 }

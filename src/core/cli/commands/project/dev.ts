@@ -6,7 +6,8 @@ import { type ChildProcess, fork } from "node:child_process";
 
 import { Options } from "../../common";
 import { ModuleCache } from "../../../module-cache";
-import { displayBox, error, info, warning } from "../../cli-ui";
+import { displayBox, info, warning } from "../../cli-ui";
+import { reportFailure } from "../../output";
 import startAntelope, { DEFAULT_ENV, type LaunchOptions } from "../../../..";
 import {
   DEFAULT_SHUTDOWN_TIMEOUT_MS,
@@ -293,8 +294,7 @@ async function executeDevCommand(
     }
     await launchDirect(runOptions);
   } catch (err) {
-    error(err instanceof Error ? err : String(err));
-    process.exitCode = 1;
+    process.exitCode = reportFailure(err);
   }
 }
 

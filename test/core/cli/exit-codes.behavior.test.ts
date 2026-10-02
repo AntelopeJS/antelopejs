@@ -7,6 +7,7 @@ import { existsSync } from "node:fs";
 import * as logging from "../../../src/logging";
 import { runCLI } from "../../../src/core/cli/index";
 import * as cliUi from "../../../src/core/cli/cli-ui";
+import { runWithErrorBoundary } from "../../../src/core/cli/output";
 import { readConfig, writeConfig } from "../../../src/core/cli/common";
 import * as versionCheck from "../../../src/core/cli/version-check";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
@@ -58,7 +59,7 @@ describe("CLI exit code contract", () => {
 
   async function run(args: string[]): Promise<number | string | undefined> {
     process.argv = ["node", "ajs", ...args];
-    await runCLI(args);
+    await runWithErrorBoundary(() => runCLI(args));
     return process.exitCode ?? SUCCESS_EXIT_CODE;
   }
 

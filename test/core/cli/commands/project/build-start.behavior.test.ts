@@ -3,6 +3,7 @@ import { expect } from "chai";
 
 import * as indexModule from "../../../../../src/index";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
+import { getProcessUi } from "../../../../../src/core/cli/output";
 import * as common from "../../../../../src/core/cli/common";
 import cmdBuild from "../../../../../src/core/cli/commands/project/build";
 import cmdStart from "../../../../../src/core/cli/commands/project/start";
@@ -110,7 +111,7 @@ describe("project build/start behavior", () => {
     stubProjectSpinners();
     sinon.stub(cliUi, "displayBox").resolves();
     sinon.stub(cliUi, "info");
-    const errorStub = sinon.stub(cliUi, "error");
+    const errorStub = sinon.stub(getProcessUi(), "problem");
 
     const cmd = cmdStart();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
@@ -151,7 +152,7 @@ describe("project build/start behavior", () => {
     stubProjectSpinners();
     sinon.stub(cliUi, "displayBox").resolves();
     sinon.stub(cliUi, "info");
-    const errorStub = sinon.stub(cliUi, "error");
+    const errorStub = sinon.stub(getProcessUi(), "problem");
 
     const cmd = cmdStart();
     await cmd.parseAsync([

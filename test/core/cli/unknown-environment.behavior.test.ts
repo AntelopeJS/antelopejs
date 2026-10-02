@@ -15,7 +15,10 @@ import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { findConfigPath } from "../../../src/core/config/config-paths";
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { USAGE_EXIT_CODE } from "../../../src/core/cli/exit-codes";
-import { getProcessUi } from "../../../src/core/cli/output";
+import {
+  getProcessUi,
+  runWithErrorBoundary,
+} from "../../../src/core/cli/output";
 
 const UNKNOWN_ENVIRONMENT = "staging";
 
@@ -97,7 +100,7 @@ describe("unknown --env", () => {
       UNKNOWN_ENVIRONMENT,
     ];
     process.argv = ["node", "ajs", ...fullArgs];
-    await runCLI(fullArgs);
+    await runWithErrorBoundary(() => runCLI(fullArgs));
     return process.exitCode;
   }
 

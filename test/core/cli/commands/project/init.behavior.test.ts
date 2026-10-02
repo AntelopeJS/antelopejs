@@ -7,6 +7,7 @@ import { readFile } from "node:fs/promises";
 
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../src/core/cli/common";
+import { getProcessUi } from "../../../../../src/core/cli/output";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
 import cmdInit from "../../../../../src/core/cli/commands/project/init";
 import * as moduleInitModule from "../../../../../src/core/cli/commands/module/init";
@@ -299,7 +300,8 @@ describe("project init behavior", () => {
       sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
       sinon.stub(cliUi.Spinner.prototype, "update").resolves();
       sinon.stub(cliUi, "displayBox").resolves();
-      const errorStub = sinon.stub(cliUi, "error");
+      sinon.stub(cliUi, "error");
+      const problemStub = sinon.stub(getProcessUi(), "problem");
       sinon.stub(cliUi, "info");
       sinon.stub(cliUi, "warning");
 
@@ -307,7 +309,8 @@ describe("project init behavior", () => {
       await cmd.parseAsync(["node", "test", projectDir]);
 
       expect(addStub.called).to.equal(false);
-      expect(String(errorStub.firstCall.args[0])).to.include("boom");
+      expect(problemStub.calledOnce).to.equal(true);
+      expect(problemStub.firstCall.args[0].title).to.equal("boom");
       expect(process.exitCode).to.equal(1);
     } finally {
       cleanupTempDir(tempRoot);

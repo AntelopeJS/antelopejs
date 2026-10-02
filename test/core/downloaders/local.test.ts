@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { ExecError } from "../../../src/core/cli/command";
 import { writeFileSync } from "node:fs";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
@@ -153,7 +154,10 @@ describe("LocalDownloader", () => {
       await registry.load("/project", cache, source);
       expect.fail("Expected failure");
     } catch (err) {
-      expect(String(err)).to.include("stdout fail");
+      const failure = (err as Error).cause as ExecError;
+      expect(failure).to.be.instanceOf(ExecError);
+      expect(failure.stdout).to.equal("stdout fail");
+      expect(failure.output).to.equal("stdout fail");
     }
   });
 

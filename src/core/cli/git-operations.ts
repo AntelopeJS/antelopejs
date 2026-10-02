@@ -4,8 +4,15 @@ import { stat } from "node:fs/promises";
 import fs, { mkdirSync, rmSync } from "node:fs";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
 
-import { ExecuteCMD } from "./command";
+import { ExecError, ExecuteCMD } from "./command";
 import { acquireLock } from "../../utils/lock";
+
+async function runGitCommand(command: string, cwd: string): Promise<void> {
+  const result = await ExecuteCMD(command, { cwd });
+  if (result.code !== 0) {
+    throw new ExecError({ ...result, command });
+  }
+}
 
 async function setupGit(
   cachePath: string,
@@ -13,35 +20,17 @@ async function setupGit(
   folderName: string,
   branch?: string,
 ) {
-  const result = await ExecuteCMD(
-    `git clone --filter=blob:none --no-checkout --depth 1 --sparse ${branch ? `--branch ${branch}` : ""} ${git} ${folderName}`,
-    {
-      cwd: cachePath,
-    },
+  const branchArgument = branch ? `--branch ${branch} ` : "";
+  await runGitCommand(
+    `git clone --filter=blob:none --no-checkout --depth 1 --sparse ${branchArgument}${git} ${folderName}`,
+    cachePath,
   );
-
-  if (result.code !== 0) {
-    throw new Error(`Failed to clone repository: ${result.stderr}`);
-  }
-
-  const sparseResult = await ExecuteCMD(
+  const folderPath = path.join(cachePath, folderName);
+  await runGitCommand(
     "git sparse-checkout add manifest.json --skip-checks",
-    {
-      cwd: path.join(cachePath, folderName),
-    },
+    folderPath,
   );
-
-  if (sparseResult.code !== 0) {
-    throw new Error(`Failed to setup sparse checkout: ${sparseResult.stderr}`);
-  }
-
-  const checkoutResult = await ExecuteCMD("git checkout", {
-    cwd: path.join(cachePath, folderName),
-  });
-
-  if (checkoutResult.code !== 0) {
-    throw new Error(`Failed to checkout: ${checkoutResult.stderr}`);
-  }
+  await runGitCommand("git checkout", folderPath);
 }
 
 async function loadGit(git: string, branch?: string): Promise<string> {

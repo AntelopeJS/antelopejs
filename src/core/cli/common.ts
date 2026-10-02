@@ -64,6 +64,8 @@ export async function displayNonDefaultGitWarning(gitUrl: string) {
   }
 }
 
+const ALL_LOG_CHANNELS = "*";
+
 export namespace Options {
   export const project = new Option(
     "-p, --project <path>",
@@ -80,6 +82,7 @@ export namespace Options {
     "Enable verbose logging (TRACE level) for specific log channels (comma-separated).",
   )
     .env("ANTELOPEJS_VERBOSE")
+    .preset(ALL_LOG_CHANNELS)
     .argParser((val) => val.replaceAll(/%/g, "*").split(","));
 }
 

@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { Command, CommanderError } from "commander";
+import { Command } from "commander";
 
 import { Options } from "./common";
 import { displayBanner } from "./cli-ui";
@@ -9,9 +9,7 @@ import cmdUpdate from "./commands/update";
 import cmdPlugins from "./commands/plugins";
 import cmdProject from "./commands/project";
 import { getCoreVersion } from "./core-version";
-import { isPromptCancellation, reportCancellation } from "./cancellation";
-import { CliError, reportCliError } from "./output";
-import { SUCCESS_EXIT_CODE, USAGE_EXIT_CODE } from "./exit-codes";
+import { formatUsageErrors } from "./usage-errors";
 import { reportAvailableUpdate, startUpdateCheck } from "./version-check";
 import { formatOfficialPluginsHelp } from "./plugin-registry";
 import {
@@ -73,16 +71,6 @@ function applyVerboseChannels(program: Command): void {
   }
 }
 
-function throwOnCommanderExit(command: Command): void {
-  command.exitOverride();
-  command.commands.forEach(throwOnCommanderExit);
-}
-
-function applyCommanderExitCode(error: CommanderError): void {
-  process.exitCode =
-    error.exitCode === SUCCESS_EXIT_CODE ? SUCCESS_EXIT_CODE : USAGE_EXIT_CODE;
-}
-
 // Main CLI function
 export const runCLI = async () => {
   const updateCheck = startUpdateCheck();
@@ -98,27 +86,13 @@ export const runCLI = async () => {
     }
 
     const program = createCLI(version);
-    throwOnCommanderExit(program);
+    formatUsageErrors(program);
 
     // Parse arguments
     await program.parseAsync();
 
     applyVerboseChannels(program);
     await reportAvailableUpdate(version, updateCheck);
-  } catch (error) {
-    if (isPromptCancellation(error)) {
-      reportCancellation();
-      return;
-    }
-    if (error instanceof CommanderError) {
-      applyCommanderExitCode(error);
-      return;
-    }
-    if (error instanceof CliError) {
-      reportCliError(error);
-      return;
-    }
-    throw error;
   } finally {
     updateCheck?.cancel();
   }

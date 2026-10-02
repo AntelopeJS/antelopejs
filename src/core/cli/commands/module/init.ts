@@ -26,12 +26,38 @@ import {
 } from "../../package-manager";
 import {
   copyTemplate,
+  type GitManifest,
   loadInterfacesFromGit,
   loadManifestFromGit,
 } from "../../git-operations";
+import { CliError, translateFailure } from "../../output";
 
 interface InitOptions {
   git?: string;
+}
+
+const CHECK_REPOSITORY_FIX =
+  "Check the URL passed with --git or saved with ajs config set git";
+const RESET_REPOSITORY_FIX =
+  "Or go back to the default repository: ajs config reset";
+
+async function loadTemplates(git: string): Promise<GitManifest> {
+  try {
+    return await loadManifestFromGit(git);
+  } catch (err) {
+    const cause = translateFailure(err);
+    throw new CliError(
+      {
+        title: `Could not fetch templates from ${git}`,
+        reason: cause?.reason ?? cause?.title,
+        fixes: [
+          ...(cause?.fixes ?? [CHECK_REPOSITORY_FIX]),
+          RESET_REPOSITORY_FIX,
+        ],
+      },
+      { cause: err },
+    );
+  }
 }
 
 export async function moduleInitCommand(
@@ -74,7 +100,7 @@ export async function moduleInitCommand(
   await displayNonDefaultGitWarning(git);
 
   try {
-    const gitManifest = await loadManifestFromGit(git);
+    const gitManifest = await loadTemplates(git);
     await gitSpinner.succeed(`Found ${gitManifest.templates.length} templates`);
 
     // Display welcome message
@@ -254,17 +280,10 @@ export async function moduleInitCommand(
       { borderColor: "green" },
     );
   } catch (err) {
-    if (isPromptCancellation(err)) {
-      throw err;
+    if (!isPromptCancellation(err)) {
+      await gitSpinner.fail("Failed to initialize your module");
     }
-    await gitSpinner.fail("Failed to initialize your module");
-    if (fromProject) {
-      // When called from project init, re-throw the error so it can be handled there
-      throw err;
-    }
-    error(err instanceof Error ? err : `Unknown error: ${String(err)}`);
-    process.exitCode = 1;
-    return;
+    throw err;
   }
 }
 
