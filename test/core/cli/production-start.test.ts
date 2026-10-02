@@ -7,6 +7,7 @@ import { BuildModuleSetChangedError } from "../../../src/core/runtime/build-refr
 import {
   BUILD_MODULE_SET_CHANGED_EXIT_CODE,
   FAILURE_EXIT_CODE,
+  USAGE_EXIT_CODE,
 } from "../../../src/core/cli/exit-codes";
 import {
   parseProductionStartArgs,
@@ -77,6 +78,20 @@ describe("production start", () => {
     expect(() => parseProductionStartArgs(["--concurrency", "0"])).to.throw(
       "Concurrency must be a positive integer",
     );
+  });
+
+  it("reports invalid arguments as a usage error without starting", async () => {
+    const launchStub = sinon.stub(projectLaunch, "launchFromBuild").resolves();
+    const stderrStub = sinon.stub(process.stderr, "write").returns(true);
+
+    await runProductionStart(["--concurrency", "0"]);
+    stderrStub.restore();
+
+    expect(launchStub.called).to.equal(false);
+    expect(String(stderrStub.firstCall.args[0])).to.include(
+      "Concurrency must be a positive integer",
+    );
+    expect(process.exitCode).to.equal(USAGE_EXIT_CODE);
   });
 
   it("supports verbose without an explicit channel list", () => {

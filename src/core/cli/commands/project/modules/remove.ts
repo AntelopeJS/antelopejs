@@ -5,6 +5,7 @@ import { ConfigLoader } from "../../../../config";
 import { NodeFileSystem } from "../../../../filesystem";
 import { error, info, success, warning } from "../../../cli-ui";
 import { Options, readConfig, writeConfig } from "../../../common";
+import { FAILURE_EXIT_CODE } from "../../../exit-codes";
 
 interface RemoveOptions {
   project: string;
@@ -24,7 +25,7 @@ export async function projectModulesRemoveCommand(
     info(
       `Make sure you're in an AntelopeJS project or use the --project option.`,
     );
-    process.exitCode = 1;
+    process.exitCode = FAILURE_EXIT_CODE;
     return;
   }
 
@@ -36,13 +37,13 @@ export async function projectModulesRemoveCommand(
     error(
       chalk.red`Environment ${options.env || "default"} not found in project config`,
     );
-    process.exitCode = 1;
+    process.exitCode = FAILURE_EXIT_CODE;
     return;
   }
 
   if (!env.modules || Object.keys(env.modules).length === 0) {
     error(chalk.red`No modules installed in this environment`);
-    process.exitCode = 1;
+    process.exitCode = FAILURE_EXIT_CODE;
     return;
   }
 
@@ -73,6 +74,7 @@ export async function projectModulesRemoveCommand(
           .map((m) => chalk.bold(m))
           .join(", ")}`,
       );
+      process.exitCode = FAILURE_EXIT_CODE;
       return;
     }
 
@@ -82,6 +84,7 @@ export async function projectModulesRemoveCommand(
           .map((m) => chalk.bold(m))
           .join(", ")}`,
       );
+      process.exitCode = FAILURE_EXIT_CODE;
       return;
     }
 
@@ -125,6 +128,7 @@ export async function projectModulesRemoveCommand(
     });
   } else {
     error(chalk.red`No modules were removed from the project`);
+    process.exitCode = FAILURE_EXIT_CODE;
   }
 
   // Report module dependencies that might be affected

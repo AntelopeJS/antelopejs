@@ -3,6 +3,8 @@ import { Command, Option } from "commander";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
 import { ConfigLoader } from "../../../../config";
+import { FAILURE_EXIT_CODE } from "../../../exit-codes";
+import type { ExpandedModuleConfig } from "../../../../config/config-parser";
 import { NodeFileSystem } from "../../../../filesystem";
 import { Options, readConfig, writeConfig } from "../../../common";
 import { error as errorUI, info, success, warning } from "../../../cli-ui";
@@ -38,7 +40,6 @@ function applyUpdates(
 function displayResults(
   outdated: OutdatedModule[],
   options: UpdateOptions,
-  notFound: string[],
 ): void {
   if (options.dryRun) {
     warning(chalk.yellow`Dry run - no changes were made`);
@@ -56,16 +57,36 @@ function displayResults(
     success(chalk.green`All modules are up to date!`);
   }
 
-  if (notFound.length > 0) {
-    warning(chalk.yellow`${notFound.length} module(s) not found in project:`);
-    for (const name of notFound) {
-      info(`  ${chalk.yellow("•")} ${chalk.bold(name)}`);
-    }
-  }
-
   if (outdated.length > 0 && !options.dryRun) {
     info(`Run ${chalk.bold("ajs project run")} to use the updated modules.`);
   }
+}
+
+function selectRequestedModules(
+  projectModules: Record<string, ExpandedModuleConfig>,
+  requested: string[],
+): Record<string, ExpandedModuleConfig> | undefined {
+  if (requested.length === 0) {
+    return projectModules;
+  }
+  const notFound = requested.filter((name) => !projectModules[name]);
+  if (notFound.length > 0) {
+    errorUI(
+      chalk.red`The following modules are not present in the project: ${notFound
+        .map((name) => chalk.bold(name))
+        .join(", ")}`,
+    );
+    info(
+      `Available modules: ${Object.keys(projectModules)
+        .map((name) => chalk.bold(name))
+        .join(", ")}`,
+    );
+    process.exitCode = FAILURE_EXIT_CODE;
+    return undefined;
+  }
+  return Object.fromEntries(
+    requested.map((name) => [name, projectModules[name]]),
+  );
 }
 
 export default function () {
@@ -99,7 +120,7 @@ export default function () {
         info(
           `Make sure you're in an AntelopeJS project or use the --project option.`,
         );
-        process.exitCode = 1;
+        process.exitCode = FAILURE_EXIT_CODE;
         return;
       }
 
@@ -108,12 +129,13 @@ export default function () {
         errorUI(
           chalk.red`Environment ${options.env || "default"} not found in project config`,
         );
-        process.exitCode = 1;
+        process.exitCode = FAILURE_EXIT_CODE;
         return;
       }
 
       if (!env.modules || Object.keys(env.modules).length === 0) {
         errorUI(chalk.red`No modules installed in this environment`);
+        process.exitCode = FAILURE_EXIT_CODE;
         return;
       }
 
@@ -123,14 +145,15 @@ export default function () {
         options.env || "default",
       );
 
-      let outdated = await checkOutdatedModules(antelopeConfig.modules);
-      let notFound: string[] = [];
-
-      if (modules.length > 0) {
-        const requestedSet = new Set(modules);
-        notFound = modules.filter((m) => !antelopeConfig.modules[m]);
-        outdated = outdated.filter((entry) => requestedSet.has(entry.name));
+      const selectedModules = selectRequestedModules(
+        antelopeConfig.modules,
+        modules,
+      );
+      if (!selectedModules) {
+        return;
       }
+
+      const outdated = await checkOutdatedModules(selectedModules);
 
       if (outdated.length > 0 && !options.dryRun) {
         applyUpdates(
@@ -141,6 +164,6 @@ export default function () {
         await writeConfig(options.project, config);
       }
 
-      displayResults(outdated, options, notFound);
+      displayResults(outdated, options);
     });
 }

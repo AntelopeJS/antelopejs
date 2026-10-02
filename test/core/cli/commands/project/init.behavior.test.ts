@@ -2,6 +2,7 @@ import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
 import inquirer from "inquirer";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
@@ -308,6 +309,104 @@ describe("project init behavior", () => {
       expect(addStub.called).to.equal(false);
       expect(String(errorStub.firstCall.args[0])).to.include("boom");
       expect(process.exitCode).to.equal(1);
+    } finally {
+      cleanupTempDir(tempRoot);
+    }
+  });
+
+  function stubInitDisplay(): sinon.SinonStub {
+    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+    sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
+    sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
+    sinon.stub(cliUi.Spinner.prototype, "update").resolves();
+    sinon.stub(cliUi, "displayBox").resolves();
+    sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "warning");
+    return sinon.stub(cliUi, "error");
+  }
+
+  it("writes the project configuration only once the module is created", async () => {
+    const tempRoot = makeTempDir();
+    const projectDir = `${tempRoot}/my-project`;
+    try {
+      sinon.stub(common, "readConfig").resolves(undefined);
+      const writeStub = sinon.stub(common, "writeConfig").resolves();
+      const promptStub = sinon.stub(inquirer, "prompt");
+      promptStub.onCall(0).resolves({ name: "my-project" });
+      promptStub.onCall(1).resolves({ blmodule: false });
+      const moduleInitStub = sinon
+        .stub(moduleInitModule, "moduleInitCommand")
+        .resolves();
+      const addStub = sinon
+        .stub(projectModulesAddModule, "projectModulesAddCommand")
+        .resolves();
+      stubInitDisplay();
+
+      await cmdInit().parseAsync(["node", "test", projectDir]);
+
+      expect(writeStub.calledAfter(moduleInitStub)).to.equal(true);
+      expect(addStub.calledAfter(writeStub)).to.equal(true);
+    } finally {
+      cleanupTempDir(tempRoot);
+    }
+  });
+
+  it("leaves nothing behind when the module prompts are cancelled", async () => {
+    const tempRoot = makeTempDir();
+    const projectDir = `${tempRoot}/my-project`;
+    try {
+      sinon.stub(common, "readConfig").resolves(undefined);
+      const writeStub = sinon.stub(common, "writeConfig").resolves();
+      const promptStub = sinon.stub(inquirer, "prompt");
+      promptStub.onCall(0).resolves({ name: "my-project" });
+      promptStub.onCall(1).resolves({ blmodule: false });
+      const cancellation = { name: "ExitPromptError" };
+      sinon.stub(moduleInitModule, "moduleInitCommand").rejects(cancellation);
+      const addStub = sinon
+        .stub(projectModulesAddModule, "projectModulesAddCommand")
+        .resolves();
+      const errorStub = stubInitDisplay();
+
+      let caught: unknown;
+      try {
+        await cmdInit().parseAsync(["node", "test", projectDir]);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).to.equal(cancellation);
+      expect(writeStub.called).to.equal(false);
+      expect(addStub.called).to.equal(false);
+      expect(errorStub.called).to.equal(false);
+      expect(existsSync(projectDir)).to.equal(false);
+    } finally {
+      cleanupTempDir(tempRoot);
+    }
+  });
+
+  it("leaves nothing behind when the import prompts are cancelled", async () => {
+    const tempRoot = makeTempDir();
+    const projectDir = `${tempRoot}/my-project`;
+    try {
+      sinon.stub(common, "readConfig").resolves(undefined);
+      const writeStub = sinon.stub(common, "writeConfig").resolves();
+      const cancellation = { name: "ExitPromptError" };
+      const promptStub = sinon.stub(inquirer, "prompt");
+      promptStub.onCall(0).resolves({ name: "my-project" });
+      promptStub.onCall(1).resolves({ blmodule: true });
+      promptStub.onCall(2).rejects(cancellation);
+      stubInitDisplay();
+
+      let caught: unknown;
+      try {
+        await cmdInit().parseAsync(["node", "test", projectDir]);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).to.equal(cancellation);
+      expect(writeStub.called).to.equal(false);
+      expect(existsSync(projectDir)).to.equal(false);
     } finally {
       cleanupTempDir(tempRoot);
     }

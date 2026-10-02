@@ -262,7 +262,7 @@ describe("project modules install behavior", () => {
     expect(loadStub.firstCall.args[1]).to.equal("staging");
   });
 
-  it("exits when dependency analysis fails", async () => {
+  it("fails without exiting the process when dependency analysis fails", async () => {
     const baseConfig: any = {
       name: "proj",
       modules: {
@@ -309,7 +309,8 @@ describe("project modules install behavior", () => {
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(failStub.called).to.equal(true);
-    expect(exitStub.called).to.equal(true);
+    expect(exitStub.called).to.equal(false);
+    expect(process.exitCode).to.equal(1);
   });
 
   it("analyzes dependencies and installs selected modules", async () => {
