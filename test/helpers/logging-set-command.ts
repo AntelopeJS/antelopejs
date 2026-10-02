@@ -5,6 +5,7 @@ import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import * as cliUi from "../../src/core/cli/cli-ui";
 import * as common from "../../src/core/cli/common";
 import cmdSet from "../../src/core/cli/commands/project/logging/set";
+import { fakePrompts, type FakePrompts } from "./fake-prompts";
 
 const PROJECT_FOLDER = "/tmp/project";
 
@@ -50,41 +51,31 @@ export function messagesOf(stub: sinon.SinonStub): string[] {
 }
 
 /**
- * Makes standard input look like a terminal, or not, until the returned
- * function restores it.
+ * Registers the hooks of a `logging set` suite: plain text output, a session
+ * that can ask questions or not, and every stub restored after each test.
+ * Returns the prompts of the running test, to queue answers on.
  */
-function setStdinTerminal(isTerminal: boolean): () => void {
-  const original = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
-  Object.defineProperty(process.stdin, "isTTY", {
-    value: isTerminal,
-    configurable: true,
-  });
-  return () => {
-    if (original) {
-      Object.defineProperty(process.stdin, "isTTY", original);
-      return;
-    }
-    delete (process.stdin as { isTTY?: boolean }).isTTY;
-  };
-}
-
-/**
- * Registers the hooks of a `logging set` suite: plain text output, standard
- * input seen as a terminal or not, and every stub restored after each test.
- */
-export function useSetCommandSandbox(isStdinTerminal: boolean): void {
+export function useSetCommandSandbox(
+  isInteractive: boolean,
+): () => FakePrompts {
   const originalColorLevel = chalk.level;
-  let restoreStdin = (): void => undefined;
+  let prompts: FakePrompts | undefined;
 
   beforeEach(() => {
     chalk.level = NO_COLOR_LEVEL;
-    restoreStdin = setStdinTerminal(isStdinTerminal);
+    prompts = fakePrompts({ isInteractive });
   });
 
   afterEach(() => {
     chalk.level = originalColorLevel;
-    restoreStdin();
     sinon.restore();
     process.exitCode = undefined;
   });
+
+  return () => {
+    if (!prompts) {
+      throw new Error("The prompts only exist while a test runs");
+    }
+    return prompts;
+  };
 }

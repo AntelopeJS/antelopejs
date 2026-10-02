@@ -1,14 +1,16 @@
 const os = require("node:os");
 const path = require("node:path");
 const fs = require("node:fs");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 
-const HEAVY_PACKAGES = ["typescript", "inquirer", "rxjs", "inly"];
+const HEAVY_PACKAGES = ["typescript", "@clack", "rxjs", "inly"];
 const HEAVY_MODULE_PATTERN = new RegExp(
   `[\\\\/]node_modules[\\\\/](${HEAVY_PACKAGES.join("|")})[\\\\/]`,
 );
 const LOADED_MODULES_VARIABLE = "AJS_LOADED_MODULES_FILE";
 const HELP_HEADER = "Usage: ajs";
+const USAGE_EXIT_CODE = 2;
+const PROMPT_LIBRARY = "@clack/prompts";
 
 function cliEntry() {
   const main = require.resolve("@antelopejs/core");
@@ -58,10 +60,43 @@ function verifyLazyActionResolves(folder) {
   }
 }
 
+function verifyPromptLibraryLoads() {
+  const coreFolder = path.dirname(require.resolve("@antelopejs/core"));
+  const library = require(
+    require.resolve(PROMPT_LIBRARY, { paths: [coreFolder] }),
+  );
+  if (typeof library.confirm !== "function") {
+    throw new Error(`${PROMPT_LIBRARY} did not load with require()`);
+  }
+}
+
+function verifyMissingAnswersExit(folder) {
+  const project = path.join(folder, "demo");
+  const result = spawnSync(
+    process.execPath,
+    [cliEntry(), "project", "init", project],
+    {
+      encoding: "utf8",
+      env: { ...process.env, HOME: folder, USERPROFILE: folder },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  if (result.status !== USAGE_EXIT_CODE || !result.stderr.includes("--name")) {
+    throw new Error(
+      `ajs project init without a terminal should exit ${USAGE_EXIT_CODE} naming its flags, got ${result.status}:\n${result.stderr}`,
+    );
+  }
+  if (fs.existsSync(project)) {
+    throw new Error("ajs project init wrote files it could not complete");
+  }
+}
+
 const folder = fs.mkdtempSync(path.join(os.tmpdir(), "ajs-packed-cli-"));
 try {
   verifyHelpStaysLight(folder);
   verifyLazyActionResolves(folder);
+  verifyPromptLibraryLoads();
+  verifyMissingAnswersExit(folder);
 } catch (error) {
   process.stderr.write(`${error.stack ?? error}\n`);
   process.exitCode = 1;

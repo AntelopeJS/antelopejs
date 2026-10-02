@@ -1,8 +1,8 @@
 import sinon from "sinon";
 import { expect } from "chai";
-import inquirer from "inquirer";
 
 import * as common from "../../../../../src/core/cli/common";
+import { NeedsInputError } from "../../../../../src/core/cli/output";
 import { USAGE_EXIT_CODE } from "../../../../../src/core/cli/exit-codes";
 import {
   captureCliError,
@@ -294,18 +294,17 @@ describe("project logging set with an environment", () => {
 });
 
 describe("project logging set without a terminal", () => {
-  useSetCommandSandbox(false);
+  const prompts = useSetCommandSandbox(false);
 
   it("rejects a run without settings when stdin is not a terminal", async () => {
     const stubs = stubSetCommand({ name: "test-project" });
-    const promptStub = sinon.stub(inquirer, "prompt");
 
     const cliError = await captureCliError(() => runSet());
 
+    expect(cliError).to.be.instanceOf(NeedsInputError);
     expect(cliError.exitCode).to.equal(USAGE_EXIT_CODE);
-    expect(cliError.problem.title).to.equal("No logging setting given");
     expect(cliError.problem.fixes?.join("\n")).to.include("--help");
-    expect(promptStub.called).to.equal(false);
+    expect(prompts().asked).to.deep.equal([]);
     expect(stubs.readConfig.called).to.equal(false);
   });
 });

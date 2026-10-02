@@ -1,5 +1,6 @@
 import chalk from "chalk";
 
+import { createPrompter } from "../../output";
 import { displayBox, info, keyValue, success } from "../../cli-ui";
 import {
   getDefaultUserConfig,
@@ -9,6 +10,20 @@ import {
 
 interface ResetOptions {
   yes?: boolean;
+}
+
+const RESET_COMMAND = "ajs config reset";
+const YES_FLAG = "--yes";
+
+async function confirmReset(options: ResetOptions): Promise<boolean> {
+  const prompter = createPrompter({ command: RESET_COMMAND });
+  return prompter.confirm({
+    message:
+      "This will reset all configuration settings to their default values. Continue?",
+    flag: YES_FLAG,
+    answer: options.yes,
+    defaultAnswer: false,
+  });
 }
 
 export async function resetConfig(options: ResetOptions): Promise<void> {
@@ -31,23 +46,9 @@ export async function resetConfig(options: ResetOptions): Promise<void> {
     return;
   }
 
-  // Ask for confirmation unless -y flag was provided
-  if (!options.yes) {
-    const inquirer = (await import("inquirer")).default;
-    const { confirm } = await inquirer.prompt<{ confirm: boolean }>([
-      {
-        type: "confirm",
-        name: "confirm",
-        message:
-          "This will reset all configuration settings to their default values. Continue?",
-        default: false,
-      },
-    ]);
-
-    if (!confirm) {
-      console.log(chalk.yellow(`⚠ Reset cancelled.`));
-      return;
-    }
+  if (!(await confirmReset(options))) {
+    console.log(chalk.yellow(`⚠ Reset cancelled.`));
+    return;
   }
 
   // Format comparison between current and default values

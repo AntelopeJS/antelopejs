@@ -9,7 +9,11 @@ import * as logging from "../../../src/logging";
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import * as fullCli from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
-import { CliError, getProcessUi } from "../../../src/core/cli/output";
+import {
+  CancelledError,
+  CliError,
+  getProcessUi,
+} from "../../../src/core/cli/output";
 import { CANCELLED_MESSAGE } from "../../../src/core/cli/cancellation";
 import {
   CANCELLED_EXIT_CODE,
@@ -70,9 +74,7 @@ describe("CLI main guard", () => {
   it("reports a cancelled prompt and exits with the cancelled code", async () => {
     stubRunCliDeps();
     const previousExitCode = process.exitCode;
-    sinon
-      .stub(Command.prototype, "parseAsync")
-      .rejects({ name: "ExitPromptError" });
+    sinon.stub(Command.prototype, "parseAsync").rejects(new CancelledError());
     const exitStub = sinon.stub(process, "exit");
     const errorStub = sinon.stub(console, "error");
     const clock = sinon.useFakeTimers({ shouldAdvanceTime: true });
@@ -120,7 +122,7 @@ describe("CLI main guard", () => {
 
   it("exits with the cancelled code when a prompt outside the commands is cancelled", async () => {
     stubRunCliDeps();
-    sinon.stub(fullCli, "runCLI").rejects({ name: "ExitPromptError" });
+    sinon.stub(fullCli, "runCLI").rejects(new CancelledError());
     const errorStub = sinon.stub(console, "error");
 
     const exitStub = await runMainUntilForcedExit();

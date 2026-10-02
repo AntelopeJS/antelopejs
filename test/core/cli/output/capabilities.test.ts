@@ -4,6 +4,7 @@ import {
   detectCapabilities,
   hasColorSupport,
   hasUnicodeSupport,
+  isInteractiveSession,
   processCapabilityContext,
   selectSymbols,
   SYMBOL_SETS,
@@ -148,5 +149,42 @@ describe("output capabilities", () => {
     expect(processContext.argv).to.equal(process.argv);
     expect(processContext.streams.result).to.equal(process.stdout);
     expect(processContext.streams.feedback).to.equal(process.stderr);
+  });
+});
+
+describe("isInteractiveSession", () => {
+  const terminal = TERMINAL;
+  const pipe = PIPE;
+
+  it("can ask when stdin and the prompt output are terminals", () => {
+    expect(
+      isInteractiveSession({ env: {}, input: terminal, output: terminal }),
+    ).to.equal(true);
+  });
+
+  it("cannot ask when stdin or the prompt output is not a terminal", () => {
+    expect(
+      isInteractiveSession({ env: {}, input: {}, output: terminal }),
+    ).to.equal(false);
+    expect(
+      isInteractiveSession({ env: {}, input: terminal, output: pipe }),
+    ).to.equal(false);
+  });
+
+  it("never asks in CI", () => {
+    expect(
+      isInteractiveSession({
+        env: { CI: "true" },
+        input: terminal,
+        output: terminal,
+      }),
+    ).to.equal(false);
+    expect(
+      isInteractiveSession({
+        env: { CI: "false" },
+        input: terminal,
+        output: terminal,
+      }),
+    ).to.equal(true);
   });
 });

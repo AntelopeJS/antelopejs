@@ -1,6 +1,7 @@
 import type {
   CapabilityContext,
   ChannelFlags,
+  InteractivityContext,
   OutputCapabilities,
   OutputStream,
   OutputStreams,
@@ -124,6 +125,18 @@ export function detectCapabilities(
     ),
     terminals: mapChannels(context.streams, (stream) => stream.isTTY === true),
   };
+}
+
+/**
+ * Whether questions can be asked: standard input and the stream prompts are
+ * drawn on are terminals, and the run is not in CI.
+ */
+export function isInteractiveSession(context: InteractivityContext): boolean {
+  return (
+    context.input.isTTY === true &&
+    context.output.isTTY === true &&
+    !isEnabledFlag(context.env.CI)
+  );
 }
 
 export function processStreams(): OutputStreams {

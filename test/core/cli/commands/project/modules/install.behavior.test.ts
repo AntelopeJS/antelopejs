@@ -1,7 +1,6 @@
 import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import inquirer from "inquirer";
 import { tmpdir } from "node:os";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 
@@ -21,9 +20,13 @@ import {
   unresolvedImportWarning,
 } from "../../../../../../src/core/cli/commands/project/modules/install-action";
 import {
+  captureCliError,
   expectProjectNotFound,
   expectUnknownEnvironment,
 } from "../../../../../helpers/cli-error";
+import { fakePrompts } from "../../../../../helpers/fake-prompts";
+import { NeedsInputError } from "../../../../../../src/core/cli/output";
+import { USAGE_EXIT_CODE } from "../../../../../../src/core/cli/exit-codes";
 
 describe("project modules install behavior", () => {
   let tempModuleDir: string;
@@ -401,8 +404,7 @@ describe("project modules install behavior", () => {
       .stub(projectModulesAddModule, "projectModulesAddCommand")
       .resolves();
 
-    const promptStub = sinon.stub(inquirer, "prompt");
-    promptStub.onCall(0).resolves({ moduleName: "modA" });
+    fakePrompts();
 
     sinon.stub(terminalDisplay, "startSpinner").resolves();
     sinon.stub(terminalDisplay, "stopSpinner").resolves();
@@ -480,8 +482,7 @@ describe("project modules install behavior", () => {
       .stub(projectModulesAddModule, "projectModulesAddCommand")
       .resolves();
 
-    const promptStub = sinon.stub(inquirer, "prompt");
-    promptStub.onCall(0).resolves({ moduleName: "modA" });
+    fakePrompts();
 
     sinon.stub(terminalDisplay, "startSpinner").resolves();
     sinon.stub(terminalDisplay, "stopSpinner").resolves();
@@ -503,78 +504,131 @@ describe("project modules install behavior", () => {
     expect(addStub.called).to.equal(true);
   });
 
-  it("warns when selected module is missing from interface list", async () => {
-    const baseConfig: any = {
+  const MOD_A = {
+    name: "modA",
+    source: { type: "package", package: "modA", version: "1.0.0" },
+  };
+  const MOD_B = {
+    name: "modB",
+    source: { type: "package", package: "modB", version: "2.0.0" },
+  };
+
+  function stubUnresolvedImport(modules: object[]): sinon.SinonStub {
+    const config: any = {
       name: "proj",
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
       },
     };
-
-    sinon.stub(common, "readConfig").resolves(baseConfig);
+    sinon.stub(common, "readConfig").resolves(config);
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").resolves();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
-      interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
+      interfaces: { [ifaceName]: "test-iface" },
       starredInterfaces: [],
       templates: [],
     });
-
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      modules: {
-        app: { source: { type: "package", package: "app", version: "1.0.0" } },
-      },
-    } as any);
-
+    sinon.stub(ConfigLoader.prototype, "load").resolves(config);
     sinon.stub(ModuleCache.prototype, "load").resolves();
-
-    const fakeManifest = {
-      manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
-      implements: [],
-      folder: tempModuleDir,
-    };
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([fakeManifest as any]);
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([
+      {
+        manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
+        implements: [],
+        folder: tempModuleDir,
+      } as any,
+    ]);
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
-      .returns("pkg:module");
-
+      .callsFake((source: any) => `pkg:${source.package}`);
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
-
     sinon.stub(gitOps, "loadInterfaceFromGit").resolves({
-      name: "@antelopejs/interface-core",
-      manifest: {
-        description: "core",
-        versions: ["0.0.2"],
-        files: {},
-        dependencies: {},
-        modules: [
-          {
-            name: "modA",
-            source: { type: "package", package: "modA", version: "1.0.0" },
-          },
-        ],
-      },
+      name: ifaceName,
+      manifest: { description: "", files: {}, dependencies: {}, modules },
     } as any);
-
-    sinon.stub(inquirer, "prompt").resolves({ moduleName: "missingMod" });
-
     sinon.stub(terminalDisplay, "startSpinner").resolves();
     sinon.stub(terminalDisplay, "stopSpinner").resolves();
     sinon.stub(terminalDisplay, "failSpinner").resolves();
-
-    const warnStub = sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
+    sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
+    return sinon
+      .stub(projectModulesAddModule, "projectModulesAddCommand")
+      .resolves();
+  }
 
-    const cmd = cmdInstall();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+  it("selects the only implementation without asking, even without a terminal", async () => {
+    const addStub = stubUnresolvedImport([MOD_A]);
+    const prompts = fakePrompts({ isInteractive: false });
 
-    expect(warnStub.called).to.equal(true);
+    await cmdInstall().parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/tmp/project",
+    ]);
+
+    expect(prompts.asked).to.deep.equal([]);
+    expect(addStub.firstCall.args[0]).to.deep.equal(["pkg:modA@1.0.0"]);
+    expect(
+      (cliUi.info as sinon.SinonStub).calledWithMatch(
+        "is the only module implementing test-iface",
+      ),
+    ).to.equal(true);
+  });
+
+  it("asks which module to add when several implement the interface", async () => {
+    const addStub = stubUnresolvedImport([MOD_A, MOD_B]);
+    const prompts = fakePrompts({ answers: [MOD_B] });
+
+    await cmdInstall().parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/tmp/project",
+    ]);
+
+    expect(prompts.asked).to.have.length(1);
+    expect(
+      (prompts.asked[0].options.options as { label: string }[]).map(
+        (option) => option.label,
+      ),
+    ).to.deep.equal(["modA", "modB"]);
+    expect(addStub.firstCall.args[0]).to.deep.equal(["pkg:modB@2.0.0"]);
+  });
+
+  it("adds the first module listed with --yes", async () => {
+    const addStub = stubUnresolvedImport([MOD_A, MOD_B]);
+    const prompts = fakePrompts({ isInteractive: false });
+
+    await cmdInstall().parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/tmp/project",
+      "--yes",
+    ]);
+
+    expect(prompts.asked).to.deep.equal([]);
+    expect(addStub.firstCall.args[0]).to.deep.equal(["pkg:modA@1.0.0"]);
+  });
+
+  it("asks for --yes instead of prompting without a terminal", async () => {
+    const addStub = stubUnresolvedImport([MOD_A, MOD_B]);
+    fakePrompts({ isInteractive: false });
+
+    const cliError = await captureCliError(() =>
+      cmdInstall().parseAsync(["node", "test", "--project", "/tmp/project"]),
+    );
+
+    expect(cliError).to.be.instanceOf(NeedsInputError);
+    expect(cliError.exitCode).to.equal(USAGE_EXIT_CODE);
+    expect(cliError.problem.fixes).to.deep.equal([
+      "Pass it as a flag: ajs project modules install --yes",
+    ]);
+    expect(addStub.called).to.equal(false);
   });
 
   it("reuses selected modules for multiple imports", async () => {
@@ -640,8 +694,7 @@ describe("project modules install behavior", () => {
       .stub(projectModulesAddModule, "projectModulesAddCommand")
       .resolves();
 
-    const promptStub = sinon.stub(inquirer, "prompt");
-    promptStub.onCall(0).resolves({ moduleName: "modA" });
+    const prompts = fakePrompts();
 
     sinon.stub(terminalDisplay, "startSpinner").resolves();
     sinon.stub(terminalDisplay, "stopSpinner").resolves();
@@ -655,7 +708,7 @@ describe("project modules install behavior", () => {
     const cmd = cmdInstall();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
-    expect(promptStub.calledOnce).to.equal(true);
+    expect(prompts.asked).to.deep.equal([]);
     expect(addStub.called).to.equal(true);
   });
 
@@ -703,7 +756,7 @@ describe("project modules install behavior", () => {
     const loadStub = sinon
       .stub(gitOps, "loadInterfaceFromGit")
       .resolves(undefined as any);
-    const promptStub = sinon.stub(inquirer, "prompt");
+    const prompts = fakePrompts();
 
     sinon.stub(terminalDisplay, "startSpinner").resolves();
     sinon.stub(terminalDisplay, "stopSpinner").resolves();
@@ -718,7 +771,7 @@ describe("project modules install behavior", () => {
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(loadStub.called).to.equal(false);
-    expect(promptStub.called).to.equal(false);
+    expect(prompts.asked).to.deep.equal([]);
   });
 
   it("warns when no modules are found for an unresolved import", async () => {
@@ -832,7 +885,7 @@ describe("project modules install behavior", () => {
       },
     } as any);
 
-    sinon.stub(inquirer, "prompt").resolves({ moduleName: "modA" });
+    fakePrompts();
 
     const addStub = sinon.stub(
       projectModulesAddModule,
@@ -913,7 +966,7 @@ describe("project modules install behavior", () => {
       },
     } as any);
 
-    sinon.stub(inquirer, "prompt").resolves({ moduleName: "modA" });
+    fakePrompts();
 
     const addStub = sinon.stub(
       projectModulesAddModule,

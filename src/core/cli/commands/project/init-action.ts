@@ -1,19 +1,38 @@
 import chalk from "chalk";
 import path from "node:path";
-import inquirer from "inquirer";
 import { mkdir, stat } from "node:fs/promises";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
-import { moduleInitCommand } from "../module/init-action";
-import { FAILURE_EXIT_CODE } from "../../exit-codes";
+import {
+  moduleInitCommand,
+  type ModuleInitOptions,
+  PACKAGE_MANAGER_FLAG,
+  TEMPLATE_FLAG,
+  YES_FLAG,
+} from "../module/init-action";
 import { isPromptCancellation } from "../../cancellation";
 import { readConfig, writeConfig } from "../../common";
+import type { PackageManagerName } from "../../package-manager-name";
+import { FAILURE_EXIT_CODE, USAGE_EXIT_CODE } from "../../exit-codes";
 import { handlers, projectModulesAddCommand } from "./modules/add-action";
 import { displayBox, error, info, Spinner, warning } from "../../cli-ui";
-import { reportFailure } from "../../output";
+import {
+  CliError,
+  createPrompter,
+  missingFlags,
+  reportFailure,
+  type AnswerFlag,
+  type Prompter,
+} from "../../output";
 
-interface ProjectInitAnswers {
-  name: string;
+export interface ProjectInitOptions {
+  name?: string;
+  template?: string;
+  interfaces?: string[];
+  pm?: PackageManagerName;
+  git?: boolean;
+  gitInit?: boolean;
+  yes?: boolean;
 }
 
 interface AppModuleImport {
@@ -23,6 +42,17 @@ interface AppModuleImport {
 
 const LOCAL_MODULE_SOURCE = "local";
 const PROJECT_ROOT_MODULE = ".";
+const DIRECTORY_SOURCE = "dir";
+const PROJECT_INIT_COMMAND = "ajs project init";
+const NAME_FLAG = "--name <name>";
+const GIT_FLAG = "--[no-]git";
+
+const PROJECT_ANSWER_FLAGS: AnswerFlag<ProjectInitOptions>[] = [
+  { option: "name", flag: NAME_FLAG },
+  { option: "template", flag: TEMPLATE_FLAG },
+  { option: "pm", flag: PACKAGE_MANAGER_FLAG },
+  { option: "git", flag: GIT_FLAG },
+];
 
 async function isProjectPathAvailable(projectPath: string): Promise<boolean> {
   const spinner = new Spinner("Checking project path");
@@ -41,7 +71,10 @@ async function isProjectPathAvailable(projectPath: string): Promise<boolean> {
   return true;
 }
 
-function displayWelcome(): void {
+function displayWelcome(prompter: Prompter): void {
+  if (!prompter.isInteractive) {
+    return;
+  }
   console.log("");
   info("Welcome to the AntelopeJS project creation wizard!");
   console.log(
@@ -52,38 +85,34 @@ function displayWelcome(): void {
   console.log("");
 }
 
-async function promptAppModuleImport(): Promise<AppModuleImport | undefined> {
-  const { blmodule } = await inquirer.prompt<{ blmodule: boolean }>([
-    {
-      type: "confirm",
-      name: "blmodule",
-      message: "Do you have an existing app module you want to import?",
-      default: false,
-    },
-  ]);
-  if (!blmodule) {
+async function askAppModuleImport(
+  prompter: Prompter,
+  options: ProjectInitOptions,
+): Promise<AppModuleImport | undefined> {
+  const hasAppModule = await prompter.confirm({
+    message: "Do you have an existing app module you want to import?",
+    flag: TEMPLATE_FLAG,
+    answer: options.template === undefined ? undefined : false,
+    defaultAnswer: false,
+  });
+  if (!hasAppModule) {
     return undefined;
   }
 
-  const { source } = await inquirer.prompt<{ source: string }>([
-    {
-      type: "list",
-      name: "source",
-      message: "Where is your app module located?",
-      choices: [...handlers.keys()].filter((key) => key !== "dir"),
-    },
-  ]);
-
-  const { module } = await inquirer.prompt<{ module: string }>([
-    {
-      type: "input",
-      name: "module",
-      message: `Please specify the ${source} source location:
+  const source = await prompter.select({
+    message: "Where is your app module located?",
+    flag: TEMPLATE_FLAG,
+    choices: [...handlers.keys()]
+      .filter((key) => key !== DIRECTORY_SOURCE)
+      .map((key) => ({ value: key, label: key })),
+  });
+  const module = await prompter.text({
+    message: `Please specify the ${source} source location:
   • npm: Package name (e.g., "my-package")
   • git: Repository URL (e.g., "https://github.com/user/repo")
   • local: Relative path to module (e.g., "../my-module")`,
-    },
-  ]);
+    flag: TEMPLATE_FLAG,
+  });
   return { source, module };
 }
 
@@ -120,12 +149,37 @@ async function importAppModule(
   });
 }
 
+function withGitAlias(options: ProjectInitOptions): ProjectInitOptions {
+  return { ...options, git: options.git ?? options.gitInit };
+}
+
+function moduleOptions(options: ProjectInitOptions): ModuleInitOptions {
+  return {
+    template: options.template,
+    interfaces: options.interfaces,
+    pm: options.pm,
+    gitInit: options.git,
+  };
+}
+
+function isUsageFailure(err: unknown): boolean {
+  return (
+    isPromptCancellation(err) ||
+    (err instanceof CliError && err.exitCode === USAGE_EXIT_CODE)
+  );
+}
+
 async function createAppModule(
   projectPath: string,
   name: string,
+  options: ProjectInitOptions,
+  prompter: Prompter,
 ): Promise<boolean> {
   try {
-    await moduleInitCommand(projectPath, {}, true);
+    await moduleInitCommand(projectPath, moduleOptions(options), {
+      isFromProject: true,
+      prompter,
+    });
     await createProjectConfig(projectPath, name);
     await projectModulesAddCommand([PROJECT_ROOT_MODULE], {
       mode: LOCAL_MODULE_SOURCE,
@@ -133,7 +187,7 @@ async function createAppModule(
     });
     return true;
   } catch (err) {
-    if (isPromptCancellation(err)) {
+    if (isUsageFailure(err)) {
       throw err;
     }
     console.log("");
@@ -163,28 +217,57 @@ async function displayProjectCreated(
   );
 }
 
-export async function projectInitCommand(project: string): Promise<void> {
+function projectPrompter(
+  project: string,
+  options: ProjectInitOptions,
+): Prompter {
+  return createPrompter({
+    command: `${PROJECT_INIT_COMMAND} ${project}`,
+    acceptsDefaults: options.yes,
+    defaultsFlag: YES_FLAG,
+  });
+}
+
+function askProjectName(
+  prompter: Prompter,
+  options: ProjectInitOptions,
+  projectPath: string,
+): Promise<string> {
+  return prompter.text({
+    message: "What would you like to name your project?",
+    flag: NAME_FLAG,
+    answer: options.name,
+    defaultAnswer: path.basename(projectPath),
+  });
+}
+
+/**
+ * Creates a project, either around a new module created from a template or
+ * around an existing module. Questions come first and files last, so a
+ * cancelled or unanswerable question writes nothing. The module flags
+ * answer the questions of the new module; `--git-init` is accepted as an
+ * alias of `--git`, the spelling `ajs module init` uses.
+ */
+export async function projectInitCommand(
+  project: string,
+  givenOptions: ProjectInitOptions = {},
+): Promise<void> {
   console.log("");
+  const options = withGitAlias(givenOptions);
   const projectPath = path.resolve(project);
+  const prompter = projectPrompter(project, options);
+  prompter.requireAnswers(missingFlags(options, PROJECT_ANSWER_FLAGS));
   if (!(await isProjectPathAvailable(projectPath))) {
     return;
   }
 
-  displayWelcome();
-  const answers = await inquirer.prompt<ProjectInitAnswers>([
-    {
-      type: "input",
-      name: "name",
-      message: "What would you like to name your project?",
-      default: path.basename(projectPath),
-    },
-  ]);
-
-  const appModule = await promptAppModuleImport();
+  displayWelcome(prompter);
+  const name = await askProjectName(prompter, options, projectPath);
+  const appModule = await askAppModuleImport(prompter, options);
   if (appModule) {
-    await importAppModule(projectPath, answers.name, appModule);
-  } else if (!(await createAppModule(projectPath, answers.name))) {
+    await importAppModule(projectPath, name, appModule);
+  } else if (!(await createAppModule(projectPath, name, options, prompter))) {
     return;
   }
-  await displayProjectCreated(project, projectPath, answers.name);
+  await displayProjectCreated(project, projectPath, name);
 }

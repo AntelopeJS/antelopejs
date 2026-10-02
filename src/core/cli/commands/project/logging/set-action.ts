@@ -1,9 +1,9 @@
 import chalk from "chalk";
-import inquirer from "inquirer";
 
 import { defaultConfigLogging } from "../../../../../logging";
 import { writeConfig } from "../../../common";
 import { displayBox, info, success, warning } from "../../../cli-ui";
+import { createPrompter, type Prompter } from "../../../output";
 import { resolveProjectContext } from "../../shared/project-command";
 import {
   applyLoggingChanges,
@@ -18,10 +18,18 @@ import {
   OperationResult,
   SetOptions,
 } from "./set-operations";
-import { assertSetUsage, isInteractiveRun } from "./set-usage";
+import {
+  assertSetUsage,
+  isInteractiveRun,
+  SET_COMMAND,
+  SET_OPTION_FLAGS,
+} from "./set-usage";
 
 type TrackingMode = "all" | "whitelist" | "blacklist";
-type TrackingModeHandler = (tracking: ModuleTrackingDraft) => Promise<void>;
+type TrackingModeHandler = (
+  tracking: ModuleTrackingDraft,
+  prompter: Prompter,
+) => Promise<void>;
 
 const NOTHING_TO_CHANGE = "Nothing to change";
 const UNCHANGED_CONFIGURATION =
@@ -29,7 +37,8 @@ const UNCHANGED_CONFIGURATION =
 const SUMMARY_RULE_WIDTH = 40;
 
 export async function runSet(options: SetOptions): Promise<void> {
-  assertSetUsage(options);
+  const prompter = createPrompter({ command: SET_COMMAND });
+  assertSetUsage(options, prompter);
   const { config, environmentConfig } = await resolveProjectContext(
     options.project,
     options.env,
@@ -38,7 +47,7 @@ export async function runSet(options: SetOptions): Promise<void> {
 
   const before = resolveLoggingDraft(config, environmentConfig);
   const after = structuredClone(before);
-  const results = await collectChanges(after, options, config.name);
+  const results = await collectChanges(after, options, config.name, prompter);
 
   if (!applyLoggingChanges(environmentConfig, before, after)) {
     reportNothingToChange(results);
@@ -52,11 +61,16 @@ async function collectChanges(
   logging: LoggingDraft,
   options: SetOptions,
   projectName: string,
+  prompter: Prompter,
 ): Promise<OperationResult[]> {
   if (!isInteractiveRun(options)) {
     return applySetOptions(logging, options);
   }
-  await configureInteractively(logging, projectLabel(projectName, options.env));
+  await configureInteractively(
+    logging,
+    projectLabel(projectName, options.env),
+    prompter,
+  );
   return [];
 }
 
@@ -99,30 +113,29 @@ async function reportSaved(
   );
 }
 
-async function configureInteractively(logging: LoggingDraft, label: string) {
+async function configureInteractively(
+  logging: LoggingDraft,
+  label: string,
+  prompter: Prompter,
+) {
   console.log("");
   info(`Configuring logging for ${chalk.bold(label)}`);
   console.log("");
 
-  const { enableLogging } = await inquirer.prompt<{ enableLogging: boolean }>([
-    {
-      type: "confirm",
-      name: "enableLogging",
-      message: "Enable logging?",
-      default: logging.enabled,
-    },
-  ]);
+  logging.enabled = await prompter.confirm({
+    message: "Enable logging?",
+    flag: `${SET_OPTION_FLAGS.enable} | ${SET_OPTION_FLAGS.disable}`,
+    defaultAnswer: logging.enabled,
+  });
 
-  logging.enabled = enableLogging;
-
-  if (!enableLogging) {
+  if (!logging.enabled) {
     warning(`Logging has been disabled.`);
     return;
   }
 
-  await configureModuleTracking(logging);
-  await configureFormatters(logging);
-  await configureDateFormat(logging);
+  await configureModuleTracking(logging, prompter);
+  await configureFormatters(logging, prompter);
+  await configureDateFormat(logging, prompter);
   console.log("");
 }
 
@@ -131,20 +144,20 @@ const TRACKING_MODE_HANDLERS: Record<TrackingMode, TrackingModeHandler> = {
     tracking.includes = [];
     tracking.excludes = [];
   },
-  whitelist: async (tracking) => {
-    await handleModuleList(
-      tracking.includes,
-      "Enter module name to include (empty to finish):",
-      "Included modules:",
-    );
+  whitelist: async (tracking, prompter) => {
+    await handleModuleList(prompter, tracking.includes, {
+      message: "Enter module name to include (empty to finish):",
+      flag: `${SET_OPTION_FLAGS.includeModule} <module>`,
+      title: "Included modules:",
+    });
     tracking.excludes = [];
   },
-  blacklist: async (tracking) => {
-    await handleModuleList(
-      tracking.excludes,
-      "Enter module name to exclude (empty to finish):",
-      "Excluded modules:",
-    );
+  blacklist: async (tracking, prompter) => {
+    await handleModuleList(prompter, tracking.excludes, {
+      message: "Enter module name to exclude (empty to finish):",
+      flag: `${SET_OPTION_FLAGS.excludeModule} <module>`,
+      title: "Excluded modules:",
+    });
     tracking.includes = [];
   },
 };
@@ -156,121 +169,96 @@ function currentTrackingMode(logging: LoggingDraft): TrackingMode {
   return logging.moduleTracking.excludes.length > 0 ? "blacklist" : "all";
 }
 
-async function configureModuleTracking(logging: LoggingDraft) {
-  const { enableModuleTracking } = await inquirer.prompt<{
-    enableModuleTracking: boolean;
-  }>([
-    {
-      type: "confirm",
-      name: "enableModuleTracking",
-      message: "Enable module tracking?",
-      default: logging.moduleTracking.enabled,
-    },
-  ]);
+async function configureModuleTracking(
+  logging: LoggingDraft,
+  prompter: Prompter,
+) {
+  logging.moduleTracking.enabled = await prompter.confirm({
+    message: "Enable module tracking?",
+    flag: SET_OPTION_FLAGS.enableModuleTracking,
+    defaultAnswer: logging.moduleTracking.enabled,
+  });
 
-  logging.moduleTracking.enabled = enableModuleTracking;
-
-  if (!enableModuleTracking) {
+  if (!logging.moduleTracking.enabled) {
     return;
   }
 
-  const { trackingMode } = await inquirer.prompt<{
-    trackingMode: TrackingMode;
-  }>([
-    {
-      type: "list",
-      name: "trackingMode",
-      message: "Select module tracking mode:",
-      choices: [
-        { name: "Log all modules", value: "all" },
-        { name: "Only log specific modules (whitelist)", value: "whitelist" },
-        {
-          name: "Log all except specific modules (blacklist)",
-          value: "blacklist",
-        },
-      ],
-      default: currentTrackingMode(logging),
-    },
-  ]);
+  const trackingMode = await prompter.select<TrackingMode>({
+    message: "Select module tracking mode:",
+    flag: `${SET_OPTION_FLAGS.includeModule} <module>`,
+    choices: [
+      { value: "all", label: "Log all modules" },
+      { value: "whitelist", label: "Only log specific modules (whitelist)" },
+      {
+        value: "blacklist",
+        label: "Log all except specific modules (blacklist)",
+      },
+    ],
+    defaultAnswer: currentTrackingMode(logging),
+  });
 
-  await TRACKING_MODE_HANDLERS[trackingMode](logging.moduleTracking);
+  await TRACKING_MODE_HANDLERS[trackingMode](logging.moduleTracking, prompter);
 }
 
-async function configureFormatters(logging: LoggingDraft) {
-  const { configureFormatters } = await inquirer.prompt<{
-    configureFormatters: boolean;
-  }>([
-    {
-      type: "confirm",
-      name: "configureFormatters",
-      message: "Do you want to configure log formatters?",
-      default: false,
-    },
-  ]);
+const LEVEL_FORMAT_FLAG = `${SET_OPTION_FLAGS.level} <level> ${SET_OPTION_FLAGS.format} <format>`;
+const DATE_FORMAT_FLAG = `${SET_OPTION_FLAGS.dateFormat} <format>`;
 
-  if (!configureFormatters) {
+async function configureFormatters(logging: LoggingDraft, prompter: Prompter) {
+  const isConfiguringFormatters = await prompter.confirm({
+    message: "Do you want to configure log formatters?",
+    flag: LEVEL_FORMAT_FLAG,
+    defaultAnswer: false,
+  });
+
+  if (!isConfiguringFormatters) {
     return;
   }
 
   for (const level of FORMATTER_LEVELS) {
-    await configureLevelFormat(logging, level);
+    await configureLevelFormat(logging, level, prompter);
   }
 }
 
-async function configureLevelFormat(logging: LoggingDraft, level: string) {
+async function configureLevelFormat(
+  logging: LoggingDraft,
+  level: string,
+  prompter: Prompter,
+) {
   const levelKey = formatterKeyOf(level);
   const levelName = level.toUpperCase();
-  const { customizeFormat } = await inquirer.prompt<{
-    customizeFormat: boolean;
-  }>([
-    {
-      type: "confirm",
-      name: "customizeFormat",
-      message: `Customize ${levelName} log format?`,
-      default: false,
-    },
-  ]);
+  const isCustomizing = await prompter.confirm({
+    message: `Customize ${levelName} log format?`,
+    flag: LEVEL_FORMAT_FLAG,
+    defaultAnswer: false,
+  });
 
-  if (!customizeFormat) {
+  if (!isCustomizing) {
     return;
   }
 
-  const { format } = await inquirer.prompt<{ format: string }>([
-    {
-      type: "input",
-      name: "format",
-      message: `Enter format for ${levelName} level:`,
-      default: logging.formatter[levelKey] ?? "",
-    },
-  ]);
-
-  logging.formatter[levelKey] = format;
+  logging.formatter[levelKey] = await prompter.text({
+    message: `Enter format for ${levelName} level:`,
+    flag: LEVEL_FORMAT_FLAG,
+    defaultAnswer: logging.formatter[levelKey] ?? "",
+  });
 }
 
-async function configureDateFormat(logging: LoggingDraft) {
-  const { configureDateFormat } = await inquirer.prompt<{
-    configureDateFormat: boolean;
-  }>([
-    {
-      type: "confirm",
-      name: "configureDateFormat",
-      message: "Do you want to customize the date format?",
-      default: false,
-    },
-  ]);
+async function configureDateFormat(logging: LoggingDraft, prompter: Prompter) {
+  const isCustomizing = await prompter.confirm({
+    message: "Do you want to customize the date format?",
+    flag: DATE_FORMAT_FLAG,
+    defaultAnswer: false,
+  });
 
-  if (!configureDateFormat) {
+  if (!isCustomizing) {
     return;
   }
 
-  const { dateFormat } = await inquirer.prompt<{ dateFormat: string }>([
-    {
-      type: "input",
-      name: "dateFormat",
-      message: "Enter date format:",
-      default: logging.dateFormat || defaultConfigLogging.dateFormat,
-    },
-  ]);
+  const dateFormat = await prompter.text({
+    message: "Enter date format:",
+    flag: DATE_FORMAT_FLAG,
+    defaultAnswer: logging.dateFormat || defaultConfigLogging.dateFormat,
+  });
 
   logging.dateFormat = dateFormat;
   console.log(`${chalk.cyan("Date format set to:")} ${chalk.dim(dateFormat)}`);
@@ -282,35 +270,36 @@ async function configureDateFormat(logging: LoggingDraft) {
   );
 }
 
+interface ModuleListPrompt {
+  message: string;
+  flag: string;
+  title: string;
+}
+
 async function handleModuleList(
+  prompter: Prompter,
   list: string[],
-  prompt: string,
-  listTitle: string,
+  prompt: ModuleListPrompt,
 ) {
   if (list.length > 0) {
-    console.log(chalk.cyan(listTitle));
+    console.log(chalk.cyan(prompt.title));
     list.forEach((module, index) => console.log(`  ${index + 1}. ${module}`));
   }
 
-  let moduleName = await promptModuleName(prompt);
+  const askModuleName = () =>
+    prompter.text({ message: prompt.message, flag: prompt.flag });
+  let moduleName = await askModuleName();
   while (moduleName) {
-    await toggleListedModule(list, moduleName);
-    moduleName = await promptModuleName(prompt);
+    await toggleListedModule(prompter, list, moduleName);
+    moduleName = await askModuleName();
   }
 }
 
-async function promptModuleName(prompt: string): Promise<string> {
-  const { moduleName } = await inquirer.prompt<{ moduleName: string }>([
-    {
-      type: "input",
-      name: "moduleName",
-      message: prompt,
-    },
-  ]);
-  return moduleName;
-}
-
-async function toggleListedModule(list: string[], moduleName: string) {
+async function toggleListedModule(
+  prompter: Prompter,
+  list: string[],
+  moduleName: string,
+) {
   if (!list.includes(moduleName)) {
     list.push(moduleName);
     success(`Added ${chalk.bold(moduleName)} to the list.`);
@@ -318,16 +307,13 @@ async function toggleListedModule(list: string[], moduleName: string) {
   }
 
   warning(`Module ${chalk.bold(moduleName)} is already in the list.`);
-  const { removeModule } = await inquirer.prompt<{ removeModule: boolean }>([
-    {
-      type: "confirm",
-      name: "removeModule",
-      message: `Do you want to remove ${moduleName} from the list?`,
-      default: false,
-    },
-  ]);
+  const isRemoving = await prompter.confirm({
+    message: `Do you want to remove ${moduleName} from the list?`,
+    flag: `${SET_OPTION_FLAGS.removeInclude} <module>`,
+    defaultAnswer: false,
+  });
 
-  if (removeModule) {
+  if (isRemoving) {
     list.splice(list.indexOf(moduleName), 1);
     info(`Removed ${chalk.bold(moduleName)} from the list.`);
   }
