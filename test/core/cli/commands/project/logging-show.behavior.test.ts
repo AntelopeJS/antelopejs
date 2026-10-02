@@ -1,14 +1,41 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
-import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../src/core/cli/common";
 import { ConfigLoader } from "../../../../../src/core/config";
+import { defaultConfigLogging } from "../../../../../src/logging";
 import cmdShow from "../../../../../src/core/cli/commands/project/logging/show";
 import {
   expectProjectNotFound,
   expectUnknownEnvironment,
 } from "../../../../helpers/cli-error";
+import { createMemoryUi, type MemoryUi } from "../../../../helpers/memory-ui";
+
+const PROJECT_ARGS = ["node", "test", "--project", "/tmp/project"];
+
+function stubLogging(logging: unknown): void {
+  sinon.stub(common, "readConfig").resolves({
+    name: "test-project",
+    environments: { staging: {} },
+  } as any);
+  sinon.stub(ConfigLoader.prototype, "load").resolves({
+    modules: {},
+    logging,
+  } as any);
+}
+
+async function runShow(args: string[] = []): Promise<MemoryUi> {
+  const memory = createMemoryUi();
+  await cmdShow(memory.ui).parseAsync([...PROJECT_ARGS, ...args]);
+  return memory;
+}
+
+function detailLines(...rows: [string, string][]): string {
+  return [
+    ...rows.map(([label, value]) => `${label.padEnd(15)}  ${value}`),
+    "",
+  ].join("\n");
+}
 
 describe("project logging show behavior", () => {
   afterEach(() => {
@@ -18,10 +45,9 @@ describe("project logging show behavior", () => {
 
   it("show fails when config is missing", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
-    sinon.stub(console, "log");
 
     await expectProjectNotFound(() =>
-      cmdShow().parseAsync(["node", "test", "--project", "/tmp/project"]),
+      cmdShow(createMemoryUi().ui).parseAsync(PROJECT_ARGS),
     );
   });
 
@@ -30,163 +56,101 @@ describe("project logging show behavior", () => {
       .stub(common, "readConfig")
       .resolves({ name: "test-project", environments: {} } as any);
     const loadStub = sinon.stub(ConfigLoader.prototype, "load");
-    const logStub = sinon.stub(console, "log");
+    const { ui, result } = createMemoryUi();
 
     await expectUnknownEnvironment(
       () =>
-        cmdShow().parseAsync([
-          "node",
-          "test",
-          "--project",
-          "/tmp/project",
-          "--env",
-          "staging",
-          "--json",
-        ]),
+        cmdShow(ui).parseAsync([...PROJECT_ARGS, "--env", "staging", "--json"]),
       "staging",
     );
 
     expect(loadStub.called).to.equal(false);
-    expect(logStub.called).to.equal(false);
+    expect(result.text).to.equal("");
   });
 
-  it("show renders formatted output", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      modules: {},
-      logging: {
-        enabled: true,
-        moduleTracking: { enabled: true, includes: ["modA"], excludes: [] },
-        formatter: { default: "{LEVEL_NAME}" },
-        dateFormat: "yyyy-MM-dd",
-      },
-    } as any);
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "header");
-    sinon.stub(console, "log");
+  it("shows the default configuration as key/value lines", async () => {
+    stubLogging(undefined);
 
-    const cmd = cmdShow();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+    const { result, feedback } = await runShow();
 
-    expect(displayStub.calledOnce).to.equal(true);
+    expect(result.text).to.equal(
+      detailLines(
+        ["Enabled", "yes"],
+        ["Module tracking", "off"],
+        ["Date format", "yyyy-MM-dd HH:mm:ss"],
+        ["Level formats", "default, see --json for the templates"],
+      ),
+    );
+    expect(feedback.text).to.equal(
+      "ℹ Logging configuration of test-project (default)\n",
+    );
   });
 
-  it("show includes env label and defaults for empty includes/excludes", async () => {
-    sinon
-      .stub(common, "readConfig")
-      .resolves({ name: "test-project", environments: { staging: {} } } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      modules: {},
-      logging: {
-        enabled: true,
-        moduleTracking: { enabled: true, includes: null, excludes: null },
-        formatter: { default: "{LEVEL_NAME}" },
-        dateFormat: "",
-      },
-    } as any);
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "header");
-    sinon.stub(console, "log");
+  it("names the tracked modules and the customized levels", async () => {
+    stubLogging({
+      enabled: true,
+      moduleTracking: { enabled: true, includes: ["modA", "modB"] },
+      formatter: { "10": "{{ARGS}}", default: "[{{LEVEL_NAME}}] {{ARGS}}" },
+      dateFormat: "",
+    });
 
-    const cmd = cmdShow();
-    await cmd.parseAsync([
-      "node",
-      "test",
-      "--project",
-      "/tmp/project",
-      "--env",
-      "staging",
-    ]);
+    const { result, feedback } = await runShow(["--env", "staging"]);
 
-    expect(String(displayStub.firstCall.args[1])).to.include("staging");
-    expect(String(displayStub.firstCall.args[0])).to.include("none");
+    expect(result.text).to.equal(
+      detailLines(
+        ["Enabled", "yes"],
+        ["Module tracking", "only modA, modB"],
+        ["Date format", "yyyy-MM-dd HH:mm:ss"],
+        [
+          "Level formats",
+          "custom for DEBUG, default, see --json for the templates",
+        ],
+      ),
+    );
+    expect(feedback.text).to.contain("test-project (staging)");
   });
 
-  it("show uses default date format when missing and marks disabled status", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      modules: {},
-      logging: {
-        enabled: false,
-        moduleTracking: { enabled: false },
-        formatter: { default: "{LEVEL_NAME}" },
-      },
-    } as any);
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "header");
-    sinon.stub(console, "log");
+  it("describes excluded modules and a disabled logger", async () => {
+    stubLogging({
+      enabled: false,
+      moduleTracking: { enabled: true, includes: [], excludes: ["modB"] },
+      dateFormat: "HH:mm",
+    });
 
-    const cmd = cmdShow();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+    const { result } = await runShow();
 
-    const content = String(displayStub.firstCall.args[0]);
-    expect(content).to.include("disabled");
-    expect(content).to.include("yyyy-MM-dd HH:mm:ss");
+    expect(result.text).to.equal(
+      detailLines(
+        ["Enabled", "no"],
+        ["Module tracking", "all except modB"],
+        ["Date format", "HH:mm"],
+        ["Level formats", "default, see --json for the templates"],
+      ),
+    );
   });
 
-  it("show renders blacklist mode when excludes are present", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      modules: {},
-      logging: {
-        enabled: true,
-        moduleTracking: { enabled: true, includes: [], excludes: ["modB"] },
-        formatter: { default: "{LEVEL_NAME}" },
-        dateFormat: "yyyy-MM-dd",
-      },
-    } as any);
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "header");
-    sinon.stub(console, "log");
+  it("tracks every module when no include or exclude list is set", async () => {
+    stubLogging({
+      moduleTracking: { enabled: true, includes: null, excludes: null },
+    });
 
-    const cmd = cmdShow();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+    const { result } = await runShow();
 
-    expect(displayStub.calledOnce).to.equal(true);
+    expect(result.text).to.contain("Module tracking  all modules\n");
   });
 
-  it("show renders all mode when no includes or excludes", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      modules: {},
-      logging: {
-        enabled: true,
-        moduleTracking: { enabled: true, includes: [], excludes: [] },
-        formatter: { default: "{LEVEL_NAME}" },
-        dateFormat: "yyyy-MM-dd",
-      },
-    } as any);
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "header");
-    sinon.stub(console, "log");
+  it("prints the merged configuration as JSON with --json", async () => {
+    stubLogging({ enabled: false, formatter: { "20": "{{ARGS}}" } });
 
-    const cmd = cmdShow();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+    const { result, feedback } = await runShow(["--json"]);
 
-    expect(displayStub.calledOnce).to.equal(true);
-  });
-
-  it("show outputs json when requested", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      modules: {},
-      logging: {
-        enabled: false,
-        moduleTracking: { enabled: false, includes: [], excludes: [] },
-        formatter: {},
-      },
-    } as any);
-    const logStub = sinon.stub(console, "log");
-
-    const cmd = cmdShow();
-    await cmd.parseAsync([
-      "node",
-      "test",
-      "--project",
-      "/tmp/project",
-      "--json",
-    ]);
-
-    expect(logStub.called).to.equal(true);
+    const logging = JSON.parse(result.text);
+    expect(logging.enabled).to.equal(false);
+    expect(logging.formatter["20"]).to.equal("{{ARGS}}");
+    expect(logging.formatter["0"]).to.equal(
+      defaultConfigLogging.formatter?.["0"],
+    );
+    expect(logging.dateFormat).to.equal(defaultConfigLogging.dateFormat);
+    expect(feedback.text).to.equal("");
   });
 });

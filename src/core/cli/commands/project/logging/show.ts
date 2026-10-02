@@ -1,21 +1,104 @@
-import chalk from "chalk";
 import { Command, Option } from "commander";
+import type { AntelopeLogging } from "@antelopejs/interface-core/config";
 
 import { ConfigLoader } from "../../../../config";
 import { Options } from "../../../common";
 import { mergeDeep } from "../../../../../utils/object";
 import { NodeFileSystem } from "../../../../filesystem";
 import { defaultConfigLogging, levelNames } from "../../../../../logging";
-import { displayBox, header, keyValue } from "../../../cli-ui";
+import {
+  getProcessUi,
+  writeData,
+  type DetailEntry,
+  type Ui,
+} from "../../../output";
 import { resolveProjectContext } from "../../shared/project-command";
 
 interface ShowOptions {
   project: string;
   env?: string;
-  json: boolean;
+  json?: boolean;
 }
 
-export default function () {
+const TRACKING_DISABLED = "off";
+const TRACKING_ALL_MODULES = "all modules";
+const LIST_SEPARATOR = ", ";
+const TEMPLATES_HINT = "see --json for the templates";
+
+function describeModuleTracking(logging: AntelopeLogging): string {
+  const tracking = logging.moduleTracking ?? {};
+  if (!tracking.enabled) {
+    return TRACKING_DISABLED;
+  }
+  const includes = tracking.includes ?? [];
+  const excludes = tracking.excludes ?? [];
+  if (includes.length > 0) {
+    return `only ${includes.join(LIST_SEPARATOR)}`;
+  }
+  if (excludes.length > 0) {
+    return `all except ${excludes.join(LIST_SEPARATOR)}`;
+  }
+  return TRACKING_ALL_MODULES;
+}
+
+function levelLabel(level: string): string {
+  return levelNames[Number(level)] ?? level;
+}
+
+function describeLevelFormats(logging: AntelopeLogging): string {
+  const defaults: Record<string, string> = defaultConfigLogging.formatter ?? {};
+  const customLevels = Object.entries(logging.formatter ?? {})
+    .filter(([level, template]) => template !== defaults[level])
+    .map(([level]) => levelLabel(level));
+  const summary =
+    customLevels.length > 0
+      ? `custom for ${customLevels.join(LIST_SEPARATOR)}`
+      : "default";
+  return `${summary}, ${TEMPLATES_HINT}`;
+}
+
+function describeLogging(logging: AntelopeLogging): DetailEntry[] {
+  return [
+    { label: "Enabled", value: logging.enabled ? "yes" : "no" },
+    { label: "Module tracking", value: describeModuleTracking(logging) },
+    {
+      label: "Date format",
+      value: logging.dateFormat || defaultConfigLogging.dateFormat || "",
+    },
+    { label: "Level formats", value: describeLevelFormats(logging) },
+  ];
+}
+
+function renderLogging(
+  logging: AntelopeLogging,
+  location: string,
+  ui: Ui,
+): void {
+  ui.message("info", `Logging configuration of ${location}`);
+  ui.details(describeLogging(logging));
+}
+
+async function showLogging(options: ShowOptions, ui: Ui): Promise<void> {
+  const { config, environment } = await resolveProjectContext(
+    options.project,
+    options.env,
+  );
+  const loader = new ConfigLoader(new NodeFileSystem());
+  const antelopeConfig = await loader.load(options.project, environment);
+  const logging: AntelopeLogging = mergeDeep(
+    {},
+    defaultConfigLogging,
+    antelopeConfig.logging,
+  );
+  writeData(ui, {
+    data: logging,
+    isJson: options.json,
+    render: (target) =>
+      renderLogging(logging, `${config.name} (${environment})`, target),
+  });
+}
+
+export default function (ui?: Ui) {
   return new Command("show")
     .alias("ls")
     .description(
@@ -28,115 +111,8 @@ export default function () {
         "ANTELOPEJS_LAUNCH_ENV",
       ),
     )
-    .addOption(new Option("-j, --json", "Output in JSON format").default(false))
-    .action(async (options: ShowOptions) => {
-      const { config, environment } = await resolveProjectContext(
-        options.project,
-        options.env,
-      );
-
-      const loader = new ConfigLoader(new NodeFileSystem());
-      const antelopeConfig = await loader.load(options.project, environment);
-      const logging = mergeDeep(
-        {},
-        defaultConfigLogging,
-        antelopeConfig.logging,
-      );
-      const projectName = config.name;
-
-      // JSON output mode
-      if (options.json) {
-        console.log(JSON.stringify(logging, null, 2));
-        return;
-      }
-
-      console.log("");
-
-      // Pretty output mode
-      const formatStatus = (status: boolean) =>
-        status ? chalk.green("enabled") : chalk.red("disabled");
-
-      // Create the heading with project and environment info
-      const title = `📋 Logging Configuration: ${chalk.cyan(projectName)}${
-        options.env ? ` (${chalk.yellow(options.env)})` : ""
-      }`;
-
-      // Build up the sections for our display
-      let content = `${keyValue("Logging", formatStatus(logging.enabled))}\n\n`;
-
-      // Module tracking section
-      content += `${chalk.blue.bold("Module Tracking:")}\n`;
-      content += `${keyValue("Status", formatStatus(logging.moduleTracking.enabled))}\n`;
-
-      if (logging.moduleTracking.enabled) {
-        const includes = logging.moduleTracking.includes || [];
-        const excludes = logging.moduleTracking.excludes || [];
-
-        // Show tracking mode
-        if (includes.length > 0) {
-          content += `${keyValue("Mode", `${chalk.cyan("Whitelist")} - only log selected modules`)}\n`;
-        } else if (excludes.length > 0) {
-          content += `${keyValue("Mode", `${chalk.yellow("Blacklist")} - log all except excluded ones`)}\n`;
-        } else {
-          content += `${keyValue("Mode", `${chalk.green("All")} - log all modules`)}\n`;
-        }
-
-        // Show included modules
-        if (includes.length > 0) {
-          content += `\n${chalk.cyan("Included Modules:")}\n`;
-          includes.forEach((module: string) => {
-            content += `  • ${chalk.cyan(module)}\n`;
-          });
-        } else if (includes.length === 0 && excludes.length === 0) {
-          content += `\n${keyValue("Included Modules", chalk.dim("none"))}\n`;
-        }
-
-        // Show excluded modules
-        if (excludes.length > 0) {
-          content += `\n${chalk.yellow("Excluded Modules:")}\n`;
-          excludes.forEach((module: string) => {
-            content += `  • ${chalk.yellow(module)}\n`;
-          });
-        } else if (includes.length === 0 && excludes.length === 0) {
-          content += `\n${keyValue("Excluded Modules", chalk.dim("none"))}\n`;
-        }
-      }
-
-      // Log formatters section
-      content += `\n${chalk.blue.bold("Log Formatters:")}\n`;
-      Object.entries(logging.formatter).forEach(([level, format]) => {
-        // Convert numeric level to string name
-        const levelName = levelNames[parseInt(level, 10)] || level;
-        content += `  ${chalk.cyan(levelName.padEnd(8))}: ${chalk.dim(format)}\n`;
-      });
-
-      // Date Format section
-      content += `\n${chalk.blue.bold("Date Format:")}\n`;
-      content += `  ${chalk.dim(logging.dateFormat || defaultConfigLogging.dateFormat)}\n`;
-
-      // Display the configuration box
-      await displayBox(content, title, {
-        padding: 1,
-        borderColor: "blue",
-      });
-
-      // Help section
-      header("Configuration Tips");
-      console.log(
-        `• Use ${chalk.cyan("ajs project logging set --enable")} to enable logging`,
-      );
-      console.log(
-        `• Include specific modules with ${chalk.cyan("--includeModule <n>")}`,
-      );
-      console.log(
-        `• Format string variables: ${chalk.dim("DATE, LEVEL_NAME, ARGS, MODULE_NAME")}`,
-      );
-      console.log(
-        `• Configure date format with ${chalk.cyan('--dateFormat "yyyy-MM-dd HH:mm:ss"')}`,
-      );
-      console.log(
-        `• Try ${chalk.cyan("--interactive")} for a guided configuration experience`,
-      );
-      console.log("");
-    });
+    .addOption(Options.json)
+    .action((options: ShowOptions) =>
+      showLogging(options, ui ?? getProcessUi()),
+    );
 }
