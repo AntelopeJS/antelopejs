@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import path from "node:path";
-import * as ts from "typescript";
+import type * as TypeScript from "typescript";
 import { homedir } from "node:os";
 import { Option } from "commander";
 import { mkdirSync } from "node:fs";
@@ -113,18 +113,20 @@ async function readJsonFile<T>(
 }
 
 function getDefaultExportExpression(
-  sourceFile: ts.SourceFile,
-): ts.Expression | undefined {
+  ts: typeof TypeScript,
+  sourceFile: TypeScript.SourceFile,
+): TypeScript.Expression | undefined {
   const exportAssignment = sourceFile.statements.find(
-    (statement): statement is ts.ExportAssignment =>
+    (statement): statement is TypeScript.ExportAssignment =>
       ts.isExportAssignment(statement) && !statement.isExportEquals,
   );
   return exportAssignment?.expression;
 }
 
 function isDefineConfigCall(
-  expression: ts.Expression,
-): expression is ts.CallExpression {
+  ts: typeof TypeScript,
+  expression: TypeScript.Expression,
+): expression is TypeScript.CallExpression {
   return (
     ts.isCallExpression(expression) &&
     ts.isIdentifier(expression.expression) &&
@@ -133,18 +135,23 @@ function isDefineConfigCall(
 }
 
 function unwrapDefineConfigExpression(
-  expression: ts.Expression,
-): ts.Expression {
-  if (!isDefineConfigCall(expression) || expression.arguments.length === 0) {
+  ts: typeof TypeScript,
+  expression: TypeScript.Expression,
+): TypeScript.Expression {
+  if (
+    !isDefineConfigCall(ts, expression) ||
+    expression.arguments.length === 0
+  ) {
     return expression;
   }
   return expression.arguments[0];
 }
 
-function getTsConfigWriteMeta(
+async function getTsConfigWriteMeta(
   configPath: string,
   source: string,
-): TsConfigWriteMeta {
+): Promise<TsConfigWriteMeta> {
+  const ts = await import("typescript");
   const sourceFile = ts.createSourceFile(
     configPath,
     source,
@@ -152,12 +159,12 @@ function getTsConfigWriteMeta(
     true,
     ts.ScriptKind.TS,
   );
-  const expression = getDefaultExportExpression(sourceFile);
+  const expression = getDefaultExportExpression(ts, sourceFile);
   if (!expression) {
     return { canWrite: false, useDefineConfig: false };
   }
-  const useDefineConfig = isDefineConfigCall(expression);
-  const targetExpression = unwrapDefineConfigExpression(expression);
+  const useDefineConfig = isDefineConfigCall(ts, expression);
+  const targetExpression = unwrapDefineConfigExpression(ts, expression);
   return {
     canWrite: ts.isObjectLiteralExpression(targetExpression),
     useDefineConfig,
@@ -212,7 +219,7 @@ async function writeTsConfig(
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<void> {
   const source = await fileSystem.readFileString(configPath);
-  const writeMeta = getTsConfigWriteMeta(configPath, source);
+  const writeMeta = await getTsConfigWriteMeta(configPath, source);
   if (!writeMeta.canWrite) {
     throw new Error(FUNCTION_BASED_TS_CONFIG_ERROR);
   }
