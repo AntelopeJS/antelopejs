@@ -10,7 +10,7 @@ import cmdPlugins from "./commands/plugins";
 import cmdProject from "./commands/project";
 import { getCoreVersion } from "./core-version";
 import { isPromptCancellation, reportCancellation } from "./cancellation";
-import { CliError, reportCliError } from "./cli-error";
+import { CliError, reportCliError } from "./output";
 import { SUCCESS_EXIT_CODE, USAGE_EXIT_CODE } from "./exit-codes";
 import { reportAvailableUpdate, startUpdateCheck } from "./version-check";
 import { formatOfficialPluginsHelp } from "./plugin-registry";

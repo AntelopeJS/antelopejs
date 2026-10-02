@@ -4,6 +4,7 @@ import { expect } from "chai";
 import { writeFileSync } from "node:fs";
 
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
+import { getProcessUi } from "../../../../../src/core/cli/output";
 import * as common from "../../../../../src/core/cli/common";
 import {
   findProject,
@@ -145,14 +146,13 @@ describe("project command context", () => {
     sinon.stub(common, "readConfig").resolves(undefined);
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "stop").resolves();
-    const errorStub = sinon.stub(cliUi, "error");
-    sinon.stub(console, "error");
+    const problemStub = sinon.stub(getProcessUi(), "problem");
 
     const hasProject = await validateProjectExists("/tmp/project");
 
     expect(hasProject).to.equal(false);
-    expect(errorStub.calledOnce).to.equal(true);
-    expect(String(errorStub.firstCall.args[0])).to.include(
+    expect(problemStub.calledOnce).to.equal(true);
+    expect(problemStub.firstCall.args[0].title).to.include(
       "No AntelopeJS project found at",
     );
     expect(process.exitCode).to.equal(1);

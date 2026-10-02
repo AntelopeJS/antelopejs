@@ -1,6 +1,6 @@
 import chalk from "chalk";
 
-import { CliError } from "../../../cli-error";
+import { CliError } from "../../../output";
 import { USAGE_EXIT_CODE } from "../../../exit-codes";
 import type { SetOptions } from "./set-operations";
 

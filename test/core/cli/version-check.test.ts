@@ -13,6 +13,7 @@ import {
   shouldCheckForUpdates,
   startUpdateCheck,
 } from "../../../src/core/cli/version-check";
+import { captureOutputAsync } from "../../helpers/capture-output";
 
 const NOW = Date.UTC(2026, 0, 2);
 const HOUR_MS = 60 * 60 * 1000;
@@ -342,14 +343,15 @@ describe("reportAvailableUpdate", () => {
   }
 
   it("prints a one-line notice on stderr when a newer version exists", async () => {
-    const logStub = sinon.stub(console, "log");
-    const errorStub = sinon.stub(console, "error");
+    const check = await checkWithLatest("2.0.0");
 
-    await reportAvailableUpdate("1.0.0", await checkWithLatest("2.0.0"));
+    const output = await captureOutputAsync(() =>
+      reportAvailableUpdate("1.0.0", check),
+    );
 
-    expect(logStub.called).to.equal(false);
-    expect(errorStub.calledOnce).to.equal(true);
-    expect(errorStub.firstCall.args[0])
+    expect(output.stdout).to.equal("");
+    expect(output.stderr.trimEnd().split("\n")).to.have.lengthOf(1);
+    expect(output.stderr)
       .to.contain("Update available 1.0.0 →")
       .and.to.contain("2.0.0")
       .and.to.contain("ajs update");

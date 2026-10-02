@@ -7,7 +7,7 @@ import * as logging from "../../../src/logging";
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import { runCLI } from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
-import { CliError } from "../../../src/core/cli/cli-error";
+import { CliError, getProcessUi } from "../../../src/core/cli/output";
 import { CANCELLED_MESSAGE } from "../../../src/core/cli/cancellation";
 import {
   CANCELLED_EXIT_CODE,
@@ -127,12 +127,13 @@ describe("runCLI behavior", () => {
         exitCode: USAGE_EXIT_CODE,
       }),
     );
-    const errorStub = sinon.stub(cliUi, "error");
+    const problemStub = sinon.stub(getProcessUi(), "problem");
 
     await runCLI();
 
-    expect(errorStub.calledOnceWith("Unknown environment 'staging'")).to.equal(
-      true,
+    expect(problemStub.calledOnce).to.equal(true);
+    expect(problemStub.firstCall.args[0].title).to.equal(
+      "Unknown environment 'staging'",
     );
     expect(process.exitCode).to.equal(USAGE_EXIT_CODE);
   });

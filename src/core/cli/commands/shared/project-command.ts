@@ -3,7 +3,7 @@ import type { Command } from "commander";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import { Spinner } from "../../cli-ui";
-import { CliError, reportCliError } from "../../cli-error";
+import { CliError, reportCliError } from "../../output";
 import { isDynamicConfig, readConfig } from "../../common";
 import { USAGE_EXIT_CODE } from "../../exit-codes";
 import { NodeFileSystem } from "../../../filesystem";
