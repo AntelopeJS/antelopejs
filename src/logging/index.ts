@@ -7,9 +7,12 @@ import eventLog, {
 import { mergeDeep } from "../utils/object";
 import { terminalDisplay } from "../core/cli/terminal-display";
 import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
+import { renderLogTemplate } from "./log-template";
 
 const DEFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 const CORE_MODULE_NAME = "core";
+const DEFAULT_FORMATTER_KEY = "default";
+const DEFAULT_LEVEL_NAME = "LOG";
 const LOG_SUFFIX = "{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}";
 
 export const levelNames: Record<number, string> = {
@@ -125,12 +128,48 @@ function configureFilters(): void {
   }
 }
 
-function writeLogLine(log: Log, module?: string): void {
-  const message = formatLogMessageWithRightAlignedDate(
-    loggingConfig,
+function formatterKey(
+  formatter: Record<string, string>,
+  levelId: number,
+): string {
+  const levelKey = String(levelId);
+  return Object.hasOwn(formatter, levelKey) ? levelKey : DEFAULT_FORMATTER_KEY;
+}
+
+/**
+ * The saved template a log line of this level is rendered with, `undefined`
+ * when the level keeps the built-in format.
+ *
+ * A level uses its own template, or the `default` one when it has none. A
+ * template equal to the built-in one is not a customization: older versions
+ * of `ajs project logging set` copied the whole built-in block into the
+ * project configuration, and those projects keep the built-in format.
+ */
+function findSavedTemplate(levelId: number): string | undefined {
+  const formatter = loggingConfig.formatter ?? {};
+  const key = formatterKey(formatter, levelId);
+  const template = formatter[key];
+  if (!template || template === defaultConfigLogging.formatter?.[key]) {
+    return undefined;
+  }
+  return template;
+}
+
+function formatLogLine(log: Log, module?: string): string {
+  const template = findSavedTemplate(log.levelId);
+  if (template === undefined) {
+    return formatLogMessageWithRightAlignedDate(loggingConfig, log, module);
+  }
+  return renderLogTemplate(template, {
     log,
     module,
-  );
+    levelName: levelNames[log.levelId] ?? DEFAULT_LEVEL_NAME,
+    dateFormat: loggingConfig.dateFormat || DEFAULT_DATE_FORMAT,
+  });
+}
+
+function writeLogLine(log: Log, module?: string): void {
+  const message = formatLogLine(log, module);
 
   const stream =
     log.levelId >= levelMap.error ? process.stderr : process.stdout;
