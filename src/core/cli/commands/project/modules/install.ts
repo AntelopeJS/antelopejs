@@ -29,9 +29,9 @@ import {
 import {
   displayNonDefaultGitWarning,
   Options,
-  readConfig,
   readUserConfig,
 } from "../../../common";
+import { resolveProjectContext } from "../../shared/project-command";
 
 interface InstallOptions {
   project: string;
@@ -161,17 +161,11 @@ export default function () {
       ),
     )
     .action(async (options: InstallOptions) => {
+      const { config: baseConfig, environment } = await resolveProjectContext(
+        options.project,
+        options.env,
+      );
       info(chalk.blue`Analyzing project dependencies...`);
-
-      const baseConfig = await readConfig(options.project);
-      if (!baseConfig) {
-        error(chalk.red`No project configuration found at: ${options.project}`);
-        info(
-          `Make sure you're in an AntelopeJS project or use the --project option.`,
-        );
-        process.exitCode = FAILURE_EXIT_CODE;
-        return;
-      }
 
       const userConfig = await readUserConfig();
       const git = options.git || userConfig.git;
@@ -200,8 +194,8 @@ export default function () {
 
       // Determine which environments to analyze
       const envs = options.env
-        ? [options.env]
-        : baseConfig?.environments
+        ? [environment]
+        : baseConfig.environments
           ? Object.keys(baseConfig.environments)
           : ["default"];
 

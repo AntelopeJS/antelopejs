@@ -5,6 +5,7 @@ import * as cliUi from "../../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../../src/core/cli/common";
 import { ConfigLoader } from "../../../../../../src/core/config";
 import cmdList from "../../../../../../src/core/cli/commands/project/modules/list";
+import { expectProjectNotFound } from "../../../../../helpers/cli-error";
 
 describe("project modules list behavior", () => {
   afterEach(() => {
@@ -14,16 +15,11 @@ describe("project modules list behavior", () => {
 
   it("fails when project config is missing", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
-    const errorStub = sinon.stub(cliUi, "error");
-    const warningStub = sinon.stub(cliUi, "warning");
     sinon.stub(console, "log");
 
-    const cmd = cmdList();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
-
-    expect(errorStub.calledOnce).to.equal(true);
-    expect(warningStub.calledOnce).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    await expectProjectNotFound(() =>
+      cmdList().parseAsync(["node", "test", "--project", "/tmp/project"]),
+    );
   });
 
   it("renders empty state when no modules are configured", async () => {
@@ -50,7 +46,10 @@ describe("project modules list behavior", () => {
   });
 
   it("renders module details for known and unknown source formats", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
+    sinon.stub(common, "readConfig").resolves({
+      name: "test-project",
+      environments: { staging: {} },
+    } as any);
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
         packageModule: {

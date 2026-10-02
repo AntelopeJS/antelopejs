@@ -6,8 +6,9 @@ import { ConfigLoader } from "../../../../config";
 import { FAILURE_EXIT_CODE } from "../../../exit-codes";
 import type { ExpandedModuleConfig } from "../../../../config/config-parser";
 import { NodeFileSystem } from "../../../../filesystem";
-import { Options, readConfig, writeConfig } from "../../../common";
+import { Options, writeConfig } from "../../../common";
 import { error as errorUI, info, success, warning } from "../../../cli-ui";
+import { resolveProjectContext } from "../../shared/project-command";
 import {
   bumpVersionSpec,
   checkOutdatedModules,
@@ -110,28 +111,12 @@ export default function () {
       ).default(false),
     )
     .action(async (modules: string[], options: UpdateOptions) => {
+      const {
+        config,
+        environment,
+        environmentConfig: env,
+      } = await resolveProjectContext(options.project, options.env);
       info(chalk.blue`Checking for module updates...`);
-
-      const config = await readConfig(options.project);
-      if (!config) {
-        errorUI(
-          chalk.red`No project configuration found at: ${options.project}`,
-        );
-        info(
-          `Make sure you're in an AntelopeJS project or use the --project option.`,
-        );
-        process.exitCode = FAILURE_EXIT_CODE;
-        return;
-      }
-
-      const env = options.env ? config?.environments?.[options.env] : config;
-      if (!env) {
-        errorUI(
-          chalk.red`Environment ${options.env || "default"} not found in project config`,
-        );
-        process.exitCode = FAILURE_EXIT_CODE;
-        return;
-      }
 
       if (!env.modules || Object.keys(env.modules).length === 0) {
         errorUI(chalk.red`No modules installed in this environment`);
@@ -140,10 +125,7 @@ export default function () {
       }
 
       const loader = new ConfigLoader(new NodeFileSystem());
-      const antelopeConfig = await loader.load(
-        options.project,
-        options.env || "default",
-      );
+      const antelopeConfig = await loader.load(options.project, environment);
 
       const selectedModules = selectRequestedModules(
         antelopeConfig.modules,

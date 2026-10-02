@@ -4,8 +4,9 @@ import { Command, Option } from "commander";
 import { ConfigLoader } from "../../../../config";
 import { NodeFileSystem } from "../../../../filesystem";
 import { error, info, success, warning } from "../../../cli-ui";
-import { Options, readConfig, writeConfig } from "../../../common";
+import { Options, writeConfig } from "../../../common";
 import { FAILURE_EXIT_CODE } from "../../../exit-codes";
+import { resolveProjectContext } from "../../shared/project-command";
 
 interface RemoveOptions {
   project: string;
@@ -17,29 +18,12 @@ export async function projectModulesRemoveCommand(
   modules: string[],
   options: RemoveOptions,
 ) {
+  const {
+    config,
+    environment,
+    environmentConfig: env,
+  } = await resolveProjectContext(options.project, options.env);
   info(chalk.blue`Removing modules from project...`);
-
-  const config = await readConfig(options.project);
-  if (!config) {
-    error(chalk.red`No project configuration found at: ${options.project}`);
-    info(
-      `Make sure you're in an AntelopeJS project or use the --project option.`,
-    );
-    process.exitCode = FAILURE_EXIT_CODE;
-    return;
-  }
-
-  const env =
-    options.env && options.env !== "default"
-      ? config?.environments?.[options.env]
-      : config;
-  if (!env) {
-    error(
-      chalk.red`Environment ${options.env || "default"} not found in project config`,
-    );
-    process.exitCode = FAILURE_EXIT_CODE;
-    return;
-  }
 
   if (!env.modules || Object.keys(env.modules).length === 0) {
     error(chalk.red`No modules installed in this environment`);
@@ -50,10 +34,7 @@ export async function projectModulesRemoveCommand(
   const envModules = env.modules!;
 
   const loader = new ConfigLoader(new NodeFileSystem());
-  const antelopeConfig = await loader.load(
-    options.project,
-    options.env || "default",
-  );
+  const antelopeConfig = await loader.load(options.project, environment);
 
   // Track results
   const removedModules: string[] = [];

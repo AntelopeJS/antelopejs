@@ -19,6 +19,10 @@ import cmdInstall, {
   resolveInstallIdentifier,
   unresolvedImportWarning,
 } from "../../../../../../src/core/cli/commands/project/modules/install";
+import {
+  expectProjectNotFound,
+  expectUnknownEnvironment,
+} from "../../../../../helpers/cli-error";
 
 describe("project modules install behavior", () => {
   let tempModuleDir: string;
@@ -121,15 +125,37 @@ describe("project modules install behavior", () => {
 
   it("errors when project config is missing", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
-    const errorStub = sinon.stub(cliUi, "error");
-    const infoStub = sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "info");
 
-    const cmd = cmdInstall();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+    await expectProjectNotFound(() =>
+      cmdInstall().parseAsync(["node", "test", "--project", "/tmp/project"]),
+    );
+  });
 
-    expect(errorStub.called).to.equal(true);
-    expect(infoStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+  it("rejects an unknown environment before fetching the interface manifest", async () => {
+    sinon.stub(common, "readConfig").resolves({
+      name: "proj",
+      environments: { production: {} },
+    } as any);
+    const userConfigStub = sinon.stub(common, "readUserConfig");
+    const manifestStub = sinon.stub(gitOps, "loadManifestFromGit");
+    sinon.stub(cliUi, "info");
+
+    await expectUnknownEnvironment(
+      () =>
+        cmdInstall().parseAsync([
+          "node",
+          "test",
+          "--project",
+          "/tmp/project",
+          "--env",
+          "staging",
+        ]),
+      "staging",
+    );
+
+    expect(userConfigStub.called).to.equal(false);
+    expect(manifestStub.called).to.equal(false);
   });
 
   it("uses absolute cache folder when configured", async () => {

@@ -2,13 +2,14 @@ import chalk from "chalk";
 import { Command, Option } from "commander";
 
 import { Options } from "../../common";
-import { build, DEFAULT_ENV } from "../../../..";
+import { build } from "../../../..";
 import { displayBox, error, info, success } from "../../cli-ui";
 import { readBuildArtifact } from "../../../build/build-artifact";
 import {
+  findProject,
   type ProjectCommandOptions,
+  type ProjectContext,
   resolveInheritedVerbose,
-  validateProjectExists,
 } from "../shared/project-command";
 
 interface BuildCommandOptions extends ProjectCommandOptions {
@@ -38,9 +39,10 @@ function normalizeOptions(
 
 async function showBuildConfiguration(
   options: BuildCommandOptions,
+  context: ProjectContext,
 ): Promise<void> {
   await displayBox(
-    `Environment: ${chalk.cyan(options.env ?? DEFAULT_ENV)}\n` +
+    `Environment: ${chalk.cyan(context.environment)}\n` +
       `Project: ${chalk.cyan(options.project)}\n` +
       `Output: ${chalk.cyan(".antelope/build/build.json")}`,
     "󱌢 Build Configuration",
@@ -76,22 +78,20 @@ export default function () {
     )
     .action(async function (this: Command, options: BuildCommandOptions) {
       const commandOptions = normalizeOptions(this, options);
-      console.log("");
-
-      const hasProject = await validateProjectExists(commandOptions.project);
-      if (!hasProject) {
-        return;
-      }
+      const context = await findProject(
+        commandOptions.project,
+        commandOptions.env,
+      );
 
       console.log("");
-      await showBuildConfiguration(commandOptions);
+      await showBuildConfiguration(commandOptions, context);
 
       console.log("");
       info(`Building AntelopeJS project`);
 
       const startedAt = Date.now();
       try {
-        await build(commandOptions.project, commandOptions.env ?? DEFAULT_ENV, {
+        await build(commandOptions.project, context.environment, {
           verbose: commandOptions.verbose,
         });
         await displayBuildSummary(

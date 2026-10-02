@@ -9,7 +9,13 @@ import cmdStart from "../../../../../src/core/cli/commands/project/start";
 import * as projectLaunch from "../../../../../src/core/runtime/project-launch";
 import { BUILD_MODULE_SET_CHANGED_EXIT_CODE } from "../../../../../src/core/cli/exit-codes";
 import { BuildModuleSetChangedError } from "../../../../../src/core/runtime/build-refresh";
+import { expectProjectNotFound } from "../../../../helpers/cli-error";
 import * as buildArtifactModule from "../../../../../src/core/build/build-artifact";
+
+const PROJECT_WITH_PRODUCTION: any = {
+  name: "project",
+  environments: { production: {} },
+};
 
 describe("project build/start behavior", () => {
   afterEach(() => {
@@ -27,14 +33,13 @@ describe("project build/start behavior", () => {
     sinon.stub(common, "readConfig").resolves(undefined);
     stubProjectSpinners();
 
-    const cmd = cmdBuild();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
-
-    expect(process.exitCode).to.equal(1);
+    await expectProjectNotFound(() =>
+      cmdBuild().parseAsync(["node", "test", "--project", "/tmp/project"]),
+    );
   });
 
   it("runs build command and reports summary", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "project" } as any);
+    sinon.stub(common, "readConfig").resolves(PROJECT_WITH_PRODUCTION);
     const buildStub = sinon.stub(indexModule, "build").resolves();
     sinon.stub(buildArtifactModule, "readBuildArtifact").resolves({
       modules: {

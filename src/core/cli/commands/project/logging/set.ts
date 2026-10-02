@@ -3,8 +3,9 @@ import inquirer from "inquirer";
 import { Command, Option } from "commander";
 
 import { defaultConfigLogging } from "../../../../../logging";
-import { Options, readConfig, writeConfig } from "../../../common";
-import { displayBox, error, info, success, warning } from "../../../cli-ui";
+import { Options, writeConfig } from "../../../common";
+import { displayBox, info, success, warning } from "../../../cli-ui";
+import { resolveProjectContext } from "../../shared/project-command";
 
 interface SetOptions {
   project: string;
@@ -87,33 +88,13 @@ export default function () {
       ),
     )
     .action(async (options: SetOptions) => {
+      const { config, environmentConfig: env } = await resolveProjectContext(
+        options.project,
+        options.env,
+      );
       console.log(""); // Add spacing for better readability
 
-      const config = await readConfig(options.project);
-      if (!config) {
-        error(
-          `No project configuration found at: ${chalk.bold(options.project)}`,
-        );
-        console.error(
-          `Make sure you're in an AntelopeJS project or use the --project option.`,
-        );
-        process.exitCode = 1;
-        return;
-      }
-
       const projectName = config.name;
-      const env =
-        options.env && options.env !== "default"
-          ? config?.environments?.[options.env]
-          : config;
-
-      if (!env) {
-        error(
-          `Environment ${options.env || "default"} not found in project config`,
-        );
-        process.exitCode = 1;
-        return;
-      }
 
       // Initialize logging config if not present
       if (!env.logging) {

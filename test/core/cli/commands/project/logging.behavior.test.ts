@@ -7,6 +7,10 @@ import * as common from "../../../../../src/core/cli/common";
 import { ConfigLoader } from "../../../../../src/core/config";
 import cmdSet from "../../../../../src/core/cli/commands/project/logging/set";
 import cmdShow from "../../../../../src/core/cli/commands/project/logging/show";
+import {
+  expectProjectNotFound,
+  expectUnknownEnvironment,
+} from "../../../../helpers/cli-error";
 
 describe("project logging behavior", () => {
   afterEach(() => {
@@ -16,52 +20,75 @@ describe("project logging behavior", () => {
 
   it("show fails when config is missing", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
-    const errorStub = sinon.stub(cliUi, "error");
-    sinon.stub(cliUi, "warning");
     sinon.stub(console, "log");
 
-    const cmd = cmdShow();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+    await expectProjectNotFound(() =>
+      cmdShow().parseAsync(["node", "test", "--project", "/tmp/project"]),
+    );
+  });
 
-    expect(errorStub.called).to.equal(true);
+  it("show rejects an unknown environment", async () => {
+    sinon
+      .stub(common, "readConfig")
+      .resolves({ name: "test-project", environments: {} } as any);
+    const loadStub = sinon.stub(ConfigLoader.prototype, "load");
+    const logStub = sinon.stub(console, "log");
+
+    await expectUnknownEnvironment(
+      () =>
+        cmdShow().parseAsync([
+          "node",
+          "test",
+          "--project",
+          "/tmp/project",
+          "--env",
+          "staging",
+          "--json",
+        ]),
+      "staging",
+    );
+
+    expect(loadStub.called).to.equal(false);
+    expect(logStub.called).to.equal(false);
   });
 
   it("set fails when config is missing", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
-    const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(console, "log");
 
-    const cmd = cmdSet();
-    await cmd.parseAsync([
-      "node",
-      "test",
-      "--project",
-      "/tmp/project",
-      "--enable",
-    ]);
-
-    expect(errorStub.called).to.equal(true);
+    await expectProjectNotFound(() =>
+      cmdSet().parseAsync([
+        "node",
+        "test",
+        "--project",
+        "/tmp/project",
+        "--enable",
+      ]),
+    );
   });
 
   it("set fails when environment is missing", async () => {
     sinon
       .stub(common, "readConfig")
       .resolves({ name: "test-project", environments: {} } as any);
-    const errorStub = sinon.stub(cliUi, "error");
+    const writeStub = sinon.stub(common, "writeConfig").resolves();
     sinon.stub(console, "log");
 
-    const cmd = cmdSet();
-    await cmd.parseAsync([
-      "node",
-      "test",
-      "--project",
-      "/tmp/project",
-      "--env",
+    await expectUnknownEnvironment(
+      () =>
+        cmdSet().parseAsync([
+          "node",
+          "test",
+          "--project",
+          "/tmp/project",
+          "--env",
+          "staging",
+          "--enable",
+        ]),
       "staging",
-      "--enable",
-    ]);
+    );
 
-    expect(errorStub.called).to.equal(true);
+    expect(writeStub.called).to.equal(false);
   });
 
   it("show renders formatted output", async () => {
