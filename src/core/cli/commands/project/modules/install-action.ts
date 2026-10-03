@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import path from "node:path";
 import type {
   AntelopeConfig,
@@ -29,6 +28,7 @@ import {
   CliError,
   createPrompter,
   describeFailure,
+  getProcessPalette,
   getProcessUi,
   pluralize,
   runTask,
@@ -90,7 +90,7 @@ async function chooseImplementation(
   const [firstCandidate] = candidates;
   if (candidates.length === 1) {
     info(
-      `${chalk.bold(firstCandidate.name)} is the only module implementing ${interfaceName}: selected automatically`,
+      `${getProcessPalette().bold(firstCandidate.name)} is the only module implementing ${interfaceName}: selected automatically`,
     );
     return firstCandidate;
   }

@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
 import { ConfigLoader } from "../../../../config";
@@ -9,6 +8,7 @@ import { writeConfig } from "../../../common";
 import { error as errorUI, info } from "../../../cli-ui";
 import { getProcessUi, pluralize, type NextStep } from "../../../output";
 import { TS_CONFIG_FILE } from "../../../../config/config-paths";
+import { formatNames } from "../../shared/names";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import {
@@ -98,10 +98,11 @@ function displayResults(report: UpdateReport): void {
   const ui = getProcessUi();
   const level = report.options.dryRun ? "info" : "success";
   const verb = report.options.dryRun ? "Would update" : "Updated";
+  const palette = ui.palette();
   report.outdated.forEach((entry) =>
     ui.message(
       level,
-      `${verb} ${chalk.bold(entry.name)} ${chalk.dim(entry.current)} → ${bumpVersionSpec(entry.current, entry.latest)}`,
+      `${verb} ${palette.bold(entry.name)} ${palette.dim(entry.current)} → ${bumpVersionSpec(entry.current, entry.latest)}`,
     ),
   );
   ui.summary({
@@ -121,15 +122,9 @@ function selectRequestedModules(
   const notFound = requested.filter((name) => !projectModules[name]);
   if (notFound.length > 0) {
     errorUI(
-      chalk.red`The following modules are not present in the project: ${notFound
-        .map((name) => chalk.bold(name))
-        .join(", ")}`,
+      `The following modules are not present in the project: ${formatNames(notFound)}`,
     );
-    info(
-      `Available modules: ${Object.keys(projectModules)
-        .map((name) => chalk.bold(name))
-        .join(", ")}`,
-    );
+    info(`Available modules: ${formatNames(Object.keys(projectModules))}`);
     process.exitCode = FAILURE_EXIT_CODE;
     return undefined;
   }
@@ -150,7 +145,7 @@ export async function updateModules(
   } = await resolveProjectContext(options.project, options.env);
 
   if (!env.modules || Object.keys(env.modules).length === 0) {
-    errorUI(chalk.red`No modules installed in this environment`);
+    errorUI("No modules installed in this environment");
     process.exitCode = FAILURE_EXIT_CODE;
     return;
   }

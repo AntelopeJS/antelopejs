@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import path from "node:path";
 import assert from "node:assert";
 import { readFile, stat } from "node:fs/promises";
@@ -20,6 +19,7 @@ import { registerLocalDownloader } from "../../../../downloaders/local";
 import { registerPackageDownloader } from "../../../../downloaders/package";
 import {
   CliError,
+  getProcessPalette,
   getProcessTasks,
   getProcessUi,
   pluralize,
@@ -156,14 +156,15 @@ async function addResolvedModule(
   [moduleName, moduleConfig]: ModuleEntry,
   task: TaskHandle,
 ): Promise<ModuleAddOutcome> {
-  const name = chalk.bold(moduleName);
+  const palette = getProcessPalette();
+  const name = palette.bold(moduleName);
   if (context.existingModules[moduleName]) {
     task.skip(`Skipped ${name}: already in the project`);
     return { status: "skipped", moduleName };
   }
   task.update(`Downloading ${name}`);
   await downloadModule(context, moduleName, moduleConfig);
-  task.succeed(`Added ${name} ${chalk.dim(sourceReference(moduleConfig))}`);
+  task.succeed(`Added ${name} ${palette.dim(sourceReference(moduleConfig))}`);
   return { status: "added", moduleName, moduleConfig };
 }
 
@@ -175,7 +176,9 @@ async function addModule(
   module: string,
   context: AddContext,
 ): Promise<ModuleAddOutcome> {
-  const task = getProcessTasks().start(`Adding ${chalk.bold(module)}`);
+  const task = getProcessTasks().start(
+    `Adding ${getProcessPalette().bold(module)}`,
+  );
   let moduleName = module;
   try {
     const entry = await resolveModule(module, context.options);

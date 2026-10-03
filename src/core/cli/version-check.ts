@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import chalk from "chalk";
 import semver from "semver";
 import { homedir } from "node:os";
 
 import { info } from "./cli-ui";
+import { getProcessPalette } from "./output";
 import { CORE_PACKAGE_NAME } from "./core-version";
 
 const UPDATE_COMMAND = "ajs update";
@@ -201,8 +201,9 @@ export async function reportAvailableUpdate(
     return;
   }
   if (semver.gt(latestVersion, currentVersion)) {
+    const palette = getProcessPalette();
     info(
-      `Update available ${currentVersion} → ${chalk.green(latestVersion)}  → ${chalk.cyan(UPDATE_COMMAND)}`,
+      `Update available ${currentVersion} → ${palette.green(latestVersion)}  → ${palette.cyan(UPDATE_COMMAND)}`,
     );
   }
 }

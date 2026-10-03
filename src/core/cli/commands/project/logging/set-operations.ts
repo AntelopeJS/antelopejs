@@ -1,6 +1,5 @@
-import chalk from "chalk";
-
 import { levelMap } from "../../../../../logging";
+import { getProcessPalette } from "../../../output";
 import type { LoggingDraft, ModuleTrackingDraft } from "./logging-draft";
 
 export interface SetOptions {
@@ -86,11 +85,14 @@ function assign(
   if (current === wanted) {
     return {
       isChange: false,
-      message: `${label} is already ${chalk.dim(wanted)}`,
+      message: `${label} is already ${getProcessPalette().dim(wanted)}`,
     };
   }
   write();
-  return { isChange: true, message: `Set ${label} to ${chalk.dim(wanted)}` };
+  return {
+    isChange: true,
+    message: `Set ${label} to ${getProcessPalette().dim(wanted)}`,
+  };
 }
 
 function setDateFormat(logging: LoggingDraft, dateFormat: string) {
@@ -101,7 +103,7 @@ function setDateFormat(logging: LoggingDraft, dateFormat: string) {
 
 function setLevelFormat(logging: LoggingDraft, level: string, format: string) {
   const key = formatterKeyOf(level);
-  const label = `${chalk.bold(level.toUpperCase())} format`;
+  const label = `${getProcessPalette().bold(level.toUpperCase())} format`;
   return assign(label, logging.formatter[key] ?? "", format, () => {
     logging.formatter[key] = format;
   });
@@ -117,13 +119,13 @@ function addModule(
   if (list.includes(module)) {
     return {
       isChange: false,
-      message: `${chalk.bold(module)} is already in the ${listName}`,
+      message: `${getProcessPalette().bold(module)} is already in the ${listName}`,
     };
   }
   list.push(module);
   return {
     isChange: true,
-    message: `Added ${chalk.bold(module)} to the ${listName}`,
+    message: `Added ${getProcessPalette().bold(module)} to the ${listName}`,
   };
 }
 
@@ -138,13 +140,13 @@ function removeModule(
   if (index === -1) {
     return {
       isChange: false,
-      message: `${chalk.bold(module)} is not in the ${listName}`,
+      message: `${getProcessPalette().bold(module)} is not in the ${listName}`,
     };
   }
   list.splice(index, 1);
   return {
     isChange: true,
-    message: `Removed ${chalk.bold(module)} from the ${listName}`,
+    message: `Removed ${getProcessPalette().bold(module)} from the ${listName}`,
   };
 }
 

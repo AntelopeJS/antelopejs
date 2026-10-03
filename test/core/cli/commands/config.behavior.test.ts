@@ -1,7 +1,6 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
-import * as cliUi from "../../../../src/core/cli/cli-ui";
 import * as common from "../../../../src/core/cli/common";
 import {
   FAILURE_EXIT_CODE,
@@ -12,10 +11,13 @@ import cmdSet from "../../../../src/core/cli/commands/config/set";
 import cmdShow from "../../../../src/core/cli/commands/config/show";
 import cmdReset from "../../../../src/core/cli/commands/config/reset";
 import { captureCliError } from "../../../helpers/cli-error";
+import { collectStderr } from "../../../helpers/capture-output";
 import { CANCEL, fakePrompts } from "../../../helpers/fake-prompts";
 import { createMemoryUi, type MemoryUi } from "../../../helpers/memory-ui";
+import { getProcessUi } from "../../../../src/core/cli/output";
 
 const CUSTOM_REPOSITORY = "https://example.com/interfaces.git";
+const { levels } = getProcessUi().symbols;
 
 function stubUserConfig(config: Record<string, string>): void {
   sinon.stub(common, "readUserConfig").resolves(config as any);
@@ -135,7 +137,7 @@ describe("config get behavior", () => {
   });
 });
 
-describe("config commands behavior", () => {
+describe("config set behavior", () => {
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;
@@ -149,40 +151,53 @@ describe("config commands behavior", () => {
     const warnStub = sinon
       .stub(common, "displayNonDefaultGitWarning")
       .returns();
-    sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "success");
+    const feedback = collectStderr();
 
     const cmd = cmdSet();
     await cmd.parseAsync(["node", "test", "git", "https://example.com"]);
 
     expect(warnStub.called).to.equal(true);
     expect(writeStub.calledOnce).to.equal(true);
+    expect(feedback()).to.equal(
+      `${levels.success} Set git to https://example.com\n  Previous value: ${common.DEFAULT_GIT_REPO}\n`,
+    );
   });
 
   it("rejects invalid key on set", async () => {
-    const errorStub = sinon.stub(cliUi, "error");
-    sinon
-      .stub(common, "readUserConfig")
-      .resolves({ git: common.DEFAULT_GIT_REPO });
+    const readStub = sinon.stub(common, "readUserConfig");
 
-    const cmd = cmdSet();
-    await cmd.parseAsync(["node", "test", "invalid", "value"]);
+    const cliError = await captureCliError(() =>
+      cmdSet().parseAsync(["node", "test", "invalid", "value"]),
+    );
 
-    expect(errorStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    expect(cliError.problem).to.deep.equal({
+      title: "Invalid configuration key 'invalid'",
+      reason: "Valid keys: git",
+    });
+    expect(cliError.exitCode).to.equal(FAILURE_EXIT_CODE);
+    expect(readStub.called).to.equal(false);
+  });
+});
+
+describe("config reset behavior", () => {
+  afterEach(() => {
+    sinon.restore();
+    process.exitCode = undefined;
   });
 
   it("does nothing when reset has no changes", async () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves(common.getDefaultUserConfig());
-    const infoStub = sinon.stub(cliUi, "info");
+    const feedback = collectStderr();
     const writeStub = sinon.stub(common, "writeUserConfig").resolves();
 
     const cmd = cmdReset();
     await cmd.parseAsync(["node", "test", "--yes"]);
 
-    expect(infoStub.called).to.equal(true);
+    expect(feedback()).to.equal(
+      `${levels.info} Configuration is already at default values\n`,
+    );
     expect(writeStub.called).to.equal(false);
   });
 
@@ -191,8 +206,7 @@ describe("config commands behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: "https://example.com" });
     const writeStub = sinon.stub(common, "writeUserConfig").resolves();
-    sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "success");
+    const feedback = collectStderr();
 
     const cmd = cmdReset();
     await cmd.parseAsync(["node", "test", "--yes"]);
@@ -201,19 +215,26 @@ describe("config commands behavior", () => {
     expect(writeStub.firstCall.args[0]).to.deep.equal(
       common.getDefaultUserConfig(),
     );
+    expect(feedback()).to.equal(
+      [
+        `${levels.success} Reset the configuration to its default values`,
+        "",
+        `git  https://example.com → ${common.DEFAULT_GIT_REPO}`,
+        "",
+      ].join("\n"),
+    );
   });
 
-  it("shows Not set for empty values in reset summary", async () => {
+  it("shows not set for empty values in reset summary", async () => {
     sinon.stub(common, "readUserConfig").resolves({ git: "" } as any);
     const writeStub = sinon.stub(common, "writeUserConfig").resolves();
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "success");
+    const feedback = collectStderr();
 
     const cmd = cmdReset();
     await cmd.parseAsync(["node", "test", "--yes"]);
 
     expect(writeStub.calledOnce).to.equal(true);
-    expect(String(displayStub.firstCall.args[0])).to.include("Not set");
+    expect(feedback()).to.include(`git  not set → ${common.DEFAULT_GIT_REPO}`);
   });
 
   it("cancels reset when confirmation is declined", async () => {
@@ -222,12 +243,16 @@ describe("config commands behavior", () => {
       .resolves({ git: "https://example.com" });
     const writeStub = sinon.stub(common, "writeUserConfig").resolves();
     const prompts = fakePrompts({ answers: [false] });
+    const feedback = collectStderr();
 
     const cmd = cmdReset();
     await cmd.parseAsync(["node", "test"]);
 
     expect(writeStub.called).to.equal(false);
     expect(prompts.asked[0].kind).to.equal("confirm");
+    expect(feedback()).to.equal(
+      `${levels.skip} Reset cancelled: nothing changed\n`,
+    );
   });
 
   it("asks for --yes instead of prompting without a terminal", async () => {

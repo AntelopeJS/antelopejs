@@ -9,7 +9,7 @@ import {
   type Ui,
 } from "../../../../src/core/cli/output";
 import { captureOutput } from "../../../helpers/capture-output";
-import { createMemoryUi } from "../../../helpers/memory-ui";
+import { createMemoryUi, MemoryStream } from "../../../helpers/memory-ui";
 
 const LEVELS: MessageLevel[] = [
   "success",
@@ -177,6 +177,32 @@ describe("output ui blocks", () => {
     ui.details([{ label: "Name", value: "acme" }]);
 
     expect(result.text).to.equal("\x1b[2mName\x1b[22m  acme\n");
+  });
+
+  it("writes details on the feedback channel when asked", () => {
+    const { ui, result, feedback } = createMemoryUi();
+
+    ui.message("success", "Found project");
+    ui.details([{ label: "Environment", value: "default" }], "feedback");
+
+    expect(result.text).to.equal("");
+    expect(feedback.text).to.equal(
+      "✔ Found project\n\nEnvironment  default\n",
+    );
+  });
+
+  it("exposes the colors of each channel", () => {
+    const ui = createUi({
+      streams: { result: new MemoryStream(), feedback: new MemoryStream() },
+      capabilities: {
+        hasUnicode: true,
+        colors: { result: false, feedback: true },
+        terminals: { result: false, feedback: true },
+      },
+    });
+
+    expect(ui.palette().bold("name")).to.equal("\x1b[1mname\x1b[22m");
+    expect(ui.palette("result").bold("name")).to.equal("name");
   });
 
   it("prints a bulleted list", () => {

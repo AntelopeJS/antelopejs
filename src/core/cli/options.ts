@@ -31,6 +31,10 @@ export namespace Options {
     .env("ANTELOPEJS_VERBOSE")
     .preset(ALL_LOG_CHANNELS)
     .argParser((val) => val.replaceAll(/%/g, "*").split(","));
+  export const noColor = new Option(
+    "--no-color",
+    "Disable colors (also NO_COLOR=1)",
+  );
   export const json = new Option(
     "-j, --json",
     "Print the result as JSON on stdout",

@@ -1,4 +1,5 @@
 import * as sinon from "sinon";
+import { stripAnsi } from "../../src/core/cli/logging-utils";
 
 export interface CapturedOutput {
   stdout: string;
@@ -63,4 +64,14 @@ export async function captureOutputAsync(
     capture.restore();
   }
   return collected(capture);
+}
+
+/**
+ * Collects everything written to stderr until `sinon.restore()`, and returns
+ * a reader for the text written so far, without ANSI sequences.
+ */
+export function collectStderr(): () => string {
+  const chunks: string[] = [];
+  sinon.stub(process.stderr, "write").callsFake(collectInto(chunks));
+  return () => stripAnsi(chunks.join(""));
 }

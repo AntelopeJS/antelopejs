@@ -1,9 +1,13 @@
-import chalk from "chalk";
-
 import { defaultConfigLogging } from "../../../../../logging";
 import { writeConfig } from "../../../common";
-import { displayBox, info, success, warning } from "../../../cli-ui";
-import { createPrompter, type Prompter } from "../../../output";
+import { info, success, warning } from "../../../cli-ui";
+import {
+  createPrompter,
+  getProcessPalette,
+  getProcessUi,
+  type Prompter,
+} from "../../../output";
+import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import {
   applyLoggingChanges,
@@ -34,7 +38,12 @@ type TrackingModeHandler = (
 const NOTHING_TO_CHANGE = "Nothing to change";
 const UNCHANGED_CONFIGURATION =
   "the logging configuration already has these settings";
-const SUMMARY_RULE_WIDTH = 40;
+const SHOW_COMMAND = "ajs project logging show";
+const SHOW_DESCRIPTION = "view the current settings";
+const DATE_FORMAT_TOKENS = [
+  "Format tokens: yyyy, MM, dd, HH, mm, ss (padded values)",
+  "Additional: SSS (milliseconds), M, d, H, m, s (non-padded)",
+];
 
 export async function runSet(options: SetOptions): Promise<void> {
   const prompter = createPrompter({ command: SET_COMMAND });
@@ -43,7 +52,6 @@ export async function runSet(options: SetOptions): Promise<void> {
     options.project,
     options.env,
   );
-  console.log("");
 
   const before = resolveLoggingDraft(config, environmentConfig);
   const after = structuredClone(before);
@@ -54,7 +62,7 @@ export async function runSet(options: SetOptions): Promise<void> {
     return;
   }
   await writeConfig(options.project, config);
-  await reportSaved(results, projectLabel(config.name, options.env));
+  reportSaved(results, projectLabel(config.name, options.env), options);
 }
 
 async function collectChanges(
@@ -84,33 +92,29 @@ function reportNothingToChange(results: OperationResult[]): void {
   lines.forEach((line) => info(`${NOTHING_TO_CHANGE}: ${line}`));
 }
 
-function formatResult(result: OperationResult): string {
-  return result.isChange
-    ? chalk.green(result.message)
-    : chalk.yellow(`${NOTHING_TO_CHANGE}: ${result.message}`);
+function reportResult(result: OperationResult): void {
+  if (result.isChange) {
+    getProcessUi().message("success", result.message);
+    return;
+  }
+  getProcessUi().message("skip", `${NOTHING_TO_CHANGE}: ${result.message}`);
 }
 
-async function reportSaved(
+function reportSaved(
   results: OperationResult[],
   label: string,
-): Promise<void> {
-  if (results.length > 0) {
-    const lines = results.map((result) => `  ${formatResult(result)}`);
-    const content = [
-      chalk.bold.cyan(`Project: ${label}`),
-      chalk.cyan("─".repeat(SUMMARY_RULE_WIDTH)),
-      "",
-      ...lines,
-    ].join("\n");
-    await displayBox(content, "🔧 Logging Configuration Updated", {
-      padding: 1,
-      borderColor: "blue",
-    });
-  }
-  success(`Configuration saved successfully.`);
-  console.log(
-    `Use ${chalk.cyan("ajs project logging show")} to view current settings.`,
-  );
+  options: SetOptions,
+): void {
+  results.forEach(reportResult);
+  getProcessUi().summary({
+    headline: `Saved the logging configuration of ${getProcessPalette().bold(label)}`,
+    nextSteps: [
+      {
+        command: scopedCommand(SHOW_COMMAND, options),
+        description: SHOW_DESCRIPTION,
+      },
+    ],
+  });
 }
 
 async function configureInteractively(
@@ -118,9 +122,7 @@ async function configureInteractively(
   label: string,
   prompter: Prompter,
 ) {
-  console.log("");
-  info(`Configuring logging for ${chalk.bold(label)}`);
-  console.log("");
+  info(`Configuring logging for ${getProcessPalette().bold(label)}`);
 
   logging.enabled = await prompter.confirm({
     message: "Enable logging?",
@@ -136,7 +138,6 @@ async function configureInteractively(
   await configureModuleTracking(logging, prompter);
   await configureFormatters(logging, prompter);
   await configureDateFormat(logging, prompter);
-  console.log("");
 }
 
 const TRACKING_MODE_HANDLERS: Record<TrackingMode, TrackingModeHandler> = {
@@ -261,13 +262,9 @@ async function configureDateFormat(logging: LoggingDraft, prompter: Prompter) {
   });
 
   logging.dateFormat = dateFormat;
-  console.log(`${chalk.cyan("Date format set to:")} ${chalk.dim(dateFormat)}`);
-  console.log(
-    `${chalk.cyan("Format tokens:")} ${chalk.dim("yyyy, MM, dd, HH, mm, ss (padded values)")}`,
-  );
-  console.log(
-    `${chalk.cyan("Additional:")} ${chalk.dim("SSS (milliseconds), M, d, H, m, s (non-padded)")}`,
-  );
+  getProcessUi().message("info", `Date format set to ${dateFormat}`, {
+    details: DATE_FORMAT_TOKENS,
+  });
 }
 
 interface ModuleListPrompt {
@@ -282,8 +279,9 @@ async function handleModuleList(
   prompt: ModuleListPrompt,
 ) {
   if (list.length > 0) {
-    console.log(chalk.cyan(prompt.title));
-    list.forEach((module, index) => console.log(`  ${index + 1}. ${module}`));
+    getProcessUi().message("info", prompt.title, {
+      details: list.map((module, index) => `${index + 1}. ${module}`),
+    });
   }
 
   const askModuleName = () =>
@@ -302,11 +300,13 @@ async function toggleListedModule(
 ) {
   if (!list.includes(moduleName)) {
     list.push(moduleName);
-    success(`Added ${chalk.bold(moduleName)} to the list.`);
+    success(`Added ${getProcessPalette().bold(moduleName)} to the list.`);
     return;
   }
 
-  warning(`Module ${chalk.bold(moduleName)} is already in the list.`);
+  warning(
+    `Module ${getProcessPalette().bold(moduleName)} is already in the list.`,
+  );
   const isRemoving = await prompter.confirm({
     message: `Do you want to remove ${moduleName} from the list?`,
     flag: `${SET_OPTION_FLAGS.removeInclude} <module>`,
@@ -315,6 +315,6 @@ async function toggleListedModule(
 
   if (isRemoving) {
     list.splice(list.indexOf(moduleName), 1);
-    info(`Removed ${chalk.bold(moduleName)} from the list.`);
+    info(`Removed ${getProcessPalette().bold(moduleName)} from the list.`);
   }
 }

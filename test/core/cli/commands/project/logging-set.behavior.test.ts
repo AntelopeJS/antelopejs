@@ -206,7 +206,9 @@ describe("project logging set persisting only real changes", () => {
       formatter: { "20": "[info]" },
       dateFormat: "yyyy-MM-dd",
     });
-    expect(stubs.success.calledOnce).to.equal(true);
+    expect(stubs.feedback()).to.include(
+      "Saved the logging configuration of test-project",
+    );
   });
 
   it("lists what changed and what did not in the summary", async () => {
@@ -230,7 +232,7 @@ describe("project logging set persisting only real changes", () => {
       "missing",
     );
 
-    const summary = String(stubs.displayBox.firstCall.args[0]);
+    const summary = stubs.feedback();
     expect(summary).to.include("Logging disabled");
     expect(summary).to.include("Module tracking disabled");
     expect(summary).to.include("is already in the include list");
@@ -275,7 +277,12 @@ describe("project logging set with an environment", () => {
       moduleTracking: { includes: ["modA", "modB"] },
     });
     expect(config.logging.enabled).to.equal(false);
-    expect(String(stubs.displayBox.firstCall.args[0])).to.include("(staging)");
+    expect(stubs.feedback()).to.include(
+      "Saved the logging configuration of test-project (staging)",
+    );
+    expect(stubs.feedback()).to.include(
+      "ajs project logging show --project /tmp/project --env staging",
+    );
   });
 
   it("sees the project block's settings from an environment", async () => {

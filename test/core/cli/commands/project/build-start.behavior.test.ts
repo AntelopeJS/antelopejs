@@ -12,6 +12,7 @@ import { BUILD_MODULE_SET_CHANGED_EXIT_CODE } from "../../../../../src/core/cli/
 import { BuildModuleSetChangedError } from "../../../../../src/core/runtime/build-refresh";
 import { expectProjectNotFound } from "../../../../helpers/cli-error";
 import * as buildArtifactModule from "../../../../../src/core/build/build-artifact";
+import { collectStderr } from "../../../../helpers/capture-output";
 
 const PROJECT_WITH_PRODUCTION: any = {
   name: "project",
@@ -50,7 +51,7 @@ describe("project build/start behavior", () => {
     } as any);
 
     stubProjectSpinners();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
     sinon.stub(cliUi, "error");
@@ -89,7 +90,7 @@ describe("project build/start behavior", () => {
       .resolves({} as any);
 
     stubProjectSpinners();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "error");
 
@@ -120,7 +121,7 @@ describe("project build/start behavior", () => {
     sinon.stub(projectLaunch, "launchFromBuild").rejects(new Error("boom"));
 
     stubProjectSpinners();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     const errorStub = sinon.stub(getProcessUi(), "problem");
 
@@ -138,7 +139,7 @@ describe("project build/start behavior", () => {
       .resolves({} as any);
 
     stubProjectSpinners();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "error");
 
@@ -161,7 +162,7 @@ describe("project build/start behavior", () => {
       .rejects(new BuildModuleSetChangedError(["api"]));
 
     stubProjectSpinners();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     const errorStub = sinon.stub(getProcessUi(), "problem");
 

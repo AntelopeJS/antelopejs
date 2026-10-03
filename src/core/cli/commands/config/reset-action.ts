@@ -1,11 +1,9 @@
-import chalk from "chalk";
-
-import { createPrompter } from "../../output";
-import { displayBox, info, keyValue, success } from "../../cli-ui";
+import { createPrompter, getProcessUi, type DetailEntry } from "../../output";
 import {
   getDefaultUserConfig,
   readUserConfig,
   writeUserConfig,
+  type UserConfig,
 } from "../../common";
 
 interface ResetOptions {
@@ -14,6 +12,7 @@ interface ResetOptions {
 
 const RESET_COMMAND = "ajs config reset";
 const YES_FLAG = "--yes";
+const NOT_SET_LABEL = "not set";
 
 async function confirmReset(options: ResetOptions): Promise<boolean> {
   const prompter = createPrompter({ command: RESET_COMMAND });
@@ -26,52 +25,40 @@ async function confirmReset(options: ResetOptions): Promise<boolean> {
   });
 }
 
+function describeResetValues(
+  currentConfig: UserConfig,
+  defaultConfig: UserConfig,
+): DetailEntry[] {
+  const palette = getProcessUi().palette();
+  return Object.entries(defaultConfig).map(([key, defaultValue]) => {
+    const currentValue = currentConfig[key as keyof UserConfig];
+    return {
+      label: key,
+      value: `${palette.dim(currentValue || NOT_SET_LABEL)} → ${defaultValue}`,
+    };
+  });
+}
+
 export async function resetConfig(options: ResetOptions): Promise<void> {
-  console.log(""); // Add spacing for better readability
-
-  // Get current config
+  const ui = getProcessUi();
   const currentConfig = await readUserConfig();
-
-  // Get default config
   const defaultConfig = getDefaultUserConfig();
 
-  // Check if there are any differences
   const hasChanges = Object.entries(defaultConfig).some(
-    ([key, value]) =>
-      currentConfig[key as keyof typeof currentConfig] !== value,
+    ([key, value]) => currentConfig[key as keyof UserConfig] !== value,
   );
 
   if (!hasChanges) {
-    info(chalk.blue(`ℹ Configuration is already at default values.`));
+    ui.message("info", "Configuration is already at default values");
     return;
   }
 
   if (!(await confirmReset(options))) {
-    console.log(chalk.yellow(`⚠ Reset cancelled.`));
+    ui.message("skip", "Reset cancelled: nothing changed");
     return;
   }
 
-  // Format comparison between current and default values
-  const comparisonItems = Object.entries(defaultConfig)
-    .map(([key, defaultValue]) => {
-      const currentValue = currentConfig[key as keyof typeof currentConfig];
-      return (
-        `${keyValue("Setting", chalk.cyan(key))}\n` +
-        `${keyValue("Current", chalk.dim(currentValue || "Not set"))}\n` +
-        `${keyValue("Default", chalk.green(defaultValue))}`
-      );
-    })
-    .join("\n\n");
-
-  // Reset config to defaults
   await writeUserConfig(defaultConfig);
-
-  // Display success message
-  success(`Configuration reset to default values`);
-
-  // Show the changes in a nice box
-  await displayBox(comparisonItems, "✓ Configuration Reset", {
-    borderColor: "green",
-    padding: 1,
-  });
+  ui.message("success", "Reset the configuration to its default values");
+  ui.details(describeResetValues(currentConfig, defaultConfig), "feedback");
 }

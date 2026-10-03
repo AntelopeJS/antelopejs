@@ -1,8 +1,7 @@
-import chalk from "chalk";
 import type { Command } from "commander";
 
-import { displayBox, info } from "../../cli-ui";
-import { reportFailure } from "../../output";
+import { info } from "../../cli-ui";
+import { displayPath, getProcessUi, reportFailure } from "../../output";
 import { startFailureExitCode, startFromBuild } from "../../production-start";
 import { type BuildLaunchOptions, DEFAULT_ENV } from "../../../..";
 import {
@@ -27,16 +26,17 @@ function normalizeOptions(
   };
 }
 
-async function showStartConfiguration(
-  options: StartCommandOptions,
-): Promise<void> {
-  const concurrency = options.concurrency?.toString() ?? DISABLED_LABEL;
-  await displayBox(
-    `Environment: ${chalk.cyan(options.env ?? DEFAULT_ENV)}\n` +
-      `Project: ${chalk.cyan(options.project)}\n` +
-      `Concurrency: ${options.concurrency ? chalk.green(concurrency) : chalk.gray(concurrency)}`,
-    " Start Configuration",
-    { padding: 1 },
+function showStartConfiguration(options: StartCommandOptions): void {
+  const ui = getProcessUi();
+  const concurrency =
+    options.concurrency?.toString() ?? ui.palette().dim(DISABLED_LABEL);
+  ui.details(
+    [
+      { label: "Environment", value: options.env ?? DEFAULT_ENV },
+      { label: "Project", value: displayPath(options.project) },
+      { label: "Concurrency", value: concurrency },
+    ],
+    "feedback",
   );
 }
 
@@ -45,17 +45,12 @@ export async function runStart(
   options: StartCommandOptions,
 ): Promise<void> {
   const commandOptions = normalizeOptions(this, options);
-  console.log("");
-
   const hasProject = await validateProjectExists(commandOptions.project);
   if (!hasProject) {
     return;
   }
 
-  console.log("");
-  await showStartConfiguration(commandOptions);
-
-  console.log("");
+  showStartConfiguration(commandOptions);
   info(`Starting AntelopeJS project from build artifact`);
 
   try {

@@ -168,3 +168,11 @@ export function processCapabilityContext(): CapabilityContext {
     streams: processStreams(),
   };
 }
+
+/**
+ * Whether a process stream gets colors, with the same rules as the CLI
+ * output: `--no-color`, `NO_COLOR`, `FORCE_COLOR`, `TERM=dumb`, CI and TTY.
+ */
+export function hasProcessColorSupport(stream: OutputStream): boolean {
+  return hasColorSupport(processCapabilityContext(), stream);
+}

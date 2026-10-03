@@ -1,6 +1,6 @@
-import chalk from "chalk";
 import semver from "semver";
 
+import { getProcessPalette } from "./output";
 import { CORE_PACKAGE_NAME } from "./core-version";
 import type { ResolvedExecutable } from "./executable-lookup";
 import { type OfficialPlugin, officialPluginLabel } from "./plugin-registry";
@@ -82,10 +82,11 @@ function formatIncompatibilityMessages(
   const pluginVersion = compatibility.pluginVersion
     ? `${plugin.package}@${compatibility.pluginVersion}`
     : plugin.package;
+  const palette = getProcessPalette();
   return [
     `The ${officialPluginLabel(plugin)} plugin is not compatible with this CLI.`,
     `${pluginVersion} requires ${CORE_PACKAGE_NAME}@${compatibility.requiredRange}, but ${CORE_PACKAGE_NAME}@${coreVersion} is installed.`,
-    `Run ${chalk.cyan("ajs update")} to update both, or ${chalk.cyan(`ajs update ${plugin.name}`)} to update the plugin only.`,
+    `Run ${palette.cyan("ajs update")} to update both, or ${palette.cyan(`ajs update ${plugin.name}`)} to update the plugin only.`,
   ];
 }
 

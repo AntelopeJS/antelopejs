@@ -57,6 +57,10 @@ class StreamUi implements Ui {
     };
   }
 
+  palette(channel: OutputChannel = DEFAULT_CHANNEL): Palette {
+    return this.palettes[channel];
+  }
+
   message(level: MessageLevel, text: string, options?: MessageOptions): void {
     const channel = options?.channel ?? DEFAULT_CHANNEL;
     this.writeLine(channel, this.statusLine(channel, level, text));
@@ -108,18 +112,18 @@ class StreamUi implements Ui {
     this.writeNextSteps(block.nextSteps ?? []);
   }
 
-  details(entries: DetailEntry[]): void {
+  details(entries: DetailEntry[], channel: OutputChannel = "result"): void {
     if (entries.length === 0) {
       return;
     }
-    const palette = this.palettes.result;
+    const palette = this.palettes[channel];
     const labelWidth = Math.max(
       ...entries.map((entry) => visibleWidth(entry.label)),
     );
-    this.separateBlock("result");
+    this.separateBlock(channel);
     entries.forEach((entry) =>
       this.writeLine(
-        "result",
+        channel,
         `${palette.dim(padVisible(entry.label, labelWidth))}${COLUMN_GAP}${entry.value}`,
       ),
     );

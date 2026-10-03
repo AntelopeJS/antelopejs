@@ -18,12 +18,13 @@ import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
 import cmdInit from "../../../../../src/core/cli/commands/project/init";
 import * as moduleInitModule from "../../../../../src/core/cli/commands/module/init-action";
 import * as projectModulesAddModule from "../../../../../src/core/cli/commands/project/modules/add-action";
+import { collectStderr } from "../../../../helpers/capture-output";
 
 interface InitStubs {
   writeConfig: sinon.SinonStub;
   moduleInit: sinon.SinonStub;
   add: sinon.SinonStub;
-  displayBox: sinon.SinonStub;
+  feedback: () => string;
   error: sinon.SinonStub;
 }
 
@@ -38,12 +39,12 @@ function stubInit(): InitStubs {
   sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
   sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
   sinon.stub(cliUi.Spinner.prototype, "update").resolves();
-  const displayBox = sinon.stub(cliUi, "displayBox").resolves();
+  const feedback = collectStderr();
   sinon.stub(cliUi, "info");
   sinon.stub(cliUi, "warning");
   const error = sinon.stub(cliUi, "error");
   sinon.stub(console, "log");
-  return { writeConfig, moduleInit, add, displayBox, error };
+  return { writeConfig, moduleInit, add, feedback, error };
 }
 
 async function failureOf(run: () => Promise<unknown>): Promise<unknown> {
@@ -254,8 +255,8 @@ describe("project init behavior", () => {
 
     await cmdInit().parseAsync(["node", "test", "."]);
 
-    expect(stubs.displayBox.calledOnce).to.equal(true);
-    expect(String(stubs.displayBox.firstCall.args[0])).to.not.include("cd ");
+    expect(stubs.feedback()).to.include("Created project my-project");
+    expect(stubs.feedback()).to.not.include("cd ");
   });
 
   it("handles module init failures", async () => {

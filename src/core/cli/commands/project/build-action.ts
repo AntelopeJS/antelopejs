@@ -1,8 +1,7 @@
-import chalk from "chalk";
 import type { Command } from "commander";
 
 import { build } from "../../../..";
-import { displayBox, info } from "../../cli-ui";
+import { info } from "../../cli-ui";
 import { displayPath, getProcessUi, pluralize } from "../../output";
 import {
   getBuildArtifactPath,
@@ -33,16 +32,20 @@ function normalizeOptions(
   };
 }
 
-async function showBuildConfiguration(
+function showBuildConfiguration(
   options: BuildCommandOptions,
   context: ProjectContext,
-): Promise<void> {
-  await displayBox(
-    `Environment: ${chalk.cyan(context.environment)}\n` +
-      `Project: ${chalk.cyan(options.project)}\n` +
-      `Output: ${chalk.cyan(".antelope/build/build.json")}`,
-    "󱌢 Build Configuration",
-    { padding: 1 },
+): void {
+  getProcessUi().details(
+    [
+      { label: "Environment", value: context.environment },
+      { label: "Project", value: displayPath(options.project) },
+      {
+        label: "Output",
+        value: displayPath(getBuildArtifactPath(options.project)),
+      },
+    ],
+    "feedback",
   );
 }
 
@@ -72,10 +75,7 @@ export async function runBuild(
   const commandOptions = normalizeOptions(this, options);
   const context = await findProject(commandOptions.project, commandOptions.env);
 
-  console.log("");
-  await showBuildConfiguration(commandOptions, context);
-
-  console.log("");
+  showBuildConfiguration(commandOptions, context);
   info(`Building AntelopeJS project`);
 
   const startedAt = Date.now();

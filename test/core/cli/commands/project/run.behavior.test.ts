@@ -9,6 +9,7 @@ import * as common from "../../../../../src/core/cli/common";
 import { Options } from "../../../../../src/core/cli/options";
 import { ModuleCache } from "../../../../../src/core/module-cache";
 import cmdRun from "../../../../../src/core/cli/commands/project/run";
+import { collectStderr } from "../../../../helpers/capture-output";
 
 const fsPromises = require("node:fs").promises;
 const childProcess = require("node:child_process");
@@ -39,7 +40,7 @@ describe("project run behavior", () => {
     const startStub = sinon.stub(indexModule, "default").resolves();
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
@@ -55,7 +56,7 @@ describe("project run behavior", () => {
     const startStub = sinon.stub(indexModule, "default").resolves();
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     const warningStub = sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
@@ -80,7 +81,7 @@ describe("project run behavior", () => {
       .rejects(new Error("boom"));
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
     const errorStub = sinon.stub(getProcessUi(), "problem");
@@ -111,7 +112,7 @@ describe("project run behavior", () => {
 
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
@@ -146,7 +147,7 @@ describe("project run behavior", () => {
     const succeedStub = sinon
       .stub(cliUi.Spinner.prototype, "succeed")
       .resolves();
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
+    const feedback = collectStderr();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
@@ -175,8 +176,7 @@ describe("project run behavior", () => {
 
     expect(startStub.called).to.equal(true);
     expect(succeedStub.calledWithMatch("unnamed")).to.equal(true);
-    expect(displayStub.called).to.equal(true);
-    expect(displayStub.firstCall.args[0]).to.contain("127.0.0.1:9333");
+    expect(feedback()).to.match(/Inspector\s+127\.0\.0\.1:9333/);
 
     const forkOptions = forkStub.firstCall.args[2];
     expect(forkOptions.execArgv).to.deep.equal(["--inspect=127.0.0.1:9333"]);
@@ -203,7 +203,7 @@ describe("project run behavior", () => {
 
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
@@ -238,7 +238,7 @@ describe("project run behavior", () => {
     });
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
     const errorStub = sinon.stub(getProcessUi(), "problem");
@@ -269,7 +269,7 @@ describe("project run behavior", () => {
 
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");

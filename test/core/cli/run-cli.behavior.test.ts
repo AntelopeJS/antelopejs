@@ -3,9 +3,10 @@ import sinon from "sinon";
 import { expect } from "chai";
 import { Command, CommanderError } from "commander";
 import { createMemoryUi } from "../../helpers/memory-ui";
+import { captureOutputAsync } from "../../helpers/capture-output";
 
 import * as logging from "../../../src/logging";
-import * as cliUi from "../../../src/core/cli/cli-ui";
+import * as common from "../../../src/core/cli/common";
 import { runCLI } from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
 import {
@@ -40,17 +41,18 @@ describe("runCLI behavior", () => {
     const getOptionStub = sinon
       .stub(Command.prototype, "getOptionValue")
       .returns(undefined);
-    sinon.stub(cliUi, "displayBanner");
     return { getOptionStub, parseStub };
   }
 
-  it("displays banner when no args are provided", async () => {
+  it("prints the help on stdout instead of parsing when no args are provided", async () => {
     process.argv = ["node", "ajs"];
-    stubCommon();
+    const { parseStub } = stubCommon();
+    const output = await captureOutputAsync(() => runCLI());
 
-    await runCLI();
-
-    expect((cliUi.displayBanner as sinon.SinonStub).calledOnce).to.equal(true);
+    expect(parseStub.called).to.equal(false);
+    expect(output.stdout).to.contain("Usage: ajs [options] [command]");
+    expect(output.stdout).to.contain("AntelopeJS CLI v0.0.0");
+    expect(output.stderr).to.equal("");
   });
 
   it("adds channel filters when verbose is set", async () => {
@@ -248,6 +250,20 @@ describe("runCLI usage errors", () => {
       ].join("\n"),
     );
     expect(process.exitCode).to.equal(USAGE_EXIT_CODE);
+  });
+
+  it("accepts --no-color after a subcommand", async () => {
+    sinon.stub(common, "readUserConfig").resolves({ git: "repository" });
+    const stdoutWrite = sinon.stub(process.stdout, "write").returns(true);
+    const { feedback } = await runUsage([
+      "config",
+      "get",
+      "git",
+      "--no-color",
+    ]).finally(() => stdoutWrite.restore());
+
+    expect(feedback.text).to.equal("");
+    expect(process.exitCode).to.equal(undefined);
   });
 
   it("formats an unknown option of a nested command", async () => {

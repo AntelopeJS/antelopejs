@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import path from "node:path";
 import { mkdir, stat } from "node:fs/promises";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
@@ -16,13 +15,17 @@ import { readConfig, writeConfig } from "../../common";
 import type { PackageManagerName } from "../../package-manager-name";
 import { FAILURE_EXIT_CODE, USAGE_EXIT_CODE } from "../../exit-codes";
 import { addModules, handlers } from "./modules/add-action";
-import { displayBox, error, info, Spinner, warning } from "../../cli-ui";
+import { error, Spinner, warning } from "../../cli-ui";
 import {
   CliError,
   createPrompter,
+  displayPath,
+  getProcessPalette,
+  getProcessUi,
   missingFlags,
   reportFailure,
   type AnswerFlag,
+  type NextStep,
   type Prompter,
 } from "../../output";
 
@@ -45,6 +48,11 @@ const PROJECT_ROOT_MODULE = ".";
 const DIRECTORY_SOURCE = "dir";
 const PROJECT_INIT_COMMAND = "ajs project init";
 const NAME_FLAG = "--name <name>";
+const CURRENT_DIRECTORY = ".";
+const INSTALL_COMMAND = "ajs project modules install";
+const INSTALL_DESCRIPTION = "install the modules of the project";
+const DEV_COMMAND = "ajs project dev --watch";
+const DEV_DESCRIPTION = "run the project and restart on changes";
 
 const PROJECT_ANSWER_FLAGS: AnswerFlag<ProjectInitOptions>[] = [
   { option: "name", flag: NAME_FLAG },
@@ -57,16 +65,15 @@ async function isProjectPathAvailable(projectPath: string): Promise<boolean> {
   const spinner = new Spinner("Checking project path");
   await spinner.start();
 
+  const shownPath = getProcessPalette().bold(projectPath);
   if (await readConfig(projectPath)) {
-    await spinner.fail(`Project already exists at ${chalk.bold(projectPath)}`);
-    warning(
-      chalk.yellow`Use a different directory or delete the existing project.`,
-    );
+    await spinner.fail(`Project already exists at ${shownPath}`);
+    warning("Use a different directory or delete the existing project.");
     process.exitCode = FAILURE_EXIT_CODE;
     return false;
   }
 
-  await spinner.succeed(`Project path ${chalk.bold(projectPath)} is available`);
+  await spinner.succeed(`Project path ${shownPath} is available`);
   return true;
 }
 
@@ -74,14 +81,14 @@ function displayWelcome(prompter: Prompter): void {
   if (!prompter.isInteractive) {
     return;
   }
-  console.log("");
-  info("Welcome to the AntelopeJS project creation wizard!");
-  console.log(
-    chalk.dim(
-      "Please provide the following information to set up your project.",
-    ),
+  getProcessUi().message(
+    "info",
+    "Welcome to the AntelopeJS project creation wizard!",
+    {
+      detail:
+        "Please provide the following information to set up your project.",
+    },
   );
-  console.log("");
 }
 
 async function askAppModuleImport(
@@ -126,14 +133,13 @@ async function createProjectConfig(
   if (!projectDirExists) {
     await mkdir(projectPath, { recursive: true });
     configSpinner.update(
-      `Created project directory at ${chalk.bold(projectPath)}`,
+      `Created project directory at ${getProcessPalette().bold(projectPath)}`,
     );
   }
 
   const projectConfig: Partial<AntelopeConfig> = { name, modules: {} };
   await writeConfig(projectPath, projectConfig);
   await configSpinner.succeed("Project configuration created successfully");
-  console.log("");
 }
 
 async function importAppModule(
@@ -185,7 +191,6 @@ async function createAppModule(
     if (isUsageFailure(err)) {
       throw err;
     }
-    console.log("");
     reportFailure(err);
     error("Project creation stopped due to module initialization failure.");
     process.exitCode = FAILURE_EXIT_CODE;
@@ -193,23 +198,28 @@ async function createAppModule(
   }
 }
 
-async function displayProjectCreated(
+function projectNextSteps(project: string, projectPath: string): NextStep[] {
+  const changeDirectory: NextStep[] =
+    project === CURRENT_DIRECTORY
+      ? []
+      : [{ command: `cd ${displayPath(projectPath)}` }];
+  return [
+    ...changeDirectory,
+    { command: INSTALL_COMMAND, description: INSTALL_DESCRIPTION },
+    { command: DEV_COMMAND, description: DEV_DESCRIPTION },
+  ];
+}
+
+function displayProjectCreated(
   project: string,
   projectPath: string,
   name: string,
-): Promise<void> {
-  console.log("");
-  const cdInstruction =
-    project === "." ? "" : `${chalk.cyan(`cd ${projectPath}`)}\n`;
-  await displayBox(
-    `Your AntelopeJS project ${chalk.green.bold(name)} has been successfully initialized!\n\n` +
-      `${chalk.dim("To get started, run:")}\n` +
-      `${cdInstruction}` +
-      `${chalk.cyan("ajs project modules install")}\n` +
-      `${chalk.cyan("ajs project run -w")}`,
-    "\u{f135}  Project Created",
-    { borderColor: "green" },
-  );
+): void {
+  getProcessUi().summary({
+    headline: `Created project ${getProcessPalette().bold(name)}`,
+    artifact: displayPath(projectPath),
+    nextSteps: projectNextSteps(project, projectPath),
+  });
 }
 
 function projectPrompter(
@@ -246,7 +256,6 @@ export async function projectInitCommand(
   project: string,
   options: ProjectInitOptions = {},
 ): Promise<void> {
-  console.log("");
   const projectPath = path.resolve(project);
   const prompter = projectPrompter(project, options);
   prompter.requireAnswers(missingFlags(options, PROJECT_ANSWER_FLAGS));
@@ -262,5 +271,5 @@ export async function projectInitCommand(
   } else if (!(await createAppModule(projectPath, name, options, prompter))) {
     return;
   }
-  await displayProjectCreated(project, projectPath, name);
+  displayProjectCreated(project, projectPath, name);
 }
