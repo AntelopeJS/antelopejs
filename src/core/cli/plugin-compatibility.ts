@@ -6,6 +6,7 @@ import type { ResolvedExecutable } from "./executable-lookup";
 import { type OfficialPlugin, officialPluginLabel } from "./plugin-registry";
 import {
   resolvePluginPackage,
+  type PluginPackage,
   type PluginPackageLookup,
 } from "./plugin-package";
 
@@ -28,17 +29,16 @@ export type PluginCompatibility =
   | UnknownPluginPackageResult
   | IncompatiblePluginResult;
 
-export async function checkPluginCompatibility(
-  executable: ResolvedExecutable,
+/**
+ * Whether a plugin, described by the `package.json` of its resolved
+ * executable, supports the running core: its `peerDependencies` range on the
+ * core must include `coreVersion`. A plugin without that range supports every
+ * core, and an unreadable `package.json` gives an `unknown` result.
+ */
+export function evaluatePluginCompatibility(
+  packageJson: PluginPackage | undefined,
   coreVersion: string,
-  plugin: OfficialPlugin,
-  lookup: PluginPackageLookup = {},
-): Promise<PluginCompatibility> {
-  const packageJson = await resolvePluginPackage(
-    plugin.package,
-    executable,
-    lookup,
-  );
+): PluginCompatibility {
   if (!packageJson) {
     return { status: "unknown" };
   }
@@ -54,6 +54,20 @@ export async function checkPluginCompatibility(
     requiredRange,
     pluginVersion: packageJson.version,
   };
+}
+
+export async function checkPluginCompatibility(
+  executable: ResolvedExecutable,
+  coreVersion: string,
+  plugin: OfficialPlugin,
+  lookup: PluginPackageLookup = {},
+): Promise<PluginCompatibility> {
+  const packageJson = await resolvePluginPackage(
+    plugin.package,
+    executable,
+    lookup,
+  );
+  return evaluatePluginCompatibility(packageJson, coreVersion);
 }
 
 function formatUnknownPackageMessage(plugin: OfficialPlugin): string {

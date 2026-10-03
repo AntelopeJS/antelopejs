@@ -1,7 +1,9 @@
+import path from "node:path";
 import { expect } from "chai";
 
 import {
   createPalette,
+  displayPath,
   formatDuration,
   padVisible,
   pluralize,
@@ -40,5 +42,20 @@ describe("output format", () => {
     expect(Object.values(palette).map((paint) => paint("text"))).to.deep.equal(
       Array(Object.keys(palette).length).fill("text"),
     );
+  });
+
+  it("shows paths relative to the working directory when inside it", () => {
+    const cwd = path.resolve("/work/acme-shop");
+
+    expect(displayPath(path.join(cwd, "modules", "auth"), cwd)).to.equal(
+      `.${path.sep}${path.join("modules", "auth")}`,
+    );
+    expect(displayPath(path.resolve("/usr/bin/ajs-dms"), cwd)).to.equal(
+      path.resolve("/usr/bin/ajs-dms"),
+    );
+    expect(displayPath(path.resolve("/work/acme-shop-2"), cwd)).to.equal(
+      path.resolve("/work/acme-shop-2"),
+    );
+    expect(displayPath(cwd, cwd)).to.equal(cwd);
   });
 });

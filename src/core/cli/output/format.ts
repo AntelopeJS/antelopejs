@@ -1,3 +1,4 @@
+import { isAbsolute, relative, sep } from "node:path";
 import { createColors } from "picocolors";
 
 import { stripAnsi } from "../logging-utils";
@@ -9,6 +10,8 @@ const MILLISECONDS_PER_MINUTE = MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE;
 const SECOND_FRACTION_DIGITS = 1;
 const PADDED_SECONDS_WIDTH = 2;
 const PLURAL_SUFFIX = "s";
+const CURRENT_DIRECTORY = ".";
+const PARENT_DIRECTORY = "..";
 
 export function createPalette(hasColor: boolean): Palette {
   const colors = createColors(hasColor);
@@ -62,4 +65,17 @@ export function visibleWidth(text: string): number {
 
 export function padVisible(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;
+}
+
+/**
+ * Shows a path relative to the working directory when it lies inside it
+ * (`./modules/auth`), and unchanged otherwise.
+ */
+export function displayPath(target: string, cwd = process.cwd()): string {
+  const relativePath = relative(cwd, target);
+  const isInside =
+    relativePath !== "" &&
+    !isAbsolute(relativePath) &&
+    relativePath.split(sep)[0] !== PARENT_DIRECTORY;
+  return isInside ? `${CURRENT_DIRECTORY}${sep}${relativePath}` : target;
 }

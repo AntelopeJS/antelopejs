@@ -4,7 +4,9 @@ import * as sinon from "sinon";
 import {
   createUi,
   getProcessUi,
+  writeData,
   type MessageLevel,
+  type Ui,
 } from "../../../../src/core/cli/output";
 import { captureOutput } from "../../../helpers/capture-output";
 import { createMemoryUi } from "../../../helpers/memory-ui";
@@ -248,6 +250,47 @@ describe("output ui tables", () => {
     ui.table(PACKAGES, PACKAGE_COLUMNS);
 
     expect(result.text).to.equal("auth\t1.2.0\ninventory-core\t10.0.1\n");
+  });
+});
+
+describe("output ui data", () => {
+  it("prints a bare value on the result stream, even with colors", () => {
+    const { ui, result, feedback } = createMemoryUi({
+      hasColor: true,
+      isTerminal: true,
+    });
+
+    ui.value("https://example.com/interfaces.git");
+
+    expect(result.text).to.equal("https://example.com/interfaces.git\n");
+    expect(feedback.text).to.equal("");
+  });
+
+  it("prints one indented JSON document on the result stream", () => {
+    const { ui, result, feedback } = createMemoryUi({
+      hasColor: true,
+      isTerminal: true,
+    });
+
+    ui.json({ name: "auth", tags: ["api"] });
+
+    expect(result.text).to.equal(
+      '{\n  "name": "auth",\n  "tags": [\n    "api"\n  ]\n}\n',
+    );
+    expect(feedback.text).to.equal("");
+  });
+
+  it("writes the data as JSON or renders it with writeData", () => {
+    const render = sinon.spy((target: Ui) => target.value("rendered"));
+    const json = createMemoryUi();
+    const human = createMemoryUi();
+
+    writeData(json.ui, { data: [1, 2], isJson: true, render });
+    writeData(human.ui, { data: [1, 2], render });
+
+    expect(JSON.parse(json.result.text)).to.deep.equal([1, 2]);
+    expect(human.result.text).to.equal("rendered\n");
+    expect(render.calledOnceWithExactly(human.ui)).to.equal(true);
   });
 });
 

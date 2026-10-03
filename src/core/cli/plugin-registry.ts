@@ -1,4 +1,4 @@
-export const PLUGIN_NAME_COLUMN_WIDTH = 10;
+const PLUGIN_NAME_COLUMN_WIDTH = 10;
 
 interface OfficialPluginDefinition {
   package: string;

@@ -1,10 +1,13 @@
-import chalk from "chalk";
-
-import { CORE_PACKAGE_NAME } from "./core-version";
+import { CORE_PACKAGE_NAME, getCoreVersion } from "./core-version";
 import { runGlobalInstall } from "./command-runner";
 import { consoleOutput, type CommandOutput } from "./cli-ui";
 import type { InheritedProcessOptions } from "./process-runner";
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./exit-codes";
+import { displayPath, type TableColumn, type Ui } from "./output";
+import {
+  evaluatePluginCompatibility,
+  type PluginCompatibility,
+} from "./plugin-compatibility";
 import {
   resolvePluginPackage,
   type PluginPackageLookup,
@@ -13,7 +16,6 @@ import {
   findOfficialPlugin,
   listOfficialPlugins,
   officialPluginNames,
-  PLUGIN_NAME_COLUMN_WIDTH,
   type OfficialPlugin,
 } from "./plugin-registry";
 import {
@@ -35,11 +37,26 @@ export interface PluginStatus {
   executablePath?: string;
   source?: ExecutableSource;
   version?: string;
+  compatibility?: PluginCompatibility;
+}
+
+type PluginState = "not-installed" | PluginCompatibility["status"];
+
+export interface PluginReport {
+  name: string;
+  package: string;
+  description: string;
+  state: PluginState;
+  source: string | null;
+  path: string | null;
+  version: string | null;
+  requiredCoreRange: string | null;
 }
 
 export interface PluginStatusDependencies {
   lookupExecutable?: ExecutableLookup;
   packageLookup?: PluginPackageLookup;
+  coreVersion?: string;
 }
 
 export interface PluginManagementDependencies extends PluginStatusDependencies {
@@ -72,6 +89,10 @@ async function readPluginStatus(
     executablePath: executable.path,
     source: executable.source,
     version: packageJson?.version,
+    compatibility: evaluatePluginCompatibility(
+      packageJson,
+      dependencies.coreVersion ?? getCoreVersion(),
+    ),
   };
 }
 
@@ -85,23 +106,71 @@ export async function getPluginStatuses(
   );
 }
 
-const RESOLUTION_LABELS: Record<ExecutableSource, (path: string) => string> = {
-  [LOCAL_EXECUTABLE_SOURCE]: (path) => `local (${path})`,
-  [PATH_EXECUTABLE_SOURCE]: () => "global",
+const MISSING_VALUE = "-";
+const UPDATE_COMMAND = "ajs update";
+
+const SOURCE_LABELS: Record<ExecutableSource, string> = {
+  [LOCAL_EXECUTABLE_SOURCE]: "local",
+  [PATH_EXECUTABLE_SOURCE]: "global",
 };
 
-function formatResolution(status: PluginStatus): string {
-  if (!status.executablePath || !status.source) {
-    return chalk.dim("not installed");
-  }
-  const version = status.version ? ` (${status.version})` : "";
-  return chalk.green(
-    `${RESOLUTION_LABELS[status.source](status.executablePath)}${version}`,
-  );
+const STATE_LABELS: Record<PluginState, (report: PluginReport) => string> = {
+  "not-installed": () => "not installed",
+  compatible: () => "compatible",
+  unknown: () => "unknown",
+  incompatible: (report) =>
+    `needs ${CORE_PACKAGE_NAME} ${report.requiredCoreRange}`,
+};
+
+const UPDATE_HINTS: Record<string, (report: PluginReport) => string> = {
+  [SOURCE_LABELS[LOCAL_EXECUTABLE_SOURCE]]: (report) =>
+    `Update ${report.package} in this project's package.json`,
+  [SOURCE_LABELS[PATH_EXECUTABLE_SOURCE]]: (report) =>
+    `Run ${UPDATE_COMMAND} ${report.name} to update ${report.name}`,
+};
+
+const PLUGIN_COLUMNS: TableColumn<PluginReport>[] = [
+  { header: "Plugin", value: (report) => report.name },
+  { header: "Package", value: (report) => report.package },
+  { header: "Version", value: (report) => report.version ?? MISSING_VALUE },
+  { header: "Source", value: (report) => report.source ?? MISSING_VALUE },
+  { header: "Status", value: (report) => STATE_LABELS[report.state](report) },
+  {
+    header: "Location",
+    value: (report) => (report.path ? displayPath(report.path) : MISSING_VALUE),
+  },
+];
+
+function requiredCoreRange(status: PluginStatus): string | null {
+  return status.compatibility?.status === "incompatible"
+    ? status.compatibility.requiredRange
+    : null;
 }
 
-export function formatPluginStatus(status: PluginStatus): string {
-  return `  ${chalk.cyan(status.plugin.name.padEnd(PLUGIN_NAME_COLUMN_WIDTH))} ${status.plugin.package} - ${formatResolution(status)}\n    ${chalk.dim(status.plugin.description)}`;
+export function describePluginStatus(status: PluginStatus): PluginReport {
+  return {
+    name: status.plugin.name,
+    package: status.plugin.package,
+    description: status.plugin.description,
+    state: status.compatibility?.status ?? "not-installed",
+    source: status.source ? SOURCE_LABELS[status.source] : null,
+    path: status.executablePath ?? null,
+    version: status.version ?? null,
+    requiredCoreRange: requiredCoreRange(status),
+  };
+}
+
+/**
+ * Renders official plugins as a table on stdout, with a hint on stderr for
+ * each plugin that does not support the running core.
+ */
+export function renderPluginReports(reports: PluginReport[], ui: Ui): void {
+  ui.table(reports, PLUGIN_COLUMNS);
+  reports
+    .filter((report) => report.state === "incompatible" && report.source)
+    .forEach((report) =>
+      ui.message("hint", UPDATE_HINTS[report.source as string](report)),
+    );
 }
 
 async function updatePackage(

@@ -4,77 +4,138 @@ import inquirer from "inquirer";
 
 import * as cliUi from "../../../../src/core/cli/cli-ui";
 import * as common from "../../../../src/core/cli/common";
+import { FAILURE_EXIT_CODE } from "../../../../src/core/cli/exit-codes";
 import cmdGet from "../../../../src/core/cli/commands/config/get";
 import cmdSet from "../../../../src/core/cli/commands/config/set";
 import cmdShow from "../../../../src/core/cli/commands/config/show";
 import cmdReset from "../../../../src/core/cli/commands/config/reset";
+import { captureCliError } from "../../../helpers/cli-error";
+import { createMemoryUi, type MemoryUi } from "../../../helpers/memory-ui";
+
+const CUSTOM_REPOSITORY = "https://example.com/interfaces.git";
+
+function stubUserConfig(config: Record<string, string>): void {
+  sinon.stub(common, "readUserConfig").resolves(config as any);
+}
+
+async function runShow(args: string[] = []): Promise<MemoryUi> {
+  const memory = createMemoryUi();
+  await cmdShow(memory.ui).parseAsync(["node", "test", ...args]);
+  return memory;
+}
+
+async function runGet(args: string[]): Promise<MemoryUi> {
+  const memory = createMemoryUi();
+  await cmdGet(memory.ui).parseAsync(["node", "test", ...args]);
+  return memory;
+}
+
+describe("config show behavior", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("aligns every setting and marks a non-default value", async () => {
+    stubUserConfig({ git: CUSTOM_REPOSITORY, token: "" });
+
+    const { result, feedback } = await runShow();
+
+    expect(result.text).to.equal(
+      [`git    ${CUSTOM_REPOSITORY} (custom)`, "token  not set", ""].join("\n"),
+    );
+    expect(feedback.text).to.equal("");
+  });
+
+  it("shows the default repository without a marker", async () => {
+    stubUserConfig({ git: common.DEFAULT_GIT_REPO });
+
+    const { result } = await runShow();
+
+    expect(result.text).to.equal(`git  ${common.DEFAULT_GIT_REPO}\n`);
+  });
+
+  it("says so on stderr when no value is set", async () => {
+    stubUserConfig({});
+
+    const { result, feedback } = await runShow();
+
+    expect(result.text).to.equal("");
+    expect(feedback.text).to.equal("ℹ No configuration values set\n");
+  });
+
+  it("prints the configuration as JSON with --json", async () => {
+    stubUserConfig({ git: CUSTOM_REPOSITORY });
+
+    const { result, feedback } = await runShow(["--json"]);
+
+    expect(JSON.parse(result.text)).to.deep.equal({ git: CUSTOM_REPOSITORY });
+    expect(feedback.text).to.equal("");
+  });
+});
+
+describe("config get behavior", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("prints only the value on stdout", async () => {
+    stubUserConfig({ git: CUSTOM_REPOSITORY });
+
+    const { result, feedback } = await runGet(["git"]);
+
+    expect(result.text).to.equal(`${CUSTOM_REPOSITORY}\n`);
+    expect(feedback.text).to.equal("");
+  });
+
+  it("prints the value as a JSON string with --json", async () => {
+    stubUserConfig({ git: CUSTOM_REPOSITORY });
+
+    const { result } = await runGet(["git", "--json"]);
+
+    expect(JSON.parse(result.text)).to.equal(CUSTOM_REPOSITORY);
+  });
+
+  it("leaves stdout empty when the value is empty", async () => {
+    stubUserConfig({ git: "" });
+
+    const { result, feedback } = await runGet(["git"]);
+
+    expect(result.text).to.equal("");
+    expect(feedback.text).to.equal("ℹ git is not set\n");
+  });
+
+  it("rejects an invalid key before reading the configuration", async () => {
+    const readStub = sinon.stub(common, "readUserConfig");
+
+    const cliError = await captureCliError(() => runGet(["invalid"]));
+
+    expect(cliError.problem).to.deep.equal({
+      title: "Invalid configuration key 'invalid'",
+      reason: "Valid keys: git",
+    });
+    expect(cliError.exitCode).to.equal(FAILURE_EXIT_CODE);
+    expect(readStub.called).to.equal(false);
+  });
+
+  it("fails when a valid key is missing from the configuration", async () => {
+    stubUserConfig({});
+
+    const cliError = await captureCliError(() => runGet(["git"]));
+
+    expect(cliError.problem.title).to.equal(
+      "Configuration key 'git' not found",
+    );
+    expect(cliError.problem.fixes).to.deep.equal([
+      "Set it with ajs config set git <value>",
+    ]);
+    expect(cliError.exitCode).to.equal(FAILURE_EXIT_CODE);
+  });
+});
 
 describe("config commands behavior", () => {
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;
-  });
-
-  it("shows empty config with fallback text", async () => {
-    sinon.stub(common, "readUserConfig").resolves({} as any);
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-
-    const cmd = cmdShow();
-    await cmd.parseAsync(["node", "test"]);
-
-    expect(displayStub.calledOnce).to.equal(true);
-    expect(String(displayStub.firstCall.args[0])).to.include(
-      "No configuration values set",
-    );
-  });
-
-  it("fails on invalid configuration key", async () => {
-    sinon
-      .stub(common, "readUserConfig")
-      .resolves({ git: "https://example.com" });
-    const errorStub = sinon.stub(cliUi, "error");
-    const warningStub = sinon.stub(cliUi, "warning");
-
-    const cmd = cmdGet();
-    await cmd.parseAsync(["node", "test", "invalid"]);
-
-    expect(errorStub.called).to.equal(true);
-    expect(warningStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
-  });
-
-  it("fails when valid key is missing", async () => {
-    sinon.stub(common, "readUserConfig").resolves({} as any);
-    const errorStub = sinon.stub(cliUi, "error");
-
-    const cmd = cmdGet();
-    await cmd.parseAsync(["node", "test", "git"]);
-
-    expect(errorStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
-  });
-
-  it("displays value for valid key", async () => {
-    sinon
-      .stub(common, "readUserConfig")
-      .resolves({ git: "https://example.com" });
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-
-    const cmd = cmdGet();
-    await cmd.parseAsync(["node", "test", "git"]);
-
-    expect(displayStub.calledOnce).to.equal(true);
-  });
-
-  it("displays fallback text when key is set but empty", async () => {
-    sinon.stub(common, "readUserConfig").resolves({ git: "" } as any);
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-
-    const cmd = cmdGet();
-    await cmd.parseAsync(["node", "test", "git"]);
-
-    expect(displayStub.calledOnce).to.equal(true);
-    expect(String(displayStub.firstCall.args[0])).to.include("Not set");
   });
 
   it("sets configuration value and warns on non-default git", async () => {
@@ -150,34 +211,6 @@ describe("config commands behavior", () => {
 
     expect(writeStub.calledOnce).to.equal(true);
     expect(String(displayStub.firstCall.args[0])).to.include("Not set");
-  });
-
-  it("show renders Not set for empty values", async () => {
-    sinon.stub(common, "readUserConfig").resolves({ git: "" } as any);
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(console, "log");
-
-    const cmd = cmdShow();
-    await cmd.parseAsync(["node", "test"]);
-
-    expect(displayStub.calledOnce).to.equal(true);
-    expect(String(displayStub.firstCall.args[0])).to.include("Not set");
-  });
-
-  it("show renders configured values", async () => {
-    sinon
-      .stub(common, "readUserConfig")
-      .resolves({ git: "https://example.com" } as any);
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(console, "log");
-
-    const cmd = cmdShow();
-    await cmd.parseAsync(["node", "test"]);
-
-    expect(displayStub.calledOnce).to.equal(true);
-    expect(String(displayStub.firstCall.args[0])).to.include(
-      "https://example.com",
-    );
   });
 
   it("cancels reset when confirmation is declined", async () => {

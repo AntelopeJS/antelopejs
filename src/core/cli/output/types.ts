@@ -92,4 +92,6 @@ export interface Ui {
   details(entries: DetailEntry[]): void;
   list(items: string[]): void;
   table<Row>(rows: Row[], columns: TableColumn<Row>[]): void;
+  value(text: string): void;
+  json(data: unknown): void;
 }

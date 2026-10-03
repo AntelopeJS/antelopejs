@@ -1,49 +1,66 @@
-import chalk from "chalk";
 import { Command } from "commander";
 
-import { readUserConfig, type UserConfig } from "../../common";
-import { displayBox, error, keyValue, warning } from "../../cli-ui";
+import { Options, readUserConfig } from "../../common";
+import { CliError, getProcessUi, writeData, type Ui } from "../../output";
+
+interface GetOptions {
+  json?: boolean;
+}
 
 const VALID_KEYS = ["git"];
+const SET_COMMAND = "ajs config set";
 
-export default function () {
+function invalidKeyError(key: string): CliError {
+  return new CliError({
+    title: `Invalid configuration key '${key}'`,
+    reason: `Valid keys: ${VALID_KEYS.join(", ")}`,
+  });
+}
+
+function missingKeyError(key: string): CliError {
+  return new CliError({
+    title: `Configuration key '${key}' not found`,
+    fixes: [`Set it with ${SET_COMMAND} ${key} <value>`],
+  });
+}
+
+function renderValue(key: string, value: string, ui: Ui): void {
+  if (!value) {
+    ui.message("info", `${key} is not set`);
+    return;
+  }
+  ui.value(value);
+}
+
+async function getConfigValue(
+  key: string,
+  options: GetOptions,
+  ui: Ui,
+): Promise<void> {
+  if (!VALID_KEYS.includes(key)) {
+    throw invalidKeyError(key);
+  }
+  const config: Record<string, string> = { ...(await readUserConfig()) };
+  if (!(key in config)) {
+    throw missingKeyError(key);
+  }
+  const value = config[key];
+  writeData(ui, {
+    data: value,
+    isJson: options.json,
+    render: (target) => renderValue(key, value, target),
+  });
+}
+
+export default function (ui?: Ui) {
   return new Command("get")
     .description(
       `Get a specific CLI configuration value\n` +
-        `Retrieves the value of a single configuration setting.`,
+        `Prints the value of a single configuration setting.`,
     )
     .argument("<key>", `Setting name to retrieve (${VALID_KEYS.join(", ")})`)
-    .action(async (key: string) => {
-      console.log(""); // Add spacing for better readability
-
-      const config = await readUserConfig();
-
-      // Validate the configuration key
-      if (!VALID_KEYS.includes(key)) {
-        error(`Invalid configuration key: ${chalk.bold(key)}`);
-        warning(
-          `Valid keys are: ${VALID_KEYS.map((k) => chalk.cyan(k)).join(", ")}`,
-        );
-        process.exitCode = 1;
-        return;
-      }
-
-      // Get and display the configuration value
-      if (key in config) {
-        const value = config[key as keyof UserConfig];
-
-        // Display the value in a nicely formatted box
-        await displayBox(
-          keyValue(key, value ? chalk.green(value) : chalk.dim("Not set")),
-          "🔍 Configuration Value",
-          {
-            padding: 1,
-            borderColor: "yellow",
-          },
-        );
-      } else {
-        error(`Configuration key not found: ${chalk.bold(key)}`);
-        process.exitCode = 1;
-      }
-    });
+    .addOption(Options.json)
+    .action((key: string, options: GetOptions) =>
+      getConfigValue(key, options, ui ?? getProcessUi()),
+    );
 }

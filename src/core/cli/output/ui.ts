@@ -27,6 +27,7 @@ const DETAIL_INDENT = "  ";
 const COLUMN_GAP = "  ";
 const TAB_SEPARATOR = "\t";
 const DEFAULT_CHANNEL: OutputChannel = "feedback";
+const JSON_INDENTATION = 2;
 
 class StreamUi implements Ui {
   readonly symbols: SymbolSet;
@@ -121,6 +122,14 @@ class StreamUi implements Ui {
       return;
     }
     this.writeAlignedTable(columns, cells);
+  }
+
+  value(text: string): void {
+    this.writeLine("result", text);
+  }
+
+  json(data: unknown): void {
+    this.writeLine("result", JSON.stringify(data, null, JSON_INDENTATION));
   }
 
   private writeAlignedTable<Row>(
