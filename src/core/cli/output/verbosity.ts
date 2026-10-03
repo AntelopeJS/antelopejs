@@ -1,6 +1,6 @@
 const VERBOSE_FLAG = "--verbose";
-const VERBOSE_ASSIGNMENT_PREFIX = `${VERBOSE_FLAG}=`;
-const VERBOSE_ENVIRONMENT_VARIABLE = "ANTELOPEJS_VERBOSE";
+export const VERBOSE_ASSIGNMENT_PREFIX = `${VERBOSE_FLAG}=`;
+export const VERBOSE_ENVIRONMENT_VARIABLE = "ANTELOPEJS_VERBOSE";
 
 export interface VerbosityContext {
   argv: string[];
@@ -11,7 +11,7 @@ function processVerbosityContext(): VerbosityContext {
   return { argv: process.argv, env: process.env };
 }
 
-function isVerboseArgument(argument: string): boolean {
+export function isVerboseArgument(argument: string): boolean {
   return (
     argument === VERBOSE_FLAG || argument.startsWith(VERBOSE_ASSIGNMENT_PREFIX)
   );

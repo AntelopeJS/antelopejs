@@ -9,6 +9,10 @@ import {
 import type { PluginPackageLookup } from "./plugin-package";
 import { consoleOutput, type CommandOutput } from "./cli-ui";
 import type { InheritedProcessOptions } from "./process-runner";
+import {
+  parsePluginInvocation,
+  type PluginInvocation,
+} from "./plugin-arguments";
 import { runCommand, runGlobalInstall } from "./command-runner";
 import type { PackageManagerName } from "./package-manager-name";
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./exit-codes";
@@ -198,50 +202,68 @@ async function isCompatible(
   return report.canDelegate;
 }
 
+function pluginProcessOptions(
+  invocation: PluginInvocation,
+  context: DelegationContext,
+): InheritedProcessOptions {
+  const { processOptions } = context;
+  return {
+    ...processOptions,
+    env: { ...(processOptions.env ?? process.env), ...invocation.environment },
+  };
+}
+
 async function runPlugin(
   executable: ResolvedExecutable,
-  args: string[],
+  invocation: PluginInvocation,
   context: DelegationContext,
 ): Promise<DelegatedPluginResult> {
   return delegated(
     await runCommand(
       executable.path,
-      args.slice(1),
+      invocation.args.slice(1),
       context.output,
-      context.processOptions,
+      pluginProcessOptions(invocation, context),
     ),
   );
 }
 
 function runThirdPartyPlugin(
   executable: ResolvedExecutable,
-  args: string[],
+  invocation: PluginInvocation,
   context: DelegationContext,
 ): Promise<DelegatedPluginResult> {
   context.output.info(
-    `Running third-party plugin ${pluginBinary(args[0])} (${displayPath(executable.path)})`,
+    `Running third-party plugin ${pluginBinary(invocation.args[0])} (${displayPath(executable.path)})`,
   );
-  return runPlugin(executable, args, context);
+  return runPlugin(executable, invocation, context);
 }
 
 async function delegateToOfficialPlugin(
   plugin: OfficialPlugin,
   executable: ResolvedExecutable | undefined,
-  args: string[],
+  invocation: PluginInvocation,
   context: DelegationContext,
 ): Promise<PluginDelegationResult> {
   const resolved = executable ?? (await installAndLocate(plugin, context));
   if (!resolved || !(await isCompatible(resolved, plugin, context))) {
     return delegated(FAILURE_EXIT_CODE);
   }
-  return runPlugin(resolved, args, context);
+  return runPlugin(resolved, invocation, context);
 }
 
+/**
+ * Runs `ajs <plugin> ...` as the plugin executable. Global options given
+ * before the plugin name (`--no-color`, `--verbose`) reach the plugin as
+ * `NO_COLOR` and `ANTELOPEJS_VERBOSE`; the arguments after it are forwarded
+ * verbatim.
+ */
 export async function delegateToPlugin(
   args: string[],
   dependencies: PluginDelegationDependencies = {},
 ): Promise<PluginDelegationResult> {
-  const command = args[0];
+  const invocation = parsePluginInvocation(args);
+  const command = invocation.args[0];
   if (!command || command.startsWith("-")) {
     return NOT_DELEGATED;
   }
@@ -254,8 +276,8 @@ export async function delegateToPlugin(
 
   if (!plugin) {
     return executable
-      ? runThirdPartyPlugin(executable, args, context)
+      ? runThirdPartyPlugin(executable, invocation, context)
       : NOT_DELEGATED;
   }
-  return delegateToOfficialPlugin(plugin, executable, args, context);
+  return delegateToOfficialPlugin(plugin, executable, invocation, context);
 }

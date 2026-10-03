@@ -27,6 +27,23 @@ describe("Inherited process runner", () => {
     ]);
   });
 
+  it("spawns with the given environment", async () => {
+    const { runner, calls, close } = createControllableProcessRunner();
+
+    const result = runInheritedProcess("ajs-dms", ["dev"], {
+      processRunner: runner,
+      platform: "linux",
+      env: { NO_COLOR: "1" },
+    });
+    close(0);
+    await result;
+
+    expect(calls[0].options).to.deep.equal({
+      stdio: "inherit",
+      env: { NO_COLOR: "1" },
+    });
+  });
+
   it("propagates the child exit code", async () => {
     const { runner, close } = createControllableProcessRunner();
 

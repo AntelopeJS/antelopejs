@@ -94,6 +94,28 @@ describe("CLI dispatcher", () => {
     expect(runFullCLI.callCount).to.equal(4);
   });
 
+  it("delegates a plugin named after global options", async () => {
+    const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
+    createExecutable("ajs-custom");
+    const originalExitCode = process.exitCode;
+
+    await runCLI(["--no-color", "--verbose", "custom", "run"]);
+
+    expect(runFullCLI.called).to.equal(false);
+    expect(process.exitCode).to.equal(0);
+    process.exitCode = originalExitCode;
+  });
+
+  it("keeps core commands after global options on the full CLI", async () => {
+    const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
+    createExecutable("ajs-config");
+
+    await runCLI(["--no-color", "config", "show"]);
+    await runCLI(["--verbose", "--no-color"]);
+
+    expect(runFullCLI.callCount).to.equal(2);
+  });
+
   it("keeps run, dev, and build on the full CLI workflows", async () => {
     const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { parsePluginInvocation } from "./plugin-arguments";
+
 const START_COMMAND = "start";
 const PROJECT_COMMAND = "project";
 const OPTION_PREFIX = "-";
@@ -24,7 +26,7 @@ async function isCoreCommand(command: string): Promise<boolean> {
 }
 
 async function delegateToPluginCommand(args: string[]): Promise<boolean> {
-  const command = args[0];
+  const command = parsePluginInvocation(args).args[0];
   if (!command || command.startsWith(OPTION_PREFIX)) {
     return false;
   }
