@@ -6,6 +6,7 @@ import * as childProcess from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { ExecuteCMD } from "../../command";
+import { isPromptCancellation } from "../../cancellation";
 import {
   displayNonDefaultGitWarning,
   Options,
@@ -253,6 +254,9 @@ export async function moduleInitCommand(
       { borderColor: "green" },
     );
   } catch (err) {
+    if (isPromptCancellation(err)) {
+      throw err;
+    }
     await gitSpinner.fail("Failed to initialize your module");
     if (fromProject) {
       // When called from project init, re-throw the error so it can be handled there

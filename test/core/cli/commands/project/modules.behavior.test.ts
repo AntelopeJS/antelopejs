@@ -810,6 +810,7 @@ describe("project modules behavior", () => {
     });
 
     expect(errorStub.called).to.equal(true);
+    expect(process.exitCode).to.equal(1);
   });
 
   it("errors when some modules are missing without force", async () => {
@@ -835,6 +836,7 @@ describe("project modules behavior", () => {
 
     expect(errorStub.called).to.equal(true);
     expect(writeStub.called).to.equal(false);
+    expect(process.exitCode).to.equal(1);
   });
 
   it("removes prefixed modules and warns about remaining dependencies", async () => {
@@ -862,6 +864,7 @@ describe("project modules behavior", () => {
     });
 
     expect(writeStub.calledOnce).to.equal(true);
+    expect(process.exitCode).to.equal(undefined);
     expect(warningStub.called).to.equal(true);
   });
 
@@ -909,6 +912,7 @@ describe("project modules behavior", () => {
     });
 
     expect(errorStub.called).to.equal(true);
+    expect(process.exitCode).to.equal(1);
   });
 
   it("removes modules with force and writes config", async () => {
@@ -933,6 +937,7 @@ describe("project modules behavior", () => {
     });
 
     expect(writeStub.calledOnce).to.equal(true);
+    expect(process.exitCode).to.equal(undefined);
   });
 
   it("errors when removing missing modules without force", async () => {
@@ -957,6 +962,7 @@ describe("project modules behavior", () => {
 
     expect(errorStub.called).to.equal(true);
     expect(writeStub.called).to.equal(false);
+    expect(process.exitCode).to.equal(1);
   });
 
   it("errors when project config is missing for update", async () => {
@@ -1005,6 +1011,7 @@ describe("project modules behavior", () => {
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(errorStub.called).to.equal(true);
+    expect(process.exitCode).to.equal(1);
   });
 
   it("shows up to date when no npm modules are available to update", async () => {
@@ -1132,37 +1139,59 @@ describe("project modules behavior", () => {
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(writeStub.calledOnce).to.equal(true);
+    expect(process.exitCode).to.equal(undefined);
   });
 
-  it("handles missing, non-package, and dry-run updates", async () => {
-    const config: any = {
-      modules: {
-        pkg1: {
-          source: { type: "package", package: "pkg1", version: "1.0.0" },
-        },
-        pkgSame: {
-          source: { type: "package", package: "pkgSame", version: "1.0.0" },
-        },
-        gitMod: {
-          source: { type: "git", remote: "https://example.com/repo.git" },
-        },
+  it("fails without checking or writing when a requested module is not in the project", async () => {
+    const modules = {
+      pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
+    };
+    sinon.stub(common, "readConfig").resolves({ modules } as any);
+    const writeStub = sinon.stub(common, "writeConfig").resolves();
+    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
+    const execStub = sinon.stub(command, "ExecuteCMD");
+    const errorStub = sinon.stub(cliUi, "error");
+    const successStub = sinon.stub(cliUi, "success");
+    sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "warning");
+
+    const cmd = cmdUpdate();
+    await cmd.parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/tmp/project",
+      "pkg",
+      "missing",
+    ]);
+
+    expect(stripAnsi(String(errorStub.firstCall.args[0]))).to.include(
+      "missing",
+    );
+    expect(successStub.called).to.equal(false);
+    expect(execStub.called).to.equal(false);
+    expect(writeStub.called).to.equal(false);
+    expect(process.exitCode).to.equal(1);
+  });
+
+  it("checks only the requested modules in a dry run", async () => {
+    const modules = {
+      pkg1: {
+        source: { type: "package", package: "pkg1", version: "1.0.0" },
+      },
+      pkgSame: {
+        source: { type: "package", package: "pkgSame", version: "1.0.0" },
+      },
+      unrequested: {
+        source: { type: "package", package: "unrequested", version: "1.0.0" },
+      },
+      gitMod: {
+        source: { type: "git", remote: "https://example.com/repo.git" },
       },
     };
-    sinon.stub(common, "readConfig").resolves(config);
-    sinon.stub(common, "writeConfig").resolves();
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      modules: {
-        pkg1: {
-          source: { type: "package", package: "pkg1", version: "1.0.0" },
-        },
-        pkgSame: {
-          source: { type: "package", package: "pkgSame", version: "1.0.0" },
-        },
-        gitMod: {
-          source: { type: "git", remote: "https://example.com/repo.git" },
-        },
-      },
-    } as any);
+    sinon.stub(common, "readConfig").resolves({ modules } as any);
+    const writeStub = sinon.stub(common, "writeConfig").resolves();
+    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
 
     const execStub = sinon.stub(command, "ExecuteCMD");
     execStub.onFirstCall().resolves({ code: 0, stdout: "2.0.0", stderr: "" });
@@ -1170,7 +1199,7 @@ describe("project modules behavior", () => {
 
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "success");
+    const successStub = sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "error");
 
     const cmd = cmdUpdate();
@@ -1183,7 +1212,15 @@ describe("project modules behavior", () => {
       "pkg1",
       "pkgSame",
       "gitMod",
-      "missing",
     ]);
+
+    const checkedCommands = execStub.getCalls().map((call) => call.args[0]);
+    expect(checkedCommands).to.have.length(2);
+    expect(checkedCommands.join("\n")).to.not.include("unrequested");
+    expect(stripAnsi(String(successStub.firstCall.args[0]))).to.include(
+      "Would update 1 module(s)",
+    );
+    expect(writeStub.called).to.equal(false);
+    expect(process.exitCode).to.equal(undefined);
   });
 });

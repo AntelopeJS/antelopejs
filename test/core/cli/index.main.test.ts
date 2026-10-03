@@ -7,7 +7,10 @@ const Module = require("node:module");
 
 import * as logging from "../../../src/logging";
 import * as cliUi from "../../../src/core/cli/cli-ui";
+import * as fullCli from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
+import { CANCELLED_MESSAGE } from "../../../src/core/cli/cancellation";
+import { CANCELLED_EXIT_CODE } from "../../../src/core/cli/exit-codes";
 import { FORCED_EXIT_GRACE_MS } from "../../../src/core/cli/failure-exit";
 
 describe("CLI main guard", () => {
@@ -59,11 +62,39 @@ describe("CLI main guard", () => {
     expect(process.listenerCount("SIGINT")).to.equal(baselineCount);
   });
 
-  it("handles ExitPromptError in main guard", async () => {
+  it("reports a cancelled prompt and exits with the cancelled code", async () => {
     stubRunCliDeps();
+    const previousExitCode = process.exitCode;
     sinon
       .stub(Command.prototype, "parseAsync")
       .rejects({ name: "ExitPromptError" });
+    const exitStub = sinon.stub(process, "exit");
+    const errorStub = sinon.stub(console, "error");
+    const clock = sinon.useFakeTimers({ shouldAdvanceTime: true });
+    const originalListeners = process.listeners("SIGINT");
+    process.removeAllListeners("SIGINT");
+    const restoreMain = loadCliAsMain();
+    try {
+      await clock.tickAsync(FORCED_EXIT_GRACE_MS);
+      expect(errorStub.calledWith(CANCELLED_MESSAGE)).to.equal(true);
+      expect(exitStub.calledWith(CANCELLED_EXIT_CODE)).to.equal(true);
+    } finally {
+      clock.restore();
+      restoreMain();
+      process.removeAllListeners("SIGINT");
+      for (const listener of originalListeners) {
+        process.on("SIGINT", listener);
+      }
+      exitStub.restore();
+      errorStub.restore();
+      process.exitCode = previousExitCode;
+    }
+  });
+
+  it("exits with the cancelled code when a prompt outside the commands is cancelled", async () => {
+    stubRunCliDeps();
+    const previousExitCode = process.exitCode;
+    sinon.stub(fullCli, "runCLI").rejects({ name: "ExitPromptError" });
     const exitStub = sinon.stub(process, "exit");
     const errorStub = sinon.stub(console, "error");
     const originalListeners = process.listeners("SIGINT");
@@ -71,7 +102,8 @@ describe("CLI main guard", () => {
     const restoreMain = loadCliAsMain();
     try {
       await new Promise((resolve) => setImmediate(resolve));
-      expect(exitStub.calledWith(0)).to.equal(true);
+      expect(errorStub.calledWith(CANCELLED_MESSAGE)).to.equal(true);
+      expect(exitStub.calledOnceWith(CANCELLED_EXIT_CODE)).to.equal(true);
     } finally {
       restoreMain();
       process.removeAllListeners("SIGINT");
@@ -80,6 +112,7 @@ describe("CLI main guard", () => {
       }
       exitStub.restore();
       errorStub.restore();
+      process.exitCode = previousExitCode;
     }
   });
 

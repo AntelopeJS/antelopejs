@@ -1,18 +1,25 @@
 import fs from "node:fs";
 import sinon from "sinon";
 import { expect } from "chai";
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 
 import * as logging from "../../../src/logging";
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import { runCLI } from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
+import { CANCELLED_MESSAGE } from "../../../src/core/cli/cancellation";
+import {
+  CANCELLED_EXIT_CODE,
+  SUCCESS_EXIT_CODE,
+  USAGE_EXIT_CODE,
+} from "../../../src/core/cli/exit-codes";
 
 describe("runCLI behavior", () => {
   const originalArgv = process.argv.slice();
 
   afterEach(() => {
     process.argv = originalArgv.slice();
+    process.exitCode = undefined;
     sinon.restore();
   });
 
@@ -91,29 +98,46 @@ describe("runCLI behavior", () => {
     expect(cancel.calledOnce).to.equal(true);
   });
 
-  it("exits when ExitPromptError is thrown", async () => {
-    process.argv = ["node", "ajs"];
-    sinon
-      .stub(fs, "readFileSync")
-      .returns(JSON.stringify({ version: "0.0.0" }));
-    sinon.stub(logging, "setupAntelopeProjectLogging");
-    sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
-    sinon.stub(cliUi, "displayBanner");
-    sinon
-      .stub(Command.prototype, "parseAsync")
-      .rejects({ name: "ExitPromptError" });
-    sinon.stub(Command.prototype, "getOptionValue").returns(undefined);
-
+  it("reports a cancelled prompt with the cancelled exit code", async () => {
+    process.argv = ["node", "ajs", "project", "init", "demo"];
+    stubCommon();
+    const cancel = sinon.stub();
+    (versionCheck.startUpdateCheck as sinon.SinonStub).returns({ cancel });
+    (Command.prototype.parseAsync as sinon.SinonStub).rejects({
+      name: "ExitPromptError",
+    });
     const exitStub = sinon.stub(process, "exit");
+    const errorStub = sinon.stub(console, "error");
 
-    let thrown: unknown;
-    try {
-      await runCLI();
-    } catch (err) {
-      thrown = err;
-    }
+    await runCLI();
 
-    expect(exitStub.calledWith(0)).to.equal(true);
-    expect((thrown as any)?.name).to.equal("ExitPromptError");
+    expect(exitStub.called).to.equal(false);
+    expect(errorStub.calledOnceWith(CANCELLED_MESSAGE)).to.equal(true);
+    expect(process.exitCode).to.equal(CANCELLED_EXIT_CODE);
+    expect(cancel.calledOnce).to.equal(true);
+  });
+
+  it("reports a usage error with the usage exit code", async () => {
+    process.argv = ["node", "ajs", "project", "--bogus"];
+    stubCommon();
+    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
+      new CommanderError(1, "commander.unknownOption", "unknown option"),
+    );
+
+    await runCLI();
+
+    expect(process.exitCode).to.equal(USAGE_EXIT_CODE);
+  });
+
+  it("keeps a successful exit code when commander exits after help", async () => {
+    process.argv = ["node", "ajs", "--help"];
+    stubCommon();
+    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
+      new CommanderError(0, "commander.helpDisplayed", "(outputHelp)"),
+    );
+
+    await runCLI();
+
+    expect(process.exitCode).to.equal(SUCCESS_EXIT_CODE);
   });
 });

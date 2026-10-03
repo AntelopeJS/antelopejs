@@ -258,4 +258,44 @@ describe("module init behavior", () => {
       cleanupTempDir(moduleDir);
     }
   });
+
+  it("propagates a cancelled template prompt without reporting a failure", async () => {
+    const moduleDir = makeTempDir();
+    try {
+      sinon
+        .stub(common, "readUserConfig")
+        .resolves({ git: common.DEFAULT_GIT_REPO });
+      sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+      sinon.stub(gitOps, "loadManifestFromGit").resolves({
+        templates: [{ name: "basic" }],
+        starredInterfaces: [],
+        interfaces: {},
+      } as any);
+      const copyStub = sinon.stub(gitOps, "copyTemplate").resolves();
+      const cancellation = { name: "ExitPromptError" };
+      sinon.stub(inquirer, "prompt").rejects(cancellation);
+
+      sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+      sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
+      const failStub = sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
+      const errorStub = sinon.stub(cliUi, "error");
+      sinon.stub(cliUi, "info");
+      sinon.stub(console, "log");
+
+      let caught: unknown;
+      try {
+        await moduleInitCommand(moduleDir, {}, false);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).to.equal(cancellation);
+      expect(failStub.called).to.equal(false);
+      expect(errorStub.called).to.equal(false);
+      expect(copyStub.called).to.equal(false);
+      expect(process.exitCode).to.equal(undefined);
+    } finally {
+      cleanupTempDir(moduleDir);
+    }
+  });
 });

@@ -8,6 +8,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import { ExecuteCMD } from "../../../command";
+import { FAILURE_EXIT_CODE } from "../../../exit-codes";
 import { projectModulesAddCommand } from "./add";
 import { ModuleCache } from "../../../../module-cache";
 import { NodeFileSystem } from "../../../../filesystem";
@@ -168,7 +169,7 @@ export default function () {
         info(
           `Make sure you're in an AntelopeJS project or use the --project option.`,
         );
-        process.exitCode = 1;
+        process.exitCode = FAILURE_EXIT_CODE;
         return;
       }
 
@@ -227,8 +228,8 @@ export default function () {
           ));
         } catch (err) {
           await terminalDisplay.failSpinner(`Error analyzing config: ${err}`);
-          await new Promise((resolve) => setTimeout(resolve, 10));
-          process.exit(1);
+          process.exitCode = FAILURE_EXIT_CODE;
+          return;
         }
         await terminalDisplay.stopSpinner(`Analyzed environment: ${env}`);
         // Handle unresolved imports
@@ -374,7 +375,7 @@ export default function () {
               error(
                 chalk.red`Failed to install ${failedCount} module(s) for environment ${env} (mode: ${mode})`,
               );
-              process.exitCode = 1;
+              process.exitCode = FAILURE_EXIT_CODE;
             } else {
               success(
                 chalk.green`Successfully installed modules for environment ${env} (mode: ${mode})`,
@@ -384,7 +385,7 @@ export default function () {
             error(
               chalk.red`Failed to install modules for environment ${env} (mode: ${mode}): ${err}`,
             );
-            process.exitCode = 1;
+            process.exitCode = FAILURE_EXIT_CODE;
           }
         }
         await terminalDisplay.stopSpinner(

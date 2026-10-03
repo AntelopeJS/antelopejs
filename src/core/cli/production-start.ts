@@ -7,6 +7,7 @@ import { findBuildModuleSetChange } from "../runtime/build-refresh";
 import {
   BUILD_MODULE_SET_CHANGED_EXIT_CODE,
   FAILURE_EXIT_CODE,
+  USAGE_EXIT_CODE,
 } from "./exit-codes";
 
 export interface ProductionStartOptions {
@@ -113,8 +114,23 @@ export function startFailureExitCode(error: unknown): number {
     : FAILURE_EXIT_CODE;
 }
 
+function parseArgsOrReportUsage(
+  args: string[],
+): ProductionStartOptions | undefined {
+  try {
+    return parseProductionStartArgs(args);
+  } catch (error) {
+    process.stderr.write(`${(error as Error).message}\n`);
+    process.exitCode = USAGE_EXIT_CODE;
+    return undefined;
+  }
+}
+
 export async function runProductionStart(args: string[]): Promise<void> {
-  const options = parseProductionStartArgs(args);
+  const options = parseArgsOrReportUsage(args);
+  if (!options) {
+    return;
+  }
   if (options.help) {
     process.stdout.write(HELP);
     return;
