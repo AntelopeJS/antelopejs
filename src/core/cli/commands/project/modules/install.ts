@@ -1,21 +1,18 @@
 import { Command, Option } from "commander";
 
 import { Options } from "../../../options";
+import { withExamples } from "../../../help";
 import { lazyAction } from "../../../lazy-action";
 
 export default function () {
-  return new Command("install")
+  const command = new Command("install")
+    .summary("Add modules for unresolved interfaces")
     .description(
-      `Install module dependencies in your project\n` +
-        `Identifies and resolves missing module dependencies. An interface implemented by a single module gets that module without a question.`,
+      "Find the interfaces the modules of the project import but no module implements, and add a module that implements each of them, taken from the interface repository. An interface implemented by a single module gets that module without a question.",
     )
     .addOption(Options.project)
+    .addOption(Options.env)
     .addOption(Options.git)
-    .addOption(
-      new Option("-e, --env <environment>", "Environment to analyze").env(
-        "ANTELOPEJS_LAUNCH_ENV",
-      ),
-    )
     .addOption(
       new Option(
         "-y, --yes",
@@ -25,4 +22,14 @@ export default function () {
     .action(
       lazyAction(async () => (await import("./install-action")).installModules),
     );
+  return withExamples(command, [
+    {
+      description: "Add the missing modules, asking when there is a choice",
+      command: "ajs project modules install",
+    },
+    {
+      description: "Never ask, for scripts and CI",
+      command: "ajs project modules install --yes",
+    },
+  ]);
 }

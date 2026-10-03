@@ -1,29 +1,32 @@
 import { Command, Option } from "commander";
 
 import { Options } from "../../../options";
+import { withExamples } from "../../../help";
 import { lazyAction } from "../../../lazy-action";
 
 export default function () {
-  return new Command("update")
+  const command = new Command("update")
+    .summary("Update npm modules to their latest version")
     .description(
-      `Update modules to latest versions\n` +
-        `Checks for and applies module updates from npm`,
+      "Check npm for newer versions of the npm modules of the project and update their versions in the project configuration. Modules from git or local folders are left as they are.",
     )
-    .argument("[modules...]", "Specific modules to update (default: all)")
+    .argument("[modules...]", "Modules to update (default: every npm module)")
     .addOption(Options.project)
+    .addOption(Options.env)
     .addOption(
-      new Option(
-        "-e, --env <environment>",
-        "Environment to update modules in",
-      ).env("ANTELOPEJS_LAUNCH_ENV"),
-    )
-    .addOption(
-      new Option(
-        "--dry-run",
-        "Show what would be updated without making changes",
-      ).default(false),
+      new Option("--dry-run", "Show the updates without applying them"),
     )
     .action(
       lazyAction(async () => (await import("./update-action")).updateModules),
     );
+  return withExamples(command, [
+    {
+      description: "Show the available updates",
+      command: "ajs project modules update --dry-run",
+    },
+    {
+      description: "Update one module",
+      command: "ajs project modules update @antelopejs/api",
+    },
+  ]);
 }

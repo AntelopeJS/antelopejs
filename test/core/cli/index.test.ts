@@ -1,7 +1,25 @@
 import { expect } from "chai";
+import type { Command } from "commander";
 
 import { coreCommandNames, createCLI } from "../../../src/core/cli/full-cli";
 import { formatOfficialPluginsHelp } from "../../../src/core/cli/plugin-registry";
+
+const MAX_SUMMARY_LENGTH = 50;
+
+function allCommands(command: Command): Command[] {
+  return command.commands.flatMap((child) => [child, ...allCommands(child)]);
+}
+
+function renderHelp(command: Command): string {
+  let output = "";
+  command.configureOutput({
+    writeOut: (text) => {
+      output += text;
+    },
+  });
+  command.outputHelp();
+  return output;
+}
 
 function commandNames(cmd: any): string[] {
   return cmd.commands.map((c: any) => c.name()).sort();
@@ -22,9 +40,42 @@ describe("CLI Entry Point", () => {
     ]);
   });
 
-  it("lists official plugins in the root help", () => {
-    expect(createCLI("0.0.1").description()).to.contain(
-      formatOfficialPluginsHelp(),
+  it("lists official plugins, examples and the docs after the root commands", () => {
+    const help = renderHelp(createCLI("0.0.1"));
+
+    expect(help).to.contain(formatOfficialPluginsHelp());
+    expect(help).to.contain("$ ajs project dev --watch");
+    expect(help).to.contain("Docs: https://antelopejs.com/docs/cli");
+    expect(help.indexOf("Commands:")).to.be.below(help.indexOf("Plugins:"));
+  });
+
+  it("lists each root command once, with its summary", () => {
+    const help = renderHelp(createCLI("0.0.1"));
+
+    expect(help.match(/^ {2}project\b/gm)).to.have.length(1);
+    expect(help).to.not.contain("project run");
+  });
+
+  it("gives every command a short one-line summary", () => {
+    allCommands(createCLI("0.0.1")).forEach((command) => {
+      const summary = command.summary();
+      expect(summary, command.name()).to.match(/^[A-Z][^\n]*[^.]$/);
+      expect(summary.length, summary).to.be.at.most(MAX_SUMMARY_LENGTH);
+      expect(command.description(), command.name()).to.not.contain("\n");
+    });
+  });
+
+  it("shows examples on the help page of every command without subcommands", () => {
+    allCommands(createCLI("0.0.1"))
+      .filter((command) => command.commands.length === 0)
+      .forEach((command) =>
+        expect(renderHelp(command), command.name()).to.contain("Examples:"),
+      );
+  });
+
+  it("never prints the current directory as a default", () => {
+    allCommands(createCLI("0.0.1")).forEach((command) =>
+      expect(renderHelp(command), command.name()).to.not.contain(process.cwd()),
     );
   });
 

@@ -10,9 +10,9 @@ import cmdLogging from "./logging";
 
 export default function () {
   return new Command("project")
+    .summary("Create, run, build and configure projects")
     .description(
-      `Manage AntelopeJS Projects\n` +
-        `Create, configure, and run projects that bring together different modules.`,
+      "Create, run and build AntelopeJS projects, and manage their modules and logging settings.",
     )
     .addCommand(cmdInit())
     .addCommand(cmdModule())

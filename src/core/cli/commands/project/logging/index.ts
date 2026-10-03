@@ -5,9 +5,9 @@ import cmdShow from "./show";
 
 export default function () {
   return new Command("logging")
+    .summary("Show or change logging settings")
     .description(
-      `Configure and view project logging\n` +
-        `Manage logging configuration and view log output`,
+      "Show or change the logging settings saved in antelope.config.ts, which the runtime applies when the project runs.",
     )
     .addCommand(cmdShow())
     .addCommand(cmdSet());

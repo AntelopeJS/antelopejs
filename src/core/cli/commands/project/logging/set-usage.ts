@@ -37,15 +37,15 @@ export const SET_COMMAND = "ajs project logging set";
 export const SET_OPTION_FLAGS: Record<SettingOption, string> = {
   enable: "--enable",
   disable: "--disable",
-  enableModuleTracking: "--enableModuleTracking",
-  disableModuleTracking: "--disableModuleTracking",
-  includeModule: "--includeModule",
-  excludeModule: "--excludeModule",
-  removeInclude: "--removeInclude",
-  removeExclude: "--removeExclude",
+  enableModuleTracking: "--enable-module-tracking",
+  disableModuleTracking: "--disable-module-tracking",
+  includeModule: "--include-module",
+  excludeModule: "--exclude-module",
+  removeInclude: "--remove-include",
+  removeExclude: "--remove-exclude",
   level: "--level",
   format: "--format",
-  dateFormat: "--dateFormat",
+  dateFormat: "--date-format",
 };
 
 const SETTING_OPTIONS = Object.keys(SET_OPTION_FLAGS) as SettingOption[];

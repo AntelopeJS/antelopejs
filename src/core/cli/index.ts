@@ -3,9 +3,19 @@
 const START_COMMAND = "start";
 const PROJECT_COMMAND = "project";
 const OPTION_PREFIX = "-";
+const HELP_FLAGS = ["-h", "--help"];
 
+/**
+ * Whether the arguments run `ajs project start`, which launches the build
+ * artifact without loading the development CLI. Its help is left to the
+ * development CLI so that every help page reads the same.
+ */
 export function isProductionStartInvocation(args: string[]): boolean {
-  return args[0] === PROJECT_COMMAND && args[1] === START_COMMAND;
+  return (
+    args[0] === PROJECT_COMMAND &&
+    args[1] === START_COMMAND &&
+    !args.some((arg) => HELP_FLAGS.includes(arg))
+  );
 }
 
 async function isCoreCommand(command: string): Promise<boolean> {

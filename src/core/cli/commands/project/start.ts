@@ -1,22 +1,17 @@
 import { Command, Option } from "commander";
 
 import { Options } from "../../options";
+import { withExamples } from "../../help";
 import { lazyAction } from "../../lazy-action";
 
 export default function () {
-  return new Command("start")
+  const command = new Command("start")
+    .summary("Start the project from its build")
     .description(
-      `Start your AntelopeJS project from build artifacts\n` +
-        `Skips module download and graph validation by launching from .antelope/build/build.json.`,
+      "Start the project from the build artifact .antelope/build/build.json, without downloading modules or loading the development CLI. Run ajs project build first.",
     )
     .addOption(Options.project)
-    .addOption(Options.verbose)
-    .addOption(
-      new Option(
-        "-e, --env <environment>",
-        "Runtime environment (the build configuration is reused unless --refresh-config is set)",
-      ).env("ANTELOPEJS_LAUNCH_ENV"),
-    )
+    .addOption(Options.env)
     .addOption(
       new Option(
         "-c, --concurrency <number>",
@@ -26,8 +21,18 @@ export default function () {
     .addOption(
       new Option(
         "--refresh-config",
-        "Start with antelope.config.ts resolved for the environment instead of the build configuration (exits with code 3 when the module set differs from the build)",
+        "Resolve antelope.config.ts for the environment instead of using the build configuration (exit code 3 when the module set differs from the build)",
       ),
     )
     .action(lazyAction(async () => (await import("./start-action")).runStart));
+  return withExamples(command, [
+    {
+      description: "Start the production build",
+      command: "ajs project start -e production",
+    },
+    {
+      description: "Start with the configuration of the current environment",
+      command: "ajs project start -e production --refresh-config",
+    },
+  ]);
 }

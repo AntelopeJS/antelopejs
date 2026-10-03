@@ -1,28 +1,24 @@
 import { Command, Option } from "commander";
 
 import { Options } from "../../../options";
+import { withExamples } from "../../../help";
 import { lazyAction } from "../../../lazy-action";
 
 export default function () {
-  return new Command("remove")
+  const command = new Command("remove")
     .alias("rm")
+    .summary("Remove modules from the project")
     .description(
-      `Remove modules from your project\n` +
-        `Removes modules from project configuration`,
+      "Remove modules from the project configuration. Without --force, nothing is removed when one of the names is not in the configuration.",
     )
-    .argument("<modules...>", "Names of modules to remove")
+    .argument("<modules...>", "Names of the modules to remove")
     .addOption(Options.project)
-    .addOption(
-      new Option(
-        "-e, --env <environment>",
-        "Environment to remove modules from",
-      ).env("ANTELOPEJS_LAUNCH_ENV"),
-    )
+    .addOption(Options.env)
     .addOption(
       new Option(
         "-f, --force",
-        "Continue even if some modules are not found",
-      ).default(false),
+        "Remove the modules found even if some names are unknown",
+      ),
     )
     .action(
       lazyAction(
@@ -30,4 +26,10 @@ export default function () {
           (await import("./remove-action")).projectModulesRemoveCommand,
       ),
     );
+  return withExamples(command, [
+    {
+      description: "Remove a module",
+      command: "ajs project modules remove @antelopejs/api",
+    },
+  ]);
 }

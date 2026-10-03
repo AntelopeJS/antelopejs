@@ -7,9 +7,9 @@ import cmdReset from "./reset";
 
 export default function () {
   return new Command("config")
+    .summary("Show or change CLI settings")
     .description(
-      `Manage CLI Configuration\n` +
-        `View and change settings for the AntelopeJS CLI.`,
+      "Show or change the settings of the CLI, stored in ~/.antelopejs/config.json and shared by every project.",
     )
     .addCommand(cmdShow())
     .addCommand(cmdGet())

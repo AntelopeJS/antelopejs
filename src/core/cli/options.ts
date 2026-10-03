@@ -1,10 +1,18 @@
 import path from "node:path";
-import { Option } from "commander";
+import { type Command, Option } from "commander";
 
+import { warning } from "./cli-ui";
 import { PACKAGE_MANAGER_NAMES } from "./package-manager-name";
 
 const ALL_LOG_CHANNELS = "*";
 const LIST_SEPARATOR = ",";
+const CURRENT_DIRECTORY = "current directory";
+const OPTION_EVENT_PREFIX = "option:";
+
+export interface RenamedOption {
+  option: Option;
+  legacyFlags: string;
+}
 
 function parseList(value: string): string[] {
   return value
@@ -16,17 +24,22 @@ function parseList(value: string): string[] {
 export namespace Options {
   export const project = new Option(
     "-p, --project <path>",
-    "Path to AntelopeJS project",
+    "Path of the project folder",
   )
-    .default(path.resolve(process.cwd()))
+    .default(path.resolve(process.cwd()), CURRENT_DIRECTORY)
     .env("ANTELOPEJS_PROJECT")
     .argParser((val) => path.resolve(val));
-  export const git = new Option("-g, --git <url>", "URL to git interfaces").env(
-    "ANTELOPEJS_GIT",
-  );
+  export const env = new Option(
+    "-e, --env <environment>",
+    "Environment of antelope.config.ts to use instead of the base configuration",
+  ).env("ANTELOPEJS_LAUNCH_ENV");
+  export const git = new Option(
+    "-g, --git <url>",
+    "Interface repository URL, overriding the git CLI setting",
+  ).env("ANTELOPEJS_GIT");
   export const verbose = new Option(
     "--verbose [=channels]",
-    "Enable verbose logging (TRACE level) for specific log channels (comma-separated).",
+    "Print TRACE logs and full error details, optionally for some log channels only (comma-separated)",
   )
     .env("ANTELOPEJS_VERBOSE")
     .preset(ALL_LOG_CHANNELS)
@@ -62,5 +75,27 @@ export namespace Options {
   export const noGitInit = new Option(
     "--no-git-init",
     "Do not initialize a git repository",
+  );
+}
+
+function warnRenamedOption(legacyFlag: string, flag: string): void {
+  warning(`${legacyFlag} is deprecated, use ${flag} instead`);
+}
+
+/**
+ * Adds an option along with its former spelling, hidden from the help. Both
+ * spellings set the same value; the former one prints a deprecation warning.
+ */
+export function addRenamedOption(
+  command: Command,
+  renamed: RenamedOption,
+): Command {
+  const legacy = new Option(
+    renamed.legacyFlags,
+    renamed.option.description,
+  ).hideHelp();
+  command.addOption(renamed.option).addOption(legacy);
+  return command.on(`${OPTION_EVENT_PREFIX}${legacy.name()}`, () =>
+    warnRenamedOption(String(legacy.long), String(renamed.option.long)),
   );
 }

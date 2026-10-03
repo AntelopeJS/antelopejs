@@ -114,7 +114,7 @@ describe("project logging set persisting only real changes", () => {
     const config: any = { name: "test-project" };
     const stubs = stubSetCommand(config);
 
-    await runSet("--enable", "--removeInclude", "ghost");
+    await runSet("--enable", "--remove-include", "ghost");
 
     expect(stubs.writeConfig.called).to.equal(false);
     expect(config.logging).to.equal(undefined);
@@ -129,7 +129,7 @@ describe("project logging set persisting only real changes", () => {
     const config: any = { name: "test-project" };
     const stubs = stubSetCommand(config);
 
-    await runSet("--disable", "--includeModule", "billing");
+    await runSet("--disable", "--include-module", "billing");
 
     expect(stubs.writeConfig.calledOnce).to.equal(true);
     expect(config.logging).to.deep.equal({
@@ -150,7 +150,14 @@ describe("project logging set persisting only real changes", () => {
     };
     const stubs = stubSetCommand(config);
 
-    await runSet("--includeModule", "modA", "--level", "info", "--format", "x");
+    await runSet(
+      "--include-module",
+      "modA",
+      "--level",
+      "info",
+      "--format",
+      "x",
+    );
 
     expect(stubs.writeConfig.calledOnce).to.equal(true);
     expect(config.logging).to.deep.equal({
@@ -178,20 +185,20 @@ describe("project logging set persisting only real changes", () => {
 
     await runSet(
       "--enable",
-      "--enableModuleTracking",
-      "--includeModule",
+      "--enable-module-tracking",
+      "--include-module",
       "modA",
-      "--excludeModule",
+      "--exclude-module",
       "modB",
-      "--removeInclude",
+      "--remove-include",
       "modX",
-      "--removeExclude",
+      "--remove-exclude",
       "modY",
       "--level",
       "info",
       "--format",
       "[info]",
-      "--dateFormat",
+      "--date-format",
       "yyyy-MM-dd",
     );
 
@@ -223,12 +230,12 @@ describe("project logging set persisting only real changes", () => {
 
     await runSet(
       "--disable",
-      "--disableModuleTracking",
-      "--includeModule",
+      "--disable-module-tracking",
+      "--include-module",
       "modA",
-      "--excludeModule",
+      "--exclude-module",
       "modB",
-      "--removeExclude",
+      "--remove-exclude",
       "missing",
     );
 
@@ -245,8 +252,8 @@ describe("project logging set persisting only real changes", () => {
     const stubs = stubSetCommand({ name: "test-project" });
 
     await runSet(
-      "--disableModuleTracking",
-      "--dateFormat",
+      "--disable-module-tracking",
+      "--date-format",
       "yyyy-MM-dd HH:mm:ss",
     );
 
@@ -269,7 +276,7 @@ describe("project logging set with an environment", () => {
     };
     const stubs = stubSetCommand(config);
 
-    await runSet("--env", "staging", "--enable", "--includeModule", "modB");
+    await runSet("--env", "staging", "--enable", "--include-module", "modB");
 
     expect(stubs.writeConfig.calledOnce).to.equal(true);
     expect(config.environments.staging.logging).to.deep.equal({
