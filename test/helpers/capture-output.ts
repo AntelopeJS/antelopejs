@@ -7,6 +7,12 @@ export interface CapturedOutput {
 
 type StreamWrite = typeof process.stdout.write;
 
+interface StreamCapture {
+  stdout: string[];
+  stderr: string[];
+  restore(): void;
+}
+
 function collectInto(sink: string[]): StreamWrite {
   return ((chunk: unknown): boolean => {
     sink.push(String(chunk));
@@ -14,7 +20,7 @@ function collectInto(sink: string[]): StreamWrite {
   }) as unknown as StreamWrite;
 }
 
-export function captureOutput(emit: () => void): CapturedOutput {
+function startCapture(): StreamCapture {
   const stdout: string[] = [];
   const stderr: string[] = [];
   const stdoutStub = sinon
@@ -23,13 +29,38 @@ export function captureOutput(emit: () => void): CapturedOutput {
   const stderrStub = sinon
     .stub(process.stderr, "write")
     .callsFake(collectInto(stderr));
+  return {
+    stdout,
+    stderr,
+    restore: () => {
+      stdoutStub.restore();
+      stderrStub.restore();
+    },
+  };
+}
 
+function collected(capture: StreamCapture): CapturedOutput {
+  return { stdout: capture.stdout.join(""), stderr: capture.stderr.join("") };
+}
+
+export function captureOutput(emit: () => void): CapturedOutput {
+  const capture = startCapture();
   try {
     emit();
   } finally {
-    stdoutStub.restore();
-    stderrStub.restore();
+    capture.restore();
   }
+  return collected(capture);
+}
 
-  return { stdout: stdout.join(""), stderr: stderr.join("") };
+export async function captureOutputAsync(
+  emit: () => Promise<unknown>,
+): Promise<CapturedOutput> {
+  const capture = startCapture();
+  try {
+    await emit();
+  } finally {
+    capture.restore();
+  }
+  return collected(capture);
 }

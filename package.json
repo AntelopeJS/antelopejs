@@ -59,6 +59,7 @@
     "inquirer": "^12.11.1",
     "jiti": "^2.6.1",
     "mocha": "^11.7.5",
+    "picocolors": "^1.1.1",
     "proper-lockfile": "^4.1.2",
     "reflect-metadata": "^0.2.2",
     "semver": "^7.7.4",

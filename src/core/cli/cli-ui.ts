@@ -3,9 +3,9 @@ import figlet from "figlet";
 import type { Options as BoxenOptions } from "boxen";
 
 import { isTerminalOutput } from "./logging-utils";
+import { getProcessUi, type MessageLevel } from "./output";
 
 const clearLine = () => process.stderr.write("\r\x1b[K");
-const spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const SPINNER_INTERVAL_MS = 80;
 
 export class Spinner {
@@ -14,6 +14,7 @@ export class Spinner {
   private interval?: NodeJS.Timeout;
   private currentCharIndex = 0;
   private isTerminal = isTerminalOutput();
+  private readonly frames = getProcessUi().symbols.spinner;
 
   constructor(text: string) {
     this.text = text;
@@ -30,10 +31,9 @@ export class Spinner {
 
     this.interval = setInterval(() => {
       if (this.isRunning) {
-        const spinnerChar = spinnerChars[this.currentCharIndex];
-        process.stderr.write(`\r${spinnerChar} ${this.text}`);
+        process.stderr.write(`\r${this.currentFrame()} ${this.text}`);
         this.currentCharIndex =
-          (this.currentCharIndex + 1) % spinnerChars.length;
+          (this.currentCharIndex + 1) % this.frames.length;
       }
     }, SPINNER_INTERVAL_MS);
 
@@ -49,8 +49,7 @@ export class Spinner {
     if (this.isRunning && this.isTerminal) {
       clearLine();
       stream.write(`${message}\n`);
-      const spinnerChar = spinnerChars[this.currentCharIndex];
-      process.stderr.write(`${spinnerChar} ${this.text}`);
+      process.stderr.write(`${this.currentFrame()} ${this.text}`);
     } else {
       stream.write(`${message}\n`);
     }
@@ -58,31 +57,29 @@ export class Spinner {
   }
 
   async succeed(text?: string): Promise<void> {
-    if (!this.isRunning) return;
-    await this.stop();
-    const message = text || this.text;
-    console.error(`${chalk.green.bold("✓")} ${message}`);
+    await this.finish("success", text);
   }
 
   async fail(text?: string): Promise<void> {
-    if (!this.isRunning) return;
-    await this.stop();
-    const message = text || this.text;
-    console.error(`${chalk.red.bold("✗")} ${chalk.red(message)}`);
+    await this.finish("error", text);
   }
 
   async info(text?: string): Promise<void> {
-    if (!this.isRunning) return;
-    await this.stop();
-    const message = text || this.text;
-    console.error(`${chalk.blue.bold("ℹ")} ${message}`);
+    await this.finish("info", text);
   }
 
   async warn(text?: string): Promise<void> {
+    await this.finish("warn", text);
+  }
+
+  private async finish(level: MessageLevel, text?: string): Promise<void> {
     if (!this.isRunning) return;
     await this.stop();
-    const message = text || this.text;
-    console.error(`${chalk.yellow.bold("⚠")} ${message}`);
+    getProcessUi().message(level, text || this.text);
+  }
+
+  private currentFrame(): string {
+    return this.frames[this.currentCharIndex];
   }
 
   async pause(): Promise<void> {
@@ -139,12 +136,12 @@ export function displayBanner(text: string, font?: figlet.FontName): void {
 }
 
 export function success(message: string): void {
-  console.log(`${chalk.green.bold("✓")} ${message}`);
+  getProcessUi().message("success", message, { channel: "result" });
 }
 
 export function error(message: string | Error): void {
   const text = message instanceof Error ? message.message : message;
-  console.error(`${chalk.red.bold("✗")} ${text}`);
+  getProcessUi().message("error", text);
 }
 
 export interface CommandOutput {
@@ -155,17 +152,15 @@ export interface CommandOutput {
 export function warning(message: string | Error): void {
   const text =
     message instanceof Error ? (message.stack ?? message.message) : message;
-  console.error(`${chalk.yellow.bold("⚠")} ${text}`);
+  getProcessUi().message("warn", text);
 }
 
 export function info(message: string): void {
-  console.error(`${chalk.blue.bold("ℹ")} ${message}`);
+  getProcessUi().message("info", message);
 }
 
 export function header(text: string): void {
-  console.log("");
-  console.log(chalk.bold.blue(text));
-  console.log(chalk.blue("─".repeat(text.length)));
+  getProcessUi().heading(text);
 }
 
 export function keyValue(

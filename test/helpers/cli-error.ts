@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { CliError } from "../../src/core/cli/cli-error";
+import { CliError } from "../../src/core/cli/output";
 import {
   FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,

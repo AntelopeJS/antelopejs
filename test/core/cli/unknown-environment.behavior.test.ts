@@ -15,6 +15,7 @@ import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { findConfigPath } from "../../../src/core/config/config-paths";
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { USAGE_EXIT_CODE } from "../../../src/core/cli/exit-codes";
+import { getProcessUi } from "../../../src/core/cli/output";
 
 const UNKNOWN_ENVIRONMENT = "staging";
 
@@ -101,11 +102,10 @@ describe("unknown --env", () => {
   }
 
   function reportedLines(): string[] {
-    const errorLines = (cliUi.error as sinon.SinonStub).args;
-    const detailLines = (console.error as sinon.SinonStub).args;
-    return [...errorLines, ...detailLines].map((args) =>
-      stripAnsi(String(args[0])),
-    );
+    const written = (process.stderr.write as sinon.SinonStub).args
+      .map((args) => String(args[0]))
+      .join("");
+    return stripAnsi(written).split("\n");
   }
 
   COMMANDS.forEach(({ name, args }) => {
@@ -114,7 +114,7 @@ describe("unknown --env", () => {
 
       expect(code).to.equal(USAGE_EXIT_CODE);
       expect(reportedLines()).to.include.members([
-        `Unknown environment '${UNKNOWN_ENVIRONMENT}'`,
+        `${getProcessUi().symbols.levels.error} Unknown environment '${UNKNOWN_ENVIRONMENT}'`,
         "  Known environments: default, production",
       ]);
       expect(workStubs.some((stub) => stub.called)).to.equal(false);
