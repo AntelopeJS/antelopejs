@@ -17,6 +17,7 @@ import {
 import { createMemoryUi } from "../../helpers/memory-ui";
 import {
   createGlobalRootResolver,
+  plainProblem,
   createOutput,
   createPackageReader,
   createProcessRunner,
@@ -144,6 +145,9 @@ describe("Official plugin table", () => {
     version: "1.0.0",
     compatibility: { status: "compatible" },
   });
+  const notInstalled = describePluginStatus({
+    plugin: findOfficialPlugin("dms") as OfficialPlugin,
+  });
 
   function incompatible(source: ExecutableSource): PluginReport {
     return describePluginStatus({
@@ -171,18 +175,44 @@ describe("Official plugin table", () => {
   it("writes tab-separated rows when piped", () => {
     const { ui, result } = createMemoryUi();
 
-    renderPluginReports(
-      [
-        describePluginStatus({
-          plugin: findOfficialPlugin("dms") as OfficialPlugin,
-        }),
-      ],
-      ui,
-    );
+    renderPluginReports([notInstalled], ui);
 
     expect(result.text).to.equal(
       "dms\t@antelopejs/dms-frontend\t-\t-\tnot installed\t-\n",
     );
+  });
+
+  it("prints the install command of a plugin that is not installed", () => {
+    const { ui, result, feedback } = createMemoryUi();
+
+    renderPluginReports(
+      [notInstalled],
+      ui,
+      (packageName) => `pnpm add -g ${packageName}`,
+    );
+
+    expect(result.text).to.contain("not installed");
+    expect(feedback.text).to.equal(
+      "→ Run pnpm add -g @antelopejs/dms-frontend to install dms\n",
+    );
+  });
+
+  it("defaults the install command to the global package manager", () => {
+    const { ui, feedback } = createMemoryUi();
+
+    renderPluginReports([notInstalled], ui);
+
+    expect(feedback.text).to.match(
+      /^→ Run \S+ \S+ (?:-g )?@antelopejs\/dms-frontend to install dms\n$/,
+    );
+  });
+
+  it("gives no hint for an incompatible plugin without a source", () => {
+    const { ui, feedback } = createMemoryUi();
+
+    renderPluginReports([{ ...incompatible("path"), source: null }], ui);
+
+    expect(feedback.text).to.equal("");
   });
 
   it("flags a project plugin that needs a newer core and how to fix it", () => {
@@ -299,12 +329,15 @@ describe("Official plugin update", () => {
 
     expect(exitCode).to.equal(1);
     expect(calls).to.deep.equal([]);
-    expect(output.errors[0]).to.equal(
-      "ajs is not installed globally; update it in the project instead.",
-    );
+    expect(output.errors).to.deep.equal([]);
+    expect(output.problems).to.have.length(1);
+    expect(output.problems[0].title).to.equal("ajs is not installed globally");
+    expect(output.problems[0].fixes).to.deep.equal([
+      "Update @antelopejs/core in the project with its package manager instead",
+    ]);
   });
 
-  it("rejects unknown plugin names", async () => {
+  it("rejects unknown plugin names with a usage error", async () => {
     const { runner, calls } = createProcessRunner();
     const output = createOutput();
 
@@ -314,10 +347,34 @@ describe("Official plugin update", () => {
       output,
     });
 
-    expect(exitCode).to.equal(1);
+    expect(exitCode).to.equal(2);
     expect(calls).to.deep.equal([]);
-    expect(output.errors).to.deep.equal([
-      'Unknown plugin "unknown". Known plugins: dms.',
+    expect(output.problems.map(plainProblem)).to.deep.equal([
+      {
+        title: "Unknown plugin 'unknown'",
+        reason: "Official plugins: dms.",
+        fixes: ["Run ajs plugins to list them"],
+        exitCode: 2,
+      },
+    ]);
+  });
+
+  it("validates the plugin name before the global installation", async () => {
+    const output = createOutput();
+    let isDetected = false;
+
+    const exitCode = await runUpdate("foo", {
+      detectInstallation: () => {
+        isDetected = true;
+        return undefined;
+      },
+      output,
+    });
+
+    expect(exitCode).to.equal(2);
+    expect(isDetected).to.equal(false);
+    expect(output.problems.map((problem) => problem.title)).to.deep.equal([
+      "Unknown plugin 'foo'",
     ]);
   });
 

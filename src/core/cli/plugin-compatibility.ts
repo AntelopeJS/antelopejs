@@ -1,6 +1,6 @@
 import semver from "semver";
 
-import { getProcessPalette } from "./output";
+import { getProcessPalette, type CliProblem } from "./output";
 import { CORE_PACKAGE_NAME } from "./core-version";
 import type { ResolvedExecutable } from "./executable-lookup";
 import { type OfficialPlugin, officialPluginLabel } from "./plugin-registry";
@@ -70,29 +70,36 @@ export async function checkPluginCompatibility(
   return evaluatePluginCompatibility(packageJson, coreVersion);
 }
 
-function formatUnknownPackageMessage(plugin: OfficialPlugin): string {
-  return `Could not read the package.json of ${plugin.package}; skipping the compatibility check.`;
+function formatUnknownPackageWarning(plugin: OfficialPlugin): string {
+  return `Could not read the package.json of ${plugin.package}; skipping the compatibility check`;
 }
 
-function formatIncompatibilityMessages(
+function describeIncompatibility(
   plugin: OfficialPlugin,
   coreVersion: string,
   compatibility: IncompatiblePluginResult,
-): string[] {
+): CliProblem {
   const pluginVersion = compatibility.pluginVersion
     ? `${plugin.package}@${compatibility.pluginVersion}`
     : plugin.package;
   const palette = getProcessPalette();
-  return [
-    `The ${officialPluginLabel(plugin)} plugin is not compatible with this CLI.`,
-    `${pluginVersion} requires ${CORE_PACKAGE_NAME}@${compatibility.requiredRange}, but ${CORE_PACKAGE_NAME}@${coreVersion} is installed.`,
-    `Run ${palette.cyan("ajs update")} to update both, or ${palette.cyan(`ajs update ${plugin.name}`)} to update the plugin only.`,
-  ];
+  return {
+    title: `The ${officialPluginLabel(plugin)} plugin is not compatible with this CLI`,
+    reason: `${pluginVersion} requires ${CORE_PACKAGE_NAME}@${compatibility.requiredRange}, but ${CORE_PACKAGE_NAME}@${coreVersion} is installed.`,
+    fixes: [
+      `Run ${palette.cyan("ajs update")} to update both, or ${palette.cyan(`ajs update ${plugin.name}`)} to update the plugin only`,
+    ],
+  };
 }
 
+/**
+ * What delegation does with a compatibility result: whether the plugin may
+ * run, a warning to print when it runs anyway, or the problem that stops it.
+ */
 export interface CompatibilityReport {
   canDelegate: boolean;
-  messages: string[];
+  warning?: string;
+  problem?: CliProblem;
 }
 
 type CompatibilityReporter = (
@@ -105,22 +112,18 @@ const COMPATIBILITY_REPORTERS: Record<
   PluginCompatibility["status"],
   CompatibilityReporter
 > = {
-  compatible: () => ({ canDelegate: true, messages: [] }),
+  compatible: () => ({ canDelegate: true }),
   unknown: (plugin) => ({
     canDelegate: true,
-    messages: [formatUnknownPackageMessage(plugin)],
+    warning: formatUnknownPackageWarning(plugin),
   }),
   incompatible: (plugin, coreVersion, compatibility) =>
     compatibility.status === "incompatible"
       ? {
           canDelegate: false,
-          messages: formatIncompatibilityMessages(
-            plugin,
-            coreVersion,
-            compatibility,
-          ),
+          problem: describeIncompatibility(plugin, coreVersion, compatibility),
         }
-      : { canDelegate: true, messages: [] },
+      : { canDelegate: true },
 };
 
 export function reportCompatibility(

@@ -7,6 +7,7 @@ import {
   createOutput,
   createProcessRunner,
   formatSpawnCalls,
+  plainProblem,
 } from "../../helpers/cli-plugins";
 import {
   createInstalledReader,
@@ -18,10 +19,22 @@ import {
   LOCAL_DMS_EXECUTABLE,
   localExecutable,
 } from "../../helpers/official-plugin";
-import { fakePrompts } from "../../helpers/fake-prompts";
+import { CANCEL, fakePrompts } from "../../helpers/fake-prompts";
+import { CancelledError } from "../../../src/core/cli/output";
+
+function missingPluginProblem(installCommand: string) {
+  return {
+    title: "The DMS plugin is not installed",
+    reason:
+      "Official plugins are separate packages (@antelopejs/dms-frontend).",
+    fixes: [
+      `Install it: ${installCommand}, or add it to your project's dependencies`,
+    ],
+  };
+}
 
 describe("Official plugin installation", () => {
-  it("prints the install command and fails when not interactive", async () => {
+  it("explains how to install the plugin and fails when not interactive", async () => {
     const output = createOutput();
     const { runner, calls } = createProcessRunner();
 
@@ -35,13 +48,13 @@ describe("Official plugin installation", () => {
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
     expect(calls).to.deep.equal([]);
-    expect(output.errors).to.deep.equal([
-      "The DMS plugin is not installed.",
-      "Install it with: npm install -g @antelopejs/dms-frontend",
+    expect(output.errors).to.deep.equal([]);
+    expect(output.problems.map(plainProblem)).to.deep.equal([
+      missingPluginProblem("npm install -g @antelopejs/dms-frontend"),
     ]);
   });
 
-  it("asks with the shared prompt layer by default", async () => {
+  it("asks with the shared prompt layer, defaulting to No", async () => {
     const output = createOutput();
     const { runner, calls } = createProcessRunner();
     const prompts = fakePrompts({ answers: [false] });
@@ -56,7 +69,26 @@ describe("Official plugin installation", () => {
 
       expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
       expect(prompts.asked[0].kind).to.equal("confirm");
-      expect(prompts.asked[0].options).to.include({ initialValue: true });
+      expect(prompts.asked[0].options).to.include({ initialValue: false });
+      expect(calls).to.deep.equal([]);
+    } finally {
+      sinon.restore();
+    }
+  });
+
+  it("cancels the run when the install prompt is cancelled", async () => {
+    const { runner, calls } = createProcessRunner();
+    fakePrompts({ answers: [CANCEL] });
+
+    try {
+      const error = await delegateToPlugin(["dms"], {
+        lookupExecutable: async () => undefined,
+        packageManager: "npm",
+        processOptions: { processRunner: runner, platform: "linux" },
+        output: createOutput(),
+      }).catch((rejection: unknown) => rejection);
+
+      expect(error).to.be.instanceOf(CancelledError);
       expect(calls).to.deep.equal([]);
     } finally {
       sinon.restore();
@@ -108,8 +140,8 @@ describe("Official plugin installation", () => {
       output,
     });
 
-    expect(output.errors[1]).to.equal(
-      "Install it with: npm.cmd install -g @antelopejs/dms-frontend",
+    expect(plainProblem(output.problems[0]).fixes).to.deep.equal(
+      missingPluginProblem("npm.cmd install -g @antelopejs/dms-frontend").fixes,
     );
   });
 
@@ -128,8 +160,8 @@ describe("Official plugin installation", () => {
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
     expect(calls).to.deep.equal([]);
-    expect(output.errors).to.deep.equal([
-      "Install it with: yarn global add @antelopejs/dms-frontend",
+    expect(output.problems.map(plainProblem)).to.deep.equal([
+      missingPluginProblem("yarn global add @antelopejs/dms-frontend"),
     ]);
   });
 

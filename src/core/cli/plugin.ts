@@ -1,5 +1,11 @@
 import { getCoreVersion } from "./core-version";
-import { createPrompter, promptEnvironment } from "./output";
+import {
+  createPrompter,
+  displayPath,
+  getProcessPalette,
+  promptEnvironment,
+  type CliProblem,
+} from "./output";
 import type { PluginPackageLookup } from "./plugin-package";
 import { consoleOutput, type CommandOutput } from "./cli-ui";
 import type { InheritedProcessOptions } from "./process-runner";
@@ -66,7 +72,7 @@ function pluginBinary(command: string): string {
 function promptForInstall(message: string): Promise<boolean> {
   return createPrompter({ command: PLUGIN_INSTALL_COMMAND }).confirm({
     message,
-    defaultAnswer: true,
+    defaultAnswer: false,
   });
 }
 
@@ -92,33 +98,52 @@ function delegated(exitCode: number): DelegatedPluginResult {
   return { isDelegated: true, exitCode };
 }
 
-async function installPlugin(
+function formatInstallCommand(
   plugin: OfficialPlugin,
   context: DelegationContext,
-): Promise<boolean> {
-  const formatted = formatGlobalCommand(
+): string {
+  return formatGlobalCommand(
     getGlobalInstallCommand(
       plugin.package,
       context.packageManager,
       context.processOptions.platform,
     ),
   );
-  const label = officialPluginLabel(plugin);
+}
 
+function describeMissingPlugin(
+  plugin: OfficialPlugin,
+  context: DelegationContext,
+): CliProblem {
+  return {
+    title: `The ${officialPluginLabel(plugin)} plugin is not installed`,
+    reason: `Official plugins are separate packages (${plugin.package}).`,
+    fixes: [
+      `Install it: ${getProcessPalette().cyan(formatInstallCommand(plugin, context))}, or add it to your project's dependencies`,
+    ],
+  };
+}
+
+async function confirmPluginInstall(
+  plugin: OfficialPlugin,
+  context: DelegationContext,
+): Promise<boolean> {
   if (!context.isInteractive()) {
-    context.output.error(`The ${label} plugin is not installed.`);
-    context.output.error(`Install it with: ${formatted}`);
     return false;
   }
-
-  const confirmed = await context.confirmInstall(
-    `The ${label} plugin is not installed. Install ${plugin.package} globally now?`,
+  return context.confirmInstall(
+    `The ${officialPluginLabel(plugin)} plugin is not installed. Install ${plugin.package} globally now?`,
   );
-  if (!confirmed) {
-    context.output.error(`Install it with: ${formatted}`);
+}
+
+async function installPlugin(
+  plugin: OfficialPlugin,
+  context: DelegationContext,
+): Promise<boolean> {
+  if (!(await confirmPluginInstall(plugin, context))) {
+    context.output.problem(describeMissingPlugin(plugin, context));
     return false;
   }
-
   const execution = await runGlobalInstall({
     packageSpec: plugin.package,
     packageManager: context.packageManager,
@@ -164,7 +189,12 @@ async function isCompatible(
     context.coreVersion,
     compatibility,
   );
-  report.messages.forEach((message) => context.output.error(message));
+  if (report.warning) {
+    context.output.warn(report.warning);
+  }
+  if (report.problem) {
+    context.output.problem(report.problem);
+  }
   return report.canDelegate;
 }
 
@@ -181,6 +211,17 @@ async function runPlugin(
       context.processOptions,
     ),
   );
+}
+
+function runThirdPartyPlugin(
+  executable: ResolvedExecutable,
+  args: string[],
+  context: DelegationContext,
+): Promise<DelegatedPluginResult> {
+  context.output.info(
+    `Running third-party plugin ${pluginBinary(args[0])} (${displayPath(executable.path)})`,
+  );
+  return runPlugin(executable, args, context);
 }
 
 async function delegateToOfficialPlugin(
@@ -212,7 +253,9 @@ export async function delegateToPlugin(
   );
 
   if (!plugin) {
-    return executable ? runPlugin(executable, args, context) : NOT_DELEGATED;
+    return executable
+      ? runThirdPartyPlugin(executable, args, context)
+      : NOT_DELEGATED;
   }
   return delegateToOfficialPlugin(plugin, executable, args, context);
 }

@@ -2,8 +2,18 @@ import { CORE_PACKAGE_NAME, getCoreVersion } from "./core-version";
 import { runGlobalInstall } from "./command-runner";
 import { consoleOutput, type CommandOutput } from "./cli-ui";
 import type { InheritedProcessOptions } from "./process-runner";
-import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./exit-codes";
-import { displayPath, type TableColumn, type Ui } from "./output";
+import {
+  FAILURE_EXIT_CODE,
+  SUCCESS_EXIT_CODE,
+  USAGE_EXIT_CODE,
+} from "./exit-codes";
+import {
+  displayPath,
+  getProcessPalette,
+  type CliProblem,
+  type TableColumn,
+  type Ui,
+} from "./output";
 import {
   evaluatePluginCompatibility,
   type PluginCompatibility,
@@ -20,6 +30,8 @@ import {
 } from "./plugin-registry";
 import {
   detectGlobalInstallation,
+  formatGlobalCommand,
+  getGlobalInstallCommand,
   getLatestPackageSpec,
   type GlobalInstallation,
   type GlobalInstallationDetector,
@@ -65,10 +77,23 @@ export interface PluginManagementDependencies extends PluginStatusDependencies {
   output?: CommandOutput;
 }
 
-const NOT_GLOBAL_MESSAGES = [
-  "ajs is not installed globally; update it in the project instead.",
-  `Run your project package manager to update ${CORE_PACKAGE_NAME} in this project.`,
-];
+type PluginInstallCommand = (packageName: string) => string;
+
+type PluginHint = (
+  report: PluginReport,
+  installCommand: PluginInstallCommand,
+) => string | undefined;
+
+const PLUGINS_COMMAND = "ajs plugins";
+
+const NOT_GLOBAL_PROBLEM: CliProblem = {
+  title: "ajs is not installed globally",
+  reason:
+    "ajs update only updates a CLI installed globally with npm, pnpm or Yarn; this one comes from a project dependency or a source checkout.",
+  fixes: [
+    `Update ${CORE_PACKAGE_NAME} in the project with its package manager instead`,
+  ],
+};
 
 async function readPluginStatus(
   plugin: OfficialPlugin,
@@ -160,17 +185,32 @@ export function describePluginStatus(status: PluginStatus): PluginReport {
   };
 }
 
+const PLUGIN_HINTS: Partial<Record<PluginState, PluginHint>> = {
+  "not-installed": (report, installCommand) =>
+    `Run ${installCommand(report.package)} to install ${report.name}`,
+  incompatible: (report) =>
+    report.source ? UPDATE_HINTS[report.source](report) : undefined,
+};
+
+function globalInstallCommand(packageName: string): string {
+  return formatGlobalCommand(getGlobalInstallCommand(packageName));
+}
+
 /**
  * Renders official plugins as a table on stdout, with a hint on stderr for
- * each plugin that does not support the running core.
+ * each plugin that is not installed (the command that installs it) or does
+ * not support the running core (how to update it).
  */
-export function renderPluginReports(reports: PluginReport[], ui: Ui): void {
+export function renderPluginReports(
+  reports: PluginReport[],
+  ui: Ui,
+  installCommand: PluginInstallCommand = globalInstallCommand,
+): void {
   ui.table(reports, PLUGIN_COLUMNS);
   reports
-    .filter((report) => report.state === "incompatible" && report.source)
-    .forEach((report) =>
-      ui.message("hint", UPDATE_HINTS[report.source as string](report)),
-    );
+    .map((report) => PLUGIN_HINTS[report.state]?.(report, installCommand))
+    .filter((hint): hint is string => hint !== undefined)
+    .forEach((hint) => ui.message("hint", hint));
 }
 
 async function updatePackage(
@@ -191,47 +231,32 @@ async function updatePackage(
   return execution.exitCode;
 }
 
-async function resolveUpdateTargets(
-  pluginName: string | undefined,
+async function listGlobalUpdateTargets(
   dependencies: PluginManagementDependencies,
-): Promise<string[] | undefined> {
-  if (!pluginName) {
-    const statuses = await getPluginStatuses(dependencies);
-    return [
-      CORE_PACKAGE_NAME,
-      ...statuses
-        .filter((status) => status.source === PATH_EXECUTABLE_SOURCE)
-        .map((status) => status.plugin.package),
-    ];
-  }
-  const plugin = findOfficialPlugin(pluginName);
-  if (plugin) {
-    return [plugin.package];
-  }
-  const output = dependencies.output ?? consoleOutput;
-  output.error(
-    `Unknown plugin "${pluginName}". Known plugins: ${officialPluginNames().join(", ")}.`,
-  );
-  return undefined;
+): Promise<string[]> {
+  const statuses = await getPluginStatuses(dependencies);
+  return [
+    CORE_PACKAGE_NAME,
+    ...statuses
+      .filter((status) => status.source === PATH_EXECUTABLE_SOURCE)
+      .map((status) => status.plugin.package),
+  ];
 }
 
-export async function runUpdate(
-  pluginName: string | undefined,
-  dependencies: PluginManagementDependencies = {},
-): Promise<number> {
-  const output = dependencies.output ?? consoleOutput;
-  const detectInstallation =
-    dependencies.detectInstallation ?? (() => detectGlobalInstallation());
-  const installation = detectInstallation();
-  if (!installation) {
-    NOT_GLOBAL_MESSAGES.forEach((message) => output.error(message));
-    return FAILURE_EXIT_CODE;
-  }
+function describeUnknownPlugin(pluginName: string): CliProblem {
+  return {
+    title: `Unknown plugin '${pluginName}'`,
+    reason: `Official plugins: ${officialPluginNames().join(", ")}.`,
+    fixes: [`Run ${getProcessPalette().cyan(PLUGINS_COMMAND)} to list them`],
+    exitCode: USAGE_EXIT_CODE,
+  };
+}
 
-  const targets = await resolveUpdateTargets(pluginName, dependencies);
-  if (!targets) {
-    return FAILURE_EXIT_CODE;
-  }
+async function updateTargets(
+  targets: string[],
+  installation: GlobalInstallation,
+  dependencies: PluginManagementDependencies,
+): Promise<number> {
   for (const target of targets) {
     const exitCode = await updatePackage(target, installation, dependencies);
     if (exitCode !== SUCCESS_EXIT_CODE) {
@@ -239,4 +264,32 @@ export async function runUpdate(
     }
   }
   return SUCCESS_EXIT_CODE;
+}
+
+/**
+ * Updates the global CLI and its globally installed official plugins, or a
+ * single official plugin by name. An unknown plugin name is rejected with
+ * the usage exit code before anything else is checked.
+ */
+export async function runUpdate(
+  pluginName: string | undefined,
+  dependencies: PluginManagementDependencies = {},
+): Promise<number> {
+  const output = dependencies.output ?? consoleOutput;
+  const plugin = pluginName ? findOfficialPlugin(pluginName) : undefined;
+  if (pluginName && !plugin) {
+    output.problem(describeUnknownPlugin(pluginName));
+    return USAGE_EXIT_CODE;
+  }
+  const detectInstallation =
+    dependencies.detectInstallation ?? (() => detectGlobalInstallation());
+  const installation = detectInstallation();
+  if (!installation) {
+    output.problem(NOT_GLOBAL_PROBLEM);
+    return FAILURE_EXIT_CODE;
+  }
+  const targets = plugin
+    ? [plugin.package]
+    : await listGlobalUpdateTargets(dependencies);
+  return updateTargets(targets, installation, dependencies);
 }
