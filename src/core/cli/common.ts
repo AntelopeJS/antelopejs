@@ -51,15 +51,12 @@ export async function detectIndentation(
 export const DEFAULT_GIT_REPO = "https://github.com/AntelopeJS/interfaces.git";
 
 // Utility function to display warning for non-default git repositories
-export async function displayNonDefaultGitWarning(gitUrl: string) {
+export function displayNonDefaultGitWarning(gitUrl: string): void {
   if (gitUrl !== DEFAULT_GIT_REPO) {
     warning(chalk.yellow.bold(" WARNING: Using non-default git repository ⚠️"));
     warning(
       "You are using a non-official git repository for interfaces. These interfaces may not adhere to community quality standards or best practices.",
     );
-    // Wait for 3 seconds to ensure the user sees the warning
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    console.log(""); // Add a blank line after the warning
   }
 }
 

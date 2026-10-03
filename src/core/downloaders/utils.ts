@@ -1,11 +1,10 @@
 import * as os from "node:os";
 import type { ModuleInstallCommand } from "@antelopejs/interface-core/config";
 
-import { error } from "../cli/cli-ui";
 import { ExecError } from "../cli/command";
-import { CliError } from "../cli/output";
+import { CliError } from "../cli/output/errors";
+import { runTask } from "../cli/output/tasks";
 import { FAILURE_EXIT_CODE } from "../cli/exit-codes";
-import { terminalDisplay } from "../cli/terminal-display";
 import type { CommandRunner, DebugLogger } from "./types";
 
 function normalizeCommands(installCommand?: ModuleInstallCommand): string[] {
@@ -46,7 +45,7 @@ async function runInstallCommand(
 export function installFailure(label: string, failure: ExecError): CliError {
   return new CliError(
     {
-      title: `Failed to install dependencies for ${label}`,
+      title: `Install failed for ${label}`,
       reason: `'${failure.command}' exited with code ${failure.exitCode}.`,
       fixes: [
         `Fix the command, or change the installCommand of ${label} in the project configuration`,
@@ -56,14 +55,26 @@ export function installFailure(label: string, failure: ExecError): CliError {
   );
 }
 
-async function reportInstallFailure(message: string): Promise<void> {
-  if (terminalDisplay.isSpinnerActive()) {
-    await terminalDisplay.failSpinner(message);
-    return;
+async function runCommandsInOrder(
+  exec: CommandRunner,
+  logger: DebugLogger,
+  label: string,
+  folder: string,
+  commands: string[],
+): Promise<void> {
+  for (const command of commands) {
+    logger.Debug(`Executing command: ${command}`);
+    const failure = await runInstallCommand(exec, folder, command);
+    if (failure !== undefined) {
+      throw installFailure(label, failure);
+    }
   }
-  error(message);
 }
 
+/**
+ * Runs the install commands of a module as one task. A failure is not
+ * printed here: it is thrown once, for whoever loads the module to report.
+ */
 export async function runInstallCommands(
   exec: CommandRunner,
   logger: DebugLogger,
@@ -75,20 +86,11 @@ export async function runInstallCommands(
   if (commands.length === 0) {
     return;
   }
-
-  await terminalDisplay.startSpinner(`Installing dependencies for ${label}`);
-  for (const command of commands) {
-    logger.Debug(`Executing command: ${command}`);
-    const failure = await runInstallCommand(exec, folder, command);
-    if (failure === undefined) {
-      continue;
-    }
-    await reportInstallFailure(
-      `Install failed for ${label} (${command}, exit ${failure.exitCode})`,
-    );
-    throw installFailure(label, failure);
-  }
-  await terminalDisplay.stopSpinner(`Dependencies installed for ${label}`);
+  await runTask(
+    `Installing dependencies for ${label}`,
+    () => runCommandsInOrder(exec, logger, label, folder, commands),
+    { done: `Installed dependencies for ${label}` },
+  );
 }
 
 export function expandHome(input: string): string {

@@ -2,10 +2,42 @@ import chalk from "chalk";
 
 import { ConfigLoader } from "../../../../config";
 import { NodeFileSystem } from "../../../../filesystem";
-import { error, info, success, warning } from "../../../cli-ui";
+import { error, info } from "../../../cli-ui";
 import { writeConfig } from "../../../common";
 import { FAILURE_EXIT_CODE } from "../../../exit-codes";
+import { getProcessUi, pluralize, type NextStep } from "../../../output";
+import { TS_CONFIG_FILE } from "../../../../config/config-paths";
+import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
+
+const INSTALL_COMMAND = "ajs project modules install";
+const INSTALL_DESCRIPTION = "check that every interface is still implemented";
+const FOLDER_MODULE_PREFIX = ":";
+
+function removeModule(
+  envModules: Record<string, unknown>,
+  module: string,
+): string {
+  const key = envModules[module] ? module : `${FOLDER_MODULE_PREFIX}${module}`;
+  delete envModules[key];
+  getProcessUi().message("success", `Removed ${chalk.bold(module)}`);
+  return key;
+}
+
+function removalNextSteps(
+  remainingModules: string[],
+  options: RemoveOptions,
+): NextStep[] {
+  if (remainingModules.length === 0) {
+    return [];
+  }
+  return [
+    {
+      command: scopedCommand(INSTALL_COMMAND, options),
+      description: INSTALL_DESCRIPTION,
+    },
+  ];
+}
 
 interface RemoveOptions {
   project: string;
@@ -13,117 +45,87 @@ interface RemoveOptions {
   force: boolean;
 }
 
+function rejectMissingModules(
+  missingModules: string[],
+  modules: string[],
+  envModules: Record<string, unknown>,
+  options: RemoveOptions,
+): boolean {
+  if (missingModules.length === modules.length) {
+    error(
+      chalk.red`None of the specified modules are installed in this project.`,
+    );
+    info(
+      `Available modules: ${Object.keys(envModules)
+        .map((m) => chalk.bold(m))
+        .join(", ")}`,
+    );
+    return true;
+  }
+  if (missingModules.length > 0 && !options.force) {
+    error(
+      chalk.red`The following modules are not present in the project: ${missingModules
+        .map((m) => chalk.bold(m))
+        .join(", ")}`,
+    );
+    return true;
+  }
+  return false;
+}
+
+function removeModules(
+  modules: string[],
+  missingModules: string[],
+  envModules: Record<string, unknown>,
+): string[] {
+  return modules.flatMap((module) => {
+    if (missingModules.includes(module)) {
+      getProcessUi().message(
+        "skip",
+        `Skipped ${chalk.bold(module)}: not in the project`,
+      );
+      return [];
+    }
+    return [removeModule(envModules, module)];
+  });
+}
+
 export async function projectModulesRemoveCommand(
   modules: string[],
   options: RemoveOptions,
 ) {
+  const startedAt = Date.now();
   const {
     config,
     environment,
     environmentConfig: env,
   } = await resolveProjectContext(options.project, options.env);
-  info(chalk.blue`Removing modules from project...`);
-
-  if (!env.modules || Object.keys(env.modules).length === 0) {
+  const envModules = env.modules ?? {};
+  if (Object.keys(envModules).length === 0) {
     error(chalk.red`No modules installed in this environment`);
     process.exitCode = FAILURE_EXIT_CODE;
     return;
   }
-
-  const envModules = env.modules!;
-
   const loader = new ConfigLoader(new NodeFileSystem());
   const antelopeConfig = await loader.load(options.project, environment);
-
-  // Track results
-  const removedModules: string[] = [];
-  const notInstalledModules: string[] = [];
-
-  // Check if all modules exist
-  const missingModules = modules.filter(
-    (module) => !envModules[module] && !envModules[`:${module}`],
+  const requested = [...new Set(modules)];
+  const missingModules = requested.filter(
+    (module) =>
+      !envModules[module] && !envModules[`${FOLDER_MODULE_PREFIX}${module}`],
   );
-
-  if (missingModules.length > 0) {
-    if (missingModules.length === modules.length) {
-      error(
-        chalk.red`None of the specified modules are installed in this project.`,
-      );
-      info(
-        `Available modules: ${Object.keys(envModules)
-          .map((m) => chalk.bold(m))
-          .join(", ")}`,
-      );
-      process.exitCode = FAILURE_EXIT_CODE;
-      return;
-    }
-
-    if (!options.force) {
-      error(
-        chalk.red`The following modules are not present in the project: ${missingModules
-          .map((m) => chalk.bold(m))
-          .join(", ")}`,
-      );
-      process.exitCode = FAILURE_EXIT_CODE;
-      return;
-    }
-
-    // Continue with warning if --force is used
-    warning(chalk.yellow`The following modules will be skipped (not found):`);
-    for (const module of missingModules) {
-      info(`  ${chalk.yellow("•")} ${chalk.bold(module)}`);
-    }
-  }
-
-  // Remove modules
-  for (const module of modules) {
-    // Skip modules that don't exist if using --force
-    if (missingModules.includes(module) && options.force) {
-      warning(chalk.yellow`Module ${chalk.bold(module)} is not installed`);
-      continue;
-    }
-
-    // Check standard name and prefixed name (:name)
-    if (envModules[module]) {
-      delete envModules[module];
-      removedModules.push(module);
-    } else if (envModules[`:${module}`]) {
-      delete envModules[`:${module}`];
-      removedModules.push(`:${module}`);
-    } else {
-      notInstalledModules.push(module);
-      warning(chalk.yellow`Module ${chalk.bold(module)} is not installed`);
-    }
-  }
-
-  // Save changes if any modules were removed
-  if (removedModules.length > 0) {
-    await writeConfig(options.project, config);
-
-    success(
-      chalk.green`Successfully removed ${removedModules.length} module(s):`,
-    );
-    removedModules.forEach((module) => {
-      info(`  ${chalk.green("•")} ${chalk.bold(module)}`);
-    });
-  } else {
-    error(chalk.red`No modules were removed from the project`);
+  if (rejectMissingModules(missingModules, requested, envModules, options)) {
     process.exitCode = FAILURE_EXIT_CODE;
+    return;
   }
 
-  // Report module dependencies that might be affected
-  if (removedModules.length > 0) {
-    // Check for potential broken dependencies
-    const remainingModules = Object.keys(antelopeConfig.modules).filter(
-      (m) =>
-        !removedModules.includes(m) &&
-        !removedModules.includes(m.replace(":", "")),
-    );
-
-    if (remainingModules.length > 0) {
-      warning(
-        chalk.yellow`Note: You may need to run 'ajs project modules install' to resolve any broken dependencies`,
-      );
-    }
-  }
+  const removedKeys = removeModules(requested, missingModules, envModules);
+  await writeConfig(options.project, config);
+  const remainingModules = Object.keys(antelopeConfig.modules).filter(
+    (m) => !removedKeys.includes(m),
+  );
+  getProcessUi().summary({
+    headline: `${pluralize(removedKeys.length, "module")} removed from ${TS_CONFIG_FILE}`,
+    durationMs: Date.now() - startedAt,
+    nextSteps: removalNextSteps(remainingModules, options),
+  });
 }

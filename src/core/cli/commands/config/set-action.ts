@@ -29,7 +29,7 @@ export async function setConfigValue(
 
   // Display non-default git warning if applicable
   if (key === "git" && value !== DEFAULT_GIT_REPO) {
-    await displayNonDefaultGitWarning(value);
+    displayNonDefaultGitWarning(value);
   }
 
   // Show what's being changed

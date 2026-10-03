@@ -6,7 +6,10 @@ import { FAILURE_EXIT_CODE } from "../../../exit-codes";
 import type { ExpandedModuleConfig } from "../../../../config/config-parser";
 import { NodeFileSystem } from "../../../../filesystem";
 import { writeConfig } from "../../../common";
-import { error as errorUI, info, success, warning } from "../../../cli-ui";
+import { error as errorUI, info } from "../../../cli-ui";
+import { getProcessUi, pluralize, type NextStep } from "../../../output";
+import { TS_CONFIG_FILE } from "../../../../config/config-paths";
+import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import {
   bumpVersionSpec,
@@ -37,29 +40,75 @@ function applyUpdates(
   }
 }
 
-function displayResults(
-  outdated: OutdatedModule[],
-  options: UpdateOptions,
-): void {
-  if (options.dryRun) {
-    warning(chalk.yellow`Dry run - no changes were made`);
-  }
+const PACKAGE_SOURCE_TYPE = "package";
+const UPDATE_COMMAND = "ajs project modules update";
+const DEV_COMMAND = "ajs project dev";
 
-  if (outdated.length > 0) {
-    const label = options.dryRun ? "Would update" : "Updated";
-    success(chalk.green`${label} ${outdated.length} module(s):`);
-    for (const entry of outdated) {
-      info(
-        `  ${chalk.green("•")} ${entry.name}: ${chalk.dim(entry.current)} → ${bumpVersionSpec(entry.current, entry.latest)}`,
-      );
-    }
-  } else {
-    success(chalk.green`All modules are up to date!`);
-  }
+interface UpdateReport {
+  modules: string[];
+  outdated: OutdatedModule[];
+  checkedCount: number;
+  options: UpdateOptions;
+  durationMs: number;
+}
 
-  if (outdated.length > 0 && !options.dryRun) {
-    info(`Run ${chalk.bold("ajs project run")} to use the updated modules.`);
+function countPackageModules(
+  modules: Record<string, ExpandedModuleConfig>,
+): number {
+  return Object.values(modules).filter(
+    (module) => module.source?.type === PACKAGE_SOURCE_TYPE,
+  ).length;
+}
+
+function updateHeadline(report: UpdateReport): string {
+  const count = pluralize(report.outdated.length, "module");
+  if (report.outdated.length > 0) {
+    return report.options.dryRun
+      ? `Dry run: ${count} can be updated · ${TS_CONFIG_FILE} unchanged`
+      : `${count} updated in ${TS_CONFIG_FILE}`;
   }
+  if (report.checkedCount === 0) {
+    return "Nothing to update: no module comes from npm";
+  }
+  return `Everything is up to date (${pluralize(report.checkedCount, "npm module")} checked)`;
+}
+
+function updateNextSteps(report: UpdateReport): NextStep[] {
+  if (report.outdated.length === 0) {
+    return [];
+  }
+  if (report.options.dryRun) {
+    const command = [UPDATE_COMMAND, ...report.modules].join(" ");
+    return [
+      {
+        command: scopedCommand(command, report.options),
+        description: "apply these updates",
+      },
+    ];
+  }
+  return [
+    {
+      command: scopedCommand(DEV_COMMAND, report.options),
+      description: "run the project with the new versions",
+    },
+  ];
+}
+
+function displayResults(report: UpdateReport): void {
+  const ui = getProcessUi();
+  const level = report.options.dryRun ? "info" : "success";
+  const verb = report.options.dryRun ? "Would update" : "Updated";
+  report.outdated.forEach((entry) =>
+    ui.message(
+      level,
+      `${verb} ${chalk.bold(entry.name)} ${chalk.dim(entry.current)} → ${bumpVersionSpec(entry.current, entry.latest)}`,
+    ),
+  );
+  ui.summary({
+    headline: updateHeadline(report),
+    durationMs: report.durationMs,
+    nextSteps: updateNextSteps(report),
+  });
 }
 
 function selectRequestedModules(
@@ -93,12 +142,12 @@ export async function updateModules(
   modules: string[],
   options: UpdateOptions,
 ): Promise<void> {
+  const startedAt = Date.now();
   const {
     config,
     environment,
     environmentConfig: env,
   } = await resolveProjectContext(options.project, options.env);
-  info(chalk.blue`Checking for module updates...`);
 
   if (!env.modules || Object.keys(env.modules).length === 0) {
     errorUI(chalk.red`No modules installed in this environment`);
@@ -108,7 +157,6 @@ export async function updateModules(
 
   const loader = new ConfigLoader(new NodeFileSystem());
   const antelopeConfig = await loader.load(options.project, environment);
-
   const selectedModules = selectRequestedModules(
     antelopeConfig.modules,
     modules,
@@ -118,7 +166,6 @@ export async function updateModules(
   }
 
   const outdated = await checkOutdatedModules(selectedModules);
-
   if (outdated.length > 0 && !options.dryRun) {
     applyUpdates(
       env as unknown as Record<string, unknown>,
@@ -127,6 +174,11 @@ export async function updateModules(
     );
     await writeConfig(options.project, config);
   }
-
-  displayResults(outdated, options);
+  displayResults({
+    modules,
+    outdated,
+    checkedCount: countPackageModules(selectedModules),
+    options,
+    durationMs: Date.now() - startedAt,
+  });
 }

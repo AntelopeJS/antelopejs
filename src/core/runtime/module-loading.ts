@@ -12,7 +12,10 @@ import { ModuleState } from "../../types";
 import { ModuleCache } from "../module-cache";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManifest } from "../module-manifest";
-import { terminalDisplay } from "../cli/terminal-display";
+import { pluralize } from "../cli/output/format";
+import { CliError } from "../cli/output/errors";
+import { describeFailure } from "../cli/output/failures";
+import { getProcessTasks, runTask } from "../cli/output/tasks";
 import type { ExpandedModuleConfig } from "../config/config-parser";
 import { findUnresolvedInterfaces } from "../resolution/interface-resolution";
 import type {
@@ -252,43 +255,73 @@ function buildManifestEntries(
   return manifests.map((manifest) => ({ manifest, config: { ...config } }));
 }
 
+async function loadModuleEntry(
+  id: string,
+  moduleConfig: ExpandedModuleConfig,
+  context: LoaderContext,
+): Promise<ModuleManifestEntry[]> {
+  const source = { ...moduleConfig.source, id };
+  Logger.Debug(`Loading module ${id}`);
+  Logger.Trace(`Starting LoadModule for ${id}`);
+  const manifests = await context.registry.load(
+    context.projectFolder,
+    context.cache,
+    source,
+  );
+  Logger.Trace(`Module manifest loaded for ${id}`);
+  return buildManifestEntries(manifests, moduleConfig);
+}
+
+function uniqueFixes(failures: unknown[]): string[] {
+  const fixes = failures.flatMap(
+    (failure) => describeFailure(failure, false).fixes ?? [],
+  );
+  return [...new Set(fixes)];
+}
+
+/**
+ * One error for every module that failed to load. A single failure is
+ * thrown as is; several are each listed once, by title and reason, and
+ * summed up by one error carrying their fixes and the first one as cause.
+ */
+function moduleLoadFailure(failures: unknown[], total: number): unknown {
+  if (failures.length === 1) {
+    return failures[0];
+  }
+  const tasks = getProcessTasks();
+  failures.forEach((failure) => {
+    const problem = describeFailure(failure, false);
+    tasks.message("error", problem.title, { detail: problem.reason });
+  });
+  return new CliError(
+    {
+      title: `Could not load ${failures.length} of ${pluralize(total, "module")}`,
+      fixes: uniqueFixes(failures),
+    },
+    { cause: failures[0] },
+  );
+}
+
 async function loadModuleEntries(
   modules: Record<string, ExpandedModuleConfig>,
   context: LoaderContext,
 ): Promise<ModuleManifestEntry[]> {
-  const modulePromises = Object.entries(modules).map(
-    async ([id, moduleConfig]) => {
-      const source = { ...moduleConfig.source, id };
-      Logger.Debug(`Loading module ${id}`);
-
-      Logger.Trace(`Starting LoadModule for ${id}`);
-      const manifests = await context.registry.load(
-        context.projectFolder,
-        context.cache,
-        source,
-      );
-      Logger.Trace(`Module manifest loaded for ${id}`);
-      return buildManifestEntries(manifests, moduleConfig);
-    },
+  const results = await Promise.allSettled(
+    Object.entries(modules).map(([id, moduleConfig]) =>
+      loadModuleEntry(id, moduleConfig, context),
+    ),
   );
-
-  const results = await Promise.allSettled(modulePromises);
-  const failure = results.find(
-    (result): result is PromiseRejectedResult => result.status === "rejected",
-  );
-  if (failure) {
-    await terminalDisplay.cleanSpinner();
-    throw failure.reason;
+  const failures = results
+    .filter(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    )
+    .map((result) => result.reason as unknown);
+  if (failures.length > 0) {
+    throw moduleLoadFailure(failures, results.length);
   }
   return results.flatMap((result) =>
     result.status === "fulfilled" ? result.value : [],
   );
-}
-
-async function loadEntryExports(): Promise<void> {
-  await terminalDisplay.startSpinner(`Loading exports`);
-  Logger.Trace(`Loading exports`);
-  await terminalDisplay.stopSpinner(`Exports loaded`);
 }
 
 function validateModuleNameCollisions(entries: ModuleManifestEntry[]): void {
@@ -308,10 +341,12 @@ export async function buildModuleConfigs(
   config: NormalizedLoadedConfig,
   loaderContext: LoaderContext,
 ): Promise<ModuleManifestEntry[]> {
-  await terminalDisplay.startSpinner(`Loading modules`);
-  const modules = await loadModuleEntries(config.modules, loaderContext);
-  await terminalDisplay.stopSpinner(`Modules loaded`);
-  await loadEntryExports();
+  const moduleCount = Object.keys(config.modules).length;
+  const modules = await runTask(
+    "Loading modules",
+    () => loadModuleEntries(config.modules, loaderContext),
+    { done: `Loaded ${pluralize(moduleCount, "module")}` },
+  );
   validateModuleNameCollisions(modules);
   return modules;
 }
@@ -483,17 +518,11 @@ export async function loadModuleEntriesForManager(
 export async function constructAndStartModules(
   manager: ModuleManager,
 ): Promise<void> {
-  await terminalDisplay.startSpinner(`Constructing modules`);
   Logger.Trace(`Constructing modules`);
-
-  try {
-    await manager.constructAll();
-  } catch (error) {
-    await terminalDisplay.failSpinner(`Failed to construct modules`);
-    throw error;
-  }
-
-  await terminalDisplay.stopSpinner(`Done loading`);
+  await runTask("Constructing modules", () => manager.constructAll(), {
+    done: "Constructed modules",
+    failed: "Failed to construct modules",
+  });
   await manager.startAll();
 }
 

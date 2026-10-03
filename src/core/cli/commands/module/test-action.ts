@@ -1,12 +1,41 @@
 import chalk from "chalk";
 import path from "node:path";
+import { stat } from "node:fs/promises";
 
 import { TestModule } from "../../../..";
 import { readModuleManifest } from "../../common";
-import { error, info, Spinner } from "../../cli-ui";
+import { CliError, displayPath, getProcessUi } from "../../output";
 
 interface TestOptions {
   file?: string[];
+}
+
+const TEST_COMMAND = "ajs module test <path>";
+
+function isDirectory(target: string): Promise<boolean> {
+  return stat(target).then(
+    (stats) => stats.isDirectory(),
+    () => false,
+  );
+}
+
+function moduleDirectoryFix(): string {
+  return `Run it from a module directory, or pass its path: ${chalk.cyan(TEST_COMMAND)}`;
+}
+
+async function invalidModuleError(modulePath: string): Promise<CliError> {
+  const shownPath = displayPath(modulePath);
+  if (!(await isDirectory(modulePath))) {
+    return new CliError({
+      title: `Directory ${shownPath} does not exist`,
+      fixes: [moduleDirectoryFix()],
+    });
+  }
+  return new CliError({
+    title: `No AntelopeJS module in ${shownPath}`,
+    reason: "The directory has no readable package.json.",
+    fixes: [moduleDirectoryFix()],
+  });
 }
 
 export async function moduleTestCommand(
@@ -16,27 +45,12 @@ export async function moduleTestCommand(
   console.log(""); // Add spacing for readability
 
   const resolvedPath = path.resolve(modulePath);
-
-  // Check if directory is a valid module
-  const moduleSpinner = new Spinner(
-    `Checking module at ${chalk.cyan(resolvedPath)}`,
-  );
-  await moduleSpinner.start();
-
   const moduleManifest = await readModuleManifest(resolvedPath);
   if (!moduleManifest) {
-    await moduleSpinner.fail(`Invalid module directory`);
-    error(
-      `Directory ${chalk.bold(resolvedPath)} does not contain a valid AntelopeJS module.`,
-    );
-    info(
-      `Make sure you're in a valid AntelopeJS module directory with package.json.`,
-    );
-    process.exitCode = 1;
-    return;
+    throw await invalidModuleError(resolvedPath);
   }
-
-  await moduleSpinner.succeed(
+  getProcessUi().message(
+    "success",
     `Valid module found: ${chalk.cyan(moduleManifest.name)}`,
   );
 

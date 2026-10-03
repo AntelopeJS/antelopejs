@@ -30,8 +30,9 @@ export type Palette = Record<ColorName, Paint>;
 export type ChannelFlags = Record<OutputChannel, boolean>;
 
 export interface OutputStream {
-  write(chunk: string): unknown;
+  write(chunk: string, ...rest: unknown[]): unknown;
   isTTY?: boolean;
+  columns?: number;
 }
 
 export type OutputStreams = Record<OutputChannel, OutputStream>;
@@ -76,7 +77,26 @@ export interface TableColumn<Row> {
 
 export interface MessageOptions {
   detail?: string;
+  /** Further detail lines, each written indented under the message. */
+  details?: string[];
   channel?: OutputChannel;
+}
+
+export interface NextStep {
+  /** A command the user can copy as is. */
+  command: string;
+  description?: string;
+}
+
+/**
+ * The last block a task command prints: what it did, how long it took,
+ * what it wrote, and the commands that usually come next.
+ */
+export interface SummaryBlock {
+  headline: string;
+  durationMs?: number;
+  artifact?: string;
+  nextSteps?: NextStep[];
 }
 
 export interface UiOptions {
@@ -89,11 +109,44 @@ export interface Ui {
   message(level: MessageLevel, text: string, options?: MessageOptions): void;
   problem(problem: CliProblem): void;
   heading(text: string): void;
+  summary(block: SummaryBlock): void;
   details(entries: DetailEntry[]): void;
   list(items: string[]): void;
   table<Row>(rows: Row[], columns: TableColumn<Row>[]): void;
   value(text: string): void;
   json(data: unknown): void;
+}
+
+/**
+ * One task of a {@link TaskList}. Finishing it prints its final line;
+ * `dismiss` removes it without a line, for work whose failure is reported
+ * by someone else. Only the first call that finishes a task counts.
+ */
+export interface TaskHandle {
+  update(label: string): void;
+  succeed(label?: string): void;
+  warn(label?: string): void;
+  skip(label?: string): void;
+  fail(label?: string): void;
+  dismiss(): void;
+}
+
+type TaskDoneLabel<Result> = string | ((result: Result) => string);
+
+export interface TaskLabels<Result> {
+  /** The line printed when the work resolves. */
+  done: TaskDoneLabel<Result>;
+  /**
+   * The line printed when the work throws. Without it the task disappears
+   * and the error is left to whoever catches it, so it is reported once.
+   */
+  failed?: string;
+}
+
+export interface TaskListOptions extends UiOptions {
+  /** Draws running tasks as an animated list; otherwise only final lines are printed. */
+  isLive?: boolean;
+  now?: () => number;
 }
 
 interface InputStream {

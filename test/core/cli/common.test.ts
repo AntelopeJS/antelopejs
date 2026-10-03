@@ -82,21 +82,20 @@ describe("CLI Common", () => {
       sinon.restore();
     });
 
-    it("shows warning for non-default repo", async () => {
+    it("shows the warning for a non-default repo without waiting", () => {
       const warningStub = sinon.stub(cliUi, "warning");
-      const logStub = sinon.stub(console, "log");
-      const clock = sinon.useFakeTimers();
 
-      const promise = displayNonDefaultGitWarning(
-        "https://example.com/repo.git",
-      );
-      await clock.tickAsync(3000);
-      await promise;
+      displayNonDefaultGitWarning("https://example.com/repo.git");
 
       expect(warningStub.called).to.equal(true);
-      expect(logStub.called).to.equal(true);
+    });
 
-      clock.restore();
+    it("stays quiet for the default repo", () => {
+      const warningStub = sinon.stub(cliUi, "warning");
+
+      displayNonDefaultGitWarning(DEFAULT_GIT_REPO);
+
+      expect(warningStub.called).to.equal(false);
     });
   });
 

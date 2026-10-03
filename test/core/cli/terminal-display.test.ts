@@ -1,160 +1,146 @@
-import sinon from "sinon";
 import { expect } from "chai";
 
-import { Spinner } from "../../../src/core/cli/cli-ui";
-import { TerminalDisplay } from "../../../src/core/cli/terminal-display";
+import {
+  TaskList,
+  TerminalDisplay,
+  type OutputCapabilities,
+} from "../../../src/core/cli/output";
+import { MemoryStream } from "../../helpers/memory-ui";
+
+const ERASE_ONE_LINE = "\x1b[1A\r\x1b[J";
+
+const CAPABILITIES: OutputCapabilities = {
+  hasUnicode: true,
+  colors: { result: false, feedback: false },
+  terminals: { result: false, feedback: false },
+};
+
+interface DisplayFixture {
+  display: TerminalDisplay;
+  result: MemoryStream;
+  feedback: MemoryStream;
+}
+
+function createDisplay(isLive = false): DisplayFixture {
+  const result = new MemoryStream(isLive);
+  const feedback = new MemoryStream(isLive);
+  const tasks = new TaskList({
+    streams: { result, feedback },
+    capabilities: CAPABILITIES,
+    isLive,
+  });
+  return { display: new TerminalDisplay(() => tasks), result, feedback };
+}
 
 describe("TerminalDisplay", () => {
-  let display: TerminalDisplay;
+  it("finishes the most recently started spinner first", async () => {
+    const { display, feedback } = createDisplay();
 
-  beforeEach(() => {
-    display = new TerminalDisplay();
-  });
-
-  afterEach(() => {
-    sinon.restore();
-  });
-
-  it("should manage nested spinners", async () => {
-    sinon.stub(Spinner.prototype, "start").resolves();
-    sinon.stub(Spinner.prototype, "stop").resolves();
-    sinon.stub(Spinner.prototype, "succeed").resolves();
     await display.startSpinner("Outer");
     await display.startSpinner("Inner");
     await display.stopSpinner("Inner done");
     await display.stopSpinner("Outer done");
+
+    expect(feedback.text).to.equal("✔ Inner done\n✔ Outer done\n");
   });
 
-  it("should track spinner state", () => {
+  it("tracks whether a spinner is active", async () => {
+    const { display } = createDisplay();
+
+    expect(display.isSpinnerActive()).to.equal(false);
+    await display.startSpinner("Working");
+    expect(display.isSpinnerActive()).to.equal(true);
+    await display.stopSpinner();
     expect(display.isSpinnerActive()).to.equal(false);
   });
 
-  it("should log through active spinner", async () => {
-    const logStub = sinon.stub(Spinner.prototype, "log");
-    sinon.stub(Spinner.prototype, "start").resolves();
-    sinon.stub(Spinner.prototype, "succeed").resolves();
+  it("stops a spinner without a line when no text is given", async () => {
+    const { display, feedback } = createDisplay();
 
-    await display.startSpinner("Working");
-    display.log("hello");
+    await display.startSpinner("Outer");
+    await display.startSpinner("Inner");
+    await display.stopSpinner();
+    await display.stopSpinner("Outer done");
+
+    expect(feedback.text).to.equal("✔ Outer done\n");
+  });
+
+  it("fails a spinner with the given text or its own label", async () => {
+    const { display, feedback } = createDisplay();
+
+    await display.startSpinner("Outer");
+    await display.startSpinner("Inner");
+    await display.failSpinner("boom");
+    await display.failSpinner();
+
+    expect(feedback.text).to.equal("✖ boom\n✖ Outer\n");
+  });
+
+  it("ignores stop and fail when no spinner is active", async () => {
+    const { display, feedback } = createDisplay();
+
     await display.stopSpinner("done");
+    await display.failSpinner("boom");
 
-    expect(logStub.calledOnceWith(process.stdout, "hello")).to.equal(true);
+    expect(feedback.text).to.equal("");
   });
 
-  it("should log to the requested stream through active spinner", async () => {
-    const logStub = sinon.stub(Spinner.prototype, "log");
-    sinon.stub(Spinner.prototype, "start").resolves();
+  it("logs to the requested stream, with or without a spinner", async () => {
+    const { display, feedback } = createDisplay();
+    const stdout = new MemoryStream();
+
+    display.log("idle", stdout);
+    await display.startSpinner("Working");
+    display.log("failure", feedback);
+
+    expect(stdout.text).to.equal("idle\n");
+    expect(feedback.text).to.equal("failure\n");
+  });
+
+  it("logs above the live spinner line", async () => {
+    const { display, result, feedback } = createDisplay(true);
 
     await display.startSpinner("Working");
-    display.log("failure", process.stderr);
+    display.log("hello", result);
 
-    expect(logStub.calledOnceWith(process.stderr, "failure")).to.equal(true);
+    expect(result.text).to.equal("hello\n");
+    expect(feedback.text).to.equal(`⠋ Working\n${ERASE_ONE_LINE}⠋ Working\n`);
+    await display.cleanSpinner();
   });
 
-  it("should stop spinner without success text and restart parent", async () => {
-    const startStub = sinon.stub(Spinner.prototype, "start").resolves();
-    const stopStub = sinon.stub(Spinner.prototype, "stop").resolves();
+  it("cleans every spinner without a line", async () => {
+    const { display, feedback } = createDisplay();
 
     await display.startSpinner("Outer");
     await display.startSpinner("Inner");
-    await display.stopSpinner();
-
-    expect(stopStub.called).to.equal(true);
-    expect(startStub.callCount).to.equal(2);
-  });
-
-  it("should fail and clear last spinner", async () => {
-    const failStub = sinon.stub(Spinner.prototype, "fail").resolves();
-    sinon.stub(Spinner.prototype, "start").resolves();
-
-    await display.startSpinner("Task");
-    await display.failSpinner("boom");
-
-    expect(failStub.calledOnce).to.equal(true);
-  });
-
-  it("should restart parent spinner after failure", async () => {
-    const startStub = sinon.stub(Spinner.prototype, "start").resolves();
-    const failStub = sinon.stub(Spinner.prototype, "fail").resolves();
-
-    await display.startSpinner("Outer");
-    await display.startSpinner("Inner");
-    await display.failSpinner("boom");
-
-    expect(failStub.calledOnce).to.equal(true);
-    expect(startStub.callCount).to.equal(2);
-  });
-
-  it("should fail spinner using current text when none is provided", async () => {
-    const failStub = sinon.stub(Spinner.prototype, "fail").resolves();
-    sinon.stub(Spinner.prototype, "start").resolves();
-
-    await display.startSpinner("Task");
-    await display.failSpinner();
-
-    expect(failStub.calledOnce).to.equal(true);
-    expect(failStub.firstCall.args[0]).to.equal("Task");
-  });
-
-  it("should clean spinner state", async () => {
-    const stopStub = sinon.stub(Spinner.prototype, "stop").resolves();
-    sinon.stub(Spinner.prototype, "start").resolves();
-    const writeStub = sinon.stub(process.stderr, "write");
-
-    await display.startSpinner("Task");
+    await display.cleanSpinner();
     await display.cleanSpinner();
 
-    expect(stopStub.calledOnce).to.equal(true);
-    expect(writeStub.called).to.equal(false);
+    expect(display.isSpinnerActive()).to.equal(false);
+    expect(feedback.text).to.equal("");
   });
 
-  it("should not clear line when no spinner exists", async () => {
-    const writeStub = sinon.stub(process.stderr, "write");
+  it("starts no spinner while silent", async () => {
+    const { display, feedback } = createDisplay();
+
+    await display.startSpinner("Before");
+    display.setSilent(true);
+    await display.startSpinner("Ignored");
+
+    expect(display.isSilent()).to.equal(true);
+    expect(display.isSpinnerActive()).to.equal(false);
+    display.setSilent(false);
+    expect(display.isSilent()).to.equal(false);
+    expect(feedback.text).to.equal("");
+  });
+
+  it("clears the live spinner line on demand", async () => {
+    const { display, feedback } = createDisplay(true);
+
+    await display.startSpinner("Working");
     await display.clearSpinnerLine();
-    expect(writeStub.called).to.equal(false);
-  });
 
-  it("should clear line when spinner exists", async () => {
-    sinon.stub(Spinner.prototype, "start").resolves();
-    const writeStub = sinon.stub(process.stderr, "write");
-    await display.startSpinner("Task");
-    await display.clearSpinnerLine();
-    expect(writeStub.called).to.equal(true);
-  });
-
-  it("should ignore stop when no spinner is active", async () => {
-    const stopStub = sinon.stub(Spinner.prototype, "stop").resolves();
-    await display.stopSpinner();
-    expect(stopStub.called).to.equal(false);
-  });
-
-  it("should ignore fail when no spinner is active", async () => {
-    const failStub = sinon.stub(Spinner.prototype, "fail").resolves();
-    await display.failSpinner();
-    expect(failStub.called).to.equal(false);
-  });
-
-  it("should not log without an active spinner", () => {
-    const logStub = sinon.stub(Spinner.prototype, "log");
-    display.log("hello");
-    expect(logStub.called).to.equal(false);
-  });
-
-  it("should clean without side effects when no spinner exists", async () => {
-    const writeStub = sinon.stub(process.stderr, "write");
+    expect(feedback.text).to.equal(`⠋ Working\n${ERASE_ONE_LINE}`);
     await display.cleanSpinner();
-    expect(writeStub.called).to.equal(false);
-  });
-
-  it("should destroy spinner when no texts remain", () => {
-    const stopStub = sinon.stub(Spinner.prototype, "stop").resolves();
-    const clearStub = sinon.stub(display as any, "clearSpinnerLine").resolves();
-    (display as any).currentSpinner = new Spinner("Task");
-    (display as any).currentSpinnerTexts = [];
-
-    (display as any).updateSpinnerText();
-
-    expect(stopStub.calledOnce).to.equal(true);
-    expect(clearStub.calledOnce).to.equal(true);
   });
 });

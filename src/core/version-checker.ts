@@ -2,8 +2,8 @@ import { satisfies, validRange } from "semver";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
 import { ExecError, ExecuteCMD } from "./cli/command";
-import { describeFailure } from "./cli/output";
-import { info as infoMessage, warning } from "./cli/cli-ui";
+import { warning } from "./cli/cli-ui";
+import { describeFailure, getProcessTasks, pluralize } from "./cli/output";
 import { parsePackageInfoOutput } from "./cli/package-manager";
 import type { ExpandedModuleConfig } from "./config/config-parser";
 
@@ -79,6 +79,30 @@ export async function fetchLatestVersion(packageName: string): Promise<string> {
   return parsePackageInfoOutput(result.stdout);
 }
 
+/**
+ * Looks up the latest version of every package as one transient task: its
+ * line disappears once the registry answered, the results speak for it.
+ */
+async function fetchLatestVersions(
+  packageNames: string[],
+): Promise<PromiseSettledResult<string>[]> {
+  const task = getProcessTasks().start(
+    `Checking ${pluralize(packageNames.length, "module")} on npm`,
+  );
+  const slowWarning = setTimeout(() => {
+    warning(
+      "Module version check is taking longer than expected — the npm registry may be slow or unreachable. " +
+        "Set NPM_CONFIG_FETCH_RETRIES=0 to fail fast.",
+    );
+  }, SLOW_CHECK_THRESHOLD_MS);
+  try {
+    return await Promise.allSettled(packageNames.map(fetchLatestVersion));
+  } finally {
+    clearTimeout(slowWarning);
+    task.dismiss();
+  }
+}
+
 export async function checkOutdatedModules(
   modules: Record<string, ExpandedModuleConfig>,
 ): Promise<OutdatedModule[]> {
@@ -90,25 +114,11 @@ export async function checkOutdatedModules(
     return [];
   }
 
-  infoMessage("Checking for module updates...");
-
-  const slowWarning = setTimeout(() => {
-    warning(
-      "Module version check is taking longer than expected — the npm registry may be slow or unreachable. " +
-        "Set NPM_CONFIG_FETCH_RETRIES=0 to fail fast.",
-    );
-  }, SLOW_CHECK_THRESHOLD_MS);
-
-  let results: PromiseSettledResult<string>[];
-  try {
-    results = await Promise.allSettled(
-      packageModules.map(([, info]) =>
-        fetchLatestVersion((info.source as ModuleSourcePackage).package),
-      ),
-    );
-  } finally {
-    clearTimeout(slowWarning);
-  }
+  const results = await fetchLatestVersions(
+    packageModules.map(
+      ([, info]) => (info.source as ModuleSourcePackage).package,
+    ),
+  );
 
   return packageModules.reduce<OutdatedModule[]>(
     (outdated, [name, info], index) => {

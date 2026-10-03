@@ -4,7 +4,7 @@ import { CliError } from "./errors";
 import { FAILURE_EXIT_CODE } from "../exit-codes";
 import type { CliProblem, Ui } from "./types";
 import { translateExecError, translateFailure } from "./translations";
-import { getProcessUi } from "./ui";
+import { getProcessUi } from "./tasks";
 import { isVerboseRun } from "./verbosity";
 
 const OUTPUT_TAIL_LINE_COUNT = 3;

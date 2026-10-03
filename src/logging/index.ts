@@ -5,7 +5,7 @@ import eventLog, {
 } from "@antelopejs/interface-core/logging/listener";
 
 import { mergeDeep } from "../utils/object";
-import { terminalDisplay } from "../core/cli/terminal-display";
+import { getProcessTasks } from "../core/cli/output/tasks";
 import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
 import { renderLogTemplate } from "./log-template";
 
@@ -174,12 +174,7 @@ function writeLogLine(log: Log, module?: string): void {
   const stream =
     log.levelId >= levelMap.error ? process.stderr : process.stdout;
 
-  if (terminalDisplay.isSpinnerActive()) {
-    terminalDisplay.log(message, stream);
-    return;
-  }
-
-  stream.write(`${message}\n`);
+  getProcessTasks().write(stream, `${message}\n`);
 }
 
 /**

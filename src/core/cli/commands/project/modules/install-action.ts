@@ -1,18 +1,17 @@
 import chalk from "chalk";
 import path from "node:path";
 import type {
+  AntelopeConfig,
   ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 
 import { ExecuteCMD } from "../../../command";
-import { FAILURE_EXIT_CODE } from "../../../exit-codes";
-import { projectModulesAddCommand } from "./add-action";
+import { addModules, type AddCommandResult } from "./add-action";
 import { ModuleCache } from "../../../../module-cache";
 import { NodeFileSystem } from "../../../../filesystem";
-import { terminalDisplay } from "../../../terminal-display";
 import { ModuleManifest } from "../../../../module-manifest";
-import { error, info, success, warning } from "../../../cli-ui";
+import { info, warning } from "../../../cli-ui";
 import { registerGitDownloader } from "../../../../downloaders/git";
 import { ConfigLoader, type LoadedConfig } from "../../../../config";
 import { DownloaderRegistry } from "../../../../downloaders/registry";
@@ -21,12 +20,24 @@ import { registerPackageDownloader } from "../../../../downloaders/package";
 import { registerLocalFolderDownloader } from "../../../../downloaders/local-folder";
 import { findUnresolvedInterfaces } from "../../../../resolution/interface-resolution";
 import {
+  type GitManifest,
   loadInterfaceFromGit,
   loadManifestFromGit,
   type ModuleInterfaceInfo,
 } from "../../../git-operations";
-import { createPrompter, type Prompter } from "../../../output";
+import {
+  CliError,
+  createPrompter,
+  describeFailure,
+  getProcessUi,
+  pluralize,
+  runTask,
+  type NextStep,
+  type Prompter,
+} from "../../../output";
+import { TS_CONFIG_FILE } from "../../../../config/config-paths";
 import { displayNonDefaultGitWarning, readUserConfig } from "../../../common";
+import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 
 interface InstallOptions {
@@ -61,6 +72,11 @@ export function unresolvedImportWarning(
 const PACKAGE_SOURCE_TYPE = "package";
 const INSTALL_COMMAND = "ajs project modules install";
 const YES_FLAG = "--yes";
+const DEFAULT_ENVIRONMENT = "default";
+const DEFAULT_CACHE_FOLDER = ".antelope/cache";
+const GROUP_KEY_SEPARATOR = ":";
+const DEV_COMMAND = "ajs project dev";
+const DEV_DESCRIPTION = "run the project with its new modules";
 
 /**
  * Picks the module that implements an interface: the only candidate without
@@ -74,7 +90,7 @@ async function chooseImplementation(
   const [firstCandidate] = candidates;
   if (candidates.length === 1) {
     info(
-      `    ${chalk.blue("↳")} ${chalk.bold(firstCandidate.name)} is the only module implementing ${interfaceName}: selected automatically`,
+      `${chalk.bold(firstCandidate.name)} is the only module implementing ${interfaceName}: selected automatically`,
     );
     return firstCandidate;
   }
@@ -100,7 +116,6 @@ export function resolveInstallIdentifier(
   return version ? `${identifier}@${version}` : identifier;
 }
 
-// Interface for tracking modules to be installed
 interface ModuleToInstall {
   loaderIdentifier: string;
   mode: string;
@@ -119,13 +134,10 @@ async function analyzeConfig(
   const manifests = (
     await Promise.all(
       Object.entries(config.modules).map(([name, module]) =>
-        registry
-          .load(projectFolder, cache, { ...module.source, id: name } as any)
-          .catch((err) => {
-            throw new Error(
-              `Error loading module ${JSON.stringify(module.source)}: ${err}`,
-            );
-          }),
+        registry.load(projectFolder, cache, {
+          ...module.source,
+          id: name,
+        } as any),
       ),
     )
   ).flat();
@@ -173,224 +185,254 @@ async function analyzeConfig(
   };
 }
 
-export async function installModules(options: InstallOptions): Promise<void> {
-  const { config: baseConfig, environment } = await resolveProjectContext(
-    options.project,
-    options.env,
-  );
-  info(chalk.blue`Analyzing project dependencies...`);
-  const prompter = createPrompter({
-    command: INSTALL_COMMAND,
-    acceptsDefaults: options.yes,
-    defaultsFlag: YES_FLAG,
-  });
+interface InstallContext {
+  options: InstallOptions;
+  prompter: Prompter;
+  git: string;
+  gitManifest: GitManifest;
+  fs: NodeFileSystem;
+  loader: ConfigLoader;
+  registry: DownloaderRegistry;
+  cache: ModuleCache;
+  modulesToInstall: ModuleToInstall[];
+  unresolvedImportCount: number;
+  unimplementedImportCount: number;
+}
 
-  const userConfig = await readUserConfig();
-  const git = options.git || userConfig.git;
+interface InstallOutcome {
+  added: number;
+  failed: number;
+}
 
-  // Display warning if using non-default git repository
-  await displayNonDefaultGitWarning(git);
-
-  const gitManifest = await loadManifestFromGit(git);
-
-  const fs = new NodeFileSystem();
-  const loader = new ConfigLoader(fs);
-
+function createRegistry(fs: NodeFileSystem): DownloaderRegistry {
   const registry = new DownloaderRegistry();
   registerLocalDownloader(registry, { fs, exec: ExecuteCMD });
   registerLocalFolderDownloader(registry, { fs });
   registerPackageDownloader(registry, { fs, exec: ExecuteCMD });
   registerGitDownloader(registry, { fs, exec: ExecuteCMD });
+  return registry;
+}
 
-  // Initialize the module cache
-  const cacheFolder = baseConfig.cacheFolder ?? ".antelope/cache";
-  const cachePath = path.isAbsolute(cacheFolder)
-    ? cacheFolder
-    : path.join(options.project, cacheFolder);
-  const cache = new ModuleCache(cachePath);
+async function createInstallContext(
+  options: InstallOptions,
+  baseConfig: AntelopeConfig,
+): Promise<InstallContext> {
+  const git = options.git || (await readUserConfig()).git;
+  displayNonDefaultGitWarning(git);
+  const gitManifest = await loadManifestFromGit(git);
+  const fs = new NodeFileSystem();
+  const cacheFolder = baseConfig.cacheFolder ?? DEFAULT_CACHE_FOLDER;
+  const cache = new ModuleCache(path.resolve(options.project, cacheFolder));
   await cache.load();
+  return {
+    options,
+    prompter: createPrompter({
+      command: INSTALL_COMMAND,
+      acceptsDefaults: options.yes,
+      defaultsFlag: YES_FLAG,
+    }),
+    git,
+    gitManifest,
+    fs,
+    loader: new ConfigLoader(fs),
+    registry: createRegistry(fs),
+    cache,
+    modulesToInstall: [],
+    unresolvedImportCount: 0,
+    unimplementedImportCount: 0,
+  };
+}
 
-  // Determine which environments to analyze
-  const envs = options.env
-    ? [environment]
-    : baseConfig.environments
-      ? Object.keys(baseConfig.environments)
-      : ["default"];
-
-  // Track changes made
-  const addedModules: Record<string, string[]> = {};
-
-  // Collect all modules to install across all environments
-  const modulesToInstall: ModuleToInstall[] = [];
-
-  // First pass: Analyze all environments and collect user selections
-  for (const env of envs) {
-    info(chalk.bold`Analyzing environment: ${env}`);
-    await terminalDisplay.startSpinner(`Analyzing environment: ${env}`);
-
-    const config = await loader.load(options.project, env);
-    let unresolvedImports: UnresolvedImport[] = [];
-    try {
-      ({ unresolvedImports } = await analyzeConfig(
-        options.project,
-        cache,
-        config,
-        registry,
-        fs,
-      ));
-    } catch (err) {
-      await terminalDisplay.failSpinner(`Error analyzing config: ${err}`);
-      process.exitCode = FAILURE_EXIT_CODE;
-      return;
-    }
-    await terminalDisplay.stopSpinner(`Analyzed environment: ${env}`);
-    // Handle unresolved imports
-    if (unresolvedImports.length > 0) {
-      warning(
-        chalk.yellow`Found ${unresolvedImports.length} unresolved imports:`,
-      );
-
-      for (const imp of unresolvedImports) {
-        // Look for modules implementing this interface
-        const interfaceName = imp.interfacePackage;
-        const interfaceDirName = gitManifest.interfaces[interfaceName];
-        const interfaceInfo = interfaceDirName
-          ? await loadInterfaceFromGit(git, interfaceDirName)
-          : undefined;
-
-        // Prepare choice for user to select a module
-        const choices = [
-          ...(interfaceInfo?.manifest.modules.map((module) => module.name) ||
-            []),
-        ];
-        const alreadySelectedModule = modulesToInstall.find((module) =>
-          choices.includes(module.moduleName),
-        );
-
-        if (interfaceInfo && choices.length > 0 && !alreadySelectedModule) {
-          info(
-            `  ${chalk.yellow("•")} ${chalk.bold(describeUnresolvedImport(imp))}`,
-          );
-
-          const moduleInterfaceInfo = await chooseImplementation(
-            prompter,
-            interfaceName,
-            interfaceInfo.manifest.modules,
-          );
-
-          const source = moduleInterfaceInfo.source;
-          const mode = source.type;
-          const loaderIdentifier = registry.getLoaderIdentifier(source as any);
-
-          if (loaderIdentifier) {
-            const moduleName = moduleInterfaceInfo.name;
-            success(
-              `    ${chalk.green("↳")} Selected module: ${chalk.bold(moduleName)} for ${interfaceName}`,
-            );
-
-            // Add to modules to install
-            modulesToInstall.push({
-              loaderIdentifier: resolveInstallIdentifier(
-                source as ModuleSource,
-                loaderIdentifier,
-              ),
-              mode,
-              moduleName,
-              imports: [interfaceName],
-              env,
-            });
-
-            addedModules[moduleName] = [interfaceName];
-          }
-        } else if (alreadySelectedModule) {
-          // Module already selected for another import, just track the import
-          alreadySelectedModule.imports.push(interfaceName);
-          addedModules[alreadySelectedModule.moduleName].push(interfaceName);
-        } else {
-          warning(
-            `  ${chalk.yellow("-")} ${unresolvedImportWarning(imp, git)}`,
-          );
-        }
-      }
-    } else {
-      success(chalk.green`No unresolved imports found`);
-    }
+function environmentsToAnalyze(
+  options: InstallOptions,
+  baseConfig: AntelopeConfig,
+  environment: string,
+): string[] {
+  if (options.env) {
+    return [environment];
   }
+  return baseConfig.environments
+    ? Object.keys(baseConfig.environments)
+    : [DEFAULT_ENVIRONMENT];
+}
 
-  // Second pass: Install all selected modules sequentially by environment
-  if (modulesToInstall.length > 0) {
-    await terminalDisplay.startSpinner(`Installing selected modules`);
-    info(chalk.blue.bold`Installing selected modules...`);
-
-    // Group modules by environment and mode for installation
-    const modulesByEnvAndMode = modulesToInstall.reduce(
-      (acc, module) => {
-        const key = `${module.env}:${module.mode}`;
-        if (!acc[key]) {
-          acc[key] = [];
-        }
-        acc[key].push(module);
-        return acc;
+async function analyzeEnvironment(
+  context: InstallContext,
+  env: string,
+): Promise<UnresolvedImport[]> {
+  const { options, cache, registry, fs } = context;
+  const config = await context.loader.load(options.project, env);
+  try {
+    const analysis = await runTask(
+      `Analyzing environment ${env}`,
+      () => analyzeConfig(options.project, cache, config, registry, fs),
+      { done: `Analyzed environment ${env}` },
+    );
+    return analysis.unresolvedImports;
+  } catch (err) {
+    const cause = describeFailure(err, false);
+    throw new CliError(
+      {
+        title: `Could not analyze environment ${env}`,
+        reason: cause.title,
+        fixes: cause.fixes,
       },
-      {} as Record<string, ModuleToInstall[]>,
-    );
-
-    // Install modules for each environment/mode combination sequentially
-    for (const [key, modules] of Object.entries(modulesByEnvAndMode)) {
-      const [env, mode] = key.split(":");
-      const loaderIdentifiers = modules.map((m) => m.loaderIdentifier);
-
-      info(
-        chalk.blue`Installing ${modules.length} module${modules.length === 1 ? "" : "s"} for environment ${env} (mode: ${mode})...`,
-      );
-
-      try {
-        const result = await projectModulesAddCommand(loaderIdentifiers, {
-          mode,
-          project: options.project,
-          env,
-        });
-
-        const failedCount = result
-          ? result.failed.length
-          : loaderIdentifiers.length;
-        if (failedCount > 0) {
-          error(
-            chalk.red`Failed to install ${failedCount} module(s) for environment ${env} (mode: ${mode})`,
-          );
-          process.exitCode = FAILURE_EXIT_CODE;
-        } else {
-          success(
-            chalk.green`Successfully installed modules for environment ${env} (mode: ${mode})`,
-          );
-        }
-      } catch (err) {
-        error(
-          chalk.red`Failed to install modules for environment ${env} (mode: ${mode}): ${err}`,
-        );
-        process.exitCode = FAILURE_EXIT_CODE;
-      }
-    }
-    await terminalDisplay.stopSpinner(
-      `Installed ${modulesToInstall.length} module${modulesToInstall.length === 1 ? "" : "s"}`,
+      { cause: err },
     );
   }
+}
 
-  // Summary of changes
-  info(chalk.blue.bold`Dependency analysis summary:`);
-
-  if (Object.keys(addedModules).length > 0) {
-    success(chalk.green`Added ${Object.keys(addedModules).length} module(s):`);
-    Object.entries(addedModules).forEach(([moduleName, imports]) => {
-      info(`  ${chalk.green("•")} ${moduleName} for: ${imports.join(", ")}`);
-    });
+async function findImplementations(
+  context: InstallContext,
+  interfaceName: string,
+): Promise<ModuleInterfaceInfo[]> {
+  const interfaceDirName = context.gitManifest.interfaces[interfaceName];
+  if (!interfaceDirName) {
+    return [];
   }
+  const interfaceInfo = await loadInterfaceFromGit(
+    context.git,
+    interfaceDirName,
+  );
+  return interfaceInfo?.manifest.modules ?? [];
+}
 
-  if (Object.keys(addedModules).length === 0) {
-    success(
-      chalk.green`No changes were made. Your project dependencies are already optimized!`,
+async function selectImplementation(
+  context: InstallContext,
+  env: string,
+  imp: UnresolvedImport,
+): Promise<void> {
+  const interfaceName = imp.interfacePackage;
+  const candidates = await findImplementations(context, interfaceName);
+  const names = candidates.map((candidate) => candidate.name);
+  const selected = context.modulesToInstall.find((module) =>
+    names.includes(module.moduleName),
+  );
+  if (selected) {
+    selected.imports.push(interfaceName);
+    return;
+  }
+  if (candidates.length === 0) {
+    warning(unresolvedImportWarning(imp, context.git));
+    context.unimplementedImportCount += 1;
+    return;
+  }
+  const chosen = await chooseImplementation(
+    context.prompter,
+    interfaceName,
+    candidates,
+  );
+  const loaderIdentifier = context.registry.getLoaderIdentifier(
+    chosen.source as any,
+  );
+  if (!loaderIdentifier) {
+    return;
+  }
+  context.modulesToInstall.push({
+    loaderIdentifier: resolveInstallIdentifier(chosen.source, loaderIdentifier),
+    mode: chosen.source.type,
+    moduleName: chosen.name,
+    imports: [interfaceName],
+    env,
+  });
+}
+
+async function resolveEnvironment(
+  context: InstallContext,
+  env: string,
+): Promise<void> {
+  const unresolvedImports = await analyzeEnvironment(context, env);
+  if (unresolvedImports.length === 0) {
+    return;
+  }
+  context.unresolvedImportCount += unresolvedImports.length;
+  getProcessUi().message(
+    "warn",
+    `${pluralize(unresolvedImports.length, "unresolved import")} in ${env}:`,
+    { details: unresolvedImports.map(describeUnresolvedImport) },
+  );
+  for (const imp of unresolvedImports) {
+    await selectImplementation(context, env, imp);
+  }
+}
+
+function groupByEnvironmentAndMode(
+  modules: ModuleToInstall[],
+): Map<string, ModuleToInstall[]> {
+  const groups = new Map<string, ModuleToInstall[]>();
+  modules.forEach((module) => {
+    const key = [module.env, module.mode].join(GROUP_KEY_SEPARATOR);
+    groups.set(key, [...(groups.get(key) ?? []), module]);
+  });
+  return groups;
+}
+
+async function installSelectedModules(
+  context: InstallContext,
+): Promise<InstallOutcome> {
+  const results: AddCommandResult[] = [];
+  const groups = groupByEnvironmentAndMode(context.modulesToInstall);
+  for (const modules of groups.values()) {
+    const [{ env, mode }] = modules;
+    results.push(
+      await addModules(
+        modules.map((module) => module.loaderIdentifier),
+        { mode, project: context.options.project, env },
+      ),
     );
   }
+  return {
+    added: results.reduce((sum, result) => sum + result.added.length, 0),
+    failed: results.reduce((sum, result) => sum + result.failed.length, 0),
+  };
+}
 
-  info(chalk.blue`Dependency analysis complete!`);
+function installHeadline(
+  context: InstallContext,
+  outcome: InstallOutcome,
+): string {
+  if (context.unresolvedImportCount === 0) {
+    return "All interfaces are implemented";
+  }
+  const parts = [
+    `${pluralize(outcome.added, "module")} added to ${TS_CONFIG_FILE}`,
+    outcome.failed > 0 ? `${outcome.failed} failed` : "",
+    context.unimplementedImportCount > 0
+      ? `${pluralize(context.unimplementedImportCount, "import")} still unresolved`
+      : "",
+  ];
+  return parts.filter((part) => part !== "").join(", ");
+}
+
+function installNextSteps(
+  context: InstallContext,
+  outcome: InstallOutcome,
+): NextStep[] {
+  if (outcome.added === 0) {
+    return [];
+  }
+  return [
+    {
+      command: scopedCommand(DEV_COMMAND, context.options),
+      description: DEV_DESCRIPTION,
+    },
+  ];
+}
+
+export async function installModules(options: InstallOptions): Promise<void> {
+  const startedAt = Date.now();
+  const { config: baseConfig, environment } = await resolveProjectContext(
+    options.project,
+    options.env,
+  );
+  const context = await createInstallContext(options, baseConfig);
+  for (const env of environmentsToAnalyze(options, baseConfig, environment)) {
+    await resolveEnvironment(context, env);
+  }
+  const outcome = await installSelectedModules(context);
+  getProcessUi().summary({
+    headline: installHeadline(context, outcome),
+    durationMs: Date.now() - startedAt,
+    nextSteps: installNextSteps(context, outcome),
+  });
 }

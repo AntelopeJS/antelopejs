@@ -415,7 +415,7 @@ export async function moduleInitCommand(
   const gitSpinner = new Spinner("Loading templates");
   await gitSpinner.start();
   const git = options.git || (await readUserConfig()).git;
-  await displayNonDefaultGitWarning(git);
+  displayNonDefaultGitWarning(git);
 
   try {
     const manifest = await loadTemplates(git);

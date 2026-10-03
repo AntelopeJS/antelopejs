@@ -6,6 +6,7 @@ import type {
   OutputStream,
   OutputStreams,
 } from "./types";
+import { isVerboseRun } from "./verbosity";
 
 interface EnvironmentMatch {
   variable: string;
@@ -125,6 +126,22 @@ export function detectCapabilities(
     ),
     terminals: mapChannels(context.streams, (stream) => stream.isTTY === true),
   };
+}
+
+/**
+ * Whether progress can be drawn as an animated task list: feedback goes to
+ * an interactive terminal that is not dumb, the run is not in CI, and it is
+ * not verbose (verbose runs print every log line instead). Otherwise tasks
+ * only print their final line, append-only.
+ */
+export function hasLiveProgress(context: CapabilityContext): boolean {
+  const { env } = context;
+  return (
+    context.streams.feedback.isTTY === true &&
+    env.TERM !== DUMB_TERMINAL &&
+    !isEnabledFlag(env.CI) &&
+    !isVerboseRun({ argv: context.argv, env })
+  );
 }
 
 /**

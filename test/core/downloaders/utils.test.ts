@@ -3,9 +3,7 @@ import sinon from "sinon";
 import { expect } from "chai";
 
 import { ExecError, ExecuteCMD } from "../../../src/core/cli/command";
-import * as cliUi from "../../../src/core/cli/cli-ui";
-import { CliError } from "../../../src/core/cli/output";
-import { terminalDisplay } from "../../../src/core/cli/terminal-display";
+import { CliError, getProcessTasks } from "../../../src/core/cli/output";
 import type { CommandResult } from "../../../src/core/downloaders/types";
 import {
   expandHome,
@@ -75,9 +73,7 @@ describe("Install command execution", () => {
       ]),
     );
 
-    expect(failure.problem.title).to.equal(
-      "Failed to install dependencies for demo",
-    );
+    expect(failure.problem.title).to.equal("Install failed for demo");
     expect(failure.problem.reason).to.equal(
       "'pnpm install' exited with code 1.",
     );
@@ -116,11 +112,10 @@ describe("Install command execution", () => {
     expect((failure.cause as ExecError).exitCode).to.equal(1);
   });
 
-  it("reports the failed install once on the running spinner", async () => {
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "isSpinnerActive").returns(true);
-    const failStub = sinon.stub(terminalDisplay, "failSpinner").resolves();
-    const errorStub = sinon.stub(cliUi, "error");
+  it("runs the commands as one task that leaves its failure to the caller", async () => {
+    const tasks = getProcessTasks();
+    const startSpy = sinon.spy(tasks, "start");
+    const messageSpy = sinon.spy(tasks.ui, "message");
     const exec = sinon.stub().resolves({ stdout: "", stderr: "x", code: 2 });
 
     await captureRejection(
@@ -128,29 +123,35 @@ describe("Install command execution", () => {
     );
 
     expect(
-      failStub.calledOnceWith("Install failed for demo (pnpm install, exit 2)"),
+      startSpy.calledOnceWith("Installing dependencies for demo"),
     ).to.equal(true);
-    expect(errorStub.called).to.equal(false);
+    expect(messageSpy.called).to.equal(false);
+    expect(tasks.hasRunningTasks()).to.equal(false);
   });
 
-  it("reports the failed install as an error line without a spinner", async () => {
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "isSpinnerActive").returns(false);
-    const failStub = sinon.stub(terminalDisplay, "failSpinner").resolves();
-    const errorStub = sinon.stub(cliUi, "error");
-    const exec = sinon.stub().rejects("not an error");
+  it("reports the installed dependencies once every command succeeded", async () => {
+    const messageStub = sinon.stub(getProcessTasks().ui, "message");
+    const exec = sinon.stub().resolves({ stdout: "", stderr: "", code: 0 });
 
-    const failure = await captureRejection(
-      runInstallCommands(exec, silentLogger, "demo", "/tmp", "pnpm install"),
-    );
+    await runInstallCommands(exec, silentLogger, "demo", "/tmp", [
+      "pnpm install",
+      "pnpm build",
+    ]);
 
+    expect(exec.callCount).to.equal(2);
     expect(
-      errorStub.calledOnceWith(
-        "Install failed for demo (pnpm install, exit 1)",
-      ),
+      messageStub.calledOnceWith("success", "Installed dependencies for demo"),
     ).to.equal(true);
-    expect(failStub.called).to.equal(false);
-    expect((failure.cause as ExecError).command).to.equal("pnpm install");
+  });
+
+  it("starts no task when the module has no install command", async () => {
+    const startSpy = sinon.spy(getProcessTasks(), "start");
+    const exec = sinon.stub();
+
+    await runInstallCommands(exec, silentLogger, "demo", "/tmp");
+
+    expect(startSpy.called).to.equal(false);
+    expect(exec.called).to.equal(false);
   });
 
   it("fails instead of hanging when the install command reads stdin", async function () {
@@ -166,9 +167,7 @@ describe("Install command execution", () => {
       ),
     );
 
-    expect(failure.problem.title).to.equal(
-      "Failed to install dependencies for demo",
-    );
+    expect(failure.problem.title).to.equal("Install failed for demo");
     expect((failure.cause as ExecError).command).to.equal(
       "sh -c 'read answer'",
     );

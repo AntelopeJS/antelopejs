@@ -225,6 +225,70 @@ describe("output ui blocks", () => {
   });
 });
 
+describe("output ui summaries", () => {
+  it("prints the headline, artifact, duration and aligned next steps", () => {
+    const { ui, result, feedback } = createMemoryUi();
+
+    ui.summary({
+      headline: "Built 2 modules",
+      durationMs: 2100,
+      artifact: "./.antelope/build/build.json",
+      nextSteps: [
+        { command: "ajs project start", description: "start the build" },
+        { command: "ajs project dev --watch" },
+      ],
+    });
+
+    expect(result.text).to.equal("");
+    expect(feedback.text).to.equal(
+      [
+        "Built 2 modules → ./.antelope/build/build.json · 2.1s",
+        "",
+        "Next steps",
+        "  ajs project start        start the build",
+        "  ajs project dev --watch",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("prints a bare headline when nothing else is given", () => {
+    const { ui, feedback } = createMemoryUi({ hasUnicode: false });
+
+    ui.summary({ headline: "Nothing to do", nextSteps: [] });
+    ui.summary({ headline: "Wrote it", artifact: "out.json" });
+
+    expect(feedback.text).to.equal("Nothing to do\nWrote it > out.json\n");
+  });
+
+  it("colors commands cyan and dims the rest", () => {
+    const { ui, feedback } = createMemoryUi({ hasColor: true });
+
+    ui.summary({
+      headline: "Done",
+      durationMs: 5,
+      nextSteps: [{ command: "ajs project start", description: "start" }],
+    });
+
+    expect(feedback.text).to.contain("\x1b[2m · 5ms\x1b[22m");
+    expect(feedback.text).to.contain("\x1b[36majs project start\x1b[39m");
+    expect(feedback.text).to.contain("\x1b[1mNext steps\x1b[22m");
+  });
+
+  it("writes every detail line under a message", () => {
+    const { ui, feedback } = createMemoryUi();
+
+    ui.message("warn", "2 unresolved imports:", {
+      detail: "in default",
+      details: ["a (required by x)", "b (required by y)"],
+    });
+
+    expect(feedback.text).to.equal(
+      "▲ 2 unresolved imports:\n  in default\n  a (required by x)\n  b (required by y)\n",
+    );
+  });
+});
+
 describe("output ui tables", () => {
   it("aligns columns under dim uppercase headers on a terminal", () => {
     const { ui, result } = createMemoryUi({

@@ -2,20 +2,33 @@ import chalk from "chalk";
 import path from "node:path";
 import assert from "node:assert";
 import { readFile, stat } from "node:fs/promises";
-import type { AntelopeModuleConfig } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  AntelopeModuleConfig,
+} from "@antelopejs/interface-core/config";
 
 import { ExecuteCMD } from "../../../command";
 import { ConfigLoader } from "../../../../config";
 import { ModuleCache } from "../../../../module-cache";
 import { NodeFileSystem } from "../../../../filesystem";
 import { writeConfig } from "../../../common";
+import { FAILURE_EXIT_CODE } from "../../../exit-codes";
 import { registerGitDownloader } from "../../../../downloaders/git";
 import type { ModulePackageJson } from "../../../../module-manifest";
 import { DownloaderRegistry } from "../../../../downloaders/registry";
 import { registerLocalDownloader } from "../../../../downloaders/local";
 import { registerPackageDownloader } from "../../../../downloaders/package";
-import { displayBox, info, success } from "../../../cli-ui";
-import { reportFailure } from "../../../output";
+import {
+  CliError,
+  getProcessTasks,
+  getProcessUi,
+  pluralize,
+  reportFailure,
+  type NextStep,
+  type TaskHandle,
+} from "../../../output";
+import { TS_CONFIG_FILE } from "../../../../config/config-paths";
+import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import { registerLocalFolderDownloader } from "../../../../downloaders/local-folder";
 import {
@@ -26,6 +39,9 @@ import {
 
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
 const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];
+const DEFAULT_CACHE_FOLDER = ".antelope/cache";
+const INSTALL_COMMAND = "ajs project modules install";
+const INSTALL_DESCRIPTION = "resolve the interfaces they need";
 
 interface AddOptions {
   mode: string;
@@ -34,20 +50,12 @@ interface AddOptions {
   ignoreCache?: boolean;
 }
 
+type ModuleEntry = [string, AntelopeModuleConfig | string];
+
 export const handlers = new Map<
   string,
-  (
-    module: string,
-    options: AddOptions,
-  ) => Promise<[string, AntelopeModuleConfig | string]>
+  (module: string, options: AddOptions) => Promise<ModuleEntry>
 >();
-
-interface ModuleLoadResult {
-  moduleName: string;
-  moduleConfig: AntelopeModuleConfig | string;
-  skipped: boolean;
-  failed: boolean;
-}
 
 export interface AddCommandResult {
   added: string[];
@@ -55,218 +63,211 @@ export interface AddCommandResult {
   failed: string[];
 }
 
-async function downloadModuleToCache(
-  registry: DownloaderRegistry,
-  cache: ModuleCache,
-  projectPath: string,
-  moduleName: string,
-  moduleConfig: AntelopeModuleConfig,
-): Promise<boolean> {
-  const loaderIdentifier = registry.getLoaderIdentifier(
-    moduleConfig.source as any,
-  );
-  if (!loaderIdentifier) {
-    return true;
+type AddStatus = keyof AddCommandResult;
+
+interface ModuleAddOutcome {
+  status: AddStatus;
+  moduleName: string;
+  moduleConfig?: AntelopeModuleConfig | string;
+}
+
+interface AddContext {
+  options: AddOptions;
+  registry: DownloaderRegistry;
+  cache: ModuleCache;
+  existingModules: Record<string, unknown>;
+}
+
+interface SourceReference {
+  version?: string;
+  remote?: string;
+  path?: string;
+}
+
+function sourceReference(moduleConfig: AntelopeModuleConfig | string): string {
+  if (typeof moduleConfig === "string") {
+    return moduleConfig;
   }
-  info(`Downloading module ${chalk.bold(moduleName)} to cache...`);
-  try {
-    const moduleManifests = await registry.load(projectPath, cache, {
-      ...moduleConfig.source,
-      id: moduleName,
-    } as any);
-    if (moduleManifests.length > 0) {
-      const manifest = moduleManifests[0];
-      if (manifest.manifest.antelopeJs?.defaultConfig) {
-        moduleConfig.config = manifest.manifest.antelopeJs.defaultConfig;
-      }
-    }
-    success(
-      `Successfully downloaded module ${chalk.bold(moduleName)} to cache`,
-    );
-    return true;
-  } catch (err: unknown) {
-    reportFailure(err);
-    return false;
+  const source = moduleConfig.source as SourceReference;
+  return source.version ?? source.remote ?? source.path ?? "";
+}
+
+function createRegistry(): DownloaderRegistry {
+  const fs = new NodeFileSystem();
+  const registry = new DownloaderRegistry();
+  registerLocalDownloader(registry, { fs, exec: ExecuteCMD });
+  registerLocalFolderDownloader(registry, { fs });
+  registerPackageDownloader(registry, { fs, exec: ExecuteCMD });
+  registerGitDownloader(registry, { fs, exec: ExecuteCMD });
+  return registry;
+}
+
+async function createAddContext(
+  options: AddOptions,
+  config: AntelopeConfig,
+  environment: string,
+): Promise<AddContext> {
+  const loader = new ConfigLoader(new NodeFileSystem());
+  const antelopeConfig = await loader.load(options.project, environment);
+  const cacheFolder = config.cacheFolder ?? DEFAULT_CACHE_FOLDER;
+  const cache = new ModuleCache(path.resolve(options.project, cacheFolder));
+  await cache.load();
+  return {
+    options,
+    registry: createRegistry(),
+    cache,
+    existingModules: antelopeConfig.modules,
+  };
+}
+
+function resolveModule(module: string, options: AddOptions) {
+  const handler = handlers.get(options.mode);
+  if (!handler) {
+    throw new CliError({ title: `Unknown module source '${options.mode}'` });
+  }
+  return handler(module, options);
+}
+
+async function downloadModule(
+  context: AddContext,
+  moduleName: string,
+  moduleConfig: AntelopeModuleConfig | string,
+): Promise<void> {
+  if (typeof moduleConfig !== "object" || !("source" in moduleConfig)) {
+    return;
+  }
+  const source = moduleConfig.source as any;
+  if (!context.registry.getLoaderIdentifier(source)) {
+    return;
+  }
+  const [manifest] = await context.registry.load(
+    context.options.project,
+    context.cache,
+    { ...source, id: moduleName },
+  );
+  const defaultConfig = manifest?.manifest.antelopeJs?.defaultConfig;
+  if (defaultConfig) {
+    moduleConfig.config = defaultConfig;
   }
 }
 
-async function displayAddResults(
-  added: string[],
-  skipped: string[],
-  failed: string[],
-): Promise<void> {
-  let resultContent = "";
-
-  if (added.length > 0) {
-    resultContent += `${chalk.green.bold("Successfully added:")}\n`;
-    added.forEach((name) => {
-      resultContent += `  • ${chalk.bold(name)}\n`;
-    });
+async function addResolvedModule(
+  context: AddContext,
+  [moduleName, moduleConfig]: ModuleEntry,
+  task: TaskHandle,
+): Promise<ModuleAddOutcome> {
+  const name = chalk.bold(moduleName);
+  if (context.existingModules[moduleName]) {
+    task.skip(`Skipped ${name}: already in the project`);
+    return { status: "skipped", moduleName };
   }
+  task.update(`Downloading ${name}`);
+  await downloadModule(context, moduleName, moduleConfig);
+  task.succeed(`Added ${name} ${chalk.dim(sourceReference(moduleConfig))}`);
+  return { status: "added", moduleName, moduleConfig };
+}
 
-  if (skipped.length > 0) {
-    if (resultContent) resultContent += "\n";
-    resultContent += `${chalk.yellow.bold("Skipped:")}\n`;
-    skipped.forEach((name) => {
-      resultContent += `  • ${chalk.dim(name)}\n`;
-    });
+/**
+ * Adds one module as one task: resolve, skip when already present,
+ * download. A failure is reported once, with what / why / fix.
+ */
+async function addModule(
+  module: string,
+  context: AddContext,
+): Promise<ModuleAddOutcome> {
+  const task = getProcessTasks().start(`Adding ${chalk.bold(module)}`);
+  let moduleName = module;
+  try {
+    const entry = await resolveModule(module, context.options);
+    moduleName = entry[0];
+    return await addResolvedModule(context, entry, task);
+  } catch (err: unknown) {
+    task.dismiss();
+    reportFailure(err);
+    return { status: "failed", moduleName };
   }
+}
 
-  if (failed.length > 0) {
-    if (resultContent) resultContent += "\n";
-    resultContent += `${chalk.red.bold("Failed:")}\n`;
-    failed.forEach((name) => {
-      resultContent += `  • ${chalk.bold(name)}\n`;
-    });
-  }
+function groupOutcomes(outcomes: ModuleAddOutcome[]): AddCommandResult {
+  const result: AddCommandResult = { added: [], skipped: [], failed: [] };
+  outcomes.forEach((outcome) =>
+    result[outcome.status].push(outcome.moduleName),
+  );
+  return result;
+}
 
-  if (resultContent) {
-    const borderColor =
-      added.length > 0 ? "green" : failed.length > 0 ? "red" : "yellow";
-    await displayBox(resultContent, "📦 Module Addition Results", {
-      padding: 1,
-      borderColor,
+/**
+ * Adds modules to the project configuration, one line per module, and
+ * writes the configuration when at least one was added. Prints no summary,
+ * so other commands can add modules as one of their steps.
+ */
+export async function addModules(
+  modules: string[],
+  options: AddOptions,
+): Promise<AddCommandResult> {
+  const addOptions = { ...options, project: path.resolve(options.project) };
+  const { config, environment, environmentConfig } =
+    await resolveProjectContext(addOptions.project, options.env);
+  const context = await createAddContext(addOptions, config, environment);
+  const outcomes = await Promise.all(
+    modules.map((module) => addModule(module, context)),
+  );
+  const envModules = (environmentConfig.modules ??= {});
+  outcomes
+    .filter((outcome) => outcome.status === "added")
+    .forEach((outcome) => {
+      envModules[outcome.moduleName] = outcome.moduleConfig!;
     });
+  const result = groupOutcomes(outcomes);
+  if (result.failed.length > 0) {
+    process.exitCode = FAILURE_EXIT_CODE;
   }
+  if (result.added.length > 0) {
+    await writeConfig(addOptions.project, config);
+  }
+  return result;
+}
+
+function addHeadline(result: AddCommandResult): string {
+  const { added, skipped, failed } = result;
+  if (skipped.length === 0 && failed.length === 0) {
+    return `${pluralize(added.length, "module")} added to ${TS_CONFIG_FILE}`;
+  }
+  const counts = Object.entries(result)
+    .filter(([, names]) => names.length > 0)
+    .map(([status, names]) => `${names.length} ${status}`)
+    .join(", ");
+  const change = added.length > 0 ? "updated" : "unchanged";
+  return `${counts} · ${TS_CONFIG_FILE} ${change}`;
+}
+
+function addNextSteps(
+  result: AddCommandResult,
+  options: AddOptions,
+): NextStep[] {
+  if (result.added.length === 0) {
+    return [];
+  }
+  return [
+    {
+      command: scopedCommand(INSTALL_COMMAND, options),
+      description: INSTALL_DESCRIPTION,
+    },
+  ];
 }
 
 export async function projectModulesAddCommand(
   modules: string[],
   options: AddOptions,
 ): Promise<AddCommandResult | undefined> {
-  const resolvedProjectPath = path.resolve(options.project);
-  const {
-    config,
-    environment,
-    environmentConfig: env,
-  } = await resolveProjectContext(resolvedProjectPath, options.env);
-
-  console.log(""); // Add spacing for better readability
-  info(`Adding modules to your project...`);
-
-  const fs = new NodeFileSystem();
-  const loader = new ConfigLoader(fs);
-  const antelopeConfig = await loader.load(resolvedProjectPath, environment);
-
-  const registry = new DownloaderRegistry();
-  registerLocalDownloader(registry, { fs, exec: ExecuteCMD });
-  registerLocalFolderDownloader(registry, { fs });
-  registerPackageDownloader(registry, { fs, exec: ExecuteCMD });
-  registerGitDownloader(registry, { fs, exec: ExecuteCMD });
-
-  const failed: string[] = [];
-
-  let sources = await Promise.all(
-    modules.map((module) => {
-      const modulePath =
-        options.mode === "local" || options.mode === "dir"
-          ? path.isAbsolute(module)
-            ? module
-            : path.join(resolvedProjectPath, module)
-          : module;
-      info(`Adding ${chalk.bold(modulePath)} using ${options.mode} mode`);
-      return handlers
-        .get(options.mode)?.(module, {
-          ...options,
-          project: resolvedProjectPath,
-        })
-        .catch((err) => {
-          reportFailure(err);
-          failed.push(module);
-          return null;
-        });
-    }),
-  );
-
-  // Filter out failed handlers
-  sources = sources.filter(
-    (source): source is [string, AntelopeModuleConfig] => source !== null,
-  );
-
-  if (!env.modules) {
-    env.modules = {};
-  }
-
-  // Track successful additions
-  const added: string[] = [];
-  const skipped: string[] = [];
-
-  // Initialize module cache
-  const cacheFolder = config.cacheFolder ?? ".antelope/cache";
-  const cachePath = path.isAbsolute(cacheFolder)
-    ? cacheFolder
-    : path.join(resolvedProjectPath, cacheFolder);
-  const cache = new ModuleCache(cachePath);
-  await cache.load();
-
-  // Prepare module loading tasks for parallel execution
-  const moduleLoadingTasks = sources.map(
-    async (source): Promise<ModuleLoadResult | null> => {
-      if (!source) return null;
-
-      const [moduleName, moduleConfig] = source;
-
-      // Check if module already exists
-      if (antelopeConfig.modules[moduleName]) {
-        return { moduleName, moduleConfig, skipped: true, failed: false };
-      }
-
-      // Download module to cache if needed
-      const downloadable =
-        typeof moduleConfig === "object" &&
-        moduleConfig !== null &&
-        "source" in moduleConfig;
-      const downloaded = downloadable
-        ? await downloadModuleToCache(
-            registry,
-            cache,
-            resolvedProjectPath,
-            moduleName,
-            moduleConfig,
-          )
-        : true;
-
-      return { moduleName, moduleConfig, skipped: false, failed: !downloaded };
-    },
-  );
-
-  // Execute all module loading tasks in parallel
-  const moduleResults = await Promise.all(moduleLoadingTasks);
-
-  // Process results and update config
-  for (const result of moduleResults) {
-    if (!result) continue;
-
-    const {
-      moduleName,
-      moduleConfig,
-      skipped: wasSkipped,
-      failed: hasFailed,
-    } = result;
-
-    if (hasFailed) {
-      failed.push(moduleName);
-    } else if (wasSkipped) {
-      skipped.push(moduleName);
-    } else {
-      env.modules[moduleName] = moduleConfig;
-      added.push(moduleName);
-    }
-  }
-
-  if (failed.length > 0) {
-    process.exitCode = 1;
-  }
-
-  // Save the updated config
-  if (added.length > 0) {
-    await writeConfig(resolvedProjectPath, config);
-  }
-
-  // Show results
-  await displayAddResults(added, skipped, failed);
-
-  return { added, skipped, failed };
+  const startedAt = Date.now();
+  const result = await addModules(modules, options);
+  getProcessUi().summary({
+    headline: addHeadline(result),
+    durationMs: Date.now() - startedAt,
+    nextSteps: addNextSteps(result, options),
+  });
+  return result;
 }
 
 // Module source handlers
