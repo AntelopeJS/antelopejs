@@ -54,7 +54,6 @@ describe("production start", () => {
       concurrency: 3,
       verbose: ["runtime", "resolution.*"],
       refreshConfig: false,
-      help: false,
     });
   });
 
@@ -100,7 +99,7 @@ describe("production start", () => {
     expect(options.verbose).to.deep.equal(["*"]);
   });
 
-  it("supports short options and help", () => {
+  it("supports short options", () => {
     const options = parseProductionStartArgs([
       "-p",
       "fixture",
@@ -108,14 +107,12 @@ describe("production start", () => {
       "production",
       "-c",
       "2",
-      "-h",
     ]);
 
     expect(options).to.include({
       project: path.resolve("fixture"),
       env: "production",
       concurrency: 2,
-      help: true,
     });
   });
 
@@ -132,7 +129,6 @@ describe("production start", () => {
       concurrency: undefined,
       verbose: ["runtime", "resolution.*"],
       refreshConfig: false,
-      help: false,
     });
   });
 

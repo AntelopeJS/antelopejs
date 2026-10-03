@@ -32,6 +32,12 @@ describe("CLI dispatcher", () => {
     expect(isProductionStartInvocation(["project", "run"])).to.equal(false);
     expect(isProductionStartInvocation(["project", "dev"])).to.equal(false);
     expect(isProductionStartInvocation(["project", "build"])).to.equal(false);
+    expect(
+      isProductionStartInvocation(["project", "start", "--help"]),
+    ).to.equal(false);
+    expect(isProductionStartInvocation(["project", "start", "-h"])).to.equal(
+      false,
+    );
   });
 
   it("routes project start directly to the build artifact runtime", async () => {

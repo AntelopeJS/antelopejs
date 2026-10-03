@@ -13,28 +13,10 @@ import {
 export interface ProductionStartOptions {
   concurrency?: number;
   env: string;
-  help: boolean;
   project: string;
   refreshConfig: boolean;
   verbose?: string[];
 }
-
-const HELP = `Usage: ajs project start [options]
-
-Start an AntelopeJS project from .antelope/build/build.json without loading
-the development CLI or checking the npm registry.
-
-Options:
-  -p, --project <path>       Path to the AntelopeJS project
-  -e, --env <environment>   Runtime environment (default: default)
-  -c, --concurrency <count> Number of modules to load concurrently
-      --refresh-config      Start with antelope.config.ts resolved for the
-                            environment instead of the configuration stored
-                            in the build; exits with code 3 when it loads
-                            other modules than the build
-      --verbose [channels]  TRACE logging, optionally scoped by comma-separated channels
-  -h, --help                Display help
-`;
 
 function parseConcurrency(value?: string): number | undefined {
   if (value === undefined) {
@@ -79,7 +61,6 @@ export function parseProductionStartArgs(
       concurrency: { type: "string", short: "c" },
       verbose: { type: "string" },
       "refresh-config": { type: "boolean" },
-      help: { type: "boolean", short: "h" },
     },
   });
   return {
@@ -90,7 +71,6 @@ export function parseProductionStartArgs(
     concurrency: parseConcurrency(values.concurrency),
     verbose: parseVerbose(values.verbose ?? process.env.ANTELOPEJS_VERBOSE),
     refreshConfig: values["refresh-config"] ?? false,
-    help: values.help ?? false,
   };
 }
 
@@ -129,10 +109,6 @@ function parseArgsOrReportUsage(
 export async function runProductionStart(args: string[]): Promise<void> {
   const options = parseArgsOrReportUsage(args);
   if (!options) {
-    return;
-  }
-  if (options.help) {
-    process.stdout.write(HELP);
     return;
   }
   try {

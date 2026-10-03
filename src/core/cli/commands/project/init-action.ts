@@ -50,9 +50,10 @@ const PROJECT_INIT_COMMAND = "ajs project init";
 const NAME_FLAG = "--name <name>";
 const CURRENT_DIRECTORY = ".";
 const INSTALL_COMMAND = "ajs project modules install";
-const INSTALL_DESCRIPTION = "install the modules of the project";
+const INSTALL_DESCRIPTION =
+  "add modules for the interfaces no module implements";
 const DEV_COMMAND = "ajs project dev --watch";
-const DEV_DESCRIPTION = "run the project and restart on changes";
+const DEV_DESCRIPTION = "run the project and reload it on changes";
 
 const PROJECT_ANSWER_FLAGS: AnswerFlag<ProjectInitOptions>[] = [
   { option: "name", flag: NAME_FLAG },
@@ -114,7 +115,7 @@ async function askAppModuleImport(
   });
   const module = await prompter.text({
     message: `Please specify the ${source} source location:
-  • npm: Package name (e.g., "my-package")
+  • package: npm package name (e.g., "my-package")
   • git: Repository URL (e.g., "https://github.com/user/repo")
   • local: Relative path to module (e.g., "../my-module")`,
     flag: TEMPLATE_FLAG,

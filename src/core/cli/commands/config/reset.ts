@@ -1,15 +1,22 @@
 import { Command } from "commander";
 
+import { withExamples } from "../../help";
 import { lazyAction } from "../../lazy-action";
 
 export default function () {
-  return new Command("reset")
+  const command = new Command("reset")
+    .summary("Reset every CLI setting to its default")
     .description(
-      `Reset CLI configuration to default values\n` +
-        `Restores all configuration settings to their original defaults.`,
+      "Reset every CLI setting to its default value, after a confirmation.",
     )
-    .option("-y, --yes", "Skip confirmation prompt")
+    .option("-y, --yes", "Skip the confirmation")
     .action(
       lazyAction(async () => (await import("./reset-action")).resetConfig),
     );
+  return withExamples(command, [
+    {
+      description: "Reset without a confirmation",
+      command: "ajs config reset --yes",
+    },
+  ]);
 }

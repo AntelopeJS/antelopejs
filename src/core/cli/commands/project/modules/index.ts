@@ -8,9 +8,9 @@ import cmdInstall from "./install";
 
 export default function () {
   return new Command("modules")
+    .summary("Add, remove, list and update modules")
     .description(
-      `Manage modules in your AntelopeJS project\n` +
-        `Add, remove, update and fix modules in your project.`,
+      "Add, remove, list and update the modules of the project, and add the modules that implement its unresolved interfaces.",
     )
     .addCommand(cmdAdd())
     .addCommand(cmdRemove())

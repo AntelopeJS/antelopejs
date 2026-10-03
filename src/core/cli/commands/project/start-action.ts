@@ -60,7 +60,6 @@ export async function runStart(
       concurrency: commandOptions.concurrency,
       verbose: commandOptions.verbose,
       refreshConfig: commandOptions.refreshConfig ?? false,
-      help: false,
     });
   } catch (err) {
     reportFailure(err);

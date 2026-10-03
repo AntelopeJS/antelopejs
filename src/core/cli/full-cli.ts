@@ -9,6 +9,7 @@ import cmdPlugins from "./commands/plugins";
 import cmdProject from "./commands/project";
 import { getCoreVersion } from "./core-version";
 import { formatUsageErrors } from "./usage-errors";
+import { applyHelpConventions, formatExamples, type HelpExample } from "./help";
 import { reportAvailableUpdate, startUpdateCheck } from "./version-check";
 import { formatOfficialPluginsHelp } from "./plugin-registry";
 import {
@@ -19,33 +20,41 @@ import {
 
 const HELP_COMMAND_NAME = "help";
 const BARE_INVOCATION_ARGUMENT_COUNT = 2;
+const DOCS_URL = "https://antelopejs.com/docs/cli/introduction";
+const CLI_DESCRIPTION =
+  "Build modular Node.js applications from explicit interfaces.";
 
-function describeCLI(version: string): string {
-  const palette = getProcessPalette("result");
+const ROOT_EXAMPLES: HelpExample[] = [
+  { description: "Create a project", command: "ajs project init my-app" },
+  {
+    description: "Add a module from npm",
+    command: "ajs project modules add @antelopejs/api",
+  },
+  {
+    description: "Run the project and reload it on changes",
+    command: "ajs project dev --watch",
+  },
+];
+
+function describeVersion(version: string): string {
+  return `${getProcessPalette("result").bold(`AntelopeJS CLI v${version}`)}\n`;
+}
+
+function describeHelpFooter(): string {
   return (
-    `${palette.bold(`AntelopeJS CLI v${version}`)}\n` +
-    `Create modular Node.js applications with a clean interface-based architecture.\n\n` +
-    `${palette.bold("Commands:")}\n` +
-    `  project    Create and manage AntelopeJS projects\n` +
-    `  module     Work with individual modules and their interfaces\n` +
-    `  config     Configure CLI settings\n` +
-    `  update     Update the CLI and its official plugins\n` +
-    `  plugins    List official plugins\n\n` +
-    `${palette.bold("Plugins:")}\n` +
+    `\nPlugins:\n` +
     `${formatOfficialPluginsHelp()}\n` +
     `  Resolved from the nearest node_modules/.bin, then from PATH.\n\n` +
-    `${palette.bold("Examples:")}\n` +
-    `  $ ajs project init my-app         Create a new project\n` +
-    `  $ ajs module init my-module       Create a new module\n` +
-    `  $ ajs project run --watch         Run with auto-reload`
+    `${formatExamples(ROOT_EXAMPLES)}\n\n` +
+    `Run ajs <command> --help for details. Docs: ${DOCS_URL}`
   );
 }
 
 export function createCLI(version: string) {
-  return new Command()
+  const program = new Command()
     .name("ajs")
-    .description(describeCLI(version))
-    .version(version, "-v, --version", "Display CLI version number")
+    .description(CLI_DESCRIPTION)
+    .version(version, "-v, --version", "Print the version")
     .addOption(Options.verbose)
     .addOption(Options.noColor)
     .addCommand(cmdProject())
@@ -53,7 +62,10 @@ export function createCLI(version: string) {
     .addCommand(cmdConfig())
     .addCommand(cmdUpdate())
     .addCommand(cmdPlugins())
-    .helpCommand(`${HELP_COMMAND_NAME} [command]`, `Display help for command`);
+    .addHelpText("before", describeVersion(version))
+    .addHelpText("after", describeHelpFooter());
+  applyHelpConventions(program);
+  return program;
 }
 
 export function coreCommandNames(
