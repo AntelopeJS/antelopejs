@@ -158,7 +158,7 @@ describe("project init behavior", () => {
       "api,auth",
       "--pm",
       "pnpm",
-      "--no-git",
+      "--no-git-init",
     ]);
 
     expect(prompts.asked).to.deep.equal([]);
@@ -178,24 +178,23 @@ describe("project init behavior", () => {
     });
   });
 
-  it("accepts --no-git-init, the spelling of module init", async () => {
-    const stubs = stubInit();
+  it("keeps --git out of the git repository toggle", async () => {
+    stubInit();
     fakePrompts({ isInteractive: false });
 
-    await cmdInit().parseAsync([
-      "node",
-      "test",
-      projectDir,
-      "--name",
-      "shop",
-      "--template",
-      "basic",
-      "--pm",
-      "npm",
-      "--no-git-init",
-    ]);
+    let thrown: unknown;
+    try {
+      await cmdInit()
+        .exitOverride()
+        .configureOutput({ writeErr: () => undefined })
+        .parseAsync(["node", "test", projectDir, "--no-git"]);
+    } catch (error) {
+      thrown = error;
+    }
 
-    expect(stubs.moduleInit.firstCall.args[1]).to.include({ gitInit: false });
+    expect((thrown as { code?: string }).code).to.equal(
+      "commander.unknownOption",
+    );
   });
 
   it("takes the defaults with --yes", async () => {
@@ -241,7 +240,7 @@ describe("project init behavior", () => {
     const needsInput = failure as NeedsInputError;
     expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
     expect(needsInput.problem.fixes).to.deep.equal([
-      "Pass them as flags: ajs project init demo --name <name> --template <name> --[no-]git",
+      "Pass them as flags: ajs project init demo --name <name> --template <name> --[no-]git-init",
       "Or accept the defaults: ajs project init demo --yes",
     ]);
     expect(common.readConfig as sinon.SinonStub).to.have.property(

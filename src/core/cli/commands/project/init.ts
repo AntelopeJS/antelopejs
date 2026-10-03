@@ -14,12 +14,8 @@ export default function () {
     .addOption(Options.template)
     .addOption(Options.interfaces)
     .addOption(Options.packageManager)
-    .addOption(
-      new Option("--git", "Initialize a git repository in the new module"),
-    )
-    .addOption(new Option("--no-git", "Do not initialize a git repository"))
-    .addOption(new Option("--git-init").hideHelp())
-    .addOption(new Option("--no-git-init").hideHelp())
+    .addOption(Options.gitInit)
+    .addOption(Options.noGitInit)
     .addOption(Options.yes)
     .action(
       lazyAction(

@@ -4,6 +4,7 @@ import { mkdir, stat } from "node:fs/promises";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import {
+  GIT_INIT_FLAG,
   moduleInitCommand,
   type ModuleInitOptions,
   PACKAGE_MANAGER_FLAG,
@@ -30,7 +31,6 @@ export interface ProjectInitOptions {
   template?: string;
   interfaces?: string[];
   pm?: PackageManagerName;
-  git?: boolean;
   gitInit?: boolean;
   yes?: boolean;
 }
@@ -45,13 +45,12 @@ const PROJECT_ROOT_MODULE = ".";
 const DIRECTORY_SOURCE = "dir";
 const PROJECT_INIT_COMMAND = "ajs project init";
 const NAME_FLAG = "--name <name>";
-const GIT_FLAG = "--[no-]git";
 
 const PROJECT_ANSWER_FLAGS: AnswerFlag<ProjectInitOptions>[] = [
   { option: "name", flag: NAME_FLAG },
   { option: "template", flag: TEMPLATE_FLAG },
   { option: "pm", flag: PACKAGE_MANAGER_FLAG },
-  { option: "git", flag: GIT_FLAG },
+  { option: "gitInit", flag: GIT_INIT_FLAG },
 ];
 
 async function isProjectPathAvailable(projectPath: string): Promise<boolean> {
@@ -149,16 +148,12 @@ async function importAppModule(
   });
 }
 
-function withGitAlias(options: ProjectInitOptions): ProjectInitOptions {
-  return { ...options, git: options.git ?? options.gitInit };
-}
-
 function moduleOptions(options: ProjectInitOptions): ModuleInitOptions {
   return {
     template: options.template,
     interfaces: options.interfaces,
     pm: options.pm,
-    gitInit: options.git,
+    gitInit: options.gitInit,
   };
 }
 
@@ -245,15 +240,13 @@ function askProjectName(
  * Creates a project, either around a new module created from a template or
  * around an existing module. Questions come first and files last, so a
  * cancelled or unanswerable question writes nothing. The module flags
- * answer the questions of the new module; `--git-init` is accepted as an
- * alias of `--git`, the spelling `ajs module init` uses.
+ * answer the questions of the new module.
  */
 export async function projectInitCommand(
   project: string,
-  givenOptions: ProjectInitOptions = {},
+  options: ProjectInitOptions = {},
 ): Promise<void> {
   console.log("");
-  const options = withGitAlias(givenOptions);
   const projectPath = path.resolve(project);
   const prompter = projectPrompter(project, options);
   prompter.requireAnswers(missingFlags(options, PROJECT_ANSWER_FLAGS));
