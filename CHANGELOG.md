@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.12.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.11.0...v1.12.0)
+
+### 🚀 Enhancements
+
+- **cli:** Expose the output module as @antelopejs/core/cli ([#186](https://github.com/AntelopeJS/antelopejs/pull/186))
+- **cli:** Forward --no-color and --verbose to plugins ([#187](https://github.com/AntelopeJS/antelopejs/pull/187))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.11.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.10.3...v1.11.0)
