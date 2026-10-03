@@ -1,7 +1,7 @@
 import { CANCELLED_ERROR_NAME, CANCELLED_MESSAGE } from "../cancellation";
 import { FAILURE_EXIT_CODE, USAGE_EXIT_CODE } from "../exit-codes";
 import type { CliProblem, MissingInput, Ui } from "./types";
-import { getProcessUi } from "./ui";
+import { getProcessUi } from "./tasks";
 
 const CLI_ERROR_NAME = "CliError";
 const NEEDS_INPUT_ERROR_NAME = "NeedsInputError";

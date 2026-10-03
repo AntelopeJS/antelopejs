@@ -148,7 +148,7 @@ describe("config commands behavior", () => {
     const writeStub = sinon.stub(common, "writeUserConfig").resolves();
     const warnStub = sinon
       .stub(common, "displayNonDefaultGitWarning")
-      .resolves();
+      .returns();
     sinon.stub(cliUi, "displayBox").resolves();
     sinon.stub(cliUi, "success");
 

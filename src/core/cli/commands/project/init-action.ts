@@ -15,7 +15,7 @@ import { isPromptCancellation } from "../../cancellation";
 import { readConfig, writeConfig } from "../../common";
 import type { PackageManagerName } from "../../package-manager-name";
 import { FAILURE_EXIT_CODE, USAGE_EXIT_CODE } from "../../exit-codes";
-import { handlers, projectModulesAddCommand } from "./modules/add-action";
+import { addModules, handlers } from "./modules/add-action";
 import { displayBox, error, info, Spinner, warning } from "../../cli-ui";
 import {
   CliError,
@@ -142,7 +142,7 @@ async function importAppModule(
   appModule: AppModuleImport,
 ): Promise<void> {
   await createProjectConfig(projectPath, name);
-  await projectModulesAddCommand([appModule.module], {
+  await addModules([appModule.module], {
     mode: appModule.source,
     project: projectPath,
   });
@@ -176,7 +176,7 @@ async function createAppModule(
       prompter,
     });
     await createProjectConfig(projectPath, name);
-    await projectModulesAddCommand([PROJECT_ROOT_MODULE], {
+    await addModules([PROJECT_ROOT_MODULE], {
       mode: LOCAL_MODULE_SOURCE,
       project: projectPath,
     });

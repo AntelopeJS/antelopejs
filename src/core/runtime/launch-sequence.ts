@@ -4,7 +4,7 @@ import { ShutdownManager } from "../shutdown";
 import { NodeFileSystem } from "../filesystem";
 import type { LaunchOptions } from "../../types";
 import { ModuleManager } from "../module-manager";
-import { terminalDisplay } from "../cli/terminal-display";
+import { terminalDisplay } from "../cli/output/tasks";
 import { setupAntelopeProjectLogging } from "../../logging";
 import { readRefreshedBuildArtifact } from "./build-refresh";
 import type { BuildArtifact } from "../build/build-artifact";

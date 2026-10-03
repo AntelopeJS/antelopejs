@@ -8,7 +8,7 @@ import {
   levelMap,
   setupAntelopeProjectLogging,
 } from "../../src/logging";
-import { terminalDisplay } from "../../src/core/cli/terminal-display";
+import { getProcessTasks } from "../../src/core/cli/output/tasks";
 import { CapturedOutput, captureOutput } from "../helpers/capture-output";
 
 const ASYNC_CONTEXT_WARNING =
@@ -63,18 +63,23 @@ describe("Logging Module", () => {
       expect(output.stdout).to.equal("");
     });
 
-    it("should route ERROR to stderr while a spinner is active", () => {
+    it("should keep each level on its stream while a task is running", () => {
       setupAntelopeProjectLogging({ enabled: true });
-      sinon.stub(terminalDisplay, "isSpinnerActive").returns(true);
-      const logStub = sinon.stub(terminalDisplay, "log");
+      const tasks = getProcessTasks();
+      const writeSpy = sinon.spy(tasks, "write");
+      const task = tasks.start("Working");
 
-      Logging.Error("boom");
-      Logging.Info("ready");
+      const output = captureOutput(() => {
+        Logging.Error("boom");
+        Logging.Info("ready");
+      });
+      task.dismiss();
 
-      expect(logStub.firstCall.args[0]).to.contain("boom");
-      expect(logStub.firstCall.args[1]).to.equal(process.stderr);
-      expect(logStub.secondCall.args[0]).to.contain("ready");
-      expect(logStub.secondCall.args[1]).to.equal(process.stdout);
+      expect(writeSpy.firstCall.args[0]).to.equal(process.stderr);
+      expect(writeSpy.secondCall.args[0]).to.equal(process.stdout);
+      expect(output.stderr).to.contain("boom");
+      expect(output.stdout).to.contain("ready");
+      expect(output.stdout).to.not.contain("boom");
     });
   });
 

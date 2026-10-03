@@ -14,13 +14,25 @@ import {
   warning,
 } from "../../../src/core/cli/cli-ui";
 import { stripAnsi } from "../../../src/core/cli/logging-utils";
-import { getProcessUi, type MessageLevel } from "../../../src/core/cli/output";
+import {
+  getProcessUi,
+  TaskList,
+  type MessageLevel,
+  type OutputCapabilities,
+} from "../../../src/core/cli/output";
 import {
   captureOutput,
   captureOutputAsync,
 } from "../../helpers/capture-output";
+import { MemoryStream } from "../../helpers/memory-ui";
 
-const SPINNER_TICK_MS = 200;
+const ERASE_ONE_LINE = "\x1b[1A\r\x1b[J";
+
+const LIVE_CAPABILITIES: OutputCapabilities = {
+  hasUnicode: true,
+  colors: { result: false, feedback: false },
+  terminals: { result: true, feedback: true },
+};
 
 interface SpinnerStatus {
   method: "succeed" | "fail" | "info" | "warn";
@@ -32,11 +44,6 @@ interface ConsoleStubs {
   error: sinon.SinonStub;
 }
 
-interface StreamStubs {
-  stdout: sinon.SinonStub;
-  stderr: sinon.SinonStub;
-}
-
 function stubConsole(): ConsoleStubs {
   return {
     log: sinon.stub(console, "log"),
@@ -44,20 +51,9 @@ function stubConsole(): ConsoleStubs {
   };
 }
 
-function stubStreams(): StreamStubs {
-  return {
-    stdout: sinon.stub(process.stdout, "write"),
-    stderr: sinon.stub(process.stderr, "write"),
-  };
-}
-
 function setTerminal(isTerminal: boolean): void {
   (process.stdout as any).isTTY = isTerminal;
   (process.stderr as any).isTTY = isTerminal;
-}
-
-function firstArgument(stub: sinon.SinonStub): string {
-  return String(stub.firstCall.args[0]);
 }
 
 const { symbols } = getProcessUi();
@@ -89,45 +85,50 @@ describe("CLI UI spinner", () => {
     );
   });
 
-  it("renders frames and clears its line on stderr in terminal mode", async () => {
-    setTerminal(true);
-    const streams = stubStreams();
-    const clock = sinon.useFakeTimers();
+  it("draws itself as a live task and finishes with its final line", async () => {
+    const result = new MemoryStream(true);
+    const feedback = new MemoryStream(true);
+    const tasks = new TaskList({
+      streams: { result, feedback },
+      capabilities: LIVE_CAPABILITIES,
+      isLive: true,
+    });
 
-    try {
-      const spinner = new Spinner("Start");
-      await spinner.start();
-      spinner.update("Updated");
-      clock.tick(SPINNER_TICK_MS);
-      await spinner.stop();
-    } finally {
-      clock.restore();
-      sinon.restore();
-    }
+    const spinner = new Spinner("Start", tasks);
+    await spinner.start();
+    await spinner.start();
+    spinner.update("Updated");
+    spinner.log(result, "result");
+    await spinner.succeed();
 
-    expect(streams.stdout.called).to.equal(false);
-    expect(firstArgument(streams.stderr)).to.contain("Updated");
-    expect(streams.stderr.calledWith("\r\x1b[K")).to.equal(true);
+    expect(result.text).to.equal("result\n");
+    expect(feedback.text).to.equal(
+      [
+        "⠋ Start\n",
+        ERASE_ONE_LINE,
+        "⠋ Updated\n",
+        ERASE_ONE_LINE,
+        "⠋ Updated\n",
+        ERASE_ONE_LINE,
+        "✔ Updated\n",
+      ].join(""),
+    );
   });
 
-  it("keeps the spinner on stderr when logging a message to stdout", async () => {
-    setTerminal(true);
-    const streams = stubStreams();
-    const clock = sinon.useFakeTimers();
+  it("stops without a final line", async () => {
+    const feedback = new MemoryStream();
+    const tasks = new TaskList({
+      streams: { result: new MemoryStream(), feedback },
+      capabilities: LIVE_CAPABILITIES,
+      isLive: false,
+    });
 
-    try {
-      const spinner = new Spinner("Working");
-      await spinner.start();
-      spinner.log(process.stdout, "result");
-      await spinner.stop();
-    } finally {
-      clock.restore();
-      sinon.restore();
-    }
+    const spinner = new Spinner("Working", tasks);
+    await spinner.start("Renamed");
+    await spinner.stop();
+    await spinner.succeed();
 
-    expect(streams.stdout.calledOnceWith("result\n")).to.equal(true);
-    expect(streams.stderr.calledWith("\r\x1b[K")).to.equal(true);
-    expect(streams.stderr.calledWithMatch("Working")).to.equal(true);
+    expect(feedback.text).to.equal("");
   });
 
   it("reports every final status on stderr with its level symbol", async () => {

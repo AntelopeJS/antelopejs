@@ -5,7 +5,7 @@ import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 
 import { ModuleCache } from "../../../src/core/module-cache";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
-import { terminalDisplay } from "../../../src/core/cli/terminal-display";
+import { getProcessTasks } from "../../../src/core/cli/output";
 import { registerGitDownloader } from "../../../src/core/downloaders/git";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
 
@@ -416,9 +416,7 @@ describe("GitDownloader", () => {
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
 
-    const failSpinnerStub = sinon
-      .stub(terminalDisplay, "failSpinner")
-      .resolves();
+    const messageStub = sinon.stub(getProcessTasks().ui, "message");
 
     const exec = async (command: string, _options: { cwd?: string }) => {
       if (command.startsWith("git clone")) {
@@ -445,8 +443,9 @@ describe("GitDownloader", () => {
         "git clone https://github.com/org/missing.git https___github_com_org_missing_git",
       );
       expect((err as ExecError).stderr).to.equal("repository not found");
+      expect(messageStub.called).to.equal(false);
     } finally {
-      failSpinnerStub.restore();
+      messageStub.restore();
     }
   });
 
@@ -542,9 +541,7 @@ describe("GitDownloader", () => {
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
 
-    const failSpinnerStub = sinon
-      .stub(terminalDisplay, "failSpinner")
-      .resolves();
+    const messageStub = sinon.stub(getProcessTasks().ui, "message");
 
     const exec = async (command: string, _options: { cwd?: string }) => {
       if (command.startsWith("git clone")) {
@@ -577,9 +574,9 @@ describe("GitDownloader", () => {
       expect.fail("Expected failure");
     } catch (err) {
       expect(String(err)).to.include("command exploded");
-      expect(failSpinnerStub.called).to.equal(true);
+      expect(messageStub.calledWith("error")).to.equal(false);
     } finally {
-      failSpinnerStub.restore();
+      messageStub.restore();
     }
   });
 

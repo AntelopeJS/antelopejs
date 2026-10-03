@@ -27,6 +27,12 @@ import {
 } from "../../../../../src/core/cli/commands/project/modules/add-action";
 import { MODULE_SOURCE_MODES } from "../../../../../src/core/cli/commands/project/modules/add";
 
+function messageLines(stub: sinon.SinonStub): string[] {
+  return stub
+    .getCalls()
+    .map((call) => stripAnsi(`${call.args[0]} ${call.args[1]}`));
+}
+
 describe("project modules behavior", () => {
   afterEach(() => {
     sinon.restore();
@@ -117,18 +123,15 @@ describe("project modules behavior", () => {
     expect(config.modules).to.have.property("newmod");
   });
 
-  it("uses absolute module path for local mode in logs", async () => {
+  it("reports each added module with its source, then one summary", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(common, "writeConfig").resolves();
 
-    const infoStub = sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "error");
-    sinon.stub(cliUi, "displayBox").resolves();
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     const originalHandler = handlers.get("local");
     handlers.set("local", async () => ["absMod", "local-src"] as any);
@@ -145,8 +148,19 @@ describe("project modules behavior", () => {
       }
     }
 
-    const infoCalls = infoStub.getCalls().map((call) => call.args[0] as string);
-    expect(infoCalls.some((msg) => msg.includes(absPath))).to.equal(true);
+    expect(messageLines(messageStub)).to.deep.equal([
+      "success Added absMod local-src",
+    ]);
+    expect(summaryStub.calledOnce).to.equal(true);
+    expect(summaryStub.firstCall.args[0]).to.deep.include({
+      headline: "1 module added to antelope.config.ts",
+      nextSteps: [
+        {
+          command: "ajs project modules install --project /tmp/project",
+          description: "resolve the interfaces they need",
+        },
+      ],
+    });
   });
 
   it("uses absolute cache folder when configured", async () => {
@@ -187,49 +201,46 @@ describe("project modules behavior", () => {
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(common, "writeConfig").resolves();
 
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "error");
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     await projectModulesAddCommand(["existing@1.0.0"], {
       mode: "package",
       project: "/tmp/project",
     });
 
-    const options = displayStub.firstCall.args[2] as any;
-    expect(options.borderColor).to.equal("yellow");
+    expect(messageLines(messageStub)).to.deep.equal([
+      "skip Skipped existing: already in the project",
+    ]);
+    expect(summaryStub.firstCall.args[0]).to.deep.include({
+      headline: "1 skipped · antelope.config.ts unchanged",
+      nextSteps: [],
+    });
   });
 
-  it("ignores falsy sources returned by handler", async () => {
+  it("reports a module of an unknown source as failed", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
     sinon.stub(ModuleCache.prototype, "load").resolves();
-    sinon.stub(common, "writeConfig").resolves();
+    const writeStub = sinon.stub(common, "writeConfig").resolves();
+    const problemStub = sinon.stub(getProcessUi(), "problem");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
-    const displayStub = sinon.stub(cliUi, "displayBox").resolves();
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "error");
+    const result = await projectModulesAddCommand(["modA"], {
+      mode: "svn",
+      project: "/tmp/project",
+    });
 
-    const originalHandler = handlers.get("local");
-    handlers.set("local", async () => undefined as any);
-    try {
-      await projectModulesAddCommand(["modA"], {
-        mode: "local",
-        project: "/tmp/project",
-      });
-    } finally {
-      if (originalHandler) {
-        handlers.set("local", originalHandler);
-      }
-    }
-
-    expect(displayStub.called).to.equal(false);
-    expect(Object.keys(config.modules)).to.have.length(0);
+    expect(result?.failed).to.deep.equal(["modA"]);
+    expect(problemStub.firstCall.args[0].title).to.equal(
+      "Unknown module source 'svn'",
+    );
+    expect(summaryStub.firstCall.args[0].headline).to.equal(
+      "1 failed · antelope.config.ts unchanged",
+    );
+    expect(writeStub.called).to.equal(false);
+    expect(process.exitCode).to.equal(1);
   });
 
   it("logs download success when registry returns no manifests", async () => {
@@ -243,17 +254,16 @@ describe("project modules behavior", () => {
     sinon.stub(DownloaderRegistry.prototype, "load").resolves([]);
     sinon.stub(common, "writeConfig").resolves();
 
-    const successStub = sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "error");
-    sinon.stub(cliUi, "displayBox").resolves();
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    sinon.stub(getProcessUi(), "summary");
 
     await projectModulesAddCommand(["pkg@1.0.0"], {
       mode: "package",
       project: "/tmp/project",
     });
-    expect(successStub.called).to.equal(true);
+    expect(messageLines(messageStub)).to.deep.equal([
+      "success Added pkg 1.0.0",
+    ]);
   });
 
   it("errors and skips module when download fails with non-error", async () => {
@@ -371,11 +381,9 @@ describe("project modules behavior", () => {
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const infoStub = sinon.stub(cliUi, "info");
     const errorStub = sinon.stub(getProcessUi(), "problem");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "displayBox").resolves();
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    sinon.stub(getProcessUi(), "summary");
 
     const originalHandler = handlers.get("local");
     handlers.set("local", async () => {
@@ -393,13 +401,10 @@ describe("project modules behavior", () => {
       }
     }
 
-    expect(errorStub.called).to.equal(true);
+    expect(errorStub.calledOnce).to.equal(true);
+    expect(messageStub.called).to.equal(false);
     expect(config.modules).to.be.an("object");
     expect(writeStub.called).to.equal(false);
-
-    const expectedPath = "/tmp/project/modules/modA";
-    const infoCalls = infoStub.getCalls().map((call) => call.args[0] as string);
-    expect(infoCalls.some((msg) => msg.includes(expectedPath))).to.equal(true);
   });
 
   it("does not add module when download to cache fails", async () => {
@@ -743,10 +748,8 @@ describe("project modules behavior", () => {
       .stub(ConfigLoader.prototype, "load")
       .resolves({ modules: { ":foo": {}, bar: {} } } as any);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
-    const warningStub = sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "error");
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     await projectModulesRemoveCommand(["foo"], {
       project: "/tmp/project",
@@ -755,10 +758,20 @@ describe("project modules behavior", () => {
 
     expect(writeStub.calledOnce).to.equal(true);
     expect(process.exitCode).to.equal(undefined);
-    expect(warningStub.called).to.equal(true);
+    expect(config.modules).to.not.have.property(":foo");
+    expect(messageLines(messageStub)).to.deep.equal(["success Removed foo"]);
+    expect(summaryStub.firstCall.args[0]).to.deep.include({
+      headline: "1 module removed from antelope.config.ts",
+      nextSteps: [
+        {
+          command: "ajs project modules install --project /tmp/project",
+          description: "check that every interface is still implemented",
+        },
+      ],
+    });
   });
 
-  it("warns when duplicate removals are requested", async () => {
+  it("removes a module requested twice once", async () => {
     const config: any = {
       modules: {
         foo: { source: { type: "package", package: "foo", version: "1.0.0" } },
@@ -768,10 +781,8 @@ describe("project modules behavior", () => {
     sinon
       .stub(ConfigLoader.prototype, "load")
       .resolves({ modules: { foo: {} } } as any);
-    const warningStub = sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "error");
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
     sinon.stub(common, "writeConfig").resolves();
 
     await projectModulesRemoveCommand(["foo", "foo"], {
@@ -779,7 +790,11 @@ describe("project modules behavior", () => {
       force: false,
     });
 
-    expect(warningStub.called).to.equal(true);
+    expect(messageLines(messageStub)).to.deep.equal(["success Removed foo"]);
+    expect(summaryStub.firstCall.args[0]).to.deep.include({
+      headline: "1 module removed from antelope.config.ts",
+      nextSteps: [],
+    });
   });
 
   it("reports when no modules were removed", async () => {
@@ -816,10 +831,8 @@ describe("project modules behavior", () => {
     sinon
       .stub(ConfigLoader.prototype, "load")
       .resolves({ modules: { foo: {} } } as any);
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "error");
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    sinon.stub(getProcessUi(), "summary");
 
     await projectModulesRemoveCommand(["foo", "missing"], {
       project: "/tmp/project",
@@ -828,6 +841,10 @@ describe("project modules behavior", () => {
 
     expect(writeStub.calledOnce).to.equal(true);
     expect(process.exitCode).to.equal(undefined);
+    expect(messageLines(messageStub)).to.deep.equal([
+      "success Removed foo",
+      "skip Skipped missing: not in the project",
+    ]);
   });
 
   it("errors when removing missing modules without force", async () => {
@@ -916,13 +933,15 @@ describe("project modules behavior", () => {
         },
       },
     } as any);
-    sinon.stub(cliUi, "info");
-    const successStub = sinon.stub(cliUi, "success");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
-    expect(successStub.called).to.equal(true);
+    expect(summaryStub.firstCall.args[0]).to.deep.include({
+      headline: "Nothing to update: no module comes from npm",
+      nextSteps: [],
+    });
   });
 
   it("updates the root config when the default environment is named", async () => {
@@ -941,8 +960,7 @@ describe("project modules behavior", () => {
         },
       },
     } as any);
-    sinon.stub(cliUi, "info");
-    const successStub = sinon.stub(cliUi, "success");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     await cmdUpdate().parseAsync([
       "node",
@@ -954,7 +972,7 @@ describe("project modules behavior", () => {
     ]);
 
     expect(loadStub.firstCall.args[1]).to.equal("default");
-    expect(successStub.called).to.equal(true);
+    expect(summaryStub.calledOnce).to.equal(true);
   });
 
   it("skips modules silently when npm view fails", async () => {
@@ -972,14 +990,15 @@ describe("project modules behavior", () => {
     sinon
       .stub(command, "ExecuteCMD")
       .resolves({ code: 1, stdout: "", stderr: "oops" });
-    sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
-    const successStub = sinon.stub(cliUi, "success");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project", "pkg"]);
 
-    expect(successStub.called).to.equal(true);
+    expect(summaryStub.firstCall.args[0].headline).to.equal(
+      "Everything is up to date (1 npm module checked)",
+    );
   });
 
   it("skips modules silently when npm view throws", async () => {
@@ -995,14 +1014,15 @@ describe("project modules behavior", () => {
       },
     } as any);
     sinon.stub(command, "ExecuteCMD").callsFake(() => Promise.reject("boom"));
-    sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
-    const successStub = sinon.stub(cliUi, "success");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project", "pkg"]);
 
-    expect(successStub.called).to.equal(true);
+    expect(summaryStub.firstCall.args[0].headline).to.equal(
+      "Everything is up to date (1 npm module checked)",
+    );
   });
 
   it("reports when modules are already up to date", async () => {
@@ -1020,15 +1040,16 @@ describe("project modules behavior", () => {
     sinon
       .stub(command, "ExecuteCMD")
       .resolves({ code: 0, stdout: "1.0.0", stderr: "" });
-    const successStub = sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "error");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
+    const messageStub = sinon.stub(getProcessUi(), "message");
 
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project", "pkg"]);
 
-    expect(successStub.called).to.equal(true);
+    expect(messageStub.called).to.equal(false);
+    expect(summaryStub.firstCall.args[0].headline).to.equal(
+      "Everything is up to date (1 npm module checked)",
+    );
   });
 
   it("updates npm modules and writes config", async () => {
@@ -1048,16 +1069,26 @@ describe("project modules behavior", () => {
     sinon
       .stub(command, "ExecuteCMD")
       .resolves({ code: 0, stdout: "2.0.0", stderr: "" });
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "error");
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(writeStub.calledOnce).to.equal(true);
     expect(process.exitCode).to.equal(undefined);
+    expect(messageLines(messageStub)).to.deep.equal([
+      "success Updated pkg 1.0.0 → 2.0.0",
+    ]);
+    expect(summaryStub.firstCall.args[0]).to.deep.include({
+      headline: "1 module updated in antelope.config.ts",
+      nextSteps: [
+        {
+          command: "ajs project dev --project /tmp/project",
+          description: "run the project with the new versions",
+        },
+      ],
+    });
   });
 
   it("fails without checking or writing when a requested module is not in the project", async () => {
@@ -1069,7 +1100,7 @@ describe("project modules behavior", () => {
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
     const execStub = sinon.stub(command, "ExecuteCMD");
     const errorStub = sinon.stub(cliUi, "error");
-    const successStub = sinon.stub(cliUi, "success");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
 
@@ -1086,7 +1117,7 @@ describe("project modules behavior", () => {
     expect(stripAnsi(String(errorStub.firstCall.args[0]))).to.include(
       "missing",
     );
-    expect(successStub.called).to.equal(false);
+    expect(summaryStub.called).to.equal(false);
     expect(execStub.called).to.equal(false);
     expect(writeStub.called).to.equal(false);
     expect(process.exitCode).to.equal(1);
@@ -1115,10 +1146,8 @@ describe("project modules behavior", () => {
     execStub.onFirstCall().resolves({ code: 0, stdout: "2.0.0", stderr: "" });
     execStub.onSecondCall().resolves({ code: 0, stdout: "1.0.0", stderr: "" });
 
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "warning");
-    const successStub = sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "error");
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     const cmd = cmdUpdate();
     await cmd.parseAsync([
@@ -1135,9 +1164,20 @@ describe("project modules behavior", () => {
     const checkedCommands = execStub.getCalls().map((call) => call.args[0]);
     expect(checkedCommands).to.have.length(2);
     expect(checkedCommands.join("\n")).to.not.include("unrequested");
-    expect(stripAnsi(String(successStub.firstCall.args[0]))).to.include(
-      "Would update 1 module(s)",
-    );
+    expect(messageLines(messageStub)).to.deep.equal([
+      "info Would update pkg1 1.0.0 → 2.0.0",
+    ]);
+    expect(summaryStub.firstCall.args[0]).to.deep.include({
+      headline:
+        "Dry run: 1 module can be updated · antelope.config.ts unchanged",
+      nextSteps: [
+        {
+          command:
+            "ajs project modules update pkg1 pkgSame gitMod --project /tmp/project",
+          description: "apply these updates",
+        },
+      ],
+    });
     expect(writeStub.called).to.equal(false);
     expect(process.exitCode).to.equal(undefined);
   });

@@ -3,17 +3,24 @@ import {
   processCapabilityContext,
   processStreams,
 } from "./capabilities";
-import { createPalette, padVisible, visibleWidth } from "./format";
+import {
+  createPalette,
+  formatDuration,
+  padVisible,
+  visibleWidth,
+} from "./format";
 import { LEVEL_COLORS, selectSymbols } from "./symbols";
 import type {
   CliProblem,
   DetailEntry,
   MessageLevel,
   MessageOptions,
+  NextStep,
   OutputCapabilities,
   OutputChannel,
   OutputStreams,
   Palette,
+  SummaryBlock,
   SymbolSet,
   TableColumn,
   Ui,
@@ -28,6 +35,8 @@ const COLUMN_GAP = "  ";
 const TAB_SEPARATOR = "\t";
 const DEFAULT_CHANNEL: OutputChannel = "feedback";
 const JSON_INDENTATION = 2;
+const SUMMARY_SEPARATOR = " · ";
+const NEXT_STEPS_TITLE = "Next steps";
 
 class StreamUi implements Ui {
   readonly symbols: SymbolSet;
@@ -51,9 +60,10 @@ class StreamUi implements Ui {
   message(level: MessageLevel, text: string, options?: MessageOptions): void {
     const channel = options?.channel ?? DEFAULT_CHANNEL;
     this.writeLine(channel, this.statusLine(channel, level, text));
-    if (options?.detail) {
-      this.writeDetail(channel, options.detail);
-    }
+    const details = [options?.detail, ...(options?.details ?? [])];
+    details
+      .filter((detail): detail is string => Boolean(detail))
+      .forEach((detail) => this.writeDetail(channel, detail));
   }
 
   problem(problem: CliProblem): void {
@@ -83,6 +93,19 @@ class StreamUi implements Ui {
       palette.dim(this.symbols.rule.repeat(visibleWidth(text))),
     );
     this.states.result = "heading";
+  }
+
+  summary(block: SummaryBlock): void {
+    const palette = this.palettes.feedback;
+    const artifact = block.artifact
+      ? ` ${this.symbols.levels.hint} ${palette.dim(block.artifact)}`
+      : "";
+    const duration =
+      block.durationMs === undefined
+        ? ""
+        : palette.dim(`${SUMMARY_SEPARATOR}${formatDuration(block.durationMs)}`);
+    this.writeLine("feedback", `${block.headline}${artifact}${duration}`);
+    this.writeNextSteps(block.nextSteps ?? []);
   }
 
   details(entries: DetailEntry[]): void {
@@ -153,6 +176,28 @@ class StreamUi implements Ui {
     cells.forEach((line) => this.writeLine("result", align(line)));
   }
 
+  private writeNextSteps(steps: NextStep[]): void {
+    if (steps.length === 0) {
+      return;
+    }
+    const palette = this.palettes.feedback;
+    const width = Math.max(...steps.map((step) => visibleWidth(step.command)));
+    this.streams.feedback.write(LINE_END);
+    this.writeLine("feedback", palette.bold(NEXT_STEPS_TITLE));
+    steps.forEach((step) =>
+      this.writeLine("feedback", this.nextStepLine(step, width)),
+    );
+  }
+
+  private nextStepLine(step: NextStep, width: number): string {
+    const palette = this.palettes.feedback;
+    if (!step.description) {
+      return `${DETAIL_INDENT}${palette.cyan(step.command)}`;
+    }
+    const command = palette.cyan(padVisible(step.command, width));
+    return `${DETAIL_INDENT}${command}${COLUMN_GAP}${palette.dim(step.description)}`;
+  }
+
   private statusLine(
     channel: OutputChannel,
     level: MessageLevel,
@@ -192,15 +237,4 @@ export function createUi(options: UiOptions = {}): Ui {
     options.capabilities ??
     detectCapabilities({ ...processCapabilityContext(), streams });
   return new StreamUi(streams, capabilities);
-}
-
-let processUi: Ui | undefined;
-
-/**
- * The {@link Ui} bound to the process streams, created on first use so the
- * symbol set and colors are selected once per run.
- */
-export function getProcessUi(): Ui {
-  processUi ??= createUi();
-  return processUi;
 }

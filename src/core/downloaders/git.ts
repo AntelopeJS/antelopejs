@@ -9,7 +9,8 @@ import { NodeFileSystem } from "../filesystem";
 import type { ModuleCache } from "../module-cache";
 import { ModuleManifest } from "../module-manifest";
 import type { DownloaderRegistry } from "./registry";
-import { terminalDisplay } from "../cli/terminal-display";
+import { runTask } from "../cli/output/tasks";
+import type { TaskHandle } from "../cli/output/types";
 import type { CommandResult, CommandRunner } from "./types";
 
 const Logger = new Logging.Channel("loader.git");
@@ -59,7 +60,6 @@ async function runGitCommand(
 ): Promise<CommandResult> {
   const result = await exec(command, { cwd }).catch(toCommandResult);
   if (result.code !== 0) {
-    await terminalDisplay.failSpinner(`'${command}' failed`);
     throw new ExecError({ ...result, command });
   }
   return result;
@@ -74,15 +74,9 @@ async function commitAt(
   try {
     res = await exec(`git rev-parse ${branch}`, { cwd });
   } catch (err) {
-    await terminalDisplay.failSpinner(
-      `Failed to get commit hash for ${branch}: ${String(err)}`,
-    );
     throw new Error(`Failed to get commit hash for ${branch}: ${String(err)}`);
   }
   if (res.code !== 0) {
-    await terminalDisplay.failSpinner(
-      `Failed to get commit hash for ${branch}: ${res.stderr}`,
-    );
     throw new Error(`Failed to get commit hash for ${branch}: ${res.stderr}`);
   }
   return res.stdout.trim();
@@ -111,13 +105,21 @@ async function cloneRepo(
   folder: string,
 ): Promise<RepoUpdateResult> {
   const branch = source.commit || source.branch;
-  await terminalDisplay.startSpinner(`Cloning ${source.remote}`);
-  await cache.getFolder(name, false, true);
-  await runGitCommand(`git clone ${source.remote} ${name}`, cache.path, exec);
-  if (branch) {
-    await runGitCommand(`git checkout ${branch}`, folder, exec);
-  }
-  await terminalDisplay.stopSpinner(`Cloned ${source.remote}`);
+  await runTask(
+    `Cloning ${source.remote}`,
+    async () => {
+      await cache.getFolder(name, false, true);
+      await runGitCommand(
+        `git clone ${source.remote} ${name}`,
+        cache.path,
+        exec,
+      );
+      if (branch) {
+        await runGitCommand(`git checkout ${branch}`, folder, exec);
+      }
+    },
+    { done: `Cloned ${source.remote}` },
+  );
   const newActiveCommit = await commitAt("HEAD", folder, exec);
   const newBranch = branch ?? (await mainBranch(folder, exec));
   return {
@@ -126,23 +128,31 @@ async function cloneRepo(
   };
 }
 
-async function updateRepo(
-  source: ModuleSourceGit,
-  exec: CommandRunner,
-  folder: string,
-  cacheVersion: string,
+const UNCHANGED_REPO: RepoUpdateResult = {
+  newVersion: "",
+  shouldInstallDependencies: false,
+};
+
+interface RepoUpdateRequest {
+  source: ModuleSourceGit;
+  exec: CommandRunner;
+  folder: string;
+  cacheVersion: string;
+}
+
+async function syncRepo(
+  request: RepoUpdateRequest,
+  task: TaskHandle,
 ): Promise<RepoUpdateResult> {
+  const { source, exec, folder } = request;
   const branch = source.commit || source.branch;
-  const [, prevBranch, prevCommit] = cacheVersion.split(":");
-  await terminalDisplay.startSpinner(`Updating ${source.remote}`);
+  const [, prevBranch, prevCommit] = request.cacheVersion.split(":");
   const fetchResult = await exec("git fetch", { cwd: folder }).catch(
     toCommandResult,
   );
   if (fetchResult.code !== 0) {
-    await terminalDisplay.stopSpinner(
-      `Could not fetch ${source.remote}, using cached copy`,
-    );
-    return { newVersion: "", shouldInstallDependencies: false };
+    task.warn(`Could not fetch ${source.remote}, using cached copy`);
+    return UNCHANGED_REPO;
   }
   const newBranch = branch ?? (await mainBranch(folder, exec));
   if (prevBranch !== newBranch) {
@@ -155,14 +165,21 @@ async function updateRepo(
     }
   }
   const newActiveCommit = await commitAt("HEAD", folder, exec);
-  await terminalDisplay.stopSpinner(`Updated ${source.remote}`);
   if (newActiveCommit === prevCommit) {
-    return { newVersion: "", shouldInstallDependencies: false };
+    return UNCHANGED_REPO;
   }
   return {
     newVersion: `git:${newBranch}:${newActiveCommit}`,
     shouldInstallDependencies: true,
   };
+}
+
+function updateRepo(request: RepoUpdateRequest): Promise<RepoUpdateResult> {
+  return runTask(
+    `Updating ${request.source.remote}`,
+    (task) => syncRepo(request, task),
+    { done: `Updated ${request.source.remote}` },
+  );
 }
 
 async function cloneOrFetchRepo(
@@ -178,7 +195,7 @@ async function cloneOrFetchRepo(
   if (source.ignoreCache || !cacheVersion?.startsWith("git:") || !repoPresent) {
     return cloneRepo(cache, source, exec, name, folder);
   }
-  return updateRepo(source, exec, folder, cacheVersion);
+  return updateRepo({ source, exec, folder, cacheVersion });
 }
 
 export function registerGitDownloader(

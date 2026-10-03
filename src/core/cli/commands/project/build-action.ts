@@ -2,8 +2,13 @@ import chalk from "chalk";
 import type { Command } from "commander";
 
 import { build } from "../../../..";
-import { displayBox, info, success } from "../../cli-ui";
-import { readBuildArtifact } from "../../../build/build-artifact";
+import { displayBox, info } from "../../cli-ui";
+import { displayPath, getProcessUi, pluralize } from "../../output";
+import {
+  getBuildArtifactPath,
+  readBuildArtifact,
+} from "../../../build/build-artifact";
+import { scopedCommand } from "../shared/next-steps";
 import {
   findProject,
   type ProjectCommandOptions,
@@ -14,17 +19,9 @@ import {
 interface BuildCommandOptions extends ProjectCommandOptions {
   project: string;
 }
-const MINUTE_IN_MILLISECONDS = 60000;
 
-function formatBuildDuration(durationMs: number): string {
-  if (durationMs < MINUTE_IN_MILLISECONDS) {
-    return `${durationMs}ms`;
-  }
-
-  const minutes = Math.floor(durationMs / MINUTE_IN_MILLISECONDS);
-  const remainingMs = durationMs % MINUTE_IN_MILLISECONDS;
-  return `${minutes}m ${remainingMs}ms`;
-}
+const START_COMMAND = "ajs project start";
+const START_DESCRIPTION = "start the project from this build";
 
 function normalizeOptions(
   command: Command,
@@ -50,15 +47,22 @@ async function showBuildConfiguration(
 }
 
 async function displayBuildSummary(
-  projectFolder: string,
-  buildDuration: number,
+  options: BuildCommandOptions,
+  durationMs: number,
 ): Promise<void> {
-  const artifact = await readBuildArtifact(projectFolder);
+  const artifact = await readBuildArtifact(options.project);
   const moduleCount = Object.keys(artifact.modules).length;
-  const formattedDuration = formatBuildDuration(buildDuration);
-  success(
-    `Build completed: ${moduleCount} module(s) prepared in ${formattedDuration}`,
-  );
+  getProcessUi().summary({
+    headline: `Built ${pluralize(moduleCount, "module")}`,
+    durationMs,
+    artifact: displayPath(getBuildArtifactPath(options.project)),
+    nextSteps: [
+      {
+        command: scopedCommand(START_COMMAND, options),
+        description: START_DESCRIPTION,
+      },
+    ],
+  });
 }
 
 export async function runBuild(
@@ -78,5 +82,5 @@ export async function runBuild(
   await build(commandOptions.project, context.environment, {
     verbose: commandOptions.verbose,
   });
-  await displayBuildSummary(commandOptions.project, Date.now() - startedAt);
+  await displayBuildSummary(commandOptions, Date.now() - startedAt);
 }

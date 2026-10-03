@@ -6,6 +6,7 @@ import {
 
 export class MemoryStream implements OutputStream {
   private readonly chunks: string[] = [];
+  columns?: number;
 
   constructor(readonly isTTY = false) {}
 

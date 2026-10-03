@@ -48,7 +48,7 @@ function stubModuleInit(
   sinon
     .stub(common, "readUserConfig")
     .resolves({ git: common.DEFAULT_GIT_REPO });
-  sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+  sinon.stub(common, "displayNonDefaultGitWarning").returns();
   const manifest = sinon.stub(gitOps, "loadManifestFromGit").resolves({
     templates: TEMPLATES,
     interfaces: {},
@@ -333,7 +333,7 @@ describe("module init behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon
       .stub(gitOps, "loadManifestFromGit")
       .callsFake(() => Promise.reject(failure));

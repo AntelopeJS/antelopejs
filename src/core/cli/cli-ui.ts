@@ -2,105 +2,73 @@ import chalk from "chalk";
 import figlet from "figlet";
 import type { Options as BoxenOptions } from "boxen";
 
-import { isTerminalOutput } from "./logging-utils";
-import { getProcessUi, type MessageLevel } from "./output";
+import {
+  getProcessTasks,
+  getProcessUi,
+  type MessageLevel,
+  type OutputStream,
+  type TaskHandle,
+  type TaskList,
+} from "./output";
 
-const clearLine = () => process.stderr.write("\r\x1b[K");
-const SPINNER_INTERVAL_MS = 80;
+const LINE_END = "\n";
 
+/**
+ * A single spinner, drawn as one task of the process task list so log lines
+ * and messages never break it, and only printing its final line in CI and
+ * pipes.
+ */
 export class Spinner {
-  private text: string;
-  private isRunning = false;
-  private interval?: NodeJS.Timeout;
-  private currentCharIndex = 0;
-  private isTerminal = isTerminalOutput();
-  private readonly frames = getProcessUi().symbols.spinner;
+  private task?: TaskHandle;
 
-  constructor(text: string) {
-    this.text = text;
-  }
+  constructor(
+    private text: string,
+    private readonly tasks: TaskList = getProcessTasks(),
+  ) {}
 
-  async start(text?: string): Promise<Spinner> {
+  start(text?: string): Promise<Spinner> {
     if (text) this.text = text;
-    if (this.isRunning) return this;
-
-    this.isRunning = true;
-    this.currentCharIndex = 0;
-
-    if (!this.isTerminal) return this;
-
-    this.interval = setInterval(() => {
-      if (this.isRunning) {
-        process.stderr.write(`\r${this.currentFrame()} ${this.text}`);
-        this.currentCharIndex =
-          (this.currentCharIndex + 1) % this.frames.length;
-      }
-    }, SPINNER_INTERVAL_MS);
-
-    return this;
+    this.task ??= this.tasks.start(this.text);
+    return Promise.resolve(this);
   }
 
   update(text: string): Spinner {
     this.text = text;
+    this.task?.update(text);
     return this;
   }
 
-  log(stream: NodeJS.WriteStream, message: string): Spinner {
-    if (this.isRunning && this.isTerminal) {
-      clearLine();
-      stream.write(`${message}\n`);
-      process.stderr.write(`${this.currentFrame()} ${this.text}`);
-    } else {
-      stream.write(`${message}\n`);
-    }
+  log(stream: OutputStream, message: string): Spinner {
+    this.tasks.write(stream, `${message}${LINE_END}`);
     return this;
   }
 
-  async succeed(text?: string): Promise<void> {
-    await this.finish("success", text);
+  succeed(text?: string): Promise<void> {
+    return this.finish("success", text);
   }
 
-  async fail(text?: string): Promise<void> {
-    await this.finish("error", text);
+  fail(text?: string): Promise<void> {
+    return this.finish("error", text);
   }
 
-  async info(text?: string): Promise<void> {
-    await this.finish("info", text);
+  info(text?: string): Promise<void> {
+    return this.finish("info", text);
   }
 
-  async warn(text?: string): Promise<void> {
-    await this.finish("warn", text);
+  warn(text?: string): Promise<void> {
+    return this.finish("warn", text);
+  }
+
+  stop(): Promise<void> {
+    this.task?.dismiss();
+    this.task = undefined;
+    return Promise.resolve();
   }
 
   private async finish(level: MessageLevel, text?: string): Promise<void> {
-    if (!this.isRunning) return;
+    if (!this.task) return;
     await this.stop();
-    getProcessUi().message(level, text || this.text);
-  }
-
-  private currentFrame(): string {
-    return this.frames[this.currentCharIndex];
-  }
-
-  async pause(): Promise<void> {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = undefined;
-    }
-    if (this.isTerminal) clearLine();
-  }
-
-  async stop(): Promise<void> {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = undefined;
-    }
-    this.isRunning = false;
-    if (this.isTerminal) clearLine();
-  }
-
-  async clear(): Promise<void> {
-    await this.stop();
+    this.tasks.ui.message(level, text || this.text);
   }
 }
 

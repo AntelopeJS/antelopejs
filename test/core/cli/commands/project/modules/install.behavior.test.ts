@@ -10,7 +10,6 @@ import { ConfigLoader } from "../../../../../../src/core/config";
 import { ModuleCache } from "../../../../../../src/core/module-cache";
 import * as gitOps from "../../../../../../src/core/cli/git-operations";
 import { ModuleManifest } from "../../../../../../src/core/module-manifest";
-import { terminalDisplay } from "../../../../../../src/core/cli/terminal-display";
 import { DownloaderRegistry } from "../../../../../../src/core/downloaders/registry";
 import * as projectModulesAddModule from "../../../../../../src/core/cli/commands/project/modules/add-action";
 import cmdInstall from "../../../../../../src/core/cli/commands/project/modules/install";
@@ -25,8 +24,25 @@ import {
   expectUnknownEnvironment,
 } from "../../../../../helpers/cli-error";
 import { fakePrompts } from "../../../../../helpers/fake-prompts";
-import { NeedsInputError } from "../../../../../../src/core/cli/output";
+import {
+  getProcessUi,
+  NeedsInputError,
+} from "../../../../../../src/core/cli/output";
 import { USAGE_EXIT_CODE } from "../../../../../../src/core/cli/exit-codes";
+
+const ADDED_MOD_A = { added: ["modA"], skipped: [], failed: [] };
+
+interface TaskOutputStubs {
+  message: sinon.SinonStub;
+  summary: sinon.SinonStub;
+}
+
+function stubTaskOutput(): TaskOutputStubs {
+  return {
+    message: sinon.stub(getProcessUi(), "message"),
+    summary: sinon.stub(getProcessUi(), "summary"),
+  };
+}
 
 describe("project modules install behavior", () => {
   let tempModuleDir: string;
@@ -172,7 +188,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -191,9 +207,7 @@ describe("project modules install behavior", () => {
 
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    stubTaskOutput();
 
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
@@ -216,7 +230,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -229,9 +243,7 @@ describe("project modules install behavior", () => {
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    stubTaskOutput();
 
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
@@ -256,7 +268,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -269,9 +281,7 @@ describe("project modules install behavior", () => {
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    stubTaskOutput();
 
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
@@ -304,7 +314,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -324,23 +334,21 @@ describe("project modules install behavior", () => {
 
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
-    const failStub = sinon.stub(terminalDisplay, "failSpinner").resolves();
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-
-    sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "success");
+    const output = stubTaskOutput();
     sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "error");
-
     const exitStub = sinon.stub(process, "exit");
 
-    const cmd = cmdInstall();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+    const cliError = await captureCliError(() =>
+      cmdInstall().parseAsync(["node", "test", "--project", "/tmp/project"]),
+    );
 
-    expect(failStub.called).to.equal(true);
+    expect(cliError.problem).to.deep.include({
+      title: "Could not analyze environment default",
+      reason: "load failed",
+    });
+    expect(output.message.called).to.equal(false);
+    expect(output.summary.called).to.equal(false);
     expect(exitStub.called).to.equal(false);
-    expect(process.exitCode).to.equal(1);
   });
 
   it("analyzes dependencies and installs selected modules", async () => {
@@ -355,7 +363,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -401,14 +409,12 @@ describe("project modules install behavior", () => {
     } as any);
 
     const addStub = sinon
-      .stub(projectModulesAddModule, "projectModulesAddCommand")
-      .resolves();
+      .stub(projectModulesAddModule, "addModules")
+      .resolves(ADDED_MOD_A);
 
     fakePrompts();
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    stubTaskOutput();
 
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
@@ -422,7 +428,7 @@ describe("project modules install behavior", () => {
     expect(addStub.firstCall.args[0]).to.deep.equal(["pkg:module@1.0.0"]);
   });
 
-  it("installs module and uses singular label", async () => {
+  it("sums up the added modules once", async () => {
     const baseConfig: any = {
       name: "proj",
       modules: {
@@ -434,7 +440,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -479,29 +485,35 @@ describe("project modules install behavior", () => {
     } as any);
 
     const addStub = sinon
-      .stub(projectModulesAddModule, "projectModulesAddCommand")
-      .resolves();
+      .stub(projectModulesAddModule, "addModules")
+      .resolves(ADDED_MOD_A);
 
     fakePrompts();
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    const output = stubTaskOutput();
 
-    const infoStub = sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "success");
+    sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "error");
 
     const cmd = cmdInstall();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
-    const infoText = infoStub
-      .getCalls()
-      .map((call) => String(call.args[0]))
-      .join(" ");
-    expect(infoText).to.include("Installing 1 module");
-    expect(addStub.called).to.equal(true);
+    expect(addStub.calledOnce).to.equal(true);
+    expect(
+      output.message.getCalls().map((call) => call.args.slice(0, 2)),
+    ).to.deep.equal([
+      ["success", "Analyzed environment default"],
+      ["warn", "1 unresolved import in default:"],
+    ]);
+    expect(output.summary.firstCall.args[0]).to.deep.include({
+      headline: "1 module added to antelope.config.ts",
+      nextSteps: [
+        {
+          command: "ajs project dev --project /tmp/project",
+          description: "run the project with its new modules",
+        },
+      ],
+    });
   });
 
   const MOD_A = {
@@ -524,7 +536,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface" },
       starredInterfaces: [],
@@ -547,16 +559,14 @@ describe("project modules install behavior", () => {
       name: ifaceName,
       manifest: { description: "", files: {}, dependencies: {}, modules },
     } as any);
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    stubTaskOutput();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
     return sinon
-      .stub(projectModulesAddModule, "projectModulesAddCommand")
-      .resolves();
+      .stub(projectModulesAddModule, "addModules")
+      .resolves(ADDED_MOD_A);
   }
 
   it("selects the only implementation without asking, even without a terminal", async () => {
@@ -643,7 +653,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -691,14 +701,12 @@ describe("project modules install behavior", () => {
     } as any);
 
     const addStub = sinon
-      .stub(projectModulesAddModule, "projectModulesAddCommand")
-      .resolves();
+      .stub(projectModulesAddModule, "addModules")
+      .resolves(ADDED_MOD_A);
 
     const prompts = fakePrompts();
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    stubTaskOutput();
 
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
@@ -724,7 +732,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -758,9 +766,7 @@ describe("project modules install behavior", () => {
       .resolves(undefined as any);
     const prompts = fakePrompts();
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    stubTaskOutput();
 
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
@@ -786,7 +792,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -818,9 +824,7 @@ describe("project modules install behavior", () => {
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "error");
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    stubTaskOutput();
 
     const cmd = cmdInstall();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
@@ -828,7 +832,7 @@ describe("project modules install behavior", () => {
     expect(warnStub.called).to.equal(true);
   });
 
-  it("logs an error when module installation fails", async () => {
+  it("lets a failing add reach the error boundary", async () => {
     const baseConfig: any = {
       name: "proj",
       modules: {
@@ -840,7 +844,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -887,26 +891,20 @@ describe("project modules install behavior", () => {
 
     fakePrompts();
 
-    const addStub = sinon.stub(
-      projectModulesAddModule,
-      "projectModulesAddCommand",
-    );
+    const addStub = sinon.stub(projectModulesAddModule, "addModules");
     addStub.rejects(new Error("install failed"));
 
-    const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
-    sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    const output = stubTaskOutput();
 
-    const cmd = cmdInstall();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
+    const failure = await cmdInstall()
+      .parseAsync(["node", "test", "--project", "/tmp/project"])
+      .catch((err: unknown) => err);
 
-    expect(errorStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    expect(String(failure)).to.include("install failed");
+    expect(output.summary.called).to.equal(false);
   });
 
   it("reports failure when add resolves with failed modules", async () => {
@@ -921,7 +919,7 @@ describe("project modules install behavior", () => {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(common, "displayNonDefaultGitWarning").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
       interfaces: { [ifaceName]: "test-iface", [ifaceName2]: "test-iface2" },
       starredInterfaces: [],
@@ -968,36 +966,20 @@ describe("project modules install behavior", () => {
 
     fakePrompts();
 
-    const addStub = sinon.stub(
-      projectModulesAddModule,
-      "projectModulesAddCommand",
-    );
+    const addStub = sinon.stub(projectModulesAddModule, "addModules");
     addStub.resolves({ added: [], skipped: [], failed: ["modA"] });
 
-    const errorStub = sinon.stub(cliUi, "error");
-    const successStub = sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
 
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    sinon.stub(terminalDisplay, "failSpinner").resolves();
+    const output = stubTaskOutput();
 
     const cmd = cmdInstall();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
-    const errorMessages = errorStub
-      .getCalls()
-      .map((call) => String(call.args[0]));
-    expect(
-      errorMessages.some((msg) => msg.includes("Failed to install 1 module")),
-    ).to.equal(true);
-    const successMessages = successStub
-      .getCalls()
-      .map((call) => String(call.args[0]));
-    expect(
-      successMessages.some((msg) => msg.includes("Successfully installed")),
-    ).to.equal(false);
-    expect(process.exitCode).to.equal(1);
+    expect(output.summary.firstCall.args[0]).to.deep.include({
+      headline: "0 modules added to antelope.config.ts, 1 failed",
+      nextSteps: [],
+    });
   });
 });

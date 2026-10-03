@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 
 import { Module } from "../../../src/core/module";
-import { terminalDisplay } from "../../../src/core/cli/terminal-display";
+import { CliError, getProcessTasks } from "../../../src/core/cli/output";
 import { recordModuleDiagnostics } from "../../helpers/diagnostics-recorder";
 import type {
   ManagedModule,
@@ -78,10 +78,8 @@ describe("runtime module-loading", () => {
     sinon.restore();
   });
 
-  it("lets every module finish loading before failing with the first failure", async () => {
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-    const cleanStub = sinon.stub(terminalDisplay, "cleanSpinner").resolves();
+  it("lets every module finish loading before failing with the only failure", async () => {
+    const messageStub = sinon.stub(getProcessTasks().ui, "message");
     const installFailure = new Error("install failed for alpha");
     let isBetaSettled = false;
     const load = sinon.stub();
@@ -112,7 +110,74 @@ describe("runtime module-loading", () => {
 
     expect(caught).to.equal(installFailure);
     expect(isBetaSettled).to.equal(true);
-    expect(cleanStub.calledOnce).to.equal(true);
+    expect(messageStub.called).to.equal(false);
+    expect(getProcessTasks().hasRunningTasks()).to.equal(false);
+  });
+
+  it("lists several failures once each and sums them up in one error", async () => {
+    const messageStub = sinon.stub(getProcessTasks().ui, "message");
+    const alphaFailure = new CliError({
+      title: "Install failed for alpha",
+      reason: "'npx tsc' exited with code 2.",
+      fixes: ["Fix the install command"],
+    });
+    const betaFailure = new CliError({
+      title: "Install failed for beta",
+      fixes: ["Fix the install command"],
+    });
+    const load = sinon.stub();
+    load.onFirstCall().rejects(alphaFailure);
+    load.onSecondCall().rejects(betaFailure);
+    load.onThirdCall().resolves([]);
+    const config = {
+      modules: {
+        alpha: { source: { type: "local", path: "/mods/alpha" } },
+        beta: { source: { type: "local", path: "/mods/beta" } },
+        gamma: { source: { type: "local", path: "/mods/gamma" } },
+      },
+    } as any;
+    const context = {
+      cache: {},
+      projectFolder: "/project",
+      registry: { load },
+    };
+
+    const caught = await buildModuleConfigs(config, context as any).catch(
+      (err: unknown) => err,
+    );
+
+    expect(caught).to.be.instanceOf(CliError);
+    expect((caught as CliError).problem).to.deep.equal({
+      title: "Could not load 2 of 3 modules",
+      fixes: ["Fix the install command"],
+    });
+    expect((caught as CliError).cause).to.equal(alphaFailure);
+    expect(messageStub.args).to.deep.equal([
+      [
+        "error",
+        "Install failed for alpha",
+        { detail: "'npx tsc' exited with code 2." },
+      ],
+      ["error", "Install failed for beta", { detail: undefined }],
+    ]);
+  });
+
+  it("reports the loaded modules once they are all loaded", async () => {
+    const messageStub = sinon.stub(getProcessTasks().ui, "message");
+    const config = {
+      modules: { alpha: { source: { type: "local", path: "/mods/alpha" } } },
+    } as any;
+    const context = {
+      cache: {},
+      projectFolder: "/project",
+      registry: { load: sinon.stub().resolves([]) },
+    };
+
+    await buildModuleConfigs(config, context as any);
+
+    expect(messageStub.calledOnceWith("success", "Loaded 1 module")).to.equal(
+      true,
+    );
   });
   it("resolves watch directories for all source variants", () => {
     expect(getWatchDirs({ type: "git" } as any)).to.deep.equal([""]);
@@ -710,13 +775,7 @@ describe("runtime module-loading", () => {
   });
 
   it("constructs and starts modules, and fails gracefully on construct errors", async () => {
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    const stopSpinnerStub = sinon
-      .stub(terminalDisplay, "stopSpinner")
-      .resolves();
-    const failSpinnerStub = sinon
-      .stub(terminalDisplay, "failSpinner")
-      .resolves();
+    const messageStub = sinon.stub(getProcessTasks().ui, "message");
 
     const manager = {
       constructAll: sinon.stub().resolves(),
@@ -725,9 +784,11 @@ describe("runtime module-loading", () => {
 
     await constructAndStartModules(manager);
 
-    expect(stopSpinnerStub.calledWith("Done loading")).to.equal(true);
+    expect(messageStub.calledWith("success", "Constructed modules")).to.equal(
+      true,
+    );
     expect(manager.startAll.calledOnce).to.equal(true);
-    expect(failSpinnerStub.called).to.equal(false);
+    expect(messageStub.calledWith("error")).to.equal(false);
 
     const failingManager = {
       constructAll: sinon.stub().rejects(new Error("construct failed")),
@@ -742,9 +803,9 @@ describe("runtime module-loading", () => {
     }
 
     expect(thrown).to.be.instanceOf(Error);
-    expect(failSpinnerStub.calledWith("Failed to construct modules")).to.equal(
-      true,
-    );
+    expect(
+      messageStub.calledWith("error", "Failed to construct modules"),
+    ).to.equal(true);
     expect(failingManager.startAll.called).to.equal(false);
 
     const startupFailure = new Error("start failed");
@@ -764,9 +825,6 @@ describe("runtime module-loading", () => {
   });
 
   it("resolves only after async start hooks settle", async () => {
-    sinon.stub(terminalDisplay, "startSpinner").resolves();
-    sinon.stub(terminalDisplay, "stopSpinner").resolves();
-
     let settleStart: () => void = () => undefined;
     let startSettled = false;
     const manager = {

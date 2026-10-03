@@ -3,6 +3,7 @@ import { expect } from "chai";
 import {
   detectCapabilities,
   hasColorSupport,
+  hasLiveProgress,
   hasUnicodeSupport,
   isInteractiveSession,
   processCapabilityContext,
@@ -149,6 +150,27 @@ describe("output capabilities", () => {
     expect(processContext.argv).to.equal(process.argv);
     expect(processContext.streams.result).to.equal(process.stdout);
     expect(processContext.streams.feedback).to.equal(process.stderr);
+  });
+});
+
+describe("hasLiveProgress", () => {
+  it("animates tasks on an interactive terminal", () => {
+    expect(hasLiveProgress(context({}))).to.equal(true);
+    expect(hasLiveProgress(context({ CI: "false" }))).to.equal(true);
+  });
+
+  it("prints final lines only in pipes, CI, dumb terminals and verbose runs", () => {
+    const piped: CapabilityContext = {
+      ...context({}),
+      streams: { result: TERMINAL, feedback: PIPE },
+    };
+
+    expect(hasLiveProgress(piped)).to.equal(false);
+    expect(hasLiveProgress(context({ CI: "true" }))).to.equal(false);
+    expect(hasLiveProgress(context({ TERM: "dumb" }))).to.equal(false);
+    expect(hasLiveProgress(context({}, ["node", "ajs", "--verbose"]))).to.equal(
+      false,
+    );
   });
 });
 

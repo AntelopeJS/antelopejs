@@ -52,7 +52,7 @@ describe("project build/start behavior", () => {
     stubProjectSpinners();
     sinon.stub(cliUi, "displayBox").resolves();
     sinon.stub(cliUi, "info");
-    const successStub = sinon.stub(cliUi, "success");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
     sinon.stub(cliUi, "error");
 
     const cmd = cmdBuild();
@@ -68,7 +68,18 @@ describe("project build/start behavior", () => {
     expect(
       buildStub.calledWith("/tmp/project", "production", sinon.match.object),
     ).to.equal(true);
-    expect(successStub.called).to.equal(true);
+    expect(summaryStub.calledOnce).to.equal(true);
+    expect(summaryStub.firstCall.args[0]).to.deep.include({
+      headline: "Built 2 modules",
+      artifact: "/tmp/project/.antelope/build/build.json",
+      nextSteps: [
+        {
+          command: "ajs project start --project /tmp/project --env production",
+          description: "start the project from this build",
+        },
+      ],
+    });
+    expect(summaryStub.firstCall.args[0].durationMs).to.be.a("number");
   });
 
   it("runs start command from build artifact", async () => {

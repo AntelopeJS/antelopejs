@@ -33,9 +33,7 @@ function stubInit(): InitStubs {
   const moduleInit = sinon
     .stub(moduleInitModule, "moduleInitCommand")
     .resolves();
-  const add = sinon
-    .stub(projectModulesAddModule, "projectModulesAddCommand")
-    .resolves();
+  const add = sinon.stub(projectModulesAddModule, "addModules").resolves();
   sinon.stub(cliUi.Spinner.prototype, "start").resolves();
   sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
   sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
