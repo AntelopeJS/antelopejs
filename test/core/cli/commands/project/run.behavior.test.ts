@@ -4,6 +4,7 @@ import { Command } from "commander";
 
 import * as indexModule from "../../../../../src/index";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
+import { getProcessUi } from "../../../../../src/core/cli/output";
 import * as common from "../../../../../src/core/cli/common";
 import { ModuleCache } from "../../../../../src/core/module-cache";
 import cmdRun from "../../../../../src/core/cli/commands/project/run";
@@ -81,7 +82,7 @@ describe("project run behavior", () => {
     sinon.stub(cliUi, "displayBox").resolves();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
-    const errorStub = sinon.stub(cliUi, "error");
+    const errorStub = sinon.stub(getProcessUi(), "problem");
 
     const cmd = cmdRun();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
@@ -239,13 +240,13 @@ describe("project run behavior", () => {
     sinon.stub(cliUi, "displayBox").resolves();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
-    const errorStub = sinon.stub(cliUi, "error");
+    const errorStub = sinon.stub(getProcessUi(), "problem");
 
     const cmd = cmdRun();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
     expect(startStub.called).to.equal(true);
-    expect(errorStub.calledWithMatch("123")).to.equal(true);
+    expect(errorStub.firstCall.args[0].title).to.equal("123");
     expect(process.exitCode).to.equal(1);
   });
 

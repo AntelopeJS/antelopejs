@@ -261,26 +261,28 @@ async function loadModuleEntries(
       const source = { ...moduleConfig.source, id };
       Logger.Debug(`Loading module ${id}`);
 
-      try {
-        Logger.Trace(`Starting LoadModule for ${id}`);
-        const manifests = await context.registry.load(
-          context.projectFolder,
-          context.cache,
-          source,
-        );
-        Logger.Trace(`Module manifest loaded for ${id}`);
-        return buildManifestEntries(manifests, moduleConfig);
-      } catch (error) {
-        await terminalDisplay.failSpinner(`Failed to load module ${id}`);
-        await terminalDisplay.cleanSpinner();
-        Logger.Error(`Unexpected error while loading module ${id}:`);
-        Logger.Error(error);
-        throw error;
-      }
+      Logger.Trace(`Starting LoadModule for ${id}`);
+      const manifests = await context.registry.load(
+        context.projectFolder,
+        context.cache,
+        source,
+      );
+      Logger.Trace(`Module manifest loaded for ${id}`);
+      return buildManifestEntries(manifests, moduleConfig);
     },
   );
 
-  return (await Promise.all(modulePromises)).flat();
+  const results = await Promise.allSettled(modulePromises);
+  const failure = results.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  );
+  if (failure) {
+    await terminalDisplay.cleanSpinner();
+    throw failure.reason;
+  }
+  return results.flatMap((result) =>
+    result.status === "fulfilled" ? result.value : [],
+  );
 }
 
 async function loadEntryExports(): Promise<void> {

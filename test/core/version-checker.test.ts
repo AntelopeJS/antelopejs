@@ -360,7 +360,11 @@ describe("version-checker", () => {
         await fetchDistTags("some-package");
         expect.fail("expected fetchDistTags to throw");
       } catch (err) {
-        expect(String(err)).to.include("not found");
+        expect(err).to.be.instanceOf(command.ExecError);
+        expect((err as command.ExecError).command).to.equal(
+          "npm view some-package dist-tags --json",
+        );
+        expect((err as command.ExecError).stderr).to.equal("not found");
       }
     });
   });

@@ -1,5 +1,6 @@
 import sinon from "sinon";
 import { expect } from "chai";
+import { ExecError } from "../../../src/core/cli/command";
 import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 
 import { ModuleCache } from "../../../src/core/module-cache";
@@ -439,7 +440,11 @@ describe("GitDownloader", () => {
       await registry.load("/project", cache, source);
       expect.fail("Expected clone failure");
     } catch (err) {
-      expect(String(err)).to.include("repository not found");
+      expect(err).to.be.instanceOf(ExecError);
+      expect((err as ExecError).command).to.equal(
+        "git clone https://github.com/org/missing.git https___github_com_org_missing_git",
+      );
+      expect((err as ExecError).stderr).to.equal("repository not found");
     } finally {
       failSpinnerStub.restore();
     }
@@ -620,7 +625,9 @@ describe("GitDownloader", () => {
       await registry.load("/project", cache, source);
       expect.fail("Expected failure");
     } catch (err) {
-      expect(String(err)).to.include("fail");
+      const failure = (err as Error).cause as ExecError;
+      expect(failure.command).to.equal("npm install");
+      expect(failure.stdout).to.equal("fail");
     }
   });
 });

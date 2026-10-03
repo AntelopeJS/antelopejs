@@ -35,9 +35,6 @@ export function registerLocalDownloader(
     ) => {
       const formattedPath = expandHome(source.path);
       if (!(await fs.exists(formattedPath))) {
-        Logger.Error(
-          `Path does not exist or is not accessible: ${formattedPath}`,
-        );
         throw new Error(
           `Path does not exist or is not accessible: ${formattedPath}`,
         );

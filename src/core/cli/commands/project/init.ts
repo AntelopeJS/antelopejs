@@ -11,6 +11,7 @@ import { isPromptCancellation } from "../../cancellation";
 import { readConfig, writeConfig } from "../../common";
 import { handlers, projectModulesAddCommand } from "./modules/add";
 import { displayBox, error, info, Spinner, warning } from "../../cli-ui";
+import { reportFailure } from "../../output";
 
 interface ProjectInitAnswers {
   name: string;
@@ -137,9 +138,7 @@ async function createAppModule(
       throw err;
     }
     console.log("");
-    error(
-      err instanceof Error ? err : `Failed to create module: ${String(err)}`,
-    );
+    reportFailure(err);
     error("Project creation stopped due to module initialization failure.");
     process.exitCode = FAILURE_EXIT_CODE;
     return false;

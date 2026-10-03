@@ -10,6 +10,7 @@ import type {
   ModuleManager,
 } from "../../../src/core/module-manager";
 import {
+  buildModuleConfigs,
   constructAndStartModules,
   destroyModulesAfterFailure,
   ensureGraphIsValid,
@@ -77,6 +78,42 @@ describe("runtime module-loading", () => {
     sinon.restore();
   });
 
+  it("lets every module finish loading before failing with the first failure", async () => {
+    sinon.stub(terminalDisplay, "startSpinner").resolves();
+    sinon.stub(terminalDisplay, "stopSpinner").resolves();
+    const cleanStub = sinon.stub(terminalDisplay, "cleanSpinner").resolves();
+    const installFailure = new Error("install failed for alpha");
+    let isBetaSettled = false;
+    const load = sinon.stub();
+    load.onFirstCall().rejects(installFailure);
+    load.onSecondCall().callsFake(async () => {
+      await new Promise((resolve) => setImmediate(resolve));
+      isBetaSettled = true;
+      return [];
+    });
+    const config = {
+      modules: {
+        alpha: { source: { type: "local", path: "/mods/alpha" } },
+        beta: { source: { type: "local", path: "/mods/beta" } },
+      },
+    } as any;
+    const context = {
+      cache: {},
+      projectFolder: "/project",
+      registry: { load },
+    };
+
+    let caught: unknown;
+    try {
+      await buildModuleConfigs(config, context as any);
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).to.equal(installFailure);
+    expect(isBetaSettled).to.equal(true);
+    expect(cleanStub.calledOnce).to.equal(true);
+  });
   it("resolves watch directories for all source variants", () => {
     expect(getWatchDirs({ type: "git" } as any)).to.deep.equal([""]);
     expect(

@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-import { isPromptCancellation, reportCancellation } from "./cancellation";
-import { CANCELLED_EXIT_CODE, FAILURE_EXIT_CODE } from "./exit-codes";
-
 const START_COMMAND = "start";
 const PROJECT_COMMAND = "project";
 const OPTION_PREFIX = "-";
@@ -50,23 +47,12 @@ export async function runCLI(
 }
 
 async function runCLIAsMain(): Promise<void> {
+  const { runWithErrorBoundary } = await import("./output/boundary");
+  await runWithErrorBoundary(() => runCLI());
   const { forceExitOnFailure } = await import("./failure-exit");
-  await runCLI();
   forceExitOnFailure();
 }
 
-function exitOnUnhandledError(error: unknown): void {
-  if (isPromptCancellation(error)) {
-    reportCancellation();
-    process.exit(CANCELLED_EXIT_CODE);
-    return;
-  }
-  console.error(
-    error instanceof Error ? (error.stack ?? error.message) : error,
-  );
-  process.exit(FAILURE_EXIT_CODE);
-}
-
 if (require.main === module) {
-  runCLIAsMain().catch(exitOnUnhandledError);
+  void runCLIAsMain();
 }

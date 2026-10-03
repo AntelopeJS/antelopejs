@@ -15,7 +15,8 @@ import type { ModulePackageJson } from "../../../../module-manifest";
 import { DownloaderRegistry } from "../../../../downloaders/registry";
 import { registerLocalDownloader } from "../../../../downloaders/local";
 import { registerPackageDownloader } from "../../../../downloaders/package";
-import { displayBox, error, info, success } from "../../../cli-ui";
+import { displayBox, info, success } from "../../../cli-ui";
+import { reportFailure } from "../../../output";
 import { resolveProjectContext } from "../../shared/project-command";
 import { registerLocalFolderDownloader } from "../../../../downloaders/local-folder";
 import {
@@ -85,10 +86,7 @@ async function downloadModuleToCache(
     );
     return true;
   } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    error(
-      `Failed to download module ${chalk.bold(moduleName)}: ${errorMessage}`,
-    );
+    reportFailure(err);
     return false;
   }
 }
@@ -174,11 +172,7 @@ export async function projectModulesAddCommand(
           project: resolvedProjectPath,
         })
         .catch((err) => {
-          error(
-            err instanceof Error
-              ? err
-              : `Failed to add module "${module}": ${String(err)}`,
-          );
+          reportFailure(err);
           failed.push(module);
           return null;
         });

@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { ExecError } from "../../../src/core/cli/command";
 import { mkdirSync, writeFileSync } from "node:fs";
 import type {
   ModuleSourceLocal,
@@ -182,7 +183,8 @@ describe("LocalFolderDownloader", () => {
       await registry.load("/project", cache, source);
       expect.fail("Expected failure");
     } catch (error) {
-      expect(String(error)).to.include("failed install");
+      const failure = (error as Error).cause as ExecError;
+      expect(failure.stderr).to.equal("failed install");
     }
   });
 });
