@@ -5,9 +5,8 @@ import { expect } from "chai";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../src/core/cli/common";
 import * as testModuleModule from "../../../../../src/core/test/test-module";
-import cmdTest, {
-  moduleTestCommand,
-} from "../../../../../src/core/cli/commands/module/test";
+import cmdTest from "../../../../../src/core/cli/commands/module/test";
+import { moduleTestCommand } from "../../../../../src/core/cli/commands/module/test-action";
 
 describe("module test behavior", () => {
   afterEach(() => {

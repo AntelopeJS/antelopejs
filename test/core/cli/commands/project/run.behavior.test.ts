@@ -6,6 +6,7 @@ import * as indexModule from "../../../../../src/index";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import { getProcessUi } from "../../../../../src/core/cli/output";
 import * as common from "../../../../../src/core/cli/common";
+import { Options } from "../../../../../src/core/cli/options";
 import { ModuleCache } from "../../../../../src/core/module-cache";
 import cmdRun from "../../../../../src/core/cli/commands/project/run";
 
@@ -151,7 +152,7 @@ describe("project run behavior", () => {
     sinon.stub(cliUi, "error");
 
     const root = new Command();
-    root.addOption(common.Options.verbose);
+    root.addOption(Options.verbose);
     const project = new Command("project");
     project.addCommand(cmdRun());
     root.addCommand(project);

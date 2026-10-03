@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { Command } from "commander";
 
-import { Options } from "./common";
+import { Options } from "./options";
 import { displayBanner } from "./cli-ui";
 import cmdConfig from "./commands/config";
 import cmdModule from "./commands/module";

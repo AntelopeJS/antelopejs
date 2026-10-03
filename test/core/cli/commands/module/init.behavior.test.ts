@@ -9,9 +9,8 @@ import * as gitOps from "../../../../../src/core/cli/git-operations";
 import { CliError } from "../../../../../src/core/cli/output";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
 import * as pkgManager from "../../../../../src/core/cli/package-manager";
-import cmdModuleInit, {
-  moduleInitCommand,
-} from "../../../../../src/core/cli/commands/module/init";
+import cmdModuleInit from "../../../../../src/core/cli/commands/module/init";
+import { moduleInitCommand } from "../../../../../src/core/cli/commands/module/init-action";
 
 describe("module init behavior", () => {
   afterEach(() => {

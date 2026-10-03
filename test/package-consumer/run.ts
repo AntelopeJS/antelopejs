@@ -86,9 +86,9 @@ function installConsumer(tarball: string): void {
   run(pnpm, ["install", "--ignore-workspace"], consumerFolder);
 }
 
-function verifyConsumer(): void {
-  const source = path.join(__dirname, "verify.cjs");
-  const target = path.join(consumerFolder, "verify.cjs");
+function verifyConsumer(script: string): void {
+  const source = path.join(__dirname, script);
+  const target = path.join(consumerFolder, script);
   fs.copyFileSync(source, target);
   run(process.execPath, [target], consumerFolder);
 }
@@ -97,8 +97,9 @@ try {
   const tarball = packCore();
   inspectManifest(tarball);
   installConsumer(tarball);
-  verifyConsumer();
-  process.stdout.write("Package consumer routing verified.\n");
+  verifyConsumer("verify.cjs");
+  verifyConsumer("verify-cli.cjs");
+  process.stdout.write("Package consumer routing and CLI startup verified.\n");
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }
