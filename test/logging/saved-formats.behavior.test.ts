@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { Logging } from "@antelopejs/interface-core/logging";
@@ -10,9 +9,8 @@ import {
   setupAntelopeProjectLogging,
 } from "../../src/logging";
 import { captureOutput } from "../helpers/capture-output";
+import { setColorLevel, useColorLevel } from "../helpers/color-environment";
 
-const NO_COLOR_LEVEL = 0;
-const BASIC_COLOR_LEVEL = 1;
 const CUSTOM_LEVEL_ID = 25;
 const RED_OPEN = "\u001b[31m";
 const BOLD_OPEN = "\u001b[1m";
@@ -26,14 +24,9 @@ function setupWithFormatter(
 }
 
 describe("saved logging formats", () => {
-  const originalColorLevel = chalk.level;
-
-  beforeEach(() => {
-    chalk.level = NO_COLOR_LEVEL;
-  });
+  useColorLevel(false);
 
   afterEach(() => {
-    chalk.level = originalColorLevel;
     sinon.restore();
     setupAntelopeProjectLogging({ enabled: false });
   });
@@ -106,7 +99,7 @@ describe("saved logging formats", () => {
   });
 
   it("applies style directives when colors are on", () => {
-    chalk.level = BASIC_COLOR_LEVEL;
+    setColorLevel(true);
     setupWithFormatter({ "20": "{{chalk.red.bold}}{{ARGS}}" });
 
     const output = captureOutput(() => Logging.Info("alert"));

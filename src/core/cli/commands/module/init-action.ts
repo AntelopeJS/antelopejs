@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import path from "node:path";
 import * as childProcess from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -12,14 +11,7 @@ import {
   PACKAGE_MANAGER_NAMES,
   type PackageManagerName,
 } from "../../package-manager-name";
-import {
-  displayBox,
-  error,
-  info,
-  Spinner,
-  success,
-  warning,
-} from "../../cli-ui";
+import { error, Spinner, success, warning } from "../../cli-ui";
 import {
   getInstallCommand,
   savePackageManagerToPackageJson,
@@ -35,6 +27,9 @@ import {
 import {
   CliError,
   createPrompter,
+  displayPath,
+  getProcessPalette,
+  getProcessUi,
   missingFlags,
   type AnswerFlag,
   type Prompter,
@@ -133,8 +128,9 @@ async function isDirectoryUsable(
   modulePath: string,
   isFromProject: boolean,
 ): Promise<boolean> {
+  const palette = getProcessPalette();
   const dirSpinner = new Spinner(
-    `Checking directory ${chalk.cyan(modulePath)}`,
+    `Checking directory ${palette.dim(modulePath)}`,
   );
   await dirSpinner.start();
 
@@ -145,7 +141,7 @@ async function isDirectoryUsable(
   if (isOccupied && !isFromProject) {
     await dirSpinner.fail(`Directory is not empty`);
     error(
-      `Directory ${chalk.bold(modulePath)} is not empty. Please use an empty directory.`,
+      `Directory ${palette.bold(modulePath)} is not empty. Please use an empty directory.`,
     );
     process.exitCode = 1;
     return false;
@@ -260,12 +256,13 @@ function displayWizardWelcome(prompter: Prompter): void {
   if (!prompter.isInteractive) {
     return;
   }
-  console.log("");
-  info("Welcome to the AntelopeJS module creation wizard!");
-  console.log(
-    chalk.dim("Please select a template and provide the required information."),
+  getProcessUi().message(
+    "info",
+    "Welcome to the AntelopeJS module creation wizard!",
+    {
+      detail: "Please select a template and provide the required information.",
+    },
   );
-  console.log("");
 }
 
 async function askModuleAnswers(
@@ -348,12 +345,11 @@ async function createModule(
   modulePath: string,
   answers: ModuleInitAnswers,
 ): Promise<void> {
-  console.log("");
   const copySpinner = new Spinner(`Creating module from template`);
   await copySpinner.start();
   await copyTemplate(answers.template, modulePath);
   await copySpinner.succeed(
-    `Module created successfully at ${chalk.cyan(path.resolve(modulePath))}`,
+    `Module created successfully at ${getProcessPalette().dim(path.resolve(modulePath))}`,
   );
   addInterfaceDependencies(modulePath, answers.interfaces);
   await installDependencies(modulePath, answers.packageManager);
@@ -362,22 +358,19 @@ async function createModule(
   }
 }
 
-async function displayModuleCreated(
+function displayModuleCreated(
   modulePath: string,
   answers: ModuleInitAnswers,
-): Promise<void> {
-  console.log("");
-  await displayBox(
-    `Your AntelopeJS module has been successfully created!\n\n` +
-      `Template: ${chalk.green(answers.template.name)}\n` +
-      `Location: ${chalk.cyan(path.resolve(modulePath))}\n` +
-      `Package Manager: ${chalk.green(answers.packageManager)}` +
-      (answers.isGitInitialized
-        ? `\nGit Repository: ${chalk.green("Initialized")}`
-        : ""),
-    "\u{f12e}  Module Created",
-    { borderColor: "green" },
-  );
+  context: ModuleInitContext,
+): void {
+  if (context.isFromProject) {
+    return;
+  }
+  const template = getProcessPalette().bold(answers.template.name);
+  getProcessUi().summary({
+    headline: `Created module from template ${template}`,
+    artifact: displayPath(path.resolve(modulePath)),
+  });
 }
 
 function modulePrompter(
@@ -405,7 +398,6 @@ export async function moduleInitCommand(
   options: ModuleInitOptions,
   context: ModuleInitContext = {},
 ) {
-  console.log("");
   const prompter = modulePrompter(modulePath, options, context);
   prompter.requireAnswers(missingFlags(options, MODULE_ANSWER_FLAGS));
   if (!(await isDirectoryUsable(modulePath, Boolean(context.isFromProject)))) {
@@ -422,7 +414,7 @@ export async function moduleInitCommand(
     await gitSpinner.succeed(`Found ${manifest.templates.length} templates`);
     const answers = await askModuleAnswers(prompter, options, git, manifest);
     await createModule(modulePath, answers);
-    await displayModuleCreated(modulePath, answers);
+    displayModuleCreated(modulePath, answers, context);
   } catch (err) {
     if (!isPromptCancellation(err)) {
       await gitSpinner.fail("Failed to initialize your module");

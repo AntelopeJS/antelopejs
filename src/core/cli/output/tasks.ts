@@ -11,6 +11,7 @@ import { createUi } from "./ui";
 import type {
   MessageLevel,
   MessageOptions,
+  OutputChannel,
   OutputStream,
   Palette,
   TaskHandle,
@@ -410,6 +411,11 @@ export function getProcessTasks(): TaskList {
  */
 export function getProcessUi(): Ui {
   return getProcessTasks().ui;
+}
+
+/** The colors of a channel of the process {@link Ui}. */
+export function getProcessPalette(channel?: OutputChannel): Palette {
+  return getProcessUi().palette(channel);
 }
 
 /** {@link TaskList.run} on the process task list. */

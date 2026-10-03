@@ -1,9 +1,9 @@
 import fs from "node:fs";
-import chalk from "chalk";
 import path from "node:path";
 import { execSync } from "node:child_process";
 
 import { info, warning } from "./cli-ui";
+import { getProcessPalette } from "./output";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import {
@@ -213,7 +213,7 @@ export function savePackageManagerToPackageJson(
       packageJsonPath,
       JSON.stringify(packageJsonContent, null, 2),
     );
-    info(`Package manager set to ${chalk.cyan(packageManager)}`);
+    info(`Package manager set to ${getProcessPalette().bold(packageManager)}`);
   } catch (err) {
     warning(
       `Could not update package.json with package manager setting: ${err instanceof Error ? err.message : String(err)}`,

@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import path from "node:path";
 import type * as TypeScript from "typescript";
 import { homedir } from "node:os";
@@ -53,7 +52,7 @@ export const DEFAULT_GIT_REPO = "https://github.com/AntelopeJS/interfaces.git";
 // Utility function to display warning for non-default git repositories
 export function displayNonDefaultGitWarning(gitUrl: string): void {
   if (gitUrl !== DEFAULT_GIT_REPO) {
-    warning(chalk.yellow.bold(" WARNING: Using non-default git repository ⚠️"));
+    warning("Using a non-default git repository");
     warning(
       "You are using a non-official git repository for interfaces. These interfaces may not adhere to community quality standards or best practices.",
     );

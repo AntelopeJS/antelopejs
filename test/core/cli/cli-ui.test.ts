@@ -3,12 +3,9 @@ import * as sinon from "sinon";
 
 import {
   consoleOutput,
-  displayBanner,
-  displayBox,
   error,
   header,
   info,
-  keyValue,
   Spinner,
   success,
   warning,
@@ -37,18 +34,6 @@ const LIVE_CAPABILITIES: OutputCapabilities = {
 interface SpinnerStatus {
   method: "succeed" | "fail" | "info" | "warn";
   level: MessageLevel;
-}
-
-interface ConsoleStubs {
-  log: sinon.SinonStub;
-  error: sinon.SinonStub;
-}
-
-function stubConsole(): ConsoleStubs {
-  return {
-    log: sinon.stub(console, "log"),
-    error: sinon.stub(console, "error"),
-  };
 }
 
 function setTerminal(isTerminal: boolean): void {
@@ -219,24 +204,6 @@ describe("CLI UI display", () => {
     );
   });
 
-  it("writes the banner to stderr", () => {
-    const consoleStubs = stubConsole();
-
-    displayBanner("AntelopeJS");
-
-    expect(consoleStubs.log.called).to.equal(false);
-    expect(consoleStubs.error.calledOnce).to.equal(true);
-  });
-
-  it("writes boxes to stdout", async () => {
-    const consoleStubs = stubConsole();
-
-    await displayBox("Hello", "Title");
-
-    expect(consoleStubs.error.called).to.equal(false);
-    expect(consoleStubs.log.called).to.equal(true);
-  });
-
   it("writes headers to stdout", () => {
     const output = captureOutput(() => header("Header"));
 
@@ -244,9 +211,5 @@ describe("CLI UI display", () => {
     expect(stripAnsi(output.stdout)).to.contain(
       `Header\n${symbols.rule.repeat("Header".length)}\n`,
     );
-  });
-
-  it("formats a key and its value", () => {
-    expect(stripAnsi(keyValue("Name", "acme"))).to.equal("Name: acme");
   });
 });

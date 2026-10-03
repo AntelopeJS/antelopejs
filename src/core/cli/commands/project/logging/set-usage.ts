@@ -1,6 +1,9 @@
-import chalk from "chalk";
-
-import { CliError, NeedsInputError, type Prompter } from "../../../output";
+import {
+  CliError,
+  getProcessPalette,
+  NeedsInputError,
+  type Prompter,
+} from "../../../output";
 import { USAGE_EXIT_CODE } from "../../../exit-codes";
 import type { SetOptions } from "./set-operations";
 
@@ -63,18 +66,19 @@ function pairingError(pairing: OptionPairing): CliError {
   return new CliError({
     title: `${SET_OPTION_FLAGS[pairing.given]} needs ${SET_OPTION_FLAGS[pairing.missing]}`,
     reason: pairing.reason,
-    fixes: [`Example: ${chalk.cyan(LEVEL_FORMAT_EXAMPLE)}`],
+    fixes: [`Example: ${getProcessPalette().cyan(LEVEL_FORMAT_EXAMPLE)}`],
     exitCode: USAGE_EXIT_CODE,
   });
 }
 
 function missingTerminalError(): NeedsInputError {
+  const palette = getProcessPalette();
   return new NeedsInputError({
     command: SET_COMMAND,
     flags: [SET_OPTION_FLAGS.enable],
     fixes: [
-      `Pass the settings to change as flags, e.g. ${chalk.cyan(`${SET_COMMAND} ${SET_OPTION_FLAGS.enable}`)}`,
-      `Run ${chalk.cyan(`${SET_COMMAND} --help`)} to list them`,
+      `Pass the settings to change as flags, e.g. ${palette.cyan(`${SET_COMMAND} ${SET_OPTION_FLAGS.enable}`)}`,
+      `Run ${palette.cyan(`${SET_COMMAND} --help`)} to list them`,
     ],
   });
 }

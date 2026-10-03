@@ -6,7 +6,6 @@ import { Command } from "commander";
 const Module = require("node:module");
 
 import * as logging from "../../../src/logging";
-import * as cliUi from "../../../src/core/cli/cli-ui";
 import * as fullCli from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
 import {
@@ -40,7 +39,6 @@ describe("CLI main guard", () => {
     });
     sinon.stub(logging, "setupAntelopeProjectLogging");
     sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
-    sinon.stub(cliUi, "displayBanner");
     sinon.stub(Command.prototype, "getOptionValue").returns(undefined);
   }
 

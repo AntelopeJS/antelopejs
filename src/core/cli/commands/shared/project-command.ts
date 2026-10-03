@@ -1,9 +1,8 @@
-import chalk from "chalk";
 import type { Command } from "commander";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import { Spinner } from "../../cli-ui";
-import { CliError, reportCliError } from "../../output";
+import { CliError, getProcessPalette, reportCliError } from "../../output";
 import { isDynamicConfig, readConfig } from "../../common";
 import { USAGE_EXIT_CODE } from "../../exit-codes";
 import { NodeFileSystem } from "../../../filesystem";
@@ -42,9 +41,9 @@ export function listKnownEnvironments(config: AntelopeConfig): string[] {
 
 function projectNotFoundError(projectFolder: string): CliError {
   return new CliError({
-    title: `No AntelopeJS project found at ${chalk.bold(projectFolder)}`,
+    title: `No AntelopeJS project found at ${projectFolder}`,
     fixes: [
-      `Run ${chalk.cyan.bold(PROJECT_INIT_COMMAND)} to create one, or pass --project <path>`,
+      `Run ${getProcessPalette().cyan(PROJECT_INIT_COMMAND)} to create one, or pass --project <path>`,
     ],
   });
 }
@@ -128,7 +127,7 @@ export async function findProject(
   environment?: string,
 ): Promise<ProjectContext> {
   const checkSpinner = new Spinner(
-    `Looking for AntelopeJS project at ${chalk.cyan(projectFolder)}`,
+    `Looking for AntelopeJS project at ${getProcessPalette().dim(projectFolder)}`,
   );
   await checkSpinner.start();
 
@@ -136,7 +135,7 @@ export async function findProject(
     const context = await resolveProjectContext(projectFolder, environment);
     const projectName = context.config.name || DEFAULT_PROJECT_NAME;
     await checkSpinner.succeed(
-      `Found project: ${chalk.green.bold(projectName)}`,
+      `Found project: ${getProcessPalette().bold(projectName)}`,
     );
     return context;
   } catch (err) {

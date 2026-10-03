@@ -1,12 +1,11 @@
-import chalk from "chalk";
 import path from "node:path";
 import type { Command } from "commander";
 import fs, { unlinkSync, writeFileSync } from "node:fs";
 import { type ChildProcess, fork } from "node:child_process";
 
 import { ModuleCache } from "../../../module-cache";
-import { displayBox, info, warning } from "../../cli-ui";
-import { reportFailure } from "../../output";
+import { info, warning } from "../../cli-ui";
+import { getProcessUi, reportFailure } from "../../output";
 import startAntelope, { DEFAULT_ENV, type LaunchOptions } from "../../../..";
 import {
   DEFAULT_SHUTDOWN_TIMEOUT_MS,
@@ -34,6 +33,8 @@ interface DevCommandOptions extends LaunchOptions {
 }
 
 const DEFAULT_INSPECTOR = "--inspect";
+const ENABLED_LABEL = "enabled";
+const DISABLED_LABEL = "disabled";
 const RUNNER_PREFIX = "antelope-runner-";
 const DEFAULT_INSPECT_HOST = "127.0.0.1:9229";
 const CHILD_TERMINATE_HEADROOM_MS = 2000;
@@ -43,21 +44,23 @@ const SHUTDOWN_PRIORITY_CHILD = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
 const SHUTDOWN_PRIORITY_SIGNAL_CLEANUP = 5;
 
-function resolveInspectLabel(options: DevCommandOptions): string {
+function resolveInspectLabel(options: DevCommandOptions): string | undefined {
   if (!options.inspect) {
-    return "disabled";
+    return undefined;
   }
   return options.inspect === true ? DEFAULT_INSPECT_HOST : options.inspect;
 }
 
-async function showRunConfiguration(options: DevCommandOptions): Promise<void> {
-  const inspector = resolveInspectLabel(options);
-  await displayBox(
-    `Environment: ${chalk.cyan(options.env || DEFAULT_ENV)}\n` +
-      `Watch mode: ${options.watch ? chalk.green("enabled") : chalk.gray("disabled")}\n` +
-      `Inspector: ${options.inspect ? chalk.green(inspector) : chalk.gray(inspector)}`,
-    " Launch Configuration",
-    { padding: 1 },
+function showRunConfiguration(options: DevCommandOptions): void {
+  const ui = getProcessUi();
+  const disabled = ui.palette().dim(DISABLED_LABEL);
+  ui.details(
+    [
+      { label: "Environment", value: options.env || DEFAULT_ENV },
+      { label: "Watch mode", value: options.watch ? ENABLED_LABEL : disabled },
+      { label: "Inspector", value: resolveInspectLabel(options) ?? disabled },
+    ],
+    "feedback",
   );
 }
 
@@ -222,24 +225,17 @@ export async function executeDevCommand(
   options: DevCommandOptions,
 ): Promise<void> {
   const runOptions = withCommandVerbose(this, options);
-  console.log("");
-
   const hasProject = await validateProjectExists(runOptions.project);
   if (!hasProject) {
     return;
   }
 
-  console.log("");
-  await showRunConfiguration(runOptions);
-
+  showRunConfiguration(runOptions);
   if (runOptions.watch) {
-    console.log("");
     warning(
       `Watch mode enabled - project will automatically restart when files change`,
     );
   }
-
-  console.log("");
   info(`Starting AntelopeJS project`);
 
   try {

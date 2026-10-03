@@ -26,6 +26,7 @@ import {
   projectModulesAddCommand,
 } from "../../../../../src/core/cli/commands/project/modules/add-action";
 import { MODULE_SOURCE_MODES } from "../../../../../src/core/cli/commands/project/modules/add";
+import { collectStderr } from "../../../../helpers/capture-output";
 
 function messageLines(stub: sinon.SinonStub): string[] {
   return stub
@@ -112,7 +113,7 @@ describe("project modules behavior", () => {
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
 
     await projectModulesAddCommand(["existing", "newmod"], {
       mode: "package",
@@ -183,7 +184,7 @@ describe("project modules behavior", () => {
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
 
     await projectModulesAddCommand([], {
       mode: "package",
@@ -283,7 +284,7 @@ describe("project modules behavior", () => {
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
 
     await projectModulesAddCommand(["pkg@1.0.0"], {
       mode: "package",
@@ -307,7 +308,7 @@ describe("project modules behavior", () => {
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "success");
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
 
     const originalHandler = handlers.get("local");
     handlers.set("local", () => Promise.reject("boom") as any);
@@ -345,7 +346,7 @@ describe("project modules behavior", () => {
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
 
     const originalHandler = handlers.get("local");
     handlers.set(
@@ -429,7 +430,7 @@ describe("project modules behavior", () => {
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "displayBox").resolves();
+    collectStderr();
 
     const result = await projectModulesAddCommand(["pkg"], {
       mode: "package",

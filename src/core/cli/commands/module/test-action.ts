@@ -1,10 +1,14 @@
-import chalk from "chalk";
 import path from "node:path";
 import { stat } from "node:fs/promises";
 
 import { TestModule } from "../../../..";
 import { readModuleManifest } from "../../common";
-import { CliError, displayPath, getProcessUi } from "../../output";
+import {
+  CliError,
+  displayPath,
+  getProcessPalette,
+  getProcessUi,
+} from "../../output";
 
 interface TestOptions {
   file?: string[];
@@ -20,7 +24,7 @@ function isDirectory(target: string): Promise<boolean> {
 }
 
 function moduleDirectoryFix(): string {
-  return `Run it from a module directory, or pass its path: ${chalk.cyan(TEST_COMMAND)}`;
+  return `Run it from a module directory, or pass its path: ${getProcessPalette().cyan(TEST_COMMAND)}`;
 }
 
 async function invalidModuleError(modulePath: string): Promise<CliError> {
@@ -42,8 +46,6 @@ export async function moduleTestCommand(
   modulePath = ".",
   options: TestOptions,
 ) {
-  console.log(""); // Add spacing for readability
-
   const resolvedPath = path.resolve(modulePath);
   const moduleManifest = await readModuleManifest(resolvedPath);
   if (!moduleManifest) {
@@ -51,7 +53,7 @@ export async function moduleTestCommand(
   }
   getProcessUi().message(
     "success",
-    `Valid module found: ${chalk.cyan(moduleManifest.name)}`,
+    `Valid module found: ${getProcessPalette().bold(moduleManifest.name)}`,
   );
 
   const failures = await TestModule(resolvedPath, options.file);

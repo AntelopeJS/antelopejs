@@ -1,5 +1,7 @@
-import chalk from "chalk";
+import { createColors } from "picocolors";
 import type { AntelopeLogging } from "@antelopejs/interface-core/config";
+
+import { hasProcessColorSupport } from "./output/capabilities";
 
 const LOG_LEVELS = {
   ERROR: 40,
@@ -16,14 +18,26 @@ const INNER_ERROR_INDENT = "    ";
 const CIRCULAR_ERROR = "[Circular]";
 const CAUSE_MARKER = "  Caused by: ";
 
-const COLOR_FUNCTIONS: Record<string, (text: string) => string> = {
-  red: chalk.red,
-  yellow: chalk.yellow,
-  green: chalk.green,
-  blue: chalk.blue,
-  magenta: chalk.magenta,
-  white: chalk.white,
-};
+const LOG_COLORS = [
+  "red",
+  "yellow",
+  "green",
+  "blue",
+  "magenta",
+  "white",
+] as const;
+
+type LogColor = (typeof LOG_COLORS)[number];
+
+type LogPalette = ReturnType<typeof createColors>;
+
+function logColors(): LogPalette {
+  return createColors(hasProcessColorSupport(process.stdout));
+}
+
+function isLogColor(color: string): color is LogColor {
+  return (LOG_COLORS as readonly string[]).includes(color);
+}
 
 // map created this way because Logging.Level is undefined on firsts calls
 export const getLevelInfo = (() => {
@@ -45,7 +59,7 @@ export const getLevelInfo = (() => {
 })();
 
 export function getColoredText(text: string, color: string): string {
-  return COLOR_FUNCTIONS[color]?.(text) ?? text;
+  return isLogColor(color) ? logColors()[color](text) : text;
 }
 
 /**
@@ -294,7 +308,7 @@ export function formatLogMessageWithRightAlignedDate(
     new Date(log.time),
     logging.dateFormat || defaultDateFormat,
   );
-  const dateText = chalk.gray(`[${dateStr}]`);
+  const dateText = logColors().gray(`[${dateStr}]`);
 
   if (!isTerminalOutput()) {
     return `${dateText} ${messageWithLevel}`;

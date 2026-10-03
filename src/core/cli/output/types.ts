@@ -106,11 +106,13 @@ export interface UiOptions {
 
 export interface Ui {
   readonly symbols: SymbolSet;
+  /** The colors of a channel, plain text when that channel has no colors. */
+  palette(channel?: OutputChannel): Palette;
   message(level: MessageLevel, text: string, options?: MessageOptions): void;
   problem(problem: CliProblem): void;
   heading(text: string): void;
   summary(block: SummaryBlock): void;
-  details(entries: DetailEntry[]): void;
+  details(entries: DetailEntry[], channel?: OutputChannel): void;
   list(items: string[]): void;
   table<Row>(rows: Row[], columns: TableColumn<Row>[]): void;
   value(text: string): void;

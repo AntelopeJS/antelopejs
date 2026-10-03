@@ -26,8 +26,8 @@ describe("project logging set interactive behavior", () => {
     expect(config.logging).to.deep.equal({
       moduleTracking: { enabled: true, includes: ["mod1"] },
     });
-    expect(messagesOf(stubs.success)).to.include(
-      "Configuration saved successfully.",
+    expect(stubs.feedback()).to.include(
+      "Saved the logging configuration of test-project",
     );
   });
 

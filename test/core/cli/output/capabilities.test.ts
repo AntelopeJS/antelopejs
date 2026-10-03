@@ -4,6 +4,7 @@ import {
   detectCapabilities,
   hasColorSupport,
   hasLiveProgress,
+  hasProcessColorSupport,
   hasUnicodeSupport,
   isInteractiveSession,
   processCapabilityContext,
@@ -12,6 +13,7 @@ import {
   type CapabilityContext,
 } from "../../../../src/core/cli/output";
 import { MemoryStream } from "../../../helpers/memory-ui";
+import { useColorLevel } from "../../../helpers/color-environment";
 
 const TERMINAL = new MemoryStream(true);
 const PIPE = new MemoryStream(false);
@@ -208,5 +210,16 @@ describe("isInteractiveSession", () => {
         output: terminal,
       }),
     ).to.equal(true);
+  });
+});
+
+describe("process color support", () => {
+  useColorLevel(true);
+
+  it("follows the process environment for a stream", () => {
+    expect(hasProcessColorSupport(PIPE)).to.equal(true);
+
+    process.env.NO_COLOR = "1";
+    expect(hasProcessColorSupport(TERMINAL)).to.equal(false);
   });
 });

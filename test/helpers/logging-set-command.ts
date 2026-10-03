@@ -1,24 +1,24 @@
-import chalk from "chalk";
 import sinon from "sinon";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import * as cliUi from "../../src/core/cli/cli-ui";
 import * as common from "../../src/core/cli/common";
+import { stripAnsi } from "../../src/core/cli/logging-utils";
 import cmdSet from "../../src/core/cli/commands/project/logging/set";
+import { collectStderr } from "./capture-output";
 import { fakePrompts, type FakePrompts } from "./fake-prompts";
+import { useColorLevel } from "./color-environment";
 
 const PROJECT_FOLDER = "/tmp/project";
 
 interface SetCommandStubs {
   readConfig: sinon.SinonStub;
   writeConfig: sinon.SinonStub;
-  displayBox: sinon.SinonStub;
+  feedback: () => string;
   info: sinon.SinonStub;
   success: sinon.SinonStub;
   warning: sinon.SinonStub;
 }
-
-const NO_COLOR_LEVEL = 0;
 
 export function stubSetCommand(
   config: Partial<AntelopeConfig>,
@@ -26,13 +26,12 @@ export function stubSetCommand(
   const stubs: SetCommandStubs = {
     readConfig: sinon.stub(common, "readConfig").resolves(config as never),
     writeConfig: sinon.stub(common, "writeConfig").resolves(),
-    displayBox: sinon.stub(cliUi, "displayBox").resolves(),
+    feedback: collectStderr(),
     info: sinon.stub(cliUi, "info"),
     success: sinon.stub(cliUi, "success"),
     warning: sinon.stub(cliUi, "warning"),
   };
   sinon.stub(cliUi, "error");
-  sinon.stub(console, "log");
   return stubs;
 }
 
@@ -47,7 +46,7 @@ export async function runSet(...args: string[]): Promise<void> {
 }
 
 export function messagesOf(stub: sinon.SinonStub): string[] {
-  return stub.getCalls().map((call) => String(call.args[0]));
+  return stub.getCalls().map((call) => stripAnsi(String(call.args[0])));
 }
 
 /**
@@ -58,16 +57,14 @@ export function messagesOf(stub: sinon.SinonStub): string[] {
 export function useSetCommandSandbox(
   isInteractive: boolean,
 ): () => FakePrompts {
-  const originalColorLevel = chalk.level;
   let prompts: FakePrompts | undefined;
+  useColorLevel(false);
 
   beforeEach(() => {
-    chalk.level = NO_COLOR_LEVEL;
     prompts = fakePrompts({ isInteractive });
   });
 
   afterEach(() => {
-    chalk.level = originalColorLevel;
     sinon.restore();
     process.exitCode = undefined;
   });

@@ -14,6 +14,7 @@ import * as pkgManager from "../../../../../src/core/cli/package-manager";
 import cmdModuleInit from "../../../../../src/core/cli/commands/module/init";
 import { moduleInitCommand } from "../../../../../src/core/cli/commands/module/init-action";
 import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
+import { collectStderr } from "../../../../helpers/capture-output";
 
 const TEMPLATES = [
   { name: "basic", repository: "", branch: "" },
@@ -73,7 +74,7 @@ function stubModuleInit(
   sinon.stub(cliUi.Spinner.prototype, "start").resolves();
   sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
   const spinnerFail = sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
-  sinon.stub(cliUi, "displayBox").resolves();
+  collectStderr();
   sinon.stub(cliUi, "info");
   sinon.stub(cliUi, "success");
   sinon.stub(cliUi, "warning");

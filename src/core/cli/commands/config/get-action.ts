@@ -1,4 +1,4 @@
-import { CONFIG_KEYS } from "./keys";
+import { CONFIG_KEYS, invalidConfigKeyError } from "./keys";
 import { readUserConfig } from "../../common";
 import { CliError, getProcessUi, writeData, type Ui } from "../../output";
 
@@ -7,13 +7,6 @@ interface GetOptions {
 }
 
 const SET_COMMAND = "ajs config set";
-
-function invalidKeyError(key: string): CliError {
-  return new CliError({
-    title: `Invalid configuration key '${key}'`,
-    reason: `Valid keys: ${CONFIG_KEYS.join(", ")}`,
-  });
-}
 
 function missingKeyError(key: string): CliError {
   return new CliError({
@@ -36,7 +29,7 @@ async function getConfigValue(
   ui: Ui,
 ): Promise<void> {
   if (!CONFIG_KEYS.includes(key)) {
-    throw invalidKeyError(key);
+    throw invalidConfigKeyError(key);
   }
   const config: Record<string, string> = { ...(await readUserConfig()) };
   if (!(key in config)) {

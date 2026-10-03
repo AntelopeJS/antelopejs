@@ -10,6 +10,7 @@ import { runWithErrorBoundary } from "../../../src/core/cli/output";
 import { readConfig, writeConfig } from "../../../src/core/cli/common";
 import * as versionCheck from "../../../src/core/cli/version-check";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { captureOutputAsync } from "../../helpers/capture-output";
 import { CANCEL, fakePrompts } from "../../helpers/fake-prompts";
 import * as projectLaunch from "../../../src/core/runtime/project-launch";
 import { BuildModuleSetChangedError } from "../../../src/core/runtime/build-refresh";
@@ -166,5 +167,29 @@ describe("CLI exit code contract", () => {
 
     expect(code).to.equal(USAGE_EXIT_CODE);
     expect(existsSync(newProject)).to.equal(false);
+  });
+});
+
+describe("CLI exit code without arguments", () => {
+  const originalArgv = process.argv.slice();
+
+  afterEach(() => {
+    sinon.restore();
+    process.argv = originalArgv.slice();
+    process.exitCode = undefined;
+  });
+
+  it("exits 0 and prints the help on stdout", async () => {
+    sinon.stub(logging, "setupAntelopeProjectLogging");
+    sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
+    process.argv = ["node", "ajs"];
+
+    const output = await captureOutputAsync(() =>
+      runWithErrorBoundary(() => runCLI([])),
+    );
+
+    expect(process.exitCode ?? SUCCESS_EXIT_CODE).to.equal(SUCCESS_EXIT_CODE);
+    expect(output.stdout).to.contain("Usage: ajs [options] [command]");
+    expect(output.stderr).to.equal("");
   });
 });

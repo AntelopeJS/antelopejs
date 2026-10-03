@@ -1,7 +1,7 @@
 import { inspect } from "node:util";
-import chalk from "chalk";
 import type { Log } from "@antelopejs/interface-core/logging/listener";
 
+import { hasProcessColorSupport } from "../core/cli/output/capabilities";
 import { formatDate, serializeLogValue } from "../core/cli/logging-utils";
 
 const PLACEHOLDER_PATTERN = /{{([^{}]+)}}/g;
@@ -29,7 +29,7 @@ const PLACEHOLDERS: Record<string, PlaceholderRenderer> = {
 };
 
 function areColorsEnabled(): boolean {
-  return chalk.level > 0;
+  return hasProcessColorSupport(process.stdout);
 }
 
 function styleSequence(styleName: string): string | undefined {
