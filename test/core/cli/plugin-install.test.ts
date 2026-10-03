@@ -1,3 +1,4 @@
+import sinon from "sinon";
 import { expect } from "chai";
 
 import { delegateToPlugin } from "../../../src/core/cli/plugin";
@@ -17,6 +18,7 @@ import {
   LOCAL_DMS_EXECUTABLE,
   localExecutable,
 } from "../../helpers/official-plugin";
+import { fakePrompts } from "../../helpers/fake-prompts";
 
 describe("Official plugin installation", () => {
   it("prints the install command and fails when not interactive", async () => {
@@ -37,6 +39,28 @@ describe("Official plugin installation", () => {
       "The DMS plugin is not installed.",
       "Install it with: npm install -g @antelopejs/dms-frontend",
     ]);
+  });
+
+  it("asks with the shared prompt layer by default", async () => {
+    const output = createOutput();
+    const { runner, calls } = createProcessRunner();
+    const prompts = fakePrompts({ answers: [false] });
+
+    try {
+      const result = await delegateToPlugin(["dms"], {
+        lookupExecutable: async () => undefined,
+        packageManager: "npm",
+        processOptions: { processRunner: runner, platform: "linux" },
+        output,
+      });
+
+      expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
+      expect(prompts.asked[0].kind).to.equal("confirm");
+      expect(prompts.asked[0].options).to.include({ initialValue: true });
+      expect(calls).to.deep.equal([]);
+    } finally {
+      sinon.restore();
+    }
   });
 
   it("prompts, installs and delegates when interactive", async () => {

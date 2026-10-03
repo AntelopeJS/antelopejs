@@ -1,6 +1,6 @@
 import { CANCELLED_EXIT_CODE } from "./exit-codes";
 
-const PROMPT_CANCELLATION_ERROR_NAME = "ExitPromptError";
+export const CANCELLED_ERROR_NAME = "CancelledError";
 export const CANCELLED_MESSAGE = "Cancelled";
 
 export function isPromptCancellation(error: unknown): boolean {
@@ -8,7 +8,7 @@ export function isPromptCancellation(error: unknown): boolean {
     error !== null &&
     typeof error === "object" &&
     "name" in error &&
-    error.name === PROMPT_CANCELLATION_ERROR_NAME
+    error.name === CANCELLED_ERROR_NAME
   );
 }
 

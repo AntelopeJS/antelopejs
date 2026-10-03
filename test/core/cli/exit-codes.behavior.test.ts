@@ -1,7 +1,6 @@
 import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import inquirer from "inquirer";
 import { existsSync } from "node:fs";
 
 import * as logging from "../../../src/logging";
@@ -11,6 +10,7 @@ import { runWithErrorBoundary } from "../../../src/core/cli/output";
 import { readConfig, writeConfig } from "../../../src/core/cli/common";
 import * as versionCheck from "../../../src/core/cli/version-check";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { CANCEL, fakePrompts } from "../../helpers/fake-prompts";
 import * as projectLaunch from "../../../src/core/runtime/project-launch";
 import { BuildModuleSetChangedError } from "../../../src/core/runtime/build-refresh";
 import {
@@ -148,17 +148,23 @@ describe("CLI exit code contract", () => {
 
   it("exits 130 and writes nothing when a prompt is cancelled", async () => {
     const consoleError = sinon.stub(console, "error");
-    sinon.stub(inquirer, "prompt").rejects(
-      Object.assign(new Error("User force closed the prompt with SIGINT"), {
-        name: "ExitPromptError",
-      }),
-    );
+    fakePrompts({ answers: [CANCEL] });
     const newProject = path.join(projectDir, "new-project");
 
     const code = await run(["project", "init", newProject]);
 
     expect(code).to.equal(CANCELLED_EXIT_CODE);
     expect(consoleError.calledWith("Cancelled")).to.equal(true);
+    expect(existsSync(newProject)).to.equal(false);
+  });
+
+  it("exits 2 naming the flags when a prompt cannot be answered", async () => {
+    fakePrompts({ isInteractive: false });
+    const newProject = path.join(projectDir, "new-project");
+
+    const code = await run(["project", "init", newProject]);
+
+    expect(code).to.equal(USAGE_EXIT_CODE);
     expect(existsSync(newProject)).to.equal(false);
   });
 });

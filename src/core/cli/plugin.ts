@@ -1,4 +1,5 @@
 import { getCoreVersion } from "./core-version";
+import { createPrompter, promptEnvironment } from "./output";
 import type { PluginPackageLookup } from "./plugin-package";
 import { consoleOutput, type CommandOutput } from "./cli-ui";
 import type { InheritedProcessOptions } from "./process-runner";
@@ -26,12 +27,9 @@ import {
 } from "./global-package-manager";
 
 const PLUGIN_PREFIX = "ajs-";
+const PLUGIN_INSTALL_COMMAND = "ajs";
 
 type PluginInstallPrompt = (message: string) => Promise<boolean>;
-
-interface InstallConfirmation {
-  confirmed: boolean;
-}
 
 interface DelegatedPluginResult {
   isDelegated: true;
@@ -65,16 +63,11 @@ function pluginBinary(command: string): string {
   return `${PLUGIN_PREFIX}${command}`;
 }
 
-function isInteractiveTerminal(): boolean {
-  return Boolean(process.stdin.isTTY && process.stdout.isTTY);
-}
-
-async function promptForInstall(message: string): Promise<boolean> {
-  const inquirer = (await import("inquirer")).default;
-  const { confirmed } = await inquirer.prompt<InstallConfirmation>([
-    { type: "confirm", name: "confirmed", message, default: true },
-  ]);
-  return confirmed;
+function promptForInstall(message: string): Promise<boolean> {
+  return createPrompter({ command: PLUGIN_INSTALL_COMMAND }).confirm({
+    message,
+    defaultAnswer: true,
+  });
 }
 
 function createContext(
@@ -87,7 +80,8 @@ function createContext(
     lookupExecutable: dependencies.lookupExecutable ?? resolveExecutable,
     packageLookup: dependencies.packageLookup ?? { packageManager },
     confirmInstall: dependencies.confirmInstall ?? promptForInstall,
-    isInteractive: dependencies.isInteractive ?? isInteractiveTerminal,
+    isInteractive:
+      dependencies.isInteractive ?? (() => promptEnvironment.isInteractive()),
     coreVersion: dependencies.coreVersion ?? getCoreVersion(),
     packageManager,
     output: dependencies.output ?? consoleOutput,

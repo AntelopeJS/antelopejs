@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { CommanderError } from "commander";
 
 import {
+  CancelledError,
   CliError,
   getProcessUi,
   runWithErrorBoundary,
@@ -76,7 +77,7 @@ describe("runWithErrorBoundary", () => {
     const { ui, feedback } = createMemoryUi();
 
     await runWithErrorBoundary(
-      () => Promise.reject({ name: "ExitPromptError" }),
+      () => Promise.reject(new CancelledError()),
       { ui },
     );
 

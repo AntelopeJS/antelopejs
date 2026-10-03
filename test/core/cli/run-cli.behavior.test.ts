@@ -8,7 +8,11 @@ import * as logging from "../../../src/logging";
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import { runCLI } from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
-import { CliError, runWithErrorBoundary } from "../../../src/core/cli/output";
+import {
+  CancelledError,
+  CliError,
+  runWithErrorBoundary,
+} from "../../../src/core/cli/output";
 import { CANCELLED_MESSAGE } from "../../../src/core/cli/cancellation";
 import {
   CANCELLED_EXIT_CODE,
@@ -106,9 +110,9 @@ describe("runCLI behavior", () => {
     stubCommon();
     const cancel = sinon.stub();
     (versionCheck.startUpdateCheck as sinon.SinonStub).returns({ cancel });
-    (Command.prototype.parseAsync as sinon.SinonStub).rejects({
-      name: "ExitPromptError",
-    });
+    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
+      new CancelledError(),
+    );
     const exitStub = sinon.stub(process, "exit");
     const errorStub = sinon.stub(console, "error");
     const { ui, feedback } = createMemoryUi();

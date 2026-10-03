@@ -1,15 +1,18 @@
 import sinon from "sinon";
 import { expect } from "chai";
-import inquirer from "inquirer";
 
 import * as cliUi from "../../../../src/core/cli/cli-ui";
 import * as common from "../../../../src/core/cli/common";
-import { FAILURE_EXIT_CODE } from "../../../../src/core/cli/exit-codes";
+import {
+  FAILURE_EXIT_CODE,
+  USAGE_EXIT_CODE,
+} from "../../../../src/core/cli/exit-codes";
 import cmdGet from "../../../../src/core/cli/commands/config/get";
 import cmdSet from "../../../../src/core/cli/commands/config/set";
 import cmdShow from "../../../../src/core/cli/commands/config/show";
 import cmdReset from "../../../../src/core/cli/commands/config/reset";
 import { captureCliError } from "../../../helpers/cli-error";
+import { CANCEL, fakePrompts } from "../../../helpers/fake-prompts";
 import { createMemoryUi, type MemoryUi } from "../../../helpers/memory-ui";
 
 const CUSTOM_REPOSITORY = "https://example.com/interfaces.git";
@@ -218,11 +221,49 @@ describe("config commands behavior", () => {
       .stub(common, "readUserConfig")
       .resolves({ git: "https://example.com" });
     const writeStub = sinon.stub(common, "writeUserConfig").resolves();
-    sinon.stub(inquirer, "prompt").resolves({ confirm: false });
+    const prompts = fakePrompts({ answers: [false] });
 
     const cmd = cmdReset();
     await cmd.parseAsync(["node", "test"]);
 
+    expect(writeStub.called).to.equal(false);
+    expect(prompts.asked[0].kind).to.equal("confirm");
+  });
+
+  it("asks for --yes instead of prompting without a terminal", async () => {
+    sinon
+      .stub(common, "readUserConfig")
+      .resolves({ git: "https://example.com" });
+    const writeStub = sinon.stub(common, "writeUserConfig").resolves();
+    const prompts = fakePrompts({ isInteractive: false });
+
+    const error = await captureCliError(() =>
+      cmdReset().parseAsync(["node", "test"]),
+    );
+
+    expect(error.exitCode).to.equal(USAGE_EXIT_CODE);
+    expect(error.problem.fixes).to.deep.equal([
+      "Pass it as a flag: ajs config reset --yes",
+    ]);
+    expect(writeStub.called).to.equal(false);
+    expect(prompts.asked).to.deep.equal([]);
+  });
+
+  it("stops without resetting when the confirmation is cancelled", async () => {
+    sinon
+      .stub(common, "readUserConfig")
+      .resolves({ git: "https://example.com" });
+    const writeStub = sinon.stub(common, "writeUserConfig").resolves();
+    fakePrompts({ answers: [CANCEL] });
+
+    let thrown: unknown;
+    try {
+      await cmdReset().parseAsync(["node", "test"]);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect((thrown as Error).name).to.equal("CancelledError");
     expect(writeStub.called).to.equal(false);
   });
 });

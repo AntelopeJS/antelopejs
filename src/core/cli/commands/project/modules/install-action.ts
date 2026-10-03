@@ -1,6 +1,5 @@
 import chalk from "chalk";
 import path from "node:path";
-import inquirer from "inquirer";
 import type {
   ModuleSource,
   ModuleSourcePackage,
@@ -24,7 +23,9 @@ import { findUnresolvedInterfaces } from "../../../../resolution/interface-resol
 import {
   loadInterfaceFromGit,
   loadManifestFromGit,
+  type ModuleInterfaceInfo,
 } from "../../../git-operations";
+import { createPrompter, type Prompter } from "../../../output";
 import { displayNonDefaultGitWarning, readUserConfig } from "../../../common";
 import { resolveProjectContext } from "../../shared/project-command";
 
@@ -32,6 +33,7 @@ interface InstallOptions {
   project: string;
   env?: string;
   git?: string;
+  yes?: boolean;
 }
 
 export interface UnresolvedImport {
@@ -57,6 +59,35 @@ export function unresolvedImportWarning(
 }
 
 const PACKAGE_SOURCE_TYPE = "package";
+const INSTALL_COMMAND = "ajs project modules install";
+const YES_FLAG = "--yes";
+
+/**
+ * Picks the module that implements an interface: the only candidate without
+ * asking, otherwise the one the user selects (the first one with `--yes`).
+ */
+async function chooseImplementation(
+  prompter: Prompter,
+  interfaceName: string,
+  candidates: ModuleInterfaceInfo[],
+): Promise<ModuleInterfaceInfo> {
+  const [firstCandidate] = candidates;
+  if (candidates.length === 1) {
+    info(
+      `    ${chalk.blue("↳")} ${chalk.bold(firstCandidate.name)} is the only module implementing ${interfaceName}: selected automatically`,
+    );
+    return firstCandidate;
+  }
+  return prompter.select({
+    message: `Select a module to add for ${interfaceName}:`,
+    flag: YES_FLAG,
+    defaultAnswer: firstCandidate,
+    choices: candidates.map((candidate) => ({
+      value: candidate,
+      label: candidate.name,
+    })),
+  });
+}
 
 export function resolveInstallIdentifier(
   source: ModuleSource,
@@ -148,6 +179,11 @@ export async function installModules(options: InstallOptions): Promise<void> {
     options.env,
   );
   info(chalk.blue`Analyzing project dependencies...`);
+  const prompter = createPrompter({
+    command: INSTALL_COMMAND,
+    acceptsDefaults: options.yes,
+    defaultsFlag: YES_FLAG,
+  });
 
   const userConfig = await readUserConfig();
   const git = options.git || userConfig.git;
@@ -236,61 +272,35 @@ export async function installModules(options: InstallOptions): Promise<void> {
             `  ${chalk.yellow("•")} ${chalk.bold(describeUnresolvedImport(imp))}`,
           );
 
-          // Suggest modules that implement this interface
-          info(
-            `    ${chalk.blue("↳")} Available modules that implement this interface:`,
-          );
-          interfaceInfo.manifest.modules.forEach((mod, i) => {
-            info(`      ${i + 1}. ${chalk.bold(mod.name)}`);
-          });
-
-          // Ask user to select a module
-          const { moduleName } = await inquirer.prompt<{
-            moduleName: string;
-          }>([
-            {
-              type: "list",
-              name: "moduleName",
-              message: `Select a module to add for ${interfaceName}:`,
-              choices,
-            },
-          ]);
-
-          // Find the selected module
-          const moduleInterfaceInfo = interfaceInfo.manifest.modules.find(
-            (module) => module.name === moduleName,
+          const moduleInterfaceInfo = await chooseImplementation(
+            prompter,
+            interfaceName,
+            interfaceInfo.manifest.modules,
           );
 
-          if (moduleInterfaceInfo) {
-            const source = moduleInterfaceInfo.source;
-            const mode = source.type;
-            const loaderIdentifier = registry.getLoaderIdentifier(
-              source as any,
+          const source = moduleInterfaceInfo.source;
+          const mode = source.type;
+          const loaderIdentifier = registry.getLoaderIdentifier(source as any);
+
+          if (loaderIdentifier) {
+            const moduleName = moduleInterfaceInfo.name;
+            success(
+              `    ${chalk.green("↳")} Selected module: ${chalk.bold(moduleName)} for ${interfaceName}`,
             );
 
-            if (loaderIdentifier) {
-              success(
-                `    ${chalk.green("↳")} Selected module: ${chalk.bold(moduleName)} for ${interfaceName}`,
-              );
+            // Add to modules to install
+            modulesToInstall.push({
+              loaderIdentifier: resolveInstallIdentifier(
+                source as ModuleSource,
+                loaderIdentifier,
+              ),
+              mode,
+              moduleName,
+              imports: [interfaceName],
+              env,
+            });
 
-              // Add to modules to install
-              modulesToInstall.push({
-                loaderIdentifier: resolveInstallIdentifier(
-                  source as ModuleSource,
-                  loaderIdentifier,
-                ),
-                mode,
-                moduleName,
-                imports: [interfaceName],
-                env,
-              });
-
-              addedModules[moduleName] = [interfaceName];
-            }
-          } else {
-            warning(
-              `  ${chalk.yellow("-")} ${unresolvedImportWarning(imp, git)}`,
-            );
+            addedModules[moduleName] = [interfaceName];
           }
         } else if (alreadySelectedModule) {
           // Module already selected for another import, just track the import

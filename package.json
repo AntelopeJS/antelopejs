@@ -50,13 +50,13 @@
   },
   "dependencies": {
     "@antelopejs/interface-core": ">=0.1.1 <1.0.0",
+    "@clack/prompts": "^1.8.1",
     "@types/proper-lockfile": "^4.1.4",
     "boxen": "^8.0.1",
     "chalk": "^4.1.2",
     "commander": "^13.1.0",
     "figlet": "^1.11.0",
     "inly": "^5.0.1",
-    "inquirer": "^12.11.1",
     "jiti": "^2.6.1",
     "mocha": "^11.7.5",
     "picocolors": "^1.1.1",
@@ -97,6 +97,9 @@
       "text",
       "html"
     ]
+  },
+  "engines": {
+    "node": ">=20.19"
   },
   "packageManager": "pnpm@10.6.5",
   "antelopeJs": {

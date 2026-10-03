@@ -1,6 +1,6 @@
 import chalk from "chalk";
 
-import { CliError } from "../../../output";
+import { CliError, NeedsInputError, type Prompter } from "../../../output";
 import { USAGE_EXIT_CODE } from "../../../exit-codes";
 import type { SetOptions } from "./set-operations";
 
@@ -29,7 +29,9 @@ const OPTION_PAIRINGS: OptionPairing[] = [
   },
 ];
 
-const OPTION_FLAGS: Record<SettingOption, string> = {
+export const SET_COMMAND = "ajs project logging set";
+
+export const SET_OPTION_FLAGS: Record<SettingOption, string> = {
   enable: "--enable",
   disable: "--disable",
   enableModuleTracking: "--enableModuleTracking",
@@ -43,7 +45,7 @@ const OPTION_FLAGS: Record<SettingOption, string> = {
   dateFormat: "--dateFormat",
 };
 
-const SETTING_OPTIONS = Object.keys(OPTION_FLAGS) as SettingOption[];
+const SETTING_OPTIONS = Object.keys(SET_OPTION_FLAGS) as SettingOption[];
 
 function hasSetting(options: SetOptions): boolean {
   return SETTING_OPTIONS.some((option) => options[option] !== undefined);
@@ -59,32 +61,31 @@ export function isInteractiveRun(options: SetOptions): boolean {
 
 function pairingError(pairing: OptionPairing): CliError {
   return new CliError({
-    title: `${OPTION_FLAGS[pairing.given]} needs ${OPTION_FLAGS[pairing.missing]}`,
+    title: `${SET_OPTION_FLAGS[pairing.given]} needs ${SET_OPTION_FLAGS[pairing.missing]}`,
     reason: pairing.reason,
     fixes: [`Example: ${chalk.cyan(LEVEL_FORMAT_EXAMPLE)}`],
     exitCode: USAGE_EXIT_CODE,
   });
 }
 
-function missingTerminalError(): CliError {
-  return new CliError({
-    title: "No logging setting given",
-    reason:
-      "Without settings the command asks its questions interactively, and standard input is not a terminal.",
+function missingTerminalError(): NeedsInputError {
+  return new NeedsInputError({
+    command: SET_COMMAND,
+    flags: [SET_OPTION_FLAGS.enable],
     fixes: [
-      `Pass the settings to change, e.g. ${chalk.cyan("ajs project logging set --enable")}`,
-      `Run ${chalk.cyan("ajs project logging set --help")} to list them`,
+      `Pass the settings to change as flags, e.g. ${chalk.cyan(`${SET_COMMAND} ${SET_OPTION_FLAGS.enable}`)}`,
+      `Run ${chalk.cyan(`${SET_COMMAND} --help`)} to list them`,
     ],
-    exitCode: USAGE_EXIT_CODE,
   });
 }
 
 /**
  * Rejects a command line that cannot be carried out, before any work: an
- * option given without the one it goes with, or no setting at all when
- * standard input is not a terminal to ask them on.
+ * option given without the one it goes with, or an interactive run (asked
+ * with `--interactive` or implied by giving no setting) when nobody can
+ * answer its questions.
  */
-export function assertSetUsage(options: SetOptions): void {
+export function assertSetUsage(options: SetOptions, prompter: Prompter): void {
   const brokenPairing = OPTION_PAIRINGS.find(
     (pairing) =>
       options[pairing.given] !== undefined &&
@@ -93,7 +94,7 @@ export function assertSetUsage(options: SetOptions): void {
   if (brokenPairing) {
     throw pairingError(brokenPairing);
   }
-  if (!hasSetting(options) && !options.interactive && !process.stdin.isTTY) {
+  if (isInteractiveRun(options) && !prompter.isInteractive) {
     throw missingTerminalError();
   }
 }
