@@ -23,4 +23,8 @@ View and manage global CLI settings such as the interface repository URL.
 ::card{icon="i-ph-lightning" title="Cheat Sheet" to="/docs/cli/cheat-sheet"}
 Quick reference tables for every CLI command, option, and common workflow.
 ::
+
+::card{icon="i-ph-puzzle-piece" title="Plugin API" to="/docs/cli/plugin-api"}
+Build a CLI plugin whose output, errors and exit codes match ajs, with @antelopejs/core/cli.
+::
 ::

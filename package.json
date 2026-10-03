@@ -25,7 +25,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./cli": {
+      "types": "./dist/core/cli/public.d.ts",
+      "default": "./dist/core/cli/public.js"
+    },
+    "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public",

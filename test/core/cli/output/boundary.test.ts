@@ -86,6 +86,64 @@ describe("runWithErrorBoundary", () => {
     expect(process.exitCode).to.equal(CANCELLED_EXIT_CODE);
   });
 
+  it("explains failures with the translate hook", async () => {
+    const { ui, feedback } = createMemoryUi();
+
+    await runWithErrorBoundary(() => Promise.reject(new Error("fetch failed")), {
+      ui,
+      verbose: false,
+      translate: () => ({
+        title: "Cannot reach http://localhost:5000",
+        fixes: ["Start the backend, then try again"],
+      }),
+    });
+
+    expect(feedback.text).to.equal(
+      "✖ Cannot reach http://localhost:5000\n  → Start the backend, then try again\n",
+    );
+    expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
+  });
+
+  it("handles the errors of another copy of commander by their code", async () => {
+    const { ui, feedback } = createMemoryUi();
+    const helpExit = Object.assign(new Error("(outputHelp)"), {
+      code: "commander.helpDisplayed",
+      exitCode: SUCCESS_EXIT_CODE,
+    });
+
+    await runWithErrorBoundary(() => Promise.reject(helpExit), { ui });
+
+    expect(process.exitCode).to.equal(SUCCESS_EXIT_CODE);
+    expect(feedback.text).to.equal("");
+  });
+
+  it("reports an error whose code only looks like commander's", async () => {
+    const { ui, feedback } = createMemoryUi();
+    const lookalike = Object.assign(new Error("boom"), {
+      code: "commander.help",
+    });
+
+    await runWithErrorBoundary(() => Promise.reject(lookalike), {
+      ui,
+      verbose: false,
+    });
+
+    expect(feedback.text.split("\n")[0]).to.equal("✖ boom");
+    expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
+  });
+
+  it("reports a thrown value that is not an error", async () => {
+    const { ui, feedback } = createMemoryUi();
+
+    await runWithErrorBoundary(() => Promise.reject("boom"), {
+      ui,
+      verbose: false,
+    });
+
+    expect(feedback.text).to.equal("✖ boom\n");
+    expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
+  });
+
   it("keeps commander's help and version exits silent", async () => {
     const { ui, feedback } = createMemoryUi();
 

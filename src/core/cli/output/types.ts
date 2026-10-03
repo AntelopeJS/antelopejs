@@ -65,6 +65,12 @@ export interface CliProblem {
   exitCode?: number;
 }
 
+/**
+ * Explains a failure that was not thrown as a `CliError`: returns the problem
+ * to report, or `undefined` to fall back to the built-in description.
+ */
+export type FailureTranslator = (error: unknown) => CliProblem | undefined;
+
 export interface DetailEntry {
   label: string;
   value: string;
