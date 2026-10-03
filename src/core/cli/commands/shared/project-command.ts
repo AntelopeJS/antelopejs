@@ -1,8 +1,13 @@
 import chalk from "chalk";
 import type { Command } from "commander";
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import { Spinner } from "../../cli-ui";
-import { readConfig } from "../../common";
+import { CliError, reportCliError } from "../../cli-error";
+import { isDynamicConfig, readConfig } from "../../common";
+import { USAGE_EXIT_CODE } from "../../exit-codes";
+import { NodeFileSystem } from "../../../filesystem";
+import { DEFAULT_ENV } from "../../../config/config-paths";
 
 export interface ProjectCommandOptions {
   project: string;
@@ -10,7 +15,14 @@ export interface ProjectCommandOptions {
   verbose?: string[];
 }
 
+export interface ProjectContext {
+  config: AntelopeConfig;
+  environment: string;
+  environmentConfig: Partial<AntelopeConfig>;
+}
+
 const DEFAULT_PROJECT_NAME = "unnamed";
+const PROJECT_INIT_COMMAND = "ajs project init <project-name>";
 
 export function resolveInheritedVerbose(
   command: Command,
@@ -24,25 +36,126 @@ export function resolveInheritedVerbose(
     | undefined;
 }
 
-export async function validateProjectExists(
+export function listKnownEnvironments(config: AntelopeConfig): string[] {
+  return [DEFAULT_ENV, ...Object.keys(config.environments ?? {})];
+}
+
+function projectNotFoundError(projectFolder: string): CliError {
+  return new CliError({
+    title: `No AntelopeJS project found at ${chalk.bold(projectFolder)}`,
+    fixes: [
+      `Run ${chalk.cyan.bold(PROJECT_INIT_COMMAND)} to create one, or pass --project <path>`,
+    ],
+  });
+}
+
+function unknownEnvironmentError(
+  config: AntelopeConfig,
+  environment: string,
+): CliError {
+  return new CliError({
+    title: `Unknown environment '${environment}'`,
+    reason: `Known environments: ${listKnownEnvironments(config).join(", ")}`,
+    fixes: [
+      `Pass one of them with --env, or add an "environments.${environment}" entry to the project configuration`,
+    ],
+    exitCode: USAGE_EXIT_CODE,
+  });
+}
+
+function findEnvironmentConfig(
+  config: AntelopeConfig,
+  environment: string,
+): Partial<AntelopeConfig> | undefined {
+  return environment === DEFAULT_ENV
+    ? config
+    : config.environments?.[environment];
+}
+
+async function acceptsAnyEnvironment(
   projectFolder: string,
+  config: AntelopeConfig,
 ): Promise<boolean> {
+  return !config.environments && (await isDynamicConfig(projectFolder));
+}
+
+async function resolveEnvironmentConfig(
+  projectFolder: string,
+  config: AntelopeConfig,
+  environment: string,
+): Promise<Partial<AntelopeConfig>> {
+  const environmentConfig = findEnvironmentConfig(config, environment);
+  if (environmentConfig) {
+    return environmentConfig;
+  }
+  if (await acceptsAnyEnvironment(projectFolder, config)) {
+    return config;
+  }
+  throw unknownEnvironmentError(config, environment);
+}
+
+/**
+ * Reads the project configuration for the requested environment and checks
+ * that environment before the command does any work. The known environments
+ * are `default` and the keys of `environments`; a configuration exported as a
+ * function that returns no `environments` accepts any name. Throws a
+ * {@link CliError} when the folder holds no project, or a usage error listing
+ * the known environments when the environment is unknown.
+ */
+export async function resolveProjectContext(
+  projectFolder: string,
+  requestedEnvironment?: string,
+): Promise<ProjectContext> {
+  const environment = requestedEnvironment || DEFAULT_ENV;
+  const config = await readConfig(
+    projectFolder,
+    new NodeFileSystem(),
+    environment,
+  );
+  if (!config) {
+    throw projectNotFoundError(projectFolder);
+  }
+  const environmentConfig = await resolveEnvironmentConfig(
+    projectFolder,
+    config,
+    environment,
+  );
+  return { config, environment, environmentConfig };
+}
+
+export async function findProject(
+  projectFolder: string,
+  environment?: string,
+): Promise<ProjectContext> {
   const checkSpinner = new Spinner(
     `Looking for AntelopeJS project at ${chalk.cyan(projectFolder)}`,
   );
   await checkSpinner.start();
 
-  const config = await readConfig(projectFolder);
-  if (!config) {
-    await checkSpinner.fail(`No project found at ${chalk.bold(projectFolder)}`);
-    console.error(
-      `Run ${chalk.cyan.bold(`ajs project init <project-name>`)} to create a new project.`,
+  try {
+    const context = await resolveProjectContext(projectFolder, environment);
+    const projectName = context.config.name || DEFAULT_PROJECT_NAME;
+    await checkSpinner.succeed(
+      `Found project: ${chalk.green.bold(projectName)}`,
     );
-    process.exitCode = 1;
+    return context;
+  } catch (err) {
+    await checkSpinner.stop();
+    throw err;
+  }
+}
+
+export async function validateProjectExists(
+  projectFolder: string,
+): Promise<boolean> {
+  try {
+    await findProject(projectFolder);
+    return true;
+  } catch (err) {
+    if (!(err instanceof CliError)) {
+      throw err;
+    }
+    reportCliError(err);
     return false;
   }
-
-  const projectName = config.name || DEFAULT_PROJECT_NAME;
-  await checkSpinner.succeed(`Found project: ${chalk.green.bold(projectName)}`);
-  return true;
 }

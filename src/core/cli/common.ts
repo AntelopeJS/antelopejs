@@ -10,7 +10,7 @@ import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { warning } from "./cli-ui";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import { loadTsConfigFile } from "../config/config-loader";
+import { importConfigInput, loadTsConfigFile } from "../config/config-loader";
 import type { ModulePackageJson } from "../module-manifest";
 import { TS_CONFIG_FILE, tryFindConfigPath } from "../config/config-paths";
 
@@ -247,13 +247,25 @@ export async function writeConfig(
 export async function readConfig(
   project: string,
   fileSystem: IFileSystem = new NodeFileSystem(),
+  environment?: string,
 ): Promise<AntelopeConfig | undefined> {
   const configPath = await tryFindConfigPath(project, fileSystem);
 
   if (!configPath) {
     return undefined;
   }
-  return loadTsConfigFile(configPath);
+  return loadTsConfigFile(configPath, environment);
+}
+
+export async function isDynamicConfig(
+  project: string,
+  fileSystem: IFileSystem = new NodeFileSystem(),
+): Promise<boolean> {
+  const configPath = await tryFindConfigPath(project, fileSystem);
+  if (!configPath) {
+    return false;
+  }
+  return typeof (await importConfigInput(configPath)) === "function";
 }
 
 /*

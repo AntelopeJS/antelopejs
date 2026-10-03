@@ -2,11 +2,12 @@ import chalk from "chalk";
 import { Command, Option } from "commander";
 
 import { ConfigLoader } from "../../../../config";
-import { Options, readConfig } from "../../../common";
+import { Options } from "../../../common";
 import { mergeDeep } from "../../../../../utils/object";
 import { NodeFileSystem } from "../../../../filesystem";
 import { defaultConfigLogging, levelNames } from "../../../../../logging";
-import { displayBox, error, header, keyValue, warning } from "../../../cli-ui";
+import { displayBox, header, keyValue } from "../../../cli-ui";
+import { resolveProjectContext } from "../../shared/project-command";
 
 interface ShowOptions {
   project: string;
@@ -29,23 +30,13 @@ export default function () {
     )
     .addOption(new Option("-j, --json", "Output in JSON format").default(false))
     .action(async (options: ShowOptions) => {
-      const config = await readConfig(options.project);
-      if (!config) {
-        error(
-          `No project configuration found at: ${chalk.bold(options.project)}`,
-        );
-        warning(
-          `Make sure you're in an AntelopeJS project or use the --project option.`,
-        );
-        process.exitCode = 1;
-        return;
-      }
+      const { config, environment } = await resolveProjectContext(
+        options.project,
+        options.env,
+      );
 
       const loader = new ConfigLoader(new NodeFileSystem());
-      const antelopeConfig = await loader.load(
-        options.project,
-        options.env || "default",
-      );
+      const antelopeConfig = await loader.load(options.project, environment);
       const logging = mergeDeep(
         {},
         defaultConfigLogging,

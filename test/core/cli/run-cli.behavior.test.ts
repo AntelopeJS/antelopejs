@@ -7,6 +7,7 @@ import * as logging from "../../../src/logging";
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import { runCLI } from "../../../src/core/cli/full-cli";
 import * as versionCheck from "../../../src/core/cli/version-check";
+import { CliError } from "../../../src/core/cli/cli-error";
 import { CANCELLED_MESSAGE } from "../../../src/core/cli/cancellation";
 import {
   CANCELLED_EXIT_CODE,
@@ -115,6 +116,25 @@ describe("runCLI behavior", () => {
     expect(errorStub.calledOnceWith(CANCELLED_MESSAGE)).to.equal(true);
     expect(process.exitCode).to.equal(CANCELLED_EXIT_CODE);
     expect(cancel.calledOnce).to.equal(true);
+  });
+
+  it("reports a command error with its own exit code", async () => {
+    process.argv = ["node", "ajs", "project", "build", "-e", "staging"];
+    stubCommon();
+    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
+      new CliError({
+        title: "Unknown environment 'staging'",
+        exitCode: USAGE_EXIT_CODE,
+      }),
+    );
+    const errorStub = sinon.stub(cliUi, "error");
+
+    await runCLI();
+
+    expect(errorStub.calledOnceWith("Unknown environment 'staging'")).to.equal(
+      true,
+    );
+    expect(process.exitCode).to.equal(USAGE_EXIT_CODE);
   });
 
   it("reports a usage error with the usage exit code", async () => {

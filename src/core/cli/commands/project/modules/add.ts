@@ -9,13 +9,14 @@ import { ExecuteCMD } from "../../../command";
 import { ConfigLoader } from "../../../../config";
 import { ModuleCache } from "../../../../module-cache";
 import { NodeFileSystem } from "../../../../filesystem";
-import { Options, readConfig, writeConfig } from "../../../common";
+import { Options, writeConfig } from "../../../common";
 import { registerGitDownloader } from "../../../../downloaders/git";
 import type { ModulePackageJson } from "../../../../module-manifest";
 import { DownloaderRegistry } from "../../../../downloaders/registry";
 import { registerLocalDownloader } from "../../../../downloaders/local";
 import { registerPackageDownloader } from "../../../../downloaders/package";
-import { displayBox, error, info, success, warning } from "../../../cli-ui";
+import { displayBox, error, info, success } from "../../../cli-ui";
+import { resolveProjectContext } from "../../shared/project-command";
 import { registerLocalFolderDownloader } from "../../../../downloaders/local-folder";
 import {
   fetchLatestVersion,
@@ -136,28 +137,19 @@ export async function projectModulesAddCommand(
   modules: string[],
   options: AddOptions,
 ): Promise<AddCommandResult | undefined> {
+  const resolvedProjectPath = path.resolve(options.project);
+  const {
+    config,
+    environment,
+    environmentConfig: env,
+  } = await resolveProjectContext(resolvedProjectPath, options.env);
+
   console.log(""); // Add spacing for better readability
   info(`Adding modules to your project...`);
 
-  const resolvedProjectPath = path.resolve(options.project);
-  const envLabel = options.env || "default";
-
-  // Get project config
-  const config = await readConfig(resolvedProjectPath);
-  if (!config) {
-    error(
-      `No project configuration found at: ${chalk.bold(resolvedProjectPath)}`,
-    );
-    warning(
-      `Make sure you're in an AntelopeJS project or use the --project option.`,
-    );
-    process.exitCode = 1;
-    return;
-  }
-
   const fs = new NodeFileSystem();
   const loader = new ConfigLoader(fs);
-  const antelopeConfig = await loader.load(resolvedProjectPath, envLabel);
+  const antelopeConfig = await loader.load(resolvedProjectPath, environment);
 
   const registry = new DownloaderRegistry();
   registerLocalDownloader(registry, { fs, exec: ExecuteCMD });
@@ -197,17 +189,6 @@ export async function projectModulesAddCommand(
   sources = sources.filter(
     (source): source is [string, AntelopeModuleConfig] => source !== null,
   );
-
-  // Get correct environment config
-  const env =
-    options.env && options.env !== "default"
-      ? config?.environments?.[options.env]
-      : config;
-  if (!env) {
-    error(`Environment ${envLabel} not found in project config`);
-    process.exitCode = 1;
-    return;
-  }
 
   if (!env.modules) {
     env.modules = {};

@@ -33,15 +33,21 @@ export interface LoadedConfig {
   test?: AntelopeTestConfig;
 }
 
-export async function loadTsConfigFile(
+export async function importConfigInput(
   configPath: string,
-  environment?: string,
-): Promise<AntelopeConfig> {
+): Promise<ConfigInput> {
   const jiti = createJiti(configPath, {
     alias: { [CORE_CONFIG_PACKAGE]: CORE_CONFIG_ENTRY },
   });
   const loaded = await jiti.import(configPath);
-  const configInput: ConfigInput = (loaded as any).default ?? loaded;
+  return (loaded as any).default ?? loaded;
+}
+
+export async function loadTsConfigFile(
+  configPath: string,
+  environment?: string,
+): Promise<AntelopeConfig> {
+  const configInput = await importConfigInput(configPath);
 
   if (typeof configInput === "function") {
     return await configInput({ env: environment ?? DEFAULT_ENV });

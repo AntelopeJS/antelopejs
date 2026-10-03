@@ -16,6 +16,10 @@ import {
   makeTempDir,
   writeJson,
 } from "../../../../helpers/temp";
+import {
+  expectProjectNotFound,
+  expectUnknownEnvironment,
+} from "../../../../helpers/cli-error";
 import { projectModulesRemoveCommand } from "../../../../../src/core/cli/commands/project/modules/remove";
 import {
   handlers,
@@ -30,37 +34,40 @@ describe("project modules behavior", () => {
 
   it("errors when project config is missing", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
-    const errorStub = sinon.stub(cliUi, "error");
-    sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "info");
 
-    await projectModulesAddCommand(["modA"], {
-      mode: "package",
-      project: "/tmp/project",
-    });
-
-    expect(errorStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    await expectProjectNotFound(() =>
+      projectModulesAddCommand(["modA"], {
+        mode: "package",
+        project: "/tmp/project",
+      }),
+    );
   });
 
-  it("errors when environment is missing", async () => {
-    sinon
-      .stub(common, "readConfig")
-      .resolves({ name: "proj", environments: {} } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
-    sinon.stub(ModuleCache.prototype, "load").resolves();
-    const errorStub = sinon.stub(cliUi, "error");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "info");
+  it("rejects an unknown environment before resolving any module", async () => {
+    sinon.stub(common, "readConfig").resolves({
+      name: "proj",
+      environments: { production: {} },
+    } as any);
+    const loadStub = sinon.stub(ConfigLoader.prototype, "load");
+    const handlerStub = sinon.stub();
+    sinon.stub(handlers, "get").returns(handlerStub);
+    const infoStub = sinon.stub(cliUi, "info");
 
-    await projectModulesAddCommand([], {
-      mode: "package",
-      project: "/tmp/project",
-      env: "staging",
-    });
+    const cliError = await expectUnknownEnvironment(
+      () =>
+        projectModulesAddCommand(["modA"], {
+          mode: "package",
+          project: "/tmp/project",
+          env: "staging",
+        }),
+      "staging",
+    );
 
-    expect(errorStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    expect(cliError.problem.reason).to.include("default, production");
+    expect(handlerStub.called).to.equal(false);
+    expect(loadStub.called).to.equal(false);
+    expect(infoStub.called).to.equal(false);
   });
 
   it("adds modules and skips existing ones", async () => {
@@ -665,17 +672,11 @@ describe("project modules behavior", () => {
 
   it("errors when project config is missing for list", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
-    const errorStub = sinon.stub(cliUi, "error");
-    const warningStub = sinon.stub(cliUi, "warning");
-    sinon.stub(cliUi, "info");
     sinon.stub(console, "log");
 
-    const cmd = cmdList();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
-
-    expect(errorStub.called).to.equal(true);
-    expect(warningStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    await expectProjectNotFound(() =>
+      cmdList().parseAsync(["node", "test", "--project", "/tmp/project"]),
+    );
   });
 
   it("renders unknown sources and git commits in list output", async () => {
@@ -750,32 +751,58 @@ describe("project modules behavior", () => {
     sinon
       .stub(common, "readConfig")
       .resolves({ name: "proj", environments: {} } as any);
-    const errorStub = sinon.stub(cliUi, "error");
+    const writeStub = sinon.stub(common, "writeConfig").resolves();
+    const infoStub = sinon.stub(cliUi, "info");
+
+    await expectUnknownEnvironment(
+      () =>
+        projectModulesRemoveCommand(["foo"], {
+          project: "/tmp/project",
+          env: "staging",
+          force: false,
+        }),
+      "staging",
+    );
+
+    expect(writeStub.called).to.equal(false);
+    expect(infoStub.called).to.equal(false);
+  });
+
+  it("removes modules from the root config with the default environment", async () => {
+    const config: any = {
+      name: "proj",
+      modules: { foo: "1.0.0" },
+      environments: { production: {} },
+    };
+    sinon.stub(common, "readConfig").resolves(config);
+    const loadStub = sinon
+      .stub(ConfigLoader.prototype, "load")
+      .resolves({ modules: { foo: {} } } as any);
+    const writeStub = sinon.stub(common, "writeConfig").resolves();
     sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "success");
 
     await projectModulesRemoveCommand(["foo"], {
       project: "/tmp/project",
-      env: "staging",
+      env: "default",
       force: false,
     });
 
-    expect(errorStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    expect(loadStub.firstCall.args[1]).to.equal("default");
+    expect(writeStub.calledOnce).to.equal(true);
+    expect(config.modules).to.deep.equal({});
   });
 
   it("errors when project config is missing for removal", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
-    const errorStub = sinon.stub(cliUi, "error");
-    const infoStub = sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "info");
 
-    await projectModulesRemoveCommand(["foo"], {
-      project: "/tmp/project",
-      force: false,
-    });
-
-    expect(errorStub.called).to.equal(true);
-    expect(infoStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    await expectProjectNotFound(() =>
+      projectModulesRemoveCommand(["foo"], {
+        project: "/tmp/project",
+        force: false,
+      }),
+    );
   });
 
   it("errors when no modules are installed", async () => {
@@ -967,37 +994,33 @@ describe("project modules behavior", () => {
 
   it("errors when project config is missing for update", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
-    const errorStub = sinon.stub(cliUi, "error");
-    const infoStub = sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "info");
 
-    const cmd = cmdUpdate();
-    await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
-
-    expect(errorStub.called).to.equal(true);
-    expect(infoStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    await expectProjectNotFound(() =>
+      cmdUpdate().parseAsync(["node", "test", "--project", "/tmp/project"]),
+    );
   });
 
   it("errors when environment is missing for update", async () => {
     sinon
       .stub(common, "readConfig")
       .resolves({ name: "proj", environments: {} } as any);
-    const errorStub = sinon.stub(cliUi, "error");
     const infoStub = sinon.stub(cliUi, "info");
 
-    const cmd = cmdUpdate();
-    await cmd.parseAsync([
-      "node",
-      "test",
-      "--project",
-      "/tmp/project",
-      "--env",
+    await expectUnknownEnvironment(
+      () =>
+        cmdUpdate().parseAsync([
+          "node",
+          "test",
+          "--project",
+          "/tmp/project",
+          "--env",
+          "staging",
+        ]),
       "staging",
-    ]);
+    );
 
-    expect(errorStub.called).to.equal(true);
-    expect(infoStub.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    expect(infoStub.called).to.equal(false);
   });
 
   it("errors when no modules are installed for update", async () => {
@@ -1036,6 +1059,38 @@ describe("project modules behavior", () => {
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
+    expect(successStub.called).to.equal(true);
+  });
+
+  it("updates the root config when the default environment is named", async () => {
+    sinon.stub(common, "readConfig").resolves({
+      name: "proj",
+      modules: {
+        git: {
+          source: { type: "git", remote: "https://example.com/repo.git" },
+        },
+      },
+    } as any);
+    const loadStub = sinon.stub(ConfigLoader.prototype, "load").resolves({
+      modules: {
+        git: {
+          source: { type: "git", remote: "https://example.com/repo.git" },
+        },
+      },
+    } as any);
+    sinon.stub(cliUi, "info");
+    const successStub = sinon.stub(cliUi, "success");
+
+    await cmdUpdate().parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/tmp/project",
+      "--env",
+      "default",
+    ]);
+
+    expect(loadStub.firstCall.args[1]).to.equal("default");
     expect(successStub.called).to.equal(true);
   });
 

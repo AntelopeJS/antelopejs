@@ -9,6 +9,7 @@ import {
   DEFAULT_GIT_REPO,
   detectIndentation,
   displayNonDefaultGitWarning,
+  isDynamicConfig,
   readConfig,
   readModuleManifest,
   readUserConfig,
@@ -114,6 +115,11 @@ describe("CLI Common", () => {
       const fs = new InMemoryFileSystem();
       const config = await readConfig("/missing", fs);
       expect(config).to.equal(undefined);
+    });
+
+    it("does not consider a missing configuration dynamic", async () => {
+      const fs = new InMemoryFileSystem();
+      expect(await isDynamicConfig("/missing", fs)).to.equal(false);
     });
   });
 

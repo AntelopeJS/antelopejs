@@ -8,9 +8,10 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import { ConfigLoader } from "../../../../config";
-import { Options, readConfig } from "../../../common";
+import { Options } from "../../../common";
 import { NodeFileSystem } from "../../../../filesystem";
-import { displayBox, error, info, keyValue, warning } from "../../../cli-ui";
+import { displayBox, info, keyValue } from "../../../cli-ui";
+import { resolveProjectContext } from "../../shared/project-command";
 
 interface ListOptions {
   project: string;
@@ -125,25 +126,14 @@ export default function () {
       ).env("ANTELOPEJS_LAUNCH_ENV"),
     )
     .action(async (options: ListOptions) => {
+      const { config, environment } = await resolveProjectContext(
+        options.project,
+        options.env,
+      );
       console.log("");
 
-      const config = await readConfig(options.project);
-      if (!config) {
-        error(
-          `No project configuration found at: ${chalk.bold(options.project)}`,
-        );
-        warning(
-          `Make sure you're in an AntelopeJS project or use the --project option.`,
-        );
-        process.exitCode = 1;
-        return;
-      }
-
       const loader = new ConfigLoader(new NodeFileSystem());
-      const antelopeConfig = await loader.load(
-        options.project,
-        options.env || "default",
-      );
+      const antelopeConfig = await loader.load(options.project, environment);
       const moduleEntries = Object.entries(
         antelopeConfig.modules as Record<string, ModuleEntry>,
       );
