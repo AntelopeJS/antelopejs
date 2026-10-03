@@ -9,7 +9,7 @@ import cmdUpdate from "./commands/update";
 import cmdPlugins from "./commands/plugins";
 import cmdProject from "./commands/project";
 import { getCoreVersion } from "./core-version";
-import { warnIfOutdated } from "./version-check";
+import { reportAvailableUpdate, startUpdateCheck } from "./version-check";
 import { formatOfficialPluginsHelp } from "./plugin-registry";
 import {
   addChannelFilter,
@@ -61,16 +61,23 @@ export function coreCommandNames(
   ];
 }
 
+function applyVerboseChannels(program: Command): void {
+  const verbose = program.getOptionValue("verbose");
+  if (verbose) {
+    for (const channel of verbose as string[]) {
+      addChannelFilter(channel, 0);
+    }
+  }
+}
+
 // Main CLI function
 export const runCLI = async () => {
+  const updateCheck = startUpdateCheck();
   try {
     const version = getCoreVersion();
 
     // Initialize logging with default configuration
     setupAntelopeProjectLogging(defaultConfigLogging);
-
-    // Check for updates before anything else
-    await warnIfOutdated(version);
 
     // Display fancy banner when no arguments are passed
     if (process.argv.length <= 2) {
@@ -82,12 +89,8 @@ export const runCLI = async () => {
     // Parse arguments
     await program.parseAsync();
 
-    const verbose = program.getOptionValue("verbose");
-    if (verbose) {
-      for (const channel of verbose as string[]) {
-        addChannelFilter(channel, 0);
-      }
-    }
+    applyVerboseChannels(program);
+    await reportAvailableUpdate(version, updateCheck);
   } catch (error) {
     // Check if the error is ExitPromptError from inquirer (thrown when Ctrl+C is pressed)
     if (
@@ -101,5 +104,7 @@ export const runCLI = async () => {
 
     // Re-throw any other errors
     throw error;
+  } finally {
+    updateCheck?.cancel();
   }
 };
