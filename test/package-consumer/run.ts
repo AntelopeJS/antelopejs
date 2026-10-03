@@ -99,7 +99,10 @@ try {
   installConsumer(tarball);
   verifyConsumer("verify.cjs");
   verifyConsumer("verify-cli.cjs");
-  process.stdout.write("Package consumer routing and CLI startup verified.\n");
+  verifyConsumer("verify-cli-api.cjs");
+  process.stdout.write(
+    "Package consumer routing, CLI startup and CLI API verified.\n",
+  );
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }

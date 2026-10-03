@@ -2,7 +2,7 @@ import { ExecError } from "../command";
 import { stripAnsiCodes } from "../logging-utils";
 import { CliError } from "./errors";
 import { FAILURE_EXIT_CODE } from "../exit-codes";
-import type { CliProblem, Ui } from "./types";
+import type { CliProblem, FailureTranslator, Ui } from "./types";
 import { translateExecError, translateFailure } from "./translations";
 import { getProcessUi } from "./tasks";
 import { isVerboseRun } from "./verbosity";
@@ -77,35 +77,45 @@ function untranslatedOutputTail(chain: unknown[]): string[] {
     .flatMap(commandOutputTail);
 }
 
-function verboseHint(chain: unknown[]): string[] {
+function explainFailure(
+  error: unknown,
+  translate?: FailureTranslator,
+): CliProblem | undefined {
+  return translate?.(error) ?? translateFailure(error);
+}
+
+function verboseHint(chain: unknown[], translate?: FailureTranslator): string[] {
   if (chain.some((error) => error instanceof ExecError)) {
     return [COMMAND_OUTPUT_HINT];
   }
   const hasUnexplainedTrace = chain.some(
-    (error) => isTraceable(error) && translateFailure(error) === undefined,
+    (error) =>
+      isTraceable(error) && explainFailure(error, translate) === undefined,
   );
   return hasUnexplainedTrace ? [STACK_TRACE_HINT] : [];
 }
 
 /**
  * Describes any failure with the what / why / fix template: a
- * {@link CliError} keeps its own problem, known low-level failures are
- * translated, anything else is reduced to its message. Verbose runs add the
- * stack traces and the full command output; other runs show the last lines
- * of an untranslated command failure and say how to get the rest.
+ * {@link CliError} keeps its own problem, other failures are explained by
+ * `translate` first, then by the known low-level translations, and anything
+ * else is reduced to its message. Verbose runs add the stack traces and the
+ * full command output; other runs show the last lines of an untranslated
+ * command failure and say how to get the rest.
  */
 export function describeFailure(
   error: unknown,
   verbose: boolean = isVerboseRun(),
+  translate?: FailureTranslator,
 ): CliProblem {
   const problem =
     error instanceof CliError
       ? error.problem
-      : (translateFailure(error) ?? genericProblem(error));
+      : (explainFailure(error, translate) ?? genericProblem(error));
   const chain = causeChain(error);
   const diagnostics = verbose
     ? verboseDetails(chain)
-    : [...untranslatedOutputTail(chain), ...verboseHint(chain)];
+    : [...untranslatedOutputTail(chain), ...verboseHint(chain, translate)];
   return { ...problem, details: [...(problem.details ?? []), ...diagnostics] };
 }
 
@@ -117,8 +127,9 @@ export function reportFailure(
   error: unknown,
   ui: Ui = getProcessUi(),
   verbose: boolean = isVerboseRun(),
+  translate?: FailureTranslator,
 ): number {
-  const problem = describeFailure(error, verbose);
+  const problem = describeFailure(error, verbose, translate);
   ui.problem(problem);
   return problem.exitCode ?? FAILURE_EXIT_CODE;
 }

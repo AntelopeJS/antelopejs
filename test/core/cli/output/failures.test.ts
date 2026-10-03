@@ -163,6 +163,57 @@ describe("describeFailure", () => {
     expect(describeFailure(undefined, false).title).to.equal("undefined");
   });
 
+  it("explains a failure with the translate hook before the built-in translations", () => {
+    const missing = Object.assign(new Error("ENOENT: stat '/nope'"), {
+      code: "ENOENT",
+      path: "/nope",
+    });
+
+    const problem = describeFailure(missing, false, () => ({
+      title: "Manifest not found",
+      fixes: ["Run ajs dms prepare first"],
+    }));
+
+    expect(problem).to.deep.equal({
+      title: "Manifest not found",
+      fixes: ["Run ajs dms prepare first"],
+      details: [],
+    });
+  });
+
+  it("falls back to the built-in description when the translate hook declines", () => {
+    const problem = describeFailure(new Error("boom"), false, () => undefined);
+
+    expect(problem).to.deep.equal({
+      title: "boom",
+      details: [STACK_TRACE_HINT],
+    });
+  });
+
+  it("keeps the problem of a command error whatever the translate hook says", () => {
+    const problem = describeFailure(
+      new CliError({ title: "Unknown environment 'staging'" }),
+      false,
+      () => ({ title: "Translated" }),
+    );
+
+    expect(problem.title).to.equal("Unknown environment 'staging'");
+  });
+
+  it("does not offer a trace for a cause the translate hook explains", () => {
+    const refused = new Error("connect ECONNREFUSED 127.0.0.1:5000");
+    const failure = new CliError(
+      { title: "Cannot reach the backend" },
+      { cause: refused },
+    );
+
+    const problem = describeFailure(failure, false, (error) =>
+      error === refused ? { title: "Backend refused the connection" } : undefined,
+    );
+
+    expect(problem.details).to.deep.equal([]);
+  });
+
   it("follows a cyclic cause chain once", () => {
     const first = new Error("first");
     const second = new Error("second", { cause: first });
@@ -186,6 +237,18 @@ describe("reportFailure", () => {
 
     expect(feedback.text).to.equal("✖ Bad input\n");
     expect(result.text).to.equal("");
+    expect(exitCode).to.equal(USAGE_EXIT_CODE);
+  });
+
+  it("reports a failure explained by the translate hook with its exit code", () => {
+    const { ui, feedback } = createMemoryUi();
+
+    const exitCode = reportFailure(new Error("fetch failed"), ui, false, () => ({
+      title: "Cannot reach http://localhost:5000",
+      exitCode: USAGE_EXIT_CODE,
+    }));
+
+    expect(feedback.text).to.equal("✖ Cannot reach http://localhost:5000\n");
     expect(exitCode).to.equal(USAGE_EXIT_CODE);
   });
 

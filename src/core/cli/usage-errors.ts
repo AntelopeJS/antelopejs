@@ -1,7 +1,8 @@
 import { type Command, CommanderError } from "commander";
 
 import { USAGE_EXIT_CODE } from "./exit-codes";
-import { CliError, type CliProblem } from "./output";
+import { CliError } from "./output/errors";
+import type { CliProblem } from "./output/types";
 
 const COMMANDER_ERROR_PREFIX = /^error:\s*/;
 const COMMANDER_NOTE_PATTERN = /^\((.*)\)$/;
