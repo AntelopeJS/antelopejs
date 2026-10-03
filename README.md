@@ -67,7 +67,7 @@ Run a plugin command through the CLI:
 ajs dms <command>
 ```
 
-If the plugin is not installed, the CLI offers to install it globally with the same package manager that installed `@antelopejs/core`. You can also install it yourself:
+If the plugin is not installed, the CLI offers to install it globally with the same package manager that installed `@antelopejs/core` (the answer defaults to No). You can also install it yourself:
 
 ```bash
 pnpm add -g @antelopejs/dms-frontend

@@ -1,4 +1,6 @@
 import type { CommandOutput } from "../../src/core/cli/cli-ui";
+import type { CliProblem } from "../../src/core/cli/output";
+import { stripAnsi } from "../../src/core/cli/logging-utils";
 import type { PluginPackageReader } from "../../src/core/cli/plugin-package";
 import type { GlobalRootResolver } from "../../src/core/cli/global-package-manager";
 import type {
@@ -127,18 +129,31 @@ export function createSignalTarget(): FakeSignalTarget {
 
 export interface FakeOutput extends CommandOutput {
   infos: string[];
+  warnings: string[];
   errors: string[];
+  problems: CliProblem[];
 }
 
 export function createOutput(): FakeOutput {
   const infos: string[] = [];
+  const warnings: string[] = [];
   const errors: string[] = [];
+  const problems: CliProblem[] = [];
   return {
     infos,
+    warnings,
     errors,
+    problems,
     info: (message: string) => infos.push(message),
+    warn: (message: string) => warnings.push(message),
     error: (message: string) => errors.push(message),
+    problem: (problem: CliProblem) => problems.push(problem),
   };
+}
+
+/** A problem with the colors of its fixes removed, for exact comparisons. */
+export function plainProblem(problem: CliProblem): CliProblem {
+  return { ...problem, fixes: problem.fixes?.map(stripAnsi) };
 }
 
 export function createPackageReader(

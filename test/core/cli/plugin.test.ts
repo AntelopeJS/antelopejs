@@ -104,10 +104,32 @@ describe("CLI plugin delegation", () => {
   it("delegates unknown commands when their executable exists", async () => {
     const plugin = createPlugin(0, "ajs-custom");
 
-    const result = await delegateToPlugin(["custom", "run"]);
+    const result = await delegateToPlugin(["custom", "run"], {
+      output: createOutput(),
+    });
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
     expect(readFileSync(plugin.output, "utf8")).to.equal("run\n");
+  });
+
+  it("announces a third-party plugin before running it", async () => {
+    const plugin = createPlugin(0, "ajs-custom");
+    const output = createOutput();
+
+    await delegateToPlugin(["custom", "run"], { output });
+
+    expect(output.infos).to.deep.equal([
+      `Running third-party plugin ajs-custom (${path.join(plugin.directory, "ajs-custom")})`,
+    ]);
+  });
+
+  it("does not announce an official plugin", async () => {
+    createPlugin();
+    const output = createOutput();
+
+    await delegateToPlugin(["dms"], { output });
+
+    expect(output.infos).to.deep.equal([]);
   });
 
   it("does not delegate unknown commands without an executable", async () => {

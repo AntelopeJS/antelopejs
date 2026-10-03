@@ -1,6 +1,7 @@
 import {
   getProcessTasks,
   getProcessUi,
+  type CliProblem,
   type MessageLevel,
   type OutputStream,
   type TaskHandle,
@@ -79,7 +80,9 @@ export function error(message: string | Error): void {
 
 export interface CommandOutput {
   info(message: string): void;
+  warn(message: string): void;
   error(message: string): void;
+  problem(problem: CliProblem): void;
 }
 
 export function warning(message: string | Error): void {
@@ -97,5 +100,7 @@ export function header(text: string): void {
 
 export const consoleOutput: CommandOutput = {
   info: (message: string) => info(message),
+  warn: (message: string) => warning(message),
   error: (message: string) => error(message),
+  problem: (problem: CliProblem) => getProcessUi().problem(problem),
 };

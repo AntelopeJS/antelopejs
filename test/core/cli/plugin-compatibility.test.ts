@@ -6,6 +6,7 @@ import {
   createOutput,
   createPackageReader,
   createProcessRunner,
+  plainProblem,
 } from "../../helpers/cli-plugins";
 import {
   createInstalledReader,
@@ -52,7 +53,7 @@ describe("Official plugin compatibility", () => {
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
     expect(calls).to.have.length(1);
-    expect(output.errors).to.deep.equal([]);
+    expect(output.problems).to.deep.equal([]);
   });
 
   it("rejects a prerelease core outside the declared range", async () => {
@@ -73,7 +74,7 @@ describe("Official plugin compatibility", () => {
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
     expect(calls).to.deep.equal([]);
-    expect(output.errors[1]).to.contain("@antelopejs/core@2.0.0-rc.1");
+    expect(output.problems[0].reason).to.contain("@antelopejs/core@2.0.0-rc.1");
   });
 
   it("fails when the peer range excludes the running core", async () => {
@@ -93,13 +94,17 @@ describe("Official plugin compatibility", () => {
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
     expect(calls).to.deep.equal([]);
-    expect(output.errors[0]).to.equal(
-      "The DMS plugin is not compatible with this CLI.",
-    );
-    expect(output.errors[1]).to.contain("@antelopejs/dms-frontend@1.2.3");
-    expect(output.errors[1]).to.contain("@antelopejs/core@>=2.0.0");
-    expect(output.errors[1]).to.contain("@antelopejs/core@1.5.1");
-    expect(output.errors[2]).to.contain("ajs update");
+    expect(output.errors).to.deep.equal([]);
+    expect(output.problems.map(plainProblem)).to.deep.equal([
+      {
+        title: "The DMS plugin is not compatible with this CLI",
+        reason:
+          "@antelopejs/dms-frontend@1.2.3 requires @antelopejs/core@>=2.0.0, but @antelopejs/core@1.5.1 is installed.",
+        fixes: [
+          "Run ajs update to update both, or ajs update dms to update the plugin only",
+        ],
+      },
+    ]);
   });
 
   it("skips the check when the plugin declares no peer range", async () => {
@@ -116,7 +121,8 @@ describe("Official plugin compatibility", () => {
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
     expect(calls).to.have.length(1);
-    expect(output.errors).to.deep.equal([]);
+    expect(output.problems).to.deep.equal([]);
+    expect(output.warnings).to.deep.equal([]);
   });
 });
 
@@ -140,8 +146,8 @@ describe("Official plugin package discovery", () => {
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
     expect(calls).to.deep.equal([]);
-    expect(output.errors[0]).to.equal(
-      "The DMS plugin is not compatible with this CLI.",
+    expect(output.problems[0].title).to.equal(
+      "The DMS plugin is not compatible with this CLI",
     );
   });
 
@@ -164,8 +170,9 @@ describe("Official plugin package discovery", () => {
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
     expect(calls).to.have.length(1);
     expect(calls[0].executable).to.equal(DMS_EXECUTABLE);
-    expect(output.errors).to.deep.equal([
-      "Could not read the package.json of @antelopejs/dms-frontend; skipping the compatibility check.",
+    expect(output.errors).to.deep.equal([]);
+    expect(output.warnings).to.deep.equal([
+      "Could not read the package.json of @antelopejs/dms-frontend; skipping the compatibility check",
     ]);
   });
 });

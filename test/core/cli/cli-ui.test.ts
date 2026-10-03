@@ -195,12 +195,18 @@ describe("CLI UI display", () => {
   it("routes the command output adapter to stderr", () => {
     const output = captureOutput(() => {
       consoleOutput.info("Running");
+      consoleOutput.warn("Skipped");
       consoleOutput.error("Broken");
+      consoleOutput.problem({ title: "Failed", fixes: ["Retry"] });
     });
 
     expect(output.stdout).to.equal("");
     expect(stripAnsi(output.stderr)).to.equal(
-      `${symbols.levels.info} Running\n${symbols.levels.error} Broken\n`,
+      `${symbols.levels.info} Running\n` +
+        `${symbols.levels.warn} Skipped\n` +
+        `${symbols.levels.error} Broken\n` +
+        `${symbols.levels.error} Failed\n` +
+        `  ${symbols.levels.hint} Retry\n`,
     );
   });
 
