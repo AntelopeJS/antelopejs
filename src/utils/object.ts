@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 export function isObject(item: unknown): item is Record<string, unknown> {
   return item !== null && typeof item === "object" && !Array.isArray(item);
 }
@@ -41,6 +43,36 @@ export function mergeDeep(
   }
 
   return result;
+}
+
+type ObjectEntry = [string, unknown];
+
+function changedEntries(
+  key: string,
+  before: unknown,
+  after: unknown,
+): ObjectEntry[] {
+  if (isPlainObject(before) && isPlainObject(after)) {
+    const nested = diffDeep(before, after);
+    return Object.keys(nested).length > 0 ? [[key, nested]] : [];
+  }
+  return isDeepStrictEqual(before, after) ? [] : [[key, after]];
+}
+
+/**
+ * The keys of `after` whose value differs from `before`, nested plain objects
+ * reduced to their own differing keys. Merging the result into `before` with
+ * {@link mergeDeep} yields `after`, as long as no key was removed.
+ */
+export function diffDeep(
+  before: Record<string, any>,
+  after: Record<string, any>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(after).flatMap(([key, value]) =>
+      changedEntries(key, before[key], value),
+    ),
+  );
 }
 
 export function set(
