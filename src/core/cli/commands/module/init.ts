@@ -276,5 +276,7 @@ export default function () {
     )
     .argument("<path>", "Directory path for the new module")
     .addOption(Options.git)
-    .action(moduleInitCommand);
+    .action((modulePath: string, options: InitOptions) =>
+      moduleInitCommand(modulePath, options),
+    );
 }
