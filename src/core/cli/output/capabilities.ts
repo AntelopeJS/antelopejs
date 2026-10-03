@@ -13,7 +13,7 @@ interface EnvironmentMatch {
   values?: string[];
 }
 
-const NO_COLOR_FLAG = "--no-color";
+export const NO_COLOR_FLAG = "--no-color";
 const DUMB_TERMINAL = "dumb";
 const LINUX_CONSOLE_TERMINAL = "linux";
 const WINDOWS_PLATFORM = "win32";

@@ -25,6 +25,7 @@ export interface SpawnedProcess {
 export interface InheritedSpawnOptions {
   stdio: "inherit";
   windowsVerbatimArguments?: boolean;
+  env?: NodeJS.ProcessEnv;
 }
 
 export interface ProcessRunner {
@@ -44,6 +45,7 @@ export interface InheritedProcessOptions {
   processRunner?: ProcessRunner;
   signalTarget?: SignalTarget;
   platform?: NodeJS.Platform;
+  env?: NodeJS.ProcessEnv;
 }
 
 interface SignalForwarder {
@@ -113,6 +115,9 @@ export async function runInheritedProcess(
   const spawnOptions: InheritedSpawnOptions = { stdio: "inherit" };
   if (invocation.windowsVerbatimArguments) {
     spawnOptions.windowsVerbatimArguments = true;
+  }
+  if (options.env) {
+    spawnOptions.env = options.env;
   }
   const child = processRunner.spawn(
     invocation.executable,

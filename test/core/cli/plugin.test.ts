@@ -75,6 +75,62 @@ describe("CLI plugin delegation", () => {
     );
   });
 
+  it("passes the global options before the plugin name as environment", async () => {
+    const plugin = createPluginScript(
+      (directory) =>
+        `#!/bin/sh\nprintf '%s\\n' "$*" "$NO_COLOR" "$ANTELOPEJS_VERBOSE" > "${path.join(directory, "invocation")}"\n`,
+      "ajs-dms",
+    );
+
+    const result = await delegateToPlugin([
+      "--no-color",
+      "--verbose=cli,api",
+      "dms",
+      "dev",
+    ]);
+
+    expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
+    expect(readFileSync(path.join(plugin, "invocation"), "utf8")).to.equal(
+      "dev\n1\ncli,api\n",
+    );
+  });
+
+  it("keeps the inherited environment when global options are given", async () => {
+    const { runner, calls } = createProcessRunner();
+
+    await delegateToPlugin(
+      ["--verbose", "dms", "build"],
+      installedDependencies({
+        processOptions: {
+          processRunner: runner,
+          env: { PATH: "/usr/bin", NO_COLOR: "1" },
+        },
+      }),
+    );
+
+    expect(calls[0].args).to.deep.equal(["build"]);
+    expect(calls[0].options.env).to.deep.equal({
+      PATH: "/usr/bin",
+      NO_COLOR: "1",
+      ANTELOPEJS_VERBOSE: "*",
+    });
+  });
+
+  it("names a third-party plugin given after global options", async () => {
+    const plugin = createPlugin(0, "ajs-custom");
+    const output = createOutput();
+
+    const result = await delegateToPlugin(["--no-color", "custom", "run"], {
+      output,
+    });
+
+    expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
+    expect(readFileSync(plugin.output, "utf8")).to.equal("run\n");
+    expect(output.infos).to.deep.equal([
+      `Running third-party plugin ajs-custom (${path.join(plugin.directory, "ajs-custom")})`,
+    ]);
+  });
+
   it("propagates a signal termination as a shell exit code", async () => {
     createPluginScript(() => "#!/bin/sh\nkill -TERM $$\n", "ajs-dms");
 
@@ -156,6 +212,14 @@ describe("CLI plugin delegation", () => {
         processOptions: { processRunner: runner },
       }),
     ).to.deep.equal({ isDelegated: false });
+    expect(
+      await delegateToPlugin(["--no-color", "--help"], {
+        processOptions: { processRunner: runner },
+      }),
+    ).to.deep.equal({ isDelegated: false });
+    expect(await delegateToPlugin(["--verbose"])).to.deep.equal({
+      isDelegated: false,
+    });
     expect(calls).to.deep.equal([]);
   });
 
