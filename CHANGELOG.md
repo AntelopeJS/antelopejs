@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.11.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.10.3...v1.11.0)
+
+### 🚀 Enhancements
+
+- **cli:** Add an error boundary and formatted usage errors ([#178](https://github.com/AntelopeJS/antelopejs/pull/178))
+- **cli:** Add non-interactive flags and a unified prompt layer ([#181](https://github.com/AntelopeJS/antelopejs/pull/181))
+
+### 🔥 Performance
+
+- **cli:** Make the update check async, cached and quiet ([#172](https://github.com/AntelopeJS/antelopejs/pull/172))
+- **cli:** Lazy-load command implementations and heavy modules ([#180](https://github.com/AntelopeJS/antelopejs/pull/180))
+
+### 🩹 Fixes
+
+- **cli:** Write errors, warnings and progress to stderr ([#171](https://github.com/AntelopeJS/antelopejs/pull/171))
+- **cli:** Return meaningful exit codes ([#173](https://github.com/AntelopeJS/antelopejs/pull/173))
+- **cli:** Validate --env once before doing any work ([#174](https://github.com/AntelopeJS/antelopejs/pull/174))
+- **cli:** Pass module init options explicitly to the action ([#175](https://github.com/AntelopeJS/antelopejs/pull/175))
+- **logging:** Apply saved formats and persist only real logging changes ([#176](https://github.com/AntelopeJS/antelopejs/pull/176))
+- **cli:** Clarify plugin install, update and third-party delegation ([#184](https://github.com/AntelopeJS/antelopejs/pull/184))
+
+### 💅 Refactors
+
+- **cli:** Introduce the output module ([#177](https://github.com/AntelopeJS/antelopejs/pull/177))
+- **cli:** Render data commands as tables and add --json ([#179](https://github.com/AntelopeJS/antelopejs/pull/179))
+- **cli:** Unify task progress and summaries ([#182](https://github.com/AntelopeJS/antelopejs/pull/182))
+
+### 📖 Documentation
+
+- **cli:** Rewrite help text and align docs with actual output ([#185](https://github.com/AntelopeJS/antelopejs/pull/185))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.10.3
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.10.2...v1.10.3)
