@@ -32,6 +32,18 @@ describe("Version Check", () => {
     );
   });
 
+  it("prints the update notice on stderr only", async () => {
+    const logStub = sinon.stub(console, "log");
+    const errorStub = sinon.stub(console, "error");
+    const execStub = () => Buffer.from("2.0.0");
+
+    await warnIfOutdated("1.0.0", execStub, "npm");
+
+    expect(logStub.called).to.equal(false);
+    expect(errorStub.callCount).to.equal(4);
+    expect(errorStub.firstCall.args[0]).to.contain("outdated version");
+  });
+
   it("suggests the detected package manager command", async () => {
     const warnStub = sinon.stub(cliUi, "warning");
     const execStub = () => Buffer.from("2.0.0");

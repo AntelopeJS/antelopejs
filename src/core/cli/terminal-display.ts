@@ -37,9 +37,9 @@ export class TerminalDisplay {
     }
   }
 
-  log(message: string): void {
+  log(message: string, stream: NodeJS.WriteStream = process.stdout): void {
     if (this.currentSpinner) {
-      this.currentSpinner.log(process.stdout, message);
+      this.currentSpinner.log(stream, message);
     }
   }
 
@@ -119,7 +119,7 @@ export class TerminalDisplay {
 
   async clearSpinnerLine(): Promise<void> {
     if (this.currentSpinner) {
-      process.stdout.write("\r\x1b[K");
+      process.stderr.write("\r\x1b[K");
     }
   }
 }

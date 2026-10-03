@@ -29,8 +29,6 @@ export default function () {
     )
     .addOption(new Option("-j, --json", "Output in JSON format").default(false))
     .action(async (options: ShowOptions) => {
-      console.log(""); // Add spacing for better readability
-
       const config = await readConfig(options.project);
       if (!config) {
         error(
@@ -60,6 +58,8 @@ export default function () {
         console.log(JSON.stringify(logging, null, 2));
         return;
       }
+
+      console.log("");
 
       // Pretty output mode
       const formatStatus = (status: boolean) =>

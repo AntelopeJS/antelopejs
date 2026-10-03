@@ -38,7 +38,17 @@ describe("TerminalDisplay", () => {
     display.log("hello");
     await display.stopSpinner("done");
 
-    expect(logStub.calledOnce).to.equal(true);
+    expect(logStub.calledOnceWith(process.stdout, "hello")).to.equal(true);
+  });
+
+  it("should log to the requested stream through active spinner", async () => {
+    const logStub = sinon.stub(Spinner.prototype, "log");
+    sinon.stub(Spinner.prototype, "start").resolves();
+
+    await display.startSpinner("Working");
+    display.log("failure", process.stderr);
+
+    expect(logStub.calledOnceWith(process.stderr, "failure")).to.equal(true);
   });
 
   it("should stop spinner without success text and restart parent", async () => {
@@ -89,7 +99,7 @@ describe("TerminalDisplay", () => {
   it("should clean spinner state", async () => {
     const stopStub = sinon.stub(Spinner.prototype, "stop").resolves();
     sinon.stub(Spinner.prototype, "start").resolves();
-    const writeStub = sinon.stub(process.stdout, "write");
+    const writeStub = sinon.stub(process.stderr, "write");
 
     await display.startSpinner("Task");
     await display.cleanSpinner();
@@ -99,14 +109,14 @@ describe("TerminalDisplay", () => {
   });
 
   it("should not clear line when no spinner exists", async () => {
-    const writeStub = sinon.stub(process.stdout, "write");
+    const writeStub = sinon.stub(process.stderr, "write");
     await display.clearSpinnerLine();
     expect(writeStub.called).to.equal(false);
   });
 
   it("should clear line when spinner exists", async () => {
     sinon.stub(Spinner.prototype, "start").resolves();
-    const writeStub = sinon.stub(process.stdout, "write");
+    const writeStub = sinon.stub(process.stderr, "write");
     await display.startSpinner("Task");
     await display.clearSpinnerLine();
     expect(writeStub.called).to.equal(true);
@@ -131,7 +141,7 @@ describe("TerminalDisplay", () => {
   });
 
   it("should clean without side effects when no spinner exists", async () => {
-    const writeStub = sinon.stub(process.stdout, "write");
+    const writeStub = sinon.stub(process.stderr, "write");
     await display.cleanSpinner();
     expect(writeStub.called).to.equal(false);
   });
