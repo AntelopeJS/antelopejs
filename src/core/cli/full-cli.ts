@@ -22,6 +22,7 @@ import { formatOfficialPluginsHelp } from "./plugin-registry";
 import {
   addChannelFilter,
   defaultConfigLogging,
+  setLogAudience,
   setupAntelopeProjectLogging,
 } from "../../logging";
 
@@ -79,6 +80,7 @@ export function createCLI(version: string) {
     .description(CLI_DESCRIPTION)
     .version(version, "-v, --version", "Print the version")
     .addOption(Options.verbose)
+    .addOption(Options.quiet)
     .addOption(Options.noColor)
     .addCommand(cmdProject())
     .addCommand(cmdModule())
@@ -135,6 +137,7 @@ export const runCLI = async () => {
     const version = getCoreVersion();
 
     // Initialize logging with default configuration
+    setLogAudience("cli");
     setupAntelopeProjectLogging(defaultConfigLogging);
 
     const program = createCLI(version);

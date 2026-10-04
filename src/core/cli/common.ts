@@ -5,8 +5,7 @@ import { mkdirSync } from "node:fs";
 import { stat, writeFile as writeFileNode } from "node:fs/promises";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
-import { warning } from "./cli-ui";
-import { CliError } from "./output";
+import { CliError, getProcessUi } from "./output";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import { importConfigInput, loadTsConfigFile } from "../config/config-loader";
@@ -53,10 +52,10 @@ export const DEFAULT_GIT_REPO = "https://github.com/AntelopeJS/interfaces.git";
 // Utility function to display warning for non-default git repositories
 export function displayNonDefaultGitWarning(gitUrl: string): void {
   if (gitUrl !== DEFAULT_GIT_REPO) {
-    warning("Using a non-default git repository");
-    warning(
-      "You are using a non-official git repository for interfaces. These interfaces may not adhere to community quality standards or best practices.",
-    );
+    getProcessUi().message("warn", "Using a non-default git repository", {
+      detail:
+        "Its interfaces are not official and may not adhere to community quality standards or best practices.",
+    });
   }
 }
 

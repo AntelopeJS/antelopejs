@@ -180,11 +180,23 @@ export function withExamples(
 }
 
 /**
+ * Makes a command group run without a subcommand print its help on stdout
+ * and exit with code 0, like `ajs` run without arguments. Commander only
+ * shows the help as an error (on stderr, exit code 1) when the subcommand is
+ * missing; an unknown subcommand is still a usage error.
+ */
+function showHelpWithoutSubcommand(command: Command): void {
+  const showHelp = command.help.bind(command);
+  command.help = () => showHelp({ error: false });
+}
+
+/**
  * Applies the help conventions of `ajs` to the command and all its
  * subcommands: the wording of `--help` and of the `help` command, the
- * global options listed on every help page, and pages wrapped to the
- * terminal, up to 80 columns, with each description under its term when
- * the terminal leaves it fewer than 30 columns beside it.
+ * global options listed on every help page, pages wrapped to the terminal,
+ * up to 80 columns, with each description under its term when the terminal
+ * leaves it fewer than 30 columns beside it, and command groups run without
+ * a subcommand printing their help like a successful `--help`.
  */
 export function applyHelpConventions(command: Command): void {
   command
@@ -200,6 +212,7 @@ export function applyHelpConventions(command: Command): void {
     });
   if (command.commands.length > 0) {
     command.helpCommand(HELP_COMMAND, HELP_DESCRIPTION);
+    showHelpWithoutSubcommand(command);
   }
   command.commands.forEach(applyHelpConventions);
 }

@@ -6,7 +6,7 @@ export interface RuntimePolicy {
   signals: boolean;
   /** Draw progress spinners on stdout. */
   terminal: boolean;
-  /** Reset the global logger and take over the log transport. */
+  /** Reset the global logger and take over the log transport, writing log lines as the output of an application. */
   logging: boolean;
 }
 

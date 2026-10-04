@@ -1,7 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
-import * as cliUi from "../../../src/core/cli/cli-ui";
+import { getProcessUi } from "../../../src/core/cli/output";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import * as configLoader from "../../../src/core/config/config-loader";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
@@ -82,20 +82,24 @@ describe("CLI Common", () => {
       sinon.restore();
     });
 
-    it("shows the warning for a non-default repo without waiting", () => {
-      const warningStub = sinon.stub(cliUi, "warning");
+    it("shows one warning for a non-default repo without waiting", () => {
+      const messageStub = sinon.stub(getProcessUi(), "message");
 
       displayNonDefaultGitWarning("https://example.com/repo.git");
 
-      expect(warningStub.called).to.equal(true);
+      expect(messageStub.calledOnce).to.equal(true);
+      expect(messageStub.firstCall.args.slice(0, 2)).to.deep.equal([
+        "warn",
+        "Using a non-default git repository",
+      ]);
     });
 
     it("stays quiet for the default repo", () => {
-      const warningStub = sinon.stub(cliUi, "warning");
+      const messageStub = sinon.stub(getProcessUi(), "message");
 
       displayNonDefaultGitWarning(DEFAULT_GIT_REPO);
 
-      expect(warningStub.called).to.equal(false);
+      expect(messageStub.called).to.equal(false);
     });
   });
 

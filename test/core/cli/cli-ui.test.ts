@@ -171,11 +171,11 @@ describe("CLI UI display", () => {
     );
   });
 
-  it("writes success results to stdout", () => {
+  it("writes success feedback to stderr", () => {
     const output = captureOutput(() => success("Done"));
 
-    expect(output.stderr).to.equal("");
-    expect(stripAnsi(output.stdout)).to.equal(
+    expect(output.stdout).to.equal("");
+    expect(stripAnsi(output.stderr)).to.equal(
       `${symbols.levels.success} Done\n`,
     );
   });

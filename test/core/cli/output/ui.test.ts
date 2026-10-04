@@ -35,6 +35,25 @@ const PACKAGE_COLUMNS = [
   { header: "Version", value: (row: PackageRow) => row.version },
 ];
 
+interface ModuleRow {
+  name: string;
+  source: string;
+  reference: string;
+}
+
+const LONG_REFERENCE = "https://example.com/acme/payments-connector.git";
+
+const MODULES: ModuleRow[] = [
+  { name: "payments-connector", source: "git", reference: LONG_REFERENCE },
+  { name: "api", source: "npm", reference: "^1.0.0" },
+];
+
+const MODULE_COLUMNS = [
+  { header: "Name", value: (row: ModuleRow) => row.name },
+  { header: "Source", value: (row: ModuleRow) => row.source },
+  { header: "Reference", value: (row: ModuleRow) => row.reference },
+];
+
 function writeEveryLevel(hasUnicode: boolean, hasColor = false): string {
   const { ui, feedback } = createMemoryUi({ hasUnicode, hasColor });
   LEVELS.forEach((level) => ui.message(level, `${level} message`));
@@ -383,6 +402,105 @@ describe("output ui tables", () => {
     ui.table(PACKAGES, PACKAGE_COLUMNS);
 
     expect(result.text).to.equal("auth\t1.2.0\ninventory-core\t10.0.1\n");
+  });
+
+  it("cuts the widest columns but the first to fit the terminal", () => {
+    const { ui, result } = createMemoryUi({ isTerminal: true, columns: 46 });
+
+    ui.table(MODULES, MODULE_COLUMNS);
+
+    expect(result.text).to.equal(
+      [
+        "NAME                SOURCE  REFERENCE",
+        "payments-connector  git     https://example.c…",
+        "api                 npm     ^1.0.0",
+        "",
+      ].join("\n"),
+    );
+    result.text
+      .split("\n")
+      .forEach((line) => expect(line.length).to.be.at.most(46));
+  });
+
+  it("cuts with the ASCII ellipsis when the terminal has no Unicode", () => {
+    const { ui, result } = createMemoryUi({
+      isTerminal: true,
+      hasUnicode: false,
+      columns: 46,
+    });
+
+    ui.table(MODULES, MODULE_COLUMNS);
+
+    expect(result.text).to.contain("https://example...\n");
+  });
+
+  it("writes one block per row when the terminal is too narrow", () => {
+    const { ui, result } = createMemoryUi({ isTerminal: true, columns: 30 });
+
+    ui.table(MODULES, MODULE_COLUMNS);
+
+    expect(result.text).to.equal(
+      [
+        "NAME       payments-connector",
+        "SOURCE     git",
+        `REFERENCE  ${LONG_REFERENCE}`,
+        "",
+        "NAME       api",
+        "SOURCE     npm",
+        "REFERENCE  ^1.0.0",
+        "",
+      ].join("\n"),
+    );
+  });
+});
+
+describe("output ui quiet", () => {
+  it("only writes warnings and errors among the messages", () => {
+    const { ui, feedback } = createMemoryUi({ isQuiet: true });
+
+    LEVELS.forEach((level) => ui.message(level, `${level} message`));
+
+    expect(feedback.text).to.equal("▲ warn message\n✖ error message\n");
+  });
+
+  it("keeps results, problems and result messages", () => {
+    const { ui, result, feedback } = createMemoryUi({ isQuiet: true });
+
+    ui.value("value");
+    ui.message("success", "result message", { channel: "result" });
+    ui.details([{ label: "key", value: "result" }]);
+    ui.problem({ title: "failed", fixes: ["fix it"] });
+
+    expect(result.text).to.equal(
+      "value\n✔ result message\n\nkey  result\n",
+    );
+    expect(feedback.text).to.equal("✖ failed\n  → fix it\n");
+  });
+
+  it("leaves out summaries and feedback details", () => {
+    const { ui, feedback } = createMemoryUi({ isQuiet: true });
+
+    ui.summary({
+      headline: "Built",
+      nextSteps: [{ command: "ajs project start" }],
+    });
+    ui.details([{ label: "Environment", value: "default" }], "feedback");
+
+    expect(feedback.text).to.equal("");
+  });
+
+  it("follows the process when not told", () => {
+    const result = new MemoryStream();
+    const feedback = new MemoryStream();
+    const originalArgv = process.argv;
+    process.argv = [...originalArgv, "--quiet"];
+    try {
+      createUi({ streams: { result, feedback } }).message("info", "hidden");
+    } finally {
+      process.argv = originalArgv;
+    }
+
+    expect(feedback.text).to.equal("");
   });
 });
 

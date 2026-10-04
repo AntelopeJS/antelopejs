@@ -3,10 +3,8 @@ import { mkdir, stat } from "node:fs/promises";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import {
-  GIT_INIT_FLAG,
   moduleInitCommand,
   type ModuleInitOptions,
-  PACKAGE_MANAGER_FLAG,
   TEMPLATE_FLAG,
   YES_FLAG,
 } from "../module/init-action";
@@ -15,16 +13,14 @@ import { readConfig, writeConfig } from "../../common";
 import type { PackageManagerName } from "../../package-manager-name";
 import { FAILURE_EXIT_CODE, USAGE_EXIT_CODE } from "../../exit-codes";
 import { addModules, handlers } from "./modules/add-action";
-import { error, Spinner, warning } from "../../cli-ui";
+import { error, Spinner } from "../../cli-ui";
 import {
   CliError,
   createPrompter,
   displayPath,
   getProcessPalette,
   getProcessUi,
-  missingFlags,
   reportFailure,
-  type AnswerFlag,
   type NextStep,
   type Prompter,
 } from "../../output";
@@ -55,27 +51,21 @@ const INSTALL_DESCRIPTION =
 const DEV_COMMAND = "ajs project dev --watch";
 const DEV_DESCRIPTION = "run the project and reload it on changes";
 
-const PROJECT_ANSWER_FLAGS: AnswerFlag<ProjectInitOptions>[] = [
-  { option: "name", flag: NAME_FLAG },
-  { option: "template", flag: TEMPLATE_FLAG },
-  { option: "pm", flag: PACKAGE_MANAGER_FLAG },
-  { option: "gitInit", flag: GIT_INIT_FLAG },
-];
-
-async function isProjectPathAvailable(projectPath: string): Promise<boolean> {
+async function ensureProjectPathAvailable(projectPath: string): Promise<void> {
   const spinner = new Spinner("Checking project path");
   await spinner.start();
-
-  const shownPath = getProcessPalette().bold(projectPath);
   if (await readConfig(projectPath)) {
-    await spinner.fail(`Project already exists at ${shownPath}`);
-    warning("Use a different directory or delete the existing project.");
-    process.exitCode = FAILURE_EXIT_CODE;
-    return false;
+    await spinner.stop();
+    throw new CliError({
+      title: `Project already exists at ${projectPath}`,
+      fixes: [
+        `Pass another directory: ${PROJECT_INIT_COMMAND} <project>`,
+        "Or delete the existing project",
+      ],
+    });
   }
-
+  const shownPath = getProcessPalette().bold(projectPath);
   await spinner.succeed(`Project path ${shownPath} is available`);
-  return true;
 }
 
 function displayWelcome(prompter: Prompter): void {
@@ -101,6 +91,7 @@ async function askAppModuleImport(
     flag: TEMPLATE_FLAG,
     answer: options.template === undefined ? undefined : false,
     defaultAnswer: false,
+    isOptional: true,
   });
   if (!hasAppModule) {
     return undefined;
@@ -245,6 +236,7 @@ function askProjectName(
     flag: NAME_FLAG,
     answer: options.name,
     defaultAnswer: path.basename(projectPath),
+    isOptional: true,
   });
 }
 
@@ -252,7 +244,10 @@ function askProjectName(
  * Creates a project, either around a new module created from a template or
  * around an existing module. Questions come first and files last, so a
  * cancelled or unanswerable question writes nothing. The module flags
- * answer the questions of the new module.
+ * answer the questions of the new module, and the questions that have a
+ * default (the name, importing an existing module) are not asked when
+ * nobody can answer them, so the project path and the template repository
+ * are checked before any missing flag is reported.
  */
 export async function projectInitCommand(
   project: string,
@@ -260,10 +255,7 @@ export async function projectInitCommand(
 ): Promise<void> {
   const projectPath = path.resolve(project);
   const prompter = projectPrompter(project, options);
-  prompter.requireAnswers(missingFlags(options, PROJECT_ANSWER_FLAGS));
-  if (!(await isProjectPathAvailable(projectPath))) {
-    return;
-  }
+  await ensureProjectPathAvailable(projectPath);
 
   displayWelcome(prompter);
   const name = await askProjectName(prompter, options, projectPath);

@@ -114,6 +114,12 @@ export interface SummaryBlock {
 export interface UiOptions {
   streams?: OutputStreams;
   capabilities?: OutputCapabilities;
+  /**
+   * Leaves out the feedback that is not essential: information, success,
+   * skip and hint messages, feedback details and summaries. Results,
+   * warnings and problems are still written. Defaults to `isQuietRun()`.
+   */
+  isQuiet?: boolean;
 }
 
 export interface Ui {

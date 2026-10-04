@@ -164,6 +164,65 @@ describe("config set behavior", () => {
     );
   });
 
+  it("accepts every git repository address git can clone", async () => {
+    const addresses = [
+      "https://github.com/acme/interfaces.git",
+      "ssh://git@github.com/acme/interfaces.git",
+      "git@github.com:acme/interfaces.git",
+      "file:///srv/git/interfaces.git",
+      "/srv/git/interfaces",
+    ];
+    sinon.stub(common, "readUserConfig").callsFake(async () => ({
+      git: common.DEFAULT_GIT_REPO,
+    }));
+    const writeStub = sinon.stub(common, "writeUserConfig").resolves();
+    sinon.stub(common, "displayNonDefaultGitWarning").returns();
+    collectStderr();
+
+    for (const address of addresses) {
+      await cmdSet().parseAsync(["node", "test", "git", address]);
+    }
+
+    expect(writeStub.args.map(([config]) => config.git)).to.deep.equal(
+      addresses,
+    );
+  });
+
+  it("rejects a value that is not a git repository with a usage error", async () => {
+    const readStub = sinon.stub(common, "readUserConfig");
+
+    const cliError = await captureCliError(() =>
+      cmdSet().parseAsync(["node", "test", "git", "not-a-url"]),
+    );
+
+    expect(cliError.problem).to.deep.equal({
+      title: "Invalid git repository URL 'not-a-url'",
+      reason:
+        "Expected an https or ssh URL, an scp-like address (git@host:org/repo.git) or an absolute path.",
+      fixes: [
+        "Pass a valid value, e.g. ajs config set git https://github.com/acme/interfaces.git",
+      ],
+      exitCode: USAGE_EXIT_CODE,
+    });
+    expect(cliError.exitCode).to.equal(USAGE_EXIT_CODE);
+    expect(readStub.called).to.equal(false);
+  });
+
+  it("says the value is already set without writing or warning", async () => {
+    sinon.stub(common, "readUserConfig").resolves({ git: CUSTOM_REPOSITORY });
+    const writeStub = sinon.stub(common, "writeUserConfig").resolves();
+    const warnStub = sinon.stub(common, "displayNonDefaultGitWarning");
+    const feedback = collectStderr();
+
+    await cmdSet().parseAsync(["node", "test", "git", CUSTOM_REPOSITORY]);
+
+    expect(writeStub.called).to.equal(false);
+    expect(warnStub.called).to.equal(false);
+    expect(feedback()).to.equal(
+      `${levels.info} git is already set to ${CUSTOM_REPOSITORY}\n`,
+    );
+  });
+
   it("rejects invalid key on set", async () => {
     const readStub = sinon.stub(common, "readUserConfig");
 

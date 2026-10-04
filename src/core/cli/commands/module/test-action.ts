@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 
 import { TestModule } from "../../../..";
 import { readModuleManifest } from "../../common";
+import type { ModulePackageJson } from "../../../module-manifest";
 import {
   CliError,
   displayPath,
@@ -15,6 +16,9 @@ interface TestOptions {
 }
 
 const TEST_COMMAND = "ajs module test <path>";
+const TEST_CONFIG_FILE = "antelope.test.ts";
+const TESTING_DOCS_URL =
+  "https://antelopejs.com/docs/module-development/testing";
 
 function isDirectory(target: string): Promise<boolean> {
   return stat(target).then(
@@ -42,6 +46,24 @@ async function invalidModuleError(modulePath: string): Promise<CliError> {
   });
 }
 
+function hasTestConfig(manifest: ModulePackageJson): boolean {
+  const testConfig = manifest.antelopeJs?.test;
+  return typeof testConfig === "string" && testConfig !== "";
+}
+
+function missingTestConfigError(moduleName: string): CliError {
+  return new CliError({
+    title: `Module ${moduleName} has no test configuration`,
+    reason:
+      "The antelopeJs.test field of its package.json does not name a test configuration file.",
+    fixes: [
+      `Create ${TEST_CONFIG_FILE}, exporting defineConfig({ name, modules, test: { folder: "test" } }) from @antelopejs/interface-core/config`,
+      `Point package.json to it: "antelopeJs": { "test": "${TEST_CONFIG_FILE}" }`,
+      `Docs: ${TESTING_DOCS_URL}`,
+    ],
+  });
+}
+
 export async function moduleTestCommand(
   modulePath = ".",
   options: TestOptions,
@@ -50,6 +72,9 @@ export async function moduleTestCommand(
   const moduleManifest = await readModuleManifest(resolvedPath);
   if (!moduleManifest) {
     throw await invalidModuleError(resolvedPath);
+  }
+  if (!hasTestConfig(moduleManifest)) {
+    throw missingTestConfigError(moduleManifest.name);
   }
   getProcessUi().message(
     "success",

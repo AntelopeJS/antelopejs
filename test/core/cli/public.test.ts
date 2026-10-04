@@ -35,6 +35,7 @@ const PUBLIC_EXPORTS = [
   "getProcessUi",
   "helpTextWidth",
   "helpWidth",
+  "isQuietRun",
   "isVerboseRun",
   "missingFlags",
   "pluralize",

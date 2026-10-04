@@ -6,7 +6,8 @@ import type {
   OutputStream,
   OutputStreams,
 } from "./types";
-import { isVerboseRun } from "./verbosity";
+import { isEnabledFlag, isSet } from "./flags";
+import { isQuietRun, isVerboseRun } from "./verbosity";
 
 interface EnvironmentMatch {
   variable: string;
@@ -17,7 +18,6 @@ export const NO_COLOR_FLAG = "--no-color";
 const DUMB_TERMINAL = "dumb";
 const LINUX_CONSOLE_TERMINAL = "linux";
 const WINDOWS_PLATFORM = "win32";
-const DISABLED_FLAG_VALUES = ["0", "false"];
 const LOCALE_VARIABLES = ["LC_ALL", "LC_CTYPE", "LANG"];
 const UTF8_LOCALE_PATTERN = /utf-?8/i;
 
@@ -37,14 +37,6 @@ const UNICODE_WINDOWS_TERMINALS: EnvironmentMatch[] = [
   },
   { variable: "TERMINAL_EMULATOR", values: ["JetBrains-JediTerm"] },
 ];
-
-function isSet(value: string | undefined): value is string {
-  return value !== undefined && value !== "";
-}
-
-function isEnabledFlag(value: string | undefined): boolean {
-  return isSet(value) && !DISABLED_FLAG_VALUES.includes(value.toLowerCase());
-}
 
 function matchesEnvironment(
   env: NodeJS.ProcessEnv,
@@ -131,16 +123,18 @@ export function detectCapabilities(
 /**
  * Whether progress can be drawn as an animated task list: feedback goes to
  * an interactive terminal that is not dumb, the run is not in CI, and it is
- * not verbose (verbose runs print every log line instead). Otherwise tasks
- * only print their final line, append-only.
+ * neither verbose (verbose runs print every log line instead) nor quiet.
+ * Otherwise tasks only print their final line, append-only.
  */
 export function hasLiveProgress(context: CapabilityContext): boolean {
   const { env } = context;
+  const verbosity = { argv: context.argv, env };
   return (
     context.streams.feedback.isTTY === true &&
     env.TERM !== DUMB_TERMINAL &&
     !isEnabledFlag(env.CI) &&
-    !isVerboseRun({ argv: context.argv, env })
+    !isVerboseRun(verbosity) &&
+    !isQuietRun(verbosity)
   );
 }
 

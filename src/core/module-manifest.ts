@@ -31,6 +31,8 @@ export interface ModulePackageJson {
     defaultConfig?: Record<string, unknown>;
 
     configVars?: string[];
+
+    test?: string;
   };
 
   _moduleAliases?: Record<string, string>;

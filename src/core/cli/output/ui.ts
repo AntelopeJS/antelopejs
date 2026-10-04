@@ -7,9 +7,11 @@ import {
   createPalette,
   formatDuration,
   padVisible,
+  truncate,
   visibleWidth,
 } from "./format";
 import { LEVEL_COLORS, selectSymbols } from "./symbols";
+import { isQuietRun } from "./verbosity";
 import type {
   CliProblem,
   DetailEntry,
@@ -36,6 +38,27 @@ const TAB_SEPARATOR = "\t";
 const DEFAULT_CHANNEL: OutputChannel = "feedback";
 const JSON_INDENTATION = 2;
 const NEXT_STEPS_TITLE = "Next steps";
+const MIN_COLUMN_WIDTH = 16;
+const QUIET_LEVELS: MessageLevel[] = ["info", "success", "skip", "hint"];
+
+function sum(values: number[]): number {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+/**
+ * The widest a column may be for columns of `widths` to fit in `available`
+ * characters: narrower columns keep their width and the wider ones share
+ * what is left. `Infinity` when every column fits as is.
+ */
+function columnWidthLimit(widths: number[], available: number): number {
+  const sorted = [...widths].sort((left, right) => left - right);
+  const limitFrom = (index: number): number =>
+    Math.floor(
+      (available - sum(sorted.slice(0, index))) / (sorted.length - index),
+    );
+  const index = sorted.findIndex((width, position) => width > limitFrom(position));
+  return index < 0 ? Infinity : limitFrom(index);
+}
 
 class StreamUi implements Ui {
   readonly symbols: SymbolSet;
@@ -48,6 +71,7 @@ class StreamUi implements Ui {
   constructor(
     private readonly streams: OutputStreams,
     private readonly capabilities: OutputCapabilities,
+    private readonly isQuiet: boolean,
   ) {
     this.symbols = selectSymbols(capabilities.hasUnicode);
     this.palettes = {
@@ -62,6 +86,9 @@ class StreamUi implements Ui {
 
   message(level: MessageLevel, text: string, options?: MessageOptions): void {
     const channel = options?.channel ?? DEFAULT_CHANNEL;
+    if (this.isSilenced(channel) && QUIET_LEVELS.includes(level)) {
+      return;
+    }
     this.writeLine(channel, this.statusLine(channel, level, text));
     const details = [options?.detail, ...(options?.details ?? [])];
     details
@@ -99,6 +126,9 @@ class StreamUi implements Ui {
   }
 
   summary(block: SummaryBlock): void {
+    if (this.isQuiet) {
+      return;
+    }
     const palette = this.palettes.feedback;
     const artifact = block.artifact
       ? ` ${this.symbols.levels.hint} ${palette.dim(block.artifact)}`
@@ -114,7 +144,7 @@ class StreamUi implements Ui {
   }
 
   details(entries: DetailEntry[], channel: OutputChannel = "result"): void {
-    if (entries.length === 0) {
+    if (entries.length === 0 || this.isSilenced(channel)) {
       return;
     }
     const palette = this.palettes[channel];
@@ -142,14 +172,17 @@ class StreamUi implements Ui {
 
   table<Row>(rows: Row[], columns: TableColumn<Row>[]): void {
     const cells = rows.map((row) => columns.map((column) => column.value(row)));
-    this.separateBlock("result");
     if (!this.capabilities.terminals.result) {
+      this.separateBlock("result");
       cells.forEach((line) =>
         this.writeLine("result", line.join(TAB_SEPARATOR)),
       );
       return;
     }
-    this.writeAlignedTable(columns, cells);
+    this.writeTerminalTable(
+      columns.map((column) => column.header.toUpperCase()),
+      cells,
+    );
   }
 
   value(text: string): void {
@@ -160,25 +193,63 @@ class StreamUi implements Ui {
     this.writeLine("result", JSON.stringify(data, null, JSON_INDENTATION));
   }
 
-  private writeAlignedTable<Row>(
-    columns: TableColumn<Row>[],
-    cells: string[][],
-  ): void {
-    const palette = this.palettes.result;
-    const headers = columns.map((column) => column.header.toUpperCase());
-    const widths = headers.map((header, index) =>
+  /**
+   * Aligns the table under its headers so that every row fits on one line
+   * of the terminal: the first column, which names the row, is kept whole,
+   * and the widest of the other columns are cut with an ellipsis. When the
+   * terminal is too narrow even for that, each row is written as a block of
+   * aligned header and value lines instead.
+   */
+  private writeTerminalTable(headers: string[], cells: string[][]): void {
+    const [nameWidth, ...valueWidths] = headers.map((header, index) =>
       Math.max(
         visibleWidth(header),
         ...cells.map((line) => visibleWidth(line[index])),
       ),
     );
+    const limit = columnWidthLimit(
+      valueWidths,
+      this.availableTableWidth(headers.length) - nameWidth,
+    );
+    if (limit < MIN_COLUMN_WIDTH) {
+      cells.forEach((line) => this.writeRecord(headers, line));
+      return;
+    }
+    this.separateBlock("result");
+    this.writeAlignedTable(headers, cells, [
+      nameWidth,
+      ...valueWidths.map((width) => Math.min(width, limit)),
+    ]);
+  }
+
+  private availableTableWidth(columnCount: number): number {
+    const columns = this.streams.result.columns ?? Infinity;
+    return columns - COLUMN_GAP.length * (columnCount - 1);
+  }
+
+  private writeAlignedTable(
+    headers: string[],
+    cells: string[][],
+    widths: number[],
+  ): void {
+    const palette = this.palettes.result;
+    const { ellipsis } = this.symbols;
     const align = (line: string[]): string =>
       line
-        .map((cell, index) => padVisible(cell, widths[index]))
+        .map((cell, index) =>
+          padVisible(truncate(cell, widths[index], ellipsis), widths[index]),
+        )
         .join(COLUMN_GAP)
         .trimEnd();
     this.writeLine("result", palette.dim(align(headers)));
     cells.forEach((line) => this.writeLine("result", align(line)));
+  }
+
+  private writeRecord(headers: string[], line: string[]): void {
+    this.details(
+      headers.map((header, index) => ({ label: header, value: line[index] })),
+      "result",
+    );
   }
 
   private writeNextSteps(steps: NextStep[]): void {
@@ -201,6 +272,10 @@ class StreamUi implements Ui {
     }
     const command = palette.cyan(padVisible(step.command, width));
     return `${DETAIL_INDENT}${command}${COLUMN_GAP}${palette.dim(step.description)}`;
+  }
+
+  private isSilenced(channel: OutputChannel): boolean {
+    return this.isQuiet && channel === "feedback";
   }
 
   private statusLine(
@@ -234,12 +309,16 @@ class StreamUi implements Ui {
 /**
  * Builds a {@link Ui} writing results to `streams.result` and feedback to
  * `streams.feedback`. Both default to the process streams, and capabilities
- * are detected from the process when not given.
+ * and quietness are detected from the process when not given.
  */
 export function createUi(options: UiOptions = {}): Ui {
   const streams = options.streams ?? processStreams();
   const capabilities =
     options.capabilities ??
     detectCapabilities({ ...processCapabilityContext(), streams });
-  return new StreamUi(streams, capabilities);
+  return new StreamUi(
+    streams,
+    capabilities,
+    options.isQuiet ?? isQuietRun(),
+  );
 }

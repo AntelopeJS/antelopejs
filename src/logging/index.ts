@@ -6,6 +6,8 @@ import eventLog, {
 
 import { mergeDeep } from "../utils/object";
 import { getProcessTasks } from "../core/cli/output/tasks";
+import { processStreams } from "../core/cli/output/capabilities";
+import type { OutputChannel } from "../core/cli/output/types";
 import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
 import { renderLogTemplate } from "./log-template";
 
@@ -45,8 +47,27 @@ export const defaultConfigLogging: AntelopeLogging = {
   dateFormat: DEFAULT_DATE_FORMAT,
 };
 
+/**
+ * Who the log lines of the process are written for. `app`: the process runs
+ * an application and its log lines are its output, on stdout, with errors on
+ * stderr. `cli`: the process runs a CLI command whose stdout only carries its
+ * result, so every log line is feedback, on stderr.
+ */
+export type LogAudience = "app" | "cli";
+
+interface LogRoute {
+  standard: OutputChannel;
+  error: OutputChannel;
+}
+
+const LOG_ROUTES: Record<LogAudience, LogRoute> = {
+  app: { standard: "result", error: "feedback" },
+  cli: { standard: "feedback", error: "feedback" },
+};
+
 let eventLogUnregister: (() => void) | null = null;
 let loggingConfig: AntelopeLogging = defaultConfigLogging;
+let logAudience: LogAudience = "app";
 
 const channelCache: Record<string, number> = {};
 const channelFilters: Record<string, number | string> = {};
@@ -168,12 +189,14 @@ function formatLogLine(log: Log, module?: string): string {
   });
 }
 
+function logChannel(levelId: number): OutputChannel {
+  const route = LOG_ROUTES[logAudience];
+  return levelId >= levelMap.error ? route.error : route.standard;
+}
+
 function writeLogLine(log: Log, module?: string): void {
   const message = formatLogLine(log, module);
-
-  const stream =
-    log.levelId >= levelMap.error ? process.stderr : process.stdout;
-
+  const stream = processStreams()[logChannel(log.levelId)];
   getProcessTasks().write(stream, `${message}\n`);
 }
 
@@ -239,6 +262,15 @@ export function setupAntelopeProjectLogging(config?: AntelopeLogging): void {
 
   configureFilters();
   registerLogHandler();
+}
+
+/**
+ * Sets who the log lines are written for, see {@link LogAudience}. Set once
+ * by whoever owns the process: the CLI entry point for its commands, the
+ * runtime when it launches an application. Defaults to `app`.
+ */
+export function setLogAudience(audience: LogAudience): void {
+  logAudience = audience;
 }
 
 export function addChannelFilter(channel: string, level: number): void {

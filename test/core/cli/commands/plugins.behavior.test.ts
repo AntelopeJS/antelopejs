@@ -5,6 +5,7 @@ import cmdUpdate from "../../../../src/core/cli/commands/update";
 import cmdPlugins from "../../../../src/core/cli/commands/plugins";
 import * as pluginManagement from "../../../../src/core/cli/plugin-management";
 import { createMemoryUi } from "../../../helpers/memory-ui";
+import { applyHelpConventions } from "../../../../src/core/cli/help";
 
 const INCOMPATIBLE_DMS: pluginManagement.PluginStatus = {
   plugin: {
@@ -59,6 +60,16 @@ describe("plugin commands behavior", () => {
       "dms\t@antelopejs/dms-frontend\t0.9.0\tglobal\tneeds @antelopejs/core ^2.0.0\t/usr/bin/ajs-dms\n",
     );
     expect(feedback.text).to.equal("→ Run ajs update dms to update dms\n");
+  });
+
+  it("lists --json once in the help of the list subcommand", () => {
+    const program = cmdPlugins();
+    applyHelpConventions(program);
+    const list = program.commands.find((command) => command.name() === "list");
+
+    const help = list?.helpInformation() ?? "";
+
+    expect(help.match(/--json/g)).to.have.length(1);
   });
 
   it("lists official plugins through the list subcommand", async () => {

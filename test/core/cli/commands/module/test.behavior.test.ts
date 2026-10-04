@@ -10,6 +10,11 @@ import * as testModuleModule from "../../../../../src/core/test/test-module";
 import cmdTest from "../../../../../src/core/cli/commands/module/test";
 import { moduleTestCommand } from "../../../../../src/core/cli/commands/module/test-action";
 
+const MODULE_WITH_TESTS = {
+  name: "modA",
+  antelopeJs: { test: "antelope.test.ts" },
+};
+
 describe("module test behavior", () => {
   afterEach(() => {
     sinon.restore();
@@ -49,8 +54,29 @@ describe("module test behavior", () => {
     }
   });
 
-  it("runs TestModule when module is valid", async () => {
+  it("explains how to add a missing test configuration", async () => {
     sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
+    const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);
+
+    const failure = await moduleTestCommand("/tmp/module", { file: [] }).catch(
+      (err: unknown) => err,
+    );
+
+    expect((failure as CliError).problem).to.deep.equal({
+      title: "Module modA has no test configuration",
+      reason:
+        "The antelopeJs.test field of its package.json does not name a test configuration file.",
+      fixes: [
+        'Create antelope.test.ts, exporting defineConfig({ name, modules, test: { folder: "test" } }) from @antelopejs/interface-core/config',
+        'Point package.json to it: "antelopeJs": { "test": "antelope.test.ts" }',
+        "Docs: https://antelopejs.com/docs/module-development/testing",
+      ],
+    });
+    expect(testStub.called).to.equal(false);
+  });
+
+  it("runs TestModule when module is valid", async () => {
+    sinon.stub(common, "readModuleManifest").resolves(MODULE_WITH_TESTS as any);
     sinon.stub(getProcessUi(), "message");
 
     const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);
@@ -63,7 +89,7 @@ describe("module test behavior", () => {
   });
 
   it("sets exitCode=1 when TestModule reports failures", async () => {
-    sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
+    sinon.stub(common, "readModuleManifest").resolves(MODULE_WITH_TESTS as any);
     sinon.stub(getProcessUi(), "message");
     sinon.stub(testModuleModule, "TestModule").resolves(3);
 
@@ -73,7 +99,7 @@ describe("module test behavior", () => {
   });
 
   it("leaves exitCode unset when TestModule reports zero failures", async () => {
-    sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
+    sinon.stub(common, "readModuleManifest").resolves(MODULE_WITH_TESTS as any);
     sinon.stub(getProcessUi(), "message");
     sinon.stub(testModuleModule, "TestModule").resolves(0);
 
@@ -83,7 +109,7 @@ describe("module test behavior", () => {
   });
 
   it("parses file options and forwards them", async () => {
-    sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
+    sinon.stub(common, "readModuleManifest").resolves(MODULE_WITH_TESTS as any);
     sinon.stub(getProcessUi(), "message");
 
     const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);

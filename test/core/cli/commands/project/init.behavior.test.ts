@@ -12,7 +12,11 @@ import {
   getProcessUi,
   NeedsInputError,
 } from "../../../../../src/core/cli/output";
-import { USAGE_EXIT_CODE } from "../../../../../src/core/cli/exit-codes";
+import {
+  FAILURE_EXIT_CODE,
+  USAGE_EXIT_CODE,
+} from "../../../../../src/core/cli/exit-codes";
+import * as gitOps from "../../../../../src/core/cli/git-operations";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
 import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
 import cmdInit from "../../../../../src/core/cli/commands/project/init";
@@ -106,19 +110,30 @@ describe("project init behavior", () => {
     expect(configContent).to.include("modules: {}");
   });
 
-  it("stops when project already exists", async () => {
+  it("reports an existing project once, before any missing flag", async () => {
     sinon.stub(common, "readConfig").resolves({ name: "existing" } as any);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
-    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
-    sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
-    sinon.stub(cliUi, "warning");
+    const moduleInit = sinon.stub(moduleInitModule, "moduleInitCommand");
     sinon.stub(console, "log");
-    fakePrompts();
+    fakePrompts({ isInteractive: false });
+    const existing = path.resolve(tempRoot, "existing");
 
-    await cmdInit().parseAsync(["node", "test", `${tempRoot}/existing`]);
+    const failure = await failureOf(() =>
+      cmdInit().parseAsync(["node", "test", existing]),
+    );
 
+    expect(failure).to.be.instanceOf(CliError);
+    expect(failure).to.not.be.instanceOf(NeedsInputError);
+    expect((failure as CliError).problem).to.deep.equal({
+      title: `Project already exists at ${existing}`,
+      fixes: [
+        "Pass another directory: ajs project init <project>",
+        "Or delete the existing project",
+      ],
+    });
+    expect((failure as CliError).exitCode).to.equal(FAILURE_EXIT_CODE);
     expect(writeStub.called).to.equal(false);
-    expect(process.exitCode).to.equal(1);
+    expect(moduleInit.called).to.equal(false);
   });
 
   it("imports an existing module when selected", async () => {
@@ -227,8 +242,39 @@ describe("project init behavior", () => {
     expect(stubs.moduleInit.calledOnce).to.equal(true);
   });
 
+  it("names the directory after the project without a terminal", async () => {
+    const stubs = stubInit();
+    const prompts = fakePrompts({ isInteractive: false });
+
+    await cmdInit().parseAsync([
+      "node",
+      "test",
+      projectDir,
+      "--template",
+      "basic",
+      "--pm",
+      "pnpm",
+      "--no-git-init",
+    ]);
+
+    expect(prompts.asked).to.deep.equal([]);
+    expect(stubs.writeConfig.firstCall.args[1]).to.deep.include({
+      name: "my-project",
+    });
+  });
+
   it("names every missing flag without a terminal and writes nothing", async () => {
     const stubs = stubInit();
+    stubs.moduleInit.restore();
+    sinon
+      .stub(common, "readUserConfig")
+      .resolves({ git: common.DEFAULT_GIT_REPO });
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      templates: [{ name: "basic", repository: "", branch: "" }],
+      interfaces: {},
+      starredInterfaces: [],
+    });
+    const copy = sinon.stub(gitOps, "copyTemplate");
     fakePrompts({ isInteractive: false });
 
     const failure = await failureOf(() =>
@@ -239,13 +285,10 @@ describe("project init behavior", () => {
     const needsInput = failure as NeedsInputError;
     expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
     expect(needsInput.problem.fixes).to.deep.equal([
-      "Pass them as flags: ajs project init demo --name <name> --template <name> --[no-]git-init",
+      "Pass them as flags: ajs project init demo --template <name> --[no-]git-init",
       "Or accept the defaults: ajs project init demo --yes",
     ]);
-    expect(common.readConfig as sinon.SinonStub).to.have.property(
-      "called",
-      false,
-    );
+    expect(copy.called).to.equal(false);
     expect(stubs.writeConfig.called).to.equal(false);
   });
 

@@ -24,6 +24,15 @@ describe("Plugin invocation", () => {
     });
   });
 
+  for (const flag of ["-q", "--quiet"]) {
+    it(`turns ${flag} before the plugin name into ANTELOPEJS_QUIET`, () => {
+      expect(parsePluginInvocation([flag, "dms", "dev"])).to.deep.equal({
+        args: ["dms", "dev"],
+        environment: { ANTELOPEJS_QUIET: "1" },
+      });
+    });
+  }
+
   it("keeps the channel list of --verbose=<channels>", () => {
     expect(
       parsePluginInvocation(["--verbose=cli,api", "dms", "dev"]),

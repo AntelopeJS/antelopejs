@@ -44,6 +44,16 @@ describe("runCLI behavior", () => {
     return { getOptionStub, parseStub };
   }
 
+  it("writes log lines as feedback of the CLI command", async () => {
+    process.argv = ["node", "ajs", "config", "show"];
+    stubCommon();
+    const audience = sinon.stub(logging, "setLogAudience");
+
+    await runCLI();
+
+    expect(audience.calledOnceWithExactly("cli")).to.equal(true);
+  });
+
   it("prints the help on stdout instead of parsing when no args are provided", async () => {
     process.argv = ["node", "ajs"];
     const { parseStub } = stubCommon();
