@@ -7,6 +7,8 @@ import type {
 
 import * as cliUi from "../../src/core/cli/cli-ui";
 import * as command from "../../src/core/cli/command";
+import { CliError } from "../../src/core/cli/output";
+import { useAsciiSymbols } from "../helpers/ascii-symbols";
 import type { ExpandedModuleConfig } from "../../src/core/config/config-parser";
 import {
   bumpVersionSpec,
@@ -231,6 +233,30 @@ describe("version-checker", () => {
       expect(warned).to.include("network error");
     });
 
+    it("cuts a long probe failure with the ASCII ellipsis", async () => {
+      useAsciiSymbols();
+      sinon.stub(command, "ExecuteCMD").rejects(new Error("x".repeat(300)));
+      const warnStub = sinon.stub(cliUi, "warning");
+      const source: ModuleSourcePackage = {
+        type: "package",
+        package: "mod-a",
+        version: "1.0.0",
+      };
+
+      await checkOutdatedModules({
+        "mod-a": {
+          source,
+          config: {},
+          importOverrides: [],
+          disabledExports: [],
+        },
+      });
+
+      expect(String(warnStub.firstCall.args[0])).to.equal(
+        `Could not check latest version of mod-a: ${"x".repeat(197)}...`,
+      );
+    });
+
     it("emits the slow-check warning when probes exceed the threshold", async () => {
       const clock = sinon.useFakeTimers();
       let resolveExec: (value: {
@@ -399,6 +425,7 @@ describe("version-checker", () => {
         await validateVersionSpec("some-package", "lastest");
         expect.fail("expected validateVersionSpec to throw");
       } catch (err) {
+        expect(err).to.be.instanceOf(CliError);
         expect(String(err)).to.include(
           "neither a valid semver range nor a dist-tag",
         );

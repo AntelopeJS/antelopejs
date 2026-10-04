@@ -15,6 +15,7 @@ import { collectStderr } from "../../../helpers/capture-output";
 import { CANCEL, fakePrompts } from "../../../helpers/fake-prompts";
 import { createMemoryUi, type MemoryUi } from "../../../helpers/memory-ui";
 import { getProcessUi } from "../../../../src/core/cli/output";
+import { useAsciiSymbols } from "../../../helpers/ascii-symbols";
 
 const CUSTOM_REPOSITORY = "https://example.com/interfaces.git";
 const { levels } = getProcessUi().symbols;
@@ -220,6 +221,26 @@ describe("config reset behavior", () => {
         `${levels.success} Reset the configuration to its default values`,
         "",
         `git  https://example.com → ${common.DEFAULT_GIT_REPO}`,
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("points from the current to the default value in ASCII", async () => {
+    useAsciiSymbols();
+    sinon
+      .stub(common, "readUserConfig")
+      .resolves({ git: "https://example.com" });
+    sinon.stub(common, "writeUserConfig").resolves();
+    const feedback = collectStderr();
+
+    await cmdReset().parseAsync(["node", "test", "--yes"]);
+
+    expect(feedback()).to.equal(
+      [
+        "v Reset the configuration to its default values",
+        "",
+        `git  https://example.com -> ${common.DEFAULT_GIT_REPO}`,
         "",
       ].join("\n"),
     );

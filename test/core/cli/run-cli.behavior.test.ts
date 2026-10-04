@@ -68,6 +68,18 @@ describe("runCLI behavior", () => {
     expect(addFilterStub.calledWith("cli", 0)).to.equal(true);
   });
 
+  it("parses a bare --verbose without reading the command as channels", async () => {
+    process.argv = ["node", "ajs", "--verbose", "project", "dev"];
+    const { parseStub } = stubCommon();
+
+    await runCLI();
+
+    expect(parseStub.firstCall.args).to.deep.equal([
+      ["--verbose=*", "project", "dev"],
+      { from: "user" },
+    ]);
+  });
+
   it("reports an available update after the command and cancels the check", async () => {
     process.argv = ["node", "ajs", "config", "show"];
     const { parseStub } = stubCommon();

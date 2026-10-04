@@ -112,8 +112,9 @@ describe("CLI dispatcher", () => {
 
     await runCLI(["--no-color", "config", "show"]);
     await runCLI(["--verbose", "--no-color"]);
+    await runCLI(["--verbose", "project", "dev"]);
 
-    expect(runFullCLI.callCount).to.equal(2);
+    expect(runFullCLI.callCount).to.equal(3);
   });
 
   it("keeps run, dev, and build on the full CLI workflows", async () => {

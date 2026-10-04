@@ -6,6 +6,7 @@ import { stat, writeFile as writeFileNode } from "node:fs/promises";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import { warning } from "./cli-ui";
+import { CliError } from "./output";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import { importConfigInput, loadTsConfigFile } from "../config/config-loader";
@@ -190,7 +191,7 @@ async function writeTsConfig(
   const source = await fileSystem.readFileString(configPath);
   const writeMeta = await getTsConfigWriteMeta(configPath, source);
   if (!writeMeta.canWrite) {
-    throw new Error(FUNCTION_BASED_TS_CONFIG_ERROR);
+    throw new CliError({ title: FUNCTION_BASED_TS_CONFIG_ERROR });
   }
   const indentation = await detectIndentation(configPath, fileSystem);
   const content = createTsConfigContent(

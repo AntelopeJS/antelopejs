@@ -329,6 +329,20 @@ describe("output task list (live)", () => {
     expect(feedback.text).to.equal("⠋ Installi…\n");
   });
 
+  it("truncates labels with the ASCII ellipsis", () => {
+    const feedback = new MemoryStream(true);
+    feedback.columns = 12;
+    const tasks = new TaskList({
+      streams: { result: new MemoryStream(true), feedback },
+      capabilities: { ...CAPABILITIES, hasUnicode: false },
+      isLive: true,
+    });
+
+    tasks.start("Installing dependencies");
+
+    expect(feedback.text).to.equal("- Instal...\n");
+  });
+
   it("erases the list on demand until the next frame", () => {
     const { tasks, feedback } = createTasks(true);
 

@@ -1,5 +1,6 @@
 import { NO_COLOR_FLAG } from "./output/capabilities";
 import {
+  ALL_LOG_CHANNELS,
   isVerboseArgument,
   VERBOSE_ASSIGNMENT_PREFIX,
   VERBOSE_ENVIRONMENT_VARIABLE,
@@ -7,7 +8,6 @@ import {
 
 const NO_COLOR_ENVIRONMENT_VARIABLE = "NO_COLOR";
 const ENABLED_FLAG_VALUE = "1";
-const ALL_LOG_CHANNELS = "*";
 
 interface GlobalFlag {
   matches(argument: string): boolean;

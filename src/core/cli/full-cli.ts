@@ -1,7 +1,7 @@
-import { Command } from "commander";
+import { type AddHelpTextContext, Command } from "commander";
 
 import { Options } from "./options";
-import { getProcessPalette } from "./output";
+import { getProcessPalette, normalizeVerboseArguments } from "./output";
 import cmdConfig from "./commands/config";
 import cmdModule from "./commands/module";
 import cmdUpdate from "./commands/update";
@@ -9,7 +9,14 @@ import cmdPlugins from "./commands/plugins";
 import cmdProject from "./commands/project";
 import { getCoreVersion } from "./core-version";
 import { formatUsageErrors } from "./usage-errors";
-import { applyHelpConventions, formatExamples, type HelpExample } from "./help";
+import {
+  applyHelpConventions,
+  formatExamples,
+  helpTextWidth,
+  unbreakable,
+  wrapText,
+  type HelpExample,
+} from "./help";
 import { reportAvailableUpdate, startUpdateCheck } from "./version-check";
 import { formatOfficialPluginsHelp } from "./plugin-registry";
 import {
@@ -20,9 +27,13 @@ import {
 
 const HELP_COMMAND_NAME = "help";
 const BARE_INVOCATION_ARGUMENT_COUNT = 2;
+const USER_ARGUMENTS_START = 2;
 const DOCS_URL = "https://antelopejs.com/docs/cli/introduction";
 const CLI_DESCRIPTION =
   "Build modular Node.js applications from explicit interfaces.";
+const PLUGIN_RESOLUTION_NOTE =
+  "Resolved from the nearest node_modules/.bin, then from PATH.";
+const NOTE_INDENT = "  ";
 
 const ROOT_EXAMPLES: HelpExample[] = [
   { description: "Create a project", command: "ajs project init my-app" },
@@ -40,14 +51,26 @@ function describeVersion(version: string): string {
   return `${getProcessPalette("result").bold(`AntelopeJS CLI v${version}`)}\n`;
 }
 
-function describeHelpFooter(): string {
-  return (
-    `\nPlugins:\n` +
-    `${formatOfficialPluginsHelp()}\n` +
-    `  Resolved from the nearest node_modules/.bin, then from PATH.\n\n` +
-    `${formatExamples(ROOT_EXAMPLES)}\n\n` +
-    `Run ajs <command> --help for details. Docs: ${DOCS_URL}`
+function describeHelpFooter(context: AddHelpTextContext): string {
+  const width = helpTextWidth(context);
+  const resolutionNote = wrapText(
+    PLUGIN_RESOLUTION_NOTE,
+    width - NOTE_INDENT.length,
+  ).map((line) => `${NOTE_INDENT}${line}`);
+  const closing = wrapText(
+    `Run ${unbreakable("ajs <command> --help")} for details. ${unbreakable(`Docs: ${DOCS_URL}`)}`,
+    width,
   );
+  return [
+    "",
+    "Plugins:",
+    formatOfficialPluginsHelp(width),
+    ...resolutionNote,
+    "",
+    formatExamples(ROOT_EXAMPLES, width),
+    "",
+    ...closing,
+  ].join("\n");
 }
 
 export function createCLI(version: string) {
@@ -63,7 +86,7 @@ export function createCLI(version: string) {
     .addCommand(cmdUpdate())
     .addCommand(cmdPlugins())
     .addHelpText("before", describeVersion(version))
-    .addHelpText("after", describeHelpFooter());
+    .addHelpText("after", describeHelpFooter);
   applyHelpConventions(program);
   return program;
 }
@@ -98,7 +121,10 @@ async function runProgram(program: Command): Promise<void> {
     program.outputHelp();
     return;
   }
-  await program.parseAsync();
+  await program.parseAsync(
+    normalizeVerboseArguments(process.argv.slice(USER_ARGUMENTS_START)),
+    { from: "user" },
+  );
   applyVerboseChannels(program);
 }
 

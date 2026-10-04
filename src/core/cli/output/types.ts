@@ -55,6 +55,12 @@ export interface SymbolSet {
   bullet: string;
   rule: string;
   spinner: string[];
+  /** Joins the parts of a line, spaces included: `" · "` or `" - "`. */
+  separator: string;
+  /** Ends a text cut to fit: `"…"` or `"..."`. */
+  ellipsis: string;
+  /** Points from a value to the next one, such as an old and a new version. */
+  arrow: string;
 }
 
 export interface CliProblem {

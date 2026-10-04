@@ -7,6 +7,8 @@ import {
   formatDuration,
   padVisible,
   pluralize,
+  SYMBOL_SETS,
+  truncate,
   visibleWidth,
 } from "../../../../src/core/cli/output";
 
@@ -34,6 +36,23 @@ describe("output format", () => {
     expect(visibleWidth(name)).to.equal(4);
     expect(padVisible(name, 6)).to.equal(`${name}  `);
     expect(padVisible("inventory", 4)).to.equal("inventory");
+  });
+
+  it("cuts a text to a width, its ellipsis included", () => {
+    const palette = createPalette(true);
+
+    expect(truncate("Installing", 10, SYMBOL_SETS.unicode.ellipsis)).to.equal(
+      "Installing",
+    );
+    expect(
+      truncate(palette.bold("Installing"), 8, SYMBOL_SETS.unicode.ellipsis),
+    ).to.equal("Install…");
+    expect(truncate("Installing", 8, SYMBOL_SETS.ascii.ellipsis)).to.equal(
+      "Insta...",
+    );
+    expect(truncate("Installing", 2, SYMBOL_SETS.ascii.ellipsis)).to.equal(
+      "...",
+    );
   });
 
   it("paints nothing when colors are off", () => {

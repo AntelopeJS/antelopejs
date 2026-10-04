@@ -18,6 +18,9 @@ export const SYMBOL_SETS: Record<SymbolSetName, SymbolSet> = {
     bullet: "•",
     rule: "─",
     spinner: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+    separator: " · ",
+    ellipsis: "…",
+    arrow: "→",
   },
   ascii: {
     levels: {
@@ -31,6 +34,9 @@ export const SYMBOL_SETS: Record<SymbolSetName, SymbolSet> = {
     bullet: "-",
     rule: "-",
     spinner: ["-", "\\", "|", "/"],
+    separator: " - ",
+    ellipsis: "...",
+    arrow: "->",
   },
 };
 

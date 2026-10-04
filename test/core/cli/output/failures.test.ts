@@ -105,7 +105,7 @@ describe("describeFailure", () => {
     expect(problem.details).to.deep.equal([COMMAND_OUTPUT_HINT]);
   });
 
-  it("does not print an output heading when the command said nothing", () => {
+  it("prints neither an output heading nor a hint when the command said nothing", () => {
     const silent = new ExecError({
       command: "false",
       stdout: "",
@@ -113,9 +113,7 @@ describe("describeFailure", () => {
       code: 1,
     });
 
-    expect(describeFailure(silent, false).details).to.deep.equal([
-      COMMAND_OUTPUT_HINT,
-    ]);
+    expect(describeFailure(silent, false).details).to.deep.equal([]);
   });
 
   it("reduces an unexpected error to the first line of its message", () => {
@@ -214,6 +212,32 @@ describe("describeFailure", () => {
     expect(problem.details).to.deep.equal([]);
   });
 
+  it("offers a trace for the unexplained cause of a command error", () => {
+    const failure = new CliError(
+      { title: "Cannot reach the backend" },
+      { cause: new Error("socket hang up") },
+    );
+
+    expect(describeFailure(failure, false).details).to.deep.equal([
+      STACK_TRACE_HINT,
+    ]);
+  });
+
+  it("does not offer the command output when all of it is already shown", () => {
+    const short = new ExecError({
+      command: "npx tsc",
+      stdout: "",
+      stderr: "src/index.ts(1,1): error TS1005\nFound 1 error.\n",
+      code: 2,
+    });
+
+    expect(describeFailure(short, false).details).to.deep.equal([
+      "Command output:",
+      "  src/index.ts(1,1): error TS1005",
+      "  Found 1 error.",
+    ]);
+  });
+
   it("follows a cyclic cause chain once", () => {
     const first = new Error("first");
     const second = new Error("second", { cause: first });
@@ -226,6 +250,34 @@ describe("describeFailure", () => {
 });
 
 describe("reportFailure", () => {
+  it("prints what failed, why and the details before the fixes", () => {
+    const { ui, feedback } = createMemoryUi({ hasUnicode: false });
+    const failure = new CliError(
+      {
+        title: "Failed to install dependencies for module-a",
+        reason: "'npx tsc' exited with code 1.",
+        fixes: ["Add typescript to module-a"],
+      },
+      { cause: tscFailure() },
+    );
+
+    reportFailure(failure, ui, false);
+
+    expect(feedback.text).to.equal(
+      [
+        "x Failed to install dependencies for module-a",
+        "  'npx tsc' exited with code 1.",
+        "  Command output:",
+        "    To get access to the TypeScript compiler, tsc, from the command line either:",
+        "    - Use npm install typescript to first add TypeScript to your project",
+        "    - Use yarn to avoid accidentally running code from un-installed packages",
+        `  ${COMMAND_OUTPUT_HINT}`,
+        "  > Add typescript to module-a",
+        "",
+      ].join("\n"),
+    );
+  });
+
   it("prints the problem once and returns its exit code", () => {
     const { ui, result, feedback } = createMemoryUi();
 

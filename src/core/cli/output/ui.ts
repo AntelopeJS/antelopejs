@@ -35,7 +35,6 @@ const COLUMN_GAP = "  ";
 const TAB_SEPARATOR = "\t";
 const DEFAULT_CHANNEL: OutputChannel = "feedback";
 const JSON_INDENTATION = 2;
-const SUMMARY_SEPARATOR = " · ";
 const NEXT_STEPS_TITLE = "Next steps";
 
 class StreamUi implements Ui {
@@ -77,14 +76,14 @@ class StreamUi implements Ui {
     if (problem.reason) {
       this.writeDetail(channel, problem.reason);
     }
+    problem.details?.forEach((line) =>
+      this.writeLine(channel, `${DETAIL_INDENT}${palette.dim(line)}`),
+    );
     problem.fixes?.forEach((fix) =>
       this.writeLine(
         channel,
         `${DETAIL_INDENT}${this.statusLine(channel, "hint", fix)}`,
       ),
-    );
-    problem.details?.forEach((line) =>
-      this.writeLine(channel, `${DETAIL_INDENT}${palette.dim(line)}`),
     );
   }
 
@@ -107,7 +106,9 @@ class StreamUi implements Ui {
     const duration =
       block.durationMs === undefined
         ? ""
-        : palette.dim(`${SUMMARY_SEPARATOR}${formatDuration(block.durationMs)}`);
+        : palette.dim(
+            `${this.symbols.separator}${formatDuration(block.durationMs)}`,
+          );
     this.writeLine("feedback", `${block.headline}${artifact}${duration}`);
     this.writeNextSteps(block.nextSteps ?? []);
   }

@@ -4,9 +4,8 @@ import {
   processCapabilityContext,
   processStreams,
 } from "./capabilities";
-import { stripAnsi } from "../logging-utils";
 import { selectSymbols } from "./symbols";
-import { createPalette, formatDuration, visibleWidth } from "./format";
+import { createPalette, formatDuration, truncate } from "./format";
 import { createUi } from "./ui";
 import type {
   MessageLevel,
@@ -14,6 +13,7 @@ import type {
   OutputChannel,
   OutputStream,
   Palette,
+  SymbolSet,
   TaskHandle,
   TaskLabels,
   TaskListOptions,
@@ -39,19 +39,11 @@ const DURATION_THRESHOLD_MS = 1000;
 const DEFAULT_COLUMNS = 80;
 const FRAME_WIDTH = 2;
 const LINE_END = "\n";
-const ELLIPSIS = "…";
 const ERASE_BELOW = "\x1b[J";
 const WRITE_PROPERTY = "write";
 
 function cursorUp(lines: number): string {
   return `\x1b[${lines}A\r`;
-}
-
-function truncate(text: string, width: number): string {
-  if (visibleWidth(text) <= width) {
-    return text;
-  }
-  return `${stripAnsi(text).slice(0, Math.max(0, width - 1))}${ELLIPSIS}`;
 }
 
 const SILENT_TASK: TaskHandle = {
@@ -90,7 +82,7 @@ export class TaskList {
   private readonly targets: OutputStream[];
   private readonly feedback: OutputStream;
   private readonly palette: Palette;
-  private readonly frames: string[];
+  private readonly symbols: SymbolSet;
   private readonly isLive: boolean;
   private readonly now: () => number;
   private drawnLineCount = 0;
@@ -108,7 +100,7 @@ export class TaskList {
     this.isLive = options.isLive ?? hasLiveProgress(context);
     this.now = options.now ?? Date.now;
     this.palette = createPalette(capabilities.colors.feedback);
-    this.frames = selectSymbols(capabilities.hasUnicode).spinner;
+    this.symbols = selectSymbols(capabilities.hasUnicode);
     this.ui = createUi({
       capabilities,
       streams: {
@@ -300,7 +292,7 @@ export class TaskList {
   }
 
   private tick(): void {
-    this.frameIndex = (this.frameIndex + 1) % this.frames.length;
+    this.frameIndex = (this.frameIndex + 1) % this.symbols.spinner.length;
     this.erase();
     this.draw();
   }
@@ -310,9 +302,10 @@ export class TaskList {
       return;
     }
     const width = (this.feedback.columns ?? DEFAULT_COLUMNS) - FRAME_WIDTH;
-    const frame = this.palette.cyan(this.frames[this.frameIndex]);
+    const frame = this.palette.cyan(this.symbols.spinner[this.frameIndex]);
     const lines = [...this.running].map(
-      (task) => `${frame} ${truncate(task.label, width - 1)}`,
+      (task) =>
+        `${frame} ${truncate(task.label, width - 1, this.symbols.ellipsis)}`,
     );
     this.writeRaw(this.feedback, `${lines.join(LINE_END)}${LINE_END}`);
     this.drawnLineCount = lines.length;

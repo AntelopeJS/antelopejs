@@ -4,7 +4,7 @@ import semver from "semver";
 import { homedir } from "node:os";
 
 import { info } from "./cli-ui";
-import { getProcessPalette } from "./output";
+import { getProcessUi } from "./output";
 import { CORE_PACKAGE_NAME } from "./core-version";
 
 const UPDATE_COMMAND = "ajs update";
@@ -201,9 +201,10 @@ export async function reportAvailableUpdate(
     return;
   }
   if (semver.gt(latestVersion, currentVersion)) {
-    const palette = getProcessPalette();
+    const ui = getProcessUi();
+    const palette = ui.palette();
     info(
-      `Update available ${currentVersion} → ${palette.green(latestVersion)}  → ${palette.cyan(UPDATE_COMMAND)}`,
+      `Update available ${currentVersion} ${ui.symbols.arrow} ${palette.green(latestVersion)}  ${ui.symbols.levels.hint} ${palette.cyan(UPDATE_COMMAND)}`,
     );
   }
 }

@@ -105,7 +105,7 @@ describe("output ui messages", () => {
 });
 
 describe("output ui problems", () => {
-  it("prints what failed, why, how to fix it and the details", () => {
+  it("prints what failed, why and the details, then how to fix it", () => {
     const { ui, result, feedback } = createMemoryUi({ hasColor: true });
 
     ui.problem({
@@ -119,8 +119,8 @@ describe("output ui problems", () => {
       [
         "\x1b[31m✖\x1b[39m Could not install 'auth'",
         "  \x1b[2mThe package does not exist on the registry\x1b[22m",
-        "  \x1b[36m→\x1b[39m Check the name with ajs project modules list",
         "  \x1b[2mnpm ERR! 404 Not Found\x1b[22m",
+        "  \x1b[36m→\x1b[39m Check the name with ajs project modules list",
         "",
       ].join("\n"),
     );
@@ -133,6 +133,28 @@ describe("output ui problems", () => {
     ui.problem({ title: "Failed", fixes: ["Retry"] });
 
     expect(feedback.text).to.equal("x Failed\n  > Retry\n");
+  });
+
+  it("prints the fixes last, after the reason and every detail, in ASCII", () => {
+    const { ui, feedback } = createMemoryUi({ hasUnicode: false });
+
+    ui.problem({
+      title: "Renderer 2.0.0 is out of range",
+      reason: "The modules below need ^1.4.0:",
+      details: ["@acme/blog ^1.4.0", "@acme/shop ^1.5.0"],
+      fixes: ["Pin the renderer: ajs project modules add renderer@1"],
+    });
+
+    expect(feedback.text).to.equal(
+      [
+        "x Renderer 2.0.0 is out of range",
+        "  The modules below need ^1.4.0:",
+        "  @acme/blog ^1.4.0",
+        "  @acme/shop ^1.5.0",
+        "  > Pin the renderer: ajs project modules add renderer@1",
+        "",
+      ].join("\n"),
+    );
   });
 });
 
@@ -285,6 +307,27 @@ describe("output ui summaries", () => {
     ui.summary({ headline: "Wrote it", artifact: "out.json" });
 
     expect(feedback.text).to.equal("Nothing to do\nWrote it > out.json\n");
+  });
+
+  it("joins the duration with the ASCII separator", () => {
+    const { ui, feedback } = createMemoryUi({ hasUnicode: false });
+
+    ui.summary({
+      headline: "Built 2 modules",
+      durationMs: 2100,
+      artifact: "./.antelope/build/build.json",
+      nextSteps: [{ command: "ajs project start", description: "start it" }],
+    });
+
+    expect(feedback.text).to.equal(
+      [
+        "Built 2 modules > ./.antelope/build/build.json - 2.1s",
+        "",
+        "Next steps",
+        "  ajs project start  start it",
+        "",
+      ].join("\n"),
+    );
   });
 
   it("colors commands cyan and dims the rest", () => {
