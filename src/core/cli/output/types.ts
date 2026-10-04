@@ -23,7 +23,7 @@ export type ColorName =
 
 export type SymbolSetName = "unicode" | "ascii";
 
-type Paint = (text: string) => string;
+export type Paint = (text: string) => string;
 
 export type Palette = Record<ColorName, Paint>;
 

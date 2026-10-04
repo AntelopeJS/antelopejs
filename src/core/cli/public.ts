@@ -43,7 +43,13 @@ export {
   detectCapabilities,
   processCapabilityContext,
 } from "./output/capabilities";
-export { displayPath, formatDuration, pluralize } from "./output/format";
+export {
+  displayPath,
+  formatDuration,
+  pluralize,
+  unbreakable,
+  wrapText,
+} from "./output/format";
 export { createUi } from "./output/ui";
 export {
   TaskList,
@@ -68,9 +74,7 @@ export {
   formatHelpItem,
   helpTextWidth,
   helpWidth,
-  unbreakable,
   withExamples,
-  wrapText,
   type HelpExample,
   type HelpStream,
 } from "./help";

@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import {
+  createPalette,
   createUi,
   getProcessUi,
   writeData,
@@ -568,5 +569,115 @@ describe("output ui process ui", () => {
     ui.message("info", "Piped");
 
     expect(feedback.text).to.match(/^. Piped\n$/u);
+  });
+});
+
+describe("output ui wrapping", () => {
+  const NARROW_COLUMNS = 40;
+
+  function narrowTerminal(hasColor = false) {
+    return createMemoryUi({
+      isTerminal: true,
+      columns: NARROW_COLUMNS,
+      hasColor,
+    });
+  }
+
+  it("wraps a problem between words, each part indented under its text", () => {
+    const { ui, feedback } = narrowTerminal();
+
+    ui.problem({
+      title: "The backend requires a bootstrap credential, and none was sent",
+      reason: "It sends layer source paths only to callers presenting it.",
+      details: ["  Command output line that is long enough to wrap"],
+      fixes: ["Run the command from the project that serves this backend"],
+    });
+
+    expect(feedback.text).to.equal(
+      [
+        "✖ The backend requires a bootstrap",
+        "  credential, and none was sent",
+        "  It sends layer source paths only to",
+        "  callers presenting it.",
+        "    Command output line that is long",
+        "    enough to wrap",
+        "  → Run the command from the project",
+        "    that serves this backend",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("wraps messages, their details, lists and detail values", () => {
+    const { ui, feedback, result } = narrowTerminal();
+
+    ui.message("warn", "No supported range declared, so it was not checked", {
+      details: ["Declare one in its package.json under engines"],
+    });
+    ui.list(["A list item long enough to need a second line"]);
+    ui.details([
+      { label: "Secrets", value: "DMS_HTML_RENDER_SECRET, DMS_OAUTH_SECRET" },
+    ]);
+
+    expect(feedback.text).to.equal(
+      [
+        "▲ No supported range declared, so it was",
+        "  not checked",
+        "  Declare one in its package.json under",
+        "  engines",
+        "",
+      ].join("\n"),
+    );
+    expect(result.text).to.equal(
+      [
+        "• A list item long enough to need a",
+        "  second line",
+        "",
+        "Secrets  DMS_HTML_RENDER_SECRET,",
+        "         DMS_OAUTH_SECRET",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("does not count colors and paints every wrapped line", () => {
+    const { ui, feedback } = narrowTerminal(true);
+
+    ui.message("info", "Detail", {
+      details: ["A dimmed detail line that does not fit on one line"],
+    });
+
+    const dim = createPalette(true).dim;
+    expect(feedback.text.split("\n").slice(1)).to.deep.equal([
+      `  ${dim("A dimmed detail line that does not fit")}`,
+      `  ${dim("on one line")}`,
+      "",
+    ]);
+  });
+
+  it("keeps a word longer than the terminal whole", () => {
+    const { ui, feedback } = narrowTerminal();
+
+    ui.message("skip", `Skipped ${"/very/long/path".repeat(4)} (not a workspace)`);
+
+    expect(feedback.text).to.equal(
+      [
+        "– Skipped",
+        `  ${"/very/long/path".repeat(4)}`,
+        "  (not a workspace)",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("writes lines as they are when the output is not a terminal", () => {
+    const { ui, feedback } = createMemoryUi({ columns: NARROW_COLUMNS });
+    const title = "A problem title that is longer than forty columns";
+
+    ui.problem({ title, fixes: ["A fix that is also longer than forty columns"] });
+
+    expect(feedback.text).to.equal(
+      `✖ ${title}\n  → A fix that is also longer than forty columns\n`,
+    );
   });
 });

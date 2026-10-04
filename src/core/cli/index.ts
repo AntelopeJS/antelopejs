@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
-import { parsePluginInvocation } from "./plugin-arguments";
+import {
+  helpAsPluginArguments,
+  parsePluginInvocation,
+} from "./plugin-arguments";
 
 const START_COMMAND = "start";
 const PROJECT_COMMAND = "project";
@@ -25,8 +28,13 @@ async function isCoreCommand(command: string): Promise<boolean> {
   return coreCommandNames().includes(command);
 }
 
+/**
+ * Runs the command line as a plugin when it names one, `ajs help <plugin>`
+ * included: the plugin prints its own help.
+ */
 async function delegateToPluginCommand(args: string[]): Promise<boolean> {
-  const command = parsePluginInvocation(args).args[0];
+  const pluginArgs = helpAsPluginArguments(args);
+  const command = parsePluginInvocation(pluginArgs).args[0];
   if (!command || command.startsWith(OPTION_PREFIX)) {
     return false;
   }
@@ -35,7 +43,7 @@ async function delegateToPluginCommand(args: string[]): Promise<boolean> {
     return false;
   }
   const { delegateToPlugin } = await import("./plugin");
-  const result = await delegateToPlugin(args);
+  const result = await delegateToPlugin(pluginArgs);
   if (!result.isDelegated) {
     return false;
   }

@@ -10,6 +10,9 @@ import {
 
 const NO_COLOR_ENVIRONMENT_VARIABLE = "NO_COLOR";
 const ENABLED_FLAG_VALUE = "1";
+const HELP_COMMAND = "help";
+const HELP_FLAG = "--help";
+const OPTION_PREFIX = "-";
 
 interface GlobalFlag {
   matches(argument: string): boolean;
@@ -61,6 +64,11 @@ function flagEnvironments(argument: string): NodeJS.ProcessEnv[] {
   );
 }
 
+function countGlobalFlags(args: string[]): number {
+  const commandIndex = args.findIndex((argument) => !isGlobalFlag(argument));
+  return commandIndex < 0 ? args.length : commandIndex;
+}
+
 /**
  * Splits `ajs [--no-color] [--verbose[=channels]] [-q] <plugin> ...` into the
  * plugin command line and the environment of the global options:
@@ -69,8 +77,7 @@ function flagEnvironments(argument: string): NodeJS.ProcessEnv[] {
  * Arguments after the plugin name belong to the plugin and are kept as is.
  */
 export function parsePluginInvocation(args: string[]): PluginInvocation {
-  const commandIndex = args.findIndex((argument) => !isGlobalFlag(argument));
-  const globalFlagCount = commandIndex < 0 ? args.length : commandIndex;
+  const globalFlagCount = countGlobalFlags(args);
   return {
     args: args.slice(globalFlagCount),
     environment: Object.assign(
@@ -78,4 +85,18 @@ export function parsePluginInvocation(args: string[]): PluginInvocation {
       ...args.slice(0, globalFlagCount).flatMap(flagEnvironments),
     ),
   };
+}
+
+/**
+ * Spells `ajs [global options] help <name> [args]` as
+ * `ajs [global options] <name> [args] --help`, so that the help of a plugin
+ * is the plugin's own page. Any other command line is returned as is.
+ */
+export function helpAsPluginArguments(args: string[]): string[] {
+  const globalFlagCount = countGlobalFlags(args);
+  const [command, topic, ...rest] = args.slice(globalFlagCount);
+  if (command !== HELP_COMMAND || !topic || topic.startsWith(OPTION_PREFIX)) {
+    return args;
+  }
+  return [...args.slice(0, globalFlagCount), topic, ...rest, HELP_FLAG];
 }

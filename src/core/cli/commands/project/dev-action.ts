@@ -9,6 +9,7 @@ import { getProcessUi, reportFailure } from "../../output";
 import startAntelope, { DEFAULT_ENV, type LaunchOptions } from "../../../..";
 import {
   DEFAULT_SHUTDOWN_TIMEOUT_MS,
+  SHUTDOWN_CLEANUP_TIMEOUT_MS,
   ShutdownManager,
 } from "../../../shutdown";
 import {
@@ -39,7 +40,11 @@ const RUNNER_PREFIX = "antelope-runner-";
 const DEFAULT_INSPECT_HOST = "127.0.0.1:9229";
 const CHILD_TERMINATE_HEADROOM_MS = 2000;
 const CHILD_TERMINATE_TIMEOUT_MS =
-  DEFAULT_SHUTDOWN_TIMEOUT_MS + CHILD_TERMINATE_HEADROOM_MS;
+  DEFAULT_SHUTDOWN_TIMEOUT_MS +
+  SHUTDOWN_CLEANUP_TIMEOUT_MS +
+  CHILD_TERMINATE_HEADROOM_MS;
+const RUNNER_SHUTDOWN_TIMEOUT_MS =
+  CHILD_TERMINATE_TIMEOUT_MS + CHILD_TERMINATE_HEADROOM_MS;
 const SHUTDOWN_PRIORITY_CHILD = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
 const SHUTDOWN_PRIORITY_SIGNAL_CLEANUP = 5;
@@ -163,7 +168,7 @@ async function launchWithInspector(options: DevCommandOptions): Promise<void> {
   const runnerScript = buildRunnerScript(entryPath);
   const tempDir = await ModuleCache.getTemp();
   const runnerPath = path.join(tempDir, `${RUNNER_PREFIX}${Date.now()}.js`);
-  const shutdownManager = new ShutdownManager();
+  const shutdownManager = new ShutdownManager(RUNNER_SHUTDOWN_TIMEOUT_MS);
   let cleanupDone = false;
   let childRunning = true;
 

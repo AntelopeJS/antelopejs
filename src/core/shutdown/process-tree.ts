@@ -123,6 +123,24 @@ export function collectDescendants(
 }
 
 /**
+ * Kills every process descending from `rootPid` with `SIGKILL` at once, for
+ * an exit that cannot wait for {@link terminateProcessTree}.
+ *
+ * @returns the pids that were signalled.
+ */
+export function killProcessTree(
+  rootPid: number = process.pid,
+  options: ProcessTreeOptions = {},
+): number[] {
+  const kill = options.kill ?? defaultKill;
+  const descendants = collectDescendants(rootPid, options);
+  for (const pid of descendants) {
+    signal(pid, "SIGKILL", kill);
+  }
+  return descendants;
+}
+
+/**
  * Terminates every process descending from `rootPid`.
  *
  * Modules are free to spawn processes (sidecars, dev servers, ...) and not all

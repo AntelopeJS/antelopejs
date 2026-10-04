@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 
 import {
   collectDescendants,
+  killProcessTree,
   terminateProcessTree,
 } from "../../../src/core/shutdown/process-tree";
 
@@ -80,6 +81,25 @@ describe("Process tree", () => {
       expect(
         collectDescendants(10, { ...table.options, platform: "darwin" }),
       ).to.deep.equal([]);
+    });
+  });
+
+  describe("killProcessTree", () => {
+    it("kills every descendant at once, without a grace period", () => {
+      const table = fakeTable([
+        { pid: 10, parentPid: 1 },
+        { pid: 20, parentPid: 10 },
+        { pid: 30, parentPid: 20, ignoresSigterm: true },
+      ]);
+
+      const killed = killProcessTree(10, table.options);
+
+      expect(killed).to.deep.equal([20, 30]);
+      expect(table.signals).to.deep.equal([
+        { pid: 20, signal: "SIGKILL" },
+        { pid: 30, signal: "SIGKILL" },
+      ]);
+      expect(table.alive.has(10)).to.equal(true);
     });
   });
 

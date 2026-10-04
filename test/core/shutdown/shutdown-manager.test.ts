@@ -2,7 +2,15 @@ import sinon from "sinon";
 import { expect } from "chai";
 import { EventEmitter } from "node:events";
 
-import { ShutdownManager } from "../../../src/core/shutdown/shutdown-manager";
+import {
+  SHUTDOWN_CLEANUP_TIMEOUT_MS,
+  ShutdownManager,
+  type SignalShutdownListener,
+} from "../../../src/core/shutdown/shutdown-manager";
+import {
+  CANCELLED_EXIT_CODE,
+  FAILURE_EXIT_CODE,
+} from "../../../src/core/cli/exit-codes";
 
 const WAIT_FOR_SIGNAL_MS = 10;
 const CUSTOM_TIMEOUT_MS = 500;
@@ -21,6 +29,21 @@ function createDeferred(): Deferred {
     resolve = resolvePromise;
   });
   return { promise, resolve };
+}
+
+interface RecordingListener extends SignalShutdownListener {
+  events: string[];
+}
+
+function recordingListener(): RecordingListener {
+  const events: string[] = [];
+  return {
+    events,
+    onStopping: (signal) => events.push(`stopping ${signal}`),
+    onStopped: (hasTimedOut) =>
+      events.push(hasTimedOut ? "stopped after timeout" : "stopped"),
+    onForced: (signal) => events.push(`forced ${signal}`),
+  };
 }
 
 function waitForSignal(): Promise<void> {
@@ -150,6 +173,56 @@ describe("ShutdownManager", () => {
 
       await shutdownPromise;
     });
+
+    it("still runs the handlers after the one that timed out", async () => {
+      manager = new ShutdownManager(CUSTOM_TIMEOUT_MS);
+      const cleanup = sinon.stub().resolves();
+      manager.register(() => new Promise<void>(() => {}), 2);
+      manager.register(cleanup, 1);
+
+      const shutdownPromise = manager.shutdown();
+      await clock.tickAsync(CUSTOM_TIMEOUT_MS);
+      await shutdownPromise;
+
+      expect(cleanup.calledOnce).to.equal(true);
+    });
+
+    it("bounds the handlers left after the timeout by the cleanup timeout", async () => {
+      manager = new ShutdownManager(CUSTOM_TIMEOUT_MS);
+      const lastHandler = sinon.stub().resolves();
+      manager.register(() => new Promise<void>(() => {}), 3);
+      manager.register(() => new Promise<void>(() => {}), 2);
+      manager.register(lastHandler, 1);
+      let isSettled = false;
+
+      const shutdownPromise = manager.shutdown().then(() => {
+        isSettled = true;
+      });
+      await clock.tickAsync(CUSTOM_TIMEOUT_MS);
+      expect(isSettled).to.equal(false);
+      await clock.tickAsync(SHUTDOWN_CLEANUP_TIMEOUT_MS);
+      await shutdownPromise;
+
+      expect(isSettled).to.equal(true);
+      expect(lastHandler.called).to.equal(false);
+    });
+
+    it("tells the signal listener the shutdown timed out", async () => {
+      const listener = recordingListener();
+      const signals = new EventEmitter();
+      manager = new ShutdownManager(CUSTOM_TIMEOUT_MS, signals, listener);
+      sinon.stub(process, "exit");
+      manager.register(() => new Promise<void>(() => {}), 0);
+      manager.setupSignalHandlers();
+
+      signals.emit("SIGINT");
+      await clock.tickAsync(CUSTOM_TIMEOUT_MS);
+
+      expect(listener.events).to.deep.equal([
+        "stopping SIGINT",
+        "stopped after timeout",
+      ]);
+    });
   });
 
   describe("signal handling", () => {
@@ -186,7 +259,7 @@ describe("ShutdownManager", () => {
       expect(process.listenerCount("SIGINT")).to.equal(sigintCount);
     });
 
-    it("should trigger shutdown on SIGINT", async () => {
+    it("exits with the cancelled exit code after a graceful stop on SIGINT", async () => {
       const handler = sinon.stub().resolves();
       const exitStub = sinon.stub(process, "exit");
       manager.register(handler, 0);
@@ -196,7 +269,35 @@ describe("ShutdownManager", () => {
       await waitForSignal();
 
       expect(handler.calledOnce).to.equal(true);
-      expect(exitStub.calledWith(0)).to.equal(true);
+      expect(exitStub.calledOnceWith(CANCELLED_EXIT_CODE)).to.equal(true);
+    });
+
+    it("tells the signal listener the project is stopping, then stopped", async () => {
+      const listener = recordingListener();
+      manager = new ShutdownManager(SUITE_TIMEOUT_MS, signals, listener);
+      sinon.stub(process, "exit");
+      manager.register(async () => {
+        listener.events.push("handler");
+      }, 0);
+      manager.setupSignalHandlers();
+
+      signals.emit("SIGINT");
+      await waitForSignal();
+
+      expect(listener.events).to.deep.equal([
+        "stopping SIGINT",
+        "handler",
+        "stopped",
+      ]);
+    });
+
+    it("does not tell the signal listener about a shutdown no signal started", async () => {
+      const listener = recordingListener();
+      manager = new ShutdownManager(SUITE_TIMEOUT_MS, signals, listener);
+
+      await manager.shutdown();
+
+      expect(listener.events).to.deep.equal([]);
     });
 
     it("should trigger shutdown on SIGTERM", async () => {
@@ -212,7 +313,9 @@ describe("ShutdownManager", () => {
       expect(exitStub.calledWith(0)).to.equal(true);
     });
 
-    it("should force exit on second signal during shutdown", async () => {
+    it("forces the exit with the cancelled exit code on a second SIGINT", async () => {
+      const listener = recordingListener();
+      manager = new ShutdownManager(SUITE_TIMEOUT_MS, signals, listener);
       const neverResolves = () => new Promise<void>(() => {});
       const exitStub = sinon.stub(process, "exit");
       manager.register(neverResolves, 0);
@@ -223,7 +326,25 @@ describe("ShutdownManager", () => {
 
       signals.emit("SIGINT");
 
-      expect(exitStub.calledWith(1)).to.equal(true);
+      expect(exitStub.calledWith(CANCELLED_EXIT_CODE)).to.equal(true);
+      expect(listener.events).to.deep.equal([
+        "stopping SIGINT",
+        "forced SIGINT",
+      ]);
+    });
+
+    it("forces the exit with the failure exit code on a second SIGTERM", async () => {
+      const neverResolves = () => new Promise<void>(() => {});
+      const exitStub = sinon.stub(process, "exit");
+      manager.register(neverResolves, 0);
+      manager.setupSignalHandlers();
+
+      signals.emit("SIGTERM");
+      await waitForSignal();
+
+      signals.emit("SIGTERM");
+
+      expect(exitStub.calledWith(FAILURE_EXIT_CODE)).to.equal(true);
     });
 
     it("should not force exit on SIGTERM received during graceful shutdown", async () => {
@@ -245,7 +366,7 @@ describe("ShutdownManager", () => {
       deferred.resolve();
       await waitForSignal();
 
-      expect(exitStub.calledWith(0)).to.equal(true);
+      expect(exitStub.calledOnceWith(CANCELLED_EXIT_CODE)).to.equal(true);
     });
 
     it("should not force exit on SIGINT received after SIGTERM starts shutdown", async () => {
