@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.13.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.0...v1.13.1)
+
+### 🩹 Fixes
+
+- **cli:** Make the CLI predictable in scripts and report each problem once ([#189](https://github.com/AntelopeJS/antelopejs/pull/189))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.13.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.12.0...v1.13.0)
