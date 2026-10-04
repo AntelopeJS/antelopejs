@@ -4,14 +4,13 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { ExecuteCMD } from "../../command";
 import { USAGE_EXIT_CODE } from "../../exit-codes";
-import { isPromptCancellation } from "../../cancellation";
 import { displayNonDefaultGitWarning, readUserConfig } from "../../common";
 import {
   DEFAULT_PACKAGE_MANAGER,
   PACKAGE_MANAGER_NAMES,
   type PackageManagerName,
 } from "../../package-manager-name";
-import { error, Spinner, success, warning } from "../../cli-ui";
+import { Spinner, success, warning } from "../../cli-ui";
 import {
   getInstallCommand,
   savePackageManagerToPackageJson,
@@ -31,6 +30,7 @@ import {
   getProcessPalette,
   getProcessUi,
   missingFlags,
+  runTask,
   type AnswerFlag,
   type Prompter,
   translateFailure,
@@ -124,31 +124,31 @@ function unknownChoiceError(choice: UnknownChoice): CliError {
   });
 }
 
-async function isDirectoryUsable(
+function isDirectoryOccupied(modulePath: string): boolean {
+  return (
+    existsSync(modulePath) &&
+    modulePath !== CURRENT_DIRECTORY &&
+    readdirSync(modulePath).length > 0
+  );
+}
+
+async function ensureDirectoryUsable(
   modulePath: string,
   isFromProject: boolean,
-): Promise<boolean> {
+): Promise<void> {
   const palette = getProcessPalette();
   const dirSpinner = new Spinner(
     `Checking directory ${palette.dim(modulePath)}`,
   );
   await dirSpinner.start();
-
-  const isOccupied =
-    existsSync(modulePath) &&
-    modulePath !== CURRENT_DIRECTORY &&
-    readdirSync(modulePath).length > 0;
-  if (isOccupied && !isFromProject) {
-    await dirSpinner.fail(`Directory is not empty`);
-    error(
-      `Directory ${palette.bold(modulePath)} is not empty. Please use an empty directory.`,
-    );
-    process.exitCode = 1;
-    return false;
+  if (isDirectoryOccupied(modulePath) && !isFromProject) {
+    await dirSpinner.stop();
+    throw new CliError({
+      title: `Directory ${modulePath} is not empty`,
+      fixes: [`Pass an empty or new directory: ${MODULE_INIT_COMMAND} <path>`],
+    });
   }
-
   await dirSpinner.succeed(`Directory is valid`);
-  return true;
 }
 
 async function askTemplate(
@@ -389,9 +389,10 @@ function modulePrompter(
 }
 
 /**
- * Creates a module from a template. Every question is answered before
- * anything is written, so a cancelled or unanswerable question leaves the
- * target directory untouched.
+ * Creates a module from a template. The directory and the template
+ * repository are checked first, so their errors come before any missing
+ * answer. Every question is answered before anything is written, so a
+ * cancelled or unanswerable question leaves the target directory untouched.
  */
 export async function moduleInitCommand(
   modulePath: string,
@@ -399,28 +400,20 @@ export async function moduleInitCommand(
   context: ModuleInitContext = {},
 ) {
   const prompter = modulePrompter(modulePath, options, context);
-  prompter.requireAnswers(missingFlags(options, MODULE_ANSWER_FLAGS));
-  if (!(await isDirectoryUsable(modulePath, Boolean(context.isFromProject)))) {
-    return;
-  }
-
-  const gitSpinner = new Spinner("Loading templates");
-  await gitSpinner.start();
+  await ensureDirectoryUsable(modulePath, Boolean(context.isFromProject));
   const git = options.git || (await readUserConfig()).git;
   displayNonDefaultGitWarning(git);
-
-  try {
-    const manifest = await loadTemplates(git);
-    await gitSpinner.succeed(`Found ${manifest.templates.length} templates`);
-    const answers = await askModuleAnswers(prompter, options, git, manifest);
-    await createModule(modulePath, answers);
-    displayModuleCreated(modulePath, answers, context);
-  } catch (err) {
-    if (!isPromptCancellation(err)) {
-      await gitSpinner.fail("Failed to initialize your module");
-    }
-    throw err;
-  }
+  const manifest = await runTask(
+    "Loading templates",
+    () => loadTemplates(git),
+    {
+      done: (loaded) => `Found ${loaded.templates.length} templates`,
+    },
+  );
+  prompter.requireAnswers(missingFlags(options, MODULE_ANSWER_FLAGS));
+  const answers = await askModuleAnswers(prompter, options, git, manifest);
+  await createModule(modulePath, answers);
+  displayModuleCreated(modulePath, answers, context);
 }
 
 export function runModuleInit(modulePath: string, options: ModuleInitOptions) {

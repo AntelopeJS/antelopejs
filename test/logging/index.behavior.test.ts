@@ -6,6 +6,7 @@ import { RunWithResponsibleModule } from "@antelopejs/interface-core";
 import {
   addChannelFilter,
   levelMap,
+  setLogAudience,
   setupAntelopeProjectLogging,
 } from "../../src/logging";
 import { getProcessTasks } from "../../src/core/cli/output/tasks";
@@ -19,6 +20,10 @@ function countOccurrences(output: string, needle: string): number {
 }
 
 describe("Logging Module", () => {
+  beforeEach(() => {
+    setLogAudience("app");
+  });
+
   afterEach(() => {
     sinon.restore();
     setupAntelopeProjectLogging({ enabled: false });
@@ -246,5 +251,46 @@ describe("Logging Module", () => {
       expect(excluded.stdout).to.equal("");
       expect(unlisted.stdout).to.equal("");
     });
+  });
+});
+
+describe("Logging audience", () => {
+  afterEach(() => {
+    setupAntelopeProjectLogging({ enabled: false });
+    setLogAudience("app");
+  });
+
+  it("writes every level on stderr for a CLI command", () => {
+    setLogAudience("cli");
+    setupAntelopeProjectLogging({ enabled: true });
+    addChannelFilter("audience-probe", levelMap.trace);
+    const probe = new Logging.Channel("audience-probe");
+
+    const output = captureOutput(() => {
+      probe.Trace("trace line");
+      probe.Debug("debug line");
+      probe.Info("info line");
+      probe.Warn("warn line");
+      probe.Error("error line");
+    });
+
+    expect(output.stdout).to.equal("");
+    ["trace", "debug", "info", "warn", "error"].forEach((level) =>
+      expect(output.stderr).to.contain(`${level} line`),
+    );
+  });
+
+  it("writes the log lines of an application on stdout, errors on stderr", () => {
+    setLogAudience("app");
+    setupAntelopeProjectLogging({ enabled: true });
+
+    const output = captureOutput(() => {
+      Logging.Warn("warn line");
+      Logging.Error("error line");
+    });
+
+    expect(output.stdout).to.contain("warn line");
+    expect(output.stdout).to.not.contain("error line");
+    expect(output.stderr).to.contain("error line");
   });
 });

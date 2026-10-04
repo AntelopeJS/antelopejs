@@ -5,7 +5,7 @@ import { NodeFileSystem } from "../filesystem";
 import type { LaunchOptions } from "../../types";
 import { ModuleManager } from "../module-manager";
 import { terminalDisplay } from "../cli/output/tasks";
-import { setupAntelopeProjectLogging } from "../../logging";
+import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
 import { readRefreshedBuildArtifact } from "./build-refresh";
 import type { BuildArtifact } from "../build/build-artifact";
 import { registerCoreRuntimeInterface } from "./dev-server-registry";
@@ -233,6 +233,7 @@ async function completeLaunchSequence(
   const project = await request.prepare(projectFolder, env);
 
   if (policy.logging) {
+    setLogAudience("app");
     setupAntelopeProjectLogging(project.logging);
     applyVerboseChannels(options.verbose);
   }

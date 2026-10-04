@@ -2,7 +2,10 @@ import path from "node:path";
 import { type Command, Option } from "commander";
 
 import { warning } from "./cli-ui";
-import { ALL_LOG_CHANNELS } from "./output/verbosity";
+import {
+  ALL_LOG_CHANNELS,
+  QUIET_ENVIRONMENT_VARIABLE,
+} from "./output/verbosity";
 import { PACKAGE_MANAGER_NAMES } from "./package-manager-name";
 
 const LIST_SEPARATOR = ",";
@@ -44,6 +47,10 @@ export namespace Options {
     .env("ANTELOPEJS_VERBOSE")
     .preset(ALL_LOG_CHANNELS)
     .argParser((val) => val.replaceAll(/%/g, "*").split(","));
+  export const quiet = new Option(
+    "-q, --quiet",
+    "Print only results, warnings and errors: no progress, information or summaries",
+  ).env(QUIET_ENVIRONMENT_VARIABLE);
   export const noColor = new Option(
     "--no-color",
     "Disable colors (also NO_COLOR=1)",

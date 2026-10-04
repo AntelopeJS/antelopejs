@@ -10,12 +10,53 @@ import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 import { ShutdownManager } from "../../../src/core/shutdown";
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { ModuleManifest } from "../../../src/core/module-manifest";
+import * as logging from "../../../src/logging";
 import { runLaunchSequence } from "../../../src/core/runtime/launch-sequence";
+import { EMBEDDED_RUNTIME_POLICY } from "../../../src/core/runtime/runtime-policy";
 import type { ProjectPreparer } from "../../../src/core/runtime/runtime-types";
 
 describe("runtime launch-sequence", () => {
   afterEach(() => {
     sinon.restore();
+  });
+
+  function stoppedAfterLogging(): ProjectPreparer {
+    return async () => ({
+      fs: new NodeFileSystem(),
+      dev: true,
+      loadContext: async () => ({}) as any,
+      verify: () => Promise.reject(new Error("stop")),
+      createEntries: async () => [],
+    });
+  }
+
+  async function launchUntilVerify(
+    policy?: typeof EMBEDDED_RUNTIME_POLICY,
+  ): Promise<void> {
+    await runLaunchSequence(
+      stoppedAfterLogging(),
+      os.tmpdir(),
+      "test",
+      {},
+      policy,
+    ).catch(() => undefined);
+  }
+
+  it("writes log lines for an application when it owns the logging", async () => {
+    const audience = sinon.stub(logging, "setLogAudience");
+    sinon.stub(logging, "setupAntelopeProjectLogging");
+
+    await launchUntilVerify();
+
+    expect(audience.calledOnceWithExactly("app")).to.equal(true);
+  });
+
+  it("leaves the log audience to an embedding host", async () => {
+    const audience = sinon.stub(logging, "setLogAudience");
+
+    await launchUntilVerify(EMBEDDED_RUNTIME_POLICY);
+
+    expect(audience.called).to.equal(false);
   });
 
   it("releases module and registered runtime resources after startup fails", async () => {

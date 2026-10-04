@@ -11,6 +11,12 @@ const LOADED_MODULES_VARIABLE = "AJS_LOADED_MODULES_FILE";
 const HELP_HEADER = "Usage: ajs";
 const USAGE_EXIT_CODE = 2;
 const PROMPT_LIBRARY = "@clack/prompts";
+const TEMPLATE_MANIFEST = {
+  interfaces: {},
+  starredInterfaces: [],
+  templates: [{ name: "basic", repository: "", branch: "main" }],
+};
+const GIT_IDENTITY = ["-c", "user.name=ajs", "-c", "user.email=ajs@localhost"];
 
 function cliEntry() {
   const main = require.resolve("@antelopejs/core");
@@ -70,7 +76,30 @@ function verifyPromptLibraryLoads() {
   }
 }
 
+function git(args, cwd) {
+  execFileSync("git", [...GIT_IDENTITY, ...args], { cwd, stdio: "ignore" });
+}
+
+function useLocalTemplateRepository(folder) {
+  const repository = path.join(folder, "interfaces");
+  fs.mkdirSync(repository);
+  fs.writeFileSync(
+    path.join(repository, "manifest.json"),
+    JSON.stringify(TEMPLATE_MANIFEST),
+  );
+  git(["init", "--quiet"], repository);
+  git(["add", "manifest.json"], repository);
+  git(["commit", "--quiet", "-m", "manifest"], repository);
+  const settings = path.join(folder, ".antelopejs");
+  fs.mkdirSync(settings, { recursive: true });
+  fs.writeFileSync(
+    path.join(settings, "config.json"),
+    JSON.stringify({ git: `file://${repository}` }),
+  );
+}
+
 function verifyMissingAnswersExit(folder) {
+  useLocalTemplateRepository(folder);
   const project = path.join(folder, "demo");
   const result = spawnSync(
     process.execPath,
@@ -81,7 +110,10 @@ function verifyMissingAnswersExit(folder) {
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
-  if (result.status !== USAGE_EXIT_CODE || !result.stderr.includes("--name")) {
+  if (
+    result.status !== USAGE_EXIT_CODE ||
+    !result.stderr.includes("--template")
+  ) {
     throw new Error(
       `ajs project init without a terminal should exit ${USAGE_EXIT_CODE} naming its flags, got ${result.status}:\n${result.stderr}`,
     );

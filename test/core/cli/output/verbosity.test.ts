@@ -1,6 +1,7 @@
 import { expect } from "chai";
 
 import {
+  isQuietRun,
   isVerboseRun,
   normalizeVerboseArguments,
 } from "../../../../src/core/cli/output";
@@ -35,6 +36,41 @@ describe("isVerboseRun", () => {
     process.argv = [...BASE_ARGV, "--verbose"];
     try {
       expect(isVerboseRun()).to.equal(true);
+    } finally {
+      process.argv = originalArgv;
+    }
+  });
+});
+
+describe("isQuietRun", () => {
+  it("is quiet with -q or --quiet anywhere on the command line", () => {
+    expect(isQuietRun({ argv: [...BASE_ARGV, "-q"], env: {} })).to.equal(true);
+    expect(isQuietRun({ argv: [...BASE_ARGV, "--quiet"], env: {} })).to.equal(
+      true,
+    );
+  });
+
+  it("is quiet when ANTELOPEJS_QUIET is on", () => {
+    expect(
+      isQuietRun({ argv: BASE_ARGV, env: { ANTELOPEJS_QUIET: "1" } }),
+    ).to.equal(true);
+  });
+
+  it("is not quiet otherwise", () => {
+    expect(isQuietRun({ argv: BASE_ARGV, env: {} })).to.equal(false);
+    expect(
+      isQuietRun({ argv: BASE_ARGV, env: { ANTELOPEJS_QUIET: "false" } }),
+    ).to.equal(false);
+    expect(isQuietRun({ argv: [...BASE_ARGV, "--quietly"], env: {} })).to.equal(
+      false,
+    );
+  });
+
+  it("reads the process by default", () => {
+    const originalArgv = process.argv;
+    process.argv = [...BASE_ARGV, "-q"];
+    try {
+      expect(isQuietRun()).to.equal(true);
     } finally {
       process.argv = originalArgv;
     }

@@ -1,4 +1,8 @@
+import { isEnabledFlag } from "./flags";
+
 const VERBOSE_FLAG = "--verbose";
+const QUIET_FLAGS = ["-q", "--quiet"];
+export const QUIET_ENVIRONMENT_VARIABLE = "ANTELOPEJS_QUIET";
 export const VERBOSE_ASSIGNMENT_PREFIX = `${VERBOSE_FLAG}=`;
 export const VERBOSE_ENVIRONMENT_VARIABLE = "ANTELOPEJS_VERBOSE";
 export const ALL_LOG_CHANNELS = "*";
@@ -46,5 +50,24 @@ export function isVerboseRun(
   return (
     context.argv.some(isVerboseArgument) ||
     Boolean(context.env[VERBOSE_ENVIRONMENT_VARIABLE])
+  );
+}
+
+export function isQuietArgument(argument: string): boolean {
+  return QUIET_FLAGS.includes(argument);
+}
+
+/**
+ * Whether the run asked for quiet output, with the global `-q, --quiet` flag
+ * anywhere on the command line or `ANTELOPEJS_QUIET` (any value other than
+ * `0` or `false`). Quiet runs only print results, warnings and errors: no
+ * progress, information, summaries or update notice.
+ */
+export function isQuietRun(
+  context: VerbosityContext = processVerbosityContext(),
+): boolean {
+  return (
+    context.argv.some(isQuietArgument) ||
+    isEnabledFlag(context.env[QUIET_ENVIRONMENT_VARIABLE])
   );
 }

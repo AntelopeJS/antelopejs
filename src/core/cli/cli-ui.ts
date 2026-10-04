@@ -70,7 +70,7 @@ export class Spinner {
 }
 
 export function success(message: string): void {
-  getProcessUi().message("success", message, { channel: "result" });
+  getProcessUi().message("success", message);
 }
 
 export function error(message: string | Error): void {

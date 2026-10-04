@@ -35,7 +35,6 @@ export default function (ui?: Ui) {
         new Command("list")
           .summary(PLUGINS_SUMMARY)
           .description("Same as ajs plugins.")
-          .addOption(Options.json)
           .action(listPluginsAction(ui)),
         PLUGINS_EXAMPLES,
       ),

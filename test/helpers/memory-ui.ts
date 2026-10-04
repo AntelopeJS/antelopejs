@@ -24,6 +24,8 @@ export interface MemoryUiOptions {
   hasColor?: boolean;
   hasUnicode?: boolean;
   isTerminal?: boolean;
+  isQuiet?: boolean;
+  columns?: number;
 }
 
 export interface MemoryUi {
@@ -33,10 +35,17 @@ export interface MemoryUi {
 }
 
 export function createMemoryUi(options: MemoryUiOptions = {}): MemoryUi {
-  const { hasColor = false, hasUnicode = true, isTerminal = false } = options;
+  const {
+    hasColor = false,
+    hasUnicode = true,
+    isTerminal = false,
+    isQuiet = false,
+  } = options;
   const result = new MemoryStream(isTerminal);
   const feedback = new MemoryStream(isTerminal);
+  result.columns = options.columns;
   const ui = createUi({
+    isQuiet,
     streams: { result, feedback },
     capabilities: {
       hasUnicode,

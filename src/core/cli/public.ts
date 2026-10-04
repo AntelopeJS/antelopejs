@@ -54,7 +54,11 @@ export {
 } from "./output/tasks";
 export { writeData, type DataOutput } from "./output/data";
 export { CancelledError, CliError, NeedsInputError } from "./output/errors";
-export { isVerboseRun, type VerbosityContext } from "./output/verbosity";
+export {
+  isQuietRun,
+  isVerboseRun,
+  type VerbosityContext,
+} from "./output/verbosity";
 export { runWithErrorBoundary, type BoundaryOptions } from "./output/boundary";
 export { createPrompter, missingFlags, type AnswerFlag } from "./output/prompt";
 export { formatUsageErrors } from "./usage-errors";

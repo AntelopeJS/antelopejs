@@ -61,6 +61,14 @@ class GuardedStream implements OutputStream {
     private readonly tasks: TaskList,
   ) {}
 
+  get isTTY(): boolean | undefined {
+    return this.target.isTTY;
+  }
+
+  get columns(): number | undefined {
+    return this.target.columns;
+  }
+
   write(chunk: string): boolean {
     this.tasks.write(this.target, chunk);
     return true;
@@ -97,12 +105,13 @@ export class TaskList {
     const capabilities = options.capabilities ?? detectCapabilities(context);
     this.feedback = streams.feedback;
     this.targets = [streams.result, streams.feedback];
-    this.isLive = options.isLive ?? hasLiveProgress(context);
+    this.isLive = options.isLive ?? (!options.isQuiet && hasLiveProgress(context));
     this.now = options.now ?? Date.now;
     this.palette = createPalette(capabilities.colors.feedback);
     this.symbols = selectSymbols(capabilities.hasUnicode);
     this.ui = createUi({
       capabilities,
+      isQuiet: options.isQuiet,
       streams: {
         result: new GuardedStream(streams.result, this),
         feedback: new GuardedStream(streams.feedback, this),

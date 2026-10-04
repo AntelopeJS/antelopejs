@@ -7,14 +7,24 @@ import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../src/core/cli/common";
 import * as command from "../../../../../src/core/cli/command";
 import * as gitOps from "../../../../../src/core/cli/git-operations";
-import { CliError, NeedsInputError } from "../../../../../src/core/cli/output";
-import { USAGE_EXIT_CODE } from "../../../../../src/core/cli/exit-codes";
+import {
+  CliError,
+  getProcessUi,
+  NeedsInputError,
+  runWithErrorBoundary,
+} from "../../../../../src/core/cli/output";
+import {
+  FAILURE_EXIT_CODE,
+  USAGE_EXIT_CODE,
+} from "../../../../../src/core/cli/exit-codes";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
 import * as pkgManager from "../../../../../src/core/cli/package-manager";
 import cmdModuleInit from "../../../../../src/core/cli/commands/module/init";
 import { moduleInitCommand } from "../../../../../src/core/cli/commands/module/init-action";
 import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
 import { collectStderr } from "../../../../helpers/capture-output";
+
+const { levels } = getProcessUi().symbols;
 
 const TEMPLATES = [
   { name: "basic", repository: "", branch: "" },
@@ -213,7 +223,7 @@ describe("module init behavior", () => {
     expect(stubs.gitInit.calledOnce).to.equal(true);
   });
 
-  it("names every missing flag before fetching anything without a terminal", async () => {
+  it("names every missing flag before writing anything without a terminal", async () => {
     const stubs = stubModuleInit();
     fakePrompts({ isInteractive: false });
 
@@ -227,7 +237,8 @@ describe("module init behavior", () => {
       `Pass them as flags: ajs module init ${moduleDir} --template <name> --[no-]git-init`,
       `Or accept the defaults: ajs module init ${moduleDir} --yes`,
     ]);
-    expect(stubs.manifest.called).to.equal(false);
+    expect(stubs.manifest.calledOnce).to.equal(true);
+    expect(stubs.copy.called).to.equal(false);
   });
 
   it("rejects an unknown template before writing", async () => {
@@ -281,38 +292,26 @@ describe("module init behavior", () => {
     );
   });
 
-  it("fails when directory is not empty", async () => {
+  it("reports a non-empty directory once, before any missing flag", async () => {
     writeFileSync(path.join(moduleDir, "file.txt"), "x");
-    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
-    sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
-    sinon.stub(cliUi, "error");
-    sinon.stub(cliUi, "warning");
-    sinon.stub(console, "log");
-    fakePrompts();
-
-    await moduleInitCommand(moduleDir, {});
-
-    expect(process.exitCode).to.equal(1);
-  });
-
-  it("refuses a non-empty directory when invoked through the CLI", async () => {
-    writeFileSync(path.join(moduleDir, "file.txt"), "x");
-    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
-    const failStub = sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
-    const succeedStub = sinon
-      .stub(cliUi.Spinner.prototype, "succeed")
-      .resolves();
-    sinon.stub(cliUi, "error");
     sinon.stub(console, "log");
     const manifestStub = sinon.stub(gitOps, "loadManifestFromGit");
-    fakePrompts();
+    fakePrompts({ isInteractive: false });
+    const feedback = collectStderr();
 
-    await cmdModuleInit().parseAsync(["node", "init", moduleDir]);
+    await runWithErrorBoundary(async () => {
+      await cmdModuleInit().parseAsync(["node", "init", moduleDir]);
+    });
 
-    expect(failStub.calledWith("Directory is not empty")).to.equal(true);
-    expect(succeedStub.called).to.equal(false);
+    expect(feedback()).to.equal(
+      [
+        `${levels.error} Directory ${moduleDir} is not empty`,
+        `  ${levels.hint} Pass an empty or new directory: ajs module init <path>`,
+        "",
+      ].join("\n"),
+    );
     expect(manifestStub.called).to.equal(false);
-    expect(process.exitCode).to.equal(1);
+    expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
   });
 
   it("handles git init failure", async () => {
@@ -330,7 +329,10 @@ describe("module init behavior", () => {
     ).to.equal(true);
   });
 
-  function stubTemplateRepository(failure: unknown): void {
+  function stubTemplateRepository(
+    failure: unknown,
+    isInteractive = true,
+  ): void {
     sinon
       .stub(common, "readUserConfig")
       .resolves({ git: common.DEFAULT_GIT_REPO });
@@ -343,8 +345,26 @@ describe("module init behavior", () => {
     sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
     sinon.stub(cliUi, "warning");
     sinon.stub(console, "log");
-    fakePrompts();
+    fakePrompts({ isInteractive });
   }
+
+  it("reports an unreachable template repository once, before any missing flag", async () => {
+    stubTemplateRepository(new Error("boom"), false);
+    const feedback = collectStderr();
+
+    await runWithErrorBoundary(async () => {
+      await cmdModuleInit().parseAsync(["node", "init", moduleDir]);
+    });
+
+    const lines = feedback().split("\n");
+    expect(lines[0]).to.equal(
+      `${levels.error} Could not fetch templates from ${common.DEFAULT_GIT_REPO}`,
+    );
+    expect(
+      lines.filter((line) => line.startsWith(levels.error)),
+    ).to.have.length(1);
+    expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
+  });
 
   it("explains a template repository that cannot be fetched", async () => {
     stubTemplateRepository("boom");

@@ -161,7 +161,7 @@ describe("hasLiveProgress", () => {
     expect(hasLiveProgress(context({ CI: "false" }))).to.equal(true);
   });
 
-  it("prints final lines only in pipes, CI, dumb terminals and verbose runs", () => {
+  it("prints final lines only in pipes, CI, dumb terminals, verbose and quiet runs", () => {
     const piped: CapabilityContext = {
       ...context({}),
       streams: { result: TERMINAL, feedback: PIPE },
@@ -173,6 +173,7 @@ describe("hasLiveProgress", () => {
     expect(hasLiveProgress(context({}, ["node", "ajs", "--verbose"]))).to.equal(
       false,
     );
+    expect(hasLiveProgress(context({}, ["node", "ajs", "-q"]))).to.equal(false);
   });
 });
 

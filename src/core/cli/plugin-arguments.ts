@@ -1,7 +1,9 @@
 import { NO_COLOR_FLAG } from "./output/capabilities";
 import {
   ALL_LOG_CHANNELS,
+  isQuietArgument,
   isVerboseArgument,
+  QUIET_ENVIRONMENT_VARIABLE,
   VERBOSE_ASSIGNMENT_PREFIX,
   VERBOSE_ENVIRONMENT_VARIABLE,
 } from "./output/verbosity";
@@ -41,6 +43,12 @@ const GLOBAL_FLAGS: GlobalFlag[] = [
       [VERBOSE_ENVIRONMENT_VARIABLE]: verboseChannels(argument),
     }),
   },
+  {
+    matches: isQuietArgument,
+    environment: () => ({
+      [QUIET_ENVIRONMENT_VARIABLE]: ENABLED_FLAG_VALUE,
+    }),
+  },
 ];
 
 function isGlobalFlag(argument: string): boolean {
@@ -54,9 +62,10 @@ function flagEnvironments(argument: string): NodeJS.ProcessEnv[] {
 }
 
 /**
- * Splits `ajs [--no-color] [--verbose[=channels]] <plugin> ...` into the
+ * Splits `ajs [--no-color] [--verbose[=channels]] [-q] <plugin> ...` into the
  * plugin command line and the environment of the global options:
- * `NO_COLOR=1` and `ANTELOPEJS_VERBOSE=<channels>` (`*` for every channel).
+ * `NO_COLOR=1`, `ANTELOPEJS_VERBOSE=<channels>` (`*` for every channel) and
+ * `ANTELOPEJS_QUIET=1`.
  * Arguments after the plugin name belong to the plugin and are kept as is.
  */
 export function parsePluginInvocation(args: string[]): PluginInvocation {

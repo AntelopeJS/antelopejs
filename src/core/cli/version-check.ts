@@ -4,7 +4,7 @@ import semver from "semver";
 import { homedir } from "node:os";
 
 import { info } from "./cli-ui";
-import { getProcessUi } from "./output";
+import { getProcessUi, isQuietRun } from "./output";
 import { CORE_PACKAGE_NAME } from "./core-version";
 
 const UPDATE_COMMAND = "ajs update";
@@ -61,7 +61,8 @@ export function shouldCheckForUpdates(context: UpdateCheckContext): boolean {
     context.isStderrTerminal &&
     !isFlagEnabled(context.env[CI_VARIABLE]) &&
     !isFlagEnabled(context.env[OPT_OUT_VARIABLE]) &&
-    !isInformationalInvocation(context.args)
+    !isInformationalInvocation(context.args) &&
+    !isQuietRun({ argv: context.args, env: context.env })
   );
 }
 

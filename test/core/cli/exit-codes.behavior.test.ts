@@ -6,6 +6,7 @@ import { existsSync } from "node:fs";
 import * as logging from "../../../src/logging";
 import { runCLI } from "../../../src/core/cli/index";
 import * as cliUi from "../../../src/core/cli/cli-ui";
+import * as gitOps from "../../../src/core/cli/git-operations";
 import { runWithErrorBoundary } from "../../../src/core/cli/output";
 import { readConfig, writeConfig } from "../../../src/core/cli/common";
 import * as versionCheck from "../../../src/core/cli/version-check";
@@ -131,6 +132,12 @@ describe("CLI exit code contract", () => {
     expect(code).to.equal(SUCCESS_EXIT_CODE);
   });
 
+  it("exits 2 on an unknown subcommand of a command group", async () => {
+    const code = await run(["project", "bogus"]);
+
+    expect(code).to.equal(USAGE_EXIT_CODE);
+  });
+
   it("exits 3 when the build no longer matches the configured modules", async () => {
     sinon
       .stub(projectLaunch, "launchFromBuild")
@@ -161,6 +168,11 @@ describe("CLI exit code contract", () => {
 
   it("exits 2 naming the flags when a prompt cannot be answered", async () => {
     fakePrompts({ isInteractive: false });
+    sinon.stub(gitOps, "loadManifestFromGit").resolves({
+      templates: [{ name: "basic", repository: "", branch: "" }],
+      interfaces: {},
+      starredInterfaces: [],
+    });
     const newProject = path.join(projectDir, "new-project");
 
     const code = await run(["project", "init", newProject]);
@@ -192,4 +204,22 @@ describe("CLI exit code without arguments", () => {
     expect(output.stdout).to.contain("Usage: ajs [options] [command]");
     expect(output.stderr).to.equal("");
   });
+
+  for (const group of [["project"], ["project", "modules"], ["config"]]) {
+    it(`exits 0 and prints the help of ajs ${group.join(" ")} on stdout`, async () => {
+      sinon.stub(logging, "setupAntelopeProjectLogging");
+      sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
+      process.argv = ["node", "ajs", ...group];
+
+      const output = await captureOutputAsync(() =>
+        runWithErrorBoundary(() => runCLI(group)),
+      );
+
+      expect(process.exitCode ?? SUCCESS_EXIT_CODE).to.equal(SUCCESS_EXIT_CODE);
+      expect(output.stdout).to.contain(
+        `Usage: ajs ${group.join(" ")} [options] [command]`,
+      );
+      expect(output.stderr).to.equal("");
+    });
+  }
 });
