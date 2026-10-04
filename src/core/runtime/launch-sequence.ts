@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { ShutdownManager } from "../shutdown";
+import type { ShutdownHandler, ShutdownManager } from "../shutdown";
 import { NodeFileSystem } from "../filesystem";
 import type { LaunchOptions } from "../../types";
 import { ModuleManager } from "../module-manager";
@@ -32,6 +32,11 @@ import {
   setupProcessHandlers,
   withRaisedMaxListeners,
 } from "./runtime-bootstrap";
+import {
+  claimProcess,
+  createShutdownManager,
+  registerModuleShutdownHandler,
+} from "./process-claim";
 import {
   buildModuleConfigs,
   constructAndStartModules,
@@ -174,6 +179,28 @@ export const prepareFromRefreshedArtifact: ProjectPreparer = async (
 };
 
 /**
+ * Stops the modules on shutdown and takes over what the policy hands to the
+ * runtime, before anything is loaded.
+ *
+ * @returns the module shutdown handler.
+ */
+function armShutdown(
+  shutdownManager: ShutdownManager,
+  manager: ModuleManager,
+  policy: RuntimePolicy,
+): ShutdownHandler {
+  const moduleShutdown = registerModuleShutdownHandler(
+    shutdownManager,
+    manager,
+  );
+  if (policy.processHandlers) {
+    setupProcessHandlers(shutdownManager);
+  }
+  claimProcess(shutdownManager, policy);
+  return moduleShutdown;
+}
+
+/**
  * The boot sequence shared by every way of launching a running project.
  *
  * Every step below runs identically no matter where the module set came from;
@@ -182,8 +209,10 @@ export const prepareFromRefreshedArtifact: ProjectPreparer = async (
  * `build()` and the test harness stop short of starting modules and keep
  * their own shorter sequences.
  *
- * Callers are responsible for the post-launch phase (shutdown handler
- * registration, watching, REPL) via the returned {@link StartedProject}.
+ * The modules are stopped on shutdown, and when the policy hands the process
+ * signals over, `SIGINT` and `SIGTERM` stop the project from the start of the
+ * launch on. Callers are responsible for the post-launch phase (watching,
+ * REPL) via the returned {@link StartedProject}.
  */
 export async function runLaunchSequence(
   prepare: ProjectPreparer,
@@ -192,7 +221,7 @@ export async function runLaunchSequence(
   options: LaunchOptions,
   policy: RuntimePolicy = DEFAULT_RUNTIME_POLICY,
 ): Promise<StartedProject> {
-  const shutdownManager = new ShutdownManager();
+  const shutdownManager = createShutdownManager(policy);
   const manager = new ModuleManager();
   const request: LaunchRequest = {
     prepare,
@@ -201,15 +230,14 @@ export async function runLaunchSequence(
     options,
     policy,
   };
-  if (policy.processHandlers) {
-    setupProcessHandlers(shutdownManager);
-  }
+  const moduleShutdown = armShutdown(shutdownManager, manager, policy);
 
   const previouslySilent = terminalDisplay.isSilent();
   terminalDisplay.setSilent(!policy.terminal);
   try {
     return await completeLaunchSequence(request, shutdownManager, manager);
   } catch (error) {
+    shutdownManager.unregister(moduleShutdown);
     const cleanupErrors = await cleanupFailedLaunch(manager, shutdownManager);
     releaseProcessShutdownManager(shutdownManager);
     if (cleanupErrors.length === 0) {

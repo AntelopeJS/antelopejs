@@ -4,12 +4,10 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { BuildLaunchOptions, LaunchOptions } from "../../types";
 import type { NodeFileSystem } from "../filesystem";
 import type { ModuleManager } from "../module-manager";
-import {
-  releaseProcessShutdownManager,
-  tolerateInvalidatedModuleWork,
-} from "./runtime-bootstrap";
+import { getActiveShutdownManager } from "./process-claim";
+import { tolerateInvalidatedModuleWork } from "./runtime-bootstrap";
 import { DEFAULT_ENV, tryFindConfigPath } from "../config/config-paths";
-import { type ShutdownManager, terminateProcessTree } from "../shutdown";
+import type { ShutdownManager } from "../shutdown";
 import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
 import type {
   LoaderContext,
@@ -27,88 +25,12 @@ const Logger = new Logging.Channel("loader");
 
 const MAX_STREAM_LISTENERS = 20;
 const INTERACTIVE_PROMPT = "> ";
-const SHUTDOWN_PRIORITY_MODULES = 30;
 const SHUTDOWN_PRIORITY_RESOURCES = 20;
-const SHUTDOWN_PRIORITY_CHILD_PROCESSES = 15;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
 const UNSUPPORTED_ARTIFACT_OPTIONS_WARNING =
   "Watch and interactive modes are only available when launching from configuration; ignoring them for this build artifact launch.";
 
 Writable.prototype.setMaxListeners(MAX_STREAM_LISTENERS);
-
-const activeShutdownManagers: ShutdownManager[] = [];
-
-function setActiveShutdownManager(shutdownManager: ShutdownManager): void {
-  releaseActiveShutdownManager(shutdownManager);
-  activeShutdownManagers.at(-1)?.removeSignalHandlers();
-  activeShutdownManagers.push(shutdownManager);
-  shutdownManager.setupSignalHandlers();
-}
-
-function releaseActiveShutdownManager(shutdownManager: ShutdownManager): void {
-  const index = activeShutdownManagers.indexOf(shutdownManager);
-  if (index === -1) {
-    return;
-  }
-  const wasActive = index === activeShutdownManagers.length - 1;
-  activeShutdownManagers.splice(index, 1);
-  shutdownManager.removeSignalHandlers();
-  if (wasActive) {
-    activeShutdownManagers.at(-1)?.setupSignalHandlers();
-  }
-}
-
-function registerModuleShutdownHandler(
-  shutdownManager: ShutdownManager,
-  manager: ModuleManager,
-): void {
-  shutdownManager.register(
-    () => shutdownModules(manager),
-    SHUTDOWN_PRIORITY_MODULES,
-  );
-}
-
-async function shutdownModules(manager: ModuleManager): Promise<void> {
-  const errors: unknown[] = [];
-  try {
-    await manager.stopAll();
-  } catch (error) {
-    errors.push(error);
-  }
-  try {
-    await manager.destroyAll();
-  } catch (error) {
-    errors.push(error);
-  }
-  if (errors.length > 0) {
-    throw new AggregateError(errors, "Shutdown failed");
-  }
-}
-
-/**
- * Kills the processes modules spawned and did not reap themselves.
- *
- * Registered after the module handlers so modules keep the chance to stop their
- * own children gracefully; whatever is left would otherwise be reparented to
- * init and survive the process.
- */
-function registerChildProcessCleanup(shutdownManager: ShutdownManager): void {
-  shutdownManager.register(async () => {
-    const terminated = await terminateProcessTree();
-    if (terminated.length > 0) {
-      Logger.Debug(
-        `Terminated ${terminated.length} leftover child process(es): ${terminated.join(", ")}`,
-      );
-    }
-  }, SHUTDOWN_PRIORITY_CHILD_PROCESSES);
-}
-
-function registerShutdownCleanup(shutdownManager: ShutdownManager): void {
-  shutdownManager.register(async () => {
-    releaseActiveShutdownManager(shutdownManager);
-    releaseProcessShutdownManager(shutdownManager);
-  }, SHUTDOWN_PRIORITY_CLEANUP);
-}
 
 /**
  * Lets a module fail to reload without taking the dev process down, until the
@@ -183,12 +105,6 @@ async function setupPostLaunchFeatures(
 ): Promise<void> {
   const { manager, shutdownManager } = started;
 
-  registerModuleShutdownHandler(shutdownManager, manager);
-  if (started.policy.signals) {
-    registerChildProcessCleanup(shutdownManager);
-  }
-  registerShutdownCleanup(shutdownManager);
-
   if (!started.dev && (options.watch || options.interactive)) {
     Logger.Warn(UNSUPPORTED_ARTIFACT_OPTIONS_WARNING);
   }
@@ -212,10 +128,6 @@ async function setupPostLaunchFeatures(
       repl.close();
     }, SHUTDOWN_PRIORITY_RESOURCES);
     repl.start(INTERACTIVE_PROMPT);
-  }
-
-  if (started.policy.signals) {
-    setActiveShutdownManager(shutdownManager);
   }
 }
 
@@ -253,7 +165,7 @@ async function restartProject(
   isRestarting = true;
 
   try {
-    const activeShutdownManager = activeShutdownManagers.at(-1);
+    const activeShutdownManager = getActiveShutdownManager();
     if (activeShutdownManager) {
       await activeShutdownManager.shutdown();
     }

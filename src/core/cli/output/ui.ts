@@ -9,6 +9,7 @@ import {
   padVisible,
   truncate,
   visibleWidth,
+  wrapText,
 } from "./format";
 import { LEVEL_COLORS, selectSymbols } from "./symbols";
 import { isQuietRun } from "./verbosity";
@@ -21,6 +22,7 @@ import type {
   OutputCapabilities,
   OutputChannel,
   OutputStreams,
+  Paint,
   Palette,
   SummaryBlock,
   SymbolSet,
@@ -39,7 +41,11 @@ const DEFAULT_CHANNEL: OutputChannel = "feedback";
 const JSON_INDENTATION = 2;
 const NEXT_STEPS_TITLE = "Next steps";
 const MIN_COLUMN_WIDTH = 16;
+const MIN_WRAP_WIDTH = 20;
+const LEADING_SPACES = /^ */;
 const QUIET_LEVELS: MessageLevel[] = ["info", "success", "skip", "hint"];
+
+const keepText: Paint = (text) => text;
 
 function sum(values: number[]): number {
   return values.reduce((total, value) => total + value, 0);
@@ -89,7 +95,7 @@ class StreamUi implements Ui {
     if (this.isSilenced(channel) && QUIET_LEVELS.includes(level)) {
       return;
     }
-    this.writeLine(channel, this.statusLine(channel, level, text));
+    this.writeStatus(channel, level, text);
     const details = [options?.detail, ...(options?.details ?? [])];
     details
       .filter((detail): detail is string => Boolean(detail))
@@ -98,19 +104,13 @@ class StreamUi implements Ui {
 
   problem(problem: CliProblem): void {
     const channel = DEFAULT_CHANNEL;
-    const palette = this.palettes[channel];
-    this.writeLine(channel, this.statusLine(channel, "error", problem.title));
+    this.writeStatus(channel, "error", problem.title);
     if (problem.reason) {
       this.writeDetail(channel, problem.reason);
     }
-    problem.details?.forEach((line) =>
-      this.writeLine(channel, `${DETAIL_INDENT}${palette.dim(line)}`),
-    );
+    problem.details?.forEach((line) => this.writeDetail(channel, line));
     problem.fixes?.forEach((fix) =>
-      this.writeLine(
-        channel,
-        `${DETAIL_INDENT}${this.statusLine(channel, "hint", fix)}`,
-      ),
+      this.writeStatus(channel, "hint", fix, DETAIL_INDENT),
     );
   }
 
@@ -153,9 +153,10 @@ class StreamUi implements Ui {
     );
     this.separateBlock(channel);
     entries.forEach((entry) =>
-      this.writeLine(
+      this.writeWrapped(
         channel,
-        `${palette.dim(padVisible(entry.label, labelWidth))}${COLUMN_GAP}${entry.value}`,
+        `${palette.dim(padVisible(entry.label, labelWidth))}${COLUMN_GAP}`,
+        entry.value,
       ),
     );
   }
@@ -166,7 +167,7 @@ class StreamUi implements Ui {
     }
     this.separateBlock("result");
     items.forEach((item) =>
-      this.writeLine("result", `${this.symbols.bullet} ${item}`),
+      this.writeWrapped("result", `${this.symbols.bullet} `, item),
     );
   }
 
@@ -260,38 +261,92 @@ class StreamUi implements Ui {
     const width = Math.max(...steps.map((step) => visibleWidth(step.command)));
     this.streams.feedback.write(LINE_END);
     this.writeLine("feedback", palette.bold(NEXT_STEPS_TITLE));
-    steps.forEach((step) =>
-      this.writeLine("feedback", this.nextStepLine(step, width)),
-    );
+    steps.forEach((step) => this.writeNextStep(step, width));
   }
 
-  private nextStepLine(step: NextStep, width: number): string {
+  private writeNextStep(step: NextStep, width: number): void {
     const palette = this.palettes.feedback;
     if (!step.description) {
-      return `${DETAIL_INDENT}${palette.cyan(step.command)}`;
+      this.writeLine("feedback", `${DETAIL_INDENT}${palette.cyan(step.command)}`);
+      return;
     }
     const command = palette.cyan(padVisible(step.command, width));
-    return `${DETAIL_INDENT}${command}${COLUMN_GAP}${palette.dim(step.description)}`;
+    this.writeWrapped(
+      "feedback",
+      `${DETAIL_INDENT}${command}${COLUMN_GAP}`,
+      step.description,
+      palette.dim,
+    );
   }
 
   private isSilenced(channel: OutputChannel): boolean {
     return this.isQuiet && channel === "feedback";
   }
 
-  private statusLine(
+  private writeStatus(
     channel: OutputChannel,
     level: MessageLevel,
     text: string,
-  ): string {
+    indent = "",
+  ): void {
     const paint = this.palettes[channel][LEVEL_COLORS[level]];
-    return `${paint(this.symbols.levels[level])} ${text}`;
+    this.writeWrapped(
+      channel,
+      `${indent}${paint(this.symbols.levels[level])} `,
+      text,
+    );
   }
 
   private writeDetail(channel: OutputChannel, detail: string): void {
-    this.writeLine(
+    this.writeWrapped(
       channel,
-      `${DETAIL_INDENT}${this.palettes[channel].dim(detail)}`,
+      DETAIL_INDENT,
+      detail,
+      this.palettes[channel].dim,
     );
+  }
+
+  /**
+   * Writes `text` after `prefix`. On a terminal of known width it is wrapped
+   * between words to fit, each line after the first indented under the
+   * text, its own leading spaces included; elsewhere it is written as is.
+   */
+  private writeWrapped(
+    channel: OutputChannel,
+    prefix: string,
+    text: string,
+    paint: Paint = keepText,
+  ): void {
+    const indent = " ".repeat(visibleWidth(prefix));
+    this.wrapToTerminal(channel, text, indent.length).forEach((line, index) =>
+      this.writeLine(channel, `${index === 0 ? prefix : indent}${paint(line)}`),
+    );
+  }
+
+  private wrapToTerminal(
+    channel: OutputChannel,
+    text: string,
+    indentWidth: number,
+  ): string[] {
+    const columns = this.terminalColumns(channel);
+    if (columns === undefined) {
+      return [text];
+    }
+    const leading = LEADING_SPACES.exec(text)?.[0] ?? "";
+    const width = Math.max(
+      MIN_WRAP_WIDTH,
+      columns - indentWidth - leading.length,
+    );
+    return wrapText(text.slice(leading.length), width).map(
+      (line) => `${leading}${line}`,
+    );
+  }
+
+  private terminalColumns(channel: OutputChannel): number | undefined {
+    if (!this.capabilities.terminals[channel]) {
+      return undefined;
+    }
+    return this.streams[channel].columns || undefined;
   }
 
   private separateBlock(channel: OutputChannel): void {

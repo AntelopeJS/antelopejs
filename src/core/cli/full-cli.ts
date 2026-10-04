@@ -1,7 +1,12 @@
 import { type AddHelpTextContext, Command } from "commander";
 
 import { Options } from "./options";
-import { getProcessPalette, normalizeVerboseArguments } from "./output";
+import {
+  getProcessPalette,
+  normalizeVerboseArguments,
+  unbreakable,
+  wrapText,
+} from "./output";
 import cmdConfig from "./commands/config";
 import cmdModule from "./commands/module";
 import cmdUpdate from "./commands/update";
@@ -13,8 +18,6 @@ import {
   applyHelpConventions,
   formatExamples,
   helpTextWidth,
-  unbreakable,
-  wrapText,
   type HelpExample,
 } from "./help";
 import { reportAvailableUpdate, startUpdateCheck } from "./version-check";

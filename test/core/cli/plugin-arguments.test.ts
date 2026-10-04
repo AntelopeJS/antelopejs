@@ -1,6 +1,9 @@
 import { expect } from "chai";
 
-import { parsePluginInvocation } from "../../../src/core/cli/plugin-arguments";
+import {
+  helpAsPluginArguments,
+  parsePluginInvocation,
+} from "../../../src/core/cli/plugin-arguments";
 
 describe("Plugin invocation", () => {
   it("keeps a command line without global options as is", () => {
@@ -80,5 +83,43 @@ describe("Plugin invocation", () => {
       args: [],
       environment: { NO_COLOR: "1", ANTELOPEJS_VERBOSE: "*" },
     });
+  });
+});
+
+describe("Plugin help", () => {
+  it("asks the named command for its help", () => {
+    expect(helpAsPluginArguments(["help", "dms"])).to.deep.equal([
+      "dms",
+      "--help",
+    ]);
+  });
+
+  it("keeps the arguments after the name before --help", () => {
+    expect(helpAsPluginArguments(["help", "dms", "dev"])).to.deep.equal([
+      "dms",
+      "dev",
+      "--help",
+    ]);
+  });
+
+  it("keeps the global options in front", () => {
+    expect(
+      helpAsPluginArguments(["--no-color", "-q", "help", "dms"]),
+    ).to.deep.equal(["--no-color", "-q", "dms", "--help"]);
+  });
+
+  it("keeps a help command without a name, or with an option, as is", () => {
+    expect(helpAsPluginArguments(["help"])).to.deep.equal(["help"]);
+    expect(helpAsPluginArguments(["help", "--all"])).to.deep.equal([
+      "help",
+      "--all",
+    ]);
+  });
+
+  it("keeps any other command line as is", () => {
+    expect(helpAsPluginArguments(["dms", "help"])).to.deep.equal([
+      "dms",
+      "help",
+    ]);
   });
 });

@@ -44,6 +44,7 @@ export function createMemoryUi(options: MemoryUiOptions = {}): MemoryUi {
   const result = new MemoryStream(isTerminal);
   const feedback = new MemoryStream(isTerminal);
   result.columns = options.columns;
+  feedback.columns = options.columns;
   const ui = createUi({
     isQuiet,
     streams: { result, feedback },

@@ -1,5 +1,7 @@
 import type { AddHelpTextContext, Command, Help } from "commander";
 
+import { wrapText } from "./output/format";
+
 export interface HelpExample {
   description: string;
   command: string;
@@ -19,8 +21,6 @@ const EXAMPLE_INDENT = "  ";
 const COMMENT_PREFIX = "# ";
 const PROMPT_PREFIX = "$ ";
 const LINE_END = "\n";
-const WORD_SEPARATOR = " ";
-const UNBREAKABLE_SPACE = " ";
 const MAX_HELP_WIDTH = 80;
 const MIN_DESCRIPTION_WIDTH = 30;
 const ITEM_INDENT = "  ";
@@ -43,41 +43,6 @@ export function helpWidth(stream: HelpStream = process.stdout): number {
  */
 export function helpTextWidth(context: AddHelpTextContext): number {
   return helpWidth(context.error ? process.stderr : process.stdout);
-}
-
-/** `text` with its spaces kept on one line by {@link wrapText}. */
-export function unbreakable(text: string): string {
-  return text.replaceAll(WORD_SEPARATOR, UNBREAKABLE_SPACE);
-}
-
-function appendWord(lines: string[], word: string, width: number): string[] {
-  const current = lines.at(-1) ?? "";
-  const isFull =
-    current !== "" &&
-    current.length + WORD_SEPARATOR.length + word.length > width;
-  if (isFull) {
-    return [...lines, word];
-  }
-  const line = current === "" ? word : `${current}${WORD_SEPARATOR}${word}`;
-  return [...lines.slice(0, -1), line];
-}
-
-function wrapParagraph(paragraph: string, width: number): string[] {
-  return paragraph
-    .split(WORD_SEPARATOR)
-    .reduce((lines, word) => appendWord(lines, word, width), [""]);
-}
-
-/**
- * Breaks `text` into lines of at most `width` characters, between words and
- * at its own line breaks. A word longer than `width` stays whole, and the
- * words of an {@link unbreakable} run stay on one line.
- */
-export function wrapText(text: string, width: number): string[] {
-  return text
-    .split(LINE_END)
-    .flatMap((paragraph) => wrapParagraph(paragraph, width))
-    .map((line) => line.replaceAll(UNBREAKABLE_SPACE, WORD_SEPARATOR));
 }
 
 function indentLines(lines: string[], indent: string): string[] {

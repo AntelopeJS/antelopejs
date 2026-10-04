@@ -12,6 +12,9 @@ const PADDED_SECONDS_WIDTH = 2;
 const PLURAL_SUFFIX = "s";
 const CURRENT_DIRECTORY = ".";
 const PARENT_DIRECTORY = "..";
+const LINE_END = "\n";
+const WORD_SEPARATOR = " ";
+const UNBREAKABLE_SPACE = "\u00a0";
 
 export function createPalette(hasColor: boolean): Palette {
   const colors = createColors(hasColor);
@@ -73,6 +76,42 @@ export function truncate(text: string, width: number, ellipsis: string): string 
   }
   const kept = Math.max(0, width - visibleWidth(ellipsis));
   return `${stripAnsi(text).slice(0, kept)}${ellipsis}`;
+}
+
+/** `text` with its spaces kept on one line by {@link wrapText}. */
+export function unbreakable(text: string): string {
+  return text.replaceAll(WORD_SEPARATOR, UNBREAKABLE_SPACE);
+}
+
+function appendWord(lines: string[], word: string, width: number): string[] {
+  const current = lines.at(-1) ?? "";
+  const isFull =
+    current !== "" &&
+    visibleWidth(current) + WORD_SEPARATOR.length + visibleWidth(word) > width;
+  if (isFull) {
+    return [...lines, word];
+  }
+  const line = current === "" ? word : `${current}${WORD_SEPARATOR}${word}`;
+  return [...lines.slice(0, -1), line];
+}
+
+function wrapParagraph(paragraph: string, width: number): string[] {
+  return paragraph
+    .split(WORD_SEPARATOR)
+    .reduce((lines, word) => appendWord(lines, word, width), [""]);
+}
+
+/**
+ * Breaks `text` into lines of at most `width` visible characters, between
+ * words and at its own line breaks; colors do not count. A word longer than
+ * `width` stays whole, and the words of an {@link unbreakable} run stay on
+ * one line.
+ */
+export function wrapText(text: string, width: number): string[] {
+  return text
+    .split(LINE_END)
+    .flatMap((paragraph) => wrapParagraph(paragraph, width))
+    .map((line) => line.replaceAll(UNBREAKABLE_SPACE, WORD_SEPARATOR));
 }
 
 export function padVisible(text: string, width: number): string {

@@ -1,7 +1,7 @@
 import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import { chmodSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 
 import * as fullCLI from "../../../src/core/cli/full-cli";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
@@ -18,13 +18,18 @@ describe("CLI dispatcher", () => {
     temporaryDirectories.splice(0).forEach(cleanupTempDir);
   });
 
-  function createExecutable(name: string): void {
+  function createExecutable(name: string): string {
     const directory = makeTempDir();
     temporaryDirectories.push(directory);
     const executable = path.join(directory, name);
-    writeFileSync(executable, "#!/bin/sh\nexit 0\n");
+    const argumentsFile = path.join(directory, "arguments");
+    writeFileSync(
+      executable,
+      `#!/bin/sh\necho "$@" > "${argumentsFile}"\nexit 0\n`,
+    );
     chmodSync(executable, 0o755);
     process.env.PATH = directory;
+    return argumentsFile;
   }
 
   it("recognizes only the canonical production start invocation", () => {
@@ -104,6 +109,30 @@ describe("CLI dispatcher", () => {
     expect(runFullCLI.called).to.equal(false);
     expect(process.exitCode).to.equal(0);
     process.exitCode = originalExitCode;
+  });
+
+  it("shows the help of a plugin with the plugin's own --help", async () => {
+    const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
+    sinon.stub(process.stderr, "write").returns(true);
+    const argumentsFile = createExecutable("ajs-custom");
+    const originalExitCode = process.exitCode;
+
+    await runCLI(["--no-color", "help", "custom", "run"]);
+
+    expect(runFullCLI.called).to.equal(false);
+    expect(readFileSync(argumentsFile, "utf8").trim()).to.equal("run --help");
+    process.exitCode = originalExitCode;
+  });
+
+  it("keeps the help of core commands on the full CLI", async () => {
+    const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
+    createExecutable("ajs-project");
+
+    await runCLI(["help", "project"]);
+    await runCLI(["help"]);
+    await runCLI(["help", "missing-plugin"]);
+
+    expect(runFullCLI.callCount).to.equal(3);
   });
 
   it("keeps core commands after global options on the full CLI", async () => {
