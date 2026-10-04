@@ -84,8 +84,17 @@ function explainFailure(
   return translate?.(error) ?? translateFailure(error);
 }
 
+function hasHiddenOutput(error: unknown): boolean {
+  if (!(error instanceof ExecError)) {
+    return false;
+  }
+  const shownLineCount =
+    translateExecError(error) === undefined ? OUTPUT_TAIL_LINE_COUNT : 0;
+  return outputLines(error).length > shownLineCount;
+}
+
 function verboseHint(chain: unknown[], translate?: FailureTranslator): string[] {
-  if (chain.some((error) => error instanceof ExecError)) {
+  if (chain.some(hasHiddenOutput)) {
     return [COMMAND_OUTPUT_HINT];
   }
   const hasUnexplainedTrace = chain.some(
@@ -101,7 +110,8 @@ function verboseHint(chain: unknown[], translate?: FailureTranslator): string[] 
  * `translate` first, then by the known low-level translations, and anything
  * else is reduced to its message. Verbose runs add the stack traces and the
  * full command output; other runs show the last lines of an untranslated
- * command failure and say how to get the rest.
+ * command failure and say how to get the rest, only when `--verbose` would
+ * show more than what is printed.
  */
 export function describeFailure(
   error: unknown,

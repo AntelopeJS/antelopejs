@@ -2,9 +2,9 @@ import path from "node:path";
 import { type Command, Option } from "commander";
 
 import { warning } from "./cli-ui";
+import { ALL_LOG_CHANNELS } from "./output/verbosity";
 import { PACKAGE_MANAGER_NAMES } from "./package-manager-name";
 
-const ALL_LOG_CHANNELS = "*";
 const LIST_SEPARATOR = ",";
 const CURRENT_DIRECTORY = "current directory";
 const OPTION_EVENT_PREFIX = "option:";

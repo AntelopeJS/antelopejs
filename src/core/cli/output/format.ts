@@ -63,6 +63,18 @@ export function visibleWidth(text: string): number {
   return stripAnsi(text).length;
 }
 
+/**
+ * Cuts `text` to `width` visible characters, `ellipsis` included, when it is
+ * longer. A cut text loses its colors.
+ */
+export function truncate(text: string, width: number, ellipsis: string): string {
+  if (visibleWidth(text) <= width) {
+    return text;
+  }
+  const kept = Math.max(0, width - visibleWidth(ellipsis));
+  return `${stripAnsi(text).slice(0, kept)}${ellipsis}`;
+}
+
 export function padVisible(text: string, width: number): string {
   return `${text}${" ".repeat(Math.max(0, width - visibleWidth(text)))}`;
 }

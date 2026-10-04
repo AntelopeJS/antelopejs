@@ -44,8 +44,7 @@ describe("production start", () => {
       "production",
       "--concurrency",
       "3",
-      "--verbose",
-      "runtime,resolution.%",
+      "--verbose=runtime,resolution.%",
     ]);
 
     expect(options).to.deep.equal({
@@ -97,6 +96,15 @@ describe("production start", () => {
     const options = parseProductionStartArgs(["--verbose"]);
 
     expect(options.verbose).to.deep.equal(["*"]);
+  });
+
+  it("never reads the argument after a bare --verbose as channels", () => {
+    expect(
+      parseProductionStartArgs(["--verbose", "-p", "fixture"]),
+    ).to.deep.include({ verbose: ["*"], project: path.resolve("fixture") });
+    expect(() => parseProductionStartArgs(["--verbose", "runtime"])).to.throw(
+      "Unexpected argument 'runtime'",
+    );
   });
 
   it("supports short options", () => {

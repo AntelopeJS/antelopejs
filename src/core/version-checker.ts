@@ -3,7 +3,14 @@ import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
 import { ExecError, ExecuteCMD } from "./cli/command";
 import { warning } from "./cli/cli-ui";
-import { describeFailure, getProcessTasks, pluralize } from "./cli/output";
+import {
+  CliError,
+  describeFailure,
+  getProcessTasks,
+  getProcessUi,
+  pluralize,
+  truncate,
+} from "./cli/output";
 import { parsePackageInfoOutput } from "./cli/package-manager";
 import type { ExpandedModuleConfig } from "./config/config-parser";
 
@@ -65,9 +72,9 @@ export async function validateVersionSpec(
   if (spec in distTags) {
     return;
   }
-  throw new Error(
-    `'${spec}' is neither a valid semver range nor a dist-tag of '${packageName}'`,
-  );
+  throw new CliError({
+    title: `'${spec}' is neither a valid semver range nor a dist-tag of '${packageName}'`,
+  });
 }
 
 export async function fetchLatestVersion(packageName: string): Promise<string> {
@@ -91,7 +98,7 @@ async function fetchLatestVersions(
   );
   const slowWarning = setTimeout(() => {
     warning(
-      "Module version check is taking longer than expected — the npm registry may be slow or unreachable. " +
+      "Module version check is taking longer than expected: the npm registry may be slow or unreachable. " +
         "Set NPM_CONFIG_FETCH_RETRIES=0 to fail fast.",
     );
   }, SLOW_CHECK_THRESHOLD_MS);
@@ -125,11 +132,11 @@ export async function checkOutdatedModules(
       const result = results[index];
       const packageName = (info.source as ModuleSourcePackage).package;
       if (result.status === "rejected") {
-        const reason = describeFailure(result.reason, false).title;
-        const truncated =
-          reason.length > MAX_REASON_LENGTH
-            ? `${reason.slice(0, MAX_REASON_LENGTH)}…`
-            : reason;
+        const truncated = truncate(
+          describeFailure(result.reason, false).title,
+          MAX_REASON_LENGTH,
+          getProcessUi().symbols.ellipsis,
+        );
         warning(
           `Could not check latest version of ${packageName}: ${truncated}`,
         );

@@ -113,11 +113,12 @@ async function askAppModuleImport(
       .filter((key) => key !== DIRECTORY_SOURCE)
       .map((key) => ({ value: key, label: key })),
   });
+  const { bullet } = getProcessUi().symbols;
   const module = await prompter.text({
     message: `Please specify the ${source} source location:
-  • package: npm package name (e.g., "my-package")
-  • git: Repository URL (e.g., "https://github.com/user/repo")
-  • local: Relative path to module (e.g., "../my-module")`,
+  ${bullet} package: npm package name (e.g., "my-package")
+  ${bullet} git: Repository URL (e.g., "https://github.com/user/repo")
+  ${bullet} local: Relative path to module (e.g., "../my-module")`,
     flag: TEMPLATE_FLAG,
   });
   return { source, module };

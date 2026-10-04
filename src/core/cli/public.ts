@@ -1,8 +1,8 @@
 /**
  * The output layer of `ajs`, published as `@antelopejs/core/cli` so plugins
- * print, prompt, fail and exit exactly like the core CLI. It loads nothing
- * from the runtime: failure descriptions are only loaded when a run fails,
- * and the prompt library when a question is asked.
+ * print, prompt, render help, fail and exit exactly like the core CLI. It
+ * loads nothing from the runtime: failure descriptions are only loaded when
+ * a run fails, and the prompt library when a question is asked.
  *
  * @packageDocumentation
  */
@@ -58,6 +58,18 @@ export { isVerboseRun, type VerbosityContext } from "./output/verbosity";
 export { runWithErrorBoundary, type BoundaryOptions } from "./output/boundary";
 export { createPrompter, missingFlags, type AnswerFlag } from "./output/prompt";
 export { formatUsageErrors } from "./usage-errors";
+export {
+  applyHelpConventions,
+  formatExamples,
+  formatHelpItem,
+  helpTextWidth,
+  helpWidth,
+  unbreakable,
+  withExamples,
+  wrapText,
+  type HelpExample,
+  type HelpStream,
+} from "./help";
 export {
   CANCELLED_EXIT_CODE,
   FAILURE_EXIT_CODE,

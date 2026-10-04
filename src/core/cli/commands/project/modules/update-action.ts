@@ -63,8 +63,9 @@ function countPackageModules(
 function updateHeadline(report: UpdateReport): string {
   const count = pluralize(report.outdated.length, "module");
   if (report.outdated.length > 0) {
+    const { separator } = getProcessUi().symbols;
     return report.options.dryRun
-      ? `Dry run: ${count} can be updated · ${TS_CONFIG_FILE} unchanged`
+      ? `Dry run: ${count} can be updated${separator}${TS_CONFIG_FILE} unchanged`
       : `${count} updated in ${TS_CONFIG_FILE}`;
   }
   if (report.checkedCount === 0) {
@@ -102,7 +103,7 @@ function displayResults(report: UpdateReport): void {
   report.outdated.forEach((entry) =>
     ui.message(
       level,
-      `${verb} ${palette.bold(entry.name)} ${palette.dim(entry.current)} → ${bumpVersionSpec(entry.current, entry.latest)}`,
+      `${verb} ${palette.bold(entry.name)} ${palette.dim(entry.current)} ${ui.symbols.arrow} ${bumpVersionSpec(entry.current, entry.latest)}`,
     ),
   );
   ui.summary({

@@ -1,5 +1,4 @@
 import path from "node:path";
-import assert from "node:assert";
 import { readFile, stat } from "node:fs/promises";
 import type {
   AntelopeConfig,
@@ -241,7 +240,7 @@ function addHeadline(result: AddCommandResult): string {
     .map(([status, names]) => `${names.length} ${status}`)
     .join(", ");
   const change = added.length > 0 ? "updated" : "unchanged";
-  return `${counts} · ${TS_CONFIG_FILE} ${change}`;
+  return `${counts}${getProcessUi().symbols.separator}${TS_CONFIG_FILE} ${change}`;
 }
 
 function addNextSteps(
@@ -275,9 +274,15 @@ export async function projectModulesAddCommand(
 
 // Module source handlers
 
+function ensure(condition: unknown, title: string): asserts condition {
+  if (!condition) {
+    throw new CliError({ title });
+  }
+}
+
 handlers.set("package", async (module) => {
   const m = module.match(/^(.+?)(?:@(.*))?$/);
-  assert(
+  ensure(
     m,
     `Invalid npm module format: '${module}'. Use <name>@<version>, <name>version or <name>`,
   );
@@ -302,7 +307,7 @@ handlers.set("package", async (module) => {
 
 handlers.set("git", async (module) => {
   // Validate git URL format
-  assert(
+  ensure(
     module.includes("://") || module.includes("@"),
     `Invalid git URL format: '${module}'`,
   );
@@ -322,12 +327,12 @@ handlers.set("local", async (module, options) => {
     ? path.resolve(module)
     : path.resolve(path.join(options.project, module));
 
-  assert(
+  ensure(
     (await stat(resolvedModulePath)).isDirectory(),
     `Path '${module}' is not a directory`,
   );
   const packagePath = path.join(resolvedModulePath, "package.json");
-  assert(
+  ensure(
     (await stat(packagePath)).isFile(),
     `No package.json found in '${module}'`,
   );
@@ -354,7 +359,7 @@ handlers.set("dir", async (module, options) => {
   const resolvedFolderPath = path.isAbsolute(module)
     ? path.resolve(module)
     : path.resolve(path.join(options.project, module));
-  assert(
+  ensure(
     (await stat(resolvedFolderPath)).isDirectory(),
     `Path '${module}' is not a directory`,
   );

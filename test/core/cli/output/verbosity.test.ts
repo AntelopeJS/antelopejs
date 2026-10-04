@@ -1,6 +1,9 @@
 import { expect } from "chai";
 
-import { isVerboseRun } from "../../../../src/core/cli/output";
+import {
+  isVerboseRun,
+  normalizeVerboseArguments,
+} from "../../../../src/core/cli/output";
 
 const BASE_ARGV = ["node", "ajs", "project", "build"];
 
@@ -36,4 +39,40 @@ describe("isVerboseRun", () => {
       process.argv = originalArgv;
     }
   });
+});
+
+describe("normalizeVerboseArguments", () => {
+  const MATRIX: [string[], string[]][] = [
+    [
+      ["--verbose", "project", "dev"],
+      ["--verbose=*", "project", "dev"],
+    ],
+    [
+      ["project", "dev", "--verbose"],
+      ["project", "dev", "--verbose=*"],
+    ],
+    [
+      ["--verbose=loader,cli", "project", "dev"],
+      ["--verbose=loader,cli", "project", "dev"],
+    ],
+    [
+      ["--verbose", "--no-color", "dms", "dev"],
+      ["--verbose=*", "--no-color", "dms", "dev"],
+    ],
+    [
+      ["project", "dev", "--verbose", "loader"],
+      ["project", "dev", "--verbose=*", "loader"],
+    ],
+    [
+      ["module", "test", "--", "--verbose"],
+      ["module", "test", "--", "--verbose"],
+    ],
+    [["--verbosely"], ["--verbosely"]],
+  ];
+
+  MATRIX.forEach(([args, expected]) =>
+    it(`reads ${args.join(" ")} as ${expected.join(" ")}`, () => {
+      expect(normalizeVerboseArguments(args)).to.deep.equal(expected);
+    }),
+  );
 });

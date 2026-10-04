@@ -29,12 +29,13 @@ function describeResetValues(
   currentConfig: UserConfig,
   defaultConfig: UserConfig,
 ): DetailEntry[] {
-  const palette = getProcessUi().palette();
+  const ui = getProcessUi();
+  const palette = ui.palette();
   return Object.entries(defaultConfig).map(([key, defaultValue]) => {
     const currentValue = currentConfig[key as keyof UserConfig];
     return {
       label: key,
-      value: `${palette.dim(currentValue || NOT_SET_LABEL)} → ${defaultValue}`,
+      value: `${palette.dim(currentValue || NOT_SET_LABEL)} ${ui.symbols.arrow} ${defaultValue}`,
     };
   });
 }

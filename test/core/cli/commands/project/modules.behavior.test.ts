@@ -27,6 +27,7 @@ import {
 } from "../../../../../src/core/cli/commands/project/modules/add-action";
 import { MODULE_SOURCE_MODES } from "../../../../../src/core/cli/commands/project/modules/add";
 import { collectStderr } from "../../../../helpers/capture-output";
+import { useAsciiSymbols } from "../../../../helpers/ascii-symbols";
 
 function messageLines(stub: sinon.SinonStub): string[] {
   return stub
@@ -242,6 +243,67 @@ describe("project modules behavior", () => {
     );
     expect(writeStub.called).to.equal(false);
     expect(process.exitCode).to.equal(1);
+  });
+
+  it("joins the summary of a failed add with the ASCII separator", async () => {
+    useAsciiSymbols();
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
+    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    sinon.stub(ModuleCache.prototype, "load").resolves();
+    sinon.stub(getProcessUi(), "problem");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
+
+    await projectModulesAddCommand(["modA"], {
+      mode: "svn",
+      project: "/tmp/project",
+    });
+
+    expect(summaryStub.firstCall.args[0].headline).to.equal(
+      "1 failed - antelope.config.ts unchanged",
+    );
+  });
+
+  it("reports an invalid git URL without offering a trace", async () => {
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
+    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    sinon.stub(ModuleCache.prototype, "load").resolves();
+    sinon.stub(getProcessUi(), "summary");
+    const problemStub = sinon.stub(getProcessUi(), "problem");
+
+    await projectModulesAddCommand(["not-a-url"], {
+      mode: "git",
+      project: "/tmp/project",
+    });
+
+    expect(problemStub.firstCall.args[0]).to.deep.equal({
+      title: "Invalid git URL format: 'not-a-url'",
+      details: [],
+    });
+    expect(process.exitCode).to.equal(1);
+  });
+
+  it("reports a version that is neither a range nor a dist-tag without offering a trace", async () => {
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
+    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    sinon.stub(ModuleCache.prototype, "load").resolves();
+    sinon.stub(command, "ExecuteCMD").resolves({
+      code: 0,
+      stdout: '{"latest":"1.0.0"}',
+      stderr: "",
+    });
+    sinon.stub(getProcessUi(), "summary");
+    const problemStub = sinon.stub(getProcessUi(), "problem");
+
+    await projectModulesAddCommand(["@antelopejs/api@banana"], {
+      mode: "package",
+      project: "/tmp/project",
+    });
+
+    expect(problemStub.firstCall.args[0]).to.deep.equal({
+      title:
+        "'banana' is neither a valid semver range nor a dist-tag of '@antelopejs/api'",
+      details: [],
+    });
   });
 
   it("logs download success when registry returns no manifests", async () => {
@@ -1181,5 +1243,34 @@ describe("project modules behavior", () => {
     });
     expect(writeStub.called).to.equal(false);
     expect(process.exitCode).to.equal(undefined);
+  });
+
+  it("points to the new versions in ASCII on a dry run", async () => {
+    useAsciiSymbols();
+    const modules = {
+      pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
+    };
+    sinon.stub(common, "readConfig").resolves({ modules } as any);
+    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
+    sinon
+      .stub(command, "ExecuteCMD")
+      .resolves({ code: 0, stdout: "2.0.0", stderr: "" });
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    const summaryStub = sinon.stub(getProcessUi(), "summary");
+
+    await cmdUpdate().parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/tmp/project",
+      "--dry-run",
+    ]);
+
+    expect(messageLines(messageStub)).to.deep.equal([
+      "info Would update pkg 1.0.0 -> 2.0.0",
+    ]);
+    expect(summaryStub.firstCall.args[0].headline).to.equal(
+      "Dry run: 1 module can be updated - antelope.config.ts unchanged",
+    );
   });
 });

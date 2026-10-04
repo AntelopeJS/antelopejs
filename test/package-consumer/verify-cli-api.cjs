@@ -85,7 +85,12 @@ function verifyOutput(cli) {
   const { ui, result, feedback } = memoryUi(cli);
   ui.message("success", "Built 2 modules");
   ui.table([{ name: "api" }], [{ header: "Name", value: (row) => row.name }]);
-  assertEqual(feedback.text(), "v Built 2 modules\n", "feedback output");
+  ui.summary({ headline: "Built", durationMs: 2100 });
+  assertEqual(
+    feedback.text(),
+    "v Built 2 modules\nBuilt - 2.1s\n",
+    "feedback output",
+  );
   assertEqual(result.text(), "api\n", "result output");
 }
 
@@ -129,6 +134,20 @@ async function verifyTranslateHook(cli) {
   assertEqual(process.exitCode, cli.FAILURE_EXIT_CODE, "failure exit code");
 }
 
+function verifyHelp(cli) {
+  assertEqual(cli.helpWidth({ isTTY: false }), 80, "help width in a pipe");
+  assertEqual(
+    cli.wrapText(`Run ${cli.unbreakable("ajs dms --help")} for details`, 10),
+    ["Run", "ajs dms --help", "for", "details"],
+    "wrapped help text",
+  );
+  assertEqual(
+    cli.formatExamples([{ description: "Build", command: "ajs dms build" }]),
+    "Examples:\n  # Build\n  $ ajs dms build",
+    "help examples",
+  );
+}
+
 function verifyStaysLight() {
   const loaded = JSON.parse(runProbe(LOADED_MODULES_PROBE));
   const eager = loaded.filter((file) =>
@@ -163,6 +182,7 @@ async function main() {
   const cli = require(PUBLIC_ENTRY);
   verifyExitCodes(cli);
   verifyOutput(cli);
+  verifyHelp(cli);
   await verifyErrorBoundary(cli);
   await verifyTranslateHook(cli);
   process.exitCode = 0;

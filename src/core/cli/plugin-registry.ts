@@ -1,4 +1,6 @@
-const PLUGIN_NAME_COLUMN_WIDTH = 10;
+import { formatHelpItem, helpWidth } from "./help";
+
+const PLUGIN_NAME_WIDTH = 9;
 
 interface OfficialPluginDefinition {
   package: string;
@@ -37,11 +39,15 @@ export function officialPluginNames(): string[] {
   return Object.keys(OFFICIAL_PLUGIN_DEFINITIONS);
 }
 
-export function formatOfficialPluginsHelp(): string {
+export function formatOfficialPluginsHelp(width: number = helpWidth()): string {
   return listOfficialPlugins()
-    .map(
-      (plugin) =>
-        `  ${plugin.name.padEnd(PLUGIN_NAME_COLUMN_WIDTH)} ${plugin.description} (${plugin.package})`,
+    .flatMap((plugin) =>
+      formatHelpItem(
+        plugin.name,
+        PLUGIN_NAME_WIDTH,
+        `${plugin.description} (${plugin.package})`,
+        width,
+      ),
     )
     .join("\n");
 }

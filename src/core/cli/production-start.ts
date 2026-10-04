@@ -9,6 +9,7 @@ import {
   FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
 } from "./exit-codes";
+import { normalizeVerboseArguments } from "./output/verbosity";
 
 export interface ProductionStartOptions {
   concurrency?: number;
@@ -36,25 +37,11 @@ function parseVerbose(value?: string): string[] | undefined {
   return value.replaceAll(/%/g, "*").split(",");
 }
 
-function normalizeVerboseArgument(args: string[]): string[] {
-  const verboseIndex = args.indexOf("--verbose");
-  if (verboseIndex < 0) {
-    return args;
-  }
-  const value = args[verboseIndex + 1];
-  const normalizedValue = value?.startsWith("-") ? undefined : value;
-  return [
-    ...args.slice(0, verboseIndex),
-    `--verbose=${normalizedValue ?? "*"}`,
-    ...args.slice(verboseIndex + (normalizedValue ? 2 : 1)),
-  ];
-}
-
 export function parseProductionStartArgs(
   args: string[],
 ): ProductionStartOptions {
   const { values } = parseArgs({
-    args: normalizeVerboseArgument(args),
+    args: normalizeVerboseArguments(args),
     options: {
       project: { type: "string", short: "p" },
       env: { type: "string", short: "e" },

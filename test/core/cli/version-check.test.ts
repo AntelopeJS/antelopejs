@@ -14,6 +14,8 @@ import {
   startUpdateCheck,
 } from "../../../src/core/cli/version-check";
 import { captureOutputAsync } from "../../helpers/capture-output";
+import { useAsciiSymbols } from "../../helpers/ascii-symbols";
+import { stripAnsi } from "../../../src/core/cli/logging-utils";
 
 const NOW = Date.UTC(2026, 0, 2);
 const HOUR_MS = 60 * 60 * 1000;
@@ -355,6 +357,19 @@ describe("reportAvailableUpdate", () => {
       .to.contain("Update available 1.0.0 →")
       .and.to.contain("2.0.0")
       .and.to.contain("ajs update");
+  });
+
+  it("points to the new version and the command in ASCII", async () => {
+    const check = await checkWithLatest("2.0.0");
+    useAsciiSymbols();
+
+    const output = await captureOutputAsync(() =>
+      reportAvailableUpdate("1.0.0", check),
+    );
+
+    expect(stripAnsi(output.stderr)).to.equal(
+      "i Update available 1.0.0 -> 2.0.0  > ajs update\n",
+    );
   });
 
   it("stays silent when up to date", async () => {
