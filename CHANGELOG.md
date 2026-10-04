@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.13.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.1...v1.13.2)
+
+### 🩹 Fixes
+
+- **cli:** Stop project dev cleanly, wrap messages to the terminal and show plugin help ([#190](https://github.com/AntelopeJS/antelopejs/pull/190))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.13.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.0...v1.13.1)
