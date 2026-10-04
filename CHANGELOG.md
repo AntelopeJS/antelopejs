@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.13.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.12.0...v1.13.0)
+
+### 🚀 Enhancements
+
+- **cli:** Make output ASCII-safe, show details before fixes and expose help helpers ([#188](https://github.com/AntelopeJS/antelopejs/pull/188))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.12.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.11.0...v1.12.0)
