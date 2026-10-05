@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.13.4
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.3...v1.13.4)
+
+### 🩹 Fixes
+
+- **cli:** Accept any environment when the config declares none ([#192](https://github.com/AntelopeJS/antelopejs/pull/192))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.13.3
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.2...v1.13.3)
