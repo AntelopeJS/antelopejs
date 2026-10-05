@@ -8,19 +8,16 @@ import {
   TEMPLATE_FLAG,
   YES_FLAG,
 } from "../module/init-action";
-import { isPromptCancellation } from "../../cancellation";
 import { readConfig, writeConfig } from "../../common";
 import type { PackageManagerName } from "../../package-manager-name";
-import { FAILURE_EXIT_CODE, USAGE_EXIT_CODE } from "../../exit-codes";
 import { addModules, handlers } from "./modules/add-action";
-import { error, Spinner } from "../../cli-ui";
+import { Spinner } from "../../cli-ui";
 import {
   CliError,
   createPrompter,
   displayPath,
   getProcessPalette,
   getProcessUi,
-  reportFailure,
   type NextStep,
   type Prompter,
 } from "../../output";
@@ -156,39 +153,21 @@ function moduleOptions(options: ProjectInitOptions): ModuleInitOptions {
   };
 }
 
-function isUsageFailure(err: unknown): boolean {
-  return (
-    isPromptCancellation(err) ||
-    (err instanceof CliError && err.exitCode === USAGE_EXIT_CODE)
-  );
-}
-
 async function createAppModule(
   projectPath: string,
   name: string,
   options: ProjectInitOptions,
   prompter: Prompter,
-): Promise<boolean> {
-  try {
-    await moduleInitCommand(projectPath, moduleOptions(options), {
-      isFromProject: true,
-      prompter,
-    });
-    await createProjectConfig(projectPath, name);
-    await addModules([PROJECT_ROOT_MODULE], {
-      mode: LOCAL_MODULE_SOURCE,
-      project: projectPath,
-    });
-    return true;
-  } catch (err) {
-    if (isUsageFailure(err)) {
-      throw err;
-    }
-    reportFailure(err);
-    error("Project creation stopped due to module initialization failure.");
-    process.exitCode = FAILURE_EXIT_CODE;
-    return false;
-  }
+): Promise<void> {
+  await moduleInitCommand(projectPath, moduleOptions(options), {
+    isFromProject: true,
+    prompter,
+  });
+  await createProjectConfig(projectPath, name);
+  await addModules([PROJECT_ROOT_MODULE], {
+    mode: LOCAL_MODULE_SOURCE,
+    project: projectPath,
+  });
 }
 
 function projectNextSteps(project: string, projectPath: string): NextStep[] {
@@ -247,7 +226,9 @@ function askProjectName(
  * answer the questions of the new module, and the questions that have a
  * default (the name, importing an existing module) are not asked when
  * nobody can answer them, so the project path and the template repository
- * are checked before any missing flag is reported.
+ * are checked before any missing flag is reported. A failure while creating
+ * the module is left to the error boundary, which reports it once, and stops
+ * the command before the project configuration is written.
  */
 export async function projectInitCommand(
   project: string,
@@ -262,8 +243,8 @@ export async function projectInitCommand(
   const appModule = await askAppModuleImport(prompter, options);
   if (appModule) {
     await importAppModule(projectPath, name, appModule);
-  } else if (!(await createAppModule(projectPath, name, options, prompter))) {
-    return;
+  } else {
+    await createAppModule(projectPath, name, options, prompter);
   }
   displayProjectCreated(project, projectPath, name);
 }

@@ -11,6 +11,7 @@ import {
   CliError,
   getProcessUi,
   NeedsInputError,
+  runWithErrorBoundary,
 } from "../../../../../src/core/cli/output";
 import {
   FAILURE_EXIT_CODE,
@@ -23,6 +24,8 @@ import cmdInit from "../../../../../src/core/cli/commands/project/init";
 import * as moduleInitModule from "../../../../../src/core/cli/commands/module/init-action";
 import * as projectModulesAddModule from "../../../../../src/core/cli/commands/project/modules/add-action";
 import { collectStderr } from "../../../../helpers/capture-output";
+
+const { levels } = getProcessUi().symbols;
 
 interface InitStubs {
   writeConfig: sinon.SinonStub;
@@ -302,31 +305,58 @@ describe("project init behavior", () => {
     expect(stubs.feedback()).to.not.include("cd ");
   });
 
-  it("handles module init failures", async () => {
+  it("reports a failed module creation once and writes no project", async () => {
     const stubs = stubInit();
-    stubs.moduleInit.rejects(new Error("boom"));
-    sinon.stub(getProcessUi(), "problem");
-    fakePrompts({ answers: ["my-project", false] });
+    stubs.error.restore();
+    stubs.moduleInit.rejects(
+      new CliError({
+        title: "Could not fetch templates",
+        reason: "The repository does not exist.",
+        fixes: ["Or go back to the default repository: ajs config reset"],
+      }),
+    );
+    fakePrompts({ isInteractive: false });
 
-    await cmdInit().parseAsync(["node", "test", projectDir]);
+    await runWithErrorBoundary(async () => {
+      await cmdInit().parseAsync([
+        "node",
+        "test",
+        projectDir,
+        "--template",
+        "basic",
+        "--pm",
+        "pnpm",
+        "--no-git-init",
+      ]);
+    });
 
+    expect(stubs.feedback()).to.equal(
+      [
+        `${levels.error} Could not fetch templates`,
+        "  The repository does not exist.",
+        `  ${levels.hint} Or go back to the default repository: ajs config reset`,
+        "",
+      ].join("\n"),
+    );
+    expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
+    expect(stubs.writeConfig.called).to.equal(false);
     expect(stubs.add.called).to.equal(false);
-    expect(stubs.error.called).to.equal(true);
-    expect(process.exitCode).to.equal(1);
+    expect(existsSync(projectDir)).to.equal(false);
   });
 
-  it("handles non-error module init failures", async () => {
+  it("lets any module creation failure reach the error boundary", async () => {
     const stubs = stubInit();
     stubs.moduleInit.callsFake(() => Promise.reject("boom"));
-    const problemStub = sinon.stub(getProcessUi(), "problem");
     fakePrompts({ answers: ["my-project", false] });
 
-    await cmdInit().parseAsync(["node", "test", projectDir]);
+    const failure = await failureOf(() =>
+      cmdInit().parseAsync(["node", "test", projectDir]),
+    );
 
+    expect(failure).to.equal("boom");
     expect(stubs.add.called).to.equal(false);
-    expect(problemStub.calledOnce).to.equal(true);
-    expect(problemStub.firstCall.args[0].title).to.equal("boom");
-    expect(process.exitCode).to.equal(1);
+    expect(stubs.error.called).to.equal(false);
+    expect(process.exitCode).to.equal(undefined);
   });
 
   it("lets a usage error of module init reach the error boundary", async () => {
