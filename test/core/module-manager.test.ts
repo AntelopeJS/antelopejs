@@ -12,6 +12,7 @@ import { ModuleManager } from "../../src/core/module-manager";
 import { Resolver } from "../../src/core/resolution/resolver";
 import { ModuleManifest } from "../../src/core/module-manifest";
 import { PathMapper } from "../../src/core/resolution/path-mapper";
+import { InterfaceResolutionError } from "../../src/core/resolution/interface-resolution-error";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 async function createTempModuleWithInterfacePkg(): Promise<{
@@ -1137,6 +1138,13 @@ describe("ModuleManager", () => {
       expect(error?.message).to.include(
         "consumer requires interface-shared@^1.0.0, but the canonical package is 2.0.0",
       );
+      expect(error).to.be.instanceOf(InterfaceResolutionError);
+      const [conflict] = (error as InterfaceResolutionError).conflicts
+        .rangeConflicts;
+      expect(conflict.moduleId).to.equal("consumer");
+      expect(conflict.range).to.equal("^1.0.0");
+      expect(conflict.canonical.version).to.equal("2.0.0");
+      expect(conflict.consumerCopy?.version).to.equal("1.8.0");
       const consumer = manager.getModule("consumer") as any;
       expect(consumer.construct.called).to.equal(false);
     } finally {
@@ -1169,6 +1177,11 @@ describe("ModuleManager", () => {
       expect(error?.message).to.include(
         "preloaded interface copies cannot be redirected",
       );
+      const [preloaded] = (error as InterfaceResolutionError).conflicts
+        .preloadedCopies;
+      expect(preloaded.moduleId).to.equal("consumer");
+      expect(preloaded.copy.version).to.equal("1.2.0");
+      expect(preloaded.loadedFile).to.equal(loadedEntry);
     } finally {
       delete require.cache[loadedEntry];
       await rm(fixture.root, { recursive: true, force: true });

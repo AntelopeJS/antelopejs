@@ -38,6 +38,11 @@ import {
   resolvePackage,
   resolvePackageAtRoot,
 } from "./resolution/package-resolution";
+import {
+  InterfaceResolutionError,
+  type InterfaceRangeConflict,
+  type PreloadedInterfaceCopy,
+} from "./resolution/interface-resolution-error";
 
 const Logger = new Logging.Channel("loader");
 
@@ -944,53 +949,61 @@ export class ModuleManager {
   }
 
   private validateInterfacePackages(): void {
-    const errors = [...this.interfacePackagePlans].flatMap(([name, plan]) => [
-      ...this.findVersionErrors(name, plan),
-      ...this.findPreloadedCopyErrors(name, plan),
-    ]);
-    if (errors.length === 0) {
+    const plans = [...this.interfacePackagePlans];
+    const rangeConflicts = plans.flatMap(([name, plan]) =>
+      this.findRangeConflicts(name, plan),
+    );
+    const preloadedCopies = plans.flatMap(([name, plan]) =>
+      this.findPreloadedCopies(name, plan),
+    );
+    if (rangeConflicts.length === 0 && preloadedCopies.length === 0) {
       return;
     }
-    throw new Error(
-      `Incompatible interface package resolution:\n${errors.join("\n")}`,
-    );
+    throw new InterfaceResolutionError({ rangeConflicts, preloadedCopies });
   }
 
-  private findVersionErrors(
+  private findRangeConflicts(
     packageName: string,
     plan: InterfacePackagePlan,
-  ): string[] {
+  ): InterfaceRangeConflict[] {
     return plan.consumers.flatMap((consumer) => {
       const range = validRange(consumer.range);
       if (!range || satisfies(plan.canonicalPackage.version, range)) {
         return [];
       }
-      const installed = consumer.resolvedPackage
-        ? `${consumer.resolvedPackage.version} at ${consumer.resolvedPackage.root}`
-        : "not installed from the consumer";
       return [
-        `  - ${consumer.moduleId} requires ${packageName}@${consumer.range}, but the canonical package is ${plan.canonicalPackage.version} at ${plan.canonicalPackage.root} (consumer copy: ${installed})`,
+        {
+          moduleId: consumer.moduleId,
+          packageName,
+          range: consumer.range,
+          canonical: plan.canonicalPackage,
+          consumerCopy: consumer.resolvedPackage,
+        },
       ];
     });
   }
 
-  private findPreloadedCopyErrors(
+  private findPreloadedCopies(
     packageName: string,
     plan: InterfacePackagePlan,
-  ): string[] {
+  ): PreloadedInterfaceCopy[] {
     const canonicalRoot = plan.canonicalPackage.realRoot;
-    const copies = plan.consumers
-      .map((consumer) => consumer.resolvedPackage)
-      .filter((resolvedPackage): resolvedPackage is ResolvedPackage =>
-        Boolean(resolvedPackage && resolvedPackage.realRoot !== canonicalRoot),
-      );
     const loadedFiles = Object.keys(require.cache);
-    return copies.flatMap((copy) => {
+    return plan.consumers.flatMap(({ moduleId, resolvedPackage: copy }) => {
+      if (!copy || copy.realRoot === canonicalRoot) {
+        return [];
+      }
       const isInCopy = createPathWithinMatcher(copy.root);
       const loadedFile = loadedFiles.find((filePath) => isInCopy(filePath));
       return loadedFile
         ? [
-            `  - ${packageName}@${copy.version} was loaded from ${copy.root} before the canonical copy at ${plan.canonicalPackage.root}; preloaded interface copies cannot be redirected (${loadedFile})`,
+            {
+              moduleId,
+              packageName,
+              copy,
+              canonical: plan.canonicalPackage,
+              loadedFile,
+            },
           ]
         : [];
     });
