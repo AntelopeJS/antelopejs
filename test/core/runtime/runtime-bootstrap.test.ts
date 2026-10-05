@@ -59,7 +59,6 @@ describe("runtime runtime-bootstrap", () => {
 
     const exitStub = sinon.stub(process, "exit");
     const errorStub = sinon.stub(Logging, "Error");
-    const warnStub = sinon.stub(Logging, "Warn");
 
     try {
       bootstrap.setupProcessHandlers();
@@ -72,9 +71,7 @@ describe("runtime runtime-bootstrap", () => {
       expect(current.unhandledRejection.length).to.equal(
         originalListeners.unhandledRejection.length + 1,
       );
-      expect(current.warning.length).to.equal(
-        originalListeners.warning.length + 1,
-      );
+      expect(current.warning.length).to.equal(originalListeners.warning.length);
 
       const uncaught = current.uncaughtException[
         current.uncaughtException.length - 1
@@ -88,18 +85,23 @@ describe("runtime runtime-bootstrap", () => {
       rejection(new AggregateError([new Error("inner-a"), "inner-b"], "agg"));
       rejection("plain rejection");
 
-      const warningListener = current.warning[current.warning.length - 1] as (
-        warning: Error,
-      ) => void;
-      warningListener(new Error("warned"));
-
       expect(errorStub.called).to.equal(true);
-      const warnedErr = warnStub.args.find(
-        (a: unknown[]) => a[0] === "Warning:" && a[1] instanceof Error,
-      );
-      expect(warnedErr).to.not.equal(undefined);
-      expect((warnedErr![1] as Error).message).to.equal("warned");
       expect(exitStub.calledWith(1)).to.equal(true);
+    } finally {
+      restoreProcessListeners(originalListeners);
+    }
+  });
+
+  it("leaves process warnings to Node.js on stderr instead of logging them as output", () => {
+    const originalListeners = snapshotProcessListeners();
+    const bootstrap = loadBootstrapModule();
+
+    try {
+      bootstrap.setupProcessHandlers();
+
+      expect(process.listeners("warning")).to.deep.equal(
+        originalListeners.warning,
+      );
     } finally {
       restoreProcessListeners(originalListeners);
     }

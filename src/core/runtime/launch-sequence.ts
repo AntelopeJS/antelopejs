@@ -37,9 +37,10 @@ import {
   createShutdownManager,
   registerModuleShutdownHandler,
 } from "./process-claim";
+import { continueUnlessShuttingDown } from "./launch-interruption";
 import {
   buildModuleConfigs,
-  constructAndStartModules,
+  constructModules,
   createLoaderContext,
   ensureGraphIsValid,
   registerCoreInterfaces,
@@ -106,10 +107,12 @@ export const prepareFromConfig: ProjectPreparer = async (
     dev: true,
     logging: normalizedConfig.logging,
     loadContext,
-    verify: async () => {
+    verify: async (stopping) => {
       const { checkOutdatedModules, warnOutdatedModules } =
         await import("../version-checker");
-      warnOutdatedModules(await checkOutdatedModules(normalizedConfig.modules));
+      warnOutdatedModules(
+        await checkOutdatedModules(normalizedConfig.modules, stopping),
+      );
     },
     createEntries: async () =>
       buildModuleConfigs(normalizedConfig, await loadContext()),
@@ -259,6 +262,7 @@ async function completeLaunchSequence(
 ): Promise<StartedProject> {
   const { projectFolder, env, options, policy } = request;
   const project = await request.prepare(projectFolder, env);
+  await continueUnlessShuttingDown(shutdownManager);
 
   if (policy.logging) {
     setLogAudience("app");
@@ -266,7 +270,8 @@ async function completeLaunchSequence(
     applyVerboseChannels(options.verbose);
   }
 
-  await project.verify();
+  await project.verify(shutdownManager.stopping);
+  await continueUnlessShuttingDown(shutdownManager);
 
   await registerCoreRuntimeInterface({
     dev: project.dev,
@@ -276,7 +281,7 @@ async function completeLaunchSequence(
     shutdownManager,
   });
 
-  await startProjectModules(manager, project);
+  await startProjectModules(manager, project, shutdownManager);
 
   return {
     manager,
@@ -291,15 +296,20 @@ async function completeLaunchSequence(
 async function startProjectModules(
   moduleManager: ModuleManager,
   project: PreparedProject,
+  shutdownManager: ShutdownManager,
 ): Promise<void> {
   await withRaisedMaxListeners(async () => {
     registerCoreModuleInterface(moduleManager, project.loadContext);
     await registerCoreInterfaces(moduleManager);
 
-    moduleManager.addModules(await project.createEntries());
+    const entries = await project.createEntries();
+    await continueUnlessShuttingDown(shutdownManager);
+    moduleManager.addModules(entries);
 
     ensureGraphIsValid(moduleManager);
-    await constructAndStartModules(moduleManager);
+    await constructModules(moduleManager);
+    await continueUnlessShuttingDown(shutdownManager);
+    await moduleManager.startAll();
   });
 }
 

@@ -8,12 +8,57 @@ import * as runtimeInterface from "@antelopejs/interface-core/runtime";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
 import { ShutdownManager } from "../../../src/core/shutdown";
+import * as processClaim from "../../../src/core/runtime/process-claim";
+import { LaunchInterruptedError } from "../../../src/core/runtime/launch-interruption";
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { ModuleManifest } from "../../../src/core/module-manifest";
 import * as logging from "../../../src/logging";
 import { runLaunchSequence } from "../../../src/core/runtime/launch-sequence";
 import { EMBEDDED_RUNTIME_POLICY } from "../../../src/core/runtime/runtime-policy";
 import type { ProjectPreparer } from "../../../src/core/runtime/runtime-types";
+
+const STARTED_FLAG = "__ajsLaunchSequenceStarted";
+const CONSTRUCTED_HOOK = "__ajsLaunchSequenceConstructed";
+
+type LaunchGlobals = Record<string, unknown>;
+
+async function writeLocalModule(
+  folder: string,
+  name: string,
+  source: string,
+): Promise<ModuleManifest> {
+  await fs.mkdir(folder, { recursive: true });
+  await fs.writeFile(
+    path.join(folder, "package.json"),
+    JSON.stringify({ name, version: "1.0.0", main: "index.js" }),
+  );
+  await fs.writeFile(path.join(folder, "index.js"), source);
+  const moduleSource: ModuleSourceLocal = {
+    type: "local",
+    path: folder,
+    main: "index.js",
+  };
+  return ModuleManifest.create(folder, moduleSource, name);
+}
+
+async function launchInterruptedBy(
+  shutdownManager: ShutdownManager,
+  prepare: ProjectPreparer,
+): Promise<unknown> {
+  sinon.stub(processClaim, "createShutdownManager").returns(shutdownManager);
+  try {
+    await runLaunchSequence(
+      prepare,
+      os.tmpdir(),
+      "test",
+      {},
+      EMBEDDED_RUNTIME_POLICY,
+    );
+  } catch (error) {
+    return error;
+  }
+  return undefined;
+}
 
 describe("runtime launch-sequence", () => {
   afterEach(() => {
@@ -120,6 +165,87 @@ exports.start = () => Promise.reject(new Error("startup failed"));
       expect(await nodeFileSystem.exists(registryPath)).to.equal(false);
       expect((Module as any)._resolveFilename).to.equal(previousResolver);
     } finally {
+      (Module as any)._resolveFilename = previousResolver;
+      await fs.rm(projectFolder, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("runtime launch-sequence interrupted by a shutdown", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("stops before checking the project once it is prepared", async () => {
+    const shutdownManager = new ShutdownManager();
+    const verify = sinon.stub().resolves();
+
+    const thrown = await launchInterruptedBy(shutdownManager, async () => {
+      void shutdownManager.shutdown();
+      return {
+        fs: new NodeFileSystem(),
+        dev: true,
+        loadContext: async () => ({}) as any,
+        verify,
+        createEntries: async () => [],
+      };
+    });
+
+    expect(thrown).to.be.instanceOf(LaunchInterruptedError);
+    expect(verify.called).to.equal(false);
+  });
+
+  it("cancels the check of the project and loads no module", async () => {
+    const shutdownManager = new ShutdownManager();
+    const createEntries = sinon.stub().resolves([]);
+    let checkSignal: AbortSignal | undefined;
+
+    const thrown = await launchInterruptedBy(shutdownManager, async () => ({
+      fs: new NodeFileSystem(),
+      dev: true,
+      loadContext: async () => ({}) as any,
+      verify: async (stopping) => {
+        checkSignal = stopping;
+        void shutdownManager.shutdown();
+      },
+      createEntries,
+    }));
+
+    expect(thrown).to.be.instanceOf(LaunchInterruptedError);
+    expect(checkSignal?.aborted).to.equal(true);
+    expect(createEntries.called).to.equal(false);
+  });
+
+  it("starts none of the modules it constructed", async () => {
+    const projectFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-launch-interrupted-"),
+    );
+    const shutdownManager = new ShutdownManager();
+    const globals = globalThis as LaunchGlobals;
+    globals[CONSTRUCTED_HOOK] = () => void shutdownManager.shutdown();
+    const previousResolver = (Module as any)._resolveFilename;
+
+    try {
+      const manifest = await writeLocalModule(
+        path.join(projectFolder, "listener"),
+        "listener",
+        `exports.construct = () => globalThis.${CONSTRUCTED_HOOK}();
+exports.start = () => { globalThis.${STARTED_FLAG} = true; };
+`,
+      );
+      const thrown = await launchInterruptedBy(shutdownManager, async () => ({
+        fs: new NodeFileSystem(),
+        dev: true,
+        loadContext: async () => ({}) as any,
+        verify: async () => undefined,
+        createEntries: async () => [{ manifest, config: {} }],
+      }));
+
+      expect(thrown).to.be.instanceOf(LaunchInterruptedError);
+      expect(globals[STARTED_FLAG]).to.equal(undefined);
+    } finally {
+      delete globals[CONSTRUCTED_HOOK];
+      delete globals[STARTED_FLAG];
       (Module as any)._resolveFilename = previousResolver;
       await fs.rm(projectFolder, { recursive: true, force: true });
     }

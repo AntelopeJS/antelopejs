@@ -6,6 +6,7 @@ import type { BuildLaunchOptions, LaunchOptions } from "../../types";
 import type { NodeFileSystem } from "../filesystem";
 import type { ModuleManager } from "../module-manager";
 import { getActiveShutdownManager } from "./process-claim";
+import { continueUnlessShuttingDown } from "./launch-interruption";
 import { tolerateInvalidatedModuleWork } from "./runtime-bootstrap";
 import {
   DEFAULT_ENV,
@@ -162,6 +163,7 @@ export async function startProject(
     policy,
   );
   try {
+    await continueUnlessShuttingDown(started.shutdownManager);
     await setupPostLaunchFeatures(started, projectFolder, env, options);
     return started;
   } catch (error) {

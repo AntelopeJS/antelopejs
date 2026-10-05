@@ -105,10 +105,6 @@ export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
     Logging.Error("Unhandled rejection:", reason);
     shutdownProcess(EXIT_CODE_ERROR);
   });
-
-  process.on("warning", (warning: Error) => {
-    Logging.Warn("Warning:", warning);
-  });
 }
 
 export function releaseProcessShutdownManager(

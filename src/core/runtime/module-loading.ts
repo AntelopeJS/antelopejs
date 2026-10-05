@@ -515,14 +515,18 @@ export async function loadModuleEntriesForManager(
   return entries;
 }
 
-export async function constructAndStartModules(
-  manager: ModuleManager,
-): Promise<void> {
+export async function constructModules(manager: ModuleManager): Promise<void> {
   Logger.Trace(`Constructing modules`);
   await runTask("Constructing modules", () => manager.constructAll(), {
     done: "Constructed modules",
     failed: "Failed to construct modules",
   });
+}
+
+export async function constructAndStartModules(
+  manager: ModuleManager,
+): Promise<void> {
+  await constructModules(manager);
   await manager.startAll();
 }
 

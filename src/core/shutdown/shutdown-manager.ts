@@ -55,6 +55,7 @@ export const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10000;
  */
 export const SHUTDOWN_CLEANUP_TIMEOUT_MS = 3000;
 const MILLISECONDS_PER_SECOND = 1000;
+const NO_TIME_LEFT_MS = 0;
 
 /**
  * Ctrl+C cancels the run, reported like a shell reports a process
@@ -77,6 +78,10 @@ const SILENT_LISTENER: SignalShutdownListener = {
   onForced: () => undefined,
 };
 
+function timeLeftUntil(deadline: number): number {
+  return Math.max(NO_TIME_LEFT_MS, deadline - Date.now());
+}
+
 function settleWithin(
   work: Promise<void>,
   timeoutMs: number,
@@ -98,6 +103,7 @@ export class ShutdownManager {
   private sigintHandler?: () => void;
   private sigtermHandler?: () => void;
   private seenSignals = new Set<ProcessSignal>();
+  private readonly stopController = new AbortController();
 
   constructor(
     private timeoutMs: number = DEFAULT_SHUTDOWN_TIMEOUT_MS,
@@ -121,12 +127,21 @@ export class ShutdownManager {
     }
 
     this.isShuttingDown = true;
+    this.stopController.abort();
     this.shutdownPromise = this.executeShutdown();
     return this.shutdownPromise;
   }
 
   get active(): boolean {
     return this.isShuttingDown;
+  }
+
+  /**
+   * Aborted as soon as the shutdown starts, so work still in progress, such
+   * as a launch, can stop instead of running against it.
+   */
+  get stopping(): AbortSignal {
+    return this.stopController.signal;
   }
 
   setupSignalHandlers(): void {
@@ -159,8 +174,12 @@ export class ShutdownManager {
     this.signalSource.removeListener(signal, handler);
   }
 
+  /**
+   * The first signal stops the process, even when a shutdown no signal
+   * started is already running: the process exits once it is done.
+   */
   private handleSignal(signal: ProcessSignal): void {
-    if (this.isShuttingDown) {
+    if (this.seenSignals.size > 0) {
       this.handleSignalDuringShutdown(signal);
       return;
     }
@@ -247,7 +266,7 @@ export class ShutdownManager {
     for (const [index, { handler }] of handlers.entries()) {
       const hasSettled = await settleWithin(
         this.runHandler(handler),
-        deadline - Date.now(),
+        timeLeftUntil(deadline),
       );
       if (!hasSettled) {
         return { hasTimedOut: true, remaining: handlers.slice(index + 1) };

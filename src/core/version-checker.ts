@@ -86,12 +86,20 @@ export async function fetchLatestVersion(packageName: string): Promise<string> {
   return parsePackageInfoOutput(result.stdout);
 }
 
+function whenAborted(signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    signal?.addEventListener("abort", () => resolve(), { once: true });
+  });
+}
+
 /**
  * Looks up the latest version of every package as one transient task: its
  * line disappears once the registry answered, the results speak for it.
+ * Aborting `signal` stops waiting for the lookups still running.
  */
 async function fetchLatestVersions(
   packageNames: string[],
+  signal?: AbortSignal,
 ): Promise<PromiseSettledResult<string>[]> {
   const task = getProcessTasks().start(
     `Checking ${pluralize(packageNames.length, "module")} on npm`,
@@ -103,57 +111,73 @@ async function fetchLatestVersions(
     );
   }, SLOW_CHECK_THRESHOLD_MS);
   try {
-    return await Promise.allSettled(packageNames.map(fetchLatestVersion));
+    return await Promise.race([
+      Promise.allSettled(packageNames.map(fetchLatestVersion)),
+      whenAborted(signal).then(() => []),
+    ]);
   } finally {
     clearTimeout(slowWarning);
     task.dismiss();
   }
 }
 
-export async function checkOutdatedModules(
-  modules: Record<string, ExpandedModuleConfig>,
-): Promise<OutdatedModule[]> {
-  const packageModules = Object.entries(modules).filter(
-    ([, info]) => info.source?.type === "package",
+type ModuleEntry = [string, ExpandedModuleConfig];
+
+function packageSourceOf(info: ExpandedModuleConfig): ModuleSourcePackage {
+  return info.source as ModuleSourcePackage;
+}
+
+function warnUncheckedPackage(packageName: string, reason: unknown): void {
+  const truncated = truncate(
+    describeFailure(reason, false).title,
+    MAX_REASON_LENGTH,
+    getProcessUi().symbols.ellipsis,
   );
+  warning(`Could not check latest version of ${packageName}: ${truncated}`);
+}
 
-  if (packageModules.length === 0) {
-    return [];
-  }
-
-  const results = await fetchLatestVersions(
-    packageModules.map(
-      ([, info]) => (info.source as ModuleSourcePackage).package,
-    ),
-  );
-
+function collectOutdatedModules(
+  packageModules: ModuleEntry[],
+  results: PromiseSettledResult<string>[],
+): OutdatedModule[] {
   return packageModules.reduce<OutdatedModule[]>(
     (outdated, [name, info], index) => {
       const result = results[index];
-      const packageName = (info.source as ModuleSourcePackage).package;
+      const source = packageSourceOf(info);
       if (result.status === "rejected") {
-        const truncated = truncate(
-          describeFailure(result.reason, false).title,
-          MAX_REASON_LENGTH,
-          getProcessUi().symbols.ellipsis,
-        );
-        warning(
-          `Could not check latest version of ${packageName}: ${truncated}`,
-        );
+        warnUncheckedPackage(source.package, result.reason);
         return outdated;
       }
-      if (!result.value) {
-        return outdated;
-      }
-      const current = (info.source as ModuleSourcePackage).version;
-      const latest = result.value;
-      if (!isUpToDate(current, latest)) {
-        outdated.push({ name, current, latest });
+      if (result.value && !isUpToDate(source.version, result.value)) {
+        outdated.push({ name, current: source.version, latest: result.value });
       }
       return outdated;
     },
     [],
   );
+}
+
+/**
+ * The package modules whose latest version on npm is outside of the range
+ * they are configured with. Aborting `signal` cancels the check: it returns
+ * at once, without waiting for the registry, and finds nothing outdated.
+ */
+export async function checkOutdatedModules(
+  modules: Record<string, ExpandedModuleConfig>,
+  signal?: AbortSignal,
+): Promise<OutdatedModule[]> {
+  const packageModules = Object.entries(modules).filter(
+    ([, info]) => info.source?.type === "package",
+  );
+  if (packageModules.length === 0 || signal?.aborted) {
+    return [];
+  }
+
+  const results = await fetchLatestVersions(
+    packageModules.map(([, info]) => packageSourceOf(info).package),
+    signal,
+  );
+  return signal?.aborted ? [] : collectOutdatedModules(packageModules, results);
 }
 
 export function warnOutdatedModules(outdated: OutdatedModule[]): void {

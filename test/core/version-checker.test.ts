@@ -21,6 +21,15 @@ import {
   warnOutdatedModules,
 } from "../../src/core/version-checker";
 
+function packageModule(name: string, version: string): ExpandedModuleConfig {
+  const source: ModuleSourcePackage = {
+    type: "package",
+    package: name,
+    version,
+  };
+  return { source, config: {}, importOverrides: [], disabledExports: [] };
+}
+
 describe("version-checker", () => {
   afterEach(() => {
     sinon.restore();
@@ -301,6 +310,35 @@ describe("version-checker", () => {
       await pending;
 
       expect(warnStub.calledOnce).to.equal(true);
+    });
+
+    it("stops waiting for the registry and reports nothing once cancelled", async () => {
+      const controller = new AbortController();
+      sinon.stub(command, "ExecuteCMD").returns(new Promise(() => {}));
+      const warnStub = sinon.stub(cliUi, "warning");
+
+      const pending = checkOutdatedModules(
+        { "mod-a": packageModule("mod-a", "1.0.0") },
+        controller.signal,
+      );
+      controller.abort();
+
+      expect(await pending).to.deep.equal([]);
+      expect(warnStub.called).to.equal(false);
+    });
+
+    it("does not look anything up when cancelled before it starts", async () => {
+      const controller = new AbortController();
+      const execStub = sinon.stub(command, "ExecuteCMD");
+      controller.abort();
+
+      const result = await checkOutdatedModules(
+        { "mod-a": packageModule("mod-a", "1.0.0") },
+        controller.signal,
+      );
+
+      expect(result).to.deep.equal([]);
+      expect(execStub.called).to.equal(false);
     });
 
     it("does not emit the slow-check warning when probes finish quickly", async () => {

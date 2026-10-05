@@ -1,6 +1,9 @@
 /** Process-level responsibilities the runtime claims from whoever owns the process. */
 export interface RuntimePolicy {
-  /** Install `uncaughtException` / `unhandledRejection` / `warning` handlers. */
+  /**
+   * Install `uncaughtException` / `unhandledRejection` handlers. Process
+   * warnings are left to Node.js, which prints them on stderr.
+   */
   processHandlers: boolean;
   /** Claim `SIGINT` and `SIGTERM`. */
   signals: boolean;
