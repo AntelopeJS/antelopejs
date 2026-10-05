@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.13.3
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.2...v1.13.3)
+
+### 🩹 Fixes
+
+- **cli:** Report a failed module creation in project init only once ([#191](https://github.com/AntelopeJS/antelopejs/pull/191))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.13.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.1...v1.13.2)
