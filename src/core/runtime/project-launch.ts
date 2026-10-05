@@ -1,3 +1,4 @@
+import path from "node:path";
 import { Writable } from "node:stream";
 import { Logging } from "@antelopejs/interface-core/logging";
 
@@ -6,8 +7,13 @@ import type { NodeFileSystem } from "../filesystem";
 import type { ModuleManager } from "../module-manager";
 import { getActiveShutdownManager } from "./process-claim";
 import { tolerateInvalidatedModuleWork } from "./runtime-bootstrap";
-import { DEFAULT_ENV, tryFindConfigPath } from "../config/config-paths";
+import {
+  DEFAULT_ENV,
+  PROJECT_STATE_DIR,
+  tryFindConfigPath,
+} from "../config/config-paths";
 import type { ShutdownManager } from "../shutdown";
+import type { FileWatcher } from "../watch/file-watcher";
 import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
 import type {
   LoaderContext,
@@ -46,6 +52,15 @@ function keepRunningThroughFailedReloads(
   }, SHUTDOWN_PRIORITY_CLEANUP);
 }
 
+function excludeProjectState(
+  watcher: FileWatcher,
+  projectFolder: string,
+  loaderContext: LoaderContext,
+): void {
+  watcher.excludePath(path.resolve(projectFolder, PROJECT_STATE_DIR));
+  watcher.excludePath(path.resolve(projectFolder, loaderContext.cache.path));
+}
+
 async function setupWatching(
   manager: ModuleManager,
   fs: NodeFileSystem,
@@ -61,6 +76,7 @@ async function setupWatching(
     import("./module-loading"),
   ]);
   const watcher = new FileWatcher(fs);
+  excludeProjectState(watcher, projectFolder, loaderContext);
   const loadedSignatures = new Map<string, string>();
   const hotReload = new HotReload(async (moduleId) => {
     const signature = watcher.getModuleSignature(moduleId);

@@ -9,12 +9,30 @@ export type ModuleChangeListener = (moduleId: string) => void;
 export type FileChangeListener = (filePath: string) => void;
 
 const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
+const VANISHED_PATH_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
+
+function isVanishedPathError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const { code } = error as NodeJS.ErrnoException;
+  return code !== undefined && VANISHED_PATH_ERROR_CODES.has(code);
+}
+
+function isInsideDir(filePath: string, dirPath: string): boolean {
+  const relative = path.relative(dirPath, filePath);
+  return (
+    relative === "" ||
+    (!relative.startsWith("..") && !path.isAbsolute(relative))
+  );
+}
 
 export class FileWatcher {
   private filesHash = new Map<string, { moduleId: string; hash: string }>();
   private moduleFiles = new Map<string, Set<string>>();
   private listeners: ModuleChangeListener[] = [];
   private excludedDirs = new Set(EXCLUDED_WATCH_DIRS);
+  private excludedPaths = new Set<string>();
   private watchers = new Map<string, FSWatcher>();
   private watchedDirs = new Set<string>();
   private dirModules = new Map<string, string>();
@@ -32,6 +50,10 @@ export class FileWatcher {
 
   onModuleChanged(listener: ModuleChangeListener): void {
     this.listeners.push(listener);
+  }
+
+  excludePath(excludedPath: string): void {
+    this.excludedPaths.add(path.resolve(excludedPath));
   }
 
   async scanModule(
@@ -137,7 +159,17 @@ export class FileWatcher {
     if (this.stopped || this.isExcludedPath(filePath)) {
       return;
     }
+    try {
+      await this.processFileChange(filePath);
+    } catch (error) {
+      if (!isVanishedPathError(error)) {
+        throw error;
+      }
+      this.handleRemovedPath(filePath);
+    }
+  }
 
+  private async processFileChange(filePath: string): Promise<void> {
     const resolved = path.resolve(filePath);
     const watchedFile = this.watchedFiles.get(resolved);
     if (watchedFile) {
@@ -152,8 +184,7 @@ export class FileWatcher {
     }
 
     if (!(await this.fs.exists(filePath))) {
-      this.deleteFileEntry(filePath);
-      this.notifyModuleChange(entry.moduleId);
+      this.handleRemovedPath(filePath);
       return;
     }
 
@@ -220,6 +251,16 @@ export class FileWatcher {
     this.notifyModuleChange(moduleId);
   }
 
+  private handleRemovedPath(filePath: string): void {
+    const entry = this.filesHash.get(filePath);
+    if (!entry) {
+      this.handleRemovedDir(filePath);
+      return;
+    }
+    this.deleteFileEntry(filePath);
+    this.notifyModuleChange(entry.moduleId);
+  }
+
   private handleRemovedDir(dirPath: string): void {
     if (!this.watchedDirs.has(dirPath)) {
       return;
@@ -273,17 +314,37 @@ export class FileWatcher {
     this.dirModules.set(dirPath, moduleId);
     const entries = await this.fs.readdir(dirPath);
     for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry);
-      const stat = await this.fs.stat(fullPath);
-      if (stat.isDirectory()) {
-        if (this.excludedDirs.has(entry)) {
-          continue;
-        }
-        await this.exploreDir(moduleId, fullPath);
-      } else {
-        const hash = await this.hasher.hashFile(fullPath);
-        this.setFileEntry(fullPath, moduleId, hash);
+      await this.exploreEntry(moduleId, path.join(dirPath, entry));
+    }
+  }
+
+  private async exploreEntry(
+    moduleId: string,
+    fullPath: string,
+  ): Promise<void> {
+    try {
+      await this.addEntry(moduleId, fullPath);
+    } catch (error) {
+      if (!isVanishedPathError(error)) {
+        throw error;
       }
+      this.pruneDir(fullPath);
+      this.deleteFileEntry(fullPath);
+    }
+  }
+
+  private async addEntry(moduleId: string, fullPath: string): Promise<void> {
+    if (this.isInsideExcludedPath(fullPath)) {
+      return;
+    }
+    const stat = await this.fs.stat(fullPath);
+    if (!stat.isDirectory()) {
+      const hash = await this.hasher.hashFile(fullPath);
+      this.setFileEntry(fullPath, moduleId, hash);
+      return;
+    }
+    if (!this.excludedDirs.has(path.basename(fullPath))) {
+      await this.exploreDir(moduleId, fullPath);
     }
   }
 
@@ -299,6 +360,16 @@ export class FileWatcher {
   private isExcludedPath(filePath: string): boolean {
     const normalized = path.normalize(filePath);
     const parts = normalized.split(path.sep);
-    return parts.some((part) => this.excludedDirs.has(part));
+    return (
+      parts.some((part) => this.excludedDirs.has(part)) ||
+      this.isInsideExcludedPath(filePath)
+    );
+  }
+
+  private isInsideExcludedPath(filePath: string): boolean {
+    const resolved = path.resolve(filePath);
+    return [...this.excludedPaths].some((excludedPath) =>
+      isInsideDir(resolved, excludedPath),
+    );
   }
 }
