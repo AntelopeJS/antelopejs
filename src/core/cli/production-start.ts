@@ -1,7 +1,10 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { DEFAULT_ENV } from "../config/config-paths";
+import {
+  DEFAULT_ENV,
+  LAUNCH_ENVIRONMENT_VARIABLE,
+} from "../config/config-paths";
 import { launchFromBuild } from "../runtime/project-launch";
 import { findBuildModuleSetChange } from "../runtime/build-refresh";
 import {
@@ -54,7 +57,7 @@ export function parseProductionStartArgs(
     project: path.resolve(
       values.project ?? process.env.ANTELOPEJS_PROJECT ?? process.cwd(),
     ),
-    env: values.env ?? process.env.ANTELOPEJS_LAUNCH_ENV ?? DEFAULT_ENV,
+    env: values.env ?? process.env[LAUNCH_ENVIRONMENT_VARIABLE] ?? DEFAULT_ENV,
     concurrency: parseConcurrency(values.concurrency),
     verbose: parseVerbose(values.verbose ?? process.env.ANTELOPEJS_VERBOSE),
     refreshConfig: values["refresh-config"] ?? false,

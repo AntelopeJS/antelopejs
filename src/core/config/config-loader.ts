@@ -33,9 +33,7 @@ export interface LoadedConfig {
   test?: AntelopeTestConfig;
 }
 
-export async function importConfigInput(
-  configPath: string,
-): Promise<ConfigInput> {
+async function importConfigInput(configPath: string): Promise<ConfigInput> {
   const jiti = createJiti(configPath, {
     alias: { [CORE_CONFIG_PACKAGE]: CORE_CONFIG_ENTRY },
   });

@@ -2,6 +2,7 @@ import path from "node:path";
 import { type Command, Option } from "commander";
 
 import { warning } from "./cli-ui";
+import { LAUNCH_ENVIRONMENT_VARIABLE } from "../config/config-paths";
 import {
   ALL_LOG_CHANNELS,
   QUIET_ENVIRONMENT_VARIABLE,
@@ -35,7 +36,7 @@ export namespace Options {
   export const env = new Option(
     "-e, --env <environment>",
     "Environment of antelope.config.ts to use instead of the base configuration",
-  ).env("ANTELOPEJS_LAUNCH_ENV");
+  ).env(LAUNCH_ENVIRONMENT_VARIABLE);
   export const git = new Option(
     "-g, --git <url>",
     "Interface repository URL, overriding the git CLI setting",
