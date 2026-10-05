@@ -80,16 +80,51 @@ describe("project command context", () => {
     await expectProjectNotFound(() => resolveProjectContext(projectFolder));
   });
 
-  it("rejects an environment that a static configuration does not define", async () => {
+  it("accepts any environment when a static configuration defines none", async () => {
     writeProjectConfig(projectFolder, `export default { name: "proj" };`);
+
+    const context = await resolveProjectContext(projectFolder, "PRODUCTION");
+
+    expect(context.environment).to.equal("PRODUCTION");
+    expect(context.environmentConfig).to.equal(context.config);
+  });
+
+  it("rejects an environment that a static configuration does not define", async () => {
+    writeProjectConfig(
+      projectFolder,
+      `export default { name: "proj", environments: { production: {} } };`,
+    );
 
     const cliError = await expectUnknownEnvironment(
       () => resolveProjectContext(projectFolder, "staging"),
       "staging",
     );
 
-    expect(cliError.problem.reason).to.equal("Known environments: default");
-    expect(cliError.problem.fixes?.[0]).to.include('"environments.staging"');
+    expect(cliError.problem.reason).to.equal(
+      "Known environments: default, production",
+    );
+    expect(cliError.problem.fixes).to.deep.equal([
+      'Pass one of them with --env, or add an "environments.staging" entry to the project configuration',
+    ]);
+  });
+
+  it("names ANTELOPEJS_LAUNCH_ENV when it sets the unknown environment", async () => {
+    sinon
+      .stub(process, "env")
+      .value({ ...process.env, ANTELOPEJS_LAUNCH_ENV: "staging" });
+    writeProjectConfig(
+      projectFolder,
+      `export default { name: "proj", environments: { production: {} } };`,
+    );
+
+    const cliError = await expectUnknownEnvironment(
+      () => resolveProjectContext(projectFolder, "staging"),
+      "staging",
+    );
+
+    expect(cliError.problem.fixes).to.deep.equal([
+      `'staging' is set by ANTELOPEJS_LAUNCH_ENV: change it (or pass --env) to one of them, or add an "environments.staging" entry to the project configuration`,
+    ]);
   });
 
   it("accepts any environment when a dynamic configuration defines none", async () => {

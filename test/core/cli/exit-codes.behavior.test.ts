@@ -98,6 +98,59 @@ describe("CLI exit code contract", () => {
     expect(await configuredModules()).to.deep.equal([INSTALLED_MODULE]);
   });
 
+  it("exits 0 with any --env when the configuration declares no environments", async () => {
+    const code = await run([
+      "project",
+      "modules",
+      "remove",
+      INSTALLED_MODULE,
+      "--project",
+      projectDir,
+      "--env",
+      "PRODUCTION",
+    ]);
+
+    expect(code).to.equal(SUCCESS_EXIT_CODE);
+    expect(await configuredModules()).to.deep.equal([]);
+  });
+
+  it("exits 0 with any ANTELOPEJS_LAUNCH_ENV when the configuration declares no environments", async () => {
+    sinon
+      .stub(process, "env")
+      .value({ ...process.env, ANTELOPEJS_LAUNCH_ENV: "PRODUCTION" });
+
+    const code = await run([
+      "project",
+      "modules",
+      "remove",
+      INSTALLED_MODULE,
+      "--project",
+      projectDir,
+    ]);
+
+    expect(code).to.equal(SUCCESS_EXIT_CODE);
+    expect(await configuredModules()).to.deep.equal([]);
+  });
+
+  it("exits 2 when --env names an environment the configuration does not declare", async () => {
+    await writeConfig(projectDir, {
+      name: "exit-codes",
+      environments: { production: {} },
+    });
+
+    const code = await run([
+      "project",
+      "modules",
+      "list",
+      "--project",
+      projectDir,
+      "--env",
+      "staging",
+    ]);
+
+    expect(code).to.equal(USAGE_EXIT_CODE);
+  });
+
   it("exits 2 when a required argument is missing", async () => {
     const code = await run([
       "project",

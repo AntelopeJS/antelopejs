@@ -3,10 +3,13 @@ import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import { Spinner } from "../../cli-ui";
 import { CliError, getProcessPalette, reportCliError } from "../../output";
-import { isDynamicConfig, readConfig } from "../../common";
+import { readConfig } from "../../common";
 import { USAGE_EXIT_CODE } from "../../exit-codes";
 import { NodeFileSystem } from "../../../filesystem";
-import { DEFAULT_ENV } from "../../../config/config-paths";
+import {
+  DEFAULT_ENV,
+  LAUNCH_ENVIRONMENT_VARIABLE,
+} from "../../../config/config-paths";
 
 export interface ProjectCommandOptions {
   project: string;
@@ -48,6 +51,16 @@ function projectNotFoundError(projectFolder: string): CliError {
   });
 }
 
+function isSetByLaunchVariable(environment: string): boolean {
+  return process.env[LAUNCH_ENVIRONMENT_VARIABLE] === environment;
+}
+
+function selectEnvironmentFix(environment: string): string {
+  return isSetByLaunchVariable(environment)
+    ? `'${environment}' is set by ${LAUNCH_ENVIRONMENT_VARIABLE}: change it (or pass --env) to one of them`
+    : "Pass one of them with --env";
+}
+
 function unknownEnvironmentError(
   config: AntelopeConfig,
   environment: string,
@@ -56,7 +69,7 @@ function unknownEnvironmentError(
     title: `Unknown environment '${environment}'`,
     reason: `Known environments: ${listKnownEnvironments(config).join(", ")}`,
     fixes: [
-      `Pass one of them with --env, or add an "environments.${environment}" entry to the project configuration`,
+      `${selectEnvironmentFix(environment)}, or add an "environments.${environment}" entry to the project configuration`,
     ],
     exitCode: USAGE_EXIT_CODE,
   });
@@ -71,23 +84,15 @@ function findEnvironmentConfig(
     : config.environments?.[environment];
 }
 
-async function acceptsAnyEnvironment(
-  projectFolder: string,
-  config: AntelopeConfig,
-): Promise<boolean> {
-  return !config.environments && (await isDynamicConfig(projectFolder));
-}
-
-async function resolveEnvironmentConfig(
-  projectFolder: string,
+function resolveEnvironmentConfig(
   config: AntelopeConfig,
   environment: string,
-): Promise<Partial<AntelopeConfig>> {
+): Partial<AntelopeConfig> {
   const environmentConfig = findEnvironmentConfig(config, environment);
   if (environmentConfig) {
     return environmentConfig;
   }
-  if (await acceptsAnyEnvironment(projectFolder, config)) {
+  if (!config.environments) {
     return config;
   }
   throw unknownEnvironmentError(config, environment);
@@ -96,8 +101,8 @@ async function resolveEnvironmentConfig(
 /**
  * Reads the project configuration for the requested environment and checks
  * that environment before the command does any work. The known environments
- * are `default` and the keys of `environments`; a configuration exported as a
- * function that returns no `environments` accepts any name. Throws a
+ * are `default` and the keys of `environments`; a configuration that declares
+ * no `environments` accepts any name and uses its base configuration. Throws a
  * {@link CliError} when the folder holds no project, or a usage error listing
  * the known environments when the environment is unknown.
  */
@@ -114,11 +119,7 @@ export async function resolveProjectContext(
   if (!config) {
     throw projectNotFoundError(projectFolder);
   }
-  const environmentConfig = await resolveEnvironmentConfig(
-    projectFolder,
-    config,
-    environment,
-  );
+  const environmentConfig = resolveEnvironmentConfig(config, environment);
   return { config, environment, environmentConfig };
 }
 

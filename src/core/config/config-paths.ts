@@ -4,6 +4,7 @@ import type { IFileSystem } from "../../types";
 
 export const TS_CONFIG_FILE = "antelope.config.ts";
 export const DEFAULT_ENV = "default";
+export const LAUNCH_ENVIRONMENT_VARIABLE = "ANTELOPEJS_LAUNCH_ENV";
 export const DEFAULT_CACHE_DIR = ".antelope/cache";
 
 export async function tryFindConfigPath(
