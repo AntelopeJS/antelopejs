@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.13.5
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.4...v1.13.5)
+
+### 🩹 Fixes
+
+- **watch:** Do not crash on files that disappear during the initial scan ([#193](https://github.com/AntelopeJS/antelopejs/pull/193))
+- **cli:** Show which interface copies conflict without --verbose ([#194](https://github.com/AntelopeJS/antelopejs/pull/194))
+- **runtime:** Stop promptly when interrupted during startup ([#195](https://github.com/AntelopeJS/antelopejs/pull/195))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.13.4
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.3...v1.13.4)
