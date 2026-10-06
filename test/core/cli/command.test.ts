@@ -6,6 +6,7 @@ import {
   closeStdin,
   ExecError,
   ExecuteCMD,
+  ExecuteFile,
   nonInteractiveOptions,
 } from "../../../src/core/cli/command";
 
@@ -110,6 +111,40 @@ describe("Command Execution", () => {
       } catch (err) {
         expect((err as ExecError).exitCode).to.equal(1);
       }
+    });
+  });
+
+  describe("ExecuteFile", () => {
+    it("passes the arguments to the executable without a shell", async () => {
+      const result = await ExecuteFile("echo", ["$CI", "a  b"], {});
+      expect(result.stdout.trim()).to.equal("$CI a  b");
+    });
+
+    it("exposes CI=1 to the executable", async () => {
+      const result = await ExecuteFile("sh", ["-c", "echo CI=$CI"], {});
+      expect(result.stdout.trim()).to.equal("CI=1");
+    });
+
+    it("rejects with an ExecError naming the command and its exit code", async () => {
+      try {
+        await ExecuteFile("sh", ["-c", "exit 4"], {});
+        expect.fail("Should have rejected");
+      } catch (err) {
+        expect(err).to.be.instanceOf(ExecError);
+        expect((err as ExecError).command).to.equal("sh -c exit 4");
+        expect((err as ExecError).exitCode).to.equal(4);
+      }
+    });
+
+    it("terminates the executable when the signal aborts", async () => {
+      const controller = new AbortController();
+      const pending = ExecuteFile("sleep", ["30"], {
+        signal: controller.signal,
+      });
+      controller.abort();
+
+      const thrown = await pending.catch((error: unknown) => error);
+      expect(thrown).to.be.instanceOf(ExecError);
     });
   });
 });

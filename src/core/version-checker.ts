@@ -1,7 +1,7 @@
 import { satisfies, validRange } from "semver";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
-import { ExecError, ExecuteCMD } from "./cli/command";
+import { type CommandResult, ExecError, ExecuteFile } from "./cli/command";
 import { warning } from "./cli/cli-ui";
 import {
   CliError,
@@ -12,6 +12,10 @@ import {
   truncate,
 } from "./cli/output";
 import { parsePackageInfoOutput } from "./cli/package-manager";
+import {
+  type PackageManagerName,
+  packageManagerExecutable,
+} from "./cli/package-manager-name";
 import type { ExpandedModuleConfig } from "./config/config-parser";
 
 export interface OutdatedModule {
@@ -20,9 +24,10 @@ export interface OutdatedModule {
   latest: string;
 }
 
-const NPM_VIEW_COMMAND = "npm view";
-const VERSION_ARGUMENT = "version";
-const DIST_TAGS_ARGUMENT = "dist-tags --json";
+const REGISTRY_CLIENT: PackageManagerName = "npm";
+const VIEW_ARGUMENT = "view";
+const VERSION_ARGUMENTS = ["version"];
+const DIST_TAGS_ARGUMENTS = ["dist-tags", "--json"];
 const CARET_PREFIX = "^";
 const UPDATE_COMMAND = "ajs project modules update";
 const SLOW_CHECK_THRESHOLD_MS = 15_000;
@@ -50,14 +55,30 @@ export function toFloatingSpec(version: string): string {
   return `${CARET_PREFIX}${version}`;
 }
 
+/**
+ * Runs `npm view` on a package. Aborting `signal` terminates the lookup.
+ */
+async function viewPackage(
+  packageName: string,
+  fieldArguments: string[],
+  signal?: AbortSignal,
+): Promise<CommandResult> {
+  const executable = packageManagerExecutable(REGISTRY_CLIENT);
+  const args = [VIEW_ARGUMENT, packageName, ...fieldArguments];
+  const result = await ExecuteFile(executable, args, { signal });
+  if (result.code !== 0) {
+    throw new ExecError({
+      ...result,
+      command: [executable, ...args].join(" "),
+    });
+  }
+  return result;
+}
+
 export async function fetchDistTags(
   packageName: string,
 ): Promise<Record<string, string>> {
-  const command = `${NPM_VIEW_COMMAND} ${packageName} ${DIST_TAGS_ARGUMENT}`;
-  const result = await ExecuteCMD(command, {});
-  if (result.code !== 0) {
-    throw new ExecError({ ...result, command });
-  }
+  const result = await viewPackage(packageName, DIST_TAGS_ARGUMENTS);
   return JSON.parse(result.stdout) as Record<string, string>;
 }
 
@@ -77,12 +98,11 @@ export async function validateVersionSpec(
   });
 }
 
-export async function fetchLatestVersion(packageName: string): Promise<string> {
-  const command = `${NPM_VIEW_COMMAND} ${packageName} ${VERSION_ARGUMENT}`;
-  const result = await ExecuteCMD(command, {});
-  if (result.code !== 0) {
-    throw new ExecError({ ...result, command });
-  }
+export async function fetchLatestVersion(
+  packageName: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const result = await viewPackage(packageName, VERSION_ARGUMENTS, signal);
   return parsePackageInfoOutput(result.stdout);
 }
 
@@ -95,7 +115,8 @@ function whenAborted(signal?: AbortSignal): Promise<void> {
 /**
  * Looks up the latest version of every package as one transient task: its
  * line disappears once the registry answered, the results speak for it.
- * Aborting `signal` stops waiting for the lookups still running.
+ * Aborting `signal` terminates the lookups still running and stops waiting
+ * for them.
  */
 async function fetchLatestVersions(
   packageNames: string[],
@@ -112,7 +133,11 @@ async function fetchLatestVersions(
   }, SLOW_CHECK_THRESHOLD_MS);
   try {
     return await Promise.race([
-      Promise.allSettled(packageNames.map(fetchLatestVersion)),
+      Promise.allSettled(
+        packageNames.map((packageName) =>
+          fetchLatestVersion(packageName, signal),
+        ),
+      ),
       whenAborted(signal).then(() => []),
     ]);
   } finally {

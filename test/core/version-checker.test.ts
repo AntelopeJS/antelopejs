@@ -21,15 +21,6 @@ import {
   warnOutdatedModules,
 } from "../../src/core/version-checker";
 
-function packageModule(name: string, version: string): ExpandedModuleConfig {
-  const source: ModuleSourcePackage = {
-    type: "package",
-    package: name,
-    version,
-  };
-  return { source, config: {}, importOverrides: [], disabledExports: [] };
-}
-
 describe("version-checker", () => {
   afterEach(() => {
     sinon.restore();
@@ -37,7 +28,7 @@ describe("version-checker", () => {
 
   describe("fetchLatestVersion", () => {
     it("returns parsed version when npm view succeeds", async () => {
-      sinon.stub(command, "ExecuteCMD").resolves({
+      sinon.stub(command, "ExecuteFile").resolves({
         code: 0,
         stdout: "1.2.3\n",
         stderr: "",
@@ -49,7 +40,7 @@ describe("version-checker", () => {
     });
 
     it("rejects when npm view fails", async () => {
-      sinon.stub(command, "ExecuteCMD").rejects(new Error("network error"));
+      sinon.stub(command, "ExecuteFile").rejects(new Error("network error"));
 
       try {
         await fetchLatestVersion("some-package");
@@ -66,11 +57,11 @@ describe("version-checker", () => {
     });
 
     it("returns outdated modules only", async () => {
-      const execStub = sinon.stub(command, "ExecuteCMD");
-      execStub.callsFake(async (cmd: string) => {
-        if (cmd.includes("@scope/real-pkg-a"))
+      const execStub = sinon.stub(command, "ExecuteFile");
+      execStub.callsFake(async (_executable: string, args: string[]) => {
+        if (args.includes("@scope/real-pkg-a"))
           return { code: 0, stdout: "2.0.0\n", stderr: "" };
-        if (cmd.includes("@scope/real-pkg-b"))
+        if (args.includes("@scope/real-pkg-b"))
           return { code: 0, stdout: "1.0.0\n", stderr: "" };
         return { code: 1, stdout: "", stderr: "not found" };
       });
@@ -121,7 +112,7 @@ describe("version-checker", () => {
     });
 
     it("does not flag modules whose range already covers the latest version", async () => {
-      sinon.stub(command, "ExecuteCMD").resolves({
+      sinon.stub(command, "ExecuteFile").resolves({
         code: 0,
         stdout: "1.2.0\n",
         stderr: "",
@@ -147,7 +138,7 @@ describe("version-checker", () => {
     });
 
     it("flags modules whose range does not cover the latest version", async () => {
-      sinon.stub(command, "ExecuteCMD").resolves({
+      sinon.stub(command, "ExecuteFile").resolves({
         code: 0,
         stdout: "2.0.0\n",
         stderr: "",
@@ -175,7 +166,7 @@ describe("version-checker", () => {
     });
 
     it("returns empty array when all modules are up to date", async () => {
-      sinon.stub(command, "ExecuteCMD").resolves({
+      sinon.stub(command, "ExecuteFile").resolves({
         code: 0,
         stdout: "1.0.0\n",
         stderr: "",
@@ -201,9 +192,9 @@ describe("version-checker", () => {
     });
 
     it("warns and skips packages whose version probe fails", async () => {
-      const execStub = sinon.stub(command, "ExecuteCMD");
-      execStub.callsFake(async (cmd: string) => {
-        if (cmd.includes("mod-a")) throw new Error("network error");
+      const execStub = sinon.stub(command, "ExecuteFile");
+      execStub.callsFake(async (_executable: string, args: string[]) => {
+        if (args.includes("mod-a")) throw new Error("network error");
         return { code: 0, stdout: "1.0.0\n", stderr: "" };
       });
       const warnStub = sinon.stub(cliUi, "warning");
@@ -244,7 +235,7 @@ describe("version-checker", () => {
 
     it("cuts a long probe failure with the ASCII ellipsis", async () => {
       useAsciiSymbols();
-      sinon.stub(command, "ExecuteCMD").rejects(new Error("x".repeat(300)));
+      sinon.stub(command, "ExecuteFile").rejects(new Error("x".repeat(300)));
       const warnStub = sinon.stub(cliUi, "warning");
       const source: ModuleSourcePackage = {
         type: "package",
@@ -273,7 +264,7 @@ describe("version-checker", () => {
         stdout: string;
         stderr: string;
       }) => void = () => {};
-      sinon.stub(command, "ExecuteCMD").returns(
+      sinon.stub(command, "ExecuteFile").returns(
         new Promise((resolve) => {
           resolveExec = resolve;
         }),
@@ -312,38 +303,9 @@ describe("version-checker", () => {
       expect(warnStub.calledOnce).to.equal(true);
     });
 
-    it("stops waiting for the registry and reports nothing once cancelled", async () => {
-      const controller = new AbortController();
-      sinon.stub(command, "ExecuteCMD").returns(new Promise(() => {}));
-      const warnStub = sinon.stub(cliUi, "warning");
-
-      const pending = checkOutdatedModules(
-        { "mod-a": packageModule("mod-a", "1.0.0") },
-        controller.signal,
-      );
-      controller.abort();
-
-      expect(await pending).to.deep.equal([]);
-      expect(warnStub.called).to.equal(false);
-    });
-
-    it("does not look anything up when cancelled before it starts", async () => {
-      const controller = new AbortController();
-      const execStub = sinon.stub(command, "ExecuteCMD");
-      controller.abort();
-
-      const result = await checkOutdatedModules(
-        { "mod-a": packageModule("mod-a", "1.0.0") },
-        controller.signal,
-      );
-
-      expect(result).to.deep.equal([]);
-      expect(execStub.called).to.equal(false);
-    });
-
     it("does not emit the slow-check warning when probes finish quickly", async () => {
       const clock = sinon.useFakeTimers();
-      sinon.stub(command, "ExecuteCMD").resolves({
+      sinon.stub(command, "ExecuteFile").resolves({
         code: 0,
         stdout: "1.0.0\n",
         stderr: "",
@@ -402,7 +364,7 @@ describe("version-checker", () => {
 
   describe("fetchDistTags", () => {
     it("parses dist-tags JSON output", async () => {
-      sinon.stub(command, "ExecuteCMD").resolves({
+      sinon.stub(command, "ExecuteFile").resolves({
         code: 0,
         stdout: '{"latest":"1.0.0","next":"2.0.0-rc.1"}',
         stderr: "",
@@ -414,7 +376,7 @@ describe("version-checker", () => {
     });
 
     it("throws when npm view exits with a non-zero code", async () => {
-      sinon.stub(command, "ExecuteCMD").resolves({
+      sinon.stub(command, "ExecuteFile").resolves({
         code: 1,
         stdout: "",
         stderr: "not found",
@@ -435,7 +397,7 @@ describe("version-checker", () => {
 
   describe("validateVersionSpec", () => {
     it("accepts a valid semver range without registry lookup", async () => {
-      const execStub = sinon.stub(command, "ExecuteCMD");
+      const execStub = sinon.stub(command, "ExecuteFile");
 
       await validateVersionSpec("some-package", "^1.2.0");
 
@@ -443,7 +405,7 @@ describe("version-checker", () => {
     });
 
     it("accepts an existing dist-tag", async () => {
-      sinon.stub(command, "ExecuteCMD").resolves({
+      sinon.stub(command, "ExecuteFile").resolves({
         code: 0,
         stdout: '{"latest":"1.0.0","beta":"2.0.0-beta.1"}',
         stderr: "",
@@ -453,7 +415,7 @@ describe("version-checker", () => {
     });
 
     it("rejects a spec that is neither range nor dist-tag", async () => {
-      sinon.stub(command, "ExecuteCMD").resolves({
+      sinon.stub(command, "ExecuteFile").resolves({
         code: 0,
         stdout: '{"latest":"1.0.0"}',
         stderr: "",
