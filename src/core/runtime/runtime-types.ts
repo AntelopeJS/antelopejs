@@ -66,7 +66,8 @@ export interface PreparedProject {
   dev: boolean;
   logging?: AntelopeLogging;
   loadContext: LoaderContextProvider;
-  verify: () => Promise<void>;
+  /** Checks the project before its modules load; aborting `stopping` cancels the check. */
+  verify: (stopping: AbortSignal) => Promise<void>;
   createEntries: () => Promise<ModuleManifestEntry[]>;
 }
 

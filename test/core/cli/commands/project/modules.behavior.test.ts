@@ -107,7 +107,7 @@ describe("project modules behavior", () => {
       ]);
 
     sinon
-      .stub(command, "ExecuteCMD")
+      .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "1.0.0", stderr: "" });
 
     sinon.stub(cliUi, "info");
@@ -286,7 +286,7 @@ describe("project modules behavior", () => {
     sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
     sinon.stub(ModuleCache.prototype, "load").resolves();
-    sinon.stub(command, "ExecuteCMD").resolves({
+    sinon.stub(command, "ExecuteFile").resolves({
       code: 0,
       stdout: '{"latest":"1.0.0"}',
       stderr: "",
@@ -479,7 +479,7 @@ describe("project modules behavior", () => {
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
     sinon
-      .stub(command, "ExecuteCMD")
+      .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "1.0.0", stderr: "" });
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
@@ -508,7 +508,7 @@ describe("project modules behavior", () => {
 
   it("package handler resolves latest version as a floating caret range", async () => {
     const execStub = sinon
-      .stub(command, "ExecuteCMD")
+      .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "1.2.3", stderr: "" });
     const handler = handlers.get("package")!;
     const [name, config] = await handler("pkg", {
@@ -522,7 +522,7 @@ describe("project modules behavior", () => {
   });
 
   it("package handler keeps an explicit semver range without registry lookup", async () => {
-    const execStub = sinon.stub(command, "ExecuteCMD");
+    const execStub = sinon.stub(command, "ExecuteFile");
     const handler = handlers.get("package")!;
     const [name, config] = await handler("pkg@^2.0.0", {
       mode: "package",
@@ -535,7 +535,7 @@ describe("project modules behavior", () => {
   });
 
   it("package handler accepts a registry dist-tag", async () => {
-    const execStub = sinon.stub(command, "ExecuteCMD").resolves({
+    const execStub = sinon.stub(command, "ExecuteFile").resolves({
       code: 0,
       stdout: '{"latest":"1.0.0","beta":"2.0.0-beta.1"}',
       stderr: "",
@@ -546,13 +546,13 @@ describe("project modules behavior", () => {
       project: "/tmp/project",
     } as any);
 
-    expect(execStub.firstCall.args[0]).to.include("dist-tags");
+    expect(execStub.firstCall.args[1]).to.include("dist-tags");
     expect(name).to.equal("pkg");
     expect((config as any).source.version).to.equal("beta");
   });
 
   it("package handler rejects a spec that is neither range nor dist-tag", async () => {
-    sinon.stub(command, "ExecuteCMD").resolves({
+    sinon.stub(command, "ExecuteFile").resolves({
       code: 0,
       stdout: '{"latest":"1.0.0"}',
       stderr: "",
@@ -574,7 +574,7 @@ describe("project modules behavior", () => {
 
   it("package handler throws when version fetch fails", async () => {
     sinon
-      .stub(command, "ExecuteCMD")
+      .stub(command, "ExecuteFile")
       .resolves({ code: 1, stdout: "", stderr: "oops" });
     const handler = handlers.get("package")!;
     let caught: unknown;
@@ -1051,7 +1051,7 @@ describe("project modules behavior", () => {
       },
     } as any);
     sinon
-      .stub(command, "ExecuteCMD")
+      .stub(command, "ExecuteFile")
       .resolves({ code: 1, stdout: "", stderr: "oops" });
     sinon.stub(cliUi, "warning");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
@@ -1076,7 +1076,7 @@ describe("project modules behavior", () => {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
     } as any);
-    sinon.stub(command, "ExecuteCMD").callsFake(() => Promise.reject("boom"));
+    sinon.stub(command, "ExecuteFile").callsFake(() => Promise.reject("boom"));
     sinon.stub(cliUi, "warning");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
 
@@ -1101,7 +1101,7 @@ describe("project modules behavior", () => {
       },
     } as any);
     sinon
-      .stub(command, "ExecuteCMD")
+      .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "1.0.0", stderr: "" });
     const summaryStub = sinon.stub(getProcessUi(), "summary");
     const messageStub = sinon.stub(getProcessUi(), "message");
@@ -1130,7 +1130,7 @@ describe("project modules behavior", () => {
     } as any);
 
     sinon
-      .stub(command, "ExecuteCMD")
+      .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "2.0.0", stderr: "" });
     const messageStub = sinon.stub(getProcessUi(), "message");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
@@ -1161,7 +1161,7 @@ describe("project modules behavior", () => {
     sinon.stub(common, "readConfig").resolves({ modules } as any);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
-    const execStub = sinon.stub(command, "ExecuteCMD");
+    const execStub = sinon.stub(command, "ExecuteFile");
     const errorStub = sinon.stub(cliUi, "error");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
     sinon.stub(cliUi, "info");
@@ -1205,7 +1205,7 @@ describe("project modules behavior", () => {
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
 
-    const execStub = sinon.stub(command, "ExecuteCMD");
+    const execStub = sinon.stub(command, "ExecuteFile");
     execStub.onFirstCall().resolves({ code: 0, stdout: "2.0.0", stderr: "" });
     execStub.onSecondCall().resolves({ code: 0, stdout: "1.0.0", stderr: "" });
 
@@ -1224,7 +1224,9 @@ describe("project modules behavior", () => {
       "gitMod",
     ]);
 
-    const checkedCommands = execStub.getCalls().map((call) => call.args[0]);
+    const checkedCommands = execStub
+      .getCalls()
+      .map((call) => call.args[1].join(" "));
     expect(checkedCommands).to.have.length(2);
     expect(checkedCommands.join("\n")).to.not.include("unrequested");
     expect(messageLines(messageStub)).to.deep.equal([
@@ -1253,7 +1255,7 @@ describe("project modules behavior", () => {
     sinon.stub(common, "readConfig").resolves({ modules } as any);
     sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
     sinon
-      .stub(command, "ExecuteCMD")
+      .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "2.0.0", stderr: "" });
     const messageStub = sinon.stub(getProcessUi(), "message");
     const summaryStub = sinon.stub(getProcessUi(), "summary");

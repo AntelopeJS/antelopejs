@@ -13,6 +13,7 @@ import {
 } from "../../../src/core/cli/exit-codes";
 
 const WAIT_FOR_SIGNAL_MS = 10;
+const NEGATIVE_TIMEOUT_WARNING = "TimeoutNegativeWarning";
 const CUSTOM_TIMEOUT_MS = 500;
 /* Short enough that a shutdown left hanging by a test drains inside the
    teardown below, instead of exiting the runner ten seconds later. */
@@ -44,6 +45,13 @@ function recordingListener(): RecordingListener {
       events.push(hasTimedOut ? "stopped after timeout" : "stopped"),
     onForced: (signal) => events.push(`forced ${signal}`),
   };
+}
+
+function blockEventLoop(durationMs: number): void {
+  const end = Date.now() + durationMs;
+  while (Date.now() < end) {
+    continue;
+  }
 }
 
 function waitForSignal(): Promise<void> {
@@ -149,6 +157,62 @@ describe("ShutdownManager", () => {
       await Promise.all([firstShutdown, secondShutdown]);
 
       expect(exitStub.calledOnceWith(1)).to.equal(true);
+    });
+  });
+
+  describe("stopping signal", () => {
+    it("is aborted as soon as the shutdown starts, before its handlers settle", async () => {
+      const deferred = createDeferred();
+      manager.register(() => deferred.promise, 0);
+      expect(manager.stopping.aborted).to.equal(false);
+
+      const shutdownPromise = manager.shutdown();
+
+      expect(manager.stopping.aborted).to.equal(true);
+      deferred.resolve();
+      await shutdownPromise;
+    });
+  });
+
+  describe("signal during a shutdown", () => {
+    it("stops the process on a signal received during a shutdown no signal started", async () => {
+      const listener = recordingListener();
+      manager = new ShutdownManager(SUITE_TIMEOUT_MS, signals, listener);
+      const deferred = createDeferred();
+      const exitStub = sinon.stub(process, "exit");
+      manager.register(() => deferred.promise, 0);
+      manager.setupSignalHandlers();
+
+      const shutdownPromise = manager.shutdown();
+      signals.emit("SIGINT");
+      deferred.resolve();
+      await shutdownPromise;
+
+      expect(exitStub.calledOnceWith(CANCELLED_EXIT_CODE)).to.equal(true);
+      expect(listener.events).to.deep.equal(["stopping SIGINT", "stopped"]);
+    });
+  });
+
+  describe("deadline", () => {
+    it("gives no time, rather than a negative one, to a handler that starts past the deadline", async () => {
+      const warnings: Error[] = [];
+      const collectWarning = (warning: Error) => warnings.push(warning);
+      const lateHandler = sinon.stub().returns(new Promise<void>(() => {}));
+      manager.register(() => blockEventLoop(SUITE_TIMEOUT_MS * 2), 2);
+      manager.register(lateHandler, 1);
+      process.on("warning", collectWarning);
+
+      try {
+        await manager.shutdown();
+        await waitForSignal();
+      } finally {
+        process.off("warning", collectWarning);
+      }
+
+      expect(lateHandler.calledOnce).to.equal(true);
+      expect(warnings.map((warning) => warning.name)).to.not.include(
+        NEGATIVE_TIMEOUT_WARNING,
+      );
     });
   });
 

@@ -1,7 +1,7 @@
 import { satisfies, validRange } from "semver";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
-import { ExecError, ExecuteCMD } from "./cli/command";
+import { type CommandResult, ExecError, ExecuteFile } from "./cli/command";
 import { warning } from "./cli/cli-ui";
 import {
   CliError,
@@ -12,6 +12,10 @@ import {
   truncate,
 } from "./cli/output";
 import { parsePackageInfoOutput } from "./cli/package-manager";
+import {
+  type PackageManagerName,
+  packageManagerExecutable,
+} from "./cli/package-manager-name";
 import type { ExpandedModuleConfig } from "./config/config-parser";
 
 export interface OutdatedModule {
@@ -20,9 +24,10 @@ export interface OutdatedModule {
   latest: string;
 }
 
-const NPM_VIEW_COMMAND = "npm view";
-const VERSION_ARGUMENT = "version";
-const DIST_TAGS_ARGUMENT = "dist-tags --json";
+const REGISTRY_CLIENT: PackageManagerName = "npm";
+const VIEW_ARGUMENT = "view";
+const VERSION_ARGUMENTS = ["version"];
+const DIST_TAGS_ARGUMENTS = ["dist-tags", "--json"];
 const CARET_PREFIX = "^";
 const UPDATE_COMMAND = "ajs project modules update";
 const SLOW_CHECK_THRESHOLD_MS = 15_000;
@@ -50,14 +55,30 @@ export function toFloatingSpec(version: string): string {
   return `${CARET_PREFIX}${version}`;
 }
 
+/**
+ * Runs `npm view` on a package. Aborting `signal` terminates the lookup.
+ */
+async function viewPackage(
+  packageName: string,
+  fieldArguments: string[],
+  signal?: AbortSignal,
+): Promise<CommandResult> {
+  const executable = packageManagerExecutable(REGISTRY_CLIENT);
+  const args = [VIEW_ARGUMENT, packageName, ...fieldArguments];
+  const result = await ExecuteFile(executable, args, { signal });
+  if (result.code !== 0) {
+    throw new ExecError({
+      ...result,
+      command: [executable, ...args].join(" "),
+    });
+  }
+  return result;
+}
+
 export async function fetchDistTags(
   packageName: string,
 ): Promise<Record<string, string>> {
-  const command = `${NPM_VIEW_COMMAND} ${packageName} ${DIST_TAGS_ARGUMENT}`;
-  const result = await ExecuteCMD(command, {});
-  if (result.code !== 0) {
-    throw new ExecError({ ...result, command });
-  }
+  const result = await viewPackage(packageName, DIST_TAGS_ARGUMENTS);
   return JSON.parse(result.stdout) as Record<string, string>;
 }
 
@@ -77,21 +98,29 @@ export async function validateVersionSpec(
   });
 }
 
-export async function fetchLatestVersion(packageName: string): Promise<string> {
-  const command = `${NPM_VIEW_COMMAND} ${packageName} ${VERSION_ARGUMENT}`;
-  const result = await ExecuteCMD(command, {});
-  if (result.code !== 0) {
-    throw new ExecError({ ...result, command });
-  }
+export async function fetchLatestVersion(
+  packageName: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const result = await viewPackage(packageName, VERSION_ARGUMENTS, signal);
   return parsePackageInfoOutput(result.stdout);
+}
+
+function whenAborted(signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    signal?.addEventListener("abort", () => resolve(), { once: true });
+  });
 }
 
 /**
  * Looks up the latest version of every package as one transient task: its
  * line disappears once the registry answered, the results speak for it.
+ * Aborting `signal` terminates the lookups still running and stops waiting
+ * for them.
  */
 async function fetchLatestVersions(
   packageNames: string[],
+  signal?: AbortSignal,
 ): Promise<PromiseSettledResult<string>[]> {
   const task = getProcessTasks().start(
     `Checking ${pluralize(packageNames.length, "module")} on npm`,
@@ -103,57 +132,77 @@ async function fetchLatestVersions(
     );
   }, SLOW_CHECK_THRESHOLD_MS);
   try {
-    return await Promise.allSettled(packageNames.map(fetchLatestVersion));
+    return await Promise.race([
+      Promise.allSettled(
+        packageNames.map((packageName) =>
+          fetchLatestVersion(packageName, signal),
+        ),
+      ),
+      whenAborted(signal).then(() => []),
+    ]);
   } finally {
     clearTimeout(slowWarning);
     task.dismiss();
   }
 }
 
-export async function checkOutdatedModules(
-  modules: Record<string, ExpandedModuleConfig>,
-): Promise<OutdatedModule[]> {
-  const packageModules = Object.entries(modules).filter(
-    ([, info]) => info.source?.type === "package",
+type ModuleEntry = [string, ExpandedModuleConfig];
+
+function packageSourceOf(info: ExpandedModuleConfig): ModuleSourcePackage {
+  return info.source as ModuleSourcePackage;
+}
+
+function warnUncheckedPackage(packageName: string, reason: unknown): void {
+  const truncated = truncate(
+    describeFailure(reason, false).title,
+    MAX_REASON_LENGTH,
+    getProcessUi().symbols.ellipsis,
   );
+  warning(`Could not check latest version of ${packageName}: ${truncated}`);
+}
 
-  if (packageModules.length === 0) {
-    return [];
-  }
-
-  const results = await fetchLatestVersions(
-    packageModules.map(
-      ([, info]) => (info.source as ModuleSourcePackage).package,
-    ),
-  );
-
+function collectOutdatedModules(
+  packageModules: ModuleEntry[],
+  results: PromiseSettledResult<string>[],
+): OutdatedModule[] {
   return packageModules.reduce<OutdatedModule[]>(
     (outdated, [name, info], index) => {
       const result = results[index];
-      const packageName = (info.source as ModuleSourcePackage).package;
+      const source = packageSourceOf(info);
       if (result.status === "rejected") {
-        const truncated = truncate(
-          describeFailure(result.reason, false).title,
-          MAX_REASON_LENGTH,
-          getProcessUi().symbols.ellipsis,
-        );
-        warning(
-          `Could not check latest version of ${packageName}: ${truncated}`,
-        );
+        warnUncheckedPackage(source.package, result.reason);
         return outdated;
       }
-      if (!result.value) {
-        return outdated;
-      }
-      const current = (info.source as ModuleSourcePackage).version;
-      const latest = result.value;
-      if (!isUpToDate(current, latest)) {
-        outdated.push({ name, current, latest });
+      if (result.value && !isUpToDate(source.version, result.value)) {
+        outdated.push({ name, current: source.version, latest: result.value });
       }
       return outdated;
     },
     [],
   );
+}
+
+/**
+ * The package modules whose latest version on npm is outside of the range
+ * they are configured with. Aborting `signal` cancels the check: it returns
+ * at once, without waiting for the registry, and finds nothing outdated.
+ */
+export async function checkOutdatedModules(
+  modules: Record<string, ExpandedModuleConfig>,
+  signal?: AbortSignal,
+): Promise<OutdatedModule[]> {
+  const packageModules = Object.entries(modules).filter(
+    ([, info]) => info.source?.type === "package",
+  );
+  if (packageModules.length === 0 || signal?.aborted) {
+    return [];
+  }
+
+  const results = await fetchLatestVersions(
+    packageModules.map(([, info]) => packageSourceOf(info).package),
+    signal,
+  );
+  return signal?.aborted ? [] : collectOutdatedModules(packageModules, results);
 }
 
 export function warnOutdatedModules(outdated: OutdatedModule[]): void {

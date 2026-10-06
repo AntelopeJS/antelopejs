@@ -1,12 +1,14 @@
 import { Logging } from "@antelopejs/interface-core/logging";
 import {
   type ChildProcess,
-  type ExecException,
+  type ExecFileOptions,
   type ExecOptions,
   exec,
+  execFile,
 } from "node:child_process";
 
 import { FAILURE_EXIT_CODE } from "./exit-codes";
+import { buildProcessInvocation } from "./windows-command-line";
 
 const Logger = new Logging.Channel("cli.command");
 
@@ -59,13 +61,13 @@ export class ExecError extends Error {
  * credentials.
  */
 export function nonInteractiveOptions(options: ExecOptions): ExecOptions {
-  return {
-    ...options,
-    env: {
-      ...(options.env ?? process.env),
-      ...NON_INTERACTIVE_ENV,
-    },
-  };
+  return { ...options, env: nonInteractiveEnv(options.env) };
+}
+
+function nonInteractiveEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
+  return { ...env, ...NON_INTERACTIVE_ENV };
 }
 
 /**
@@ -76,10 +78,42 @@ export function closeStdin(child: ChildProcess): void {
   child.stdin?.end();
 }
 
-function exitCodeOf(err: ExecException): number {
-  return typeof err.code === "number" && err.code !== 0
-    ? err.code
-    : FAILURE_EXIT_CODE;
+function exitCodeOf(err: Error): number {
+  const code = "code" in err ? err.code : undefined;
+  return typeof code === "number" && code !== 0 ? code : FAILURE_EXIT_CODE;
+}
+
+interface CommandOutput {
+  toString(): string;
+}
+
+type CommandCallback = (
+  err: Error | null,
+  stdout: CommandOutput,
+  stderr: CommandOutput,
+) => void;
+
+type CommandResolver = (result: CommandResult) => void;
+
+type CommandRejecter = (error: ExecError) => void;
+
+function settleCommand(
+  command: string,
+  resolve: CommandResolver,
+  reject: CommandRejecter,
+): CommandCallback {
+  return (err, stdout, stderr) => {
+    const result: CommandResult = {
+      stdout: stdout?.toString() ?? "",
+      stderr: stderr?.toString() ?? "",
+      code: err ? exitCodeOf(err) : 0,
+    };
+    if (err) {
+      Logger.Debug(`Command failed with code ${result.code}: ${command}`);
+      return reject(new ExecError({ ...result, command }));
+    }
+    resolve(result);
+  };
 }
 
 /**
@@ -100,18 +134,37 @@ export function ExecuteCMD(
     const child = exec(
       command,
       nonInteractiveOptions(options),
-      (err, stdout, stderr) => {
-        const result: CommandResult = {
-          stdout: stdout?.toString() ?? "",
-          stderr: stderr?.toString() ?? "",
-          code: err ? exitCodeOf(err) : 0,
-        };
-        if (err) {
-          Logger.Debug(`Command failed with code ${result.code}: ${command}`);
-          return reject(new ExecError({ ...result, command }));
-        }
-        resolve(result);
+      settleCommand(command, resolve, reject),
+    );
+    closeStdin(child);
+  });
+}
+
+/**
+ * Runs an executable without a shell, like {@link ExecuteCMD} runs a command.
+ *
+ * Without a shell in between, the child is the executable itself: aborting
+ * `options.signal` terminates it rather than a shell that would leave it
+ * running.
+ */
+export function ExecuteFile(
+  executable: string,
+  args: string[],
+  options: ExecFileOptions,
+): Promise<CommandResult> {
+  const command = [executable, ...args].join(" ");
+  const invocation = buildProcessInvocation(executable, args);
+  return new Promise<CommandResult>((resolve, reject) => {
+    Logger.Trace(`Executing command: ${command}`);
+    const child = execFile(
+      invocation.executable,
+      invocation.args,
+      {
+        ...options,
+        env: nonInteractiveEnv(options.env),
+        windowsVerbatimArguments: invocation.windowsVerbatimArguments,
       },
+      settleCommand(command, resolve, reject),
     );
     closeStdin(child);
   });
