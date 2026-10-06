@@ -366,4 +366,65 @@ describe("FileWatcher", () => {
     expect(hashedFiles).to.not.include("/mod/.git/ignored.txt");
     expect(hashedFiles).to.not.include("/mod/node_modules/ignored.txt");
   });
+
+  it("skips excluded paths when scanning and on change events", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/index.js", "v1");
+    await fs.writeFile("/project/.antelope/dev.json", "{}");
+    await fs.writeFile("/project/.antelope/cache/manifest.json", "{}");
+
+    const hasher = { hashFile: sinon.stub().resolves("hash") } as any;
+    const watcher = new FileWatcher(fs, hasher);
+    watcher.excludePath("/project/.antelope");
+    await watcher.scanModule("mod", "/project");
+
+    const hashedFiles = (hasher.hashFile as sinon.SinonStub)
+      .getCalls()
+      .map((call: sinon.SinonSpyCall) => call.args[0] as string);
+    expect(hashedFiles).to.deep.equal(["/project/index.js"]);
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+    await fs.writeFile("/project/.antelope/dev.json.tmp", "{}");
+    await watcher.handleFileChange("/project/.antelope/dev.json.tmp");
+    await watcher.handleFileChange("/project/.antelope");
+
+    expect(changes).to.deep.equal([]);
+  });
+
+  it("treats a file that vanishes while handling its change as removed", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/a.txt", "a");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+    const baseline = watcher.getModuleSignature("mod");
+    await fs.writeFile("/mod/b.txt", "b");
+    await watcher.handleFileChange("/mod/b.txt");
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+    const vanished = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+    sinon.stub(fs, "stat").rejects(vanished);
+
+    await watcher.handleFileChange("/mod/b.txt");
+
+    expect(changes).to.deep.equal(["mod"]);
+    expect(watcher.getModuleSignature("mod")).to.equal(baseline);
+  });
+
+  it("still reports errors other than a vanished path", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/a.txt", "a");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod");
+    const denied = Object.assign(new Error("EACCES"), { code: "EACCES" });
+    sinon.stub(fs, "stat").rejects(denied);
+
+    await watcher.handleFileChange("/mod/a.txt").then(
+      () => expect.fail("expected the change to fail"),
+      (error) => expect(error).to.equal(denied),
+    );
+  });
 });

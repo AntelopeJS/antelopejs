@@ -99,6 +99,7 @@ describe("launch", () => {
     sinon.stub(ModuleManager.prototype, "startAll");
 
     const scanStub = sinon.stub(FileWatcher.prototype, "scanModule").resolves();
+    const excludeStub = sinon.stub(FileWatcher.prototype, "excludePath");
     let signatureSeq = 0;
     sinon
       .stub(FileWatcher.prototype, "getModuleSignature")
@@ -135,6 +136,10 @@ describe("launch", () => {
       true,
     );
     expect(scanStub.calledWith("modB", "/mods/modB", ["src2"])).to.equal(true);
+    expect(excludeStub.args).to.deep.equal([
+      ["/project/.antelope"],
+      ["/project/.antelope/cache"],
+    ]);
     expect(startWatchingStub.calledOnce).to.equal(true);
     expect(replStub.calledWith("> ")).to.equal(true);
     expect(localModule.destroy.calledOnce).to.equal(true);
