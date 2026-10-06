@@ -1,4 +1,6 @@
 import { ExecError } from "../command";
+import { InterfaceResolutionError } from "../../resolution/interface-resolution-error";
+import { describeInterfaceConflicts } from "./interface-conflicts";
 import { stripAnsiCodes } from "../logging-utils";
 import type { CliProblem } from "./types";
 
@@ -128,12 +130,15 @@ export function translateExecError(error: ExecError): CliProblem | undefined {
 
 /**
  * Turns a known low-level failure (a missing path, an unknown npm package,
- * an unreachable registry, a git clone that was refused) into a problem that
- * names the cause and the fix. Returns `undefined` for anything else.
+ * an unreachable registry, a git clone that was refused, incompatible
+ * interface packages) into a problem that names the cause and the fix. Returns `undefined` for anything else.
  */
 export function translateFailure(error: unknown): CliProblem | undefined {
   if (error instanceof ExecError) {
     return translateExecError(error);
+  }
+  if (error instanceof InterfaceResolutionError) {
+    return describeInterfaceConflicts(error);
   }
   if (isSystemError(error)) {
     return SYSTEM_ERROR_TRANSLATIONS[error.code ?? ""]?.(error);
