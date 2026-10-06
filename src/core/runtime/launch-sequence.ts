@@ -14,6 +14,7 @@ import type {
   LoaderConfig,
   LoaderContext,
   LoaderContextProvider,
+  ModuleManifestEntry,
   PreparedProject,
   ProjectPreparer,
   StartedProject,
@@ -37,7 +38,7 @@ import {
   createShutdownManager,
   registerModuleShutdownHandler,
 } from "./process-claim";
-import { continueUnlessShuttingDown } from "./launch-interruption";
+import { type LaunchStep, runLaunchSteps } from "./launch-steps";
 import {
   buildModuleConfigs,
   constructModules,
@@ -63,6 +64,14 @@ interface LaunchRequest {
   env: string;
   options: LaunchOptions;
   policy: RuntimePolicy;
+}
+
+interface ProjectLaunch {
+  request: LaunchRequest;
+  project: PreparedProject;
+  shutdownManager: ShutdownManager;
+  manager: ModuleManager;
+  entries: ModuleManifestEntry[];
 }
 
 function resolveRuntimeLoaderConfig(
@@ -255,33 +264,101 @@ export async function runLaunchSequence(
   }
 }
 
+function setupLogging({ request, project }: ProjectLaunch): void {
+  if (!request.policy.logging) {
+    return;
+  }
+  setLogAudience("app");
+  setupAntelopeProjectLogging(project.logging);
+  applyVerboseChannels(request.options.verbose);
+}
+
+function verifyProject({
+  project,
+  shutdownManager,
+}: ProjectLaunch): Promise<void> {
+  return project.verify(shutdownManager.stopping);
+}
+
+function registerRuntimeInterface({
+  request,
+  project,
+  shutdownManager,
+}: ProjectLaunch): Promise<void> {
+  return registerCoreRuntimeInterface({
+    dev: project.dev,
+    projectPath: request.projectFolder,
+    env: request.env,
+    fs: project.fs,
+    shutdownManager,
+  });
+}
+
+async function registerModuleInterfaces({
+  manager,
+  project,
+}: ProjectLaunch): Promise<void> {
+  registerCoreModuleInterface(manager, project.loadContext);
+  await registerCoreInterfaces(manager);
+}
+
+async function createModuleEntries(launch: ProjectLaunch): Promise<void> {
+  launch.entries = await launch.project.createEntries();
+}
+
+function addModules({ manager, entries }: ProjectLaunch): void {
+  manager.addModules(entries);
+  ensureGraphIsValid(manager);
+}
+
+function constructProjectModules({ manager }: ProjectLaunch): Promise<void> {
+  return constructModules(manager);
+}
+
+function startModules({ manager }: ProjectLaunch): Promise<void> {
+  return manager.startAll();
+}
+
+const MODULE_STEPS: readonly LaunchStep<ProjectLaunch>[] = [
+  registerModuleInterfaces,
+  createModuleEntries,
+  addModules,
+  constructProjectModules,
+  startModules,
+];
+
+function loadProjectModules(launch: ProjectLaunch): Promise<void> {
+  return withRaisedMaxListeners(() =>
+    runLaunchSteps(MODULE_STEPS, launch, launch.shutdownManager.stopping),
+  );
+}
+
+/**
+ * What a launch does once the project is prepared, in order. The steps run
+ * through {@link runLaunchSteps}, which stops the launch between any two of
+ * them once the project is shutting down.
+ */
+const LAUNCH_STEPS: readonly LaunchStep<ProjectLaunch>[] = [
+  setupLogging,
+  verifyProject,
+  registerRuntimeInterface,
+  loadProjectModules,
+];
+
 async function completeLaunchSequence(
   request: LaunchRequest,
   shutdownManager: ShutdownManager,
   manager: ModuleManager,
 ): Promise<StartedProject> {
-  const { projectFolder, env, options, policy } = request;
-  const project = await request.prepare(projectFolder, env);
-  await continueUnlessShuttingDown(shutdownManager);
-
-  if (policy.logging) {
-    setLogAudience("app");
-    setupAntelopeProjectLogging(project.logging);
-    applyVerboseChannels(options.verbose);
-  }
-
-  await project.verify(shutdownManager.stopping);
-  await continueUnlessShuttingDown(shutdownManager);
-
-  await registerCoreRuntimeInterface({
-    dev: project.dev,
-    projectPath: projectFolder,
-    env,
-    fs: project.fs,
+  const project = await request.prepare(request.projectFolder, request.env);
+  const launch: ProjectLaunch = {
+    request,
+    project,
     shutdownManager,
-  });
-
-  await startProjectModules(manager, project, shutdownManager);
+    manager,
+    entries: [],
+  };
+  await runLaunchSteps(LAUNCH_STEPS, launch, shutdownManager.stopping);
 
   return {
     manager,
@@ -289,28 +366,8 @@ async function completeLaunchSequence(
     loadContext: project.loadContext,
     fs: project.fs,
     shutdownManager,
-    policy,
+    policy: request.policy,
   };
-}
-
-async function startProjectModules(
-  moduleManager: ModuleManager,
-  project: PreparedProject,
-  shutdownManager: ShutdownManager,
-): Promise<void> {
-  await withRaisedMaxListeners(async () => {
-    registerCoreModuleInterface(moduleManager, project.loadContext);
-    await registerCoreInterfaces(moduleManager);
-
-    const entries = await project.createEntries();
-    await continueUnlessShuttingDown(shutdownManager);
-    moduleManager.addModules(entries);
-
-    ensureGraphIsValid(moduleManager);
-    await constructModules(moduleManager);
-    await continueUnlessShuttingDown(shutdownManager);
-    await moduleManager.startAll();
-  });
 }
 
 async function cleanupFailedLaunch(

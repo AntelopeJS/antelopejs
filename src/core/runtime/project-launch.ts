@@ -6,7 +6,7 @@ import type { BuildLaunchOptions, LaunchOptions } from "../../types";
 import type { NodeFileSystem } from "../filesystem";
 import type { ModuleManager } from "../module-manager";
 import { getActiveShutdownManager } from "./process-claim";
-import { continueUnlessShuttingDown } from "./launch-interruption";
+import { type LaunchStep, runLaunchSteps } from "./launch-steps";
 import { tolerateInvalidatedModuleWork } from "./runtime-bootstrap";
 import {
   DEFAULT_ENV,
@@ -114,39 +114,59 @@ async function setupWatching(
   watcher.startWatching();
 }
 
-async function setupPostLaunchFeatures(
-  started: StartedProject,
-  projectFolder: string,
-  env: string,
-  options: LaunchOptions,
-): Promise<void> {
-  const { manager, shutdownManager } = started;
+interface PostLaunch {
+  started: StartedProject;
+  projectFolder: string;
+  env: string;
+  options: LaunchOptions;
+}
 
+function warnAboutUnsupportedOptions({ started, options }: PostLaunch): void {
   if (!started.dev && (options.watch || options.interactive)) {
     Logger.Warn(UNSUPPORTED_ARTIFACT_OPTIONS_WARNING);
   }
-
-  if (started.dev && options.watch) {
-    await setupWatching(
-      manager,
-      started.fs,
-      projectFolder,
-      env,
-      options,
-      shutdownManager,
-      await started.loadContext(),
-    );
-  }
-
-  if (started.dev && options.interactive) {
-    const { ReplSession } = await import("../repl/repl-session");
-    const repl = new ReplSession({ moduleManager: manager });
-    shutdownManager.register(async () => {
-      repl.close();
-    }, SHUTDOWN_PRIORITY_RESOURCES);
-    repl.start(INTERACTIVE_PROMPT);
-  }
 }
+
+async function startWatching({
+  started,
+  projectFolder,
+  env,
+  options,
+}: PostLaunch): Promise<void> {
+  if (!started.dev || !options.watch) {
+    return;
+  }
+  await setupWatching(
+    started.manager,
+    started.fs,
+    projectFolder,
+    env,
+    options,
+    started.shutdownManager,
+    await started.loadContext(),
+  );
+}
+
+async function startInteractiveSession({
+  started,
+  options,
+}: PostLaunch): Promise<void> {
+  if (!started.dev || !options.interactive) {
+    return;
+  }
+  const { ReplSession } = await import("../repl/repl-session");
+  const repl = new ReplSession({ moduleManager: started.manager });
+  started.shutdownManager.register(async () => {
+    repl.close();
+  }, SHUTDOWN_PRIORITY_RESOURCES);
+  repl.start(INTERACTIVE_PROMPT);
+}
+
+const POST_LAUNCH_STEPS: readonly LaunchStep<PostLaunch>[] = [
+  warnAboutUnsupportedOptions,
+  startWatching,
+  startInteractiveSession,
+];
 
 export async function startProject(
   prepare: ProjectPreparer,
@@ -162,9 +182,13 @@ export async function startProject(
     options,
     policy,
   );
+  const postLaunch: PostLaunch = { started, projectFolder, env, options };
   try {
-    await continueUnlessShuttingDown(started.shutdownManager);
-    await setupPostLaunchFeatures(started, projectFolder, env, options);
+    await runLaunchSteps(
+      POST_LAUNCH_STEPS,
+      postLaunch,
+      started.shutdownManager.stopping,
+    );
     return started;
   } catch (error) {
     await started.shutdownManager.shutdown();
