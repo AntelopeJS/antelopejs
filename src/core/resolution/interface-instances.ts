@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import {
   createInstanceCopy,
   nextInstanceCopyPath,
+  pruneStaleInstanceCopies,
   removeInstanceCopy,
 } from "./instance-copies";
 import { createPathWithinMatcher } from "./package-resolution";
@@ -79,8 +80,16 @@ export class InterfaceInstances {
   private fixedRoots = new Map<string, string>();
   private readonly canonicalOwners = new Map<string, string>();
   private readonly copies = new Map<string, InstanceCopy>();
+  private readonly prunedAnchors = new Set<string>();
 
-  constructor(private readonly onRootsChanged: () => void) {}
+  /**
+   * `onDispose` runs for each instance no binding reaches any more, once its
+   * files are evicted, so what its own body registered can be released.
+   */
+  constructor(
+    private readonly onRootsChanged: () => void,
+    private readonly onDispose: (key: string) => void = () => undefined,
+  ) {}
 
   /**
    * Replaces the instances with those of `graph`, for the packages in
@@ -93,6 +102,9 @@ export class InterfaceInstances {
     canonical: ReadonlyMap<string, CanonicalPackage>,
     fixedRoots: ReadonlyMap<string, string> = new Map(),
   ) {
+    const previous = this.descriptors;
+    const previousFixedRoots = this.fixedRoots;
+    const previousCanonical = this.canonical;
     this.canonical = new Map(canonical);
     this.fixedRoots = new Map(fixedRoots);
     this.descriptors = new Map(
@@ -100,7 +112,7 @@ export class InterfaceInstances {
         canonical.has(interfaceName),
       ),
     );
-    this.releaseUnreached();
+    this.releaseUnreached(previous, previousFixedRoots, previousCanonical);
     this.keysByPackage = new Map();
     for (const [key, { interfaceName }] of this.descriptors) {
       const keys = this.keysByPackage.get(interfaceName) ?? [];
@@ -123,8 +135,12 @@ export class InterfaceInstances {
       if (owner && keys.includes(owner)) {
         continue;
       }
-      const free = keys.filter((key) => !this.copies.has(key));
-      this.canonicalOwners.set(packageName, free[0] ?? keys[0]);
+      const free = keys.find((key) => !this.copies.has(key));
+      if (free) {
+        this.canonicalOwners.set(packageName, free);
+      } else {
+        this.canonicalOwners.delete(packageName);
+      }
     }
   }
 
@@ -195,14 +211,34 @@ export class InterfaceInstances {
     return roots;
   }
 
-  /** Evicts and deletes the copies of instances the bindings no longer reach. */
-  private releaseUnreached(): void {
-    for (const [key, { generation }] of this.copies) {
-      if (!this.descriptors.has(key)) {
-        evictFolder(generation);
-        removeInstanceCopy(generation);
-        this.copies.delete(key);
+  /**
+   * Disposes of the instances the bindings no longer reach: a copy is evicted
+   * and deleted; the canonical copy's files are evicted and the copy freed,
+   * so an instance that takes it later evaluates it afresh rather than
+   * sharing the files of the one that left.
+   */
+  private releaseUnreached(
+    previous: ReadonlyMap<string, InstanceDescriptor>,
+    previousFixedRoots: ReadonlyMap<string, string>,
+    previousCanonical: ReadonlyMap<string, CanonicalPackage>,
+  ): void {
+    for (const [key, { interfaceName }] of previous) {
+      if (this.descriptors.has(key)) {
+        continue;
       }
+      const copy = this.copies.get(key);
+      if (copy) {
+        evictFolder(copy.generation);
+        removeInstanceCopy(copy.generation);
+        this.copies.delete(key);
+      } else if (this.canonicalOwners.get(interfaceName) === key) {
+        this.canonicalOwners.delete(interfaceName);
+        const root = previousCanonical.get(interfaceName)?.realRoot;
+        if (root && !previousFixedRoots.has(key)) {
+          evictFolder(root);
+        }
+      }
+      this.onDispose(key);
     }
   }
 
@@ -225,7 +261,12 @@ export class InterfaceInstances {
     const anchor =
       nearestNodeModules(canonical.realRoot) ??
       path.dirname(canonical.realRoot);
-    const base = path.join(anchor, INSTANCES_FOLDER, hashKey(key));
+    const instancesFolder = path.join(anchor, INSTANCES_FOLDER);
+    if (!this.prunedAnchors.has(instancesFolder)) {
+      pruneStaleInstanceCopies(instancesFolder);
+      this.prunedAnchors.add(instancesFolder);
+    }
+    const base = path.join(instancesFolder, hashKey(key));
     const generation = nextInstanceCopyPath(base);
     const root = path.join(
       generation,

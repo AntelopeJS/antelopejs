@@ -410,6 +410,21 @@ describe("buildBindingGraph: modules loaded while others run", () => {
     ]);
   });
 
+  it("refuses a change that leaves a running module on a provider that no longer provides the interface", () => {
+    const graph = resolve(
+      {
+        mongodb: {},
+        pg: { implements: [DB] },
+        user: { uses: [DB] },
+      },
+      { user: { [DB]: "mongodb" } },
+    );
+
+    expect(graph.errors).to.deep.equal([
+      "Loading would leave running module user bound to 'mongodb', which no longer provides database.",
+    ]);
+  });
+
   it("loads a module whose pins agree with what runs", () => {
     const graph = resolve(dms({ [DB]: "mongodb" }), running);
 

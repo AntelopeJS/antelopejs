@@ -1,5 +1,6 @@
 import path from "node:path";
 import { realpathSync } from "node:fs";
+import { ReleaseOwner } from "@antelopejs/interface-core/modules";
 import {
   getModuleContext,
   runWithModuleContext,
@@ -98,8 +99,9 @@ export class Resolver {
   public readonly lifecycleInterfacePackages = new Set<string>();
   public readonly stubbedInterfacePackages = new Set<string>();
   public stubModulePath?: string;
-  public readonly instances = new InterfaceInstances(() =>
-    this.owners.invalidate(),
+  public readonly instances = new InterfaceInstances(
+    () => this.owners.invalidate(),
+    (instance) => this.retireInstance(instance),
   );
   private bindings?: BindingGraph;
   private readonly instanceFiles = new Map<string, string>();
@@ -274,6 +276,19 @@ export class Resolver {
   clearCache(): void {
     this.instanceFiles.clear();
     this.owners.invalidate();
+  }
+
+  /**
+   * Releases what a disposed instance's own body registered and attached, and
+   * forgets the files recorded for it.
+   */
+  private retireInstance(instance: string): void {
+    for (const [file, owner] of this.instanceFiles) {
+      if (owner === instance) {
+        this.instanceFiles.delete(file);
+      }
+    }
+    ReleaseOwner(`${instance}${INSTANCE_OWNER_SUFFIX}`);
   }
 
   private canonicalPackages(): Map<string, CanonicalPackage> {

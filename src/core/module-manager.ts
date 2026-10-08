@@ -339,6 +339,38 @@ export class ModuleManager {
     return this.isolation.place(moduleId, manifest);
   }
 
+  /**
+   * Refuses the reload of `moduleId` into `replacement` when the replacement
+   * would change the binding of another running module, before anything of
+   * the running generation is torn down.
+   */
+  checkReplacement(moduleId: string, replacement: Module): void {
+    const entry = this.loaded.get(moduleId);
+    if (!entry) {
+      return;
+    }
+    const modules = this.collectBindingModules();
+    modules.set(
+      moduleId,
+      toBindingModule(
+        replacement,
+        entry.config,
+        this.bindablePackages(),
+        this.resolvedConnections,
+      ),
+    );
+    const running = this.runningBindings();
+    running.delete(moduleId);
+    const graph = buildBindingGraph({
+      interfaces: this.collectBindingInterfaces(),
+      modules,
+      running,
+    });
+    if (graph.errors.length > 0) {
+      throw new InterfaceBindingError(graph.errors);
+    }
+  }
+
   /** Deletes the instance copy behind a placed manifest that will not run. */
   discardPlacedModule(manifest: ModuleManifest): void {
     this.isolation.discard(manifest);

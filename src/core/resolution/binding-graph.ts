@@ -2,6 +2,7 @@ import {
   type CarriedBinding,
   describeDiamond,
   describeImplementedPin,
+  describePinWithoutProvider,
   describeRunningProviderGone,
   describeRunningRebind,
   describeUnsettledCycle,
@@ -78,13 +79,37 @@ class BindingGraphBuilder {
       pins: this.pins,
       providers: this.providers,
     });
+    const modules = this.collectModuleBindings();
     return {
-      modules: this.collectModuleBindings(),
-      instances: this.instances,
+      modules,
+      instances: this.referencedInstances(modules),
       edges: this.edges,
       errors: [...this.errors],
       warnings: [...new Set(warnings)],
     };
+  }
+
+  /**
+   * The instances the final bindings name, with the instances self-hosted
+   * ones import; a cycle's earlier rounds may have keyed others.
+   */
+  private referencedInstances(
+    modules: ReadonlyMap<string, ModuleBindings>,
+  ): Map<string, InstanceDescriptor> {
+    const pending = [...modules.values()].flatMap((bindings) => [
+      ...bindings.keys.values(),
+      ...[...bindings.connectionKeys.values()].flat(),
+    ]);
+    const referenced = new Map<string, InstanceDescriptor>();
+    while (pending.length > 0) {
+      const key = pending.pop()!;
+      const descriptor = this.instances.get(key);
+      if (descriptor && !referenced.has(key)) {
+        referenced.set(key, descriptor);
+        pending.push(...descriptor.dependencies);
+      }
+    }
+    return referenced;
   }
 
   private readPins(module: BindingModule): Pins {
@@ -248,6 +273,12 @@ class BindingGraphBuilder {
       overrides?.get(interfaceName) ??
       this.pins.get(moduleId)!.get(interfaceName);
     if (pinned) {
+      if (!this.providers.providersOf(interfaceName).includes(pinned)) {
+        this.addModuleError(
+          moduleId,
+          describePinWithoutProvider(moduleId, interfaceName, pinned),
+        );
+      }
       return { provider: pinned, reason: "pin" };
     }
     const running = this.input.running?.get(moduleId)?.get(interfaceName);

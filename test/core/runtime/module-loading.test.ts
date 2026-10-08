@@ -51,6 +51,7 @@ function createReloadHarness(): ReloadHarness {
       .stub()
       .callsFake((_id: string, manifest: unknown) => manifest),
     discardPlacedModule: sinon.stub(),
+    checkReplacement: sinon.stub(),
     unrequireModuleFiles: sinon.stub(),
     replaceLoadedModule: sinon
       .stub()
@@ -256,6 +257,7 @@ describe("runtime module-loading", () => {
         .stub()
         .callsFake((_id: string, manifest: unknown) => manifest),
       discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
     } as any;
 
@@ -290,6 +292,7 @@ describe("runtime module-loading", () => {
         .stub()
         .callsFake((_id: string, manifest: unknown) => manifest),
       discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
@@ -368,6 +371,7 @@ describe("runtime module-loading", () => {
         .stub()
         .callsFake((_id: string, manifest: unknown) => manifest),
       discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: sinon.stub().returns(entry),
       refreshAssociations: sinon.stub(),
@@ -422,6 +426,7 @@ describe("runtime module-loading", () => {
         .stub()
         .callsFake((_id: string, manifest: unknown) => manifest),
       discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: sinon.stub().returns(entry),
       refreshAssociations: sinon.stub(),
@@ -471,6 +476,7 @@ describe("runtime module-loading", () => {
         .stub()
         .callsFake((_id: string, manifest: unknown) => manifest),
       discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: sinon.stub(),
       refreshAssociations: sinon.stub(),
@@ -575,6 +581,7 @@ describe("runtime module-loading", () => {
         .stub()
         .callsFake((_id: string, manifest: unknown) => manifest),
       discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
@@ -928,6 +935,7 @@ describe("runtime module-loading", () => {
         .stub()
         .callsFake((_id: string, manifest: unknown) => manifest),
       discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       addModules: addModulesStub,
       constructModules: constructModulesStub,
       startModules: startModulesStub,

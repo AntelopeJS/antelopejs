@@ -52,6 +52,14 @@ export function describeRunningProviderGone(
   return `Loading would leave running module ${moduleId} bound to '${running}', which no longer provides ${interfaceName}.`;
 }
 
+export function describePinWithoutProvider(
+  moduleId: string,
+  interfaceName: string,
+  pinned: string,
+): string {
+  return `Module '${moduleId}' pins ${interfaceName} to '${pinned}', which does not provide it.`;
+}
+
 export function describeImplementedPin(
   moduleId: string,
   interfaceName: string,

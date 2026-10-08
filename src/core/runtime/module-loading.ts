@@ -418,6 +418,7 @@ async function reloadLoadedModuleFromSource(
   const replacement = new Module(manifest);
   try {
     ensureReloadedModuleId(replacement, moduleId);
+    manager.checkReplacement(moduleId, replacement);
   } catch (error) {
     manager.discardPlacedModule(manifest);
     throw error;
