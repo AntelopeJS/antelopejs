@@ -2,6 +2,7 @@ import {
   type CarriedBinding,
   describeDiamond,
   describeImplementedPin,
+  describeRunningProviderGone,
   describeRunningRebind,
   describeUnsettledCycle,
 } from "./binding-diagnostics";
@@ -292,6 +293,12 @@ class BindingGraphBuilder {
     interfaceName: string,
     running: string,
   ): void {
+    if (!this.providers.providersOf(interfaceName).includes(running)) {
+      this.addModuleError(
+        moduleId,
+        describeRunningProviderGone(moduleId, interfaceName, running),
+      );
+    }
     const carried = this.carried.get(moduleId)?.get(interfaceName) ?? [];
     const conflicting = carried.find(({ value }) => value !== running);
     if (conflicting) {

@@ -43,6 +43,15 @@ export function describeRunningRebind(
   return `Loading would re-bind running module ${moduleId}: ${[...carried.path, moduleId].join(PATH_SEPARATOR)} carries ${how} '${carried.value}' for ${interfaceName}, and ${moduleId} runs on '${running}'.`;
 }
 
+/** A module loaded at runtime would leave a running one bound to a provider that is gone. */
+export function describeRunningProviderGone(
+  moduleId: string,
+  interfaceName: string,
+  running: string,
+): string {
+  return `Loading would leave running module ${moduleId} bound to '${running}', which no longer provides ${interfaceName}.`;
+}
+
 export function describeImplementedPin(
   moduleId: string,
   interfaceName: string,

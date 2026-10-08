@@ -7,6 +7,10 @@ export class ModuleRegistry {
     this.modules.set(module.id, module);
   }
 
+  unregister(id: string): void {
+    this.modules.delete(id);
+  }
+
   get(id: string): Module | undefined {
     return this.modules.get(id);
   }

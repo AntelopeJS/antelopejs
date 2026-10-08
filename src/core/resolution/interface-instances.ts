@@ -66,16 +66,18 @@ function relocate(
 /**
  * The folder each interface instance is evaluated from.
  *
- * The first instance of a package, in key order, uses the package's canonical
- * copy. Every further instance gets an instance copy of it, created when it is
- * first needed next to the canonical copy's `node_modules`, so the package's
- * own third-party dependencies still resolve, shared, from there.
+ * One instance of each package, the first in key order when the package is
+ * first bound, uses the package's canonical copy, and keeps it. Every other
+ * instance gets an instance copy of it, created when it is first needed next
+ * to the canonical copy's `node_modules`, so the package's own third-party
+ * dependencies still resolve, shared, from there.
  */
 export class InterfaceInstances {
   private descriptors = new Map<string, InstanceDescriptor>();
   private keysByPackage = new Map<string, string[]>();
   private canonical = new Map<string, CanonicalPackage>();
   private fixedRoots = new Map<string, string>();
+  private readonly canonicalOwners = new Map<string, string>();
   private readonly copies = new Map<string, InstanceCopy>();
 
   constructor(private readonly onRootsChanged: () => void) {}
@@ -98,13 +100,32 @@ export class InterfaceInstances {
         canonical.has(interfaceName),
       ),
     );
+    this.releaseUnreached();
     this.keysByPackage = new Map();
     for (const [key, { interfaceName }] of this.descriptors) {
       const keys = this.keysByPackage.get(interfaceName) ?? [];
       keys.push(key);
       this.keysByPackage.set(interfaceName, keys.sort());
     }
+    this.assignCanonicalOwners();
     this.onRootsChanged();
+  }
+
+  /**
+   * Gives each package's canonical copy to one of its instances. Once given,
+   * it stays with that instance as long as the instance exists: its files may
+   * already be evaluated, so handing the copy to an instance that arrives
+   * later would let it share them.
+   */
+  private assignCanonicalOwners(): void {
+    for (const [packageName, keys] of this.keysByPackage) {
+      const owner = this.canonicalOwners.get(packageName);
+      if (owner && keys.includes(owner)) {
+        continue;
+      }
+      const free = keys.filter((key) => !this.copies.has(key));
+      this.canonicalOwners.set(packageName, free[0] ?? keys[0]);
+    }
   }
 
   describe(key: string): InstanceDescriptor | undefined {
@@ -119,7 +140,7 @@ export class InterfaceInstances {
     const descriptor = this.descriptors.get(key);
     return (
       descriptor !== undefined &&
-      this.keysOf(descriptor.interfaceName)[0] === key
+      this.canonicalOwners.get(descriptor.interfaceName) === key
     );
   }
 
@@ -174,6 +195,17 @@ export class InterfaceInstances {
     return roots;
   }
 
+  /** Evicts and deletes the copies of instances the bindings no longer reach. */
+  private releaseUnreached(): void {
+    for (const [key, { generation }] of this.copies) {
+      if (!this.descriptors.has(key)) {
+        evictFolder(generation);
+        removeInstanceCopy(generation);
+        this.copies.delete(key);
+      }
+    }
+  }
+
   /** Evicts and deletes every instance copy. */
   release(): void {
     for (const { generation } of this.copies.values()) {
@@ -181,6 +213,7 @@ export class InterfaceInstances {
       removeInstanceCopy(generation);
     }
     this.copies.clear();
+    this.canonicalOwners.clear();
     this.onRootsChanged();
   }
 

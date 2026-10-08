@@ -95,6 +95,16 @@ export class ModuleIsolation {
     }
   }
 
+  /** Forgets a module that will not run, deleting its copy. */
+  forget(moduleId: string): void {
+    const copy = this.copies.get(moduleId);
+    if (copy) {
+      this.removeCopy(copy);
+    }
+    this.copies.delete(moduleId);
+    this.origins.delete(moduleId);
+  }
+
   /** Forgets every module and deletes every copy, once their files are no longer used. */
   releaseAll(): void {
     for (const copy of this.copies.values()) {

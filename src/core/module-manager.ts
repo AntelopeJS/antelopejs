@@ -158,7 +158,9 @@ export class ModuleManager {
     entries: Array<{ manifest: ModuleManifest; config?: ModuleConfig }>,
   ): ManagedModule[] {
     const created: ManagedModule[] = [];
+    const replaced = new Map<string, ManagedModule | undefined>();
     for (const entry of entries) {
+      replaced.set(entry.manifest.name, this.loaded.get(entry.manifest.name));
       const manifest = this.placeModule(entry.manifest.name, entry.manifest);
       const module = new Module(manifest);
       this.isolation.adopt(module.id, manifest);
@@ -174,8 +176,35 @@ export class ModuleManager {
       created.push(managed);
     }
 
-    this.rebuildAssociations();
+    try {
+      this.rebuildAssociations();
+    } catch (error) {
+      this.restoreModules(replaced);
+      throw error;
+    }
     return created;
+  }
+
+  /**
+   * Undoes an `addModules` whose bindings were refused: every added module is
+   * dropped, a module it replaced is put back, and associations are rebuilt
+   * as they were.
+   */
+  private restoreModules(
+    replaced: ReadonlyMap<string, ManagedModule | undefined>,
+  ): void {
+    for (const [id, previous] of replaced) {
+      this.isolation.forget(id);
+      if (previous) {
+        this.loaded.set(id, previous);
+        this.registry.register(previous.module);
+        this.isolation.adopt(id, previous.module.manifest);
+      } else {
+        this.loaded.delete(id);
+        this.registry.unregister(id);
+      }
+    }
+    this.rebuildAssociations();
   }
 
   listModules(): string[] {
@@ -860,12 +889,36 @@ export class ModuleManager {
     const graph = buildBindingGraph({
       interfaces: this.collectBindingInterfaces(),
       modules: this.collectBindingModules(),
+      running: this.runningBindings(),
     });
     if (graph.errors.length > 0) {
       throw new InterfaceBindingError(graph.errors);
     }
     this.bindingGraph = graph;
     this.resolver.setBindings(graph);
+  }
+
+  /**
+   * Bindings of the modules that have constructed. A rebuild keeps them: a
+   * module loaded at runtime that would change them is refused rather than
+   * re-binding a running module.
+   */
+  private runningBindings(): Map<string, Map<string, string>> {
+    const running = new Map<string, Map<string, string>>();
+    for (const { module } of this.getAllManagedModules()) {
+      const scope = this.bindingGraph?.modules.get(module.id)?.scope;
+      if (module.state === ModuleState.Loaded || !scope) {
+        continue;
+      }
+      const bindings = new Map<string, string>();
+      scope.forEach((binding, interfaceName) => {
+        if (binding.provider) {
+          bindings.set(interfaceName, binding.provider);
+        }
+      });
+      running.set(module.id, bindings);
+    }
+    return running;
   }
 
   private logBindingWarnings(): void {
