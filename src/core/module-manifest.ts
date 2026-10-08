@@ -155,6 +155,22 @@ function resolveAliasEntries(
   return aliases.length > 0 ? aliases : undefined;
 }
 
+function relocatePath(target: string, from: string, to: string): string {
+  const relative = path.relative(from, target);
+  const isInside =
+    relative === "" ||
+    (!relative.startsWith(`..${path.sep}`) &&
+      relative !== ".." &&
+      !path.isAbsolute(relative));
+  if (!isInside) {
+    return target;
+  }
+  const moved = path.join(to, relative);
+  return target.endsWith(path.sep) && !moved.endsWith(path.sep)
+    ? `${moved}${path.sep}`
+    : moved;
+}
+
 function createManifestState(
   folder: string,
   source: ModuleSource,
@@ -286,6 +302,39 @@ export class ModuleManifest {
       paths: clonePathEntries(this.paths),
       srcAliases: cloneAliasEntries(this.srcAliases),
     };
+  }
+
+  /**
+   * The same module read from `folder`, an instance copy of this manifest's
+   * folder: every path inside the original folder is moved to the copy.
+   */
+  relocate(folder: string): ModuleManifest {
+    const target = path.resolve(folder);
+    const move = (filePath: string) =>
+      relocatePath(filePath, this.folder, target);
+    const state: ModuleManifestState = {
+      main: move(this.main),
+      baseUrl: move(this.baseUrl),
+      paths: this.paths.map(({ key, values }) => ({
+        key,
+        values: values.map(move),
+      })),
+      implements: [...this.implements],
+      srcAliases: this.srcAliases?.map(({ alias, replace }) => ({
+        alias,
+        replace: move(replace),
+      })),
+    };
+    const relocated = new ModuleManifest(
+      target,
+      this.source,
+      this.name,
+      this.manifest,
+      this.fs,
+      state,
+    );
+    relocated.version = this.version;
+    return relocated;
   }
 
   async reload(): Promise<void> {

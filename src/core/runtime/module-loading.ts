@@ -410,18 +410,27 @@ async function reloadLoadedModuleFromSource(
   }
 
   const previous = entry.module;
-  const manifest = await loadModuleManifestFromSource(
-    loaderContext,
-    previous.manifest.source,
+  const manifest = manager.placeModule(
     moduleId,
-    true,
+    await loadModuleManifestFromSource(
+      loaderContext,
+      previous.manifest.source,
+      moduleId,
+      true,
+    ),
   );
   const replacement = new Module(manifest);
-  ensureReloadedModuleId(replacement, moduleId);
+  try {
+    ensureReloadedModuleId(replacement, moduleId);
+  } catch (error) {
+    manager.discardPlacedModule(manifest);
+    throw error;
+  }
   const previousWasActive = previous.state === ModuleState.Active;
   try {
     await previous.destroy();
   } catch (error) {
+    manager.discardPlacedModule(manifest);
     const recoveryErrors = await recoverPreviousModule(
       previous,
       previousWasActive,

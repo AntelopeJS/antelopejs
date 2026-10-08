@@ -69,6 +69,8 @@ export interface PreparedProject {
   /** Checks the project before its modules load; aborting `stopping` cancels the check. */
   verify: (stopping: AbortSignal) => Promise<void>;
   createEntries: () => Promise<ModuleManifestEntry[]>;
+  /** Folder for instance copies of module packages loaded more than once. */
+  instanceRoot?: string;
 }
 
 export type ProjectPreparer = (

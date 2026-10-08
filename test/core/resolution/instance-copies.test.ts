@@ -15,6 +15,7 @@ import {
 import {
   createInstanceCopy,
   nextInstanceCopyPath,
+  pruneStaleInstanceCopies,
   removeInstanceCopy,
 } from "../../../src/core/resolution/instance-copies";
 
@@ -137,5 +138,19 @@ describe("instance copies", () => {
 
     expect(second).to.not.equal(first);
     expect(existsSync(first)).to.equal(false);
+  });
+
+  it("prunes the copies of processes that are no longer running and keeps its own", () => {
+    const deadPid = 2 ** 22 + 1;
+    const base = path.join(root, "instances", "module");
+    const stale = path.join(base, `${deadPid}-1`);
+    const own = nextInstanceCopyPath(base);
+    mkdirSync(stale, { recursive: true });
+    mkdirSync(own, { recursive: true });
+
+    pruneStaleInstanceCopies(path.join(root, "instances"));
+
+    expect(existsSync(stale)).to.equal(false);
+    expect(existsSync(own)).to.equal(true);
   });
 });

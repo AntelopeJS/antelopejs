@@ -1,6 +1,7 @@
 import path from "node:path";
 import {
   copyFileSync,
+  existsSync,
   linkSync,
   mkdirSync,
   readdirSync,
@@ -20,6 +21,7 @@ interface CopyContext {
 }
 
 let nextGeneration = 1;
+const GENERATION_PATTERN = /^(\d+)-\d+$/;
 
 function realDirectory(folder: string): string | undefined {
   try {
@@ -119,4 +121,40 @@ export function nextInstanceCopyPath(base: string): string {
   const generation = nextGeneration;
   nextGeneration += 1;
   return path.join(base, `${process.pid}-${generation}`);
+}
+
+function isRunning(pid: number): boolean {
+  if (pid === process.pid) {
+    return true;
+  }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+function pruneGenerations(base: string): void {
+  for (const entry of readdirSync(base)) {
+    const owner = GENERATION_PATTERN.exec(entry)?.[1];
+    if (owner && !isRunning(Number(owner))) {
+      rmSync(path.join(base, entry), { recursive: true, force: true });
+    }
+  }
+}
+
+/**
+ * Deletes the instance copies under `root` left by processes that are no
+ * longer running, such as a build that never tears its modules down.
+ */
+export function pruneStaleInstanceCopies(root: string): void {
+  if (!existsSync(root)) {
+    return;
+  }
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      pruneGenerations(path.join(root, entry.name));
+    }
+  }
 }

@@ -4,6 +4,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { ConfigVars } from "@antelopejs/interface-core/config";
 
 import { Module } from "./module";
+import { ModuleIsolation } from "./module-isolation";
 import { ModuleState } from "../types";
 import { ModuleTracker } from "./module-tracker";
 import { Resolver } from "./resolution/resolver";
@@ -126,6 +127,7 @@ export class ModuleManager {
   private readonly configVars = new ConfigVarStore();
   private pendingCleanup: ManagedModule[] = [];
   private bindingGraph?: BindingGraph;
+  private readonly isolation = new ModuleIsolation();
   private startupOrder: string[] = [];
 
   constructor(deps: ModuleManagerDeps = {}) {
@@ -156,7 +158,9 @@ export class ModuleManager {
   ): ManagedModule[] {
     const created: ManagedModule[] = [];
     for (const entry of entries) {
-      const module = new Module(entry.manifest);
+      const manifest = this.placeModule(entry.manifest.name, entry.manifest);
+      const module = new Module(manifest);
+      this.isolation.adopt(module.id, manifest);
       const config: ModuleConfig = {
         config: entry.config?.config,
         importOverrides: entry.config?.importOverrides ?? new Map(),
@@ -292,11 +296,30 @@ export class ModuleManager {
     return isInModule(path.resolve(root));
   }
 
+  /** Sets the folder that instance copies of module packages are created under. */
+  setInstanceRoot(root: string): void {
+    this.isolation.setRoot(root);
+  }
+
+  /**
+   * The manifest a module should be loaded from: its own, or an instance copy
+   * of its folder when another loaded module already runs from that folder.
+   */
+  placeModule(moduleId: string, manifest: ModuleManifest): ModuleManifest {
+    return this.isolation.place(moduleId, manifest);
+  }
+
+  /** Deletes the instance copy behind a placed manifest that will not run. */
+  discardPlacedModule(manifest: ModuleManifest): void {
+    this.isolation.discard(manifest);
+  }
+
   replaceLoadedModule(id: string, module: Module): ManagedModule | undefined {
     const entry = this.loaded.get(id);
     if (!entry) {
       return;
     }
+    this.isolation.adopt(id, module.manifest);
     entry.module = module;
     this.registry.register(module);
     return entry;
@@ -507,6 +530,7 @@ export class ModuleManager {
     for (const id of this.loaded.keys()) {
       this.evictModuleFiles(id, false);
     }
+    this.isolation.releaseAll();
     const errors = [...results.errors, ...this.clearManagedState()];
     if (errors.length > 0) {
       throw new AggregateError(errors, "Failed to destroy modules");
