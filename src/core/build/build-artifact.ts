@@ -28,7 +28,7 @@ export interface BuildAliasEntry {
 
 export interface BuildImportOverride {
   interface: string;
-  source: string;
+  source?: string;
   id?: string;
 }
 
@@ -54,6 +54,7 @@ export interface BuildModuleEntry {
   config?: unknown;
   importOverrides?: BuildImportOverride[];
   disabledExports?: string[];
+  exportPriority?: Record<string, number>;
 }
 
 export interface BuildArtifact {

@@ -72,7 +72,9 @@ function exportImportOverrides(
   }
 
   for (const [interfaceName, modules] of overrides.entries()) {
-    result[interfaceName] = modules.map((entry) => entry.module);
+    result[interfaceName] = modules.flatMap((entry) =>
+      entry.module === undefined ? [] : [entry.module],
+    );
   }
 
   return result;
@@ -243,6 +245,7 @@ export function toModuleConfig(
     config: moduleConfig.config,
     disabledExports: new Set<string>(moduleConfig.disabledExports ?? []),
     importOverrides: buildModuleOverrides(moduleConfig.importOverrides),
+    exportPriority: new Map(Object.entries(moduleConfig.exportPriority ?? {})),
   };
 }
 

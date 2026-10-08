@@ -16,6 +16,7 @@ import {
   ensureBuildModulesExist,
   mapArtifactModuleEntries,
   readBuildArtifactOrThrow,
+  serializeModuleConfig,
   warnIfBuildIsStale,
   writeProjectBuildArtifact,
 } from "../../../src/core/runtime/build-runtime";
@@ -95,6 +96,26 @@ describe("runtime build-runtime", () => {
     expect(Array.from(betaEntry?.config.disabledExports ?? [])).to.deep.equal(
       [],
     );
+  });
+
+  it("carries export priorities and source-less import overrides through a build artifact", () => {
+    const serialized = serializeModuleConfig({
+      importOverrides: new Map([["data-api", [{ id: "client" }]]]),
+      exportPriority: new Map([["database", 1]]),
+    });
+    const [entry] = mapArtifactModuleEntries(
+      createArtifact({ alpha: createBuildModuleEntry(serialized) }),
+    );
+
+    expect(serialized.importOverrides).to.deep.equal([
+      { interface: "data-api", id: "client" },
+    ]);
+    expect(entry.config.importOverrides?.get("data-api")).to.deep.equal([
+      { module: undefined, id: "client" },
+    ]);
+    expect([...(entry.config.exportPriority ?? [])]).to.deep.equal([
+      ["database", 1],
+    ]);
   });
 
   it("reads build artifact or throws a friendly message", async () => {

@@ -11,7 +11,7 @@ import type { ExpandedModuleConfig } from "../config/config-parser";
 import type { ModuleConfig, ModuleManager } from "../module-manager";
 
 export interface ModuleOverrideRef {
-  module: string;
+  module?: string;
   id?: string;
 }
 

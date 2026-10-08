@@ -1,7 +1,6 @@
-import type {
-  AntelopeLogging,
-  ImportOverride,
-} from "@antelopejs/interface-core/config";
+import type { AntelopeLogging } from "@antelopejs/interface-core/config";
+
+import type { ConfiguredImportOverride } from "../config/config-parser";
 
 import type { RuntimePolicy } from "../runtime/runtime-policy";
 
@@ -10,8 +9,10 @@ export interface EmbeddedModuleConfig {
   /** Absolute, or relative to the project folder. Defaults to the host's `node_modules`. */
   path?: string;
   config?: unknown;
-  importOverrides?: ImportOverride[];
+  importOverrides?: ConfiguredImportOverride[];
   disabledExports?: string[];
+  /** Priority of the module as the default provider, keyed by interface. */
+  exportPriority?: Record<string, number>;
 }
 
 export interface EmbeddedRuntimeOptions {

@@ -55,6 +55,7 @@ function buildEntryConfig(
     config: moduleConfig.config,
     importOverrides: buildModuleOverrides(moduleConfig.importOverrides),
     disabledExports: new Set(moduleConfig.disabledExports ?? []),
+    exportPriority: new Map(Object.entries(moduleConfig.exportPriority ?? {})),
   };
 }
 

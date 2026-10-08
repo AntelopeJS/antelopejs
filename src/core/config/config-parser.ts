@@ -8,11 +8,37 @@ import type {
 import { isConfigVarKey } from "./config-vars";
 import { isObject, isPlainObject, set } from "../../utils/object";
 
+/** An `importOverrides` entry; `source` may be omitted for a connection to a self-hosted interface. */
+export type ConfiguredImportOverride = Omit<ImportOverride, "source"> & {
+  source?: string;
+};
+
+/** A module's project configuration, with the fields the binding rules read. */
+export type ConfiguredModule = Omit<AntelopeModuleConfig, "importOverrides"> & {
+  importOverrides?: ConfiguredImportOverride[] | Record<string, string>;
+  exportPriority?: Record<string, number>;
+};
+
 export interface ExpandedModuleConfig {
   source: ModuleSource;
   config: unknown;
-  importOverrides: ImportOverride[];
+  importOverrides: ConfiguredImportOverride[];
   disabledExports: string[];
+  exportPriority?: Record<string, number>;
+}
+
+function readExportPriority(
+  name: string,
+  priorities: Record<string, number>,
+): Record<string, number> {
+  for (const [interfaceName, priority] of Object.entries(priorities)) {
+    if (!Number.isInteger(priority)) {
+      throw new Error(
+        `Module '${name}' gives '${interfaceName}' the export priority ${String(priority)}; priorities are integers.`,
+      );
+    }
+  }
+  return { ...priorities };
 }
 
 export class ConfigParser {
@@ -129,7 +155,7 @@ export class ConfigParser {
   }
 
   expandModuleShorthand(
-    modules: Record<string, string | AntelopeModuleConfig>,
+    modules: Record<string, string | ConfiguredModule>,
   ): Record<string, ExpandedModuleConfig> {
     const result: Record<string, ExpandedModuleConfig> = {};
 
@@ -155,7 +181,7 @@ export class ConfigParser {
           } as ModuleSourcePackage;
         }
 
-        let importOverrides: ImportOverride[] = [];
+        let importOverrides: ConfiguredImportOverride[] = [];
         if (config.importOverrides) {
           if (Array.isArray(config.importOverrides)) {
             importOverrides = config.importOverrides;
@@ -175,6 +201,12 @@ export class ConfigParser {
           importOverrides,
           disabledExports: config.disabledExports ?? [],
         };
+        if (config.exportPriority) {
+          result[name].exportPriority = readExportPriority(
+            name,
+            config.exportPriority,
+          );
+        }
       }
     }
 
