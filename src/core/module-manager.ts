@@ -43,6 +43,7 @@ import { buildBindingGraph } from "./resolution/binding-graph";
 import { InterfaceBindingError } from "./resolution/binding-diagnostics";
 import { readInterfaceDependencies } from "./resolution/interface-dependencies";
 import type {
+  BindingConnection,
   BindingGraph,
   BindingInterface,
   BindingModule,
@@ -383,13 +384,22 @@ export class ModuleManager {
       if (!this.resolver.interfacePackages.has(interfaceName)) {
         this.registerInterfacePackage(interfaceName, resolvedPackage, true);
       }
+      this.neutralizeInstances(interfaceName);
+    }
+  }
+
+  private neutralizeInstances(interfaceName: string): void {
+    for (const instance of this.resolver.instances.keysOf(interfaceName)) {
+      let root: string | undefined;
       try {
-        require(interfaceName);
+        root = this.resolver.loadInstance(instance);
       } catch (err) {
-        Logger.Error(`Failed to load interface '${interfaceName}':`, err);
+        Logger.Error(`Failed to load interface '${instance}':`, err);
         continue;
       }
-      neutralizeInterfacePackage(resolvedPackage.root, interfaceName);
+      if (root) {
+        neutralizeInterfacePackage(root, interfaceName);
+      }
     }
   }
 
@@ -412,7 +422,6 @@ export class ModuleManager {
     let provided: ProvidePhaseResult;
     try {
       this.logBindingWarnings();
-      this.configureModuleContexts();
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
       plan = this.planConfigVars(modules);
@@ -455,7 +464,6 @@ export class ModuleManager {
     const leaseAcquired = this.resolverDetour.attach();
     try {
       this.logBindingWarnings();
-      this.configureModuleContexts();
       this.validateInterfacePackages();
       this.applyInterfaceStubs();
       await Promise.all(
@@ -531,6 +539,7 @@ export class ModuleManager {
       this.evictModuleFiles(id, false);
     }
     this.isolation.releaseAll();
+    this.resolver.releaseInstances();
     const errors = [...results.errors, ...this.clearManagedState()];
     if (errors.length > 0) {
       throw new AggregateError(errors, "Failed to destroy modules");
@@ -705,13 +714,13 @@ export class ModuleManager {
   }
 
   private rejectCallsInto(moduleId: string, interfaceName: string): void {
-    const packageRoot = this.resolver.interfacePackages.get(interfaceName);
     const entry = this.getModuleEntry(moduleId);
-    if (!packageRoot || !entry) {
+    if (!entry) {
       return;
     }
+    let instanceRoot: string | undefined;
     try {
-      require(interfaceName);
+      instanceRoot = this.resolver.loadInstance(`${interfaceName}@${moduleId}`);
     } catch (error) {
       Logger.Trace(
         `Could not load interface '${interfaceName}' to fail calls into '${moduleId}':`,
@@ -719,12 +728,16 @@ export class ModuleManager {
       );
       return;
     }
+    if (!instanceRoot) {
+      return;
+    }
+    const root = instanceRoot;
     Logger.Debug(
       `Interface '${interfaceName}' lost its provider '${moduleId}'; calls into it now reject.`,
     );
     entry.module.runInContext(() =>
       neutralizeInterfacePackage(
-        packageRoot,
+        root,
         interfaceName,
         `has no provider: module '${moduleId}' did not construct`,
       ),
@@ -852,6 +865,7 @@ export class ModuleManager {
       throw new InterfaceBindingError(graph.errors);
     }
     this.bindingGraph = graph;
+    this.resolver.setBindings(graph);
   }
 
   private logBindingWarnings(): void {
@@ -883,7 +897,10 @@ export class ModuleManager {
     const packages = this.bindablePackages();
     const modules = new Map<string, BindingModule>();
     for (const { module, config } of this.getAllManagedModules()) {
-      modules.set(module.id, toBindingModule(module, config, packages));
+      modules.set(
+        module.id,
+        toBindingModule(module, config, packages, this.resolvedConnections),
+      );
     }
     return modules;
   }
@@ -1162,7 +1179,11 @@ export class ModuleManager {
     for (const [iface, overrides] of importOverrides.entries()) {
       this.validateImportOverrides(moduleId, iface, overrides);
       connections.set(iface, overrides);
-      selected.set(iface, overrides[0].module);
+      if (overrides[0].module === undefined) {
+        selected.delete(iface);
+      } else {
+        selected.set(iface, overrides[0].module);
+      }
     }
   }
 
@@ -1230,36 +1251,31 @@ export class ModuleManager {
       );
     }
   }
+}
 
-  private configureModuleContexts(): void {
-    for (const { module, config } of this.getAllManagedModules()) {
-      const isProvider = (module.manifest.implements ?? []).some(
-        (interfaceName) => !config.disabledExports?.has(interfaceName),
-      );
-      module.setProviderRoutes(
-        this.resolver.buildProviderRoutes(module.id),
-        isProvider,
-      );
-    }
-  }
+function toBindingConnections(
+  connections: Map<string, InterfaceConnectionRef[]> | undefined,
+): Map<string, BindingConnection[]> {
+  return new Map(
+    [...(connections ?? [])].map(([interfaceName, refs]) => [
+      interfaceName,
+      refs.map(({ module: source, id }) => ({ source, id })),
+    ]),
+  );
 }
 
 function toBindingModule(
   module: Module,
   config: ModuleConfig,
   packages: ReadonlySet<string>,
+  listed: ReadonlyMap<string, Map<string, InterfaceConnectionRef[]>>,
 ): BindingModule {
   const manifest = module.manifest.manifest;
   const declared = {
     ...manifest.optionalDependencies,
     ...manifest.dependencies,
   };
-  const connections = new Map(
-    [...(config.importOverrides ?? [])].map(([interfaceName, overrides]) => [
-      interfaceName,
-      overrides.map(({ module: source, id }) => ({ source, id })),
-    ]),
-  );
+  const connections = toBindingConnections(config.importOverrides);
   return {
     id: module.id,
     implements: (module.manifest.implements ?? []).filter(
@@ -1267,6 +1283,7 @@ function toBindingModule(
     ),
     uses: Object.keys(declared).filter((name) => packages.has(name)),
     connections,
+    listedConnections: toBindingConnections(listed.get(module.id)),
     exportPriority: config.exportPriority ?? new Map(),
   };
 }

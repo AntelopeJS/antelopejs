@@ -13,6 +13,10 @@ const packFolder = path.join(temp, "pack");
 const consumerFolder = path.join(temp, "consumer");
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const builtEntry = path.join(root, "dist", "index.js");
+const interfaceCoreTarball = process.env.ANTELOPE_INTERFACE_CORE_TARBALL;
+const interfaceCoreSpec = interfaceCoreTarball
+  ? `file:${interfaceCoreTarball}`
+  : "0.2.0";
 
 function run(command: string, args: string[], cwd: string): string {
   return execFileSync(command, args, {
@@ -57,7 +61,7 @@ function inspectManifest(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
   const manifest = JSON.parse(content) as PackedManifest;
   if (
-    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.1.1 <1.0.0"
+    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.2.0 <1.0.0"
   ) {
     throw new Error(
       "Packed core does not support compatible interface-core 0.x releases.",
@@ -78,12 +82,20 @@ function installConsumer(tarball: string): void {
       private: true,
       dependencies: {
         "@antelopejs/core": `file:${tarball}`,
-        "@antelopejs/interface-core": "0.1.1",
+        "@antelopejs/interface-core": interfaceCoreSpec,
         "reflect-metadata": "0.2.2",
       },
     }),
   );
-  run(pnpm, ["install", "--ignore-workspace"], consumerFolder);
+  if (!interfaceCoreTarball) {
+    run(pnpm, ["install", "--ignore-workspace"], consumerFolder);
+    return;
+  }
+  fs.writeFileSync(
+    path.join(consumerFolder, "pnpm-workspace.yaml"),
+    `overrides:\n  "@antelopejs/interface-core": ${JSON.stringify(interfaceCoreSpec)}\n`,
+  );
+  run(pnpm, ["install"], consumerFolder);
 }
 
 function verifyConsumer(script: string): void {

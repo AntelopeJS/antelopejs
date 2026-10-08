@@ -2,7 +2,6 @@ import os from "node:os";
 import path from "node:path";
 import { expect } from "chai";
 import fs from "node:fs/promises";
-import { MODULE_CONTEXT_INVALIDATED_CODE } from "@antelopejs/interface-core";
 
 import launch, { type ModuleManager } from "../../src";
 import {
@@ -40,7 +39,7 @@ interface FixturePackage {
 /**
  * The interface package registers an entry through its own registering proxy
  * while it is evaluated, and keeps a function that reaches another interface
- * package through a facade bound at load time.
+ * package it imported at load time.
  */
 function interfaceSource(): string {
   return `
@@ -295,16 +294,13 @@ describe("registrations made while an interface package is evaluated", () => {
     });
   });
 
-  it("still fail work without a context once the importer's generation is gone", async function () {
+  it("keep reaching their provider once the importer that loaded the package reloads", async function () {
     this.timeout(TEST_TIMEOUT_MS);
     await launchProject([IMPORTER_ID, PROVIDER_ID]);
     expect(await readDependencyWithoutContext()).to.equal(DEPENDENCY_VALUE);
 
     await reloadModule(manager as ModuleManager, projectFolder, IMPORTER_ID);
 
-    expect(await readDependencyWithoutContext()).to.have.property(
-      "code",
-      MODULE_CONTEXT_INVALIDATED_CODE,
-    );
+    expect(await readDependencyWithoutContext()).to.equal(DEPENDENCY_VALUE);
   });
 });

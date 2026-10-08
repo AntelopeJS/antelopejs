@@ -2,14 +2,6 @@ import os from "node:os";
 import path from "node:path";
 import { expect } from "chai";
 import fs from "node:fs/promises";
-import {
-  GetInterfaceProxyIdentity,
-  ImplementInterface,
-  InterfaceFunction,
-  MODULE_CONTEXT_INVALIDATED_CODE,
-} from "@antelopejs/interface-core";
-
-import { Module } from "../../src/core/module";
 import launch, { type ModuleManager } from "../../src";
 import {
   createLoaderContext,
@@ -35,7 +27,6 @@ const DECORATORS_INTERFACE_NAME = "database-decorators";
 const AUTOMATION_INTERFACE_NAME = "automation-interface";
 const CIRCULAR_PROXY_WARNING =
   "Accessing non-existent property 'Symbol(@antelopejs/interface-core/proxy)'";
-const STRESS_ITERATIONS = 40;
 
 interface RoutingResult {
   module: string;
@@ -95,11 +86,6 @@ interface FixturePackageOptions {
 interface StartInterfaceFolders {
   decoratorsFolder: string;
   automationFolder: string;
-}
-
-interface RoutedFunction {
-  (): Promise<string>;
-  proxy: unknown;
 }
 
 function providerSource(
@@ -728,7 +714,7 @@ async function verifyConsumerReloadCleanup(
   } catch (error) {
     staleResult = error;
   }
-  expect(staleResult).to.have.property("code", MODULE_CONTEXT_INVALIDATED_CODE);
+  expect(staleResult).to.include({ value: "a", module: "provider-a" });
   routingEmitters().a("old-provider");
   routingEmitters().b("replacement-provider");
   await new Promise((resolve) => setImmediate(resolve));
@@ -858,7 +844,7 @@ describe("provider-aware runtime", () => {
         },
         {
           id: "secondary",
-          path: INTERFACE_NAME,
+          path: `@ajs.connection/1/${INTERFACE_NAME}`,
           provider: "provider-b",
           selected: false,
         },
@@ -934,7 +920,7 @@ describe("provider-aware runtime", () => {
     }
   });
 
-  it("preserves identities and provider isolation across provider reload", async function () {
+  it("gives each provider's instance its own declarations, kept across that provider's reload", async function () {
     this.timeout(20000);
     const project = await createRoutingProject();
     initializeRoutingGlobals();
@@ -946,7 +932,21 @@ describe("provider-aware runtime", () => {
       const providerClasses = (global as Record<string, unknown>)[
         ROUTING_PROVIDER_CLASSES_KEY
       ] as unknown[];
-      expect(new Set(providerClasses).size).to.equal(1);
+      expect(providerClasses).to.have.length(3);
+      expect(new Set(providerClasses).size).to.equal(2);
+      expect(providerClasses[2]).to.equal(
+        providerClasses.find(
+          (value, index) => index < 2 && value === providerClasses[2],
+        ),
+      );
+      expect(routingResults()["consumer-a"]).to.include({
+        hasCanonicalClassIdentity: true,
+        providerMetadata: "canonical",
+      });
+      expect(routingResults()["consumer-b"]).to.include({
+        hasCanonicalClassIdentity: true,
+        providerMetadata: "canonical",
+      });
       expect(await routingClosures()["consumer-a"]()).to.include({
         value: "a-reloaded",
         module: "provider-a",
@@ -987,97 +987,6 @@ describe("provider-aware runtime", () => {
       });
     } finally {
       await destroyProject(manager, project.folder);
-    }
-  });
-
-  it("keeps a replacement attached when an old provider generation is destroyed", async () => {
-    const proxy = InterfaceFunction<() => string>(
-      "integration.old-generation",
-    ) as RoutedFunction;
-    const declaration = { GetValue: proxy };
-    const oldProvider = new Module(
-      { name: "shared-provider", version: "1.0.0", main: "old" } as any,
-      async () => ({
-        construct: () => {
-          void ImplementInterface(declaration, { GetValue: () => "old" });
-        },
-      }),
-    );
-    const replacement = new Module(
-      { name: "shared-provider", version: "2.0.0", main: "new" } as any,
-      async () => ({
-        construct: () => {
-          void ImplementInterface(declaration, { GetValue: () => "new" });
-        },
-      }),
-    );
-    const identity = GetInterfaceProxyIdentity(proxy.proxy);
-    oldProvider.setProviderRoutes({}, true);
-    replacement.setProviderRoutes({}, true);
-    await oldProvider.construct({});
-    await replacement.construct({});
-    await oldProvider.destroy();
-
-    const consumer = new Module(
-      {
-        name: "generation-consumer",
-        version: "1.0.0",
-        main: "consumer",
-      } as any,
-      async () => ({
-        construct: async () => {
-          expect(await proxy()).to.equal("new");
-        },
-      }),
-    );
-    consumer.setProviderRoutes(
-      { [identity as string]: "shared-provider" },
-      false,
-    );
-    await consumer.construct({});
-    await replacement.destroy();
-  });
-
-  it("survives randomized provider attachment delays", async function () {
-    this.timeout(20000);
-    for (let iteration = 0; iteration < STRESS_ITERATIONS; iteration += 1) {
-      const proxy = InterfaceFunction<() => string>(
-        `stress.${iteration}`,
-      ) as RoutedFunction;
-      const declaration = { GetValue: proxy };
-      const providers = ["provider-a", "provider-b"].map((provider) => {
-        const delay = Math.floor(Math.random() * 8);
-        const module = new Module(
-          { name: provider, version: "1.0.0", main: provider } as any,
-          async () => ({
-            construct: async () => {
-              await new Promise((resolve) => setTimeout(resolve, delay));
-              void ImplementInterface(declaration, {
-                GetValue: () => provider,
-              });
-            },
-          }),
-        );
-        module.setProviderRoutes({}, true);
-        return module;
-      });
-      await Promise.all(providers.map((provider) => provider.construct({})));
-      const identity = GetInterfaceProxyIdentity(proxy.proxy) as string;
-      const consumer = new Module(
-        {
-          name: `consumer-${iteration}`,
-          version: "1.0.0",
-          main: "consumer",
-        } as any,
-        async () => ({
-          construct: async () => {
-            expect(await proxy()).to.equal("provider-a");
-          },
-        }),
-      );
-      consumer.setProviderRoutes({ [identity]: "provider-a" }, false);
-      await consumer.construct({});
-      await Promise.all(providers.map((provider) => provider.destroy()));
     }
   });
 

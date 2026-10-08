@@ -12,6 +12,7 @@ import {
   collectStartupDivergence,
 } from "./binding-graph-warnings";
 import type {
+  BindingConnection,
   BindingGraph,
   BindingGraphInput,
   BindingModule,
@@ -111,9 +112,17 @@ class BindingGraphBuilder {
     return this.input.interfaces.get(interfaceName)?.dependencies ?? [];
   }
 
+  private importsOf(moduleId: string): string[] {
+    const module = this.input.modules.get(moduleId)!;
+    return [
+      ...module.uses,
+      ...module.implements.flatMap((name) => this.dependenciesOf(name)),
+    ];
+  }
+
   private closureOf(moduleId: string): Set<string> {
     const closure = new Set<string>();
-    const pending = [...this.input.modules.get(moduleId)!.uses];
+    const pending = this.importsOf(moduleId);
     while (pending.length > 0) {
       const interfaceName = pending.pop()!;
       if (closure.has(interfaceName)) {
@@ -168,7 +177,10 @@ class BindingGraphBuilder {
     };
     this.edges.set(moduleId, new Set());
     this.moduleErrors.delete(moduleId);
-    for (const interfaceName of [...module.uses, ...module.implements]) {
+    for (const interfaceName of [
+      ...this.importsOf(moduleId),
+      ...module.implements,
+    ]) {
       this.keyOf(moduleId, interfaceName, target);
     }
     this.scopes.set(moduleId, target.scope);
@@ -394,47 +406,54 @@ class BindingGraphBuilder {
     this.carried.set(moduleId, received);
   }
 
-  private connectionKeys(moduleId: string): Map<string, Map<string, string>> {
+  private connectionKeys(moduleId: string): Map<string, string[]> {
     const module = this.input.modules.get(moduleId)!;
-    const byId = new Map<string, Map<string, string | undefined>>();
-    for (const [interfaceName, connections] of module.connections) {
-      for (const { id, source } of connections) {
-        if (id === undefined) {
-          continue;
-        }
-        const covered = byId.get(id) ?? new Map<string, string | undefined>();
-        covered.set(interfaceName, source);
-        byId.set(id, covered);
-      }
-    }
-    const result = new Map<string, Map<string, string>>();
-    byId.forEach((covered, id) =>
-      result.set(id, this.keysForConnection(moduleId, covered)),
-    );
-    return result;
-  }
-
-  private keysForConnection(
-    moduleId: string,
-    covered: ReadonlyMap<string, string | undefined>,
-  ): Map<string, string> {
-    const overrides = new Map<string, string>();
-    covered.forEach((source, name) => {
-      if (source) {
-        overrides.set(name, source);
-      }
-    });
-    const target: ResolutionTarget = {
-      scope: new Map(),
-      keys: new Map(),
-      overrides,
-      recordsEdges: false,
-    };
-    const keys = new Map<string, string>();
-    for (const interfaceName of covered.keys()) {
-      keys.set(interfaceName, this.keyOf(moduleId, interfaceName, target));
+    const keys = new Map<string, string[]>();
+    const listed = module.listedConnections ?? module.connections;
+    for (const [interfaceName, connections] of listed) {
+      keys.set(
+        interfaceName,
+        connections.map((connection) =>
+          this.connectionKey(moduleId, interfaceName, connection),
+        ),
+      );
     }
     return keys;
+  }
+
+  private connectionScope(
+    moduleId: string,
+    interfaceName: string,
+    connection: BindingConnection,
+  ): Map<string, string> {
+    const module = this.input.modules.get(moduleId)!;
+    const overrides = new Map<string, string>();
+    if (connection.id === undefined) {
+      if (connection.source) {
+        overrides.set(interfaceName, connection.source);
+      }
+      return overrides;
+    }
+    for (const [name, entries] of module.connections) {
+      const entry = entries.find(({ id }) => id === connection.id);
+      if (entry?.source) {
+        overrides.set(name, entry.source);
+      }
+    }
+    return overrides;
+  }
+
+  private connectionKey(
+    moduleId: string,
+    interfaceName: string,
+    connection: BindingConnection,
+  ): string {
+    return this.keyOf(moduleId, interfaceName, {
+      scope: new Map(),
+      keys: new Map(),
+      overrides: this.connectionScope(moduleId, interfaceName, connection),
+      recordsEdges: false,
+    });
   }
 
   private collectModuleBindings(): Map<string, ModuleBindings> {

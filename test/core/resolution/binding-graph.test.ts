@@ -184,7 +184,7 @@ describe("buildBindingGraph: instances", () => {
     );
   });
 
-  it("keys a connection's interfaces in that connection's scope", () => {
+  it("keys each connection entry, and a named entry in its connection's scope", () => {
     const graph = resolve({
       mongodb: { implements: [DB] },
       "postgres-client": { implements: [DB] },
@@ -200,13 +200,16 @@ describe("buildBindingGraph: instances", () => {
         },
       },
     });
-    const client = graph.modules.get("sync")?.connectionKeys.get("client");
+    const connections = graph.modules.get("sync")?.connectionKeys;
 
     expect(keyOf(graph, "sync", DB)).to.equal("database@mongodb");
-    expect(client?.get(DB)).to.equal("database@postgres-client");
-    expect(client?.get(API)).to.equal(
+    expect(connections?.get(DB)).to.deep.equal([
+      "database@mongodb",
+      "database@postgres-client",
+    ]);
+    expect(connections?.get(API)).to.deep.equal([
       "data-api{api@api,database@postgres-client,decorators{api@api,database@postgres-client}}",
-    );
+    ]);
   });
 });
 

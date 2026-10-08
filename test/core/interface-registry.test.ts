@@ -35,7 +35,7 @@ describe("InterfaceRegistry", () => {
         selected: true,
       },
       {
-        path: "core@beta",
+        path: "@ajs.connection/1/core@beta",
         id: "x",
         provider: "modB",
         selected: false,

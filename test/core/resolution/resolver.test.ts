@@ -1,396 +1,20 @@
 import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import { types as utilTypes } from "node:util";
-import fs, { mkdirSync, writeFileSync } from "node:fs";
-import {
-  captureModuleContext,
-  internal,
-  invalidateModuleContext,
-  runWithCapturedModuleContext,
-} from "@antelopejs/interface-core/internal";
-import {
-  GetModuleContext,
-  RunWithModuleContext,
-} from "@antelopejs/interface-core/modules";
-import {
-  type AsyncProxy,
-  GetInterfaceProxyIdentity,
-  InterfaceFunction,
-  RegisteringProxy,
-} from "@antelopejs/interface-core";
+import fs, { existsSync, mkdirSync, writeFileSync } from "node:fs";
 
 import { Resolver } from "../../../src/core/resolution/resolver";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { PathMapper } from "../../../src/core/resolution/path-mapper";
+import { buildBindingGraph } from "../../../src/core/resolution/binding-graph";
 import { clearPathResolutionCache } from "../../../src/core/resolution/package-resolution";
-import { neutralizeInterfaceAsyncProxies } from "../../../src/core/resolution/stub-interface-runtime";
+import type { BindingModule } from "../../../src/core/resolution/binding-graph-types";
 
 const CORE_PKG = "@antelopejs/interface-core";
 const CORE_CANONICAL_ENTRY = require.resolve(CORE_PKG);
 const CORE_CANONICAL_DIR = path.dirname(
   require.resolve(`${CORE_PKG}/package.json`),
 );
-
-interface ProxyFunction {
-  (): Promise<unknown>;
-  proxy: unknown;
-}
-
-interface OptionalInterfaceExports {
-  RegisterTriggerType(id: string): void;
-}
-
-interface DeferredUserModel {
-  getByEmail(): string;
-}
-
-interface DeferredControllerInstance {
-  signup(): Promise<void>;
-  userModel: DeferredUserModel;
-}
-
-type DeferredController = new () => DeferredControllerInstance;
-
-interface DeferredRoutePlan {
-  callback(this: object): Promise<void>;
-  controller: DeferredController;
-}
-
-interface DeferredRoutesExports {
-  Routes: RegisteringProxy<(id: string, plan: DeferredRoutePlan) => void>;
-}
-
-interface DeferredConsumer {
-  controller: DeferredController;
-  databaseProvider: string;
-  id: string;
-}
-
-interface MutableRequestContext {
-  body?: Promise<string>;
-  callback?: () => string;
-}
-
-interface MutableRequestExports {
-  label: string;
-  ReadBody(context: MutableRequestContext): Promise<string>;
-}
-
-interface MutableFacadeObservations {
-  hasStableCallback: boolean;
-  hasUpdatedCallback: boolean;
-  methodReceiver?: string;
-}
-
-interface NotificationCategory {
-  id: string;
-}
-
-interface NotificationSubject {
-  category: NotificationCategory;
-}
-
-interface FrozenNotificationData {
-  subject: NotificationSubject;
-}
-
-interface NotificationExports {
-  ReadCategory(data: FrozenNotificationData): string;
-}
-
-function selectedProvider(provider: string) {
-  return [{ path: "interface", provider, selected: true }];
-}
-
-function createMutableRequestExports(
-  observations: MutableFacadeObservations,
-): MutableRequestExports {
-  return {
-    label: "api",
-    ReadBody(context) {
-      observations.methodReceiver = this.label;
-      const initialCallback = context.callback;
-      observations.hasStableCallback = initialCallback === context.callback;
-      context.callback = () => "updated";
-      observations.hasUpdatedCallback =
-        initialCallback !== context.callback &&
-        context.callback() === "updated";
-      if (context.body === undefined) {
-        context.body = Promise.resolve("body");
-      }
-      return context.body.then((body) => body);
-    },
-  };
-}
-
-function createDeferredConsumers(
-  query: ProxyFunction,
-  controllerContexts: Map<string, string>,
-  queryContexts: Map<string, string>,
-): DeferredConsumer[] {
-  return ["dms", "dms-saas"].map((id) => {
-    class ConsumerController {
-      userModel!: DeferredUserModel;
-
-      async signup(): Promise<void> {
-        controllerContexts.set(id, this.userModel.getByEmail());
-        queryContexts.set(id, (await query()) as string);
-      }
-    }
-    Reflect.defineMetadata("resolver:controller", id, ConsumerController);
-    return {
-      controller: ConsumerController,
-      databaseProvider: `${id}-mongodb`,
-      id,
-    };
-  });
-}
-
-function attachDeferredProviders(
-  query: ProxyFunction,
-  routes: DeferredRoutesExports["Routes"],
-  consumers: DeferredConsumer[],
-  plans: Map<string, DeferredRoutePlan>,
-): void {
-  for (const { databaseProvider } of consumers) {
-    RunWithModuleContext(
-      { module: databaseProvider, provider: databaseProvider },
-      () =>
-        (query.proxy as AsyncProxy).onCall(
-          () => GetModuleContext()?.module,
-          true,
-        ),
-    );
-  }
-  RunWithModuleContext({ module: "api", provider: "api" }, () =>
-    routes.onRegister((id, plan) => plans.set(id, plan), true),
-  );
-}
-
-function registerDeferredRoute(
-  resolver: Resolver,
-  queryIdentity: string,
-  routesIdentity: string,
-  routes: DeferredRoutesExports["Routes"],
-  consumer: DeferredConsumer,
-): void {
-  const providerRoutes = {
-    [queryIdentity]: consumer.databaseProvider,
-    [routesIdentity]: "api",
-  };
-  RunWithModuleContext(
-    { module: consumer.id, provider: consumer.id, providerRoutes },
-    () => {
-      const declaration = resolver.bindProviderRoutes(
-        {
-          resolvedPath: "api",
-          interfaceName: "interface-api",
-          provider: "api",
-          bindExports: true,
-        },
-        { Routes: routes },
-      ) as DeferredRoutesExports;
-      declaration.Routes.register(consumer.id, {
-        callback: consumer.controller.prototype.signup,
-        controller: consumer.controller,
-      });
-    },
-  );
-}
-
-async function invokeDeferredRoutes(
-  consumers: DeferredConsumer[],
-  plans: Map<string, DeferredRoutePlan>,
-  controllerContexts: Map<string, string>,
-  queryContexts: Map<string, string>,
-): Promise<void> {
-  for (const consumer of consumers) {
-    const plan = plans.get(consumer.id) as DeferredRoutePlan;
-    expect(plan.controller).to.equal(consumer.controller);
-    expect(
-      Reflect.getMetadata("resolver:controller", plan.controller),
-    ).to.equal(consumer.id);
-    const controller = new plan.controller();
-    controller.userModel = { getByEmail: () => consumer.id };
-    await RunWithModuleContext({ module: "api", provider: "api" }, () =>
-      plan.callback.call(controller),
-    );
-    expect(controllerContexts.get(consumer.id)).to.equal(consumer.id);
-    expect(queryContexts.get(consumer.id)).to.equal(consumer.databaseProvider);
-  }
-}
-
-const SHARED_API_PACKAGE = "interface-api";
-const SHARED_PAGE_PACKAGE = "interface-pages";
-const SHARED_PAGE_FILE = "/interfaces/pages/page/controllers.js";
-const SHARED_API_OWNER = `${SHARED_API_PACKAGE}#shared`;
-const CONSUMER_FILE = "/modules/consumer/index.js";
-
-interface SharedApiExports {
-  Controller(): string | undefined;
-  Owner(): string | undefined;
-  MakeDecorator(): () => string | undefined;
-  Provider(): string | undefined;
-  Capture(value: unknown): unknown;
-  Reflect(value: unknown): unknown;
-  PLAIN_DATA: unknown[];
-}
-
-interface SharedInterfaceSetup {
-  consumers: string[];
-  facade: SharedApiExports;
-  resolver: Resolver;
-  restore(): void;
-}
-
-type SharedFacadeBinding = (
-  resolver: Resolver,
-  bind: () => SharedApiExports,
-) => SharedApiExports;
-
-const bindFromImporter: SharedFacadeBinding = (_resolver, bind) => bind();
-
-/**
- * Binds `interface-api` the way the runtime does while the `interface-pages`
- * file importing it is evaluated: inside that package's own body context.
- */
-const bindFromPackageBody: SharedFacadeBinding = (resolver, bind) => {
-  const pages = resolver.resolve(SHARED_PAGE_PACKAGE, {
-    filename: CONSUMER_FILE,
-  });
-  return resolver.runInInterfaceContext(
-    pages as NonNullable<typeof pages>,
-    bind,
-  );
-};
-
-/**
- * Loads the shared `interface-pages` file that imports `interface-api` at
- * module level, under the context of `firstLoader`. Reproduces the hot reload
- * "Mode A" layout, where a consumer is loaded before the module implementing
- * the interface and therefore evaluates the shared interface file first.
- */
-const PLAIN_DATA: unknown[] = [{ rights: ["read"] }];
-let captured: unknown[] = [];
-
-function loadSharedInterfaceFacade(
-  firstLoader = "consumer-a",
-  binding = bindFromImporter,
-): SharedInterfaceSetup {
-  captured = [];
-  const resolver = new Resolver(new PathMapper(() => false));
-  const consumers = ["consumer-a", "consumer-b"];
-  resolver.interfacePackages.set(SHARED_API_PACKAGE, "/interfaces/api");
-  resolver.interfacePackages.set(SHARED_PAGE_PACKAGE, "/interfaces/pages");
-  resolver.trackInterfaceFile(
-    { interfaceName: SHARED_PAGE_PACKAGE, resolvedPath: SHARED_PAGE_FILE },
-    SHARED_PAGE_FILE,
-  );
-  for (const id of consumers) {
-    resolver.modulesById.set(id, { id, manifest: {} as any });
-    internal.interfaceConnections[id] = {
-      [SHARED_API_PACKAGE]: selectedProvider(`${id}-api`),
-      [SHARED_PAGE_PACKAGE]: selectedProvider("pages"),
-    };
-  }
-  const apiExports: SharedApiExports = {
-    Controller: () => GetModuleContext()?.module,
-    Owner: () => GetModuleContext()?.owner,
-    MakeDecorator: () => () => GetModuleContext()?.module,
-    Provider: () => GetModuleContext()?.provider,
-    Capture: (value) => {
-      captured.push(value);
-      return value;
-    },
-    Reflect: (value) => value,
-    PLAIN_DATA: PLAIN_DATA,
-  };
-  const facade = RunWithModuleContext(
-    { module: firstLoader, provider: firstLoader, providerRoutes: {} },
-    () =>
-      binding(resolver, () => {
-        const result = resolver.resolve(SHARED_API_PACKAGE, {
-          filename: SHARED_PAGE_FILE,
-        });
-        expect(result?.bindExports).to.equal(true);
-        expect(result?.sharedExports).to.equal(true);
-        return resolver.bindProviderRoutes(
-          result as NonNullable<typeof result>,
-          apiExports,
-        ) as SharedApiExports;
-      }),
-  );
-  return {
-    consumers,
-    facade,
-    resolver,
-    restore: () => {
-      for (const id of consumers) {
-        delete internal.interfaceConnections[id];
-      }
-    },
-  };
-}
-
-function callSharedFacade(setup: SharedInterfaceSetup, consumer: string) {
-  return RunWithModuleContext(
-    { module: consumer, provider: consumer, providerRoutes: {} },
-    () => setup.facade.Controller(),
-  );
-}
-
-/**
- * Runs `call` the way a consumer's own code does while it is busy serving
- * another interface: the ambient context carries that other interface's
- * provider as the unrouted-proxy fallback.
- */
-function callWhileServing<T>(
-  consumer: string,
-  servingProvider: string,
-  call: () => T,
-): T {
-  return RunWithModuleContext(
-    { module: consumer, provider: servingProvider, providerRoutes: {} },
-    call,
-  );
-}
-
-/**
- * Resolver whose consumers each select their own `interface-api` provider,
- * the layout under which every consumer gets its own shared context.
- */
-function createSharedApiResolver(consumers: string[]): Resolver {
-  const resolver = new Resolver(new PathMapper(() => false));
-  resolver.interfacePackages.set(SHARED_API_PACKAGE, "/interfaces/api");
-  for (const id of consumers) {
-    resolver.modulesById.set(id, { id, manifest: {} as any });
-    internal.interfaceConnections[id] = {
-      [SHARED_API_PACKAGE]: selectedProvider(`${id}-api`),
-    };
-  }
-  return resolver;
-}
-
-/** Evaluates an `interface-api` file for `consumer`, which imports it. */
-function evaluateSharedApi<T>(
-  resolver: Resolver,
-  consumer: string,
-  evaluate: () => T,
-): T {
-  return RunWithModuleContext(
-    { module: consumer, provider: consumer, providerRoutes: {} },
-    () => {
-      const result = resolver.resolve(SHARED_API_PACKAGE, {
-        filename: CONSUMER_FILE,
-      });
-      return resolver.runInInterfaceContext(
-        result as NonNullable<typeof result>,
-        evaluate,
-      );
-    },
-  );
-}
 
 const moduleA = {
   id: "modA",
@@ -508,37 +132,6 @@ describe("Resolver", () => {
     );
   });
 
-  it("keeps one canonical interface graph across concurrent resolvers", () => {
-    const packageName = "@antelopejs/interface-db";
-    const packageRoot = __dirname;
-    const packageEntry = __filename;
-    const results = ["first", "second"].map((id) => {
-      const resolver = new Resolver(new PathMapper(() => false));
-      resolver.interfacePackages.set(packageName, packageRoot);
-      resolver.interfacePackageEntries.set(packageName, packageEntry);
-      resolver.moduleByFolder.set(`/modules/${id}`, {
-        id,
-        manifest: {
-          implements: [packageName],
-          paths: [],
-          srcAliases: [],
-        } as any,
-      });
-      return resolver.resolve(packageName, {
-        filename: `/modules/${id}/index.js`,
-      });
-    });
-
-    expect(results.map((result) => result?.resolvedPath)).to.deep.equal([
-      packageEntry,
-      packageEntry,
-    ]);
-    expect(results.map((result) => result?.provider)).to.deep.equal([
-      "first",
-      "second",
-    ]);
-  });
-
   it("does not redirect unknown packages", () => {
     const resolver = new Resolver(new PathMapper(() => false));
     resolver.interfacePackages.set(
@@ -585,803 +178,6 @@ describe("Resolver", () => {
 
     expect(result).to.equal(undefined);
   });
-
-  it("preserves nested proxy ownership and replays cached routes", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const outer = InterfaceFunction("resolver.outer") as ProxyFunction;
-    const nested = InterfaceFunction("resolver.nested") as ProxyFunction;
-    const outerIdentity = GetInterfaceProxyIdentity(outer.proxy) as string;
-    const nestedIdentity = GetInterfaceProxyIdentity(nested.proxy) as string;
-    const consumers = ["resolver-consumer-a", "resolver-consumer-b"];
-    const outerEntry = "/interfaces/outer/declaration.js";
-    const outerProviders = [
-      "resolver-provider-outer-a",
-      "resolver-provider-outer-b",
-    ];
-    const nestedProviders = ["provider-nested-a", "provider-nested-b"];
-    resolver.interfacePackages.set("interface-outer", "/interfaces/outer");
-    resolver.interfacePackages.set("interface-nested", "/interfaces/nested");
-    resolver.trackInterfaceFile(
-      { interfaceName: "interface-outer", resolvedPath: outerEntry },
-      outerEntry,
-    );
-    const sameGraphResult = resolver.resolve("interface-outer/declaration", {
-      filename: outerEntry,
-    });
-    expect(sameGraphResult?.bindExports).to.equal(false);
-    outerProviders.forEach((id, index) => {
-      resolver.modulesById.set(id, { id, manifest: {} as any });
-      internal.interfaceConnections[id] = {
-        "interface-nested": selectedProvider(nestedProviders[index]),
-      };
-    });
-    consumers.forEach((id, index) => {
-      resolver.modulesById.set(id, { id, manifest: {} as any });
-      internal.interfaceConnections[id] = {
-        "interface-outer": selectedProvider(outerProviders[index]),
-      };
-    });
-
-    try {
-      const firstRoutes: Record<string, string> = {};
-      RunWithModuleContext(
-        { module: consumers[0], providerRoutes: firstRoutes },
-        () => {
-          const nestedResult = resolver.resolve("interface-nested", {
-            filename: outerEntry,
-          });
-          expect(nestedResult?.provider).to.equal(nestedProviders[0]);
-          expect(nestedResult?.bindExports).to.equal(true);
-          resolver.bindProviderRoutes(nestedResult!, { nested });
-          resolver.bindProviderRoutes(
-            {
-              resolvedPath: "outer",
-              interfaceName: "interface-outer",
-              provider: outerProviders[0],
-            },
-            { nested, outer },
-          );
-        },
-      );
-      expect(firstRoutes).to.deep.include({
-        [outerIdentity]: outerProviders[0],
-        [nestedIdentity]: nestedProviders[0],
-      });
-
-      const secondRoutes: Record<string, string> = {};
-      RunWithModuleContext(
-        { module: consumers[1], providerRoutes: secondRoutes },
-        () =>
-          resolver.bindProviderRoutes(
-            {
-              resolvedPath: "outer",
-              interfaceName: "interface-outer",
-              provider: outerProviders[1],
-            },
-            { outer },
-          ),
-      );
-      expect(secondRoutes).to.deep.include({
-        [outerIdentity]: outerProviders[1],
-        [nestedIdentity]: nestedProviders[1],
-      });
-    } finally {
-      for (const id of consumers) {
-        delete internal.interfaceConnections[id];
-      }
-      for (const id of outerProviders) {
-        delete internal.interfaceConnections[id];
-      }
-    }
-  });
-
-  it("runs interface package internals in the calling consumer context", () => {
-    for (const firstLoader of ["consumer-a", "consumer-b"]) {
-      const setup = loadSharedInterfaceFacade(firstLoader);
-
-      try {
-        const observed = setup.consumers.map((consumer) =>
-          callSharedFacade(setup, consumer),
-        );
-
-        expect(observed).to.deep.equal(setup.consumers);
-      } finally {
-        setup.restore();
-      }
-    }
-  });
-
-  it("keeps interface package internals callable after a consumer reloads", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      expect(callSharedFacade(setup, "consumer-a")).to.equal("consumer-a");
-      invalidateModuleContext("consumer-a");
-
-      expect(callSharedFacade(setup, "consumer-a")).to.equal("consumer-a");
-      expect(callSharedFacade(setup, "consumer-b")).to.equal("consumer-b");
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("keeps values derived from a shared interface facade callable", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      const decorator = RunWithModuleContext(
-        { module: "consumer-a", provider: "consumer-a", providerRoutes: {} },
-        () => setup.facade.MakeDecorator(),
-      );
-      invalidateModuleContext("consumer-a");
-
-      const observed = RunWithModuleContext(
-        { module: "consumer-b", provider: "consumer-b", providerRoutes: {} },
-        () => decorator(),
-      );
-
-      expect(observed).to.equal("consumer-b");
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("falls back to the load-time context without an ambient context", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      expect(setup.facade.Controller()).to.equal("consumer-a");
-      invalidateModuleContext("consumer-a");
-
-      expect(() => setup.facade.Controller()).to.throw(/invalidated/);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("keeps a stubbed interface shared by an interface package callable", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const optionalPackage = "interface-optional";
-    resolver.interfacePackages.set(optionalPackage, "/interfaces/optional");
-    resolver.interfacePackages.set(SHARED_PAGE_PACKAGE, "/interfaces/pages");
-    resolver.stubbedInterfacePackages.add(optionalPackage);
-    resolver.trackInterfaceFile(
-      { interfaceName: SHARED_PAGE_PACKAGE, resolvedPath: SHARED_PAGE_FILE },
-      SHARED_PAGE_FILE,
-    );
-    const optionalExports = {
-      Model: () => GetModuleContext()?.module,
-    };
-
-    const facade = RunWithModuleContext(
-      { module: "consumer-a", provider: "consumer-a", providerRoutes: {} },
-      () => {
-        const result = resolver.resolve(optionalPackage, {
-          filename: SHARED_PAGE_FILE,
-        });
-        expect(result?.provider).to.equal(undefined);
-        expect(result?.sharedExports).to.equal(true);
-        return resolver.bindProviderRoutes(
-          result as NonNullable<typeof result>,
-          optionalExports,
-        ) as typeof optionalExports;
-      },
-    );
-    invalidateModuleContext("consumer-a");
-
-    const observed = RunWithModuleContext(
-      { module: "consumer-b", provider: "consumer-b", providerRoutes: {} },
-      () => facade.Model(),
-    );
-
-    expect(observed).to.equal("consumer-b");
-  });
-
-  it("loads an interface package under its own provider, not the importer's", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.interfacePackages.set(SHARED_API_PACKAGE, "/interfaces/api");
-    resolver.modulesById.set("consumer-a", {
-      id: "consumer-a",
-      manifest: {} as any,
-    });
-    internal.interfaceConnections["consumer-a"] = {
-      [SHARED_API_PACKAGE]: selectedProvider("consumer-a-api"),
-    };
-
-    try {
-      const observed = RunWithModuleContext(
-        { module: "consumer-a", provider: "consumer-a", providerRoutes: {} },
-        () => {
-          const result = resolver.resolve(SHARED_API_PACKAGE, {
-            filename: "/modules/consumer-a/index.js",
-          });
-          return resolver.runInInterfaceContext(
-            result as NonNullable<typeof result>,
-            () => GetModuleContext()?.provider,
-          );
-        },
-      );
-
-      expect(observed).to.equal("consumer-a-api");
-    } finally {
-      delete internal.interfaceConnections["consumer-a"];
-    }
-  });
-
-  it("evaluates an interface package under its own owner, whichever module imports it", () => {
-    const consumers = ["consumer-a", "consumer-b"];
-    const resolver = createSharedApiResolver(consumers);
-
-    try {
-      const observed = consumers.map((consumer) =>
-        evaluateSharedApi(resolver, consumer, () => [
-          GetModuleContext()?.module,
-          GetModuleContext()?.owner,
-        ]),
-      );
-
-      expect(observed).to.deep.equal([
-        ["consumer-a", SHARED_API_OWNER],
-        ["consumer-b", SHARED_API_OWNER],
-      ]);
-    } finally {
-      for (const id of consumers) {
-        delete internal.interfaceConnections[id];
-      }
-    }
-  });
-
-  it("keeps what an interface package starts while evaluated once its importer is gone", () => {
-    const resolver = createSharedApiResolver(["consumer-a"]);
-
-    try {
-      const packageContext = evaluateSharedApi(
-        resolver,
-        "consumer-a",
-        captureModuleContext,
-      );
-      invalidateModuleContext("consumer-a");
-
-      const observed = runWithCapturedModuleContext(
-        packageContext as NonNullable<typeof packageContext>,
-        () => GetModuleContext()?.owner,
-      );
-
-      expect(observed).to.equal(SHARED_API_OWNER);
-    } finally {
-      delete internal.interfaceConnections["consumer-a"];
-    }
-  });
-
-  it("falls back to the importer, not the package, for exports a package body binds", () => {
-    const setup = loadSharedInterfaceFacade("consumer-a", bindFromPackageBody);
-
-    try {
-      expect(setup.facade.Owner()).to.equal("consumer-a");
-      expect(callSharedFacade(setup, "consumer-b")).to.equal("consumer-b");
-      invalidateModuleContext("consumer-a");
-
-      expect(() => setup.facade.Owner()).to.throw(/invalidated/);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("resolves a shared facade's own interface provider, not the caller's", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      // `provider` is the fallback an unrouted proxy resolves to, and it only
-      // ever means "the provider of the interface these exports belong to".
-      // Adopting the caller's own `provider` made every proxy reached through
-      // this facade resolve to the provider of whatever interface the caller
-      // happened to be serving.
-      const observed = callWhileServing("consumer-a", "api", () =>
-        setup.facade.Provider(),
-      );
-
-      expect(observed).to.equal("consumer-a-api");
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("falls back to the interface's load-time provider when the caller declares no connection", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      // The fallback still means "the provider of the interface these exports
-      // belong to", resolved when the package was loaded. The module that
-      // happened to load it first is not that provider.
-      const observed = callWhileServing("outsider", "api", () =>
-        setup.facade.Provider(),
-      );
-
-      expect(observed).to.equal("consumer-a-api");
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("passes plain data through a shared facade without rebinding it", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      const payload = { rootAcl: [{ subject: "curators" }] };
-
-      const returned = callWhileServing("consumer-b", "api", () =>
-        setup.facade.Capture(payload),
-      );
-
-      expect(captured[0]).to.equal(payload);
-      expect(returned).to.equal(payload);
-      expect(utilTypes.isProxy(captured[0])).to.equal(false);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("passes cyclic plain data through a shared facade without rebinding it", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      const shared = { label: "shared" };
-      const payload: Record<string, unknown> = { items: [shared, shared] };
-      payload.self = payload;
-
-      callWhileServing("consumer-b", "api", () =>
-        setup.facade.Capture(payload),
-      );
-
-      expect(captured[0]).to.equal(payload);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("passes class instances through a shared facade without walking them", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      class Holder {
-        callback = () => "held";
-      }
-      const payload = [new Holder(), new Date()];
-
-      callWhileServing("consumer-b", "api", () =>
-        setup.facade.Capture(payload),
-      );
-
-      expect(captured[0]).to.equal(payload);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("binds plain data that nests a function deep in an array", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      const payload = { rows: [{ id: 1 }, { id: 2, onSelect: () => 2 }] };
-
-      callWhileServing("consumer-b", "api", () =>
-        setup.facade.Capture(payload),
-      );
-
-      expect(captured[0]).to.not.equal(payload);
-      expect(utilTypes.isProxy(captured[0])).to.equal(true);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("binds plain data that nests an interface proxy", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      const call = InterfaceFunction("resolver.nested-proxy") as ProxyFunction;
-      const payload = { handlers: [{ proxy: call.proxy }] };
-
-      callWhileServing("consumer-b", "api", () =>
-        setup.facade.Capture(payload),
-      );
-
-      expect(captured[0]).to.not.equal(payload);
-      expect(utilTypes.isProxy(captured[0])).to.equal(true);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("reads plain data off a shared facade without rebinding it", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      const observed = callWhileServing(
-        "consumer-b",
-        "api",
-        () => setup.facade.PLAIN_DATA,
-      );
-
-      expect(observed).to.equal(PLAIN_DATA);
-      expect(utilTypes.isProxy(observed)).to.equal(false);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("still binds function arguments crossing a shared facade", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      const callback = () => GetModuleContext()?.module;
-
-      const bound = callWhileServing("consumer-b", "api", () =>
-        setup.facade.Reflect(callback),
-      );
-
-      expect(bound).to.not.equal(callback);
-      expect(utilTypes.isProxy(bound)).to.equal(true);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("still binds a plain object that carries a function", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      const payload = { handler: () => GetModuleContext()?.module };
-
-      const bound = callWhileServing("consumer-b", "api", () =>
-        setup.facade.Reflect(payload),
-      );
-
-      expect(bound).to.not.equal(payload);
-      expect(utilTypes.isProxy(bound)).to.equal(true);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("hands out the same facade for a value passed twice", () => {
-    const setup = loadSharedInterfaceFacade();
-
-    try {
-      // `unregister(handler)` followed by `register(handler)` only cancels
-      // out when both calls see the same bound handler, whichever consumer
-      // and whichever call is running.
-      const handler = () => undefined;
-
-      const first = callWhileServing("consumer-a", "api", () =>
-        setup.facade.Reflect(handler),
-      );
-      const second = callWhileServing("consumer-b", "pages", () =>
-        setup.facade.Reflect(handler),
-      );
-
-      expect(second).to.equal(first);
-    } finally {
-      setup.restore();
-    }
-  });
-
-  it("keeps a module's own interface imports owned by that module", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    resolver.interfacePackages.set(SHARED_API_PACKAGE, "/interfaces/api");
-    resolver.modulesById.set("consumer-a", {
-      id: "consumer-a",
-      manifest: {} as any,
-    });
-    internal.interfaceConnections["consumer-a"] = {
-      [SHARED_API_PACKAGE]: selectedProvider("consumer-a-api"),
-    };
-
-    try {
-      const result = RunWithModuleContext(
-        { module: "consumer-a", provider: "consumer-a", providerRoutes: {} },
-        () =>
-          resolver.resolve(SHARED_API_PACKAGE, {
-            filename: "/modules/consumer-a/dist/index.js",
-          }),
-      );
-
-      expect(result?.bindExports).to.equal(true);
-      expect(result?.sharedExports).to.equal(false);
-    } finally {
-      delete internal.interfaceConnections["consumer-a"];
-    }
-  });
-
-  it("routes a contextless transitive registering proxy to its provider", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const registrations = new RegisteringProxy<(id: string) => void>(
-      "resolver.transitive-registering",
-    );
-    const identity = GetInterfaceProxyIdentity(registrations) as string;
-    resolver.modulesById.set("dms", { id: "dms", manifest: {} as any });
-    internal.interfaceConnections.dms = {
-      "interface-database": selectedProvider("mongodb"),
-    };
-    const routes = resolver.buildProviderRoutes("dms") as Record<
-      string,
-      string
-    >;
-    resolver.bindProviderRoutes(
-      {
-        resolvedPath: "/interfaces/database/schema.js",
-        interfaceName: "interface-database",
-      },
-      { Schemas: registrations },
-    );
-    const received: string[] = [];
-
-    try {
-      RunWithModuleContext({ module: "mongodb", provider: "mongodb" }, () =>
-        registrations.onRegister((id) => received.push(id), true),
-      );
-      RunWithModuleContext(
-        { module: "dms", provider: "dms", providerRoutes: routes },
-        () =>
-          resolver.bindProviderRoutes(
-            {
-              resolvedPath: "/interfaces/decorators/index.js",
-              interfaceName: "interface-database-decorators",
-              bindExports: true,
-            },
-            { RegisterSchema: () => registrations.register("dms-schema") },
-          ),
-      );
-      expect(routes).to.deep.equal({ [identity]: "mongodb" });
-      RunWithModuleContext(
-        { module: "dms", provider: "dms", providerRoutes: routes },
-        () => registrations.register("dms-schema"),
-      );
-      expect(received).to.deep.equal(["dms-schema"]);
-    } finally {
-      registrations.detach();
-      delete internal.interfaceConnections.dms;
-    }
-  });
-
-  it("suppresses a provider fallback for stubbed interface facades", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const registrations = new RegisteringProxy<(id: string) => void>(
-      "resolver.optional-registering",
-    );
-    const identity = GetInterfaceProxyIdentity(registrations) as string;
-    const interfaceExports: OptionalInterfaceExports = {
-      RegisterTriggerType: (id) => registrations.register(id),
-    };
-    neutralizeInterfaceAsyncProxies({ registrations }, "optional-interface");
-    resolver.stubbedInterfacePackages.add("optional-interface");
-    resolver.bindProviderRoutes(
-      {
-        resolvedPath: "/interfaces/optional/runtime.js",
-        interfaceName: "optional-interface",
-      },
-      { registrations },
-    );
-    const consumers = ["dms", "dms-saas"];
-    const facades = new Map<string, OptionalInterfaceExports>();
-
-    try {
-      for (const consumer of consumers) {
-        const providerRoutes = { [identity]: consumer };
-        RunWithModuleContext(
-          {
-            module: consumer,
-            provider: consumer,
-            providerRoutes,
-          },
-          () => {
-            const facade = resolver.bindProviderRoutes(
-              {
-                resolvedPath: "/interfaces/optional/index.js",
-                interfaceName: "optional-interface",
-                bindExports: false,
-              },
-              interfaceExports,
-            ) as OptionalInterfaceExports;
-            facades.set(consumer, facade);
-          },
-        );
-        expect(providerRoutes).to.deep.equal({ [identity]: consumer });
-      }
-      for (const consumer of consumers) {
-        RunWithModuleContext(
-          {
-            module: consumer,
-            provider: consumer,
-            providerRoutes: { [identity]: consumer },
-          },
-          () => {
-            expect(() =>
-              facades.get(consumer)?.RegisterTriggerType(`${consumer}-trigger`),
-            ).to.not.throw();
-          },
-        );
-      }
-    } finally {
-      registrations.detach();
-    }
-  });
-
-  it("restores consumer routes for methods passed to a provider", async () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const query = InterfaceFunction("resolver.deferred-query") as ProxyFunction;
-    const routes = new RegisteringProxy<
-      (id: string, plan: DeferredRoutePlan) => void
-    >("resolver.deferred-routes");
-    const queryIdentity = GetInterfaceProxyIdentity(query.proxy) as string;
-    const routesIdentity = GetInterfaceProxyIdentity(routes) as string;
-    const plans = new Map<string, DeferredRoutePlan>();
-    const controllerContexts = new Map<string, string>();
-    const queryContexts = new Map<string, string>();
-    const consumers = createDeferredConsumers(
-      query,
-      controllerContexts,
-      queryContexts,
-    );
-    resolver.bindProviderRoutes(
-      { resolvedPath: "database", interfaceName: "interface-database" },
-      { Query: query },
-    );
-    resolver.bindProviderRoutes(
-      { resolvedPath: "api", interfaceName: "interface-api" },
-      { Routes: routes },
-    );
-
-    try {
-      attachDeferredProviders(query, routes, consumers, plans);
-      consumers.forEach((consumer) => {
-        registerDeferredRoute(
-          resolver,
-          queryIdentity,
-          routesIdentity,
-          routes,
-          consumer,
-        );
-      });
-      await invokeDeferredRoutes(
-        consumers,
-        plans,
-        controllerContexts,
-        queryContexts,
-      );
-    } finally {
-      routes.detach();
-      (query.proxy as AsyncProxy).detach();
-    }
-  });
-
-  it("observes writes after reading a missing facade property", async () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const requestContext: MutableRequestContext = {
-      callback: () => "initial",
-    };
-    const observations: MutableFacadeObservations = {
-      hasStableCallback: false,
-      hasUpdatedCallback: false,
-    };
-    const apiExports = createMutableRequestExports(observations);
-
-    const body = await RunWithModuleContext(
-      { module: "dms", provider: "dms", providerRoutes: {} },
-      () => {
-        const facade = resolver.bindProviderRoutes(
-          { resolvedPath: "api", provider: "api", bindExports: true },
-          apiExports,
-        ) as MutableRequestExports;
-        return facade.ReadBody(requestContext);
-      },
-    );
-
-    expect(body).to.equal("body");
-    expect(await requestContext.body).to.equal("body");
-    expect(observations).to.deep.equal({
-      hasStableCallback: true,
-      hasUpdatedCallback: true,
-      methodReceiver: "api",
-    });
-  });
-
-  it("reads nested values from frozen facade arguments", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const data = Object.freeze({
-      subject: { category: { id: "lifecycle" } },
-    });
-    const notificationExports: NotificationExports = {
-      ReadCategory: (notification) => notification.subject.category.id,
-    };
-
-    const category = RunWithModuleContext(
-      { module: "dms", provider: "dms", providerRoutes: {} },
-      () => {
-        const facade = resolver.bindProviderRoutes(
-          {
-            resolvedPath: "notifications",
-            provider: "dms-notifications",
-            bindExports: true,
-          },
-          notificationExports,
-        ) as NotificationExports;
-        return facade.ReadCategory(data);
-      },
-    );
-
-    expect(category).to.equal("lifecycle");
-  });
-
-  it("does not inspect arbitrary Proxy exports for interface brands", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const moduleError = Symbol("module-error");
-    const missingDependency = new Error("Optional module aws4 not found");
-    const dependencyState: Record<PropertyKey, unknown> = {
-      [moduleError]: missingDependency,
-    };
-    const optionalDependency = new Proxy(dependencyState, {
-      get: (target, property) => {
-        if (property !== moduleError) {
-          throw missingDependency;
-        }
-        return target[property];
-      },
-    });
-
-    expect(() =>
-      resolver.bindProviderRoutes(
-        {
-          resolvedPath: "/mongodb/lib/deps.js",
-          interfaceName: "interface-database",
-        },
-        { optionalDependency },
-      ),
-    ).to.not.throw();
-  });
-
-  it("rejects distinct package proxies with one identity", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const first = InterfaceFunction("resolver.package-conflict");
-    const second = InterfaceFunction("resolver.package-conflict");
-
-    expect(() =>
-      RunWithModuleContext({ module: "consumer", providerRoutes: {} }, () => {
-        resolver.bindProviderRoutes(
-          {
-            resolvedPath: "first",
-            interfaceName: "interface-first",
-            provider: "provider-first",
-          },
-          { first },
-        );
-        resolver.bindProviderRoutes(
-          {
-            resolvedPath: "second",
-            interfaceName: "interface-second",
-            provider: "provider-second",
-          },
-          { second },
-        );
-      }),
-    ).to.throw(/interface-first.+interface-second.+distinct proxies/);
-  });
-
-  it("rejects conflicting direct provider bindings", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const call = InterfaceFunction("resolver.conflict") as ProxyFunction;
-    const identity = GetInterfaceProxyIdentity(call.proxy) as string;
-    const providerRoutes = { [identity]: "provider-a" };
-
-    expect(() =>
-      RunWithModuleContext({ module: "consumer", providerRoutes }, () =>
-        resolver.bindProviderRoutes(
-          { resolvedPath: CORE_CANONICAL_ENTRY, provider: "provider-b" },
-          { call },
-        ),
-      ),
-    ).to.throw(/resolves proxy.+both.+provider-a.+provider-b/);
-  });
 });
 
 describe("Resolver path ownership cache", () => {
@@ -1399,20 +195,6 @@ describe("Resolver path ownership cache", () => {
     expect(resolver.resolve("@src/utils", parent)).to.equal(undefined);
   });
 
-  it("sees interface packages added or removed after a lookup", () => {
-    const resolver = new Resolver(new PathMapper(() => false));
-    const parent = { filename: "/interfaces/cached/lib/index.js" };
-    expect(resolver.resolve("./sibling", parent)).to.equal(undefined);
-
-    resolver.interfacePackages.set("interface-cached", "/interfaces/cached");
-    expect(resolver.resolve("./sibling", parent)?.interfaceName).to.equal(
-      "interface-cached",
-    );
-
-    resolver.interfacePackages.delete("interface-cached");
-    expect(resolver.resolve("./sibling", parent)).to.equal(undefined);
-  });
-
   it("calls realpath at most once per distinct path when resolving N files against M roots", () => {
     const dir = makeTempDir("ajs-resolver-cache-");
     const resolver = new Resolver(new PathMapper(() => false));
@@ -1422,7 +204,6 @@ describe("Resolver path ownership cache", () => {
       const root = path.join(dir, `module-${rootIndex}`);
       mkdirSync(root);
       resolver.moduleByFolder.set(root, moduleA);
-      resolver.interfacePackages.set(`interface-${rootIndex}`, root);
       return Array.from({ length: fileCount / rootCount }, (_, fileIndex) => {
         const file = path.join(root, `file-${fileIndex}.js`);
         writeFileSync(file, "");
@@ -1443,5 +224,177 @@ describe("Resolver path ownership cache", () => {
       realpathSpy.restore();
       cleanupTempDir(dir);
     }
+  });
+});
+
+const DATABASE = "@resolver/interface-database";
+
+interface InstanceFixture {
+  root: string;
+  resolver: Resolver;
+  packageRoot: string;
+  moduleFile(id: string): string;
+}
+
+function writeFile(file: string, content: string): void {
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, content);
+}
+
+function bindingModule(
+  id: string,
+  spec: Partial<Omit<BindingModule, "id">>,
+): [string, BindingModule] {
+  return [
+    id,
+    {
+      id,
+      implements: spec.implements ?? [],
+      uses: spec.uses ?? [],
+      connections: spec.connections ?? new Map(),
+      listedConnections: spec.listedConnections,
+      exportPriority: new Map(),
+    },
+  ];
+}
+
+function createInstanceFixture(): InstanceFixture {
+  const root = makeTempDir("ajs-resolver-instances-");
+  const packageRoot = path.join(root, "node_modules", ...DATABASE.split("/"));
+  writeFile(
+    path.join(packageRoot, "package.json"),
+    JSON.stringify({ name: DATABASE, version: "1.0.0", main: "index.js" }),
+  );
+  writeFile(path.join(packageRoot, "index.js"), "module.exports = {};");
+  writeFile(path.join(packageRoot, "query.js"), "module.exports = {};");
+  const resolver = new Resolver(new PathMapper(() => false));
+  resolver.interfacePackages.set(DATABASE, packageRoot);
+  resolver.interfacePackageEntries.set(
+    DATABASE,
+    path.join(packageRoot, "index.js"),
+  );
+  resolver.interfacePackageResolveFrom.set(DATABASE, root);
+  const moduleFile = (id: string) => path.join(root, "modules", id, "index.js");
+  for (const id of ["provider-a", "provider-b", "consumer-a", "consumer-b"]) {
+    writeFile(moduleFile(id), "module.exports = {};");
+    const module = { id, manifest: { paths: [], srcAliases: [] } } as any;
+    resolver.moduleByFolder.set(path.dirname(moduleFile(id)), module);
+    resolver.modulesById.set(id, module);
+  }
+  resolver.setBindings(
+    buildBindingGraph({
+      interfaces: new Map([[DATABASE, { name: DATABASE, dependencies: [] }]]),
+      modules: new Map([
+        bindingModule("provider-a", { implements: [DATABASE] }),
+        bindingModule("provider-b", { implements: [DATABASE] }),
+        bindingModule("consumer-a", {
+          uses: [DATABASE],
+          connections: new Map([[DATABASE, [{ source: "provider-a" }]]]),
+          listedConnections: new Map([
+            [DATABASE, [{ source: "provider-a" }, { source: "provider-b" }]],
+          ]),
+        }),
+        bindingModule("consumer-b", {
+          uses: [DATABASE],
+          connections: new Map([[DATABASE, [{ source: "provider-b" }]]]),
+        }),
+      ]),
+    }),
+  );
+  return { root, resolver, packageRoot, moduleFile };
+}
+
+describe("Resolver interface instances", () => {
+  let fixture: InstanceFixture;
+
+  beforeEach(() => {
+    fixture = createInstanceFixture();
+  });
+
+  afterEach(() => {
+    fixture.resolver.releaseInstances();
+    cleanupTempDir(fixture.root);
+  });
+
+  function resolveFrom(id: string, request: string) {
+    return fixture.resolver.resolve(request, {
+      filename: fixture.moduleFile(id),
+    });
+  }
+
+  it("resolves an interface request into the instance the importer is bound to", () => {
+    expect(resolveFrom("consumer-a", DATABASE)?.instance).to.equal(
+      `${DATABASE}@provider-a`,
+    );
+    expect(resolveFrom("consumer-b", DATABASE)?.instance).to.equal(
+      `${DATABASE}@provider-b`,
+    );
+    expect(resolveFrom("provider-b", DATABASE)?.instance).to.equal(
+      `${DATABASE}@provider-b`,
+    );
+  });
+
+  it("serves the first instance from the canonical copy and the next one from its own copy", () => {
+    const canonicalQuery = fs.realpathSync(
+      path.join(fixture.packageRoot, "query.js"),
+    );
+    const first = resolveFrom("consumer-a", `${DATABASE}/query`)!;
+    const second = resolveFrom("consumer-b", `${DATABASE}/query`)!;
+
+    const firstPath = fixture.resolver.locate(first, canonicalQuery);
+    const secondPath = fixture.resolver.locate(second, canonicalQuery);
+
+    expect(firstPath).to.equal(canonicalQuery);
+    expect(secondPath).to.not.equal(canonicalQuery);
+    expect(existsSync(secondPath)).to.equal(true);
+  });
+
+  it("resolves a connection path to that connection's instance, subpaths included", () => {
+    expect(
+      resolveFrom("consumer-a", `@ajs.connection/1/${DATABASE}/query`),
+    ).to.include({
+      resolvedPath: `${DATABASE}/query`,
+      instance: `${DATABASE}@provider-b`,
+    });
+  });
+
+  it("refuses a connection path the importer has no connection for", () => {
+    expect(() =>
+      resolveFrom("consumer-b", `@ajs.connection/3/${DATABASE}`),
+    ).to.throw(`Module 'consumer-b' has no connection 3 to ${DATABASE}.`);
+  });
+
+  it("refuses an undeclared import of a package that has several instances", () => {
+    expect(() =>
+      fixture.resolver.resolve(DATABASE, {
+        filename: path.join(fixture.root, "elsewhere.js"),
+      }),
+    ).to.throw(
+      /imports @resolver\/interface-database, which has several instances/,
+    );
+  });
+
+  it("loads an instance's own relative requests in that instance", () => {
+    const second = resolveFrom("consumer-b", DATABASE)!;
+    const secondEntry = fixture.resolver.locate(
+      second,
+      fs.realpathSync(path.join(fixture.packageRoot, "index.js")),
+    );
+
+    expect(
+      fixture.resolver.instanceToLoad("./query", { filename: secondEntry }),
+    ).to.equal(`${DATABASE}@provider-b`);
+  });
+
+  it("deletes the instance copies it created", () => {
+    const second = resolveFrom("consumer-b", DATABASE)!;
+    const secondEntry = fixture.resolver.locate(
+      second,
+      fs.realpathSync(path.join(fixture.packageRoot, "index.js")),
+    );
+
+    fixture.resolver.releaseInstances();
+
+    expect(existsSync(secondEntry)).to.equal(false);
   });
 });

@@ -1,41 +1,30 @@
+import type { InterfaceConnection } from "@antelopejs/interface-core";
 import { internal } from "@antelopejs/interface-core/internal";
+
+import { connectionPath } from "./resolution/resolver";
 
 export interface InterfaceConnectionRef {
   module?: string;
   id?: string;
 }
 
-interface InterfaceConnectionEntry {
-  path: string;
-  id?: string;
-  provider: string;
-  selected: boolean;
-}
-
-interface ProvidedConnectionRef extends InterfaceConnectionRef {
-  module: string;
-}
-
-type ModuleConnections = Record<string, InterfaceConnectionEntry[]>;
+type ModuleConnections = Record<string, InterfaceConnection[]>;
 
 const ownersByModule = new Map<string, Map<symbol, ModuleConnections>>();
 
-function isProvided(
-  connection: InterfaceConnectionRef,
-): connection is ProvidedConnectionRef {
-  return connection.module !== undefined;
-}
-
 function createEntry(
   interfaceName: string,
-  { module, id }: ProvidedConnectionRef,
+  { module, id }: InterfaceConnectionRef,
+  index: number,
   isSelected: boolean,
-): InterfaceConnectionEntry {
-  const entry: InterfaceConnectionEntry = {
-    path: interfaceName,
-    provider: module,
+): InterfaceConnection {
+  const entry: InterfaceConnection = {
+    path: isSelected ? interfaceName : connectionPath(index, interfaceName),
     selected: isSelected,
   };
+  if (module !== undefined) {
+    entry.provider = module;
+  }
   if (id !== undefined) {
     entry.id = id;
   }
@@ -52,15 +41,14 @@ export class InterfaceRegistry {
     selectedProviders: Map<string, string | undefined> = new Map(),
   ): void {
     const connectionIDs: ModuleConnections = {};
-    for (const [interfaceName, configured] of connections) {
-      const modules = configured.filter(isProvided);
+    for (const [interfaceName, listed] of connections) {
       const selectedIndex = selectedProviders.has(interfaceName)
-        ? modules.findIndex(
+        ? listed.findIndex(
             ({ module }) => module === selectedProviders.get(interfaceName),
           )
         : -1;
-      connectionIDs[interfaceName] = modules.map((connection, index) =>
-        createEntry(interfaceName, connection, index === selectedIndex),
+      connectionIDs[interfaceName] = listed.map((connection, index) =>
+        createEntry(interfaceName, connection, index, index === selectedIndex),
       );
     }
     const owners = this.getCurrentOwners(moduleId);

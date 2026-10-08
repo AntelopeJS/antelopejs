@@ -20,6 +20,12 @@ export interface BindingModule {
   uses: readonly string[];
   /** `importOverrides` entries, in configured order, keyed by interface. */
   connections: ReadonlyMap<string, readonly BindingConnection[]>;
+  /**
+   * The connections the module lists for each interface, in order: its
+   * `importOverrides` entries, or every provider when it has none. Defaults
+   * to `connections`.
+   */
+  listedConnections?: ReadonlyMap<string, readonly BindingConnection[]>;
   /** Priority as the default provider, keyed by interface. */
   exportPriority: ReadonlyMap<string, number>;
 }
@@ -60,8 +66,12 @@ export interface ModuleBindings {
   scope: ReadonlyMap<string, InterfaceBinding>;
   /** Instance key of every interface the module imports, directly or through self-hosted ones. */
   keys: ReadonlyMap<string, string>;
-  /** For each connection id, the instance key of each interface that connection covers. */
-  connectionKeys: ReadonlyMap<string, ReadonlyMap<string, string>>;
+  /**
+   * For each interface with `importOverrides` entries, the instance key each
+   * entry names, in entry order. A named entry is keyed in its connection's
+   * scope: every interface with an entry of that id is bound to that entry.
+   */
+  connectionKeys: ReadonlyMap<string, readonly string[]>;
 }
 
 export interface BindingGraph {

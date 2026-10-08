@@ -25,7 +25,6 @@ interface FakeModule {
 
 function createManager(): ModuleManager {
   const manager = new ModuleManager();
-  sinon.stub(manager as any, "configureModuleContexts");
   sinon.stub(manager as any, "applyInterfaceStubs");
   const detour = (manager as any).resolverDetour;
   sinon.stub(detour, "attach").returns(true);
