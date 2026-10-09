@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.14.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.5...v1.14.0)
+
+### 🚀 Enhancements
+
+- **runtime:** Resolve each interface import into its provider's instance ([#196](https://github.com/AntelopeJS/antelopejs/pull/196))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+
 ## v1.13.5
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.4...v1.13.5)
