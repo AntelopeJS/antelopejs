@@ -104,6 +104,13 @@
     "node": ">=20.19"
   },
   "packageManager": "pnpm@10.6.5",
+  "pnpm": {
+    "overrides": {
+      "mocha>serialize-javascript": "^7.0.5",
+      "release-it>undici": "^6.28.1",
+      "oxfmt>tinypool": "^2.1.2"
+    }
+  },
   "antelopeJs": {
     "implements": [
       "@antelopejs/interface-core"
