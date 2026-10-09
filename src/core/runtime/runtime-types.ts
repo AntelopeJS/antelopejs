@@ -11,7 +11,7 @@ import type { ExpandedModuleConfig } from "../config/config-parser";
 import type { ModuleConfig, ModuleManager } from "../module-manager";
 
 export interface ModuleOverrideRef {
-  module: string;
+  module?: string;
   id?: string;
 }
 
@@ -69,6 +69,8 @@ export interface PreparedProject {
   /** Checks the project before its modules load; aborting `stopping` cancels the check. */
   verify: (stopping: AbortSignal) => Promise<void>;
   createEntries: () => Promise<ModuleManifestEntry[]>;
+  /** Folder for instance copies of module packages loaded more than once. */
+  instanceRoot?: string;
 }
 
 export type ProjectPreparer = (

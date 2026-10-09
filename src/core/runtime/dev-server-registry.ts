@@ -164,17 +164,15 @@ export async function registerCoreRuntimeInterface(
   };
   const store = await setupDevRegistryStore(options, projectPath);
 
-  RunWithModuleContext(
-    { module: CORE_MODULE_ID, provider: CORE_MODULE_ID },
-    () =>
-      coreInterfaceBeta.ImplementInterface(runtimeInterfaceBeta, {
-        GetRuntimeInfo: async () => runtimeInfo,
-        RegisterDevServer: async (
-          name: string,
-          endpoints: DevServerEndpoint[],
-        ) => {
-          await store?.register(name, endpoints);
-        },
-      }),
+  RunWithModuleContext({ module: CORE_MODULE_ID }, () =>
+    coreInterfaceBeta.ImplementInterface(runtimeInterfaceBeta, {
+      GetRuntimeInfo: async () => runtimeInfo,
+      RegisterDevServer: async (
+        name: string,
+        endpoints: DevServerEndpoint[],
+      ) => {
+        await store?.register(name, endpoints);
+      },
+    }),
   );
 }

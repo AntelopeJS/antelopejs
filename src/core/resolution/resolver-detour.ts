@@ -85,58 +85,28 @@ class ResolverDetourCoordinator {
 
   private load(request: string, parent: any, isMain: boolean): unknown {
     const activeResolver = this.findResolver(request, parent);
-    if (!activeResolver?.requiresPreResolution(request, parent)) {
+    const instance = activeResolver?.instanceToLoad(request, parent);
+    if (!activeResolver || !instance) {
       return this.originalLoader?.(request, parent, isMain);
     }
-    const result = activeResolver.resolve(request, parent);
-    if (!result) {
-      return this.originalLoader?.(request, parent, isMain);
-    }
-    const resolvedPath = this.resolveResult(
+    const resolvedPath = this.resolveWith(
       activeResolver,
-      result,
+      request,
       parent,
       isMain,
       undefined,
     );
-    this.primeInterfaceEntry(
-      activeResolver,
-      result,
-      resolvedPath,
-      parent,
-      isMain,
-    );
-    const isCircularImport = require.cache[resolvedPath]?.loaded === false;
-    const value = activeResolver.runInInterfaceContext(result, () =>
-      this.originalLoader?.(resolvedPath, parent, isMain),
-    );
-    return isCircularImport
-      ? value
-      : activeResolver.bindProviderRoutes(result, value);
-  }
-
-  private primeInterfaceEntry(
-    resolver: Resolver,
-    result: ResolveResult,
-    resolvedPath: string,
-    parent: any,
-    isMain: boolean,
-  ): void {
-    const entryResult = resolver.getInterfaceEntryToPrime(result, resolvedPath);
-    if (!entryResult) {
-      return;
+    const entry = activeResolver.entryToPrime(request, parent, resolvedPath);
+    activeResolver.recordInstanceFile(instance, resolvedPath);
+    if (entry) {
+      activeResolver.recordInstanceFile(instance, entry);
     }
-    const entryPath = this.resolveResult(
-      resolver,
-      entryResult,
-      parent,
-      isMain,
-      undefined,
-    );
-    const value = resolver.runInInterfaceContext(entryResult, () =>
-      this.originalLoader?.(entryPath, parent, isMain),
-    );
-    resolver.bindProviderRoutes(entryResult, value);
+    return activeResolver.runInInstance(instance, () => {
+      if (entry) {
+        this.originalLoader?.(entry, parent, isMain);
+      }
+      return this.originalLoader?.(resolvedPath, parent, isMain);
+    });
   }
 
   private resolve(
@@ -185,8 +155,7 @@ class ResolverDetourCoordinator {
       isMain,
       options,
     ) as string;
-    activeResolver.trackInterfaceFile(result, resolvedPath);
-    return resolvedPath;
+    return activeResolver.locate(result, resolvedPath);
   }
 
   private createResolutionParent(parent: any, resolveFrom?: string): any {

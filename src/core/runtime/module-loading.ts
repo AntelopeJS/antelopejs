@@ -72,7 +72,9 @@ function exportImportOverrides(
   }
 
   for (const [interfaceName, modules] of overrides.entries()) {
-    result[interfaceName] = modules.map((entry) => entry.module);
+    result[interfaceName] = modules.flatMap((entry) =>
+      entry.module === undefined ? [] : [entry.module],
+    );
   }
 
   return result;
@@ -132,76 +134,72 @@ export function registerCoreModuleInterface(
   manager: ModuleManager,
   loadContext: LoaderContextProvider,
 ): void {
-  moduleInterfaceBeta.RunWithModuleContext(
-    { module: CORE_MODULE_ID, provider: CORE_MODULE_ID },
-    () =>
-      coreInterfaceBeta.ImplementInterface(moduleInterfaceBeta, {
-        ListModules: async () => manager.listModules(),
-        GetModuleInfo: async (moduleId: string) => {
-          const entry = manager.getModuleEntry(moduleId);
-          if (!entry) {
-            throw new Error(`Module not found: ${moduleId}`);
-          }
+  moduleInterfaceBeta.RunWithModuleContext({ module: CORE_MODULE_ID }, () =>
+    coreInterfaceBeta.ImplementInterface(moduleInterfaceBeta, {
+      ListModules: async () => manager.listModules(),
+      GetModuleInfo: async (moduleId: string) => {
+        const entry = manager.getModuleEntry(moduleId);
+        if (!entry) {
+          throw new Error(`Module not found: ${moduleId}`);
+        }
 
-          return {
-            source: entry.module.manifest.source,
-            config: entry.config.config,
-            disabledExports: [...(entry.config.disabledExports ?? new Set())],
-            importOverrides: exportImportOverrides(
-              entry.config.importOverrides,
-            ),
-            localPath: entry.module.manifest.folder,
-            status: getModuleStatus(entry.module),
-          };
-        },
-        LoadModule: async (
-          moduleId: string,
-          declaration: moduleInterfaceBeta.ModuleDefinition,
-          autostart = false,
-        ) => {
-          const source = toModuleSource(declaration.source);
-          const loaderContext = await loadContext();
-          const manifests = await loaderContext.registry.load(
-            loaderContext.projectFolder,
-            loaderContext.cache,
-            {
-              ...source,
-              id: moduleId,
-            },
-          );
+        return {
+          source: entry.module.manifest.source,
+          config: entry.config.config,
+          disabledExports: [...(entry.config.disabledExports ?? new Set())],
+          importOverrides: exportImportOverrides(entry.config.importOverrides),
+          localPath: entry.module.manifest.folder,
+          status: getModuleStatus(entry.module),
+        };
+      },
+      LoadModule: async (
+        moduleId: string,
+        declaration: moduleInterfaceBeta.ModuleDefinition,
+        autostart = false,
+      ) => {
+        const source = toModuleSource(declaration.source);
+        const loaderContext = await loadContext();
+        const manifests = await loaderContext.registry.load(
+          loaderContext.projectFolder,
+          loaderContext.cache,
+          {
+            ...source,
+            id: moduleId,
+          },
+        );
 
-          const moduleConfig: ModuleConfig = {
-            config: declaration.config,
-            disabledExports: new Set(declaration.disabledExports ?? []),
-            importOverrides: mapImportOverrides(declaration.importOverrides),
-          };
+        const moduleConfig: ModuleConfig = {
+          config: declaration.config,
+          disabledExports: new Set(declaration.disabledExports ?? []),
+          importOverrides: mapImportOverrides(declaration.importOverrides),
+        };
 
-          const created = manager.addModules(
-            manifests.map((manifest) => ({ manifest, config: moduleConfig })),
-          );
-          await manager.constructModules(created);
-          if (autostart) {
-            await manager.startModules(created);
-          }
-          return created.map(({ module }) => module.id);
-        },
-        StartModule: async (moduleId: string) => {
-          await manager.getModule(moduleId)?.start();
-        },
-        StopModule: async (moduleId: string) => {
-          await manager.getModule(moduleId)?.stop();
-        },
-        DestroyModule: async (moduleId: string) => {
-          await manager.getModule(moduleId)?.destroy();
-        },
-        ReloadModule: async (moduleId: string) => {
-          await reloadLoadedModuleFromSource(
-            manager,
-            await loadContext(),
-            moduleId,
-          );
-        },
-      }),
+        const created = manager.addModules(
+          manifests.map((manifest) => ({ manifest, config: moduleConfig })),
+        );
+        await manager.constructModules(created);
+        if (autostart) {
+          await manager.startModules(created);
+        }
+        return created.map(({ module }) => module.id);
+      },
+      StartModule: async (moduleId: string) => {
+        await manager.getModule(moduleId)?.start();
+      },
+      StopModule: async (moduleId: string) => {
+        await manager.getModule(moduleId)?.stop();
+      },
+      DestroyModule: async (moduleId: string) => {
+        await manager.getModule(moduleId)?.destroy();
+      },
+      ReloadModule: async (moduleId: string) => {
+        await reloadLoadedModuleFromSource(
+          manager,
+          await loadContext(),
+          moduleId,
+        );
+      },
+    }),
   );
 }
 
@@ -243,6 +241,7 @@ export function toModuleConfig(
     config: moduleConfig.config,
     disabledExports: new Set<string>(moduleConfig.disabledExports ?? []),
     importOverrides: buildModuleOverrides(moduleConfig.importOverrides),
+    exportPriority: new Map(Object.entries(moduleConfig.exportPriority ?? {})),
   };
 }
 
@@ -407,18 +406,28 @@ async function reloadLoadedModuleFromSource(
   }
 
   const previous = entry.module;
-  const manifest = await loadModuleManifestFromSource(
-    loaderContext,
-    previous.manifest.source,
+  const manifest = manager.placeModule(
     moduleId,
-    true,
+    await loadModuleManifestFromSource(
+      loaderContext,
+      previous.manifest.source,
+      moduleId,
+      true,
+    ),
   );
   const replacement = new Module(manifest);
-  ensureReloadedModuleId(replacement, moduleId);
+  try {
+    ensureReloadedModuleId(replacement, moduleId);
+    manager.checkReplacement(moduleId, replacement);
+  } catch (error) {
+    manager.discardPlacedModule(manifest);
+    throw error;
+  }
   const previousWasActive = previous.state === ModuleState.Active;
   try {
     await previous.destroy();
   } catch (error) {
+    manager.discardPlacedModule(manifest);
     const recoveryErrors = await recoverPreviousModule(
       previous,
       previousWasActive,

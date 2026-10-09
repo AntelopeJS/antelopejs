@@ -291,6 +291,37 @@ describe("ModuleManifest", () => {
     expect(rebuiltEntry.baseUrl).to.equal(entry.baseUrl);
     expect(rebuiltEntry.paths).to.deep.equal(entry.paths);
   });
+
+  it("moves a build entry's paths into an instance copy of its folder, and leaves outside paths alone", () => {
+    const manifest = ModuleManifest.fromBuildEntry({
+      folder: "/mod",
+      source: { type: "local" },
+      name: "mod",
+      version: "1.0.0",
+      main: "/mod/dist/index.js",
+      manifest: { name: "mod", version: "1.0.0" },
+      implements: ["@antelopejs/interface-database"],
+      baseUrl: "/mod/dist",
+      paths: [{ key: "@lib/", values: ["/mod/dist/lib/", "/shared/lib/"] }],
+      srcAliases: [{ alias: "@src", replace: "/mod/src" }],
+    });
+
+    const relocated = manifest.relocate("/copies/mod-2").serialize();
+
+    expect(relocated.folder).to.equal("/copies/mod-2");
+    expect(relocated.main).to.equal("/copies/mod-2/dist/index.js");
+    expect(relocated.baseUrl).to.equal("/copies/mod-2/dist");
+    expect(relocated.paths).to.deep.equal([
+      { key: "@lib/", values: ["/copies/mod-2/dist/lib/", "/shared/lib/"] },
+    ]);
+    expect(relocated.srcAliases).to.deep.equal([
+      { alias: "@src", replace: "/copies/mod-2/src" },
+    ]);
+    expect(relocated.implements).to.deep.equal([
+      "@antelopejs/interface-database",
+    ]);
+    expect(relocated.version).to.equal("1.0.0");
+  });
 });
 
 describe("resolveManifestEntryFile", () => {

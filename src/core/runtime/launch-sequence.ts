@@ -4,6 +4,7 @@ import type { ShutdownHandler, ShutdownManager } from "../shutdown";
 import { NodeFileSystem } from "../filesystem";
 import type { LaunchOptions } from "../../types";
 import { ModuleManager } from "../module-manager";
+import { INSTANCES_FOLDER } from "../module-isolation";
 import { terminalDisplay } from "../cli/output/tasks";
 import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
 import { readRefreshedBuildArtifact } from "./build-refresh";
@@ -125,6 +126,7 @@ export const prepareFromConfig: ProjectPreparer = async (
     },
     createEntries: async () =>
       buildModuleConfigs(normalizedConfig, await loadContext()),
+    instanceRoot: path.join(normalizedConfig.cacheFolder, INSTANCES_FOLDER),
   };
 };
 
@@ -148,6 +150,7 @@ function prepareFromBuiltArtifact(
     ),
     verify,
     createEntries: async () => mapArtifactModuleEntries(artifact),
+    instanceRoot: path.join(loaderConfig.cacheFolder, INSTANCES_FOLDER),
   };
 }
 
@@ -306,7 +309,10 @@ async function createModuleEntries(launch: ProjectLaunch): Promise<void> {
   launch.entries = await launch.project.createEntries();
 }
 
-function addModules({ manager, entries }: ProjectLaunch): void {
+function addModules({ manager, entries, project }: ProjectLaunch): void {
+  if (project.instanceRoot) {
+    manager.setInstanceRoot(project.instanceRoot);
+  }
   manager.addModules(entries);
   ensureGraphIsValid(manager);
 }

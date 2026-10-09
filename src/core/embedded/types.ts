@@ -12,6 +12,8 @@ export interface EmbeddedModuleConfig {
   config?: unknown;
   importOverrides?: ImportOverride[];
   disabledExports?: string[];
+  /** Priority of the module as the default provider, keyed by interface. */
+  exportPriority?: Record<string, number>;
 }
 
 export interface EmbeddedRuntimeOptions {

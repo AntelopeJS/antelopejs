@@ -287,7 +287,7 @@ describe("self-hosted interface packages", () => {
     }
   });
 
-  it("still rejects a registration routed to a provider that attached nothing", async function () {
+  it("holds a registration for the provider it is bound to, never handing it to another provider", async function () {
     this.timeout(20000);
     const folder = await createMisroutedProject();
     (global as Record<string, unknown>)[REGISTRATIONS_KEY] = [];
@@ -295,7 +295,7 @@ describe("self-hosted interface packages", () => {
     try {
       manager = await launch(folder);
       expect((global as Record<string, unknown>)[ROUTING_FAILURE_KEY]).to.equal(
-        "ERR_NO_PROVIDER",
+        undefined,
       );
       expect(registrations()).to.deep.equal([]);
     } finally {

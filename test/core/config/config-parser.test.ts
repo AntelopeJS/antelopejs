@@ -269,5 +269,36 @@ describe("ConfigParser", () => {
       ]);
       expect(result.mod.disabledExports).to.deep.equal([]);
     });
+
+    it("keeps an import override without a source, the declared connection to a self-hosted interface", () => {
+      const result = parser.expandModuleShorthand({
+        mod: {
+          version: "1.0.0",
+          importOverrides: [{ interface: "data-api", id: "client" }],
+        },
+      });
+
+      expect(result.mod.importOverrides).to.deep.equal([
+        { interface: "data-api", id: "client" },
+      ]);
+    });
+
+    it("reads a module's export priorities", () => {
+      const result = parser.expandModuleShorthand({
+        mongodb: { version: "1.0.0", exportPriority: { database: 1 } },
+      });
+
+      expect(result.mongodb.exportPriority).to.deep.equal({ database: 1 });
+    });
+
+    it("rejects an export priority that is not an integer", () => {
+      expect(() =>
+        parser.expandModuleShorthand({
+          mongodb: { version: "1.0.0", exportPriority: { database: 0.5 } },
+        }),
+      ).to.throw(
+        "Module 'mongodb' gives 'database' the export priority 0.5; priorities are integers.",
+      );
+    });
   });
 });

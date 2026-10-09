@@ -54,7 +54,7 @@
     "test:embedded": "pnpm build && ts-node test/embedded/run.ts"
   },
   "dependencies": {
-    "@antelopejs/interface-core": ">=0.1.1 <1.0.0",
+    "@antelopejs/interface-core": ">=0.2.0 <1.0.0",
     "@clack/prompts": "^1.8.1",
     "@types/proper-lockfile": "^4.1.4",
     "commander": "^13.1.0",

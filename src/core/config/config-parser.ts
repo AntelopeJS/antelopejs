@@ -13,6 +13,21 @@ export interface ExpandedModuleConfig {
   config: unknown;
   importOverrides: ImportOverride[];
   disabledExports: string[];
+  exportPriority?: Record<string, number>;
+}
+
+function readExportPriority(
+  name: string,
+  priorities: Record<string, number>,
+): Record<string, number> {
+  for (const [interfaceName, priority] of Object.entries(priorities)) {
+    if (!Number.isInteger(priority)) {
+      throw new Error(
+        `Module '${name}' gives '${interfaceName}' the export priority ${String(priority)}; priorities are integers.`,
+      );
+    }
+  }
+  return { ...priorities };
 }
 
 export class ConfigParser {
@@ -175,6 +190,12 @@ export class ConfigParser {
           importOverrides,
           disabledExports: config.disabledExports ?? [],
         };
+        if (config.exportPriority) {
+          result[name].exportPriority = readExportPriority(
+            name,
+            config.exportPriority,
+          );
+        }
       }
     }
 

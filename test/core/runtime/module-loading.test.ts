@@ -47,6 +47,11 @@ function createReloadHarness(): ReloadHarness {
   } as any;
   const manager = {
     getLoadedModuleEntry: sinon.stub().returns(entry),
+    placeModule: sinon
+      .stub()
+      .callsFake((_id: string, manifest: unknown) => manifest),
+    discardPlacedModule: sinon.stub(),
+    checkReplacement: sinon.stub(),
     unrequireModuleFiles: sinon.stub(),
     replaceLoadedModule: sinon
       .stub()
@@ -248,6 +253,11 @@ describe("runtime module-loading", () => {
   it("reloads watched modules and ignores unknown ones", async () => {
     const managerWithoutEntry = {
       getLoadedModuleEntry: sinon.stub().returns(undefined),
+      placeModule: sinon
+        .stub()
+        .callsFake((_id: string, manifest: unknown) => manifest),
+      discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
     } as any;
 
@@ -278,6 +288,11 @@ describe("runtime module-loading", () => {
     const refreshAssociationsStub = sinon.stub();
     const manager = {
       getLoadedModuleEntry: sinon.stub().returns(entry),
+      placeModule: sinon
+        .stub()
+        .callsFake((_id: string, manifest: unknown) => manifest),
+      discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
@@ -352,6 +367,11 @@ describe("runtime module-loading", () => {
     };
     const manager = {
       getLoadedModuleEntry: sinon.stub().returns(entry),
+      placeModule: sinon
+        .stub()
+        .callsFake((_id: string, manifest: unknown) => manifest),
+      discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: sinon.stub().returns(entry),
       refreshAssociations: sinon.stub(),
@@ -402,6 +422,11 @@ describe("runtime module-loading", () => {
     );
     const manager = {
       getLoadedModuleEntry: sinon.stub().returns(entry),
+      placeModule: sinon
+        .stub()
+        .callsFake((_id: string, manifest: unknown) => manifest),
+      discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: sinon.stub().returns(entry),
       refreshAssociations: sinon.stub(),
@@ -447,6 +472,11 @@ describe("runtime module-loading", () => {
 
     const manager = {
       getLoadedModuleEntry: sinon.stub().returns(entry),
+      placeModule: sinon
+        .stub()
+        .callsFake((_id: string, manifest: unknown) => manifest),
+      discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: sinon.stub(),
       refreshAssociations: sinon.stub(),
@@ -547,6 +577,11 @@ describe("runtime module-loading", () => {
     const refreshAssociationsStub = sinon.stub();
     const manager = {
       getLoadedModuleEntry: sinon.stub().returns(entry),
+      placeModule: sinon
+        .stub()
+        .callsFake((_id: string, manifest: unknown) => manifest),
+      discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       unrequireModuleFiles: sinon.stub(),
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
@@ -896,6 +931,11 @@ describe("runtime module-loading", () => {
       listModules: listModulesStub,
       getModuleEntry: getModuleEntryStub,
       getLoadedModuleEntry: getLoadedModuleEntryStub,
+      placeModule: sinon
+        .stub()
+        .callsFake((_id: string, manifest: unknown) => manifest),
+      discardPlacedModule: sinon.stub(),
+      checkReplacement: sinon.stub(),
       addModules: addModulesStub,
       constructModules: constructModulesStub,
       startModules: startModulesStub,

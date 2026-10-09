@@ -2,6 +2,7 @@ import path from "node:path";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
 
 import { NodeFileSystem } from "../filesystem";
+import { INSTANCES_FOLDER } from "../module-isolation";
 import { ModuleManifest } from "../module-manifest";
 import { resolvePackage } from "../resolution/package-resolution";
 import { memoizeLoaderContext } from "../runtime/launch-sequence";
@@ -55,6 +56,7 @@ function buildEntryConfig(
     config: moduleConfig.config,
     importOverrides: buildModuleOverrides(moduleConfig.importOverrides),
     disabledExports: new Set(moduleConfig.disabledExports ?? []),
+    exportPriority: new Map(Object.entries(moduleConfig.exportPriority ?? {})),
   };
 }
 
@@ -117,21 +119,17 @@ export function prepareEmbedded(
 ): ProjectPreparer {
   return async () => {
     const fs = new NodeFileSystem();
+    const cacheFolder = path.join(projectFolder, ...EMBEDDED_CACHE_SEGMENTS);
     return {
       fs,
       dev: false,
       logging: options.logging,
       loadContext: memoizeLoaderContext(() =>
-        createLoaderContext(
-          {
-            projectFolder,
-            cacheFolder: path.join(projectFolder, ...EMBEDDED_CACHE_SEGMENTS),
-          },
-          fs,
-        ),
+        createLoaderContext({ projectFolder, cacheFolder }, fs),
       ),
       verify: async () => {},
       createEntries: () => createEmbeddedEntries(options, projectFolder, fs),
+      instanceRoot: path.join(cacheFolder, INSTANCES_FOLDER),
     };
   };
 }

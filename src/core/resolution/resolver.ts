@@ -1,17 +1,8 @@
-import { types as utilTypes } from "node:util";
+import path from "node:path";
+import { realpathSync } from "node:fs";
+import { ReleaseOwner } from "@antelopejs/interface-core/modules";
 import {
-  AsyncProxy,
-  EventProxy,
-  GetInterfaceProxyIdentity,
-  IsInterfaceProxy,
-  RegisteringProxy,
-} from "@antelopejs/interface-core";
-import {
-  captureModuleContext,
   getModuleContext,
-  internal,
-  type ModuleExecutionContext,
-  runWithCapturedModuleContext,
   runWithModuleContext,
 } from "@antelopejs/interface-core/internal";
 
@@ -19,7 +10,12 @@ import type { PathMapper } from "./path-mapper";
 import { ObservableMap } from "./observable-map";
 import { resolvePackage } from "./package-resolution";
 import type { ModuleManifest } from "../module-manifest";
+import type { BindingGraph } from "./binding-graph-types";
 import { PathOwnerIndex, type PathOwnerRoot } from "./path-owner-index";
+import {
+  type CanonicalPackage,
+  InterfaceInstances,
+} from "./interface-instances";
 
 export interface ModuleRef {
   id: string;
@@ -31,255 +27,121 @@ interface ResolverParent {
 }
 
 export interface ResolveResult {
+  /** What Node's own resolver is asked for. */
   resolvedPath: string;
+  /** Folder Node's resolver resolves `resolvedPath` from, instead of the importer's. */
   resolveFrom?: string;
-  bindExports?: boolean;
-  /**
-   * The importer is itself a file of an interface package, so the bound
-   * exports are kept by a file instance shared by every consumer that
-   * outlives each of their generations. Such a facade owns no consumer
-   * context: it adopts the caller's context at call time.
-   */
-  sharedExports?: boolean;
-  interfaceName?: string;
-  provider?: string;
+  /** Interface instance the resolved file is moved into. */
+  instance?: string;
 }
 
-interface ExportBinding {
-  bindExports: boolean;
-  sharedExports: boolean;
+interface FileOwner {
+  module?: ModuleRef;
+  instance?: string;
 }
 
-interface InterfacePackageRequest {
-  packageName: string;
-  result: ResolveResult;
-}
-
-interface ProxyReference {
-  identity: string;
-  proxy: object;
-}
-
-interface ProxyOwner {
-  interfaceName: string;
-  proxies: WeakSet<object>;
-}
-
-interface BoundMember {
-  bound: unknown;
-  source: unknown;
+interface ConnectionRequest {
+  index: number;
+  request: string;
 }
 
 const CORE_PKG = "@antelopejs/interface-core";
 const CORE_PACKAGE = resolvePackage(CORE_PKG, __dirname);
 const CORE_RESOLVE_FROM = CORE_PACKAGE?.root ?? __dirname;
 const CORE_ENTRY = CORE_PACKAGE?.entry ?? CORE_PKG;
-const SHARED_INTERFACE_OWNER_SUFFIX = "#shared";
-const CLASS_PREFIX = "class ";
-const PROXY_ATTACHMENT_METHODS = new Set<PropertyKey>([
-  "detach",
-  "onCall",
-  "onHandlers",
-  "onRegister",
-  "onUnregister",
-]);
-let nextResolverIdentity = 1;
+const CONNECTION_PREFIX = "@ajs.connection/";
+const INSTANCE_OWNER_SUFFIX = "#instance";
+const RELATIVE_OR_ABSOLUTE = /^(\.{1,2}(\/|\\|$)|\/|[A-Za-z]:[\\/])/;
 
-type CapturedModuleContext = NonNullable<
-  ReturnType<typeof captureModuleContext>
->;
-type BindableFunction = (...args: any[]) => unknown;
-type InterfaceProxyKind = Parameters<typeof IsInterfaceProxy>[1];
-
-function isRecognizedInterfaceProxy(
-  value: unknown,
-  kind?: InterfaceProxyKind,
-): boolean {
-  if (utilTypes.isProxy(value)) {
-    return false;
-  }
-  if (
-    value instanceof AsyncProxy ||
-    value instanceof EventProxy ||
-    value instanceof RegisteringProxy
-  ) {
-    return IsInterfaceProxy(value, kind);
-  }
-  return isBrandedInterfaceProxy(value, kind);
-}
-
-function isBrandedInterfaceProxy(
-  value: unknown,
-  kind?: InterfaceProxyKind,
-): boolean {
+function realFolder(folder: string): string {
   try {
-    return IsInterfaceProxy(value, kind);
+    return realpathSync.native(folder);
   } catch {
-    return false;
+    return path.resolve(folder);
   }
 }
 
-function isPlainContainer(value: object): boolean {
-  if (Array.isArray(value)) {
-    return true;
+function parseConnection(request: string): ConnectionRequest | undefined {
+  if (!request.startsWith(CONNECTION_PREFIX)) {
+    return undefined;
   }
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
-}
-
-function getProxyCandidate(candidate: object): unknown {
-  if (typeof candidate === "function" && "proxy" in candidate) {
-    return candidate.proxy;
+  const rest = request.slice(CONNECTION_PREFIX.length);
+  const separator = rest.indexOf("/");
+  const index = Number(rest.slice(0, separator));
+  if (separator < 0 || !Number.isInteger(index)) {
+    throw new Error(`Malformed connection path '${request}'.`);
   }
-  return candidate;
+  return { index, request: rest.slice(separator + 1) };
 }
 
-function collectProxyReferences(value: unknown): ProxyReference[] {
-  const references: ProxyReference[] = [];
-  const visited = new WeakSet<object>();
-  const visit = (candidate: unknown): void => {
-    if (
-      (typeof candidate !== "object" && typeof candidate !== "function") ||
-      candidate === null
-    ) {
-      return;
-    }
-    if (utilTypes.isProxy(candidate)) {
-      return;
-    }
-    const proxy = getProxyCandidate(candidate);
-    if (isRecognizedInterfaceProxy(proxy)) {
-      const identity = GetInterfaceProxyIdentity(proxy);
-      if (identity) {
-        references.push({ identity, proxy: proxy as object });
-      }
-      return;
-    }
-    if (visited.has(candidate)) {
-      return;
-    }
-    visited.add(candidate);
-    Object.values(candidate).forEach(visit);
-  };
-  visit(value);
-  return references;
+/** The path a connection's interface instance is required from. */
+export function connectionPath(index: number, packageName: string): string {
+  return `${CONNECTION_PREFIX}${index}/${packageName}`;
 }
 
+/**
+ * Resolves the requests modules and interface packages make.
+ *
+ * A request for an interface package resolves into the interface instance
+ * the importer's bindings name: every importer bound the same way reaches the
+ * same files, and each instance's proxies belong to a single provider.
+ */
 export class Resolver {
   public readonly moduleByFolder: Map<string, ModuleRef> = new ObservableMap(
-    () => this.localModuleOwners.invalidate(),
+    () => this.owners.invalidate(),
   );
   public readonly modulesById = new Map<string, ModuleRef>();
   public readonly interfacePackages: Map<string, string> = new ObservableMap(
-    () => this.interfacePackageOwners.invalidate(),
+    () => this.owners.invalidate(),
   );
   public readonly interfacePackageEntries = new Map<string, string>();
   public readonly interfacePackageResolveFrom = new Map<string, string>();
   public readonly lifecycleInterfacePackages = new Set<string>();
   public readonly stubbedInterfacePackages = new Set<string>();
   public stubModulePath?: string;
-  private readonly resolverIdentity = nextResolverIdentity++;
-  private readonly localModuleOwners = new PathOwnerIndex(() =>
-    this.listModuleRoots(),
+  public readonly instances = new InterfaceInstances(
+    () => this.owners.invalidate(),
+    (instance) => this.retireInstance(instance),
   );
-  private readonly interfacePackageOwners = new PathOwnerIndex(() =>
-    this.listInterfacePackageRoots(),
+  private bindings?: BindingGraph;
+  private readonly instanceFiles = new Map<string, string>();
+  private readonly owners = new PathOwnerIndex<FileOwner>(() =>
+    this.listOwnerRoots(),
   );
-  private readonly interfaceGraphFiles = new Map<string, string>();
-  private readonly interfaceDependencies = new Map<string, Set<string>>();
-  private readonly boundValues = new WeakMap<
-    object,
-    WeakMap<CapturedModuleContext, unknown>
-  >();
-  private readonly routedEvents = new Map<string, EventProxy>();
-  private readonly proxyOwners = new Map<string, ProxyOwner>();
-  private readonly providerlessContexts = new WeakMap<
-    CapturedModuleContext,
-    Map<string, CapturedModuleContext>
-  >();
-  /**
-   * Shared interface contexts, keyed by the importing context, then by
-   * interface name. Every importer gets its own: a shared context carries the
-   * importer's module and routes, and its owner is what orphaned facade work
-   * falls back to. That keying never leaks into what a package registers while
-   * it is evaluated: the body context of every one of them carries the same
-   * constant `<interface>#shared` owner, whichever importer loads it first.
-   */
-  private readonly sharedInterfaceContexts = new WeakMap<
-    CapturedModuleContext,
-    Map<string, CapturedModuleContext>
-  >();
-  /**
-   * Context an interface package's own files are evaluated in, for each shared
-   * interface context, and the way back from it.
-   */
-  private readonly interfaceBodyContexts = new WeakMap<
-    CapturedModuleContext,
-    CapturedModuleContext
-  >();
-  private readonly interfaceBodySharedContexts = new WeakMap<
-    CapturedModuleContext,
-    CapturedModuleContext
-  >();
-  /**
-   * Shared facade contexts, mapped to the interface package whose exports they
-   * were bound for. The interface name is what tells a facade which provider
-   * its own proxies resolve to, whoever the caller is.
-   */
-  private readonly sharedContexts = new WeakMap<
-    CapturedModuleContext,
-    string
-  >();
-  private readonly sharedStubInterfaces = new WeakMap<
-    CapturedModuleContext,
-    string
-  >();
-  private readonly adoptedContexts = new WeakMap<
-    CapturedModuleContext,
-    WeakMap<CapturedModuleContext, CapturedModuleContext>
-  >();
-  private readonly stubbedContexts = new WeakSet<CapturedModuleContext>();
 
   constructor(private pathMapper: PathMapper) {}
 
+  /** Adopts the bindings computed for the loaded modules. */
+  setBindings(graph: BindingGraph): void {
+    this.bindings = graph;
+    this.instances.update(graph, this.canonicalPackages(), this.fixedRoots());
+  }
+
   resolve(request: string, parent?: ResolverParent): ResolveResult | undefined {
-    const parentModule = this.resolveLocalModule(parent?.filename);
-    if (parentModule) {
-      const mapped = this.pathMapper.resolve(request, parentModule.manifest);
+    const fileOwner = parent?.filename
+      ? this.owners.findOwner(parent.filename)
+      : undefined;
+    if (fileOwner?.module) {
+      const mapped = this.pathMapper.resolve(
+        request,
+        fileOwner.module.manifest,
+      );
       if (mapped) {
         return { resolvedPath: mapped };
       }
     }
-    const coreResult = this.resolveInterfaceCore(request);
-    if (coreResult) {
-      return this.bindResultProvider(
-        coreResult,
-        CORE_PKG,
-        { bindExports: false, sharedExports: false },
-        parent,
-        parentModule,
-      );
+    return (
+      this.resolveInterfaceCore(request) ??
+      this.resolveInterfaceRequest(request, fileOwner ?? this.contextOwner())
+    );
+  }
+
+  /** Moves a file Node resolved in a package's canonical copy into the instance `result` names. */
+  locate(result: ResolveResult, resolvedPath: string): string {
+    if (!result.instance) {
+      return resolvedPath;
     }
-    const interfaceRequest = this.resolveInterfacePackage(request);
-    if (interfaceRequest) {
-      this.trackInterfaceDependency(
-        parent?.filename,
-        interfaceRequest.packageName,
-      );
-      return this.bindResultProvider(
-        interfaceRequest.result,
-        interfaceRequest.packageName,
-        {
-          bindExports:
-            this.interfaceGraphFiles.get(parent?.filename ?? "") !==
-            interfaceRequest.packageName,
-          sharedExports: this.isInterfacePackageFile(parent?.filename),
-        },
-        parent,
-        parentModule,
-      );
-    }
-    return this.resolveRelativeInterface(request, parent, parentModule);
+    return this.instances.locate(result.instance, resolvedPath) ?? resolvedPath;
   }
 
   ownsResolutionContext(_request: string, parent?: ResolverParent): boolean {
@@ -287,214 +149,173 @@ export class Resolver {
     if (contextModule && this.modulesById.has(contextModule)) {
       return true;
     }
-    return Boolean(this.resolveLocalModule(parent?.filename));
-  }
-
-  requiresPreResolution(request: string, parent?: ResolverParent): boolean {
-    return Boolean(this.findRequestedInterface(request, parent?.filename));
-  }
-
-  bindProviderRoutes(result: ResolveResult, value: unknown): unknown {
-    const references = collectProxyReferences(value);
-    if (result.interfaceName) {
-      this.registerProxyOwners(result.interfaceName, references);
-    }
-    const context = captureModuleContext();
-    if (!context?.providerRoutes) {
-      return value;
-    }
-    this.replayKnownRoutes(context);
-    if (!result.provider) {
-      return this.bindStubbedInterfaceValue(result, value, context);
-    }
-    this.bindImportedRoutes(context, result, references);
-    if (!result.bindExports) {
-      return value;
-    }
-    return this.bindInterfaceValue(
-      value,
-      this.getBindingContext(result, context),
-    );
+    return Boolean(this.owners.findOwner(parent?.filename ?? ""));
   }
 
   /**
-   * Runs the module body of an interface package file in the context its own
-   * files are shared under.
-   *
-   * A self-hosted interface attaches its implementation at module scope, and
-   * the runtime reads that attachment route from the ambient context. Loading
-   * the file in the importing module's context would route the attachment to
-   * whichever module imported the interface first, while every registration
-   * later routes to the interface's declared provider.
-   *
-   * For the same reason, what the file registers or attaches while it is
-   * evaluated is owned by the package, not by the importer's generation: the
-   * file is evaluated once per process, so a registration released with that
-   * generation would never be made again.
+   * The interface instance whose files a request loads: the instance an
+   * interface request resolves into, or, for a relative request made by an
+   * instance's own file, that file's instance.
    */
-  runInInterfaceContext<T>(result: ResolveResult, load: () => T): T {
-    const context = captureModuleContext();
-    if (!context || !this.isSharedInterfaceLoad(result)) {
+  instanceToLoad(request: string, parent?: ResolverParent): string | undefined {
+    const resolved = this.resolve(request, parent)?.instance;
+    if (resolved) {
+      return resolved;
+    }
+    if (!RELATIVE_OR_ABSOLUTE.test(request) || !parent?.filename) {
+      return undefined;
+    }
+    return (
+      this.instanceFiles.get(parent.filename) ??
+      this.owners.findOwner(parent.filename)?.instance
+    );
+  }
+
+  /** Records that `filePath` was loaded as part of the interface instance `instance`. */
+  recordInstanceFile(instance: string, filePath: string): void {
+    this.instanceFiles.set(filePath, instance);
+  }
+
+  /**
+   * Evaluates an interface instance's files in a context the instance owns,
+   * so what they register or attach while evaluated lives as long as the
+   * instance, not as long as the module that happened to import it first.
+   * An interface package that is its own provider module evaluates in that
+   * module's context instead.
+   */
+  runInInstance<T>(instance: string, load: () => T): T {
+    const descriptor = this.instances.describe(instance);
+    if (
+      !descriptor ||
+      this.lifecycleInterfacePackages.has(descriptor.interfaceName)
+    ) {
       return load();
     }
-    return runWithCapturedModuleContext(
-      this.getInterfaceBodyContext(result, context),
+    const module =
+      getModuleContext()?.module ??
+      descriptor.provider ??
+      descriptor.interfaceName;
+    return runWithModuleContext(
+      { module, owner: `${instance}${INSTANCE_OWNER_SUFFIX}` },
       load,
     );
   }
 
-  private isSharedInterfaceLoad(result: ResolveResult): boolean {
-    return Boolean(
-      result.interfaceName &&
-      result.interfaceName !== CORE_PKG &&
-      result.provider &&
-      !this.lifecycleInterfacePackages.has(result.interfaceName),
-    );
-  }
-
-  trackInterfaceFile(result: ResolveResult, resolvedPath: string): void {
-    if (result.interfaceName) {
-      this.interfaceGraphFiles.set(resolvedPath, result.interfaceName);
-    }
-  }
-
-  getInterfaceEntryToPrime(
-    result: ResolveResult,
-    resolvedPath: string,
-  ): ResolveResult | undefined {
-    const interfaceName = result.interfaceName;
-    if (!interfaceName || this.lifecycleInterfacePackages.has(interfaceName)) {
+  /**
+   * Evaluates the entry of an interface instance, if it is not loaded yet,
+   * and returns the root its files live in.
+   */
+  loadInstance(instance: string): string | undefined {
+    const root = this.instances.rootOf(instance);
+    const entry = this.instanceEntry(instance);
+    if (!root || !entry) {
       return undefined;
     }
-    const entry = this.interfacePackageEntries.get(interfaceName);
-    if (!entry || entry === resolvedPath || require.cache[entry]) {
-      return undefined;
-    }
-    return {
-      ...result,
-      resolvedPath: entry,
-      resolveFrom: undefined,
-      bindExports: false,
-    };
+    this.runInInstance(instance, () => require(entry));
+    return root;
   }
 
   /**
-   * Root directory of the interface package whose own import graph brought
-   * `filePath` in, or undefined when the file is not part of one.
-   *
-   * Callers need the root, not just a yes/no: whether a cached file may
-   * survive a module reload depends on where the interface package sits
-   * relative to the module being reloaded.
+   * The entry an interface request must evaluate before the file it asked
+   * for: a subpath of an interface package is loaded through the package's
+   * declaration root, so a cycle between the two starts from the root.
    */
-  getInterfaceGraphRoot(filePath: string): string | undefined {
-    const packageName = this.interfaceGraphFiles.get(filePath);
-    if (!packageName) {
+  entryToPrime(
+    request: string,
+    parent: ResolverParent | undefined,
+    resolvedPath: string,
+  ): string | undefined {
+    const instance = this.resolve(request, parent)?.instance;
+    const descriptor = instance && this.instances.describe(instance);
+    if (
+      !instance ||
+      !descriptor ||
+      this.lifecycleInterfacePackages.has(descriptor.interfaceName)
+    ) {
       return undefined;
     }
-    if (packageName === CORE_PKG) {
-      return CORE_PACKAGE?.root;
+    const entry = this.instanceEntry(instance);
+    return entry && entry !== resolvedPath && !require.cache[entry]
+      ? entry
+      : undefined;
+  }
+
+  private instanceEntry(instance: string): string | undefined {
+    const name = this.instances.describe(instance)?.interfaceName;
+    const canonicalEntry = name
+      ? (this.interfacePackageEntries.get(name) ??
+        this.interfacePackages.get(name))
+      : undefined;
+    if (!canonicalEntry) {
+      return undefined;
     }
-    return this.interfacePackages.get(packageName);
-  }
-
-  buildProviderRoutes(moduleId: string): Readonly<Record<string, string>> {
-    const routes: Record<string, string> = {};
-    this.bindKnownRoutes(moduleId, routes);
-    return routes;
-  }
-
-  clearCache(): void {
-    for (const event of this.routedEvents.values()) {
-      internal.knownEvents.delete(event);
-      const identity = GetInterfaceProxyIdentity(event);
-      if (identity) {
-        internal.proxyStates.delete(identity);
-      }
-    }
-    this.routedEvents.clear();
-    this.interfaceGraphFiles.clear();
-    this.interfaceDependencies.clear();
-    this.proxyOwners.clear();
-    this.localModuleOwners.invalidate();
-    this.interfacePackageOwners.invalidate();
-  }
-
-  private registerProxyOwners(
-    interfaceName: string,
-    references: ProxyReference[],
-  ): void {
-    for (const { identity, proxy } of references) {
-      const owner = this.proxyOwners.get(identity);
-      if (!owner) {
-        this.proxyOwners.set(identity, {
-          interfaceName,
-          proxies: new WeakSet([proxy]),
-        });
-        continue;
-      }
-      if (owner.interfaceName !== interfaceName && !owner.proxies.has(proxy)) {
-        throw new Error(
-          `Interface packages '${owner.interfaceName}' and '${interfaceName}' declare distinct proxies with identity '${identity}'. Use unique interface proxy identities.`,
-        );
-      }
-      owner.proxies.add(proxy);
-    }
-  }
-
-  private bindImportedRoutes(
-    context: CapturedModuleContext,
-    result: ResolveResult,
-    references: ProxyReference[],
-  ): void {
-    for (const { identity } of references) {
-      const owner = this.proxyOwners.get(identity)?.interfaceName;
-      if (result.interfaceName && owner !== result.interfaceName) {
-        continue;
-      }
-      this.bindRoute(
-        context.module,
-        context.providerRoutes as Record<string, string>,
-        identity,
-        result.provider as string,
-      );
-    }
-  }
-
-  private replayKnownRoutes(context: CapturedModuleContext): void {
-    this.bindKnownRoutes(
-      context.module,
-      context.providerRoutes as Record<string, string>,
+    return (
+      this.instances.locate(instance, realFolder(canonicalEntry)) ??
+      canonicalEntry
     );
   }
 
-  private bindKnownRoutes(
-    moduleId: string,
-    routes: Record<string, string>,
-  ): void {
-    const module = this.modulesById.get(moduleId);
-    if (!module) {
-      return;
-    }
-    for (const [identity, { interfaceName }] of this.proxyOwners) {
-      for (const provider of this.resolveProviders(module, interfaceName)) {
-        this.bindRoute(moduleId, routes, identity, provider);
-      }
-    }
+  /**
+   * Root of the interface instance a file was loaded as part of, if any.
+   * Callers need the root, not just a yes/no: whether a cached file may
+   * survive a module reload depends on where the instance sits relative to
+   * the module being reloaded.
+   */
+  getInterfaceGraphRoot(filePath: string): string | undefined {
+    const instance =
+      this.instanceFiles.get(filePath) ??
+      this.owners.findOwner(filePath)?.instance;
+    return instance ? this.instances.rootOf(instance) : undefined;
   }
 
-  private bindRoute(
-    moduleId: string,
-    routes: Record<string, string>,
-    identity: string,
-    provider: string,
-  ): void {
-    const current = routes[identity];
-    if (current && current !== provider) {
-      throw new Error(
-        `Module '${moduleId}' resolves proxy '${identity}' to both '${current}' and '${provider}'. Use unique interface proxy identities.`,
-      );
+  /** Deletes every interface instance copy. */
+  releaseInstances(): void {
+    this.instances.release();
+  }
+
+  clearCache(): void {
+    this.instanceFiles.clear();
+    this.owners.invalidate();
+  }
+
+  /**
+   * Releases what a disposed instance's own body registered and attached, and
+   * forgets the files recorded for it.
+   */
+  private retireInstance(instance: string): void {
+    for (const [file, owner] of this.instanceFiles) {
+      if (owner === instance) {
+        this.instanceFiles.delete(file);
+      }
     }
-    routes[identity] = provider;
+    ReleaseOwner(`${instance}${INSTANCE_OWNER_SUFFIX}`);
+  }
+
+  private canonicalPackages(): Map<string, CanonicalPackage> {
+    const canonical = new Map<string, CanonicalPackage>();
+    for (const [name, root] of this.interfacePackages) {
+      if (name !== CORE_PKG) {
+        canonical.set(name, {
+          root: path.resolve(root),
+          realRoot: realFolder(root),
+        });
+      }
+    }
+    return canonical;
+  }
+
+  private fixedRoots(): Map<string, string> {
+    const roots = new Map<string, string>();
+    for (const name of this.lifecycleInterfacePackages) {
+      for (const key of this.instances.keysOf(name)) {
+        const provider = this.instances.describe(key)?.provider;
+        const module = provider ? this.modulesById.get(provider) : undefined;
+        if (module?.manifest.manifest.name === name) {
+          roots.set(key, realFolder(module.manifest.folder));
+        }
+      }
+    }
+    return roots;
   }
 
   private resolveInterfaceCore(request: string): ResolveResult | undefined {
@@ -507,819 +328,135 @@ export class Resolver {
     return undefined;
   }
 
-  private resolveInterfacePackage(
+  private resolveInterfaceRequest(
     request: string,
-  ): InterfacePackageRequest | undefined {
-    for (const [packageName, rootDir] of this.interfacePackages) {
-      if (request === packageName) {
-        return {
-          packageName,
-          result: {
-            resolvedPath:
-              this.interfacePackageEntries.get(packageName) ?? rootDir,
-          },
-        };
-      }
-      if (request.startsWith(`${packageName}/`)) {
-        return {
-          packageName,
-          result: {
-            resolvedPath: request,
-            resolveFrom:
-              this.interfacePackageResolveFrom.get(packageName) ?? rootDir,
-          },
-        };
-      }
-    }
-    return undefined;
-  }
-
-  private resolveRelativeInterface(
-    request: string,
-    parent: ResolverParent | undefined,
-    parentModule: ModuleRef | undefined,
+    owner: FileOwner | undefined,
   ): ResolveResult | undefined {
-    if (!request.startsWith(".") || !parent?.filename) {
-      return undefined;
-    }
-    const packageName = this.findInterfacePackageByPath(parent.filename);
+    const connection = parseConnection(request);
+    const target = connection?.request ?? request;
+    const packageName = this.findInterfacePackage(target);
     if (!packageName) {
+      if (connection) {
+        throw new Error(
+          `Connection path '${request}' does not name an interface package.`,
+        );
+      }
       return undefined;
     }
-    return this.bindResultProvider(
-      { resolvedPath: request },
-      packageName,
-      {
-        bindExports: !this.interfaceGraphFiles.has(parent.filename),
-        sharedExports: true,
-      },
-      parent,
-      parentModule,
-    );
+    const instance = connection
+      ? this.connectionInstance(owner, packageName, connection.index)
+      : this.instanceFor(owner, packageName);
+    return { ...this.canonicalRequest(packageName, target), instance };
   }
 
-  private bindResultProvider(
-    result: ResolveResult,
+  private canonicalRequest(
     packageName: string,
-    binding: ExportBinding,
-    parent: ResolverParent | undefined,
-    parentModule: ModuleRef | undefined,
+    request: string,
   ): ResolveResult {
-    const provider = this.resolveRequestProvider(
-      packageName,
-      parent?.filename,
-      parentModule,
-    );
+    const root = this.interfacePackages.get(packageName)!;
+    if (request === packageName) {
+      return {
+        resolvedPath: this.interfacePackageEntries.get(packageName) ?? root,
+      };
+    }
     return {
-      ...result,
-      bindExports: binding.bindExports,
-      sharedExports: binding.sharedExports,
-      interfaceName: packageName,
-      provider,
+      resolvedPath: request,
+      resolveFrom: this.interfacePackageResolveFrom.get(packageName) ?? root,
     };
   }
 
-  /**
-   * Whether `filename` belongs to an interface package, either because the
-   * resolver brought it in through an interface import graph or because it
-   * sits inside an interface package root.
-   */
-  private isInterfacePackageFile(filename: string | undefined): boolean {
-    if (!filename) {
-      return false;
-    }
-    return (
-      this.interfaceGraphFiles.has(filename) ||
-      this.findInterfacePackageByPath(filename) !== undefined
-    );
-  }
-
-  private resolveProvider(
-    module: ModuleRef,
-    packageName: string,
-  ): string | undefined {
-    if (module.manifest.implements?.includes(packageName)) {
-      return module.id;
-    }
-    return internal.interfaceConnections[module.id]?.[packageName]?.find(
-      ({ selected }) => selected,
-    )?.provider;
-  }
-
-  private resolveRequestProvider(
-    packageName: string,
-    parentFilename: string | undefined,
-    parentModule: ModuleRef | undefined,
-  ): string | undefined {
-    const contextModule = getModuleContext()?.module;
-    const consumer = contextModule
-      ? this.modulesById.get(contextModule)
-      : undefined;
-    const direct = consumer
-      ? this.resolveProvider(consumer, packageName)
-      : undefined;
-    if (direct) {
-      return direct;
-    }
-    const parentInterface = parentFilename
-      ? this.interfaceGraphFiles.get(parentFilename)
-      : undefined;
-    const inherited =
-      consumer && parentInterface
-        ? this.resolveChildProvider(consumer, parentInterface, packageName)
-        : undefined;
-    return (
-      inherited ??
-      (parentModule
-        ? this.resolveProvider(parentModule, packageName)
-        : undefined)
-    );
-  }
-
-  private resolveChildProvider(
-    consumer: ModuleRef,
-    parentInterface: string,
-    childInterface: string,
-  ): string | undefined {
-    for (const provider of this.resolveProviders(consumer, parentInterface)) {
-      const providerModule = this.modulesById.get(provider);
-      const childProvider = providerModule
-        ? this.resolveProvider(providerModule, childInterface)
-        : undefined;
-      if (childProvider) {
-        return childProvider;
-      }
-    }
-    return undefined;
-  }
-
-  private resolveProviders(
-    module: ModuleRef,
-    interfaceName: string,
-    visited = new Set<string>(),
-  ): Set<string> {
-    const direct = this.resolveProvider(module, interfaceName);
-    if (direct) {
-      return new Set([direct]);
-    }
-    if (visited.has(interfaceName)) {
-      return new Set();
-    }
-    visited.add(interfaceName);
-    const providers = new Set<string>();
-    for (const [parent, children] of this.interfaceDependencies) {
-      if (!children.has(interfaceName)) {
-        continue;
-      }
-      this.collectChildProviders(
-        module,
-        parent,
-        interfaceName,
-        visited,
-        providers,
-      );
-    }
-    return providers;
-  }
-
-  private collectChildProviders(
-    module: ModuleRef,
-    parentInterface: string,
-    childInterface: string,
-    visited: Set<string>,
-    providers: Set<string>,
-  ): void {
-    for (const parentProvider of this.resolveProviders(
-      module,
-      parentInterface,
-      new Set(visited),
-    )) {
-      const providerModule = this.modulesById.get(parentProvider);
-      const childProvider = providerModule
-        ? this.resolveProvider(providerModule, childInterface)
-        : undefined;
-      if (childProvider) {
-        providers.add(childProvider);
-      }
-    }
-  }
-
-  private trackInterfaceDependency(
-    parentFilename: string | undefined,
-    childInterface: string,
-  ): void {
-    const parentInterface = parentFilename
-      ? this.interfaceGraphFiles.get(parentFilename)
-      : undefined;
-    if (!parentInterface || parentInterface === childInterface) {
-      return;
-    }
-    const dependencies =
-      this.interfaceDependencies.get(parentInterface) ?? new Set<string>();
-    dependencies.add(childInterface);
-    this.interfaceDependencies.set(parentInterface, dependencies);
-  }
-
-  private findRequestedInterface(
-    request: string,
-    parentFilename?: string,
-  ): string | undefined {
-    if (request === CORE_PKG || request.startsWith(`${CORE_PKG}/`)) {
-      return CORE_PKG;
-    }
-    const direct = this.findInterfacePackageRequest(request);
-    if (direct) {
-      return direct;
-    }
-    return request.startsWith(".") && parentFilename
-      ? this.findInterfacePackageByPath(parentFilename)
-      : undefined;
-  }
-
-  private findInterfacePackageRequest(request: string): string | undefined {
+  private findInterfacePackage(request: string): string | undefined {
     return [...this.interfacePackages.keys()].find(
       (packageName) =>
-        request === packageName || request.startsWith(`${packageName}/`),
+        packageName !== CORE_PKG &&
+        (request === packageName || request.startsWith(`${packageName}/`)),
     );
   }
 
-  private findInterfacePackageByPath(fileName: string): string | undefined {
-    return this.interfacePackageOwners.findOwner(fileName);
+  private contextOwner(): FileOwner | undefined {
+    const contextModule = getModuleContext()?.module;
+    const module = contextModule
+      ? this.modulesById.get(contextModule)
+      : undefined;
+    return module ? { module } : undefined;
   }
 
-  private listInterfacePackageRoots(): PathOwnerRoot<string>[] {
-    const coreRoots = CORE_PACKAGE
-      ? [{ root: CORE_PACKAGE.root, owner: CORE_PKG }]
-      : [];
-    const packageRoots = [...this.interfacePackages].map(
-      ([packageName, root]) => ({ root, owner: packageName }),
-    );
-    return [...coreRoots, ...packageRoots];
+  private scopeOf(owner: FileOwner | undefined): ReadonlyMap<string, string> {
+    if (owner?.module) {
+      return this.bindings?.modules.get(owner.module.id)?.keys ?? new Map();
+    }
+    return owner?.instance ? this.instanceScope(owner.instance) : new Map();
   }
 
-  private bindInterfaceValue(
-    value: unknown,
-    context: CapturedModuleContext,
-  ): unknown {
-    if (isRecognizedInterfaceProxy(value, "event")) {
-      return this.getRoutedEvent(value, context);
+  private instanceScope(instance: string): ReadonlyMap<string, string> {
+    const descriptor = this.instances.describe(instance);
+    if (descriptor?.provider) {
+      return this.bindings?.modules.get(descriptor.provider)?.keys ?? new Map();
     }
-    if (
-      typeof value === "function" &&
-      this.isClass(value as BindableFunction)
-    ) {
-      return value;
-    }
-    if (!this.isBindableValue(value)) {
-      return value;
-    }
-    const cached = this.boundValues.get(value)?.get(context);
-    if (cached) {
-      return cached;
-    }
-    const bound =
-      typeof value === "function"
-        ? this.createFunctionFacade(value as BindableFunction, context)
-        : this.createObjectFacade(value, context);
-    const contexts =
-      this.boundValues.get(value) ??
-      new WeakMap<CapturedModuleContext, unknown>();
-    contexts.set(context, bound);
-    this.boundValues.set(value, contexts);
-    return bound;
-  }
-
-  /**
-   * Binds a value that merely travels through a facade: an argument of a
-   * facade call, or a member read off a facaded object.
-   *
-   * Only values that need the facade machinery get one: functions, whose body
-   * must run in the right module context, interface proxies, which must be
-   * routed, and containers of those. Plain data crosses untouched, so `===`,
-   * `Map`/`Set` keys and caller-visible mutation keep working across a module
-   * boundary the way they do inside one.
-   */
-  private bindPassedValue(
-    value: unknown,
-    context: CapturedModuleContext,
-  ): unknown {
-    return this.needsFacade(value)
-      ? this.bindInterfaceValue(value, context)
-      : value;
-  }
-
-  /**
-   * Whether `value` is, or transitively holds, something a facade has to wrap:
-   * a function or an interface proxy. The walk only descends into plain
-   * objects and arrays, the same shapes `isBindableValue` accepts, so it stops
-   * at every class instance.
-   */
-  private needsFacade(value: unknown, visited?: Set<object>): boolean {
-    if (typeof value === "function") {
-      return true;
-    }
-    if (
-      typeof value !== "object" ||
-      value === null ||
-      utilTypes.isProxy(value)
-    ) {
-      return false;
-    }
-    if (!isPlainContainer(value)) {
-      return isRecognizedInterfaceProxy(value);
-    }
-    return (
-      isBrandedInterfaceProxy(value) || this.holdsFacadeMember(value, visited)
-    );
-  }
-
-  private holdsFacadeMember(
-    container: object,
-    visited = new Set<object>(),
-  ): boolean {
-    if (visited.has(container)) {
-      return false;
-    }
-    visited.add(container);
-    for (const member of Object.values(container)) {
-      if (this.needsFacade(member, visited)) {
-        return true;
+    const scope = new Map<string, string>();
+    for (const key of descriptor?.dependencies ?? []) {
+      const dependency = this.bindings?.instances.get(key);
+      if (dependency) {
+        scope.set(dependency.interfaceName, key);
       }
     }
-    return false;
+    return scope;
   }
 
-  private bindStubbedInterfaceValue(
-    result: ResolveResult,
-    value: unknown,
-    context: CapturedModuleContext,
-  ): unknown {
-    if (
-      !result.interfaceName ||
-      !this.stubbedInterfacePackages.has(result.interfaceName)
-    ) {
-      return value;
+  private describeOwner(owner: FileOwner | undefined): string {
+    if (owner?.module) {
+      return `Module '${owner.module.id}'`;
     }
-    const providerless = this.getProviderlessContext(
-      this.getBindingContext(result, context),
-      result.interfaceName,
-    );
-    return this.bindInterfaceValue(value, providerless);
+    return owner?.instance
+      ? `Interface instance '${owner.instance}'`
+      : "Code outside any module";
   }
 
-  /**
-   * Context a set of interface exports is bound to.
-   *
-   * Exports imported by a module are owned by that module: its context is the
-   * right one, and dies with it. Exports imported by an interface package
-   * file are kept by a single shared instance that every consumer reaches and
-   * that survives their reloads, so no consumer may own them: they get a
-   * detached copy of the importing context, used only as a fallback for work
-   * that runs without any ambient context.
-   *
-   * That fallback keeps the importer's owner even when the exports are bound
-   * while a package body runs under its own owner: orphaned work must still
-   * fail once the generation that started it is gone.
-   */
-  private getBindingContext(
-    result: ResolveResult,
-    context: CapturedModuleContext,
-  ): CapturedModuleContext {
-    if (!result.sharedExports) {
-      return this.interfaceBodySharedContexts.get(context) ?? context;
-    }
-    return this.getSharedInterfaceContext(result, context);
-  }
-
-  /**
-   * Single context an interface package's own files are shared under.
-   *
-   * Its `provider` is the one the interface resolves to, never the one the
-   * importing module happens to run for: the shared instance answers every
-   * consumer, so the importer's own provider would leak into work the
-   * interface performs for all of them, and an attachment the interface makes
-   * for itself would land on a route no consumer ever requests.
-   *
-   * A package body importing another package counts as its importer, so the
-   * nested context derives from the importer's shared context, never from the
-   * body context the package owns.
-   */
-  private getSharedInterfaceContext(
-    result: ResolveResult,
-    context: CapturedModuleContext,
-  ): CapturedModuleContext {
-    const importer = this.interfaceBodySharedContexts.get(context) ?? context;
-    const interfaceName = result.interfaceName ?? "";
-    const contexts = this.sharedInterfaceContexts.get(importer) ?? new Map();
-    const existing = contexts.get(interfaceName);
-    if (existing) {
-      return existing;
-    }
-    const shared = { ...importer, provider: result.provider };
-    contexts.set(interfaceName, shared);
-    this.sharedInterfaceContexts.set(importer, contexts);
-    this.sharedContexts.set(shared, interfaceName);
-    return shared;
-  }
-
-  /**
-   * Context an interface package's own files run in while they are evaluated:
-   * the shared interface context, owned by the package itself.
-   *
-   * Everything the package registers, attaches or starts at that point is
-   * released only with the package, which lives as long as the process, so a
-   * reload of whichever module imported it first no longer takes it down.
-   */
-  private getInterfaceBodyContext(
-    result: ResolveResult,
-    context: CapturedModuleContext,
-  ): CapturedModuleContext {
-    const shared = this.getSharedInterfaceContext(result, context);
-    const existing = this.interfaceBodyContexts.get(shared);
-    if (existing) {
-      return existing;
-    }
-    const body = this.createInterfaceBodyContext(
-      shared,
-      result.interfaceName ?? "",
-    );
-    this.interfaceBodyContexts.set(shared, body);
-    this.interfaceBodySharedContexts.set(body, shared);
-    return body;
-  }
-
-  /**
-   * Opens the package's own owner through the runtime, which hands every
-   * context of that owner the same active ownership token.
-   */
-  private createInterfaceBodyContext(
-    shared: CapturedModuleContext,
-    interfaceName: string,
-  ): CapturedModuleContext {
-    const packageContext: ModuleExecutionContext = {
-      module: shared.module,
-      owner: `${interfaceName}${SHARED_INTERFACE_OWNER_SUFFIX}`,
-      provider: shared.provider,
-      providerRoutes: shared.providerRoutes,
-    };
-    return runWithModuleContext(
-      packageContext,
-      () => captureModuleContext() as CapturedModuleContext,
-    );
-  }
-
-  /**
-   * Context a facade call actually runs in: the owning context for a facade a
-   * module owns, the live caller context for a shared interface facade, which
-   * belongs to no module. Falling back to the load-time context keeps the
-   * hard failure for orphaned asynchronous work, which has no ambient context
-   * to adopt.
-   */
-  private effectiveContext(
-    context: CapturedModuleContext,
-  ): CapturedModuleContext {
-    const sharedInterface = this.sharedContexts.get(context);
-    if (sharedInterface === undefined) {
-      return context;
-    }
-    const ambient = captureModuleContext();
-    if (!ambient) {
-      return context;
-    }
-    const adopted = this.getAdoptedContext(context, ambient, sharedInterface);
-    const stubbed = this.sharedStubInterfaces.get(context);
-    return stubbed ? this.getProviderlessContext(adopted, stubbed) : adopted;
-  }
-
-  /**
-   * Caller context a shared interface facade runs in. The caller owns the
-   * execution, so its module, owner and routes win; the routes the interface
-   * package was loaded with fill in the proxies the caller never resolved
-   * itself, which are the ones only reachable through this package.
-   *
-   * The `provider` field is NOT a route: it is the fallback a proxy without a
-   * route resolves to, and it only ever means "the provider of the interface
-   * these exports belong to". Adopting the caller's own `provider` would make
-   * every unrouted proxy reached through this facade resolve to the provider
-   * of whatever interface the caller happened to be running for, so it is
-   * recomputed for the facade's own interface instead.
-   */
-  private getAdoptedContext(
-    shared: CapturedModuleContext,
-    ambient: CapturedModuleContext,
-    interfaceName: string,
-  ): CapturedModuleContext {
-    const cached = this.adoptedContexts.get(shared)?.get(ambient);
-    if (cached) {
-      return cached;
-    }
-    const adopted = {
-      ...ambient,
-      provider: this.adoptedProvider(interfaceName, ambient, shared),
-      providerRoutes: this.chainProviderRoutes(
-        ambient.providerRoutes,
-        shared.providerRoutes,
-      ),
-    };
-    const contexts =
-      this.adoptedContexts.get(shared) ??
-      new WeakMap<CapturedModuleContext, CapturedModuleContext>();
-    contexts.set(ambient, adopted);
-    this.adoptedContexts.set(shared, contexts);
-    return adopted;
-  }
-
-  /**
-   * Provider the facade's own interface resolves to for the calling module,
-   * falling back to the provider the interface package was loaded with when
-   * the caller declares no connection of its own.
-   */
-  private adoptedProvider(
-    interfaceName: string,
-    ambient: CapturedModuleContext,
-    shared: CapturedModuleContext,
+  private instanceFor(
+    owner: FileOwner | undefined,
+    packageName: string,
   ): string | undefined {
-    const consumer = this.modulesById.get(ambient.module);
-    const direct = consumer
-      ? this.resolveProvider(consumer, interfaceName)
-      : undefined;
-    return direct ?? shared.provider;
-  }
-
-  private chainProviderRoutes(
-    routes: Readonly<Record<string, string>> | undefined,
-    fallback: Readonly<Record<string, string>> | undefined,
-  ): Readonly<Record<string, string>> | undefined {
-    if (!routes || !fallback) {
-      return routes ?? fallback;
+    const bound = this.scopeOf(owner).get(packageName);
+    if (bound) {
+      return bound;
     }
-    return new Proxy(routes, {
-      get: (target, identity) =>
-        Reflect.get(target, identity) ?? Reflect.get(fallback, identity),
-    });
-  }
-
-  private getProviderlessContext(
-    context: CapturedModuleContext,
-    interfaceName: string,
-  ): CapturedModuleContext {
-    const contexts = this.providerlessContexts.get(context) ?? new Map();
-    const existing = contexts.get(interfaceName);
-    if (existing) {
-      return existing;
+    const keys = this.instances.keysOf(packageName);
+    if (keys.length <= 1) {
+      return keys[0];
     }
-    const providerless = {
-      ...context,
-      provider: undefined,
-      providerRoutes: this.filterStubbedProviderRoutes(context, interfaceName),
-    };
-    contexts.set(interfaceName, providerless);
-    this.providerlessContexts.set(context, contexts);
-    this.stubbedContexts.add(providerless);
-    const sharedInterface = this.sharedContexts.get(context);
-    if (sharedInterface !== undefined) {
-      this.sharedContexts.set(providerless, sharedInterface);
-      this.sharedStubInterfaces.set(providerless, interfaceName);
-    }
-    return providerless;
-  }
-
-  private filterStubbedProviderRoutes(
-    context: CapturedModuleContext,
-    interfaceName: string,
-  ): Readonly<Record<string, string>> {
-    const routes = context.providerRoutes ?? {};
-    return new Proxy(routes, {
-      get: (target, identity) => {
-        const owner =
-          typeof identity === "string"
-            ? this.proxyOwners.get(identity)?.interfaceName
-            : undefined;
-        if (
-          owner === interfaceName &&
-          this.stubbedInterfacePackages.has(interfaceName)
-        ) {
-          return undefined;
-        }
-        return Reflect.get(target, identity);
-      },
-    });
-  }
-
-  private isBindableValue(value: unknown): value is object {
-    if (
-      (typeof value !== "object" && typeof value !== "function") ||
-      value === null
-    ) {
-      return false;
-    }
-    if (utilTypes.isProxy(value)) {
-      return false;
-    }
-    if (typeof value === "function" || isRecognizedInterfaceProxy(value)) {
-      return true;
-    }
-    return isPlainContainer(value);
-  }
-
-  private isClass(value: BindableFunction): boolean {
-    return Function.prototype.toString.call(value).startsWith(CLASS_PREFIX);
-  }
-
-  private createObjectFacade(
-    value: object,
-    context: CapturedModuleContext,
-  ): object {
-    const members = new Map<PropertyKey, BoundMember>();
-    const facade = new Proxy(value, {
-      get: (target, property) => {
-        const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
-        if (
-          descriptor &&
-          !descriptor.configurable &&
-          "value" in descriptor &&
-          !descriptor.writable
-        ) {
-          return descriptor.value;
-        }
-        const member = Reflect.get(target, property, target);
-        const cached = members.get(property);
-        if (cached && Object.is(cached.source, member)) {
-          return cached.bound;
-        }
-        const bound =
-          typeof member === "function" && !this.isClass(member)
-            ? this.bindObjectFunction(member, target, facade, property, context)
-            : this.bindPassedValue(member, context);
-        members.set(property, { bound, source: member });
-        return bound;
-      },
-    });
-    return facade;
-  }
-
-  private bindObjectFunction(
-    member: BindableFunction,
-    target: object,
-    facade: object,
-    property: PropertyKey,
-    context: CapturedModuleContext,
-  ): BindableFunction {
-    const isStubAttachment =
-      this.stubbedContexts.has(context) &&
-      isRecognizedInterfaceProxy(target) &&
-      PROXY_ATTACHMENT_METHODS.has(property);
-    return isStubAttachment
-      ? member.bind(target)
-      : this.createFunctionFacade(member, context, target, facade);
-  }
-
-  private createFunctionFacade(
-    value: BindableFunction,
-    context: CapturedModuleContext,
-    boundThis?: object,
-    facadeThis?: object,
-  ): BindableFunction {
-    return new Proxy(value, {
-      apply: (target, thisArg, argumentsList) => {
-        const receiver =
-          boundThis &&
-          (!facadeThis || thisArg === facadeThis || thisArg === undefined)
-            ? boundThis
-            : thisArg;
-        // The call runs in the caller's context, but the values crossing the
-        // facade stay bound to the facade's own context: binding them to the
-        // live caller context would hand out a different facade for the same
-        // value on every call, and callers that pair a value with itself
-        // across calls -- `unregister(handler)` then `register(handler)` --
-        // would no longer match.
-        const result = runWithCapturedModuleContext(
-          this.effectiveContext(context),
-          () =>
-            Reflect.apply(
-              target,
-              receiver,
-              argumentsList.map((argument) =>
-                this.bindPassedValue(argument, context),
-              ),
-            ),
-        );
-        return this.bindFunctionResult(result, context);
-      },
-      construct: (target, argumentsList, newTarget) =>
-        runWithCapturedModuleContext(this.effectiveContext(context), () =>
-          Reflect.construct(target, argumentsList, newTarget),
-        ),
-      get: (target, property) => {
-        if (property === "prototype") {
-          return target.prototype;
-        }
-        return this.bindInterfaceValue(
-          Reflect.get(target, property, target),
-          context,
-        );
-      },
-    });
-  }
-
-  private bindFunctionResult(
-    value: unknown,
-    context: CapturedModuleContext,
-  ): unknown {
-    if (value instanceof Promise) {
-      return value.then((result) =>
-        typeof result === "function"
-          ? this.bindInterfaceValue(result, context)
-          : result,
-      );
-    }
-    return typeof value === "function"
-      ? this.bindInterfaceValue(value, context)
-      : value;
-  }
-
-  private getRoutedEvent(
-    value: unknown,
-    context: CapturedModuleContext,
-  ): unknown {
-    const identity = GetInterfaceProxyIdentity(value);
-    const provider = identity
-      ? (context.providerRoutes?.[identity] ?? context.provider)
-      : undefined;
-    if (!identity || !provider) {
-      return value;
-    }
-    const key = `${identity}\0${provider}`;
-    const routed = this.routedEvents.get(key);
-    if (routed) {
-      return this.bindRoutedEvent(routed, context);
-    }
-    const created = new EventProxy(
-      `${this.resolverIdentity}:${provider}:${identity}`,
+    throw new Error(
+      `${this.describeOwner(owner)} imports ${packageName}, which has several instances (${keys.join(", ")}), but does not declare it; add it to the dependencies of the importing package.`,
     );
-    this.routedEvents.set(key, created);
-    return this.bindRoutedEvent(created, context);
   }
 
-  private bindRoutedEvent(
-    event: EventProxy,
-    context: CapturedModuleContext,
-  ): EventProxy {
-    const cached = this.boundValues.get(event)?.get(context);
-    if (cached) {
-      return cached as EventProxy;
-    }
-    const bound = this.createEventFacade(event, context);
-    const contexts =
-      this.boundValues.get(event) ??
-      new WeakMap<CapturedModuleContext, unknown>();
-    contexts.set(context, bound);
-    this.boundValues.set(event, contexts);
-    return bound;
-  }
-
-  private createEventFacade(
-    event: EventProxy,
-    context: CapturedModuleContext,
-  ): EventProxy {
-    const handlers = new WeakMap<BindableFunction, BindableFunction>();
-    const register = (handler: BindableFunction) => {
-      const bound =
-        handlers.get(handler) ?? this.createFunctionFacade(handler, context);
-      handlers.set(handler, bound);
-      return runWithCapturedModuleContext(this.effectiveContext(context), () =>
-        event.register(bound),
+  private connectionInstance(
+    owner: FileOwner | undefined,
+    packageName: string,
+    index: number,
+  ): string {
+    const module = owner?.module;
+    const key = module
+      ? this.bindings?.modules
+          .get(module.id)
+          ?.connectionKeys.get(packageName)?.[index]
+      : undefined;
+    if (!key) {
+      throw new Error(
+        `${this.describeOwner(owner)} has no connection ${index} to ${packageName}.`,
       );
-    };
-    const unregister = (handler: BindableFunction) =>
-      runWithCapturedModuleContext(this.effectiveContext(context), () =>
-        event.unregister(handlers.get(handler) ?? handler),
-      );
-    const emit = this.createFunctionFacade(event.emit, context, event);
-    return new Proxy(event, {
-      get: (target, property) => {
-        if (property === "register") {
-          return register;
-        }
-        if (property === "unregister") {
-          return unregister;
-        }
-        if (property === "emit") {
-          return emit;
-        }
-        return Reflect.get(target, property, target);
-      },
-    });
-  }
-
-  private resolveLocalModule(fileName?: string): ModuleRef | undefined {
-    if (!fileName) {
-      return undefined;
     }
-    return this.localModuleOwners.findOwner(fileName);
+    return key;
   }
 
-  private listModuleRoots(): PathOwnerRoot<ModuleRef>[] {
-    return [...this.moduleByFolder].map(([root, owner]) => ({ root, owner }));
+  private listOwnerRoots(): PathOwnerRoot<FileOwner>[] {
+    const modules = [...this.moduleByFolder].map(([root, module]) => ({
+      root,
+      owner: { module },
+    }));
+    const instances = [...this.instances.roots()].map(([instance, root]) => ({
+      root,
+      owner: { instance },
+    }));
+    return [...modules, ...instances];
   }
 }

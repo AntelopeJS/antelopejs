@@ -35,7 +35,11 @@ function mapBuildImportOverrides(
   const entries: BuildImportOverride[] = [];
   for (const [interfaceName, modules] of overrides.entries()) {
     for (const { module, id } of modules) {
-      entries.push({ interface: interfaceName, source: module, id });
+      const entry: BuildImportOverride = { interface: interfaceName, id };
+      if (module !== undefined) {
+        entry.source = module;
+      }
+      entries.push(entry);
     }
   }
 
@@ -65,7 +69,7 @@ function mapArtifactImportOverrides(
 
 export type SerializedModuleConfig = Pick<
   BuildModuleEntry,
-  "config" | "importOverrides" | "disabledExports"
+  "config" | "importOverrides" | "disabledExports" | "exportPriority"
 >;
 
 export function serializeModuleConfig(
@@ -77,6 +81,10 @@ export function serializeModuleConfig(
     disabledExports: config.disabledExports
       ? Array.from(config.disabledExports)
       : undefined,
+    exportPriority:
+      config.exportPriority && config.exportPriority.size > 0
+        ? Object.fromEntries(config.exportPriority)
+        : undefined,
   };
 }
 
@@ -106,6 +114,7 @@ export function mapArtifactModuleEntries(
         config: entry.config,
         importOverrides,
         disabledExports: new Set(entry.disabledExports ?? []),
+        exportPriority: new Map(Object.entries(entry.exportPriority ?? {})),
       },
     };
   });

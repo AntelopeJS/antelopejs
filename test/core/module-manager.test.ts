@@ -14,6 +14,39 @@ import { ModuleManifest } from "../../src/core/module-manifest";
 import { PathMapper } from "../../src/core/resolution/path-mapper";
 import { InterfaceResolutionError } from "../../src/core/resolution/interface-resolution-error";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
+import { buildBindingGraph } from "../../src/core/resolution/binding-graph";
+
+function trackInstanceFiles(
+  manager: ModuleManager,
+  packageName: string,
+  packageRoot: string,
+  files: string[],
+): void {
+  const resolver = manager.resolver;
+  resolver.interfacePackages.set(packageName, packageRoot);
+  resolver.setBindings(
+    buildBindingGraph({
+      interfaces: new Map([
+        [packageName, { name: packageName, dependencies: [] }],
+      ]),
+      modules: new Map([
+        [
+          "importer",
+          {
+            id: "importer",
+            implements: [],
+            uses: [packageName],
+            connections: new Map(),
+            exportPriority: new Map(),
+          },
+        ],
+      ]),
+    }),
+  );
+  files.forEach((file) =>
+    resolver.recordInstanceFile(`${packageName}{}`, file),
+  );
+}
 
 async function createTempModuleWithInterfacePkg(): Promise<{
   root: string;
@@ -829,7 +862,6 @@ describe("ModuleManager", () => {
   it("waits for sibling constructs and aggregates rollback errors", async () => {
     const calls: string[] = [];
     const manager = new ModuleManager();
-    sinon.stub(manager as any, "configureModuleContexts");
     const detour = (manager as any).resolverDetour;
     const detach = sinon.stub(detour, "detach");
     sinon.stub(detour, "attach").returns(true);
@@ -1253,14 +1285,9 @@ describe("ModuleManager", () => {
       },
       config: {},
     });
-    (manager as any).resolver.trackInterfaceFile(
-      { interfaceName: "interface-test", resolvedPath: declarationEntry },
+    trackInstanceFiles(manager, "interface-test", interfaceRoot, [
       declarationEntry,
-    );
-    (manager as any).resolver.interfacePackages.set(
-      "interface-test",
-      interfaceRoot,
-    );
+    ]);
 
     manager.unrequireModuleFiles("test");
 
@@ -1316,16 +1343,7 @@ describe("ModuleManager", () => {
       module: { manifest: { folder: moduleFolder, main: entryFile } },
       config: {},
     });
-    for (const entry of cacheEntries) {
-      (manager as any).resolver.trackInterfaceFile(
-        { interfaceName: "@scope/runtime", resolvedPath: entry },
-        entry,
-      );
-    }
-    (manager as any).resolver.interfacePackages.set(
-      "@scope/runtime",
-      interfaceRoot,
-    );
+    trackInstanceFiles(manager, "@scope/runtime", interfaceRoot, cacheEntries);
 
     manager.unrequireModuleFiles("playground");
 
@@ -1358,16 +1376,7 @@ describe("ModuleManager", () => {
       module: { manifest: { folder: moduleFolder, main: entryFile } },
       config: {},
     });
-    for (const entry of cacheEntries) {
-      (manager as any).resolver.trackInterfaceFile(
-        { interfaceName: "@scope/self", resolvedPath: entry },
-        entry,
-      );
-    }
-    (manager as any).resolver.interfacePackages.set(
-      "@scope/self",
-      moduleFolder,
-    );
+    trackInstanceFiles(manager, "@scope/self", moduleFolder, cacheEntries);
 
     manager.unrequireModuleFiles("self");
 
