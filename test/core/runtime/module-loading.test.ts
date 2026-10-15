@@ -1047,4 +1047,89 @@ describe("runtime module-loading", () => {
     expect(reloadMismatchError).to.be.instanceOf(Error);
     expect(liveDestroy.called).to.equal(false);
   });
+
+  it("takes the running generation down before LoadModule replaces it", async () => {
+    const calls: string[] = [];
+    const previous = {
+      module: {
+        id: "alpha",
+        stop: sinon.stub().callsFake(async () => calls.push("stop")),
+        destroy: sinon.stub().callsFake(async () => calls.push("destroy")),
+      },
+      config: { config: {} },
+    };
+    const manager = {
+      getLoadedModuleEntry: sinon
+        .stub()
+        .callsFake((id: string) => (id === "alpha" ? previous : undefined)),
+      unrequireModuleFiles: sinon
+        .stub()
+        .callsFake(() => calls.push("unrequire")),
+      addModules: sinon.stub().callsFake(() => {
+        calls.push("add");
+        return [{ module: { id: "alpha" }, config: {} }];
+      }),
+      constructModules: sinon.stub().resolves(),
+      startModules: sinon.stub().resolves(),
+    } as unknown as ModuleManager;
+    const loaderContext = {
+      fs: {} as any,
+      cache: {} as any,
+      projectFolder: "/project",
+      registry: {
+        load: sinon.stub().resolves([
+          {
+            name: "alpha",
+            version: "2.0.0",
+            folder: "/cache/alpha",
+            source: { type: "package", package: "alpha", version: "2.0.0" },
+          },
+        ]),
+      },
+    } as any;
+    registerCoreModuleInterface(manager, async () => loaderContext);
+
+    await moduleInterfaceBeta.LoadModule(
+      "alpha",
+      { source: { type: "package", package: "alpha", version: "2.0.0" } },
+      true,
+    );
+
+    expect(calls).to.deep.equal(["stop", "destroy", "unrequire", "add"]);
+  });
+
+  it("loads a new module without touching any running one", async () => {
+    const manager = {
+      getLoadedModuleEntry: sinon.stub().returns(undefined),
+      unrequireModuleFiles: sinon.stub(),
+      addModules: sinon
+        .stub()
+        .returns([{ module: { id: "beta" }, config: {} }]),
+      constructModules: sinon.stub().resolves(),
+      startModules: sinon.stub().resolves(),
+    } as unknown as ModuleManager;
+    const loaderContext = {
+      fs: {} as any,
+      cache: {} as any,
+      projectFolder: "/project",
+      registry: {
+        load: sinon
+          .stub()
+          .resolves([
+            { name: "beta", version: "1.0.0", folder: "/cache/beta" },
+          ]),
+      },
+    } as any;
+    registerCoreModuleInterface(manager, async () => loaderContext);
+
+    await moduleInterfaceBeta.LoadModule(
+      "beta",
+      { source: { type: "package", package: "beta", version: "1.0.0" } },
+      false,
+    );
+
+    expect((manager.unrequireModuleFiles as sinon.SinonStub).called).to.equal(
+      false,
+    );
+  });
 });

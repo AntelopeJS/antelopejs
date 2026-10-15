@@ -130,6 +130,29 @@ export async function createLoaderContext(
   };
 }
 
+/**
+ * Takes down the running generation of every module `manifests` replaces, so
+ * `LoadModule` on an id that is already loaded behaves like a reload. Without
+ * this the replacement is required from the files the previous generation
+ * left in the require cache, whose interface calls are bound to its
+ * now-invalidated context: its `construct` fails with
+ * `ModuleContextInvalidatedError`.
+ */
+async function retireReplacedModules(
+  manager: ModuleManager,
+  manifests: ModuleManifest[],
+): Promise<void> {
+  for (const manifest of manifests) {
+    const previous = manager.getLoadedModuleEntry(manifest.name);
+    if (!previous) {
+      continue;
+    }
+    await previous.module.stop();
+    await previous.module.destroy();
+    manager.unrequireModuleFiles(manifest.name);
+  }
+}
+
 export function registerCoreModuleInterface(
   manager: ModuleManager,
   loadContext: LoaderContextProvider,
@@ -167,6 +190,8 @@ export function registerCoreModuleInterface(
             id: moduleId,
           },
         );
+
+        await retireReplacedModules(manager, manifests);
 
         const moduleConfig: ModuleConfig = {
           config: declaration.config,
