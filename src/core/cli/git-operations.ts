@@ -6,6 +6,8 @@ import type { ModuleSource } from "@antelopejs/interface-core/config";
 
 import { ExecError, ExecuteCMD } from "./command";
 import { acquireLock } from "../../utils/lock";
+import type { NextStep } from "./output";
+import type { PackageManagerName } from "./package-manager-name";
 
 async function runGitCommand(command: string, cwd: string): Promise<void> {
   const result = await ExecuteCMD(command, { cwd });
@@ -56,11 +58,15 @@ export interface GitManifest {
   interfaces: Record<string, string>;
   starredInterfaces: string[];
   templates: Template[];
+  projectTemplates?: Template[];
 }
 export interface Template {
   name: string;
   repository: string;
   branch: string;
+  description?: string;
+  packageManager?: PackageManagerName;
+  nextSteps?: NextStep[];
 }
 
 export async function loadManifestFromGit(git: string): Promise<GitManifest> {

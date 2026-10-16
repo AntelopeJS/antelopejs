@@ -155,15 +155,17 @@ async function askTemplate(
   prompter: Prompter,
   options: ModuleInitOptions,
   templates: Template[],
+  isFromProject: boolean,
 ): Promise<Template> {
   const name = await prompter.select({
-    message: "Choose a template for your module",
+    message: `Choose a template for your ${isFromProject ? "project" : "module"}`,
     flag: TEMPLATE_FLAG,
     answer: options.template,
     defaultAnswer: templates[0]?.name,
     choices: templates.map((template) => ({
       value: template.name,
       label: template.name,
+      hint: template.description,
     })),
   });
   const template = templates.find((candidate) => candidate.name === name);
@@ -227,7 +229,18 @@ async function askInterfaces(
 function askPackageManager(
   prompter: Prompter,
   options: ModuleInitOptions,
+  template: Template,
 ): Promise<PackageManagerName> {
+  if (template.packageManager) {
+    if (options.pm && options.pm !== template.packageManager) {
+      throw new CliError({
+        title: `Template '${template.name}' requires ${template.packageManager}`,
+        fixes: [`Use --pm ${template.packageManager} or omit --pm`],
+        exitCode: USAGE_EXIT_CODE,
+      });
+    }
+    return Promise.resolve(template.packageManager);
+  }
   return prompter.select<PackageManagerName>({
     message: "Which package manager would you like to use?",
     flag: PACKAGE_MANAGER_FLAG,
@@ -265,17 +278,60 @@ function displayWizardWelcome(prompter: Prompter): void {
   );
 }
 
+async function askTemplateInterfaces(
+  prompter: Prompter,
+  options: ModuleInitOptions,
+  git: string,
+  manifest: GitManifest,
+  template: Template,
+): Promise<InterfaceInfo[]> {
+  if (
+    manifest.projectTemplates?.includes(template) &&
+    options.interfaces === undefined
+  ) {
+    return [];
+  }
+  const catalog = await loadInterfaceCatalog(git, manifest);
+  return askInterfaces(prompter, options, catalog);
+}
+
 async function askModuleAnswers(
   prompter: Prompter,
   options: ModuleInitOptions,
   git: string,
   manifest: GitManifest,
+  isFromProject: boolean,
 ): Promise<ModuleInitAnswers> {
-  displayWizardWelcome(prompter);
-  const template = await askTemplate(prompter, options, manifest.templates);
-  const catalog = await loadInterfaceCatalog(git, manifest);
-  const interfaces = await askInterfaces(prompter, options, catalog);
-  const packageManager = await askPackageManager(prompter, options);
+  if (!isFromProject) {
+    displayWizardWelcome(prompter);
+  }
+  const templates = [
+    ...manifest.templates,
+    ...(isFromProject ? (manifest.projectTemplates ?? []) : []),
+  ];
+  const selected = templates.find(
+    (template) => template.name === options.template,
+  );
+  prompter.requireAnswers(
+    missingFlags(
+      { ...options, pm: options.pm ?? selected?.packageManager },
+      MODULE_ANSWER_FLAGS,
+    ),
+  );
+  const template = await askTemplate(
+    prompter,
+    options,
+    templates,
+    isFromProject,
+  );
+  const interfaces = await askTemplateInterfaces(
+    prompter,
+    options,
+    git,
+    manifest,
+    template,
+  );
+  const packageManager = await askPackageManager(prompter, options, template);
   const isGitInitialized = await askGitInit(prompter, options);
   return { template, interfaces, packageManager, isGitInitialized };
 }
@@ -294,7 +350,7 @@ function addInterfaceDependencies(
   const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
   pkgJson.dependencies ??= {};
   packages.forEach((name) => {
-    pkgJson.dependencies[name] = LATEST_VERSION;
+    pkgJson.dependencies[name] ??= LATEST_VERSION;
   });
   writeFileSync(
     pkgJsonPath,
@@ -370,6 +426,12 @@ function displayModuleCreated(
   getProcessUi().summary({
     headline: `Created module from template ${template}`,
     artifact: displayPath(path.resolve(modulePath)),
+    nextSteps: answers.template.nextSteps && [
+      ...(modulePath === CURRENT_DIRECTORY
+        ? []
+        : [{ command: `cd ${displayPath(path.resolve(modulePath))}` }]),
+      ...answers.template.nextSteps,
+    ],
   });
 }
 
@@ -407,13 +469,20 @@ export async function moduleInitCommand(
     "Loading templates",
     () => loadTemplates(git),
     {
-      done: (loaded) => `Found ${loaded.templates.length} templates`,
+      done: (loaded) =>
+        `Found ${loaded.templates.length + (context.isFromProject ? (loaded.projectTemplates?.length ?? 0) : 0)} templates`,
     },
   );
-  prompter.requireAnswers(missingFlags(options, MODULE_ANSWER_FLAGS));
-  const answers = await askModuleAnswers(prompter, options, git, manifest);
+  const answers = await askModuleAnswers(
+    prompter,
+    options,
+    git,
+    manifest,
+    Boolean(context.isFromProject),
+  );
   await createModule(modulePath, answers);
   displayModuleCreated(modulePath, answers, context);
+  return answers.template;
 }
 
 export function runModuleInit(modulePath: string, options: ModuleInitOptions) {

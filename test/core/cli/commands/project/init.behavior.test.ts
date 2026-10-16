@@ -2,10 +2,12 @@ import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../src/core/cli/common";
+import * as command from "../../../../../src/core/cli/command";
+import * as packageManager from "../../../../../src/core/cli/package-manager";
 import {
   CancelledError,
   CliError,
@@ -26,6 +28,14 @@ import * as projectModulesAddModule from "../../../../../src/core/cli/commands/p
 import { collectStderr } from "../../../../helpers/capture-output";
 
 const { levels } = getProcessUi().symbols;
+
+const DASHBOARD_TEMPLATE: gitOps.Template = {
+  name: "Dashboard",
+  repository: "",
+  branch: "main",
+  packageManager: "pnpm",
+  nextSteps: [{ command: "pnpm setup", description: "Prepare the dashboard" }],
+};
 
 interface InitStubs {
   writeConfig: sinon.SinonStub;
@@ -52,6 +62,30 @@ function stubInit(): InitStubs {
   const error = sinon.stub(cliUi, "error");
   sinon.stub(console, "log");
   return { writeConfig, moduleInit, add, feedback, error };
+}
+
+function stubProjectTemplate(config: string): void {
+  sinon
+    .stub(common, "readUserConfig")
+    .resolves({ git: common.DEFAULT_GIT_REPO });
+  sinon.stub(gitOps, "loadManifestFromGit").resolves({
+    interfaces: {},
+    starredInterfaces: [],
+    templates: [],
+    projectTemplates: [DASHBOARD_TEMPLATE],
+  });
+  sinon.stub(gitOps, "copyTemplate").callsFake(async (_template, target) => {
+    await mkdir(target, { recursive: true });
+    await writeFile(
+      path.join(target, "package.json"),
+      '{"packageManager":"pnpm@10.2.0"}',
+    );
+    await writeFile(path.join(target, "antelope.config.ts"), config);
+  });
+  sinon.stub(packageManager, "getInstallCommand").resolves("pnpm install");
+  sinon
+    .stub(command, "ExecuteCMD")
+    .resolves({ code: 0, stdout: "", stderr: "" });
 }
 
 async function failureOf(run: () => Promise<unknown>): Promise<unknown> {
@@ -111,6 +145,40 @@ describe("project init behavior", () => {
     expect(configContent).to.include("export default defineConfig({");
     expect(configContent).to.include('name: "my-project"');
     expect(configContent).to.include("modules: {}");
+  });
+
+  it("creates a complete project without rewriting its dynamic config and prints its setup steps", async () => {
+    const stubs = stubInit();
+    stubs.moduleInit.restore();
+    stubs.writeConfig.restore();
+    stubs.add.restore();
+    (common.readConfig as sinon.SinonStub).restore();
+    const config = `const database = process.env.MONGODB_DATABASE ?? "demo";
+export default () => ({ name: "dashboard", modules: { mongodb: { config: { database } } } });
+`;
+    stubProjectTemplate(config);
+    fakePrompts({ isInteractive: false });
+
+    await cmdInit().parseAsync([
+      "node",
+      "test",
+      projectDir,
+      "--template",
+      "Dashboard",
+      "--no-git-init",
+    ]);
+
+    expect(
+      await readFile(path.join(projectDir, "antelope.config.ts"), "utf8"),
+    ).to.equal(config);
+    expect(stubs.feedback())
+      .to.include("pnpm setup")
+      .and.include("Prepare the dashboard");
+    expect(stubs.feedback()).to.not.include("ajs project dev --watch");
+    expect(
+      JSON.parse(await readFile(path.join(projectDir, "package.json"), "utf8"))
+        .packageManager,
+    ).to.equal("pnpm@10.2.0");
   });
 
   it("reports an existing project once, before any missing flag", async () => {

@@ -9,6 +9,8 @@ import {
   YES_FLAG,
 } from "../module/init-action";
 import { readConfig, writeConfig } from "../../common";
+import { TS_CONFIG_FILE } from "../../../config/config-paths";
+import type { Template } from "../../git-operations";
 import type { PackageManagerName } from "../../package-manager-name";
 import { addModules, handlers } from "./modules/add-action";
 import { Spinner } from "../../cli-ui";
@@ -158,27 +160,48 @@ async function createAppModule(
   name: string,
   options: ProjectInitOptions,
   prompter: Prompter,
-): Promise<void> {
-  await moduleInitCommand(projectPath, moduleOptions(options), {
-    isFromProject: true,
-    prompter,
-  });
+): Promise<Template> {
+  const template = await moduleInitCommand(
+    projectPath,
+    moduleOptions(options),
+    {
+      isFromProject: true,
+      prompter,
+    },
+  );
+  if (await stat(path.join(projectPath, TS_CONFIG_FILE)).catch(() => false)) {
+    getProcessUi().message(
+      "info",
+      "Kept the template's project configuration",
+      {
+        detail: `Its name, modules and environment settings are preserved in ${TS_CONFIG_FILE}.`,
+      },
+    );
+    return template;
+  }
   await createProjectConfig(projectPath, name);
   await addModules([PROJECT_ROOT_MODULE], {
     mode: LOCAL_MODULE_SOURCE,
     project: projectPath,
   });
+  return template;
 }
 
-function projectNextSteps(project: string, projectPath: string): NextStep[] {
+function projectNextSteps(
+  project: string,
+  projectPath: string,
+  template?: Template,
+): NextStep[] {
   const changeDirectory: NextStep[] =
     project === CURRENT_DIRECTORY
       ? []
       : [{ command: `cd ${displayPath(projectPath)}` }];
   return [
     ...changeDirectory,
-    { command: INSTALL_COMMAND, description: INSTALL_DESCRIPTION },
-    { command: DEV_COMMAND, description: DEV_DESCRIPTION },
+    ...(template?.nextSteps ?? [
+      { command: INSTALL_COMMAND, description: INSTALL_DESCRIPTION },
+      { command: DEV_COMMAND, description: DEV_DESCRIPTION },
+    ]),
   ];
 }
 
@@ -186,11 +209,12 @@ function displayProjectCreated(
   project: string,
   projectPath: string,
   name: string,
+  template?: Template,
 ): void {
   getProcessUi().summary({
     headline: `Created project ${getProcessPalette().bold(name)}`,
     artifact: displayPath(projectPath),
-    nextSteps: projectNextSteps(project, projectPath),
+    nextSteps: projectNextSteps(project, projectPath, template),
   });
 }
 
@@ -241,10 +265,11 @@ export async function projectInitCommand(
   displayWelcome(prompter);
   const name = await askProjectName(prompter, options, projectPath);
   const appModule = await askAppModuleImport(prompter, options);
+  let template: Template | undefined;
   if (appModule) {
     await importAppModule(projectPath, name, appModule);
   } else {
-    await createAppModule(projectPath, name, options, prompter);
+    template = await createAppModule(projectPath, name, options, prompter);
   }
-  displayProjectCreated(project, projectPath, name);
+  displayProjectCreated(project, projectPath, name, template);
 }
