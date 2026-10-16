@@ -98,7 +98,7 @@ function lineIndent(source: string, position: number): string {
 }
 
 /** `value` as source text, its continuation lines indented by `indent`. */
-export function serializeValue(
+function serializeValue(
   value: unknown,
   unit: string,
   indent: string,
