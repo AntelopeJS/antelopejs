@@ -5,6 +5,11 @@ import { execFileSync } from "node:child_process";
 
 interface PackedManifest {
   dependencies?: Record<string, string>;
+  antelopeJs?: PackedAntelopeJsManifest;
+}
+
+interface PackedAntelopeJsManifest {
+  skills?: string[];
 }
 
 const root = path.resolve(__dirname, "../..");
@@ -13,6 +18,8 @@ const packFolder = path.join(temp, "pack");
 const consumerFolder = path.join(temp, "consumer");
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const builtEntry = path.join(root, "dist", "index.js");
+const skillsFolder = "skills";
+const skillFile = "SKILL.md";
 const interfaceCoreTarball = process.env.ANTELOPE_INTERFACE_CORE_TARBALL;
 const interfaceCoreSpec = interfaceCoreTarball
   ? `file:${interfaceCoreTarball}`
@@ -74,6 +81,22 @@ function inspectManifest(tarball: string): void {
   }
 }
 
+function inspectSkills(tarball: string): void {
+  const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
+  const manifest = JSON.parse(content) as PackedManifest;
+  if (!manifest.antelopeJs?.skills?.includes(`./${skillsFolder}`)) {
+    throw new Error("Packed core does not declare its agent skills.");
+  }
+  const packedFiles = run("tar", ["-tf", tarball], root).split("\n");
+  const missing = fs
+    .readdirSync(path.join(root, skillsFolder))
+    .map((skill) => `package/${skillsFolder}/${skill}/${skillFile}`)
+    .filter((file) => !packedFiles.includes(file));
+  if (missing.length > 0) {
+    throw new Error(`Packed core misses agent skills: ${missing.join(", ")}`);
+  }
+}
+
 function installConsumer(tarball: string): void {
   fs.mkdirSync(consumerFolder, { recursive: true });
   fs.writeFileSync(
@@ -108,6 +131,7 @@ function verifyConsumer(script: string): void {
 try {
   const tarball = packCore();
   inspectManifest(tarball);
+  inspectSkills(tarball);
   installConsumer(tarball);
   verifyConsumer("verify.cjs");
   verifyConsumer("verify-cli.cjs");
