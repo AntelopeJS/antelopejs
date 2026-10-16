@@ -209,6 +209,20 @@ export class ModuleManager {
     this.rebuildAssociations();
   }
 
+  /**
+   * Drops modules that failed to construct or start, already destroyed, so
+   * that what they would have consumed or provided no longer counts in the
+   * next interface checks and bindings.
+   */
+  discardModules(ids: readonly string[]): void {
+    for (const id of ids) {
+      this.isolation.forget(id);
+      this.loaded.delete(id);
+      this.registry.unregister(id);
+    }
+    this.rebuildAssociations();
+  }
+
   listModules(): string[] {
     return this.registry.list();
   }

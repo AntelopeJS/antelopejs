@@ -4,7 +4,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { ShutdownHandler, ShutdownManager } from "../shutdown";
 import { NodeFileSystem } from "../filesystem";
 import type { LaunchOptions } from "../../types";
-import { type ManagedModule, ModuleManager } from "../module-manager";
+import { ModuleManager } from "../module-manager";
 import { INSTANCES_FOLDER } from "../module-isolation";
 import { terminalDisplay } from "../cli/output/tasks";
 import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
@@ -42,6 +42,7 @@ import {
 } from "./process-claim";
 import { type LaunchStep, runLaunchSteps } from "./launch-steps";
 import {
+  activateLoadedModules,
   buildModuleConfigs,
   constructModules,
   createLoaderContext,
@@ -340,17 +341,13 @@ async function startOptionalModule(
   manager: ModuleManager,
   entry: ModuleManifestEntry,
 ): Promise<void> {
-  let created: ManagedModule[] = [];
   try {
-    created = manager.addModules([entry]);
-    await manager.constructModules(created);
-    await manager.startModules(created);
+    await activateLoadedModules(manager, manager.addModules([entry]), true);
   } catch (error) {
     Logger.Error(
       `Optional module ${entry.manifest.name} failed to start; running without it`,
       error,
     );
-    await Promise.allSettled(created.map(({ module }) => module.destroy()));
   }
 }
 

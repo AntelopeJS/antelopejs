@@ -1132,4 +1132,48 @@ describe("runtime module-loading", () => {
       false,
     );
   });
+
+  it("drops the modules LoadModule fails to construct", async () => {
+    const destroy = sinon.stub().resolves();
+    const manager = {
+      getLoadedModuleEntry: sinon.stub().returns(undefined),
+      unrequireModuleFiles: sinon.stub(),
+      addModules: sinon
+        .stub()
+        .returns([{ module: { id: "gamma", destroy }, config: {} }]),
+      constructModules: sinon.stub().rejects(new Error("construct failed")),
+      startModules: sinon.stub().resolves(),
+      discardModules: sinon.stub(),
+    } as unknown as ModuleManager;
+    const loaderContext = {
+      fs: {} as any,
+      cache: {} as any,
+      projectFolder: "/project",
+      registry: {
+        load: sinon
+          .stub()
+          .resolves([
+            { name: "gamma", version: "1.0.0", folder: "/cache/gamma" },
+          ]),
+      },
+    } as any;
+    registerCoreModuleInterface(manager, async () => loaderContext);
+
+    let thrown: unknown;
+    try {
+      await moduleInterfaceBeta.LoadModule(
+        "gamma",
+        { source: { type: "package", package: "gamma", version: "1.0.0" } },
+        true,
+      );
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.have.property("message", "construct failed");
+    expect(destroy.calledOnce).to.equal(true);
+    expect(
+      (manager.discardModules as sinon.SinonStub).calledOnceWith(["gamma"]),
+    ).to.equal(true);
+  });
 });

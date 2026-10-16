@@ -159,6 +159,29 @@ async function retireReplacedModules(
   }
 }
 
+/**
+ * Constructs and optionally starts modules `LoadModule` just added. When
+ * that fails, they are destroyed and dropped again: a module left behind
+ * would still count as a consumer of its interface packages, and every later
+ * load would fail its checks.
+ */
+export async function activateLoadedModules(
+  manager: ModuleManager,
+  created: ManagedModule[],
+  autostart: boolean,
+): Promise<void> {
+  try {
+    await manager.constructModules(created);
+    if (autostart) {
+      await manager.startModules(created);
+    }
+  } catch (error) {
+    await Promise.allSettled(created.map(({ module }) => module.destroy()));
+    manager.discardModules(created.map(({ module }) => module.id));
+    throw error;
+  }
+}
+
 export function registerCoreModuleInterface(
   manager: ModuleManager,
   loadContext: LoaderContextProvider,
@@ -208,10 +231,7 @@ export function registerCoreModuleInterface(
         const created = manager.addModules(
           manifests.map((manifest) => ({ manifest, config: moduleConfig })),
         );
-        await manager.constructModules(created);
-        if (autostart) {
-          await manager.startModules(created);
-        }
+        await activateLoadedModules(manager, created, autostart);
         return created.map(({ module }) => module.id);
       },
       StartModule: async (moduleId: string) => {
