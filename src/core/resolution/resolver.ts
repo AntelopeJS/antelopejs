@@ -3,6 +3,7 @@ import { realpathSync } from "node:fs";
 import { ReleaseOwner } from "@antelopejs/interface-core/modules";
 import {
   getModuleContext,
+  type ModuleExecutionContext,
   runWithModuleContext,
 } from "@antelopejs/interface-core/internal";
 
@@ -51,6 +52,7 @@ const CORE_RESOLVE_FROM = CORE_PACKAGE?.root ?? __dirname;
 const CORE_ENTRY = CORE_PACKAGE?.entry ?? CORE_PKG;
 const CONNECTION_PREFIX = "@ajs.connection/";
 const INSTANCE_OWNER_SUFFIX = "#instance";
+const INTERFACE_CONTEXT_KIND = "interface";
 const RELATIVE_OR_ABSOLUTE = /^(\.{1,2}(\/|\\|$)|\/|[A-Za-z]:[\\/])/;
 
 function realFolder(folder: string): string {
@@ -145,8 +147,7 @@ export class Resolver {
   }
 
   ownsResolutionContext(_request: string, parent?: ResolverParent): boolean {
-    const contextModule = getModuleContext()?.module;
-    if (contextModule && this.modulesById.has(contextModule)) {
+    if (this.contextOwner()) {
       return true;
     }
     return Boolean(this.owners.findOwner(parent?.filename ?? ""));
@@ -177,8 +178,8 @@ export class Resolver {
   }
 
   /**
-   * Evaluates an interface instance's files in a context the instance owns,
-   * so what they register or attach while evaluated lives as long as the
+   * Evaluates an interface instance's files in the instance's own interface
+   * context, so what they register, attach or schedule lives as long as the
    * instance, not as long as the module that happened to import it first.
    * An interface package that is its own provider module evaluates in that
    * module's context instead.
@@ -191,12 +192,12 @@ export class Resolver {
     ) {
       return load();
     }
-    const module =
-      getModuleContext()?.module ??
-      descriptor.provider ??
-      descriptor.interfaceName;
     return runWithModuleContext(
-      { module, owner: `${instance}${INSTANCE_OWNER_SUFFIX}` },
+      {
+        module: descriptor.interfaceName,
+        owner: `${instance}${INSTANCE_OWNER_SUFFIX}`,
+        kind: INTERFACE_CONTEXT_KIND,
+      },
       load,
     );
   }
@@ -374,11 +375,27 @@ export class Resolver {
   }
 
   private contextOwner(): FileOwner | undefined {
-    const contextModule = getModuleContext()?.module;
-    const module = contextModule
-      ? this.modulesById.get(contextModule)
-      : undefined;
+    const context = getModuleContext();
+    if (!context) {
+      return undefined;
+    }
+    const instance = this.contextInstance(context);
+    if (instance) {
+      return { instance };
+    }
+    const module = this.modulesById.get(context.module);
     return module ? { module } : undefined;
+  }
+
+  private contextInstance(context: ModuleExecutionContext): string | undefined {
+    if (
+      context.kind !== INTERFACE_CONTEXT_KIND ||
+      !context.owner?.endsWith(INSTANCE_OWNER_SUFFIX)
+    ) {
+      return undefined;
+    }
+    const instance = context.owner.slice(0, -INSTANCE_OWNER_SUFFIX.length);
+    return this.instances.describe(instance) ? instance : undefined;
   }
 
   private scopeOf(owner: FileOwner | undefined): ReadonlyMap<string, string> {
