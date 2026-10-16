@@ -1,5 +1,9 @@
 # antelopejs
 
+## Versioning of @antelopejs/interface-core
+
+The core implements `@antelopejs/interface-core`, and `ImplementInterface` refuses a provider that lacks a declared function. Its range is therefore capped below the next minor (`>=0.2.3 <0.3.0`): an interface-core minor may add functions the core has to implement, and a published core must never resolve one it does not. Moving to a new interface-core minor means implementing what it adds and raising both bounds, in the same release.
+
 ## Code Conventions
 
 ### Critical Rules

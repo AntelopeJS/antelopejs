@@ -16,7 +16,7 @@ const builtEntry = path.join(root, "dist", "index.js");
 const interfaceCoreTarball = process.env.ANTELOPE_INTERFACE_CORE_TARBALL;
 const interfaceCoreSpec = interfaceCoreTarball
   ? `file:${interfaceCoreTarball}`
-  : "0.2.0";
+  : "0.2.3";
 
 function run(command: string, args: string[], cwd: string): string {
   return execFileSync(command, args, {
@@ -61,10 +61,10 @@ function inspectManifest(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
   const manifest = JSON.parse(content) as PackedManifest;
   if (
-    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.2.2 <1.0.0"
+    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.2.3 <0.3.0"
   ) {
     throw new Error(
-      "Packed core does not support compatible interface-core 0.x releases.",
+      "Packed core does not pin interface-core to the minor it implements.",
     );
   }
   if (/github:AntelopeJS\/interface-core|patches\//.test(content)) {
