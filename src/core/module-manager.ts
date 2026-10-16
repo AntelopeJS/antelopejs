@@ -66,6 +66,8 @@ export interface ModuleConfig {
   importOverrides?: Map<string, InterfaceConnectionRef[]>;
   disabledExports?: Set<string>;
   exportPriority?: Map<string, number>;
+  /** Started after the others; a failure leaves the project running. */
+  optional?: boolean;
 }
 
 export interface ManagedModule {
@@ -203,6 +205,20 @@ export class ModuleManager {
         this.loaded.delete(id);
         this.registry.unregister(id);
       }
+    }
+    this.rebuildAssociations();
+  }
+
+  /**
+   * Drops modules that failed to construct or start, already destroyed, so
+   * that what they would have consumed or provided no longer counts in the
+   * next interface checks and bindings.
+   */
+  discardModules(ids: readonly string[]): void {
+    for (const id of ids) {
+      this.isolation.forget(id);
+      this.loaded.delete(id);
+      this.registry.unregister(id);
     }
     this.rebuildAssociations();
   }

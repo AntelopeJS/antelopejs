@@ -1,3 +1,4 @@
+import type { ModuleEntryConfig } from "./module-entry";
 import type {
   AntelopeModuleConfig,
   ImportOverride,
@@ -14,6 +15,8 @@ export interface ExpandedModuleConfig {
   importOverrides: ImportOverride[];
   disabledExports: string[];
   exportPriority?: Record<string, number>;
+  /** Loaded after the other modules, its failure logged and tolerated. */
+  optional?: boolean;
 }
 
 function readExportPriority(
@@ -148,7 +151,11 @@ export class ConfigParser {
   ): Record<string, ExpandedModuleConfig> {
     const result: Record<string, ExpandedModuleConfig> = {};
 
-    for (const [name, config] of Object.entries(modules)) {
+    for (const [name, entry] of Object.entries(modules)) {
+      const config: string | ModuleEntryConfig = entry;
+      if (typeof config === "object" && config.disabled) {
+        continue;
+      }
       if (typeof config === "string") {
         result[name] = {
           source: {
@@ -190,6 +197,9 @@ export class ConfigParser {
           importOverrides,
           disabledExports: config.disabledExports ?? [],
         };
+        if (config.optional) {
+          result[name].optional = true;
+        }
         if (config.exportPriority) {
           result[name].exportPriority = readExportPriority(
             name,

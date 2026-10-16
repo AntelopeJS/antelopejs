@@ -423,6 +423,78 @@ exports.construct = async () => {
     }
   });
 
+  it("starts without an optional module whose required interface nothing implements", async () => {
+    const projectFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-project-"),
+    );
+    try {
+      const ifaceFolder = path.join(projectFolder, "iface-pkg");
+      await fs.mkdir(ifaceFolder, { recursive: true });
+      await fs.writeFile(
+        path.join(ifaceFolder, "package.json"),
+        JSON.stringify({
+          name: "iface-pkg",
+          version: "1.0.0",
+          main: "index.js",
+          antelopeJs: {},
+        }),
+      );
+      await fs.writeFile(path.join(ifaceFolder, "index.js"), "");
+
+      const consumerFolder = path.join(projectFolder, "consumer");
+      await createModule(consumerFolder, "consumer");
+      await fs.writeFile(
+        path.join(consumerFolder, "package.json"),
+        JSON.stringify({
+          name: "consumer",
+          version: "1.0.0",
+          main: "index.js",
+          dependencies: { "iface-pkg": "*" },
+        }),
+      );
+      await fs.writeFile(
+        path.join(consumerFolder, "index.js"),
+        "exports.construct = () => { global.__antelopeOptionalConstructed = true; };",
+      );
+      await fs.mkdir(path.join(consumerFolder, "node_modules"), {
+        recursive: true,
+      });
+      await fs.symlink(
+        ifaceFolder,
+        path.join(consumerFolder, "node_modules", "iface-pkg"),
+      );
+      await createModule(path.join(projectFolder, "module-a"), "module-a");
+
+      await writeProjectConfig(projectFolder, {
+        name: "test-project",
+        modules: {
+          "module-a": {
+            source: { type: "local", path: "./module-a", main: "index.js" },
+          },
+          consumer: {
+            source: { type: "local", path: "./consumer", main: "index.js" },
+            optional: true,
+          },
+        },
+      });
+
+      const manager = await launch(projectFolder);
+      try {
+        expect(manager.listModules()).to.include("module-a");
+        expect(manager.listModules()).to.not.include("consumer");
+        expect((global as any).__antelopeOptionalConstructed).to.equal(
+          undefined,
+        );
+      } finally {
+        delete (global as any).__antelopeOptionalConstructed;
+        await manager.stopAll();
+        await manager.destroyAll();
+      }
+    } finally {
+      await fs.rm(projectFolder, { recursive: true, force: true });
+    }
+  });
+
   it("self-hosts a standalone interface required with no implementer", async () => {
     const projectFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-project-"),

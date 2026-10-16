@@ -67,9 +67,19 @@ describe("core/beta module interface", () => {
     sinon
       .stub(ModuleManager.prototype, "getLoadedModuleEntry")
       .returns(entry as any);
-    sinon
-      .stub(ModuleManager.prototype, "addModules")
-      .returns([{ module: { id: "modA" }, config: entry.config } as any]);
+    sinon.stub(ModuleManager.prototype, "addModules").returns([
+      {
+        module: {
+          id: "modA",
+          manifest: {
+            folder: "/mods/modA",
+            implements: [],
+            manifest: { name: "modA" },
+          },
+        },
+        config: entry.config,
+      } as any,
+    ]);
     const constructStub = sinon
       .stub(ModuleManager.prototype, "constructModules")
       .resolves();

@@ -55,6 +55,7 @@ export interface BuildModuleEntry {
   importOverrides?: BuildImportOverride[];
   disabledExports?: string[];
   exportPriority?: Record<string, number>;
+  optional?: boolean;
 }
 
 export interface BuildArtifact {

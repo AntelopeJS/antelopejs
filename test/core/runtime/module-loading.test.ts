@@ -78,6 +78,32 @@ async function constructManagedModules(
   );
 }
 
+function addedModule(
+  id: string,
+  manifest: Record<string, unknown> = {},
+  module: Record<string, unknown> = {},
+): ManagedModule {
+  return {
+    module: {
+      id,
+      manifest: {
+        folder: process.cwd(),
+        implements: [],
+        manifest: { name: id, ...manifest },
+      },
+      ...module,
+    },
+    config: {},
+  } as unknown as ManagedModule;
+}
+
+function graphOf(loaded: ManagedModule[]) {
+  return {
+    getAllManagedModules: () => [...loaded],
+    getLoadedModules: () => loaded.values(),
+  };
+}
+
 describe("runtime module-loading", () => {
   afterEach(() => {
     sinon.restore();
@@ -918,9 +944,7 @@ describe("runtime module-loading", () => {
     const listModulesStub = sinon.stub().returns(["alpha"]);
     const getModuleEntryStub = sinon.stub();
     const getLoadedModuleEntryStub = sinon.stub();
-    const addModulesStub = sinon
-      .stub()
-      .returns([{ module: { id: "alpha" }, config: {} }]);
+    const addModulesStub = sinon.stub().returns([addedModule("alpha")]);
     const constructModulesStub = sinon.stub().resolves();
     const startModulesStub = sinon.stub();
     const getModuleStub = sinon.stub();
@@ -943,6 +967,7 @@ describe("runtime module-loading", () => {
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
       unrequireModuleFiles: unrequireModuleFilesStub,
+      ...graphOf([]),
     } as unknown as ModuleManager;
 
     const registryLoadStub = sinon.stub();
@@ -1067,10 +1092,11 @@ describe("runtime module-loading", () => {
         .callsFake(() => calls.push("unrequire")),
       addModules: sinon.stub().callsFake(() => {
         calls.push("add");
-        return [{ module: { id: "alpha" }, config: {} }];
+        return [addedModule("alpha")];
       }),
       constructModules: sinon.stub().resolves(),
       startModules: sinon.stub().resolves(),
+      ...graphOf([]),
     } as unknown as ModuleManager;
     const loaderContext = {
       fs: {} as any,
@@ -1102,11 +1128,10 @@ describe("runtime module-loading", () => {
     const manager = {
       getLoadedModuleEntry: sinon.stub().returns(undefined),
       unrequireModuleFiles: sinon.stub(),
-      addModules: sinon
-        .stub()
-        .returns([{ module: { id: "beta" }, config: {} }]),
+      addModules: sinon.stub().returns([addedModule("beta")]),
       constructModules: sinon.stub().resolves(),
       startModules: sinon.stub().resolves(),
+      ...graphOf([]),
     } as unknown as ModuleManager;
     const loaderContext = {
       fs: {} as any,
@@ -1131,5 +1156,158 @@ describe("runtime module-loading", () => {
     expect((manager.unrequireModuleFiles as sinon.SinonStub).called).to.equal(
       false,
     );
+  });
+
+  it("drops the modules LoadModule fails to construct", async () => {
+    const destroy = sinon.stub().resolves();
+    const manager = {
+      getLoadedModuleEntry: sinon.stub().returns(undefined),
+      unrequireModuleFiles: sinon.stub(),
+      addModules: sinon.stub().returns([addedModule("gamma", {}, { destroy })]),
+      constructModules: sinon.stub().rejects(new Error("construct failed")),
+      startModules: sinon.stub().resolves(),
+      discardModules: sinon.stub(),
+      ...graphOf([]),
+    } as unknown as ModuleManager;
+    const loaderContext = {
+      fs: {} as any,
+      cache: {} as any,
+      projectFolder: "/project",
+      registry: {
+        load: sinon
+          .stub()
+          .resolves([
+            { name: "gamma", version: "1.0.0", folder: "/cache/gamma" },
+          ]),
+      },
+    } as any;
+    registerCoreModuleInterface(manager, async () => loaderContext);
+
+    let thrown: unknown;
+    try {
+      await moduleInterfaceBeta.LoadModule(
+        "gamma",
+        { source: { type: "package", package: "gamma", version: "1.0.0" } },
+        true,
+      );
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.have.property("message", "construct failed");
+    expect(destroy.calledOnce).to.equal(true);
+    expect(
+      (manager.discardModules as sinon.SinonStub).calledOnceWith(["gamma"]),
+    ).to.equal(true);
+  });
+
+  describe("LoadModule interface checks", () => {
+    const REQUIRED_INTERFACE = "@antelopejs/interface-core";
+
+    function loadModuleHarness(
+      added: ManagedModule,
+      running: ManagedModule[] = [],
+    ) {
+      const manager = {
+        getLoadedModuleEntry: sinon.stub().returns(undefined),
+        unrequireModuleFiles: sinon.stub(),
+        addModules: sinon.stub().returns([added]),
+        constructModules: sinon.stub().resolves(),
+        startModules: sinon.stub().resolves(),
+        discardModules: sinon.stub(),
+        ...graphOf([...running, added]),
+      };
+      const loaderContext = {
+        fs: {} as any,
+        cache: {} as any,
+        projectFolder: "/project",
+        registry: {
+          load: sinon.stub().resolves([{ name: added.module.id }]),
+        },
+      } as any;
+      registerCoreModuleInterface(
+        manager as unknown as ModuleManager,
+        async () => loaderContext,
+      );
+      return manager;
+    }
+
+    function loadModule(id: string): Promise<string[]> {
+      return moduleInterfaceBeta.LoadModule(
+        id,
+        { source: { type: "package", package: id, version: "1.0.0" } },
+        true,
+      );
+    }
+
+    it("refuses a module whose required interface nothing implements", async () => {
+      const destroy = sinon.stub().resolves();
+      const manager = loadModuleHarness(
+        addedModule(
+          "consumer",
+          { dependencies: { [REQUIRED_INTERFACE]: "*" } },
+          { destroy },
+        ),
+      );
+
+      let thrown: unknown;
+      try {
+        await loadModule("consumer");
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).to.have.property(
+        "message",
+        `Unresolved interface dependencies:\n  - consumer requires ${REQUIRED_INTERFACE}\n\nRun 'ajs project modules install' to resolve missing dependencies.`,
+      );
+      expect(manager.constructModules.called).to.equal(false);
+      expect(destroy.calledOnce).to.equal(true);
+      expect(manager.discardModules.calledOnceWith(["consumer"])).to.equal(
+        true,
+      );
+    });
+
+    it("loads a module whose interface a running module implements", async () => {
+      const provider = addedModule("provider");
+      (provider.module.manifest.implements as string[]).push(
+        REQUIRED_INTERFACE,
+      );
+      const manager = loadModuleHarness(
+        addedModule("consumer", {
+          dependencies: { [REQUIRED_INTERFACE]: "*" },
+        }),
+        [provider],
+      );
+
+      expect(await loadModule("consumer")).to.deep.equal(["consumer"]);
+      expect(manager.startModules.calledOnce).to.equal(true);
+      expect(manager.discardModules.called).to.equal(false);
+    });
+
+    it("loads a module that implements the interface it requires", async () => {
+      const consumer = addedModule("consumer", {
+        dependencies: { [REQUIRED_INTERFACE]: "*" },
+      });
+      (consumer.module.manifest.implements as string[]).push(
+        REQUIRED_INTERFACE,
+      );
+      const manager = loadModuleHarness(consumer);
+
+      expect(await loadModule("consumer")).to.deep.equal(["consumer"]);
+      expect(manager.discardModules.called).to.equal(false);
+    });
+
+    it("loads a module whose optional interface nothing implements", async () => {
+      const manager = loadModuleHarness(
+        addedModule("consumer", {
+          optionalDependencies: { [REQUIRED_INTERFACE]: "*" },
+        }),
+      );
+
+      expect(await loadModule("consumer")).to.deep.equal(["consumer"]);
+      expect(manager.constructModules.calledOnce).to.equal(true);
+      expect(manager.discardModules.called).to.equal(false);
+    });
   });
 });

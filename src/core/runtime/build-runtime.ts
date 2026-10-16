@@ -69,7 +69,11 @@ function mapArtifactImportOverrides(
 
 export type SerializedModuleConfig = Pick<
   BuildModuleEntry,
-  "config" | "importOverrides" | "disabledExports" | "exportPriority"
+  | "config"
+  | "importOverrides"
+  | "disabledExports"
+  | "exportPriority"
+  | "optional"
 >;
 
 export function serializeModuleConfig(
@@ -85,6 +89,7 @@ export function serializeModuleConfig(
       config.exportPriority && config.exportPriority.size > 0
         ? Object.fromEntries(config.exportPriority)
         : undefined,
+    optional: config.optional || undefined,
   };
 }
 
@@ -115,6 +120,7 @@ export function mapArtifactModuleEntries(
         importOverrides,
         disabledExports: new Set(entry.disabledExports ?? []),
         exportPriority: new Map(Object.entries(entry.exportPriority ?? {})),
+        optional: entry.optional,
       },
     };
   });

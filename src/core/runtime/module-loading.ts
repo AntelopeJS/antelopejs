@@ -8,6 +8,12 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import { Module } from "../module";
+import type { ModuleDeclarationChanges } from "../config/module-entry";
+import {
+  listModuleDeclarations,
+  removeModuleDeclaration,
+  saveModuleDeclaration,
+} from "../config/module-declarations";
 import { ModuleState } from "../../types";
 import { ModuleCache } from "../module-cache";
 import { NodeFileSystem } from "../filesystem";
@@ -17,7 +23,13 @@ import { CliError } from "../cli/output/errors";
 import { describeFailure } from "../cli/output/failures";
 import { getProcessTasks, runTask } from "../cli/output/tasks";
 import type { ExpandedModuleConfig } from "../config/config-parser";
-import { findUnresolvedInterfaces } from "../resolution/interface-resolution";
+import {
+  findUnresolvedInterfaces,
+  type InterfaceConsumer,
+  type InterfaceProvider,
+  type InterfaceResolutionResult,
+  type UnresolvedInterface,
+} from "../resolution/interface-resolution";
 import type {
   ManagedModule,
   ModuleConfig,
@@ -153,6 +165,30 @@ async function retireReplacedModules(
   }
 }
 
+/**
+ * Checks the interfaces of modules `LoadModule` just added, then constructs
+ * and optionally starts them. When any of that fails, they are destroyed and
+ * dropped again: a module left behind would still count as a consumer of its
+ * interface packages, and every later load would fail its checks.
+ */
+export async function activateLoadedModules(
+  manager: ModuleManager,
+  created: ManagedModule[],
+  autostart: boolean,
+): Promise<void> {
+  try {
+    ensureInterfacesResolved(manager, created);
+    await manager.constructModules(created);
+    if (autostart) {
+      await manager.startModules(created);
+    }
+  } catch (error) {
+    await Promise.allSettled(created.map(({ module }) => module.destroy()));
+    manager.discardModules(created.map(({ module }) => module.id));
+    throw error;
+  }
+}
+
 export function registerCoreModuleInterface(
   manager: ModuleManager,
   loadContext: LoaderContextProvider,
@@ -202,10 +238,7 @@ export function registerCoreModuleInterface(
         const created = manager.addModules(
           manifests.map((manifest) => ({ manifest, config: moduleConfig })),
         );
-        await manager.constructModules(created);
-        if (autostart) {
-          await manager.startModules(created);
-        }
+        await activateLoadedModules(manager, created, autostart);
         return created.map(({ module }) => module.id);
       },
       StartModule: async (moduleId: string) => {
@@ -217,6 +250,19 @@ export function registerCoreModuleInterface(
       DestroyModule: async (moduleId: string) => {
         await manager.getModule(moduleId)?.destroy();
       },
+      ListModuleDeclarations: async () =>
+        listModuleDeclarations((await loadContext()).projectFolder),
+      SaveModuleDeclaration: async (
+        moduleId: string,
+        changes: ModuleDeclarationChanges,
+      ) =>
+        saveModuleDeclaration(
+          (await loadContext()).projectFolder,
+          moduleId,
+          changes,
+        ),
+      RemoveModuleDeclaration: async (moduleId: string) =>
+        removeModuleDeclaration((await loadContext()).projectFolder, moduleId),
       ReloadModule: async (moduleId: string) => {
         await reloadLoadedModuleFromSource(
           manager,
@@ -267,6 +313,7 @@ export function toModuleConfig(
     disabledExports: new Set<string>(moduleConfig.disabledExports ?? []),
     importOverrides: buildModuleOverrides(moduleConfig.importOverrides),
     exportPriority: new Map(Object.entries(moduleConfig.exportPriority ?? {})),
+    optional: moduleConfig.optional,
   };
 }
 
@@ -326,20 +373,37 @@ function moduleLoadFailure(failures: unknown[], total: number): unknown {
   );
 }
 
+/**
+ * Logs that optional module `id` could not be downloaded: the project starts
+ * without it.
+ */
+function skipOptionalModule(id: string, reason: unknown): void {
+  Logger.Error(
+    `Optional module ${id} could not be loaded; starting without it`,
+    reason,
+  );
+}
+
 async function loadModuleEntries(
   modules: Record<string, ExpandedModuleConfig>,
   context: LoaderContext,
 ): Promise<ModuleManifestEntry[]> {
+  const declared = Object.entries(modules);
   const results = await Promise.allSettled(
-    Object.entries(modules).map(([id, moduleConfig]) =>
+    declared.map(([id, moduleConfig]) =>
       loadModuleEntry(id, moduleConfig, context),
     ),
   );
-  const failures = results
-    .filter(
-      (result): result is PromiseRejectedResult => result.status === "rejected",
-    )
-    .map((result) => result.reason as unknown);
+  const failures: unknown[] = [];
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") return;
+    const [id, moduleConfig] = declared[index];
+    if (moduleConfig.optional) {
+      skipOptionalModule(id, result.reason);
+      return;
+    }
+    failures.push(result.reason);
+  });
   if (failures.length > 0) {
     throw moduleLoadFailure(failures, results.length);
   }
@@ -583,48 +647,82 @@ export async function destroyModulesAfterFailure(
   throw error;
 }
 
-export function ensureGraphIsValid(manager: ModuleManager): void {
-  const allModules = manager.getAllManagedModules();
-  const loadedModules = [...manager.getLoadedModules()];
-  const loadedIds = new Set(loadedModules.map(({ module }) => module.id));
-
-  const providers = allModules.map(({ module, config }) => ({
+function collectInterfaceProviders(
+  manager: ModuleManager,
+): InterfaceProvider[] {
+  return manager.getAllManagedModules().map(({ module, config }) => ({
     name: module.manifest.manifest.name,
     implements: module.manifest.implements ?? [],
     disabledExports: config.disabledExports,
   }));
+}
 
-  const staticPackages = allModules
+function collectStaticPackages(manager: ModuleManager): string[] {
+  const loadedIds = new Set(
+    [...manager.getLoadedModules()].map(({ module }) => module.id),
+  );
+  return manager
+    .getAllManagedModules()
     .filter(({ module }) => !loadedIds.has(module.id))
     .flatMap(({ module }) => [
       module.manifest.manifest.name,
       ...Object.keys(module.manifest.manifest.dependencies ?? {}),
     ]);
+}
 
-  const consumers = loadedModules.map(({ module }) => ({
+function toInterfaceConsumer({ module }: ManagedModule): InterfaceConsumer {
+  return {
     id: module.id,
     folder: module.manifest.folder,
     dependencies: module.manifest.manifest.dependencies ?? {},
     optionalDependencies: module.manifest.manifest.optionalDependencies ?? {},
-  }));
+  };
+}
 
-  const { unresolved, stubbed } = findUnresolvedInterfaces(
-    providers,
-    consumers,
-    staticPackages,
+function unresolvedInterfacesError(unresolved: UnresolvedInterface[]): Error {
+  const details = unresolved
+    .map(
+      ({ moduleId, interfacePackage }) =>
+        `  - ${moduleId} requires ${interfacePackage}`,
+    )
+    .join("\n");
+  return new Error(
+    `Unresolved interface dependencies:\n${details}\n\nRun 'ajs project modules install' to resolve missing dependencies.`,
   );
-  if (unresolved.length > 0) {
-    const details = unresolved
-      .map(
-        ({ moduleId, interfacePackage }) =>
-          `  - ${moduleId} requires ${interfacePackage}`,
-      )
-      .join("\n");
-    throw new Error(
-      `Unresolved interface dependencies:\n${details}\n\nRun 'ajs project modules install' to resolve missing dependencies.`,
-    );
-  }
+}
 
+/**
+ * Checks that every interface `consumers` require is implemented by a module
+ * the manager holds, them included, and tells which optional ones nothing
+ * implements.
+ *
+ * @throws the "Unresolved interface dependencies" error naming each missing
+ * interface and the module that requires it.
+ */
+function ensureInterfacesResolved(
+  manager: ModuleManager,
+  consumers: Iterable<ManagedModule>,
+): InterfaceResolutionResult {
+  const result = findUnresolvedInterfaces(
+    collectInterfaceProviders(manager),
+    [...consumers].map(toInterfaceConsumer),
+    collectStaticPackages(manager),
+  );
+  if (result.unresolved.length > 0) {
+    throw unresolvedInterfacesError(result.unresolved);
+  }
+  return result;
+}
+
+/**
+ * Checks the interfaces of every loaded module at startup, and stubs the
+ * optional ones nothing implements.
+ */
+export function ensureGraphIsValid(manager: ModuleManager): void {
+  const { stubbed } = ensureInterfacesResolved(
+    manager,
+    manager.getLoadedModules(),
+  );
   if (stubbed.length > 0) {
     manager.registerStubbedInterfaces(stubbed);
   }
