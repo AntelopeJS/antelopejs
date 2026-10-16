@@ -4,10 +4,17 @@
   "description": "TypeScript framework extending hexagonal architecture across your application and its ecosystem through explicit contracts and replaceable modules.",
   "keywords": [
     "antelopejs",
+    "cli",
     "framework",
+    "hexagonal-architecture",
     "modular",
+    "ports-and-adapters",
     "typescript"
   ],
+  "homepage": "https://framework.antelopejs.com",
+  "bugs": {
+    "url": "https://github.com/AntelopeJS/antelopejs/issues"
+  },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
