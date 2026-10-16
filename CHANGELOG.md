@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.15.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.14.0...v1.15.0)
+
+### 🚀 Enhancements
+
+- **config:** Edit module declarations in antelope.config.ts without restarting ([#200](https://github.com/AntelopeJS/antelopejs/pull/200))
+
+### 🩹 Fixes
+
+- **runtime:** Retire the running generation when LoadModule replaces a module ([#199](https://github.com/AntelopeJS/antelopejs/pull/199))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.14.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.13.5...v1.14.0)
