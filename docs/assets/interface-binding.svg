@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 330" role="img" aria-labelledby="title desc">
+  <title id="title">A contract separates the caller from the provider choice</title>
+  <desc id="desc">Application configuration selects a provider. At runtime the consumer calls its interface instance, which forwards to that provider. A different provider requires compatible behavior and configuration, not a different consumer import.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8" fill="none" stroke="#52667a" stroke-width="1.5"/></marker></defs>
+  <rect width="920" height="330" rx="16" fill="#f5f8fb"/>
+  <g font-family="system-ui, sans-serif" fill="#172b40">
+    <text x="32" y="40" font-size="19" font-weight="700">One import. An application-selected implementation.</text>
+    <rect x="540" y="65" width="346" height="56" rx="8" fill="#e9edf7" stroke="#b2bed8"/>
+    <text x="713" y="90" text-anchor="middle" font-size="15" font-weight="600">Application configuration</text>
+    <text x="713" y="110" text-anchor="middle" font-size="12">selects the module and its settings</text>
+    <path d="M753 121 V167" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="32" y="174" width="228" height="90" rx="8" fill="#fff" stroke="#b4c2cf"/>
+    <text x="146" y="207" text-anchor="middle" font-size="17" font-weight="700">Consumer module</text>
+    <text x="146" y="234" text-anchor="middle" font-size="14">calls SendEmail(message)</text>
+    <path d="M260 219 H337" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="346" y="174" width="228" height="90" rx="8" fill="#e1f4ee" stroke="#73ac99"/>
+    <text x="460" y="207" text-anchor="middle" font-size="17" font-weight="700">Interface instance</text>
+    <text x="460" y="234" text-anchor="middle" font-size="14">typed contract + proxies</text>
+    <path d="M574 219 H651" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="660" y="174" width="228" height="90" rx="8" fill="#fff" stroke="#b4c2cf"/>
+    <text x="774" y="207" text-anchor="middle" font-size="17" font-weight="700">Provider module</text>
+    <text x="774" y="234" text-anchor="middle" font-size="14">implements email delivery</text>
+    <text x="32" y="303" font-size="14">Runtime call flow • The consumer imports the contract, not the provider.</text>
+  </g>
+</svg>

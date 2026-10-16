@@ -1,7 +1,21 @@
 ---
 title: Guides
+description: Add an endpoint, persist data, authenticate requests, or integrate AntelopeJS with an existing application.
 navigation: false
 ---
+
+Choose the behavior you need. These guides assume you can [run a local module](/docs/get-started/quick-start); each interface also needs a compatible provider in your application configuration.
+
+## Build an API in stages
+
+1. [Handle an HTTP request](/docs/guides/api-routing) and verify the response.
+2. [Persist a record](/docs/guides/database) through a registered schema and model.
+3. [Authenticate requests](/docs/guides/authentication), then define authorization separately.
+4. [Generate CRUD endpoints](/docs/guides/data-api) when their access model fits your data.
+
+For a combined example, follow the [task API tutorial](/docs/guides/full-stack-tutorial). It demonstrates a shared authenticated task board, not per-user data isolation or a production account system.
+
+## Task guides
 
 ::card-group
 ::card{icon="i-ph-arrows-split" title="API Routing" to="/docs/guides/api-routing"}
@@ -21,7 +35,7 @@ Generate automatic CRUD endpoints from database tables with customizable routes 
 ::
 
 ::card{icon="i-ph-rocket" title="Full-Stack Application" to="/docs/guides/full-stack-tutorial"}
-Build a complete task management API from scratch using database, authentication, and data API interfaces.
+Connect tables, login routes and authenticated shared-task endpoints, with explicit provider setup and verification checkpoints.
 ::
 
 ::card{icon="i-ph-plugs-connected" title="Embed AntelopeJS in an Existing App" to="/docs/guides/embedded-runtime"}

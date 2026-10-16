@@ -1,20 +1,22 @@
 ---
 title: Community
-description: Need help with Antelopejs? Here's where to ask questions and how to get the best answers fast.
+description: Ask a focused question, report a reproducible bug, or contribute to the framework.
 navigation: false
 ---
 
+Choose the channel that matches your task. Include versions, a minimal example, and the exact error when asking for technical help. Remove credentials and personal data from anything you share.
+
 ::card-group
 ::card{icon="i-ph-question" title="Getting Help" to="/docs/community/getting-help"}
-Stuck on something? Don't bang your head against the wall - we've all been there! Check out where to ask questions and get friendly help from fellow developers.
+Find support channels and prepare the context needed to diagnose your question.
 ::
 
 ::card{icon="i-ph-bug" title="How to Report Bugs" to="/docs/community/how-to-report-bugs"}
-Found a bug? First of all, thanks! Knowing what's broken helps us make things better. Here's how to report issues so we can squash them quickly.
+Provide a minimal reproduction, expected behavior, actual behavior and environment details.
 ::
 
 ::card{icon="i-ph-git-pull-request" title="Contribution" to="/docs/community/contribution"}
-Ready to roll up your sleeves? Whether you're a coding wizard, docs enthusiast, or just have great ideas, there's a place for you in our community.
+Choose a contribution and follow the issue, branch and pull-request workflow.
 ::
 
 ::card{icon="i-ph-code-block" title="Framework" to="/docs/community/framework"}

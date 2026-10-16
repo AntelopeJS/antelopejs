@@ -1,7 +1,21 @@
 ---
 title: Concepts
+description: Choose the concept you need to design contracts, assemble providers, or operate modules safely.
 navigation: false
 ---
+
+Start with [Architecture](/docs/get-started/architecture) for the overall model. Read these concepts when a design decision needs more detail; you do not need to read every reference before writing a module.
+
+| Your question | Read |
+| --- | --- |
+| What should another module import? | [Interfaces](/docs/concepts/interfaces) |
+| When can I initialize or release a resource? | [Modules](/docs/concepts/modules) |
+| Should this capability be a call, event, or registration? | [Proxies](/docs/concepts/proxies) |
+| Which provider receives a call? | [Interface bindings](/docs/concepts/configuration#interface-bindings) |
+| How do I supply deployment-specific values? | [Configuration](/docs/concepts/configuration) |
+| Who owns signals, logs and shutdown? | [Embedded Runtime](/docs/concepts/embedded-runtime) |
+
+## Concept reference
 
 ::card-group
 ::card{icon="i-ph-brackets-curly" title="Interfaces" to="/docs/concepts/interfaces"}
