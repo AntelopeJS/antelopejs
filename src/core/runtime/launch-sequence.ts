@@ -1,9 +1,10 @@
 import path from "node:path";
+import { Logging } from "@antelopejs/interface-core/logging";
 
 import type { ShutdownHandler, ShutdownManager } from "../shutdown";
 import { NodeFileSystem } from "../filesystem";
 import type { LaunchOptions } from "../../types";
-import { ModuleManager } from "../module-manager";
+import { type ManagedModule, ModuleManager } from "../module-manager";
 import { INSTANCES_FOLDER } from "../module-isolation";
 import { terminalDisplay } from "../cli/output/tasks";
 import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
@@ -67,12 +68,16 @@ interface LaunchRequest {
   policy: RuntimePolicy;
 }
 
+const Logger = new Logging.Channel("loader");
+
 interface ProjectLaunch {
   request: LaunchRequest;
   project: PreparedProject;
   shutdownManager: ShutdownManager;
   manager: ModuleManager;
   entries: ModuleManifestEntry[];
+  /** Optional modules, started once the others run. */
+  optionalEntries: ModuleManifestEntry[];
 }
 
 function resolveRuntimeLoaderConfig(
@@ -309,11 +314,13 @@ async function createModuleEntries(launch: ProjectLaunch): Promise<void> {
   launch.entries = await launch.project.createEntries();
 }
 
-function addModules({ manager, entries, project }: ProjectLaunch): void {
+function addModules(launch: ProjectLaunch): void {
+  const { manager, entries, project } = launch;
   if (project.instanceRoot) {
     manager.setInstanceRoot(project.instanceRoot);
   }
-  manager.addModules(entries);
+  launch.optionalEntries = entries.filter((entry) => entry.config?.optional);
+  manager.addModules(entries.filter((entry) => !entry.config?.optional));
   ensureGraphIsValid(manager);
 }
 
@@ -325,12 +332,44 @@ function startModules({ manager }: ProjectLaunch): Promise<void> {
   return manager.startAll();
 }
 
+/**
+ * Adds, constructs and starts one optional module. A failure is logged, what
+ * the module built is destroyed, and the project runs on without it.
+ */
+async function startOptionalModule(
+  manager: ModuleManager,
+  entry: ModuleManifestEntry,
+): Promise<void> {
+  let created: ManagedModule[] = [];
+  try {
+    created = manager.addModules([entry]);
+    await manager.constructModules(created);
+    await manager.startModules(created);
+  } catch (error) {
+    Logger.Error(
+      `Optional module ${entry.manifest.name} failed to start; running without it`,
+      error,
+    );
+    await Promise.allSettled(created.map(({ module }) => module.destroy()));
+  }
+}
+
+async function startOptionalModules({
+  manager,
+  optionalEntries,
+}: ProjectLaunch): Promise<void> {
+  for (const entry of optionalEntries) {
+    await startOptionalModule(manager, entry);
+  }
+}
+
 const MODULE_STEPS: readonly LaunchStep<ProjectLaunch>[] = [
   registerModuleInterfaces,
   createModuleEntries,
   addModules,
   constructProjectModules,
   startModules,
+  startOptionalModules,
 ];
 
 function loadProjectModules(launch: ProjectLaunch): Promise<void> {
@@ -363,6 +402,7 @@ async function completeLaunchSequence(
     shutdownManager,
     manager,
     entries: [],
+    optionalEntries: [],
   };
   await runLaunchSteps(LAUNCH_STEPS, launch, shutdownManager.stopping);
 

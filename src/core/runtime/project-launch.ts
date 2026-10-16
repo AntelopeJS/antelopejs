@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Writable } from "node:stream";
 import { Logging } from "@antelopejs/interface-core/logging";
@@ -13,6 +14,7 @@ import {
   PROJECT_STATE_DIR,
   tryFindConfigPath,
 } from "../config/config-paths";
+import { consumeOwnConfigWrite } from "../config/config-writes";
 import type { ShutdownManager } from "../shutdown";
 import type { FileWatcher } from "../watch/file-watcher";
 import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
@@ -34,6 +36,7 @@ const MAX_STREAM_LISTENERS = 20;
 const INTERACTIVE_PROMPT = "> ";
 const SHUTDOWN_PRIORITY_RESOURCES = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
+const CONFIG_ENCODING = "utf-8";
 const UNSUPPORTED_ARTIFACT_OPTIONS_WARNING =
   "Watch and interactive modes are only available when launching from configuration; ignoring them for this build artifact launch.";
 
@@ -105,8 +108,9 @@ async function setupWatching(
   const configPath = await tryFindConfigPath(projectFolder, fs);
   if (configPath) {
     await watcher.watchFile(configPath, () => {
-      Logger.Info("Configuration file changed, restarting project...");
-      void restartProject(projectFolder, env, options);
+      void restartUnlessOwnWrite(configPath, () =>
+        restartProject(projectFolder, env, options),
+      );
     });
   }
 
@@ -230,4 +234,22 @@ export async function launchFromBuild(
     options,
   );
   return started.manager;
+}
+
+/**
+ * Restarts the project for an edit of its configuration file, unless the
+ * edit is one the runtime made itself through the module declaration
+ * functions: the module it describes is already loaded, stopped or reloaded.
+ */
+async function restartUnlessOwnWrite(
+  configPath: string,
+  restart: () => Promise<void>,
+): Promise<void> {
+  const content = await readFile(configPath, CONFIG_ENCODING).catch(() => "");
+  if (consumeOwnConfigWrite(configPath, content)) {
+    Logger.Debug("Configuration file updated by the runtime, no restart");
+    return;
+  }
+  Logger.Info("Configuration file changed, restarting project...");
+  await restart();
 }

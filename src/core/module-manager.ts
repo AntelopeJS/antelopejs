@@ -66,6 +66,8 @@ export interface ModuleConfig {
   importOverrides?: Map<string, InterfaceConnectionRef[]>;
   disabledExports?: Set<string>;
   exportPriority?: Map<string, number>;
+  /** Started after the others; a failure leaves the project running. */
+  optional?: boolean;
 }
 
 export interface ManagedModule {

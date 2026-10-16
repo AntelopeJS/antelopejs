@@ -33,9 +33,18 @@ export interface LoadedConfig {
   test?: AntelopeTestConfig;
 }
 
-async function importConfigInput(configPath: string): Promise<ConfigInput> {
+/**
+ * Imports the configuration file. `fresh` skips jiti's module and file
+ * caches, for a file the running process may have written since it last read
+ * it.
+ */
+async function importConfigInput(
+  configPath: string,
+  fresh = false,
+): Promise<ConfigInput> {
   const jiti = createJiti(configPath, {
     alias: { [CORE_CONFIG_PACKAGE]: CORE_CONFIG_ENTRY },
+    ...(fresh ? { moduleCache: false, fsCache: false } : {}),
   });
   const loaded = await jiti.import(configPath);
   return (loaded as any).default ?? loaded;
@@ -44,8 +53,9 @@ async function importConfigInput(configPath: string): Promise<ConfigInput> {
 export async function loadTsConfigFile(
   configPath: string,
   environment?: string,
+  fresh = false,
 ): Promise<AntelopeConfig> {
-  const configInput = await importConfigInput(configPath);
+  const configInput = await importConfigInput(configPath, fresh);
 
   if (typeof configInput === "function") {
     return await configInput({ env: environment ?? DEFAULT_ENV });

@@ -8,6 +8,12 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import { Module } from "../module";
+import type { ModuleDeclarationChanges } from "../config/module-entry";
+import {
+  listModuleDeclarations,
+  removeModuleDeclaration,
+  saveModuleDeclaration,
+} from "../config/module-declarations";
 import { ModuleState } from "../../types";
 import { ModuleCache } from "../module-cache";
 import { NodeFileSystem } from "../filesystem";
@@ -217,6 +223,19 @@ export function registerCoreModuleInterface(
       DestroyModule: async (moduleId: string) => {
         await manager.getModule(moduleId)?.destroy();
       },
+      ListModuleDeclarations: async () =>
+        listModuleDeclarations((await loadContext()).projectFolder),
+      SaveModuleDeclaration: async (
+        moduleId: string,
+        changes: ModuleDeclarationChanges,
+      ) =>
+        saveModuleDeclaration(
+          (await loadContext()).projectFolder,
+          moduleId,
+          changes,
+        ),
+      RemoveModuleDeclaration: async (moduleId: string) =>
+        removeModuleDeclaration((await loadContext()).projectFolder, moduleId),
       ReloadModule: async (moduleId: string) => {
         await reloadLoadedModuleFromSource(
           manager,
@@ -267,6 +286,7 @@ export function toModuleConfig(
     disabledExports: new Set<string>(moduleConfig.disabledExports ?? []),
     importOverrides: buildModuleOverrides(moduleConfig.importOverrides),
     exportPriority: new Map(Object.entries(moduleConfig.exportPriority ?? {})),
+    optional: moduleConfig.optional,
   };
 }
 
@@ -326,20 +346,37 @@ function moduleLoadFailure(failures: unknown[], total: number): unknown {
   );
 }
 
+/**
+ * Logs that optional module `id` could not be downloaded: the project starts
+ * without it.
+ */
+function skipOptionalModule(id: string, reason: unknown): void {
+  Logger.Error(
+    `Optional module ${id} could not be loaded; starting without it`,
+    reason,
+  );
+}
+
 async function loadModuleEntries(
   modules: Record<string, ExpandedModuleConfig>,
   context: LoaderContext,
 ): Promise<ModuleManifestEntry[]> {
+  const declared = Object.entries(modules);
   const results = await Promise.allSettled(
-    Object.entries(modules).map(([id, moduleConfig]) =>
+    declared.map(([id, moduleConfig]) =>
       loadModuleEntry(id, moduleConfig, context),
     ),
   );
-  const failures = results
-    .filter(
-      (result): result is PromiseRejectedResult => result.status === "rejected",
-    )
-    .map((result) => result.reason as unknown);
+  const failures: unknown[] = [];
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") return;
+    const [id, moduleConfig] = declared[index];
+    if (moduleConfig.optional) {
+      skipOptionalModule(id, result.reason);
+      return;
+    }
+    failures.push(result.reason);
+  });
   if (failures.length > 0) {
     throw moduleLoadFailure(failures, results.length);
   }
