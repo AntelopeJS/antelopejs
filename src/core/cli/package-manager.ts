@@ -206,6 +206,14 @@ export function savePackageManagerToPackageJson(
     const packageJsonContent = JSON.parse(
       fs.readFileSync(packageJsonPath, "utf8"),
     );
+    const currentPackageManager = packageJsonContent.packageManager;
+    if (
+      typeof currentPackageManager === "string" &&
+      currentPackageManager.match(PACKAGE_MANAGER_PATTERN)?.[1] ===
+        packageManager
+    ) {
+      return;
+    }
     const packageManagerWithVersion =
       getPackageManagerWithVersion(packageManager);
     packageJsonContent.packageManager = packageManagerWithVersion;

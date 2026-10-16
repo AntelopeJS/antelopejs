@@ -26,9 +26,24 @@ import { collectStderr } from "../../../../helpers/capture-output";
 
 const { levels } = getProcessUi().symbols;
 
-const TEMPLATES = [
+const TEMPLATES: gitOps.Template[] = [
   { name: "basic", repository: "", branch: "" },
-  { name: "api", repository: "", branch: "" },
+  {
+    name: "api",
+    repository: "",
+    branch: "",
+    nextSteps: [
+      { command: "pnpm run setup", description: "Prepare the frontend" },
+    ],
+  },
+];
+const PROJECT_TEMPLATES: gitOps.Template[] = [
+  {
+    name: "dashboard",
+    repository: "",
+    branch: "",
+    packageManager: "pnpm",
+  },
 ];
 
 const INTERFACE_CATALOG = {
@@ -51,6 +66,7 @@ interface ModuleInitStubs {
   exec: sinon.SinonStub;
   gitInit: sinon.SinonStub;
   spinnerFail: sinon.SinonStub;
+  output(): string;
 }
 
 function stubModuleInit(
@@ -62,6 +78,7 @@ function stubModuleInit(
   sinon.stub(common, "displayNonDefaultGitWarning").returns();
   const manifest = sinon.stub(gitOps, "loadManifestFromGit").resolves({
     templates: TEMPLATES,
+    projectTemplates: PROJECT_TEMPLATES,
     interfaces: {},
     starredInterfaces: Object.keys(catalog),
   });
@@ -84,7 +101,7 @@ function stubModuleInit(
   sinon.stub(cliUi.Spinner.prototype, "start").resolves();
   sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
   const spinnerFail = sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
-  collectStderr();
+  const output = collectStderr();
   sinon.stub(cliUi, "info");
   sinon.stub(cliUi, "success");
   sinon.stub(cliUi, "warning");
@@ -98,6 +115,7 @@ function stubModuleInit(
     exec,
     gitInit,
     spinnerFail,
+    output,
   };
 }
 
@@ -209,6 +227,67 @@ describe("module init behavior", () => {
     });
     expect(stubs.savePackageManager.calledWith("yarn")).to.equal(true);
     expect(stubs.gitInit.called).to.equal(false);
+    expect(stubs.output()).to.include("pnpm run setup");
+    expect(stubs.output()).to.include("Prepare the frontend");
+    expect(stubs.output()).to.include(`cd ${moduleDir}`);
+  });
+
+  it("preserves a template's interface version when it is selected again", async () => {
+    const stubs = stubModuleInit(INTERFACE_CATALOG);
+    stubs.copy.callsFake(async (_template, target) => {
+      writeFileSync(
+        path.join(target, "package.json"),
+        JSON.stringify({
+          dependencies: { "@antelopejs/interface-api": ">=0.0.14 <0.1.0" },
+        }),
+      );
+    });
+    fakePrompts({ isInteractive: false });
+
+    await moduleInitCommand(moduleDir, {
+      template: "basic",
+      interfaces: ["api"],
+      yes: true,
+    });
+
+    expect(readDependencies(moduleDir)).to.deep.equal({
+      "@antelopejs/interface-api": ">=0.0.14 <0.1.0",
+    });
+  });
+
+  it("only offers complete project templates during project creation", async () => {
+    stubModuleInit();
+    const prompts = fakePrompts({ answers: ["basic", "pnpm", false] });
+
+    await moduleInitCommand(moduleDir, {});
+
+    expect(prompts.asked[0].options.options).to.deep.equal([
+      { value: "basic", label: "basic", hint: undefined },
+      { value: "api", label: "api", hint: undefined },
+    ]);
+  });
+
+  it("rejects an incompatible package manager before creating a project", async () => {
+    const stubs = stubModuleInit();
+    fakePrompts({ isInteractive: false });
+
+    const failure = await rejectionOf(
+      moduleInitCommand(
+        moduleDir,
+        {
+          template: "dashboard",
+          pm: "npm",
+          gitInit: false,
+        },
+        { isFromProject: true },
+      ),
+    );
+
+    expect(failure.problem.title).to.equal(
+      "Template 'dashboard' requires pnpm",
+    );
+    expect(failure.exitCode).to.equal(USAGE_EXIT_CODE);
+    expect(stubs.copy.called).to.equal(false);
   });
 
   it("takes the defaults with --yes", async () => {

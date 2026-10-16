@@ -327,6 +327,28 @@ describe("Package Manager Utils", () => {
   });
 
   describe("savePackageManagerToPackageJson", () => {
+    it("keeps a matching template pin but replaces a different package manager", async () => {
+      const tempDir = makeTempDir();
+      const execStub = sinon
+        .stub(require("node:child_process"), "execSync")
+        .returns("12.0.0");
+      try {
+        const pinned = "pnpm@10.2.0+sha256.47c8bca4";
+        writeJson(`${tempDir}/package.json`, { packageManager: pinned });
+        savePackageManagerToPackageJson("pnpm", tempDir);
+        expect(await getModulePackageManager(tempDir)).to.equal(pinned);
+
+        writeJson(`${tempDir}/package.json`, {
+          packageManager: "yarn@1.22.21",
+        });
+        savePackageManagerToPackageJson("pnpm", tempDir);
+        expect(await getModulePackageManager(tempDir)).to.equal("pnpm@12.0.0");
+      } finally {
+        execStub.restore();
+        cleanupTempDir(tempDir);
+      }
+    });
+
     it("warns when package.json is missing", () => {
       const tempDir = makeTempDir();
       const warnStub = sinon.stub(cliUi, "warning");
