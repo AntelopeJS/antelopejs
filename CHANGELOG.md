@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.15.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.15.1...v1.15.2)
+
+### 🩹 Fixes
+
+- **deps:** Cap @antelopejs/interface-core below the next minor the core does not implement ([#202](https://github.com/AntelopeJS/antelopejs/pull/202))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.15.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.15.0...v1.15.1)
