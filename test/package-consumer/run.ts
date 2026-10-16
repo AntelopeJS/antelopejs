@@ -23,7 +23,7 @@ const skillFile = "SKILL.md";
 const interfaceCoreTarball = process.env.ANTELOPE_INTERFACE_CORE_TARBALL;
 const interfaceCoreSpec = interfaceCoreTarball
   ? `file:${interfaceCoreTarball}`
-  : "0.2.3";
+  : "0.2.4";
 
 function run(command: string, args: string[], cwd: string): string {
   return execFileSync(command, args, {
@@ -68,7 +68,7 @@ function inspectManifest(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
   const manifest = JSON.parse(content) as PackedManifest;
   if (
-    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.2.3 <0.3.0"
+    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.2.4 <0.3.0"
   ) {
     throw new Error(
       "Packed core does not pin interface-core to the minor it implements.",
