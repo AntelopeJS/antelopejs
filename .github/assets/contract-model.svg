@@ -14,7 +14,7 @@
     .label { font: 600 11px system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: 0.08em; }
     .title { font: 600 16px system-ui, -apple-system, "Segoe UI", sans-serif; }
     .text { font: 400 13px system-ui, -apple-system, "Segoe UI", sans-serif; }
-    .mono { font: 500 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .mono { font: 500 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .verb { font: italic 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; }
     @media (prefers-color-scheme: dark) {
       .ink { fill: #e2e8f0; }
@@ -34,14 +34,14 @@
     </marker>
   </defs>
 
-  <rect class="card" x="12" y="92" width="254" height="120" rx="10" stroke-width="1.5"/>
-  <text class="label muted" x="32" y="122">YOUR MODULE</text>
-  <text class="title ink" x="32" y="148">Business logic</text>
-  <text class="mono muted" x="32" y="176">import { Schema } from</text>
-  <text class="mono muted" x="32" y="194">"@antelopejs/interface-database"</text>
+  <rect class="card" x="6" y="92" width="276" height="120" rx="10" stroke-width="1.5"/>
+  <text class="label muted" x="24" y="122">YOUR MODULE</text>
+  <text class="title ink" x="24" y="148">Business logic</text>
+  <text class="mono muted" x="24" y="176">import { Schema } from</text>
+  <text class="mono muted" x="24" y="194">"@antelopejs/interface-database"</text>
 
-  <line class="line" x1="268" y1="152" x2="338" y2="152" stroke-width="1.5" marker-end="url(#head)"/>
-  <text class="verb muted" x="303" y="142" text-anchor="middle">depends on</text>
+  <line class="line" x1="284" y1="152" x2="338" y2="152" stroke-width="1.5" marker-end="url(#head)"/>
+  <text class="verb muted" x="312" y="142" text-anchor="middle">uses</text>
 
   <polygon class="port" points="392,62 488,62 536,152 488,242 392,242 344,152" stroke-width="2"/>
   <text class="label accent" x="440" y="128" text-anchor="middle">CONTRACT</text>
