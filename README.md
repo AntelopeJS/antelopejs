@@ -98,6 +98,10 @@ ajs update dms    # a single plugin
 
 Plugins declare the core versions they support through `peerDependencies` on `@antelopejs/core`. When the installed plugin does not support the running CLI, the command stops with an error naming both versions instead of delegating.
 
+## Agent skills
+
+`@antelopejs/core` ships the framework's agent skills in `skills/`, declared under `antelopeJs.skills`: `antelopejs` (the mental model and router), `ajs-cli`, `ajs-consume-interface` and `ajs-author-interface`. They follow the core version a project installs. The [AntelopeJS agent skills](https://github.com/AntelopeJS/agent-skills) sync links them, like every package-shipped skill, into a project's `.claude/skills/` and `.agents/skills/`, and the DMS assistant (`@antelopejs/dms-ai`) loads them on its own.
+
 ## Documentation
 
 - [Introduction](https://antelopejs.com/docs/get-started/introduction) — Why the same boundaries matter across your application and its dependencies
