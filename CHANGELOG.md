@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.16.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.15.2...v1.16.0)
+
+### 🚀 Enhancements
+
+- **skills:** Ship the framework agent skills with the core ([#203](https://github.com/AntelopeJS/antelopejs/pull/203))
+- **cli:** Support complete DMS project templates ([#207](https://github.com/AntelopeJS/antelopejs/pull/207))
+
+### 📖 Documentation
+
+- Rewrite the README ([#204](https://github.com/AntelopeJS/antelopejs/pull/204))
+- Document the embedded runtime with an AdonisJS guide ([#205](https://github.com/AntelopeJS/antelopejs/pull/205))
+- Streamline agent guidance and preserve repository contracts ([#206](https://github.com/AntelopeJS/antelopejs/pull/206))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.15.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.15.1...v1.15.2)
