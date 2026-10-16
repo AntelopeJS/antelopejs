@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="330" viewBox="0 0 880 330" role="img" aria-labelledby="title desc">
+  <title id="title">The AntelopeJS contract model</title>
+  <desc id="desc">A business module depends on the database contract. The MongoDB and RethinkDB modules implement it. antelope.config.ts selects which one runs.</desc>
+  <style>
+    .ink { fill: #0f172a; }
+    .muted { fill: #475569; }
+    .line { stroke: #94a3b8; }
+    .card { fill: #ffffff; stroke: #cbd5e1; }
+    .alt { fill: #ffffff; stroke: #94a3b8; stroke-dasharray: 6 5; }
+    .port { fill: #eff5ff; stroke: #2563eb; }
+    .chosen { fill: #ffffff; stroke: #2563eb; }
+    .accent { fill: #2563eb; }
+    .arrow { fill: #94a3b8; }
+    .label { font: 600 11px system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: 0.08em; }
+    .title { font: 600 16px system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .text { font: 400 13px system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .mono { font: 500 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .verb { font: italic 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; }
+    @media (prefers-color-scheme: dark) {
+      .ink { fill: #e2e8f0; }
+      .muted { fill: #94a3b8; }
+      .line { stroke: #475569; }
+      .card { fill: #0d1117; stroke: #30363d; }
+      .alt { fill: #0d1117; stroke: #475569; }
+      .port { fill: #0b1f3f; stroke: #4f8ff7; }
+      .chosen { fill: #0d1117; stroke: #4f8ff7; }
+      .accent { fill: #4f8ff7; }
+      .arrow { fill: #475569; }
+    }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="arrow" d="M0 0 L10 5 L0 10 z"/>
+    </marker>
+  </defs>
+
+  <rect class="card" x="12" y="92" width="254" height="120" rx="10" stroke-width="1.5"/>
+  <text class="label muted" x="32" y="122">YOUR MODULE</text>
+  <text class="title ink" x="32" y="148">Business logic</text>
+  <text class="mono muted" x="32" y="176">import { Schema } from</text>
+  <text class="mono muted" x="32" y="194">"@antelopejs/interface-database"</text>
+
+  <line class="line" x1="268" y1="152" x2="338" y2="152" stroke-width="1.5" marker-end="url(#head)"/>
+  <text class="verb muted" x="303" y="142" text-anchor="middle">depends on</text>
+
+  <polygon class="port" points="392,62 488,62 536,152 488,242 392,242 344,152" stroke-width="2"/>
+  <text class="label accent" x="440" y="128" text-anchor="middle">CONTRACT</text>
+  <text class="title ink" x="440" y="156" text-anchor="middle">Database</text>
+  <text class="mono muted" x="440" y="180" text-anchor="middle">interface-database</text>
+
+  <line class="line" x1="624" y1="100" x2="512" y2="118" stroke-width="1.5" marker-end="url(#head)"/>
+  <line class="line" x1="624" y1="206" x2="512" y2="188" stroke-width="1.5" marker-end="url(#head)"/>
+  <text class="verb muted" x="574" y="152" text-anchor="middle">implement</text>
+
+  <rect class="chosen" x="626" y="56" width="238" height="86" rx="10" stroke-width="2"/>
+  <circle class="accent" cx="648" cy="82" r="5"/>
+  <text class="label accent" x="662" y="86">SELECTED</text>
+  <text class="mono ink" x="646" y="118">@antelopejs/mongodb</text>
+
+  <rect class="alt" x="626" y="164" width="238" height="86" rx="10" stroke-width="1.5"/>
+  <text class="label muted" x="646" y="194">REPLACEABLE</text>
+  <text class="mono ink" x="646" y="226">@antelopejs/rethinkdb</text>
+
+  <path class="line" d="M626 278 H864" stroke-width="1.5" fill="none"/>
+  <path class="line" d="M626 270 V278 M864 270 V278" stroke-width="1.5" fill="none"/>
+  <text class="mono ink" x="745" y="304" text-anchor="middle">antelope.config.ts</text>
+  <text class="text muted" x="745" y="322" text-anchor="middle">picks the provider, not your module</text>
+</svg>
