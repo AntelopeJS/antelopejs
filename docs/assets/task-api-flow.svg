@@ -1,24 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 280" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="790" viewBox="0 0 400 790" role="img" aria-labelledby="title desc">
   <title id="title">A task request crosses four responsibilities</title>
   <desc id="desc">HTTP receives the request, authentication validates its token, the controller chooses an operation, and the database persists it. Authentication alone does not enforce task ownership.</desc>
   <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8" fill="none" stroke="#52667a" stroke-width="1.5"/></marker></defs>
-  <rect width="920" height="280" rx="16" fill="#f5f8fb"/>
+  <rect width="400" height="790" rx="16" fill="#f5f8fb"/>
   <g font-family="system-ui, sans-serif" fill="#172b40">
-    <text x="28" y="40" font-size="19" font-weight="700">A valid token opens the route. It does not choose the records.</text>
+    <text x="24" y="36" font-size="21" font-weight="700">A valid token opens the route.</text>
+    <text x="24" y="66" font-size="20">It does not choose the records.</text>
     <g fill="#fff" stroke="#b4c2cf">
-      <rect x="28" y="78" width="188" height="100" rx="8"/>
-      <rect x="253" y="78" width="188" height="100" rx="8"/>
-      <rect x="478" y="78" width="188" height="100" rx="8"/>
-      <rect x="703" y="78" width="188" height="100" rx="8"/>
+      <rect x="24" y="100" width="352" height="90" rx="8"/>
+      <rect x="24" y="230" width="352" height="90" rx="8"/>
+      <rect x="24" y="360" width="352" height="90" rx="8"/>
+      <rect x="24" y="490" width="352" height="90" rx="8"/>
     </g>
-    <g font-size="17" text-anchor="middle" font-weight="700">
-      <text x="122" y="111">HTTP provider</text><text x="347" y="111">Authentication</text><text x="572" y="111">Task controller</text><text x="797" y="111">Database provider</text>
+    <g font-size="23" text-anchor="middle" font-weight="700">
+      <text x="200" y="135">HTTP provider</text>
+      <text x="200" y="265">Authentication</text>
+      <text x="200" y="395">Task controller</text>
+      <text x="200" y="525">Database provider</text>
     </g>
-    <g font-size="14" text-anchor="middle">
-      <text x="122" y="143">Match the route</text><text x="347" y="143">Verify the token</text><text x="572" y="143">Run the operation</text><text x="797" y="143">Read or write data</text>
+    <g font-size="20" text-anchor="middle">
+      <text x="200" y="166">Match the route</text>
+      <text x="200" y="296">Verify the token</text>
+      <text x="200" y="426">Run the operation</text>
+      <text x="200" y="556">Read or write data</text>
     </g>
-    <g fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"><path d="M216 128 H244"/><path d="M441 128 H469"/><path d="M666 128 H694"/></g>
-    <rect x="28" y="202" width="863" height="50" rx="8" fill="#fff1db" stroke="#dfb46e"/>
-    <text x="48" y="233" font-size="14">Application policy: decide which user may read or change each record before issuing the query.</text>
+    <g fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)">
+      <path d="M200 190 V222"/>
+      <path d="M200 320 V352"/>
+      <path d="M200 450 V482"/>
+    </g>
+    <rect x="24" y="614" width="352" height="152" rx="8" fill="#fff1db" stroke="#dfb46e"/>
+    <text x="44" y="648" font-size="21" font-weight="700">Application policy</text>
+    <text x="44" y="680" font-size="20">Decide which user may read</text>
+    <text x="44" y="710" font-size="20">or change each record before</text>
+    <text x="44" y="740" font-size="20">issuing the query.</text>
   </g>
 </svg>
