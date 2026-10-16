@@ -1,6 +1,6 @@
 ---
 name: ajs-cli
-description: Guides running the `ajs` CLI (projects, modules, config, plugins, update). Use when creating, running, building, testing, or managing modules in an AntelopeJS project, listing or updating CLI plugins, or when the user asks what an `ajs` command does. Everything under `ajs dms` belongs to the dms-frontend skill.
+description: Guides running the `ajs` CLI (projects, modules, config, plugins, update). Use when creating, running, building, testing, or managing modules in an AntelopeJS project, listing or updating CLI plugins, when the user asks what an `ajs` command does, or when starting AntelopeJS inside an existing Node.js server (AdonisJS, Express, Fastify) with `createRuntime`, where `ajs project` does not apply. Everything under `ajs dms` belongs to the dms-frontend skill.
 ---
 
 # The `ajs` CLI
@@ -40,6 +40,18 @@ ajs project modules install              # add a provider module for every unres
 `modules install` (not `add`) fixes **unresolved imports**, and despite its name it installs no npm dependencies: it finds the interfaces no loaded module implements, looks up their implementing modules in the interface repository, and writes the chosen one into `antelope.config.ts`. A single implementer is added without a question; with several it asks, or takes the first with `-y`.
 
 Modules declared in `antelope.config.ts` are downloaded into `.antelope/cache` by `dev`, `build`, and `modules add`; a module's own npm dependencies install inside its cache folder.
+
+## Embedded mode: no `ajs project`
+
+In **embedded** mode the host application (AdonisJS, Express, Fastify…) owns the process and starts the runtime itself with `createRuntime({ projectFolder, modules, uses })` from `@antelopejs/core`, calling `start()` and `stop()` from its own lifecycle (in AdonisJS, a service provider). Recognize it before running any `ajs project` command: **no `antelope.config.*`**, and a host file calls `createRuntime`.
+
+- **No `ajs project …`**: `dev`, `build`, `start`, `modules add|remove|install` and `logging` need `antelope.config.ts` and do not apply. `envOverrides` and `environments` do not exist; configure modules in host code.
+- **Modules are listed in code**, as keys of the `modules` map (`'@antelopejs/mongodb': { config: { ... } }`). To add one, `pnpm add` it (modules resolve from the host's `node_modules` or a local path, never `.antelope/cache`), add its key to the map, and restart the host.
+- **No hot reload**: the runtime forces `dev: false`, so modules apply their production behaviour (e.g. `@antelopejs/api` needs `publicBaseUrl` and listens on its own port). In a DMS app, `ajs dms dev` does not work either: build and start the dashboard (the **dms-project** skill).
+- Host code reaches an interface through `runtime.use("<interface package>")`, never a plain `import` of `@antelopejs/interface-*`.
+- `ajs module init` and `ajs module test` still work on module folders.
+
+Guide: <https://framework.antelopejs.com/docs/guides/embedded-runtime>.
 
 ## Authoring a module
 

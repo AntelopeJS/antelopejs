@@ -24,6 +24,10 @@ Generate automatic CRUD endpoints from database tables with customizable routes 
 Build a complete task management API from scratch using database, authentication, and data API interfaces.
 ::
 
+::card{icon="i-ph-plugs-connected" title="Embed AntelopeJS in an Existing App" to="/docs/guides/embedded-runtime"}
+Start an AntelopeJS runtime from your own application, with AdonisJS 6 as a complete example.
+::
+
 ::card{icon="i-ph-wrench" title="Troubleshooting" to="/docs/guides/troubleshooting"}
 Common errors and their solutions when working with AntelopeJS modules and interfaces.
 ::
