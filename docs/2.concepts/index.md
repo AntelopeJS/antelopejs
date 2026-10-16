@@ -39,4 +39,8 @@ Key terms and definitions used throughout the AntelopeJS documentation.
 ::card{icon="i-ph-pulse" title="Diagnostics" to="/docs/concepts/diagnostics"}
 Subscribe to module lifecycle spans on node:diagnostics_channel for tracing and metrics.
 ::
+
+::card{icon="i-ph-plugs-connected" title="Embedded Runtime" to="/docs/concepts/embedded-runtime"}
+Run AntelopeJS modules inside an application that owns the process, and compare it with the standalone mode.
+::
 ::
