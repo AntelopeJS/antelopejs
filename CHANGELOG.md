@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.15.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.15.0...v1.15.1)
+
+### 🩹 Fixes
+
+- **deps:** Require @antelopejs/interface-core 0.2.2, which keeps classes intact across interface calls ([#201](https://github.com/AntelopeJS/antelopejs/pull/201))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.15.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.14.0...v1.15.0)
