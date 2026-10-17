@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="680" viewBox="0 0 400 680" role="img" aria-labelledby="title desc">
+  <title id="title">Three different communication patterns</title>
+  <desc id="desc">A function call asks one attached provider for a result. An event notifies current listeners without replay. A registration contributes an item until it is unregistered or its owner is destroyed.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8" fill="none" stroke="#52667a" stroke-width="1.5"/></marker></defs>
+  <rect width="400" height="680" rx="16" fill="#f5f8fb"/>
+  <g font-family="system-ui, sans-serif" fill="#172b40" font-size="18">
+    <text x="24" y="38" font-size="23" font-weight="700">Choose by intent</text>
+    <rect x="16" y="64" width="368" height="176" rx="8" fill="#fff" stroke="#b4c2cf"/>
+    <text x="30" y="96" font-size="21" font-weight="700">Function: ask for a result</text>
+    <text x="30" y="140">Caller</text><text x="272" y="140">Provider</text>
+    <path d="M100 130 H260" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M260 164 H100" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="142" y="122" font-size="16">call</text><text x="142" y="188" font-size="16">result / error</text>
+    <text x="30" y="220">One attached implementation.</text>
+    <rect x="16" y="256" width="368" height="176" rx="8" fill="#e1f4ee" stroke="#73ac99"/>
+    <text x="30" y="288" font-size="21" font-weight="700">Event: notify listeners</text>
+    <text x="30" y="346">Emitter</text><text x="254" y="330">Listener A</text><text x="254" y="376">Listener B</text>
+    <path d="M116 340 H190 V324 H242" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M190 340 V370 H242" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="30" y="412">No replay for later listeners.</text>
+    <rect x="16" y="448" width="368" height="208" rx="8" fill="#e9edf7" stroke="#b2bed8"/>
+    <text x="30" y="480" font-size="21" font-weight="700">Registration: add an item</text>
+    <text x="30" y="526">Owner</text><text x="250" y="526">Registry</text>
+    <path d="M104 520 H238" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="112" y="548" font-size="16">register(id, item)</text>
+    <text x="30" y="592">unregister(id) or owner destruction</text>
+    <text x="30" y="626">removes the contribution.</text>
+  </g>
+</svg>
