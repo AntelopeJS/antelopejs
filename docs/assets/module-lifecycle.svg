@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600" role="img" aria-labelledby="title desc">
+  <title id="title">Module states and cleanup</title>
+  <desc id="desc">Construct moves loaded to constructed; start moves constructed to active. Stop returns active to constructed and destroy returns constructed to loaded. Constructed is set before the construct callback. A failed start needs destroy, not stop.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8" fill="none" stroke="#52667a" stroke-width="1.5"/></marker></defs>
+  <rect width="400" height="600" rx="16" fill="#f5f8fb"/>
+  <g font-family="system-ui, sans-serif" fill="#172b40" font-size="18">
+    <text x="24" y="38" font-size="23" font-weight="700">Startup and cleanup</text>
+    <rect x="100" y="76" width="200" height="60" rx="8" fill="#fff" stroke="#b4c2cf"/>
+    <text x="200" y="114" text-anchor="middle" font-size="23">loaded</text>
+    <path d="M150 136 V224" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="22" y="184">construct()</text>
+    <path d="M250 232 V144" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="268" y="184">destroy()</text>
+    <rect x="100" y="232" width="200" height="60" rx="8" fill="#e1f4ee" stroke="#73ac99"/>
+    <text x="200" y="270" text-anchor="middle" font-size="23">constructed</text>
+    <path d="M150 292 V380" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="52" y="340">start()</text>
+    <path d="M250 388 V300" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="268" y="340">stop()</text>
+    <rect x="100" y="388" width="200" height="60" rx="8" fill="#e9edf7" stroke="#b2bed8"/>
+    <text x="200" y="426" text-anchor="middle" font-size="23">active</text>
+    <text x="24" y="494">Constructed is set before construct().</text>
+    <text x="24" y="528">Failed start? Not active: no stop().</text>
+    <text x="24" y="562">destroy() must still release resources.</text>
+  </g>
+</svg>

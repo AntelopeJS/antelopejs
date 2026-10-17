@@ -17,6 +17,8 @@ Start with [Architecture](/docs/get-started/architecture) for the overall model.
 
 ## Concept reference
 
+### Foundations
+
 ::card-group
 ::card{icon="i-ph-brackets-curly" title="Interfaces" to="/docs/concepts/interfaces"}
 Understand interface contracts and how modules communicate through well-defined boundaries.
@@ -34,6 +36,16 @@ Learn about AsyncProxy, EventProxy, and RegisteringProxy — the communication b
 Configure your project with antelope.config.ts, module sources, environment overrides, and more.
 ::
 
+::card{icon="i-ph-book-open-text" title="Glossary" to="/docs/concepts/glossary"}
+Look up a term without leaving the learning path to read an API reference.
+::
+::
+
+### Operations and tooling reference
+
+Use logging when diagnosing an application. The other references below are for custom tooling, instrumentation, or embedding the runtime; none is required to complete Quick Start.
+
+::card-group
 ::card{icon="i-ph-list-bullets" title="Logging" to="/docs/concepts/logging"}
 Use the built-in logging system with severity levels, custom channels, and configurable output.
 ::
@@ -44,10 +56,6 @@ Discover utility functions for interface declarations, implementations, decorato
 
 ::card{icon="i-ph-cpu" title="Runtime" to="/docs/concepts/runtime"}
 Inspect the runtime environment and register development servers for discovery by external tooling.
-::
-
-::card{icon="i-ph-book-open-text" title="Glossary" to="/docs/concepts/glossary"}
-Key terms and definitions used throughout the AntelopeJS documentation.
 ::
 
 ::card{icon="i-ph-pulse" title="Diagnostics" to="/docs/concepts/diagnostics"}

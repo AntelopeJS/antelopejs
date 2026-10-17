@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="650" viewBox="0 0 400 650" role="img" aria-labelledby="title desc">
+  <title id="title">Build configuration and refreshed startup</title>
+  <desc id="desc">Build resolves configuration and writes an artifact containing module references and resolved configuration. Normal start uses the artifact. Start with refresh-config reloads configuration; matching module sources use refreshed settings in memory, while changed sources cause exit code 3. The build artifact is not rewritten.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8" fill="none" stroke="#52667a" stroke-width="1.5"/></marker></defs>
+  <rect width="400" height="650" rx="16" fill="#f5f8fb"/>
+  <g font-family="system-ui, sans-serif" fill="#172b40" font-size="18">
+    <text x="24" y="38" font-size="23" font-weight="700">What configuration is used?</text>
+    <rect x="24" y="66" width="352" height="80" rx="8" fill="#fff" stroke="#b4c2cf"/>
+    <text x="200" y="98" text-anchor="middle" font-size="21" font-weight="700">ajs project build</text>
+    <text x="200" y="126" text-anchor="middle">Resolve configuration and modules</text>
+    <path d="M200 146 V180" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="24" y="188" width="352" height="80" rx="8" fill="#e9edf7" stroke="#b2bed8"/>
+    <text x="200" y="220" text-anchor="middle" font-size="21" font-weight="700">build.json</text>
+    <text x="200" y="248" text-anchor="middle">Module references + resolved settings</text>
+    <path d="M200 268 V302" fill="none" stroke="#52667a" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="24" y="310" width="352" height="80" rx="8" fill="#fff" stroke="#b4c2cf"/>
+    <text x="200" y="342" text-anchor="middle" font-size="21" font-weight="700">ajs project start</text>
+    <text x="200" y="370" text-anchor="middle">Default: use the artifact's settings</text>
+    <text x="24" y="426" font-size="21" font-weight="700">With --refresh-config instead</text>
+    <text x="24" y="462">Reload config; compare module sources.</text>
+    <text x="24" y="502">Same sources → use fresh settings</text>
+    <text x="24" y="538">Sources changed → exit 3; no startup</text>
+    <text x="24" y="586">No build.json rewrite during refresh.</text>
+    <text x="24" y="620">Builds can contain secrets: protect them.</text>
+  </g>
+</svg>

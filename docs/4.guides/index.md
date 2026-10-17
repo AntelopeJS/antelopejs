@@ -34,7 +34,7 @@ Sign and validate JWT tokens, protect routes with authentication decorators, and
 Generate automatic CRUD endpoints from database tables with customizable routes and middleware.
 ::
 
-::card{icon="i-ph-rocket" title="Full-Stack Application" to="/docs/guides/full-stack-tutorial"}
+::card{icon="i-ph-rocket" title="Task API Tutorial" to="/docs/guides/full-stack-tutorial"}
 Connect tables, login routes and authenticated shared-task endpoints, with explicit provider setup and verification checkpoints.
 ::
 
