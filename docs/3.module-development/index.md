@@ -1,7 +1,19 @@
 ---
 title: Module Development
+description: Build a module, expose its contract, test its behavior, and make it discoverable.
 navigation: false
 ---
+
+Build and verify the module locally before publishing it. A module can consume existing interfaces without declaring an interface of its own.
+
+## From local code to a reusable module
+
+1. **Create and load it.** [Scaffold a module](/docs/module-development/creating-a-module), configure its build command, and observe its lifecycle in a project.
+2. **Define its boundary.** [Export an interface](/docs/module-development/exporting-interfaces) only for behavior other modules need to call.
+3. **Verify the contract.** [Test through the public interface](/docs/module-development/testing), with explicit providers for external dependencies.
+4. **Make it discoverable.** Publish the package, then optionally [add registry metadata](/docs/module-development/interface-registry). The registry does not host code.
+
+## Development reference
 
 ::card-group
 ::card{icon="i-ph-hammer" title="Creating a Module" to="/docs/module-development/creating-a-module"}
