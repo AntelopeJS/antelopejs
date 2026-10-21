@@ -7,6 +7,7 @@ import {
   type ModuleDiagnosticsContext,
   moduleDiagnosticsContext,
 } from "./diagnostics";
+import { announceModulesStopping } from "./lifecycle-signals";
 
 export class ModuleLifecycle {
   private callbacks?: ModuleCallbacks;
@@ -101,6 +102,7 @@ export class ModuleLifecycle {
       return Promise.resolve();
     }
 
+    announceModulesStopping();
     return ModuleDiagnostics.stop.tracePromise(
       () => this.applyStop(),
       this.diagnosticsContext(),

@@ -5,6 +5,7 @@ import type { ConfigVars } from "@antelopejs/interface-core/config";
 
 import { Module } from "./module";
 import { ModuleIsolation } from "./module-isolation";
+import { announceModulesStarted } from "./lifecycle-signals";
 import { ModuleState } from "../types";
 import { ModuleTracker } from "./module-tracker";
 import { Resolver } from "./resolution/resolver";
@@ -56,6 +57,14 @@ import {
 
 const Logger = new Logging.Channel("loader");
 const INTERFACE_CORE_PACKAGE = "@antelopejs/interface-core";
+const MS_PER_SECOND = 1000;
+const START_SLOW_WARNING_MS = 10 * MS_PER_SECOND;
+/**
+ * `start()` means "ready to serve", and the HTTP gate stays closed until every
+ * module has started: one module that never settles would hold the whole
+ * project in 503 with nothing in the logs to say why.
+ */
+const START_TIMEOUT_MS = 120 * MS_PER_SECOND;
 
 function compareModuleIds(left: string, right: string): number {
   return left.localeCompare(right);
@@ -584,12 +593,13 @@ export class ModuleManager {
       this.trackModuleStart(module.id);
     });
     const results = await Promise.allSettled(
-      modules.map(({ module }) => module.start()),
+      modules.map(({ module }) => startWithinDeadline(module)),
     );
     const errors = collectRejectedErrors(results);
     if (errors.length > 0) {
       throw new AggregateError(errors, "Failed to start modules");
     }
+    announceModulesStarted();
   }
 
   async stopAll(): Promise<void> {
@@ -1387,6 +1397,34 @@ function toBindingModule(
     listedConnections: toBindingConnections(listed.get(module.id)),
     exportPriority: config.exportPriority ?? new Map(),
   };
+}
+
+/**
+ * Starts a module, warning once it is slow and failing it once it is late.
+ * The module's own `start` keeps running: its lifecycle queue holds any later
+ * transition until it settles.
+ */
+function startWithinDeadline(module: Module): Promise<void> {
+  const timers: NodeJS.Timeout[] = [];
+  const deadline = new Promise<never>((_, reject) => {
+    timers.push(
+      setTimeout(() => {
+        Logger.Warn(
+          `Module '${module.id}' is still starting after ${START_SLOW_WARNING_MS / MS_PER_SECOND} s`,
+        );
+      }, START_SLOW_WARNING_MS),
+      setTimeout(() => {
+        reject(
+          new Error(
+            `Module '${module.id}' did not start within ${START_TIMEOUT_MS / MS_PER_SECOND} s`,
+          ),
+        );
+      }, START_TIMEOUT_MS),
+    );
+  });
+  return Promise.race([module.start(), deadline]).finally(() => {
+    timers.forEach(clearTimeout);
+  });
 }
 
 function collectRejectedErrors(
