@@ -61,6 +61,7 @@ function createReloadHarness(): ReloadHarness {
       }),
     refreshAssociations: sinon.stub(),
     constructModules: sinon.stub().callsFake(constructManagedModules),
+    startModules: sinon.stub().callsFake(startManagedModules),
   };
   const loaderContext = {
     cache: {},
@@ -76,6 +77,10 @@ async function constructManagedModules(
   await Promise.all(
     entries.map(({ module, config }) => module.construct(config.config)),
   );
+}
+
+async function startManagedModules(entries: ManagedModule[]): Promise<void> {
+  await Promise.all(entries.map(({ module }) => module.start()));
 }
 
 function addedModule(
@@ -323,6 +328,7 @@ describe("runtime module-loading", () => {
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
       constructModules: sinon.stub().callsFake(constructManagedModules),
+      startModules: sinon.stub().callsFake(startManagedModules),
     } as any;
 
     const manifest = {
@@ -402,6 +408,7 @@ describe("runtime module-loading", () => {
       replaceLoadedModule: sinon.stub().returns(entry),
       refreshAssociations: sinon.stub(),
       constructModules: sinon.stub().callsFake(constructManagedModules),
+      startModules: sinon.stub().callsFake(startManagedModules),
     } as any;
     const manifest = {
       name: "alpha",
@@ -612,6 +619,7 @@ describe("runtime module-loading", () => {
       replaceLoadedModule: replaceLoadedModuleStub,
       refreshAssociations: refreshAssociationsStub,
       constructModules: sinon.stub().callsFake(constructManagedModules),
+      startModules: sinon.stub().callsFake(startManagedModules),
     } as any;
 
     const manifest = {

@@ -242,7 +242,10 @@ export function registerCoreModuleInterface(
         return created.map(({ module }) => module.id);
       },
       StartModule: async (moduleId: string) => {
-        await manager.getModule(moduleId)?.start();
+        const entry = manager.getModuleEntry(moduleId);
+        if (entry) {
+          await manager.startModules([entry]);
+        }
       },
       StopModule: async (moduleId: string) => {
         await manager.getModule(moduleId)?.stop();
@@ -518,7 +521,8 @@ async function reloadLoadedModuleFromSource(
   } catch (error) {
     manager.discardPlacedModule(manifest);
     const recoveryErrors = await recoverPreviousModule(
-      previous,
+      manager,
+      entry,
       previousWasActive,
     );
     throw new AggregateError(
@@ -531,14 +535,15 @@ async function reloadLoadedModuleFromSource(
 }
 
 async function recoverPreviousModule(
-  previous: Module,
+  manager: ModuleManager,
+  previous: ManagedModule,
   previousWasActive: boolean,
 ): Promise<unknown[]> {
-  if (!previousWasActive || previous.state !== ModuleState.Constructed) {
+  if (!previousWasActive || previous.module.state !== ModuleState.Constructed) {
     return [];
   }
   try {
-    await previous.start();
+    await manager.startModules([previous]);
     return [];
   } catch (error) {
     return [error];
@@ -559,10 +564,9 @@ async function activateReplacement(
       throw new Error(`Failed to replace module ${replacement.id}`);
     }
     manager.refreshAssociations();
-    await manager.constructModules([
-      { module: replacement, config: entry.config },
-    ]);
-    await replacement.start();
+    const replacementEntry = { module: replacement, config: entry.config };
+    await manager.constructModules([replacementEntry]);
+    await manager.startModules([replacementEntry]);
   } catch (error) {
     const cleanupErrors = replacementInstalled
       ? await cleanupReplacement(replacement)

@@ -1,4 +1,5 @@
 import sinon from "sinon";
+import diagnostics_channel from "node:diagnostics_channel";
 import path from "node:path";
 import { expect } from "chai";
 import Module from "node:module";
@@ -1467,5 +1468,117 @@ describe("ModuleManager", () => {
     expect((Module as any)._resolveFilename).to.equal(originalResolver);
     expect(internal.moduleByFolder).to.have.length(0);
     expect(internal.interfaceConnections).to.deep.equal({});
+  });
+});
+
+describe("ModuleManager lifecycle signals", () => {
+  const STARTED_CHANNEL = "antelopejs.modules.started";
+  const STOPPING_CHANNEL = "antelopejs.modules.stopping";
+  let calls: string[];
+  const onStarted = () => calls.push("started");
+  const onStopping = () => calls.push("stopping");
+
+  beforeEach(() => {
+    calls = [];
+    diagnostics_channel.subscribe(STARTED_CHANNEL, onStarted);
+    diagnostics_channel.subscribe(STOPPING_CHANNEL, onStopping);
+  });
+
+  afterEach(() => {
+    diagnostics_channel.unsubscribe(STARTED_CHANNEL, onStarted);
+    diagnostics_channel.unsubscribe(STOPPING_CHANNEL, onStopping);
+    sinon.restore();
+  });
+
+  async function addConstructedModule(
+    manager: ModuleManager,
+    id: string,
+    start: () => unknown,
+  ): Promise<CoreModule> {
+    const module = new CoreModule(
+      { name: id, version: "1.0.0", main: `/${id}/index.js` } as any,
+      sinon.stub().resolves({
+        start,
+        stop: () => calls.push(`stop:${id}`),
+      }),
+    );
+    await module.construct({});
+    (manager as any).loaded.set(id, { module, config: {} });
+    return module;
+  }
+
+  it("announces started once every module started, and stopping once before the first stop", async () => {
+    const manager = new ModuleManager();
+    let releaseSlow: () => void = () => undefined;
+    await addConstructedModule(manager, "fast", () => calls.push("start:fast"));
+    await addConstructedModule(manager, "slow", async () => {
+      calls.push("start:slow");
+      await new Promise<void>((resolve) => {
+        releaseSlow = resolve;
+      });
+      calls.push("started:slow");
+    });
+
+    const starting = manager.startAll();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(calls).to.not.include("started");
+    releaseSlow();
+    await starting;
+    await manager.stopAll();
+
+    expect(calls).to.deep.equal([
+      "start:fast",
+      "start:slow",
+      "started:slow",
+      "started",
+      "stopping",
+      "stop:slow",
+      "stop:fast",
+    ]);
+  });
+
+  it("does not announce started when a module fails to start", async () => {
+    const manager = new ModuleManager();
+    await addConstructedModule(manager, "ok", () => undefined);
+    await addConstructedModule(manager, "broken", () => {
+      throw new Error("broken start");
+    });
+
+    let thrown: unknown;
+    try {
+      await manager.startModules([...(manager as any).loaded.values()]);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect((thrown as AggregateError).errors[0].message).to.equal(
+      "broken start",
+    );
+    expect(calls).to.not.include("started");
+  });
+
+  it("fails a start that does not settle in time, naming the late module", async () => {
+    const clock = sinon.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout"],
+    });
+    const manager = new ModuleManager();
+    await addConstructedModule(manager, "punctual", () => undefined);
+    await addConstructedModule(
+      manager,
+      "late",
+      () => new Promise<void>(() => undefined),
+    );
+
+    const starting = manager
+      .startModules([...(manager as any).loaded.values()])
+      .catch((error: AggregateError) => error);
+    await clock.tickAsync(120_000);
+    const error = await starting;
+
+    expect(error).to.be.instanceOf(AggregateError);
+    expect(
+      (error as AggregateError).errors.map((e) => e.message),
+    ).to.deep.equal(["Module 'late' did not start within 120 s"]);
+    expect(calls).to.not.include("started");
   });
 });
