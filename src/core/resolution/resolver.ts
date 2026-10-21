@@ -1,5 +1,4 @@
 import path from "node:path";
-import { realpathSync } from "node:fs";
 import { ReleaseOwner } from "@antelopejs/interface-core/modules";
 import {
   getModuleContext,
@@ -8,7 +7,7 @@ import {
 
 import type { PathMapper } from "./path-mapper";
 import { ObservableMap } from "./observable-map";
-import { resolvePackage } from "./package-resolution";
+import { normalizeExistingPath, resolvePackage } from "./package-resolution";
 import type { ModuleManifest } from "../module-manifest";
 import type { BindingGraph } from "./binding-graph-types";
 import { PathOwnerIndex, type PathOwnerRoot } from "./path-owner-index";
@@ -52,14 +51,6 @@ const CORE_ENTRY = CORE_PACKAGE?.entry ?? CORE_PKG;
 const CONNECTION_PREFIX = "@ajs.connection/";
 const INSTANCE_OWNER_SUFFIX = "#instance";
 const RELATIVE_OR_ABSOLUTE = /^(\.{1,2}(\/|\\|$)|\/|[A-Za-z]:[\\/])/;
-
-function realFolder(folder: string): string {
-  try {
-    return realpathSync.native(folder);
-  } catch {
-    return path.resolve(folder);
-  }
-}
 
 function parseConnection(request: string): ConnectionRequest | undefined {
   if (!request.startsWith(CONNECTION_PREFIX)) {
@@ -250,7 +241,7 @@ export class Resolver {
       return undefined;
     }
     return (
-      this.instances.locate(instance, realFolder(canonicalEntry)) ??
+      this.instances.locate(instance, normalizeExistingPath(canonicalEntry)) ??
       canonicalEntry
     );
   }
@@ -297,7 +288,7 @@ export class Resolver {
       if (name !== CORE_PKG) {
         canonical.set(name, {
           root: path.resolve(root),
-          realRoot: realFolder(root),
+          realRoot: normalizeExistingPath(root),
         });
       }
     }
@@ -311,7 +302,7 @@ export class Resolver {
         const provider = this.instances.describe(key)?.provider;
         const module = provider ? this.modulesById.get(provider) : undefined;
         if (module?.manifest.manifest.name === name) {
-          roots.set(key, realFolder(module.manifest.folder));
+          roots.set(key, normalizeExistingPath(module.manifest.folder));
         }
       }
     }

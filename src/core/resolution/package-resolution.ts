@@ -42,7 +42,11 @@ export function getPathResolutionCacheGeneration(): number {
   return pathCacheGeneration;
 }
 
-function normalizeExistingPath(filePath: string): string {
+/**
+ * The real path of `filePath`, or its resolved path when it does not exist.
+ * Lookups are cached until `clearPathResolutionCache`.
+ */
+export function normalizeExistingPath(filePath: string): string {
   const resolvedPath = path.resolve(filePath);
   const cachedPath = realPathCache.get(resolvedPath);
   if (cachedPath !== undefined) {
