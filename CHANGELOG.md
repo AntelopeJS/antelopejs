@@ -4,6 +4,13 @@
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.16.0...v1.17.0)
 
+### Upgrade notes
+
+- Requires `@antelopejs/interface-core` `>=0.2.6 <0.3.0`. The project lifecycle is announced through `Events.ModulesStarted` / `Events.ModulesStopping` of `@antelopejs/interface-core/modules`, no longer through the `antelopejs.modules.started` / `stopping` diagnostics channels ([#216](https://github.com/AntelopeJS/antelopejs/pull/216)).
+- `GetResponsibleModule()` follows the call chain: it returns the module whose call is running, and `undefined` outside any module's call, rather than the module whose files the caller lives in ([interface-core#42](https://github.com/AntelopeJS/interface-core/pull/42), [#212](https://github.com/AntelopeJS/antelopejs/pull/212)).
+- A module that fails to start emits no `ModulesStarted`: a project served by `@antelopejs/api` 1.4 keeps answering `503`.
+- A `start()` that has not settled after 120 s fails the start (with a warning at 10 s).
+
 ### 🚀 Enhancements
 
 - **lifecycle:** Announce when modules started and before they stop ([#215](https://github.com/AntelopeJS/antelopejs/pull/215))
