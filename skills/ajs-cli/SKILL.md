@@ -62,7 +62,7 @@ ajs module test [path]       # run the module's tests (-f, --file <path>, repeat
 
 `ajs module test` reads the module's `antelopeJs.test` entry (e.g. `src/antelope.test.ts`) as a test *config* (`folder`, `setup`, `cleanup`) and runs the test files found there. `init` and `test` are the only `ajs module` subcommands.
 
-A module's `package.json` carries an `antelopeJs` block (it can also live in a dedicated `antelope.module.json`). The interface-relevant fields are `implements` (the interface packages this module *provides*, e.g. `["@antelopejs/interface-database"]`) and `test` (the test entry); the others are `defaultConfig`, `configVars` (config variables the module publishes), `baseUrl`, `paths`, `moduleAliases`, and `skills` (the agent skills it ships, see **antelopejs**). Interfaces a module *consumes* are ordinary `dependencies` (or `optionalDependencies`), not a manifest field; see **ajs-consume-interface**.
+A module's `package.json` carries an `antelopeJs` block (it can also live in a dedicated `antelope.module.json`). The interface-relevant fields are `implements` (the interface packages this module *provides*, e.g. `["@antelopejs/interface-database"]`) and `test` (the test entry); the others are `defaultConfig`, `configVars` (config variables the module publishes), `configVarsFile` (the file exporting the pure `configVars(config)` that computes them, for tools reading the project without running it), `baseUrl`, `paths`, `moduleAliases`, and `skills` (the agent skills it ships, see **antelopejs**). Interfaces a module *consumes* are ordinary `dependencies` (or `optionalDependencies`), not a manifest field; see **ajs-consume-interface**.
 
 ## Plugins
 
