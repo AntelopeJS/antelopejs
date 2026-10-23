@@ -59,7 +59,7 @@ Inspect the runtime environment and register development servers for discovery b
 ::
 
 ::card{icon="i-ph-pulse" title="Diagnostics" to="/docs/concepts/diagnostics"}
-Subscribe to module lifecycle spans on node:diagnostics_channel for tracing and metrics.
+Subscribe to module lifecycle spans on node:diagnostics_channel for tracing and metrics, and to the project lifecycle events.
 ::
 
 ::card{icon="i-ph-plugs-connected" title="Embedded Runtime" to="/docs/concepts/embedded-runtime"}

@@ -1,10 +1,10 @@
 import sinon from "sinon";
-import diagnostics_channel from "node:diagnostics_channel";
 import path from "node:path";
 import { expect } from "chai";
 import Module from "node:module";
 import { tmpdir } from "node:os";
 import { internal } from "@antelopejs/interface-core/internal";
+import { Events } from "@antelopejs/interface-core/modules";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
@@ -1472,21 +1472,19 @@ describe("ModuleManager", () => {
 });
 
 describe("ModuleManager lifecycle signals", () => {
-  const STARTED_CHANNEL = "antelopejs.modules.started";
-  const STOPPING_CHANNEL = "antelopejs.modules.stopping";
   let calls: string[];
   const onStarted = () => calls.push("started");
   const onStopping = () => calls.push("stopping");
 
   beforeEach(() => {
     calls = [];
-    diagnostics_channel.subscribe(STARTED_CHANNEL, onStarted);
-    diagnostics_channel.subscribe(STOPPING_CHANNEL, onStopping);
+    Events.ModulesStarted.register(onStarted);
+    Events.ModulesStopping.register(onStopping);
   });
 
   afterEach(() => {
-    diagnostics_channel.unsubscribe(STARTED_CHANNEL, onStarted);
-    diagnostics_channel.unsubscribe(STOPPING_CHANNEL, onStopping);
+    Events.ModulesStarted.unregister(onStarted);
+    Events.ModulesStopping.unregister(onStopping);
     sinon.restore();
   });
 
