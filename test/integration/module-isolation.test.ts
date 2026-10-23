@@ -11,7 +11,7 @@ const SEEN_KEY = "__antelopeModuleIsolationSeen";
 interface InstanceView {
   ownConfig: string;
   dependencyConfig: string;
-  responsible: () => string | undefined;
+  responsible: string | undefined;
 }
 
 type SeenInstances = Record<string, InstanceView>;
@@ -58,7 +58,7 @@ exports.construct = (config) => {
   globalThis[${JSON.stringify(SEEN_KEY)}][config.name] = {
     get ownConfig() { return state.config; },
     get dependencyConfig() { return client.current(); },
-    responsible: () => GetResponsibleModule(),
+    responsible: GetResponsibleModule(),
   };
 };
 exports.destroy = () => {};
@@ -108,9 +108,9 @@ describe("Module isolation", () => {
     expect(seen().b.dependencyConfig).to.equal("b");
   });
 
-  it("attributes work to the instance whose files run it", () => {
-    expect(seen().a.responsible()).to.equal("instance-a");
-    expect(seen().b.responsible()).to.equal("instance-b");
+  it("runs each instance's construct in its own module context", () => {
+    expect(seen().a.responsible).to.equal("instance-a");
+    expect(seen().b.responsible).to.equal("instance-b");
   });
 
   it("reloads one instance without touching the other, in a fresh copy", async () => {

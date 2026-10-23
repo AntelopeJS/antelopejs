@@ -246,7 +246,7 @@ describe("registrations made while an interface package is evaluated", () => {
     (global as Record<string, unknown>)[STATE_KEY] = state;
     projectFolder = await createProject(moduleOrder);
     manager = await launch(projectFolder);
-    expect(state.evaluatedBy).to.equal(moduleOrder[0]);
+    expect(state.evaluatedBy).to.equal(INTERFACE_NAME);
     expect(latestProviderEntries()).to.deep.equal({
       [BUILT_IN_ENTRY]: BUILT_IN_VALUE,
     });
