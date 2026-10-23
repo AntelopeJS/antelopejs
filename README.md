@@ -80,7 +80,7 @@ When a plugin is missing, `ajs` offers to install it with the package manager th
 | Requirement                                                                  | Version          |
 | ---------------------------------------------------------------------------- | ---------------- |
 | Node.js                                                                      | `>=20.19`        |
-| [`@antelopejs/interface-core`](https://github.com/AntelopeJS/interface-core) | `>=0.2.5 <0.3.0` |
+| [`@antelopejs/interface-core`](https://github.com/AntelopeJS/interface-core) | `>=0.2.6 <0.3.0` |
 
 ## Contributing
 
