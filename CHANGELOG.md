@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.17.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.17.0...v1.17.1)
+
+### 🩹 Fixes
+
+- **lifecycle:** Announce ModulesStopping only when the project stops ([#219](https://github.com/AntelopeJS/antelopejs/pull/219))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of core 1.17.0 ([#217](https://github.com/AntelopeJS/antelopejs/pull/217))
+- **config:** Let a provider declare its config variables as a pure function ([#218](https://github.com/AntelopeJS/antelopejs/pull/218))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v1.17.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.16.0...v1.17.0)
