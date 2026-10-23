@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.17.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.16.0...v1.17.0)
+
+### 🚀 Enhancements
+
+- **lifecycle:** Announce when modules started and before they stop ([#215](https://github.com/AntelopeJS/antelopejs/pull/215))
+- **lifecycle:** Announce the project lifecycle through interface-core events ([#216](https://github.com/AntelopeJS/antelopejs/pull/216))
+
+### 🔥 Performance
+
+- **resolution:** Cache the real folder of interface entries ([#214](https://github.com/AntelopeJS/antelopejs/pull/214))
+
+### 🩹 Fixes
+
+- **resolution:** Evaluate interface packages in an interface context of their own ([#212](https://github.com/AntelopeJS/antelopejs/pull/212))
+
+### 📖 Documentation
+
+- Make framework guides task-based and executable ([#208](https://github.com/AntelopeJS/antelopejs/pull/208))
+- **cli:** Correct DMS demo startup instructions ([#210](https://github.com/AntelopeJS/antelopejs/pull/210))
+- Clarify learning paths and illustrate real outcomes ([#211](https://github.com/AntelopeJS/antelopejs/pull/211))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Thomas
+
 ## v1.16.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.15.2...v1.16.0)
