@@ -4,6 +4,11 @@
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.17.0...v1.17.1)
 
+### Upgrade notes
+
+- `Events.ModulesStopping` is now announced only when the project's modules stop (`stopAll()` / `destroyAll()`), no longer when a single module is stopped, reloaded or destroyed at runtime ([#219](https://github.com/AntelopeJS/antelopejs/pull/219)). With `@antelopejs/api`, uninstalling or reloading one module no longer leaves the whole backend answering `503 error.server_starting`; requests to the reloading module's routes can briefly get that module's own error instead.
+- No API change. A provider can now declare its config variables as a pure function with `antelopeJs.configVarsFile`, so tools that read the project without starting it (`ajs dms build`, `ajs dms start`) can resolve `${@<module>.<VAR>}` ([#218](https://github.com/AntelopeJS/antelopejs/pull/218)).
+
 ### 🩹 Fixes
 
 - **lifecycle:** Announce ModulesStopping only when the project stops ([#219](https://github.com/AntelopeJS/antelopejs/pull/219))
