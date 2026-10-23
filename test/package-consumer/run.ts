@@ -68,7 +68,7 @@ function inspectManifest(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
   const manifest = JSON.parse(content) as PackedManifest;
   if (
-    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.2.5 <0.3.0"
+    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.2.6 <0.3.0"
   ) {
     throw new Error(
       "Packed core does not pin interface-core to the minor it implements.",
