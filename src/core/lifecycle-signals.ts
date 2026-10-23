@@ -12,10 +12,12 @@ export function announceModulesStarted(): void {
 }
 
 /**
- * Announces, through `Events.ModulesStopping`, that modules are about to
- * stop. Only the first stop after a start announces it: stopping every
- * module of a project, or reloading one, is a single "stopping" for whoever
- * closes the gate.
+ * Announces, through `Events.ModulesStopping`, that the project's modules are
+ * about to stop: a shutdown or a full teardown, never one module stopped,
+ * reloaded or removed at runtime. Its subscribers close the whole project
+ * (the HTTP startup gate answers 503), so a single module must not trigger it.
+ * Only the first announcement after a start is emitted, so a `stopAll`
+ * followed by `destroyAll` is a single "stopping".
  */
 export function announceModulesStopping(): void {
   if (!areModulesStarted) {
