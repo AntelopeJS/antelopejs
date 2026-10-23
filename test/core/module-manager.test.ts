@@ -1535,6 +1535,26 @@ describe("ModuleManager lifecycle signals", () => {
     ]);
   });
 
+  it("announces stopping only when the project stops, not when one module stops, restarts or is destroyed", async () => {
+    const manager = new ModuleManager();
+    const reloaded = await addConstructedModule(manager, "reloaded", () =>
+      calls.push("start:reloaded"),
+    );
+    const removed = await addConstructedModule(manager, "removed", () =>
+      calls.push("start:removed"),
+    );
+
+    await manager.startAll();
+    await reloaded.stop();
+    await manager.startModules([manager.getModuleEntry("reloaded")!]);
+    await removed.destroy();
+    expect(calls).to.not.include("stopping");
+
+    await manager.stopAll();
+    expect(calls.filter((call) => call === "stopping")).to.have.length(1);
+    expect(calls.at(-2)).to.equal("stopping");
+  });
+
   it("does not announce started when a module fails to start", async () => {
     const manager = new ModuleManager();
     await addConstructedModule(manager, "ok", () => undefined);

@@ -5,7 +5,10 @@ import type { ConfigVars } from "@antelopejs/interface-core/config";
 
 import { Module } from "./module";
 import { ModuleIsolation } from "./module-isolation";
-import { announceModulesStarted } from "./lifecycle-signals";
+import {
+  announceModulesStarted,
+  announceModulesStopping,
+} from "./lifecycle-signals";
 import { ModuleState } from "../types";
 import { ModuleTracker } from "./module-tracker";
 import { Resolver } from "./resolution/resolver";
@@ -603,6 +606,7 @@ export class ModuleManager {
   }
 
   async stopAll(): Promise<void> {
+    announceModulesStopping();
     const modules = this.getReverseLifecycleModules();
     const errors = await runModuleOperations(modules, (module) =>
       module.stop(),
@@ -614,6 +618,7 @@ export class ModuleManager {
   }
 
   async destroyAll(): Promise<void> {
+    announceModulesStopping();
     const modules = this.getReverseLifecycleModules();
     const results = await runTrackedModuleOperations(modules, (module) =>
       module.destroy(),
