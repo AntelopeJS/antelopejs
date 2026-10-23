@@ -32,6 +32,14 @@ export interface ModulePackageJson {
 
     configVars?: string[];
 
+    /**
+     * A file exporting `configVars(config)`, the pure function computing the
+     * declared config variables from the module's configuration. Tools that
+     * read a project without running it resolve `${@<module>.<VAR>}` with it;
+     * the runtime still publishes through `provide`.
+     */
+    configVarsFile?: string;
+
     test?: string;
   };
 
