@@ -6,13 +6,11 @@
     "anti-slop/no-unknown-parameters": 106,
     "anti-slop/no-unknown-returns": 37,
     "anti-slop/no-unsafe-dictionary-type": 125,
-    "anti-slop/require-safety-comment-for-type-assertion": 625,
+    "anti-slop/require-safety-comment-for-type-assertion": 624,
     "eslint/max-lines-per-function": 62,
     "eslint/max-params": 3,
-    "typescript/await-thenable": 1,
     "typescript/no-base-to-string": 1,
-    "typescript/no-redundant-type-constituents": 7,
-    "typescript/unbound-method": 1
+    "typescript/no-redundant-type-constituents": 7
   },
   "oversizeFiles": {
     "src/core/module-manager.ts": 46324,

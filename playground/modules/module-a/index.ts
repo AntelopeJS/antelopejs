@@ -5,9 +5,11 @@ let config: { prefix: string };
 
 export async function construct(moduleConfig: { prefix: string }) {
   config = moduleConfig;
-  await ImplementInterface(Greeter, {
-    greet: (name: string) => `${config.prefix}, ${name}!`,
-  });
+  await Promise.resolve(
+    ImplementInterface(Greeter, {
+      greet: (name: string) => `${config.prefix}, ${name}!`,
+    }),
+  );
   console.log("[module-a] Constructed with config:", config);
 }
 

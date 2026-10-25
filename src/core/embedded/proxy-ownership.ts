@@ -4,7 +4,7 @@ import {
   type RuntimeCleanup,
 } from "@antelopejs/interface-core/internal";
 
-type OwnedProxy = RuntimeCleanup | { detach(): void };
+type OwnedProxy = RuntimeCleanup | { detach(): void; cleanup?: unknown };
 type OwnedProxyMap = Map<string, Set<OwnedProxy>>;
 
 const OWNERSHIP_MAPS: Array<(runtime: typeof internal) => OwnedProxyMap> = [
@@ -19,7 +19,7 @@ function getOwnedProxies(owner: string): Set<OwnedProxy>[] {
 }
 
 function releaseProxy(proxy: OwnedProxy): void {
-  const cleanup = (proxy as RuntimeCleanup).cleanup;
+  const cleanup = proxy.cleanup;
   if (typeof cleanup === "function") {
     cleanup.call(proxy);
     return;
