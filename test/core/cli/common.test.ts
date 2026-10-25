@@ -108,7 +108,7 @@ describe("CLI Common", () => {
       await fs.writeFile("/project/antelope.config.ts", "export default {}");
       sinon
         .stub(configLoader, "loadTsConfigFile")
-        .resolves({ name: "ts-project" } as any);
+        .resolves({ name: "ts-project" });
       const config = await readConfig("/project", fs);
       expect(config?.name).to.equal("ts-project");
     });
@@ -125,7 +125,7 @@ describe("CLI Common", () => {
       const fs = new InMemoryFileSystem();
       await writeModuleManifest(
         "/module",
-        { name: "mod", version: "1.0.0" } as any,
+        { name: "mod", version: "1.0.0" },
         fs,
       );
       const manifest = await readModuleManifest("/module", fs);
@@ -142,7 +142,7 @@ describe("CLI Common", () => {
   describe("writeConfig", () => {
     it("writes antelope.config.ts with default content when config is missing", async () => {
       const fs = new InMemoryFileSystem();
-      await writeConfig("/project", { name: "demo" } as any, fs);
+      await writeConfig("/project", { name: "demo" }, fs);
       const contents = await fs.readFileString("/project/antelope.config.ts");
       expect(contents).to.include(
         "import { defineConfig } from '@antelopejs/interface-core/config';",
@@ -157,7 +157,7 @@ describe("CLI Common", () => {
         "/project/antelope.config.ts",
         'export default { name: "demo" };',
       );
-      await writeConfig("/project", { name: "updated" } as any, fs);
+      await writeConfig("/project", { name: "updated" }, fs);
       const contents = await fs.readFileString("/project/antelope.config.ts");
       expect(contents).to.include("export default {");
       expect(contents).to.include('name: "updated"');
@@ -169,7 +169,7 @@ describe("CLI Common", () => {
         "/project/antelope.config.ts",
         "import { defineConfig } from '@antelopejs/interface-core/config';\nexport default defineConfig({ name: 'demo' });\n",
       );
-      await writeConfig("/project", { name: "updated" } as any, fs);
+      await writeConfig("/project", { name: "updated" }, fs);
       const contents = await fs.readFileString("/project/antelope.config.ts");
       expect(contents).to.include(
         "import { defineConfig } from '@antelopejs/interface-core/config';",
@@ -187,7 +187,7 @@ describe("CLI Common", () => {
       );
 
       try {
-        await writeConfig("/project", { name: "updated" } as any, fs);
+        await writeConfig("/project", { name: "updated" }, fs);
         expect.fail("should have thrown");
       } catch (error: any) {
         expect(error.message).to.include("function-based");

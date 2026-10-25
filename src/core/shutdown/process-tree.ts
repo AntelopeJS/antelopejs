@@ -69,11 +69,9 @@ function isAlive(pid: number, kill: ProcessKill): boolean {
 }
 
 function signal(pid: number, name: string, kill: ProcessKill): void {
-  // oxfmt-ignore
   try {
     kill(pid, name);
-  } catch {
-  }
+  } catch {}
 }
 
 /**

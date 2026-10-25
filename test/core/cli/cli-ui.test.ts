@@ -37,8 +37,8 @@ interface SpinnerStatus {
 }
 
 function setTerminal(isTerminal: boolean): void {
-  (process.stdout as any).isTTY = isTerminal;
-  (process.stderr as any).isTTY = isTerminal;
+  process.stdout.isTTY = isTerminal;
+  process.stderr.isTTY = isTerminal;
 }
 
 const { symbols } = getProcessUi();
@@ -47,8 +47,8 @@ const originalStderrIsTTY = process.stderr.isTTY;
 
 function restoreProcessStreams(): void {
   sinon.restore();
-  (process.stdout as any).isTTY = originalStdoutIsTTY;
-  (process.stderr as any).isTTY = originalStderrIsTTY;
+  process.stdout.isTTY = originalStdoutIsTTY;
+  process.stderr.isTTY = originalStderrIsTTY;
 }
 
 describe("CLI UI spinner", () => {

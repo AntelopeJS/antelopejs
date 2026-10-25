@@ -526,7 +526,7 @@ describe("GitDownloader", () => {
       type: "git",
       remote: "https://github.com/org/repo.git",
       ignoreCache: true,
-    } as any;
+    };
 
     try {
       await registry.load("/project", cache, source);

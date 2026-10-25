@@ -115,9 +115,10 @@ function normalizePackageManager(packageManager?: string): PackageManagerName {
   if (!packageManager) {
     return DEFAULT_PACKAGE_MANAGER;
   }
-  return PACKAGE_MANAGER_NAMES.includes(packageManager as PackageManagerName)
-    ? (packageManager as PackageManagerName)
-    : DEFAULT_PACKAGE_MANAGER;
+  return (
+    PACKAGE_MANAGER_NAMES.find((name) => name === packageManager) ??
+    DEFAULT_PACKAGE_MANAGER
+  );
 }
 
 function hasCorepack(): boolean {

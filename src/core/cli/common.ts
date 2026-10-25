@@ -32,7 +32,6 @@ export async function detectIndentation(
   filePath: string,
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<string> {
-  // oxfmt-ignore
   try {
     const content = await fileSystem.readFileString(filePath);
     const match = content.match(/\n([\t ]+)/);
@@ -41,8 +40,7 @@ export async function detectIndentation(
       const firstChar = match[1][0];
       return firstChar === "\t" ? "\t" : "  ";
     }
-  } catch {
-  }
+  } catch {}
   return DEFAULT_INDENTATION;
 }
 
@@ -159,7 +157,7 @@ function serializeToJs(value: unknown, indent: string, depth: number): string {
     );
     return `[\n${items.join(",\n")}\n${currentIndent}]`;
   }
-  const entries = Object.entries(value as Record<string, unknown>);
+  const entries = Object.entries(value);
   if (entries.length === 0) return "{}";
   const props = entries.map(([key, val]) => {
     const formattedKey = SAFE_KEY_RE.test(key) ? key : JSON.stringify(key);

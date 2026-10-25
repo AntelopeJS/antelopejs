@@ -142,7 +142,6 @@ async function analyzeConfig(
     )
   ).flat();
 
-  // oxfmt-ignore
   try {
     const coreRoot = path.resolve(__dirname, "../../../../../..");
     const coreManifest = await ModuleManifest.create(
@@ -152,8 +151,7 @@ async function analyzeConfig(
       fs,
     );
     manifests.push(coreManifest);
-  } catch {
-  }
+  } catch {}
 
   const providers = manifests.map((m) => ({
     name: m.manifest.name,

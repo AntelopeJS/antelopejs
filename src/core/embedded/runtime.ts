@@ -20,7 +20,8 @@ type InterfaceAttacher = (
   implementation: unknown,
 ) => unknown;
 
-const attachImplementation = ImplementInterface as unknown as InterfaceAttacher;
+// SAFETY: ImplementInterface validates objects, cycles, and required handlers before attaching; widening its input delegates rejection to those existing checks, and this caller ignores its return value.
+const attachImplementation = ImplementInterface as InterfaceAttacher;
 
 const Logger = new Logging.Channel("loader.embedded");
 

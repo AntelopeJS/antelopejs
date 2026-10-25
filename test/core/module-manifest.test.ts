@@ -5,10 +5,8 @@ import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
-import type { BuildModuleEntry } from "../../src/core/build/build-artifact";
 import {
   ModuleManifest,
-  type ModulePackageJson,
   resolveManifestEntryFile,
 } from "../../src/core/module-manifest";
 
@@ -64,7 +62,7 @@ describe("ModuleManifest", () => {
             "@lib/*": ["lib/*"],
           },
         },
-      } as ModulePackageJson),
+      }),
     );
 
     const source: ModuleSourceLocal = { type: "local", path: "/mod" };
@@ -95,7 +93,7 @@ describe("ModuleManifest", () => {
             "@lib": "lib",
           },
         },
-      } as ModulePackageJson),
+      }),
     );
 
     const source: ModuleSourceLocal = { type: "local", path: "/mod" };
@@ -124,7 +122,7 @@ describe("ModuleManifest", () => {
             "@lib": "lib",
           },
         },
-      } as ModulePackageJson),
+      }),
     );
 
     const source: ModuleSourceLocal = { type: "local", path: "/mod" };
@@ -148,7 +146,7 @@ describe("ModuleManifest", () => {
           "@antelopejs/interface-core": "^0.0.2",
           "@antelopejs/interface-api": "^0.0.2",
         },
-      } as ModulePackageJson),
+      }),
     );
 
     const source: ModuleSourceLocal = { type: "local", path: "/mod" };
@@ -171,7 +169,7 @@ describe("ModuleManifest", () => {
         antelopeJs: {
           implements: ["@antelopejs/interface-database"],
         },
-      } as ModulePackageJson),
+      }),
     );
 
     const source: ModuleSourceLocal = { type: "local", path: "/mod" };
@@ -190,7 +188,7 @@ describe("ModuleManifest", () => {
       JSON.stringify({
         name: "mod",
         version: "1.0.0",
-      } as ModulePackageJson),
+      }),
     );
 
     const source: ModuleSourceLocal = { type: "local", path: "/mod" };
@@ -208,7 +206,7 @@ describe("ModuleManifest", () => {
         name: "mod",
         version: "1.0.0",
         antelopeJs: { implements: ["@antelopejs/interface-core"] },
-      } as ModulePackageJson),
+      }),
     );
 
     const source: ModuleSourceLocal = { type: "local", path: "/mod" };
@@ -222,7 +220,7 @@ describe("ModuleManifest", () => {
         antelopeJs: {
           implements: ["@antelopejs/interface-api"],
         },
-      } as ModulePackageJson),
+      }),
     );
 
     await manifest.reload();
@@ -240,7 +238,7 @@ describe("ModuleManifest", () => {
         name: "mod",
         version: "1.0.0",
         antelopeJs: { implements: ["@antelopejs/interface-core"] },
-      } as ModulePackageJson),
+      }),
     );
 
     const source: ModuleSourceLocal = { type: "local", path: "/mod" };
@@ -251,7 +249,7 @@ describe("ModuleManifest", () => {
       JSON.stringify({
         name: "mod",
         version: "1.0.1",
-      } as ModulePackageJson),
+      }),
     );
 
     await manifest.reload();
@@ -269,7 +267,7 @@ describe("ModuleManifest", () => {
         antelopeJs: {
           implements: ["@antelopejs/interface-database"],
         },
-      } as ModulePackageJson),
+      }),
     );
 
     const source: ModuleSourceLocal = {
@@ -281,7 +279,7 @@ describe("ModuleManifest", () => {
 
     const entry = manifest.serialize();
     const rebuilt = ModuleManifest.fromBuildEntry(entry);
-    const rebuiltEntry = rebuilt.serialize() as BuildModuleEntry;
+    const rebuiltEntry = rebuilt.serialize();
 
     expect(rebuiltEntry.folder).to.equal(entry.folder);
     expect(rebuiltEntry.name).to.equal(entry.name);

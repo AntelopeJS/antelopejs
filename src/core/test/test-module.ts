@@ -154,7 +154,6 @@ export async function collectInterfaceTestFiles(
   const files: string[] = [];
 
   for (const ifacePkg of implementsList) {
-    // oxfmt-ignore
     try {
       const ifaceEntry = require.resolve(ifacePkg, {
         paths: [moduleRoot],
@@ -171,8 +170,7 @@ export async function collectInterfaceTestFiles(
         registerTestDir(testDir, manager);
       }
       files.push(...testFiles);
-    } catch {
-    }
+    } catch {}
   }
 
   return files;

@@ -43,7 +43,7 @@ describe("CLI main guard", () => {
     delete require.cache[cliPath];
     delete Module._cache[cliPath];
     const originalMain = require.main;
-    (Module as any)._load(cliPath, null, true);
+    Module._load(cliPath, null, true);
     return () => {
       require.main = originalMain;
       delete Module._cache[cliPath];

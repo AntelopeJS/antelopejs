@@ -15,10 +15,10 @@ interface StreamCapture {
 }
 
 function collectInto(sink: string[]): StreamWrite {
-  return ((chunk: unknown): boolean => {
+  return (chunk: Parameters<StreamWrite>[0]): boolean => {
     sink.push(String(chunk));
     return true;
-  }) as unknown as StreamWrite;
+  };
 }
 
 function startCapture(): StreamCapture {

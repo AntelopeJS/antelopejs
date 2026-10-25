@@ -306,7 +306,7 @@ describe("config reset behavior", () => {
   });
 
   it("shows not set for empty values in reset summary", async () => {
-    sinon.stub(common, "readUserConfig").resolves({ git: "" } as any);
+    sinon.stub(common, "readUserConfig").resolves({ git: "" });
     const writeStub = sinon.stub(common, "writeUserConfig").resolves();
     const feedback = collectStderr();
 

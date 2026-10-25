@@ -36,7 +36,7 @@ function logColors(): LogPalette {
 }
 
 function isLogColor(color: string): color is LogColor {
-  return (LOG_COLORS as readonly string[]).includes(color);
+  return LOG_COLORS.some((candidate) => candidate === color);
 }
 
 export const getLevelInfo = (() => {

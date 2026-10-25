@@ -69,7 +69,7 @@ export class DownloaderRegistry {
           );
         }
       }
-      return type.loader(cache, source as any, options);
+      return type.loader(cache, source, options);
     }
 
     Logger.Info(`No loader found for type ${source.type}, adding to waitlist`);

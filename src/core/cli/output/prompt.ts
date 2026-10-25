@@ -138,7 +138,9 @@ class SessionPrompter implements Prompter {
     return this.isInteractive || Boolean(this.options.acceptsDefaults);
   }
 
-  private usesDefault<Answer>(question: Question<Answer>): boolean {
+  private usesDefault<Answer>(
+    question: Question<Answer>,
+  ): question is Question<Answer> & { defaultAnswer: Answer } {
     if (question.defaultAnswer === undefined) {
       return false;
     }
@@ -156,7 +158,7 @@ class SessionPrompter implements Prompter {
       return question.answer;
     }
     if (this.usesDefault(question)) {
-      return question.defaultAnswer as Answer;
+      return question.defaultAnswer;
     }
     if (!this.isInteractive) {
       throw this.needsInput(question.flag ? [question.flag] : []);
