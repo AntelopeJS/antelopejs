@@ -13,3 +13,12 @@ jobs:
     uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
     with:
       extra-commands: pnpm test:coverage
+
+  checks:
+    if: always()
+    needs: [ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
