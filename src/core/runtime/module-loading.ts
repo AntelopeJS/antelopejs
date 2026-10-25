@@ -19,9 +19,8 @@ import { ModuleCache } from "../module-cache";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManifest } from "../module-manifest";
 import { pluralize } from "../cli/output/format";
-import { CliError } from "../cli/output/errors";
-import { describeFailure } from "../cli/output/failures";
-import { getProcessTasks, runTask } from "../cli/output/tasks";
+import { runTask } from "../cli/output/tasks";
+import { moduleLoadFailure } from "./module-load-failure";
 import type { ExpandedModuleConfig } from "../config/config-parser";
 import {
   findUnresolvedInterfaces,
@@ -110,6 +109,7 @@ function toModuleSource(
   ) {
     throw new Error(`Unsupported module source type: ${String(type)}`);
   }
+  // SAFETY: the branches above reject nonobjects and unsupported type discriminators; ModuleSource requires only the checked type field.
   return source as ModuleSource;
 }
 
@@ -346,36 +346,6 @@ async function loadModuleEntry(
   return buildManifestEntries(manifests, moduleConfig);
 }
 
-function uniqueFixes(failures: unknown[]): string[] {
-  const fixes = failures.flatMap(
-    (failure) => describeFailure(failure, false).fixes ?? [],
-  );
-  return [...new Set(fixes)];
-}
-
-/**
- * One error for every module that failed to load. A single failure is
- * thrown as is; several are each listed once, by title and reason, and
- * summed up by one error carrying their fixes and the first one as cause.
- */
-function moduleLoadFailure(failures: unknown[], total: number): unknown {
-  if (failures.length === 1) {
-    return failures[0];
-  }
-  const tasks = getProcessTasks();
-  failures.forEach((failure) => {
-    const problem = describeFailure(failure, false);
-    tasks.message("error", problem.title, { detail: problem.reason });
-  });
-  return new CliError(
-    {
-      title: `Could not load ${failures.length} of ${pluralize(total, "module")}`,
-      fixes: uniqueFixes(failures),
-    },
-    { cause: failures[0] },
-  );
-}
-
 /**
  * Logs that optional module `id` could not be downloaded: the project starts
  * without it.
@@ -447,6 +417,7 @@ export function getWatchDirs(source: ModuleSource): string[] {
     return [""];
   }
 
+  // SAFETY: the preceding non-local branch returned; watchDir is the optional field of the local downloader selected by the remaining discriminator.
   const localSource = source as ModuleSourceLocal;
   if (Array.isArray(localSource.watchDir)) {
     return localSource.watchDir;

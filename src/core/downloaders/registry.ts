@@ -41,6 +41,7 @@ export class DownloaderRegistry {
     const waitingList = this.waiting.get(type);
     if (waitingList) {
       for (const waiter of waitingList) {
+        // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- register<T> permits arbitrary custom source extensions and dispatches by a string; validating T would change the exported registration contract.
         void loader(waiter.cache, waiter.source as T, waiter.options).then(
           waiter.resolve,
           waiter.reject,
@@ -61,9 +62,10 @@ export class DownloaderRegistry {
     if (type) {
       Logger.Trace(`Found loader for type ${source.type}`);
       if (type.loaderIdentifier === "path") {
-        const pathValue = (source as any)[type.loaderIdentifier];
+        const pathSource: ModuleSource & { path?: unknown } = source;
+        const pathValue = pathSource[type.loaderIdentifier];
         if (typeof pathValue === "string" && !path.isAbsolute(pathValue)) {
-          (source as any)[type.loaderIdentifier] = path.resolve(
+          pathSource[type.loaderIdentifier] = path.resolve(
             projectFolder,
             pathValue,
           );
@@ -86,6 +88,7 @@ export class DownloaderRegistry {
   getLoaderIdentifier(source: ModuleSource): any | undefined {
     const type = this.knownTypes.get(source.type);
     if (type) {
+      // SAFETY: the generic registry key is read without claiming a value type; the published return already permits any custom downloader identifier.
       return (source as any)[type.loaderIdentifier];
     }
     return undefined;

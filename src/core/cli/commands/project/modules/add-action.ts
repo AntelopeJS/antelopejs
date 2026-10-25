@@ -87,6 +87,7 @@ function sourceReference(moduleConfig: AntelopeModuleConfig | string): string {
   if (typeof moduleConfig === "string") {
     return moduleConfig;
   }
+  // SAFETY: each supported source exposes at most these optional fields; this view only reads them with nullish fallback and imposes no required property.
   const source = moduleConfig.source as SourceReference;
   return source.version ?? source.remote ?? source.path ?? "";
 }
@@ -135,7 +136,7 @@ async function downloadModule(
   if (typeof moduleConfig !== "object" || !("source" in moduleConfig)) {
     return;
   }
-  const source = moduleConfig.source as any;
+  const source = moduleConfig.source!;
   if (!context.registry.getLoaderIdentifier(source)) {
     return;
   }
@@ -334,9 +335,9 @@ handlers.set("local", async (module, options) => {
     `No package.json found in '${module}'`,
   );
 
-  const info = JSON.parse(
+  const info: ModulePackageJson = JSON.parse(
     (await readFile(packagePath)).toString(),
-  ) as ModulePackageJson;
+  );
 
   return [
     info.name,

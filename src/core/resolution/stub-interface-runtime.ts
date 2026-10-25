@@ -55,7 +55,8 @@ function walk(
     return;
   }
   if (typeof value === "function") {
-    const maybeProxy = (value as { proxy?: unknown }).proxy;
+    const callable: Function & { proxy?: unknown } = value;
+    const maybeProxy = callable.proxy;
     if (maybeProxy instanceof AsyncProxy) {
       neutralizeAsyncProxy(maybeProxy, interfaceName, reason);
     }
@@ -116,8 +117,10 @@ export function neutralizeInterfacePackage(
   interfaceName: string,
   reason: string = NO_PROVIDER_REASON,
 ): void {
-  const cache = (Module as unknown as { _cache: Record<string, NodeModule> })
-    ._cache;
+  // SAFETY: Node's CommonJS Module constructor owns _cache, whose filename keys contain the loaded NodeModule records walked below.
+  const cache =
+    // oxlint-disable-next-line typescript/no-redundant-type-constituents -- oxlint misresolves the Node Module import as any; TypeScript resolves the constructor (#229).
+    (Module as typeof Module & { _cache: Record<string, NodeModule> })._cache;
   const seen = new WeakSet<object>();
   for (const filename of Object.keys(cache)) {
     if (!isWithin(filename, packageRoot)) {

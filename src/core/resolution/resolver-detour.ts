@@ -12,6 +12,14 @@ type ModuleResolver = (
 
 type ModuleLoader = (request: string, parent: any, isMain: boolean) => unknown;
 
+// SAFETY: Node's CommonJS loader installs these hooks on Module before user modules execute; the lease coordinator restores the exact values it reads.
+// oxlint-disable-next-line typescript/no-redundant-type-constituents -- oxlint misresolves the Node Module import as any; TypeScript resolves the constructor (#229).
+const moduleHooks = Module as typeof Module & {
+  _resolveFilename?: ModuleResolver;
+  _load?: ModuleLoader;
+  _nodeModulePaths(folder: string): string[];
+};
+
 interface ResolverLease {
   owner: symbol;
   resolver: Resolver;
@@ -41,8 +49,8 @@ class ResolverDetourCoordinator {
     this.leases[leaseIndex].resolver.clearCache();
     this.leases.splice(leaseIndex, 1);
     const ownsResolver =
-      (Module as any)._resolveFilename === this.installedResolver;
-    const ownsLoader = (Module as any)._load === this.installedLoader;
+      moduleHooks._resolveFilename === this.installedResolver;
+    const ownsLoader = moduleHooks._load === this.installedLoader;
     if (this.leases.length > 0 && (!ownsResolver || !ownsLoader)) {
       this.throwHookReplacement(ownsResolver, ownsLoader);
     }
@@ -50,10 +58,10 @@ class ResolverDetourCoordinator {
       return;
     }
     if (ownsResolver) {
-      (Module as any)._resolveFilename = this.originalResolver;
+      moduleHooks._resolveFilename = this.originalResolver;
     }
     if (ownsLoader) {
-      (Module as any)._load = this.originalLoader;
+      moduleHooks._load = this.originalLoader;
     }
     this.releaseHooks();
     this.throwHookReplacement(ownsResolver, ownsLoader);
@@ -64,21 +72,21 @@ class ResolverDetourCoordinator {
       this.ensureHookOwnership();
       return;
     }
-    this.originalResolver = (Module as any)._resolveFilename;
-    this.originalLoader = (Module as any)._load;
+    this.originalResolver = moduleHooks._resolveFilename;
+    this.originalLoader = moduleHooks._load;
     this.installedResolver = (request, parent, isMain, options) =>
       this.resolve(request, parent, isMain, options);
     this.installedLoader = (request, parent, isMain) =>
       this.load(request, parent, isMain);
-    (Module as any)._resolveFilename = this.installedResolver;
-    (Module as any)._load = this.installedLoader;
+    moduleHooks._resolveFilename = this.installedResolver;
+    moduleHooks._load = this.installedLoader;
   }
 
   private ensureHookOwnership(): void {
-    if ((Module as any)._resolveFilename !== this.installedResolver) {
+    if (moduleHooks._resolveFilename !== this.installedResolver) {
       throw new Error("Node module resolver hook was replaced externally");
     }
-    if ((Module as any)._load !== this.installedLoader) {
+    if (moduleHooks._load !== this.installedLoader) {
       throw new Error("Node module loader hook was replaced externally");
     }
   }
@@ -128,6 +136,7 @@ class ResolverDetourCoordinator {
   ): string {
     const result = activeResolver?.resolve(request, parent);
     if (!activeResolver || !result) {
+      // SAFETY: resolveWith is called only by the installed hooks, after ensureInstalled captured Node's resolver and before releaseHooks clears it.
       return this.originalResolver?.(
         request,
         parent,
@@ -149,6 +158,7 @@ class ResolverDetourCoordinator {
       parent,
       result.resolveFrom,
     );
+    // SAFETY: resolveResult runs inside an installed hook lease, while the original Node resolver is retained.
     const resolvedPath = this.originalResolver?.(
       result.resolvedPath,
       contextParent,
@@ -165,7 +175,7 @@ class ResolverDetourCoordinator {
     return {
       ...parent,
       filename: path.join(resolveFrom, "_"),
-      paths: (Module as any)._nodeModulePaths(resolveFrom),
+      paths: moduleHooks._nodeModulePaths(resolveFrom),
     };
   }
 

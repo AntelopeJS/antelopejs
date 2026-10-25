@@ -31,6 +31,7 @@ export async function setConfigValue(
   const ui = getProcessUi();
   const shownKey = ui.palette().bold(key);
   const config = await readUserConfig();
+  // SAFETY: validateSetting rejected keys outside CONFIG_KEYS, whose only entry is the UserConfig git setting.
   const settingKey = key as keyof UserConfig;
   const oldValue = config[settingKey];
   if (oldValue === value) {

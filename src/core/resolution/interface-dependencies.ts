@@ -16,7 +16,7 @@ function readManifest(packageRoot: string): DependencyManifest {
   try {
     return JSON.parse(
       readFileSync(path.join(packageRoot, "package.json"), "utf8"),
-    ) as DependencyManifest;
+    );
   } catch {
     return {};
   }

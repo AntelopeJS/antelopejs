@@ -154,7 +154,7 @@ export class AntelopeRuntime {
         `Interface '${request}' is not provided by any loaded module. Declare it in 'uses' and load a module that implements it.`,
       );
     }
-    return this.hostModule().runInContext(() => require(request) as T);
+    return this.hostModule().runInContext(() => require(request));
   }
 
   /** Implements an interface from host code, released through the returned handle. */

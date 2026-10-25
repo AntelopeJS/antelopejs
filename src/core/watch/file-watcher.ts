@@ -15,7 +15,8 @@ function isVanishedPathError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
   }
-  const { code } = error as NodeJS.ErrnoException;
+  const systemError: NodeJS.ErrnoException = error;
+  const { code } = systemError;
   return code !== undefined && VANISHED_PATH_ERROR_CODES.has(code);
 }
 

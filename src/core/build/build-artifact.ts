@@ -170,5 +170,5 @@ export async function readBuildArtifact(
 ): Promise<BuildArtifact> {
   const artifactPath = getBuildArtifactPath(projectFolder);
   const content = await fs.readFileString(artifactPath, "utf-8");
-  return JSON.parse(content) as BuildArtifact;
+  return JSON.parse(content);
 }

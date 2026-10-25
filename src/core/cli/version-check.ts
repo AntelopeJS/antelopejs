@@ -67,6 +67,7 @@ export function shouldCheckForUpdates(context: UpdateCheckContext): boolean {
 }
 
 function isValidCache(value: unknown): value is UpdateCheckCache {
+  // SAFETY: this is only a property-access view; the predicate below checks checkedAt and latestVersion before accepting the cache.
   const cache = value as UpdateCheckCache | null;
   return (
     typeof cache?.checkedAt === "number" &&
@@ -121,6 +122,7 @@ async function fetchLatestVersion(
   if (!response.ok) {
     return undefined;
   }
+  // SAFETY: this view claims no version contents; the string check below validates the only property consumed from the JSON response.
   const manifest = (await response.json()) as PackageManifest;
   return typeof manifest.version === "string"
     ? (semver.valid(manifest.version) ?? undefined)

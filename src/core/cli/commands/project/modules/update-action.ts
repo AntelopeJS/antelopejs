@@ -1,4 +1,7 @@
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 
 import { ConfigLoader } from "../../../../config";
 import { FAILURE_EXIT_CODE } from "../../../exit-codes";
@@ -24,18 +27,19 @@ interface UpdateOptions {
 }
 
 function applyUpdates(
-  env: Record<string, unknown>,
+  env: Partial<AntelopeConfig>,
   outdated: OutdatedModule[],
-  antelopeModules: Record<string, { source?: { type: string } }>,
+  antelopeModules: Record<string, ExpandedModuleConfig>,
 ): void {
-  const envModules = (env as { modules: Record<string, unknown> }).modules;
+  const envModules = env.modules!;
   for (const entry of outdated) {
     envModules[entry.name] = {
       ...antelopeModules[entry.name],
       source: {
+        // SAFETY: outdated entries come from checkOutdatedModules, which selects only package sources before looking up their versions.
         ...(antelopeModules[entry.name].source as ModuleSourcePackage),
         version: bumpVersionSpec(entry.current, entry.latest),
-      } as ModuleSourcePackage,
+      },
     };
   }
 }
@@ -163,11 +167,7 @@ export async function updateModules(
 
   const outdated = await checkOutdatedModules(selectedModules);
   if (outdated.length > 0 && !options.dryRun) {
-    applyUpdates(
-      env as unknown as Record<string, unknown>,
-      outdated,
-      antelopeConfig.modules,
-    );
+    applyUpdates(env, outdated, antelopeConfig.modules);
     await writeConfig(options.project, config);
   }
   displayResults({

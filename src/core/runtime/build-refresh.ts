@@ -117,9 +117,7 @@ function refreshModuleEntries(
       name,
       {
         ...entry,
-        ...serializeModuleConfig(
-          toModuleConfig(modules[entry.source.id as string]),
-        ),
+        ...serializeModuleConfig(toModuleConfig(modules[entry.source.id!])),
       },
     ]),
   );

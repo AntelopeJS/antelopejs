@@ -69,6 +69,7 @@ function toBackendOptions<Value>(
 ): BackendOption<Value>[] {
   return choices.map(
     (choice) =>
+      // SAFETY: every option supplies a label, satisfying both branches of Clack's conditional Option<Value> type, even when Value is not string-like.
       ({
         value: choice.value,
         label: choice.label,
@@ -164,11 +165,13 @@ class SessionPrompter implements Prompter {
       throw this.needsInput(question.flag ? [question.flag] : []);
     }
     const backend = await promptEnvironment.loadBackend();
+    // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- PromptEnvironment.output publicly permits a minimal OutputStream; enforcing Node WriteStream would reject existing custom backends.
     const output = promptEnvironment.output() as PromptOutput;
     const answer = await ask(backend, output);
     if (backend.isCancel(answer)) {
       throw new CancelledError();
     }
+    // SAFETY: Clack returns a symbol only for cancellation, which isCancel rejected above; the remaining value is the answer of the supplied generic ask callback.
     return answer as Answer;
   }
 

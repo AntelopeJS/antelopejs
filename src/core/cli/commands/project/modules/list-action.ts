@@ -22,10 +22,6 @@ interface ListOptions {
   json?: boolean;
 }
 
-interface ModuleEntry {
-  source?: unknown;
-}
-
 interface ModuleListing {
   name: string;
   source: unknown;
@@ -73,18 +69,22 @@ function gitReference(source: ModuleSourceGit): string {
 }
 
 const SOURCE_SUMMARIZERS: Record<string, SourceSummarizer> = {
+  // SAFETY: summarizeSource dispatches this callback only for the package discriminator.
   package: (source, moduleName) => ({
     kind: "npm",
     reference: packageReference(source as ModuleSourcePackage, moduleName),
   }),
+  // SAFETY: summarizeSource dispatches this callback only for the git discriminator.
   git: (source) => ({
     kind: "git",
     reference: gitReference(source as ModuleSourceGit),
   }),
+  // SAFETY: summarizeSource dispatches this callback only for the local discriminator.
   local: (source) => ({
     kind: "local",
     reference: (source as ModuleSourceLocal).path,
   }),
+  // SAFETY: summarizeSource dispatches this callback only for the local-folder discriminator.
   "local-folder": (source) => ({
     kind: "folder",
     reference: (source as ModuleSourceLocalFolder).path,
@@ -92,6 +92,7 @@ const SOURCE_SUMMARIZERS: Record<string, SourceSummarizer> = {
 };
 
 function summarizeSource(listing: ModuleListing): SourceSummary {
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- ConfigLoader accepts unchecked source values; validating them here would change malformed-config output (#228).
   const sourceType = (listing.source as KnownModuleSource | undefined)?.type;
   const summarize = sourceType ? SOURCE_SUMMARIZERS[sourceType] : undefined;
   if (!summarize) {
@@ -100,6 +101,7 @@ function summarizeSource(listing: ModuleListing): SourceSummary {
       reference: JSON.stringify(listing.source) ?? MISSING_REFERENCE,
     };
   }
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Dispatch historically accepts any source with a recognized type, including malformed sources (#228).
   return summarize(listing.source as KnownModuleSource, listing.name);
 }
 
@@ -134,9 +136,12 @@ async function listModules(options: ListOptions, ui: Ui): Promise<void> {
   );
   const loader = new ConfigLoader(new NodeFileSystem());
   const antelopeConfig = await loader.load(options.project, environment);
-  const modules = Object.entries(
-    antelopeConfig.modules as Record<string, ModuleEntry>,
-  ).map(([name, entry]) => ({ name, source: entry.source }));
+  const modules = Object.entries(antelopeConfig.modules).map(
+    ([name, entry]) => ({
+      name,
+      source: entry.source,
+    }),
+  );
   writeData(ui, {
     data: modules,
     isJson: options.json,

@@ -17,6 +17,7 @@ export class ConfigVarStore {
 
   /** Freezes what a provider returned, once its `provide` callback resolved. */
   record(moduleId: string, declared: string[], returned: unknown): void {
+    // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- record accepts arbitrary provider values and checks names only; enforcing ConfigVarValue would change existing acceptance.
     const values = isObject(returned) ? (returned as ConfigVars) : {};
     const missing = declared.filter((name) => !(name in values));
     if (missing.length > 0) {

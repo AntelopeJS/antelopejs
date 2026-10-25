@@ -41,7 +41,8 @@ function isCommanderExit(error: unknown): error is CommanderExit {
   if (!(error instanceof Error)) {
     return false;
   }
-  const { code, exitCode } = error as Partial<CommanderExit>;
+  const candidate: Error & Partial<CommanderExit> = error;
+  const { code, exitCode } = candidate;
   return (
     typeof code === "string" &&
     code.startsWith(COMMANDER_CODE_PREFIX) &&
@@ -50,6 +51,7 @@ function isCommanderExit(error: unknown): error is CommanderExit {
 }
 
 function commanderExitCode(error: unknown): number {
+  // SAFETY: FAILURE_HANDLERS invokes this handler only after isCommanderExit has checked both code and exitCode.
   return (error as CommanderExit).exitCode === SUCCESS_EXIT_CODE
     ? SUCCESS_EXIT_CODE
     : USAGE_EXIT_CODE;

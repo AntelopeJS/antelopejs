@@ -102,10 +102,12 @@ const SYSTEM_ERROR_TRANSLATIONS: Record<string, SystemErrorTranslation> = {
 };
 
 function isSystemError(error: unknown): error is NodeJS.ErrnoException {
-  return (
-    error instanceof Error &&
-    typeof (error as NodeJS.ErrnoException).code === "string"
-  );
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const candidate: NodeJS.ErrnoException = error;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This boundary recognizes string errno codes across Error subclasses without rejecting arbitrary thrown values.
+  return typeof candidate.code === "string";
 }
 
 function applyExecTranslation(
@@ -145,4 +147,3 @@ export function translateFailure(error: unknown): CliProblem | undefined {
   }
   return undefined;
 }
-

@@ -48,6 +48,7 @@ async function importConfigInput(
   }
   const jiti = createJiti(configPath, options);
   const loaded = await jiti.import(configPath);
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- jiti imports remain unvalidated to preserve configuration acceptance (#228).
   return (loaded as any).default ?? loaded;
 }
 
@@ -83,6 +84,7 @@ export class ConfigLoader {
 
     let config = { ...rawConfig };
     if (environment && rawConfig.environments?.[environment]) {
+      // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Environment overrides are not validated today; checking required fields would change acceptance (#228).
       config = mergeDeep(
         config,
         rawConfig.environments[environment],
@@ -97,10 +99,13 @@ export class ConfigLoader {
     for (const moduleName of Object.keys(expandedModules)) {
       const moduleConfigPath = getModuleConfigPath(projectFolder, moduleName);
       if (await this.fs.exists(moduleConfigPath)) {
-        const moduleConfig = await this.loadJsonFile(moduleConfigPath);
+        const moduleConfig =
+          // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- JSON module settings are merged without validation; tightening the accepted dictionary would change configuration behavior (#228).
+          await this.loadJsonFile<Record<string, any>>(moduleConfigPath);
         expandedModules[moduleName].config = mergeDeep(
+          // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
           (expandedModules[moduleName].config as Record<string, any>) ?? {},
-          moduleConfig as Record<string, any>,
+          moduleConfig,
         );
       }
     }
@@ -120,7 +125,7 @@ export class ConfigLoader {
     });
 
     return {
-      ...(processed as LoadedConfig),
+      ...processed,
       test: configWithOverrides.test,
     };
   }

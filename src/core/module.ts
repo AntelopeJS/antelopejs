@@ -23,7 +23,7 @@ let nextModuleOwner = 1;
 
 async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
   const mod = await import(mainPath);
-  return mod as ModuleCallbacks;
+  return mod;
 }
 
 export class Module {

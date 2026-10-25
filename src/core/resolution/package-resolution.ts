@@ -106,7 +106,7 @@ function readPackageJson(packageRoot: string): PackageJson | undefined {
   try {
     return JSON.parse(
       readFileSync(path.join(packageRoot, "package.json"), "utf8"),
-    ) as PackageJson;
+    );
   } catch {
     return undefined;
   }

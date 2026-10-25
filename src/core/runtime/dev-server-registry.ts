@@ -25,6 +25,7 @@ function isProcessAlive(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (error) {
+    // SAFETY: Node process.kill reports system-call failures with Error objects carrying an errno code; this catch contains only that native call.
     return (error as NodeJS.ErrnoException).code === PERMISSION_DENIED_CODE;
   }
 }
@@ -89,7 +90,7 @@ export class DevRegistryStore {
       const content = await this.options.fs.readFileString(
         this.registryFilePath,
       );
-      return JSON.parse(content) as DevServerRegistry;
+      return JSON.parse(content);
     } catch {
       return undefined;
     }

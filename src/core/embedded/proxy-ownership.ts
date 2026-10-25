@@ -24,6 +24,7 @@ function releaseProxy(proxy: OwnedProxy): void {
     cleanup.call(proxy);
     return;
   }
+  // SAFETY: interface-core stores either a callable cleanup or its legacy detach proxy; the callable-cleanup branch returned above.
   (proxy as { detach(): void }).detach();
 }
 

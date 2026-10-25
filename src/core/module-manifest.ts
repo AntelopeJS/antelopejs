@@ -64,10 +64,6 @@ interface ModuleManifestState {
   srcAliases?: ModuleAliasEntry[];
 }
 
-interface ModuleSourceWithMain extends ModuleSource {
-  main?: string;
-}
-
 function clonePathEntries(
   entries: BuildPathEntry[] | PathMapping[],
 ): PathMapping[] {
@@ -119,7 +115,8 @@ export function resolveManifestEntryFile(manifest: {
 }
 
 function resolveMainPath(folder: string, source: ModuleSource): string {
-  const mainCandidate = (source as ModuleSourceWithMain).main;
+  const extensibleSource: ModuleSource & { main?: unknown } = source;
+  const mainCandidate = extensibleSource.main;
   return typeof mainCandidate === "string"
     ? path.join(folder, mainCandidate)
     : folder;
@@ -280,14 +277,14 @@ export class ModuleManifest {
       throw new Error(`Missing package.json in '${folder}'`);
     }
 
-    const packageJson = JSON.parse(
+    const packageJson: ModulePackageJson = JSON.parse(
       await fs.readFileString(packageJsonPath),
-    ) as ModulePackageJson;
+    );
 
     if (await fs.exists(dedicatedJsonPath)) {
-      const dedicatedJson = JSON.parse(
+      const dedicatedJson: ModulePackageJson["antelopeJs"] = JSON.parse(
         await fs.readFileString(dedicatedJsonPath),
-      ) as ModulePackageJson["antelopeJs"];
+      );
       return {
         ...packageJson,
         antelopeJs: dedicatedJson,

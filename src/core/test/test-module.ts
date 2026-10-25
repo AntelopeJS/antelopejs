@@ -259,10 +259,8 @@ function applySetupOverrides(
   config: LoadedConfig,
   overrides: Partial<AntelopeConfig>,
 ): LoadedConfig {
-  return mergeDeep(
-    config as Record<string, any>,
-    overrides as Record<string, any>,
-  ) as unknown as LoadedConfig;
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Setup overrides can overwrite required fields; validating the historic merge would change accepted configuration (#228).
+  return mergeDeep(config, overrides) as LoadedConfig;
 }
 
 function clearStubModulePath(manager: ModuleManager | null): void {

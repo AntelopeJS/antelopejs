@@ -21,7 +21,7 @@ function createFunctionProxyTarget(): StubProxyTarget {
 }
 
 function createStubFunction(): StubCallable {
-  const callable = (() => throwStub()) as StubCallable;
+  const callable = () => throwStub();
   callable.proxy = createFunctionProxyTarget();
   return callable;
 }

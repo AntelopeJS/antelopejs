@@ -36,7 +36,7 @@ function readExportPriority(
 export class ConfigParser {
   processTemplates<T extends Record<string, any>>(config: T): T {
     const flatValues = this.flattenConfig(config);
-    return this.processObject(config, flatValues) as T;
+    return this.processObject(config, flatValues);
   }
 
   private flattenConfig(
@@ -129,6 +129,7 @@ export class ConfigParser {
 
   private cloneValue<T>(value: T): T {
     if (Array.isArray(value)) {
+      // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Cloning discards array subclass properties; preserving the existing generic promise requires the same unchecked conversion as processTemplates (#226).
       return value.map((item) => this.cloneValue(item)) as T;
     }
 
@@ -137,6 +138,7 @@ export class ConfigParser {
       for (const [key, item] of Object.entries(value)) {
         result[key] = this.cloneValue(item);
       }
+      // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Only enumerable string keys are cloned; T may also require symbols or nonenumerable members (#226).
       return result as T;
     }
 

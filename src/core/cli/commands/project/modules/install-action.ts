@@ -113,6 +113,7 @@ export function resolveInstallIdentifier(
   if (source.type !== PACKAGE_SOURCE_TYPE) {
     return identifier;
   }
+  // SAFETY: the early return excludes non-package sources; ModuleSource omits the concrete downloader's version field.
   const version = (source as ModuleSourcePackage).version;
   return version ? `${identifier}@${version}` : identifier;
 }

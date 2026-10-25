@@ -79,7 +79,7 @@ export async function fetchDistTags(
   packageName: string,
 ): Promise<Record<string, string>> {
   const result = await viewPackage(packageName, DIST_TAGS_ARGUMENTS);
-  return JSON.parse(result.stdout) as Record<string, string>;
+  return JSON.parse(result.stdout);
 }
 
 export async function validateVersionSpec(
@@ -149,6 +149,7 @@ async function fetchLatestVersions(
 type ModuleEntry = [string, ExpandedModuleConfig];
 
 function packageSourceOf(info: ExpandedModuleConfig): ModuleSourcePackage {
+  // SAFETY: both callers receive the entries filtered by source.type === "package" in checkOutdatedModules.
   return info.source as ModuleSourcePackage;
 }
 
