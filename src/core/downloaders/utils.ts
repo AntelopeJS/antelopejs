@@ -14,6 +14,7 @@ function normalizeCommands(installCommand?: ModuleInstallCommand): string[] {
   return Array.isArray(installCommand) ? installCommand : [installCommand];
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Executors may reject with any value; this boundary preserves the existing String fallback for non-ExecError failures.
 function toExecError(err: unknown, command: string): ExecError {
   if (err instanceof ExecError) {
     return err;

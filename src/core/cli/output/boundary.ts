@@ -22,7 +22,9 @@ interface CommanderExit {
 }
 
 interface FailureHandler {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The handler table matches arbitrary caught values before selecting a failure-specific branch.
   matches(error: unknown): boolean;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Handlers receive the same caught value their matcher accepted; replacing it would change identity and duck-typed behavior.
   handle(error: unknown): number;
 }
 
@@ -50,6 +52,7 @@ function isCommanderExit(error: unknown): error is CommanderExit {
   );
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- FailureHandler deliberately forwards arbitrary caught values; isCommanderExit checked this handler's input before dispatch.
 function commanderExitCode(error: unknown): number {
   // SAFETY: FAILURE_HANDLERS invokes this handler only after isCommanderExit has checked both code and exitCode.
   return (error as CommanderExit).exitCode === SUCCESS_EXIT_CODE
@@ -63,6 +66,7 @@ const FAILURE_HANDLERS: FailureHandler[] = [
 ];
 
 async function handleFailure(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The CLI boundary must handle primitive and object throws without inserting a rejecting schema.
   error: unknown,
   options: BoundaryOptions,
 ): Promise<number> {

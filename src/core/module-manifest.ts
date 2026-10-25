@@ -28,6 +28,7 @@ export interface ModulePackageJson {
 
     moduleAliases?: Record<string, string>;
 
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported package manifests allow arbitrary application default configuration; narrowing changes the manifest contract.
     defaultConfig?: Record<string, unknown>;
 
     configVars?: string[];

@@ -42,6 +42,7 @@ export class BuildModuleSetChangedError extends Error {
  * the errors a failed launch aggregates.
  */
 export function findBuildModuleSetChange(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported failure inspection accepts arbitrary throws and searches nested AggregateErrors; narrowing changes declarations.
   error: unknown,
 ): BuildModuleSetChangedError | undefined {
   if (error instanceof BuildModuleSetChangedError) {

@@ -22,6 +22,7 @@ export interface GlobalInstallRequest {
   processOptions?: InheritedProcessOptions;
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Child command callbacks may reject with arbitrary values; the existing String fallback must remain available.
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

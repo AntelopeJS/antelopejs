@@ -103,7 +103,7 @@ export class ConfigLoader {
           // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- JSON module settings are merged without validation; tightening the accepted dictionary would change configuration behavior (#228).
           await this.loadJsonFile<Record<string, any>>(moduleConfigPath);
         expandedModules[moduleName].config = mergeDeep(
-          // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
+          // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unsafe-dictionary-type -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
           (expandedModules[moduleName].config as Record<string, any>) ?? {},
           moduleConfig,
         );

@@ -6,7 +6,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import { ExecuteCMD } from "../../../command";
-import { ConfigLoader } from "../../../../config";
+import { ConfigLoader, type LoadedConfig } from "../../../../config";
 import { ModuleCache } from "../../../../module-cache";
 import { NodeFileSystem } from "../../../../filesystem";
 import { writeConfig } from "../../../common";
@@ -74,7 +74,7 @@ interface AddContext {
   options: AddOptions;
   registry: DownloaderRegistry;
   cache: ModuleCache;
-  existingModules: Record<string, unknown>;
+  existingModules: LoadedConfig["modules"];
 }
 
 interface SourceReference {

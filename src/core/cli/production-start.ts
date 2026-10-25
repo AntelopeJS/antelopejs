@@ -78,6 +78,7 @@ export async function startFromBuild(
  * Exit code a failed `ajs project start` reports, telling a module set that
  * no longer matches the build apart from any other failure.
  */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported start failure classification accepts any thrown value; narrowing changes its declaration and fallback behavior.
 export function startFailureExitCode(error: unknown): number {
   return findBuildModuleSetChange(error)
     ? BUILD_MODULE_SET_CHANGED_EXIT_CODE

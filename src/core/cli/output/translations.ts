@@ -135,6 +135,7 @@ export function translateExecError(error: ExecError): CliProblem | undefined {
  * an unreachable registry, a git clone that was refused, incompatible
  * interface packages) into a problem that names the cause and the fix. Returns `undefined` for anything else.
  */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported translation accepts arbitrary throws and returns undefined for unrecognized failures; narrowing changes its declaration.
 export function translateFailure(error: unknown): CliProblem | undefined {
   if (error instanceof ExecError) {
     return translateExecError(error);

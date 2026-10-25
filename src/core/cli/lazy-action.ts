@@ -1,5 +1,6 @@
 import type { Command } from "commander";
 
+// oxlint-disable-next-line anti-slop/no-unknown-returns -- Commander action callbacks may return arbitrary values or promises; the lazy wrapper forwards them unchanged.
 type CommandAction = (this: Command, ...args: any[]) => unknown;
 
 /**

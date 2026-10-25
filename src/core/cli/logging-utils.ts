@@ -162,6 +162,7 @@ function indentCause(text: string): string {
     .join("\n");
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Error.cause and AggregateError members may be arbitrary values; logging must retain their existing serialization.
 function serializeInnerError(value: unknown, ancestors: Set<Error>): string {
   if (!(value instanceof Error)) {
     return serializeLogValue(value);

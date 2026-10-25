@@ -8,6 +8,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import { Module } from "../module";
+import { unpackErrors } from "../module-errors";
 import type { ModuleDeclarationChanges } from "../config/module-entry";
 import {
   listModuleDeclarations,
@@ -350,6 +351,7 @@ async function loadModuleEntry(
  * Logs that optional module `id` could not be downloaded: the project starts
  * without it.
  */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Optional downloader failures may be any rejection value; the logger must receive the original reason.
 function skipOptionalModule(id: string, reason: unknown): void {
   Logger.Error(
     `Optional module ${id} could not be loaded; starting without it`,
@@ -558,10 +560,6 @@ async function cleanupReplacement(replacement: Module): Promise<unknown[]> {
   }
 }
 
-function unpackErrors(error: unknown): unknown[] {
-  return error instanceof AggregateError ? error.errors : [error];
-}
-
 export async function reloadWatchedModule(
   manager: ModuleManager,
   moduleId: string,
@@ -605,6 +603,7 @@ export async function constructAndStartModules(
 
 export async function destroyModulesAfterFailure(
   manager: ModuleManager,
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported cleanup rethrows the original arbitrary startup failure by identity, or includes it in an AggregateError.
   error: unknown,
 ): Promise<never> {
   try {

@@ -27,6 +27,7 @@ interface RunningTask {
   startedAt: number;
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-returns -- Captured writes must forward each OutputStream.write result unchanged, including custom stream returns.
 type WriteFunction = (chunk: string, ...rest: unknown[]) => unknown;
 
 interface CapturedStream {

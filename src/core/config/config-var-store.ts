@@ -16,6 +16,7 @@ export class ConfigVarStore {
   private readonly published = new Map<string, ConfigVars>();
 
   /** Freezes what a provider returned, once its `provide` callback resolved. */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported record accepts arbitrary provider results and checks declared names only; narrowing would change declarations and acceptance.
   record(moduleId: string, declared: string[], returned: unknown): void {
     // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- record accepts arbitrary provider values and checks names only; enforcing ConfigVarValue would change existing acceptance.
     const values = isObject(returned) ? (returned as ConfigVars) : {};
@@ -29,6 +30,7 @@ export class ConfigVarStore {
   }
 
   /** The consumer configuration with every reference replaced by its value. */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- Exported resolve preserves arbitrary application configuration, including values with no references, by identity.
   resolve(consumerId: string, config: unknown): unknown {
     return substituteConfigVars(config, (reference) =>
       this.lookup(consumerId, reference),

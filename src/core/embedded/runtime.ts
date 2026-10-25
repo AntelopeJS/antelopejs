@@ -16,8 +16,11 @@ import {
 } from "../runtime/runtime-policy";
 
 type InterfaceAttacher = (
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Interface packages expose arbitrary declarations; ImplementInterface owns their existing runtime validation.
   declaration: Record<string, unknown>,
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The published provide method accepts arbitrary implementations and delegates validation to ImplementInterface.
   implementation: unknown,
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- ImplementInterface's result is ignored here; this adapter must not claim a result shape the external runtime does not guarantee.
 ) => unknown;
 
 // SAFETY: ImplementInterface validates objects, cycles, and required handlers before attaching; widening its input delegates rejection to those existing checks, and this caller ignores its return value.
@@ -158,12 +161,14 @@ export class AntelopeRuntime {
   }
 
   /** Implements an interface from host code, released through the returned handle. */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Published provide accepts arbitrary implementation objects; narrowing changes its declaration and bypasses existing runtime validation.
   provide(packageName: string, implementation: unknown): ProvideHandle {
     if (!this.options.provides?.includes(packageName)) {
       throw new Error(
         `Interface '${packageName}' is not declared in 'provides', so nothing routes to a host implementation of it. Add it to 'provides' before calling provide().`,
       );
     }
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The dynamically required interface package has application-defined exports; ImplementInterface validates them.
     const declaration = this.use<Record<string, unknown>>(packageName);
     const release = this.hostModule().runInContext(() =>
       captureOwnedProxies(() => {

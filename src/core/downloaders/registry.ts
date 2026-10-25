@@ -22,6 +22,7 @@ type WaitingType = {
   source: ModuleSource;
   options?: LoadOptions;
   resolve: (info: ModuleManifest[]) => void;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise rejection reasons are arbitrary JavaScript values and must reach waiting callers unchanged.
   reject: (error?: unknown) => void;
 };
 

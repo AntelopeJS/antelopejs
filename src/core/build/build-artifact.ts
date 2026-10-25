@@ -76,6 +76,7 @@ export interface BuildArtifactInput {
 }
 
 interface RawProjectConfig {
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Hashing includes arbitrary application config keys and values; narrowing them would change which configurations can be hashed.
   [key: string]: unknown;
 }
 
@@ -83,6 +84,7 @@ function isRawProjectConfig(value: unknown): value is RawProjectConfig {
   return typeof value === "object" && value !== null;
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- Stable hashing recursively preserves arbitrary non-object values for the existing JSON.stringify boundary.
 function toStableHashValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => toStableHashValue(item));
@@ -100,6 +102,7 @@ function toStableHashValue(value: unknown): unknown {
  * Serialise a value with object keys sorted, so equal values always produce
  * the same string whatever their key insertion order.
  */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported stable JSON serialization accepts arbitrary JavaScript values; narrowing changes its declaration and stringify behavior.
 export function toStableJson(value: unknown): string {
   return JSON.stringify(toStableHashValue(value));
 }

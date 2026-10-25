@@ -40,6 +40,7 @@ export function declaredConfigVars(source?: {
 }
 
 /** Every config variable reference a configuration holds, at any depth. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported scanning accepts any application config and ignores non-string leaves without rejecting them.
 export function scanConfigVars(config: unknown): ConfigVarScan {
   const references = new Map<string, ConfigVarReference>();
   const malformed = new Set<string>();
@@ -67,8 +68,10 @@ export function scanConfigVars(config: unknown): ConfigVarScan {
  * came in.
  */
 export function substituteConfigVars(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported substitution accepts arbitrary config values and preserves untouched branches by identity.
   config: unknown,
   lookup: ConfigVarLookup,
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Untouched application values are returned unchanged; narrowing the exported result would be false for accepted inputs.
 ): unknown {
   if (typeof config === "string") {
     return substituteString(config, lookup);
@@ -95,8 +98,10 @@ function substituteArray(
 }
 
 function substituteObject(
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Plain-object config leaves remain application-defined; imposing a value schema would change substitution acceptance.
   config: Record<string, unknown>,
   lookup: ConfigVarLookup,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The rebuilt config retains arbitrary untouched leaf values from the exported substitution input.
 ): Record<string, unknown> {
   const entries = Object.entries(config).map(
     ([key, value]) => [key, substituteConfigVars(value, lookup)] as const,
@@ -125,6 +130,7 @@ function matchReferences(value: string): ConfigVarReference[] {
   );
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Config scanning traverses arbitrary application values and must ignore non-string leaves without validation.
 function visitStrings(value: unknown, visit: (value: string) => void): void {
   if (typeof value === "string") {
     visit(value);

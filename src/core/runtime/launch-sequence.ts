@@ -5,6 +5,7 @@ import type { ShutdownHandler, ShutdownManager } from "../shutdown";
 import { NodeFileSystem } from "../filesystem";
 import type { LaunchOptions } from "../../types";
 import { ModuleManager } from "../module-manager";
+import { unpackErrors } from "../module-errors";
 import { INSTANCES_FOLDER } from "../module-isolation";
 import { terminalDisplay } from "../cli/output/tasks";
 import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
@@ -429,8 +430,4 @@ async function cleanupFailedLaunch(
     errors.push(...unpackErrors(error));
   }
   return errors;
-}
-
-function unpackErrors(error: unknown): unknown[] {
-  return error instanceof AggregateError ? error.errors : [error];
 }

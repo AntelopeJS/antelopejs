@@ -11,6 +11,7 @@ export type FileChangeListener = (filePath: string) => void;
 const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
 const VANISHED_PATH_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Filesystem implementations may reject with arbitrary values; only recognized vanished-path errors are ignored.
 function isVanishedPathError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;

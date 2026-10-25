@@ -57,6 +57,7 @@ export function displayNonDefaultGitWarning(gitUrl: string): void {
 
 async function writeJsonFile(
   filePath: string,
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- JSON.stringify owns this serialization boundary and accepts arbitrary application values, including custom toJSON objects.
   data: unknown,
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<void> {
@@ -138,6 +139,7 @@ async function getTsConfigWriteMeta(
 
 const SAFE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Config serialization preserves arbitrary application values and its existing fallback output; a JSON-only schema would reject accepted inputs.
 function serializeToJs(value: unknown, indent: string, depth: number): string {
   if (value === null || value === undefined) {
     return String(value);

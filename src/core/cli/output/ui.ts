@@ -190,6 +190,7 @@ class StreamUi implements Ui {
     this.writeLine("result", text);
   }
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported terminal UI implements Ui.json's arbitrary JSON.stringify input contract.
   json(data: unknown): void {
     this.writeLine("result", JSON.stringify(data, null, JSON_INDENTATION));
   }

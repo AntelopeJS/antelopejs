@@ -37,10 +37,12 @@ export class ModuleLifecycle {
    * transition, it only feeds the configuration of the modules that reference
    * them.
    */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported lifecycle provide accepts opaque application config; narrowing changes its declaration.
   provide(config: unknown): Promise<ConfigVars | void> {
     return this.enqueue(() => this.runProvide(config));
   }
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- This queue forwards the exported provide input unchanged to the application callback.
   private async runProvide(config: unknown): Promise<ConfigVars | void> {
     if (this._state !== ModuleState.Loaded) {
       return undefined;
@@ -49,10 +51,12 @@ export class ModuleLifecycle {
     return this.callbacks?.provide?.(config) ?? undefined;
   }
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported lifecycle construct accepts opaque application config; narrowing changes its declaration.
   construct(config: unknown): Promise<void> {
     return this.enqueue(() => this.runConstruct(config));
   }
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- This queue forwards the exported construct input unchanged to the application callback.
   private runConstruct(config: unknown): Promise<void> {
     if (this._state !== ModuleState.Loaded) {
       return Promise.resolve();
@@ -64,6 +68,7 @@ export class ModuleLifecycle {
     );
   }
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The construct callback owns its config schema; checking it here would change accepted application values.
   private async applyConstruct(config: unknown): Promise<void> {
     this._state = ModuleState.Constructed;
     await this.callbacks?.construct?.(config);

@@ -9,6 +9,7 @@ export interface ResolvedPackage {
   realRoot: string;
   entry: string;
   resolveFrom: string;
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported resolved-package metadata preserves arbitrary antelopeJs manifest fields; narrowing changes declarations.
   antelopeJs?: Record<string, unknown>;
 }
 
@@ -17,6 +18,7 @@ export type PathMatcher = (filePath: string) => boolean;
 interface PackageJson {
   name?: string;
   version?: string;
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Parsed package metadata shares the exported ResolvedPackage open antelopeJs contract without rejecting unknown fields.
   antelopeJs?: Record<string, unknown>;
 }
 
