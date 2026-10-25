@@ -133,13 +133,11 @@ async function runProgram(program: Command): Promise<void> {
   applyVerboseChannels(program);
 }
 
-// Main CLI function
 export const runCLI = async () => {
   const updateCheck = startUpdateCheck();
   try {
     const version = getCoreVersion();
 
-    // Initialize logging with default configuration
     setLogAudience("cli");
     setupAntelopeProjectLogging(defaultConfigLogging);
 

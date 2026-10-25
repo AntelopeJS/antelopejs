@@ -39,7 +39,6 @@ function isLogColor(color: string): color is LogColor {
   return (LOG_COLORS as readonly string[]).includes(color);
 }
 
-// map created this way because Logging.Level is undefined on firsts calls
 export const getLevelInfo = (() => {
   let map: Record<number, { name: string; color: string }> | undefined;
 
@@ -76,24 +75,22 @@ export function isTerminalOutput(): boolean {
  * @returns The string without ANSI codes
  */
 export function stripAnsiCodes(str: string): string {
-  /* Matching the ESC control character is the entire point of an ANSI
-     escape-sequence stripper. */
-  // oxlint-disable-next-line eslint/no-control-regex -- see above
+  // oxlint-disable-next-line eslint/no-control-regex -- an ANSI stripper must match the ESC control character
   const ansiRegex = /\u001b\[[0-9;]*m/g;
   return str.replace(ansiRegex, "");
 }
 
 const WIDE_RANGES = [
-  [0x1100, 0x115f], // Hangul Jamo
-  [0x2329, 0x232a], // Miscellaneous Technical
-  [0x2e80, 0x303e], // CJK Radicals Supplement
-  [0x3040, 0x3247], // Hiragana, Katakana, CJK
-  [0x3250, 0x4dbf], // CJK Unified Ideographs
-  [0x4e00, 0x9fff], // CJK Unified Ideographs
-  [0xf900, 0xfaff], // CJK Compatibility Ideographs
-  [0xfe30, 0xfe4f], // CJK Compatibility Forms
-  [0xff00, 0xffef], // Fullwidth ASCII
-  [0x1f300, 0x1f9ff], // Miscellaneous Symbols and Pictographs
+  [0x1100, 0x115f],
+  [0x2329, 0x232a],
+  [0x2e80, 0x303e],
+  [0x3040, 0x3247],
+  [0x3250, 0x4dbf],
+  [0x4e00, 0x9fff],
+  [0xf900, 0xfaff],
+  [0xfe30, 0xfe4f],
+  [0xff00, 0xffef],
+  [0x1f300, 0x1f9ff],
 ];
 
 const SINGLE_WIDE_CHARS = new Set(["✓", "•", "ℹ", "⚠", "✗", "→", "←"]);
@@ -222,11 +219,9 @@ export function serializeLogValue(value: any): string {
   if (value instanceof Error) return serializeError(value, new Set());
   if (value instanceof Date) return value.toISOString();
 
-  // For objects and arrays, use JSON.stringify with proper formatting
   try {
     return JSON.stringify(value, null, 2);
   } catch {
-    // Fallback for circular references or other serialization issues
     return String(value);
   }
 }
@@ -240,7 +235,6 @@ export function serializeLogValue(value: any): string {
  * @returns The formatted date string
  */
 export function formatDate(date: Date, format = "yyyy-MM-dd HH:mm:ss"): string {
-  // Default to ISO format if no format provided
   if (!format) {
     return date.toISOString();
   }
@@ -248,7 +242,6 @@ export function formatDate(date: Date, format = "yyyy-MM-dd HH:mm:ss"): string {
   const padZero = (num: number, length = 2) =>
     String(num).padStart(length, "0");
 
-  // Format replacements
   const replacements: Record<string, string> = {
     yyyy: String(date.getFullYear()),
     MM: padZero(date.getMonth() + 1),
@@ -265,7 +258,6 @@ export function formatDate(date: Date, format = "yyyy-MM-dd HH:mm:ss"): string {
     s: String(date.getSeconds()),
   };
 
-  // Replace patterns in the format string
   let result = format;
   for (const [pattern, value] of Object.entries(replacements)) {
     result = result.replace(pattern, value);

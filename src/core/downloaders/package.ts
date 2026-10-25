@@ -1,4 +1,4 @@
-// @ts-expect-error
+// @ts-expect-error inly ships no type declarations and there is no @types/inly
 import inly from "inly";
 import * as path from "node:path";
 import { Logging } from "@antelopejs/interface-core/logging";

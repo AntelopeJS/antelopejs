@@ -18,10 +18,11 @@ The core implements `@antelopejs/interface-core`, and `ImplementInterface` refus
 - `skills/` ships in the npm package and reaches users through `antelopeJs.skills`. When a change alters CLI commands or the module and interface model, update the matching `SKILL.md`.
 - `docs/` is the source of framework.antelopejs.com.
 - `src/core/embedded/host-module.ts` and `src/core/test/stub-interface.ts` are loaded by path from `dist` at run time. Nothing imports them, so do not delete them as dead code.
+- `src/index.ts` exports `launch` both by name and as the package default, and both are published API. Knip has no per-export suppression, so `knip.config.ts` turns its `duplicates` check off.
 
 ## Releases
 
-The release commit writes `CHANGELOG.md`. Upgrade notes for that version follow in a separate `docs(changelog)` pull request, under `### Upgrade notes`.
+The release commit writes `CHANGELOG.md`. release-it and changelogen rewrite it without running the formatter, so `oxfmt.config.ts` keeps Markdown out of the format check. Upgrade notes for that version follow in a separate `docs(changelog)` pull request, under `### Upgrade notes`.
 
 <!-- antelopejs-guardrails:start -->
 <!-- Managed by @antelopejs/tooling-configs. `antelopejs-sync` rewrites everything between these markers; write repository-specific guidance outside them. -->

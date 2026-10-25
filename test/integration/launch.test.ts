@@ -303,9 +303,6 @@ exports.construct = async () => {
       path.join(os.tmpdir(), "ajs-project-"),
     );
     try {
-      // An interface package: real files on disk that declare an AsyncProxy-
-      // backed InterfaceFunction and a synchronous RegisteringProxy. The
-      // presence of `antelopeJs` in package.json marks it as an interface.
       const ifaceFolder = path.join(projectFolder, "iface-pkg");
       await fs.mkdir(ifaceFolder, { recursive: true });
       await fs.writeFile(
@@ -332,8 +329,6 @@ exports.construct = async () => {
         `,
       );
 
-      // A consumer module that lists iface-pkg under optionalDependencies and
-      // captures the imported exports so the test can probe them.
       const consumerFolder = path.join(projectFolder, "consumer");
       await fs.mkdir(consumerFolder, { recursive: true });
       await fs.writeFile(
@@ -391,15 +386,15 @@ exports.construct = async () => {
         expect(captured).to.not.equal(undefined);
         expect(captured.Iface.fetch).to.be.a("function");
 
-        // RegisteringProxy is sync and should not be neutralized
         let registered = false;
         captured.OnThing.onRegister(() => {
           registered = true;
         }, true);
         captured.OnThing.register("id-1");
-        expect(registered).to.equal(true);
+        expect(registered, "RegisteringProxy is not neutralized").to.equal(
+          true,
+        );
 
-        // AsyncProxy-backed call should reject promptly instead of hanging
         let asyncError: Error | undefined;
         try {
           await Promise.race([
@@ -500,10 +495,6 @@ exports.construct = async () => {
       path.join(os.tmpdir(), "ajs-project-"),
     );
     try {
-      // A standalone interface package: same shape as a normal interface, but
-      // its package.json declares `antelopeJs.standalone`. It exposes a plain
-      // sync RegisteringProxy (its real working surface) and an AsyncProxy
-      // method that would need an external provider.
       const ifaceFolder = path.join(projectFolder, "iface-standalone");
       await fs.mkdir(ifaceFolder, { recursive: true });
       await fs.writeFile(
@@ -530,8 +521,6 @@ exports.construct = async () => {
         `,
       );
 
-      // A consumer that lists the interface under regular dependencies — the
-      // case that previously threw "Unresolved interface dependencies".
       const consumerFolder = path.join(projectFolder, "consumer");
       await fs.mkdir(consumerFolder, { recursive: true });
       await fs.writeFile(
@@ -576,7 +565,6 @@ exports.construct = async () => {
         },
       });
 
-      // Should NOT throw despite no module implementing iface-standalone.
       const manager = await launch(projectFolder);
       try {
         expect(
@@ -585,15 +573,15 @@ exports.construct = async () => {
         const captured = (global as any).__antelopeStandaloneTest;
         expect(captured).to.not.equal(undefined);
 
-        // Sync RegisteringProxy surface works as normal (not neutralized).
         let registered = false;
         captured.OnThing.onRegister(() => {
           registered = true;
         }, true);
         captured.OnThing.register("id-1");
-        expect(registered).to.equal(true);
+        expect(registered, "RegisteringProxy is not neutralized").to.equal(
+          true,
+        );
 
-        // An AsyncProxy method with no provider still rejects promptly.
         let asyncError: Error | undefined;
         try {
           await Promise.race([

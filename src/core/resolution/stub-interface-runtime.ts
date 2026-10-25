@@ -77,8 +77,6 @@ function walk(
     neutralizeRegisteringProxy(value, interfaceName, reason);
     return;
   }
-  // EventProxy needs no neutralization: register() never requires a provider
-  // and emit() with no handlers is already a no-op.
   if (value instanceof EventProxy) {
     return;
   }
@@ -138,8 +136,6 @@ export function logStubInterfaceWarningOnce(
   }
   warned.add(interfaceName);
   if (standalone) {
-    // Expected for standalone interfaces — they self-host without an
-    // implementing module. Only proxy methods needing a provider reject.
     Logger.Trace(
       `Interface '${interfaceName}' has no implementing module; running standalone. ` +
         `Proxy methods that require a provider will reject.`,

@@ -15,8 +15,6 @@ import {
 const WAIT_FOR_SIGNAL_MS = 10;
 const NEGATIVE_TIMEOUT_WARNING = "TimeoutNegativeWarning";
 const CUSTOM_TIMEOUT_MS = 500;
-/* Short enough that a shutdown left hanging by a test drains inside the
-   teardown below, instead of exiting the runner ten seconds later. */
 const SUITE_TIMEOUT_MS = 50;
 
 interface Deferred {
@@ -62,10 +60,6 @@ function waitForSignal(): Promise<void> {
 
 describe("ShutdownManager", () => {
   let manager: ShutdownManager;
-  /* Signals are delivered on an emitter of this suite's own rather than on
-     `process`: a real SIGINT reaches every listener the process carries,
-     including managers other suites left armed, and tears down the runner
-     itself ten seconds later. */
   let signals: EventEmitter;
 
   beforeEach(() => {
@@ -75,9 +69,6 @@ describe("ShutdownManager", () => {
 
   afterEach(async () => {
     manager.removeSignalHandlers();
-    /* Drains a shutdown a test left in flight while `process.exit` is still
-       stubbed: an abandoned one calls it for real once its handlers time out,
-       taking the runner with it. */
     await manager.shutdown();
     sinon.restore();
   });

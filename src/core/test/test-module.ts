@@ -5,10 +5,7 @@ import type {
   AntelopeTestConfig,
 } from "@antelopejs/interface-core/config";
 
-/* The namespace self-import is the seam the unit tests stub through: calls below
-   go via `self.` so `sinon.stub(module, "fn")` is honoured. Removing it silently
-   disables those stubs. */
-// oxlint-disable-next-line import/no-self-import, import/no-cycle -- see above
+// oxlint-disable-next-line import/no-self-import, import/no-cycle -- test seam: calls go through `self.` so `sinon.stub(module, "fn")` takes effect
 import * as self from "./test-module";
 import type { IFileSystem } from "../../types";
 import { mergeDeep } from "../../utils/object";
@@ -157,12 +154,12 @@ export async function collectInterfaceTestFiles(
   const files: string[] = [];
 
   for (const ifacePkg of implementsList) {
+    // oxfmt-ignore
     try {
       const ifaceEntry = require.resolve(ifacePkg, {
         paths: [moduleRoot],
       });
       const ifacePath = path.dirname(ifaceEntry);
-      // Walk up from dist subfolder to the package root
       let pkgRoot = ifacePath;
       while (pkgRoot !== path.dirname(pkgRoot)) {
         if (await fs.exists(path.join(pkgRoot, "package.json"))) break;
@@ -175,7 +172,6 @@ export async function collectInterfaceTestFiles(
       }
       files.push(...testFiles);
     } catch {
-      // Interface package may not have tests yet
     }
   }
 

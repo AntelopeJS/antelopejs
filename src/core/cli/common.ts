@@ -32,6 +32,7 @@ export async function detectIndentation(
   filePath: string,
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<string> {
+  // oxfmt-ignore
   try {
     const content = await fileSystem.readFileString(filePath);
     const match = content.match(/\n([\t ]+)/);
@@ -41,15 +42,12 @@ export async function detectIndentation(
       return firstChar === "\t" ? "\t" : "  ";
     }
   } catch {
-    //
   }
   return DEFAULT_INDENTATION;
 }
 
-// Definition of the default git repository
 export const DEFAULT_GIT_REPO = "https://github.com/AntelopeJS/interfaces.git";
 
-// Utility function to display warning for non-default git repositories
 export function displayNonDefaultGitWarning(gitUrl: string): void {
   if (gitUrl !== DEFAULT_GIT_REPO) {
     getProcessUi().message("warn", "Using a non-default git repository", {
@@ -211,9 +209,6 @@ async function writeNewTsConfig(
   await fileSystem.writeFile(configPath, content);
 }
 
-/*
- * AntelopeJS configuration
- */
 export async function writeConfig(
   project: string,
   data: Partial<AntelopeConfig>,
@@ -240,9 +235,6 @@ export async function readConfig(
   return loadTsConfigFile(configPath, environment);
 }
 
-/*
- * Node package configuration
- */
 export async function writeModuleManifest(
   module: string,
   data: ModulePackageJson,
@@ -261,9 +253,6 @@ export async function readModuleManifest(
   );
 }
 
-/*
- * User configuration
- */
 export interface UserConfig {
   git: string;
 }

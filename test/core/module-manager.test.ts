@@ -803,7 +803,6 @@ describe("ModuleManager", () => {
       config: {},
     });
 
-    // startupOrder is empty here (startAll/startModules not called)
     await manager.stopAll();
 
     expect(calls.sort()).to.deep.equal(["stop:modA", "stop:modB"]);
@@ -1323,10 +1322,6 @@ describe("ModuleManager", () => {
   });
 
   it("re-evaluates a module nested inside an interface package root", () => {
-    // The playground shipped inside its own runtime package: every relative
-    // import under the playground resolves off the runtime package's root, so
-    // the interface resolver tags it — but those files are the playground's,
-    // and a reload that keeps them serves the previous build forever.
     const manager = new ModuleManager();
     const interfaceRoot = path.resolve("test", "runtime-package");
     const moduleFolder = path.join(interfaceRoot, "playground");
@@ -1381,10 +1376,13 @@ describe("ModuleManager", () => {
 
     manager.unrequireModuleFiles("self");
 
-    // The entry re-runs so the module reloads; the contract it shares with
-    // every other module keeps its identity.
-    expect(require.cache[entryFile]).to.equal(undefined);
-    expect(require.cache[leafEntry]).to.not.equal(undefined);
+    expect(require.cache[entryFile], "module entry is re-evaluated").to.equal(
+      undefined,
+    );
+    expect(
+      require.cache[leafEntry],
+      "shared contract keeps its identity",
+    ).to.not.equal(undefined);
 
     for (const entry of cacheEntries) {
       if (previous[entry]) {

@@ -461,8 +461,6 @@ export class ModuleManager {
 
   private applyInterfaceStubs(): void {
     const implemented = this.collectImplementedInterfaces();
-    /* The loop body deletes from `stubbedInterfacePackages`, so it must iterate
-       over a snapshot rather than the live map. */
     const stubbed = Array.from(this.stubbedInterfacePackages);
     for (const [interfaceName, resolvedPackage] of stubbed) {
       if (implemented.has(interfaceName)) {

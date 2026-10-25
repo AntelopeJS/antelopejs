@@ -272,8 +272,6 @@ export async function projectModulesAddCommand(
   return result;
 }
 
-// Module source handlers
-
 function ensure(condition: unknown, title: string): asserts condition {
   if (!condition) {
     throw new CliError({ title });
@@ -306,7 +304,6 @@ handlers.set("package", async (module) => {
 });
 
 handlers.set("git", async (module) => {
-  // Validate git URL format
   ensure(
     module.includes("://") || module.includes("@"),
     `Invalid git URL format: '${module}'`,
