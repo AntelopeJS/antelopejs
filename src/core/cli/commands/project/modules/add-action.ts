@@ -87,7 +87,7 @@ function sourceReference(moduleConfig: AntelopeModuleConfig | string): string {
   if (typeof moduleConfig === "string") {
     return moduleConfig;
   }
-  // SAFETY: each supported source exposes at most these optional fields; this view only reads them with nullish fallback and imposes no required property.
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Config source is optional; preserving the direct read also preserves the existing missing-source error (#228).
   const source = moduleConfig.source as SourceReference;
   return source.version ?? source.remote ?? source.path ?? "";
 }

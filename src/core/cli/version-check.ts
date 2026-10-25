@@ -67,8 +67,7 @@ export function shouldCheckForUpdates(context: UpdateCheckContext): boolean {
 }
 
 function isValidCache(value: unknown): value is UpdateCheckCache {
-  // SAFETY: this is only a property-access view; the predicate below checks checkedAt and latestVersion before accepting the cache.
-  const cache = value as UpdateCheckCache | null;
+  const cache: { checkedAt?: unknown; latestVersion?: unknown } = Object(value);
   return (
     typeof cache?.checkedAt === "number" &&
     (cache.latestVersion === undefined ||
@@ -122,7 +121,7 @@ async function fetchLatestVersion(
   if (!response.ok) {
     return undefined;
   }
-  // SAFETY: this view claims no version contents; the string check below validates the only property consumed from the JSON response.
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Registry JSON is deliberately accessed before shape validation; rejecting null here would change the caught property-access error.
   const manifest = (await response.json()) as PackageManifest;
   return typeof manifest.version === "string"
     ? (semver.valid(manifest.version) ?? undefined)

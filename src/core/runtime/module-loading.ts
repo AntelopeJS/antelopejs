@@ -110,7 +110,7 @@ function toModuleSource(
   ) {
     throw new Error(`Unsupported module source type: ${String(type)}`);
   }
-  // SAFETY: the branches above reject nonobjects and unsupported type discriminators; ModuleSource requires only the checked type field.
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Beta source declarations allow arbitrary id/ignoreCache values; validating more than type would change the accepted definition contract (#228).
   return source as ModuleSource;
 }
 
@@ -419,8 +419,8 @@ export function getWatchDirs(source: ModuleSource): string[] {
     return [""];
   }
 
-  // SAFETY: the preceding non-local branch returned; watchDir is the optional field of the local downloader selected by the remaining discriminator.
-  const localSource = source as ModuleSourceLocal;
+  const localSource: ModuleSource & Pick<ModuleSourceLocal, "watchDir"> =
+    source;
   if (Array.isArray(localSource.watchDir)) {
     return localSource.watchDir;
   }

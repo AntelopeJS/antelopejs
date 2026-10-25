@@ -149,7 +149,7 @@ async function fetchLatestVersions(
 type ModuleEntry = [string, ExpandedModuleConfig];
 
 function packageSourceOf(info: ExpandedModuleConfig): ModuleSourcePackage {
-  // SAFETY: both callers receive the entries filtered by source.type === "package" in checkOutdatedModules.
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Package dispatch checks only type; validating the unchecked package/version fields would change existing config handling (#228).
   return info.source as ModuleSourcePackage;
 }
 

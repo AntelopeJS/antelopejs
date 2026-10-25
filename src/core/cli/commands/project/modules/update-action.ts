@@ -36,7 +36,7 @@ function applyUpdates(
     envModules[entry.name] = {
       ...antelopeModules[entry.name],
       source: {
-        // SAFETY: outdated entries come from checkOutdatedModules, which selects only package sources before looking up their versions.
+        // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- ConfigLoader leaves package fields unchecked; validating them before this existing spread would change accepted configs (#228).
         ...(antelopeModules[entry.name].source as ModuleSourcePackage),
         version: bumpVersionSpec(entry.current, entry.latest),
       },
