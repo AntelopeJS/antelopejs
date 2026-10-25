@@ -1,6 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
+import { loadedConfig } from "../../../fixtures";
 import * as common from "../../../../../../src/core/cli/common";
 import { ConfigLoader } from "../../../../../../src/core/config";
 import cmdList from "../../../../../../src/core/cli/commands/project/modules/list";
@@ -37,14 +38,18 @@ const MIXED_MODULES = {
   noSource: {},
 };
 
-function stubProject(modules: Record<string, unknown>): sinon.SinonStub {
+type ModuleListFixture = (typeof MIXED_MODULES)[keyof typeof MIXED_MODULES];
+
+function stubProject(
+  modules: Record<string, ModuleListFixture>,
+): sinon.SinonStub {
   sinon.stub(common, "readConfig").resolves({
     name: "test-project",
     environments: { staging: {} },
   });
-  return sinon
-    .stub(ConfigLoader.prototype, "load")
-    .resolves({ modules } as any);
+  const config = loadedConfig();
+  sinon.stub(config, "modules").value(modules);
+  return sinon.stub(ConfigLoader.prototype, "load").resolves(config);
 }
 
 async function runList(

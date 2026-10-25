@@ -1,5 +1,6 @@
 import { expect } from "chai";
 
+import { expectInstanceOf } from "./fixtures";
 import { runInheritedProcess } from "../../../src/core/cli/process-runner";
 import {
   createControllableProcessRunner,
@@ -114,7 +115,8 @@ describe("Inherited process runner", () => {
       thrown = error;
     }
 
-    expect((thrown as Error)?.message).to.equal("spawn failed");
+    expectInstanceOf(thrown, Error);
+    expect(thrown.message).to.equal("spawn failed");
     expect(signalTarget.listenerCount("SIGINT")).to.equal(0);
   });
 });

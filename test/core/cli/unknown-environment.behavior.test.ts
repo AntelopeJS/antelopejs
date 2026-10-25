@@ -1,6 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
+import { buildArtifact } from "./fixtures";
 import * as indexModule from "../../../src/index";
 import * as logging from "../../../src/logging";
 import { runCLI } from "../../../src/core/cli/index";
@@ -61,10 +62,8 @@ async function runCommand(
   return process.exitCode;
 }
 
-function reportedLines(): string[] {
-  const written = (process.stderr.write as sinon.SinonStub).args
-    .map((args) => String(args[0]))
-    .join("");
+function reportedLines(write: sinon.SinonStub): string[] {
+  const written = write.args.map((args) => String(args[0])).join("");
   return stripAnsi(written).split("\n");
 }
 
@@ -73,6 +72,8 @@ describe("unknown --env", () => {
   let projectDir: string;
   let configSource: string;
   let workStubs: sinon.SinonStub[];
+  let log: sinon.SinonStub;
+  let stderr: sinon.SinonStub;
 
   beforeEach(async () => {
     projectDir = makeTempDir();
@@ -89,9 +90,9 @@ describe("unknown --env", () => {
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
-    sinon.stub(console, "log");
+    log = sinon.stub(console, "log");
     sinon.stub(console, "error");
-    sinon.stub(process.stderr, "write").returns(true);
+    stderr = sinon.stub(process.stderr, "write").returns(true);
     workStubs = [
       sinon.stub(indexModule, "build").resolves(),
       sinon.stub(ConfigLoader.prototype, "load").resolves(),
@@ -117,12 +118,12 @@ describe("unknown --env", () => {
       const code = await run(args);
 
       expect(code).to.equal(USAGE_EXIT_CODE);
-      expect(reportedLines()).to.include.members([
+      expect(reportedLines(stderr)).to.include.members([
         `${getProcessUi().symbols.levels.error} Unknown environment '${UNKNOWN_ENVIRONMENT}'`,
         "  Known environments: default, production",
       ]);
       expect(workStubs.some((stub) => stub.called)).to.equal(false);
-      expect((console.log as sinon.SinonStub).called).to.equal(false);
+      expect(log.called).to.equal(false);
       expect(
         readText(await findConfigPath(projectDir, new NodeFileSystem())),
       ).to.equal(configSource);
@@ -137,7 +138,7 @@ describe("unknown --env", () => {
     const code = await runCommand(projectDir, ["project", "build"]);
 
     expect(code).to.equal(USAGE_EXIT_CODE);
-    expect(reportedLines()).to.include(
+    expect(reportedLines(stderr)).to.include(
       `  ${getProcessUi().symbols.arrow} '${UNKNOWN_ENVIRONMENT}' is set by ANTELOPEJS_LAUNCH_ENV: change it (or pass --env) to one of them, or add an "environments.${UNKNOWN_ENVIRONMENT}" entry to the project configuration`,
     );
     expect(workStubs.some((stub) => stub.called)).to.equal(false);
@@ -161,7 +162,7 @@ describe("--env without declared environments", () => {
     sinon.stub(process.stderr, "write").returns(true);
     sinon
       .stub(buildArtifactModule, "readBuildArtifact")
-      .resolves({ modules: {} } as any);
+      .resolves(buildArtifact());
     buildStub = sinon.stub(indexModule, "build").resolves();
   });
 

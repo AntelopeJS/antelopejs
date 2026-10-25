@@ -31,7 +31,7 @@ const INTERACTIVE_CONTEXT: UpdateCheckContext = {
   isStderrTerminal: true,
 };
 
-function jsonResponse(body: unknown, status = 200): Response {
+function jsonResponse<T>(body: T, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
 }
 
@@ -54,12 +54,12 @@ function dependencies(
   return { fetch: fetchManifest, cachePath, now: () => now };
 }
 
-function writeCache(content: unknown): void {
+function writeCache<T>(content: T): void {
   fs.mkdirSync(path.dirname(cachePath), { recursive: true });
   fs.writeFileSync(cachePath, JSON.stringify(content));
 }
 
-function readCache(): unknown {
+function readCache(): { checkedAt: number; latestVersion?: string } {
   return readJson(cachePath);
 }
 
@@ -78,7 +78,7 @@ function useTemporaryCache(): void {
 describe("shouldCheckForUpdates", () => {
   useTemporaryCache();
 
-  const skippedInvocations: Record<string, Partial<UpdateCheckContext>> = {
+  const skippedInvocations = {
     "--version": { args: ["--version"] },
     "-v": { args: ["-v"] },
     "--help": { args: ["project", "--help"] },
@@ -94,7 +94,7 @@ describe("shouldCheckForUpdates", () => {
     CI: { env: { CI: "1" } },
     "AJS_NO_UPDATE_CHECK=1": { env: { AJS_NO_UPDATE_CHECK: "1" } },
     "non-TTY stderr": { isStderrTerminal: false },
-  };
+  } satisfies Record<string, Partial<UpdateCheckContext>>;
 
   for (const [name, override] of Object.entries(skippedInvocations)) {
     it(`skips the check for ${name}`, () => {
@@ -235,7 +235,7 @@ describe("UpdateCheck cache", () => {
     expect(fetchStub.calledOnce).to.equal(true);
   });
 
-  const invalidCaches: Record<string, unknown> = {
+  const invalidCaches = {
     "a non-object": null,
     "a missing timestamp": { latestVersion: "1.5.0" },
     "an invalid version": { checkedAt: NOW, latestVersion: "latest" },
@@ -292,7 +292,7 @@ describe("UpdateCheck registry requests", () => {
     expect(readCache()).to.deep.equal({ checkedAt: NOW });
   });
 
-  const invalidManifests: Record<string, unknown> = {
+  const invalidManifests = {
     "a non-string version": { version: 2 },
     "an invalid version": { version: "not-a-version" },
   };

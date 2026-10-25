@@ -133,7 +133,12 @@ describe("project run behavior", () => {
   });
 
   it("uses string inspect options and verbose channels in forked run", async () => {
-    sinon.stub(common, "readConfig").resolves({} as any);
+    // SAFETY: The inspect path reads only optional name/cacheFolder/modules; their absence exercises its fallback values.
+    sinon
+      .stub(common, "readConfig")
+      .resolves(
+        {} as NonNullable<Awaited<ReturnType<typeof common.readConfig>>>,
+      );
     const forkStub = sinon.stub(childProcess, "fork").returns({
       on: sinon.stub().returnsThis(),
     });

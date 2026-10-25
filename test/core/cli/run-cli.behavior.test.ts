@@ -5,6 +5,7 @@ import { Command, CommanderError } from "commander";
 import { createMemoryUi } from "../../helpers/memory-ui";
 import { captureOutputAsync } from "../../helpers/capture-output";
 
+import { expectInstanceOf } from "./fixtures";
 import * as logging from "../../../src/logging";
 import * as common from "../../../src/core/cli/common";
 import { runCLI } from "../../../src/core/cli/full-cli";
@@ -36,12 +37,14 @@ describe("runCLI behavior", () => {
       .stub(fs, "readFileSync")
       .returns(JSON.stringify({ version: "0.0.0" }));
     sinon.stub(logging, "setupAntelopeProjectLogging");
-    sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
+    const updateCheckStub = sinon
+      .stub(versionCheck, "startUpdateCheck")
+      .returns(undefined);
     const parseStub = sinon.stub(Command.prototype, "parseAsync").resolves();
     const getOptionStub = sinon
       .stub(Command.prototype, "getOptionValue")
       .returns(undefined);
-    return { getOptionStub, parseStub };
+    return { getOptionStub, parseStub, updateCheckStub };
   }
 
   it("writes log lines as feedback of the CLI command", async () => {
@@ -92,29 +95,25 @@ describe("runCLI behavior", () => {
 
   it("reports an available update after the command and cancels the check", async () => {
     process.argv = ["node", "ajs", "config", "show"];
-    const { parseStub } = stubCommon();
-    const cancel = sinon.stub();
-    const check = { latestVersion: "1.0.0", cancel };
-    (versionCheck.startUpdateCheck as sinon.SinonStub).returns(check);
+    const { parseStub, updateCheckStub } = stubCommon();
+    const check = sinon.createStubInstance(versionCheck.UpdateCheck);
+    check.latestVersion = "1.0.0";
+    updateCheckStub.returns(check);
     const reportStub = sinon.stub(versionCheck, "reportAvailableUpdate");
 
     await runCLI();
 
-    expect(reportStub.calledOnceWithExactly("0.0.0", check as any)).to.equal(
-      true,
-    );
+    expect(reportStub.calledOnceWithExactly("0.0.0", check)).to.equal(true);
     expect(reportStub.calledAfter(parseStub)).to.equal(true);
-    expect(cancel.calledAfter(reportStub)).to.equal(true);
+    expect(check.cancel.calledAfter(reportStub)).to.equal(true);
   });
 
   it("cancels the update check when the command fails", async () => {
     process.argv = ["node", "ajs", "config", "show"];
-    stubCommon();
-    const cancel = sinon.stub();
-    (versionCheck.startUpdateCheck as sinon.SinonStub).returns({ cancel });
-    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
-      new Error("boom"),
-    );
+    const { parseStub, updateCheckStub } = stubCommon();
+    const check = sinon.createStubInstance(versionCheck.UpdateCheck);
+    updateCheckStub.returns(check);
+    parseStub.rejects(new Error("boom"));
     const reportStub = sinon.stub(versionCheck, "reportAvailableUpdate");
 
     let thrown: unknown;
@@ -124,19 +123,18 @@ describe("runCLI behavior", () => {
       thrown = err;
     }
 
-    expect((thrown as Error).message).to.equal("boom");
+    expectInstanceOf(thrown, Error);
+    expect(thrown.message).to.equal("boom");
     expect(reportStub.called).to.equal(false);
-    expect(cancel.calledOnce).to.equal(true);
+    expect(check.cancel.calledOnce).to.equal(true);
   });
 
   it("reports a cancelled prompt with the cancelled exit code", async () => {
     process.argv = ["node", "ajs", "project", "init", "demo"];
-    stubCommon();
-    const cancel = sinon.stub();
-    (versionCheck.startUpdateCheck as sinon.SinonStub).returns({ cancel });
-    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
-      new CancelledError(),
-    );
+    const { parseStub, updateCheckStub } = stubCommon();
+    const check = sinon.createStubInstance(versionCheck.UpdateCheck);
+    updateCheckStub.returns(check);
+    parseStub.rejects(new CancelledError());
     const exitStub = sinon.stub(process, "exit");
     const errorStub = sinon.stub(console, "error");
     const { ui, feedback } = createMemoryUi();
@@ -147,13 +145,13 @@ describe("runCLI behavior", () => {
     expect(errorStub.calledOnceWith(CANCELLED_MESSAGE)).to.equal(true);
     expect(feedback.text).to.equal("");
     expect(process.exitCode).to.equal(CANCELLED_EXIT_CODE);
-    expect(cancel.calledOnce).to.equal(true);
+    expect(check.cancel.calledOnce).to.equal(true);
   });
 
   it("reports a command error once with its own exit code", async () => {
     process.argv = ["node", "ajs", "project", "build", "-e", "staging"];
-    stubCommon();
-    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
+    const { parseStub } = stubCommon();
+    parseStub.rejects(
       new CliError({
         title: "Unknown environment 'staging'",
         reason: "Known environments: default",
@@ -173,10 +171,8 @@ describe("runCLI behavior", () => {
 
   it("reports an unexpected failure without its stack trace", async () => {
     process.argv = ["node", "ajs", "config", "show"];
-    stubCommon();
-    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
-      new Error("boom"),
-    );
+    const { parseStub } = stubCommon();
+    parseStub.rejects(new Error("boom"));
     const { ui, feedback } = createMemoryUi();
 
     await runWithErrorBoundary(runCLI, { ui, verbose: false });
@@ -189,10 +185,8 @@ describe("runCLI behavior", () => {
 
   it("keeps the usage exit code when commander prints help after an incomplete command", async () => {
     process.argv = ["node", "ajs", "project"];
-    stubCommon();
-    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
-      new CommanderError(1, "commander.help", "(outputHelp)"),
-    );
+    const { parseStub } = stubCommon();
+    parseStub.rejects(new CommanderError(1, "commander.help", "(outputHelp)"));
     const { ui, feedback } = createMemoryUi();
 
     await runWithErrorBoundary(runCLI, { ui });
@@ -203,8 +197,8 @@ describe("runCLI behavior", () => {
 
   it("keeps a successful exit code when commander exits after help", async () => {
     process.argv = ["node", "ajs", "--help"];
-    stubCommon();
-    (Command.prototype.parseAsync as sinon.SinonStub).rejects(
+    const { parseStub } = stubCommon();
+    parseStub.rejects(
       new CommanderError(0, "commander.helpDisplayed", "(outputHelp)"),
     );
     const { ui, feedback } = createMemoryUi();

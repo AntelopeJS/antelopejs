@@ -1,6 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
+import { stubLoadedConfig, moduleManifest } from "../../fixtures";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import { getProcessUi } from "../../../../../src/core/cli/output";
 import * as common from "../../../../../src/core/cli/common";
@@ -88,23 +89,27 @@ describe("project modules behavior", () => {
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         existing: {
           source: { type: "package", package: "existing", version: "1.0.0" },
         },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
       .returns("pkg");
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([
-        { manifest: { antelopeJs: { defaultConfig: { foo: "bar" } } } } as any,
-      ]);
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([
+      moduleManifest({
+        manifest: {
+          name: "newmod",
+          version: "1.0.0",
+          antelopeJs: { defaultConfig: { foo: "bar" } },
+        },
+      }),
+    ]);
 
     sinon
       .stub(command, "ExecuteFile")
@@ -128,7 +133,7 @@ describe("project modules behavior", () => {
   it("reports each added module with its source, then one summary", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(common, "writeConfig").resolves();
 
@@ -172,7 +177,7 @@ describe("project modules behavior", () => {
       cacheFolder: "/tmp/abs-cache",
     };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     const loadStub = sinon
       .stub(ModuleCache.prototype, "load")
       .callsFake(function (this: ModuleCache) {

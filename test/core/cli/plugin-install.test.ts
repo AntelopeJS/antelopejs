@@ -1,6 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
+import { rejectionOf } from "./fixtures";
 import { delegateToPlugin } from "../../../src/core/cli/plugin";
 import {
   createGlobalRootResolver,
@@ -81,12 +82,14 @@ describe("Official plugin installation", () => {
     fakePrompts({ answers: [CANCEL] });
 
     try {
-      const error = await delegateToPlugin(["dms"], {
-        lookupExecutable: async () => undefined,
-        packageManager: "npm",
-        processOptions: { processRunner: runner, platform: "linux" },
-        output: createOutput(),
-      }).catch((rejection: unknown) => rejection);
+      const error = await rejectionOf(
+        delegateToPlugin(["dms"], {
+          lookupExecutable: async () => undefined,
+          packageManager: "npm",
+          processOptions: { processRunner: runner, platform: "linux" },
+          output: createOutput(),
+        }),
+      );
 
       expect(error).to.be.instanceOf(CancelledError);
       expect(calls).to.deep.equal([]);

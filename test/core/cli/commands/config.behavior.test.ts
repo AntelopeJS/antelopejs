@@ -1,6 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
+import { expectInstanceOf } from "../fixtures";
 import * as common from "../../../../src/core/cli/common";
 import {
   FAILURE_EXIT_CODE,
@@ -20,8 +21,11 @@ import { useAsciiSymbols } from "../../../helpers/ascii-symbols";
 const CUSTOM_REPOSITORY = "https://example.com/interfaces.git";
 const { levels } = getProcessUi().symbols;
 
-function stubUserConfig(config: Record<string, string>): void {
-  sinon.stub(common, "readUserConfig").resolves(config as any);
+function stubUserConfig(
+  config: Partial<common.UserConfig> & Record<string, string>,
+): void {
+  // SAFETY: Config get/show enumerate the supplied string entries, including an intentionally absent git key.
+  sinon.stub(common, "readUserConfig").resolves(config as common.UserConfig);
 }
 
 async function runShow(args: string[] = []): Promise<MemoryUi> {
@@ -368,7 +372,8 @@ describe("config reset behavior", () => {
       thrown = error;
     }
 
-    expect((thrown as Error).name).to.equal("CancelledError");
+    expectInstanceOf(thrown, Error);
+    expect(thrown.name).to.equal("CancelledError");
     expect(writeStub.called).to.equal(false);
   });
 });
