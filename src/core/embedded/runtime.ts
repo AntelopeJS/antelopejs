@@ -49,8 +49,12 @@ export class AntelopeRuntime {
   constructor(private readonly options: EmbeddedRuntimeOptions = {}) {
     this.projectFolder = options.projectFolder ?? process.cwd();
     this.env = options.env ?? DEFAULT_ENV;
+    const policy: Partial<RuntimePolicy> = {};
+    if (options.logging) {
+      policy.logging = true;
+    }
     this.policy = resolveRuntimePolicy(
-      { ...(options.logging ? { logging: true } : {}), ...options.policy },
+      { ...policy, ...options.policy },
       EMBEDDED_RUNTIME_POLICY,
     );
   }

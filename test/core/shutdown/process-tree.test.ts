@@ -38,7 +38,7 @@ function fakeTable(processes: FakeProcess[]): FakeTable {
       getParentPid: (pid) => byPid.get(pid)?.parentPid,
       kill: (pid, signal) => {
         if (!alive.has(pid)) {
-          const error = new Error("ESRCH") as NodeJS.ErrnoException;
+          const error: NodeJS.ErrnoException = new Error("ESRCH");
           error.code = "ESRCH";
           throw error;
         }

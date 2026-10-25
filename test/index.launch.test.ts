@@ -112,11 +112,15 @@ describe("launch", () => {
       "startWatching",
     );
 
-    const queueStub = sinon
-      .stub(HotReload.prototype, "queue")
-      .callsFake(function (this: any, moduleId: string) {
-        return Promise.resolve(this.reload(moduleId));
-      });
+    const pendingReloads: Promise<void>[] = [];
+    sinon.stub(HotReload.prototype, "queue").callsFake(function (
+      this: any,
+      moduleId: string,
+    ) {
+      const pending = Promise.resolve(this.reload(moduleId));
+      pendingReloads.push(pending);
+      return pending;
+    });
 
     const replStub = sinon.stub(ReplSession.prototype, "start");
 
@@ -124,12 +128,7 @@ describe("launch", () => {
       watch: true,
       interactive: true,
     });
-    await Promise.all(
-      queueStub
-        .getCalls()
-        .map((call) => call.returnValue)
-        .filter((value: any) => value && typeof value.then === "function"),
-    );
+    await Promise.all(pendingReloads);
 
     expect(manager).to.be.instanceOf(ModuleManager);
     expect(scanStub.calledWith("modA", "/mods/modA", ["src", "lib"])).to.equal(

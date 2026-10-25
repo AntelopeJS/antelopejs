@@ -83,10 +83,7 @@ export class ConfigParser {
     return obj;
   }
 
-  private processString(
-    str: string,
-    values: Record<string, string>,
-  ): string | any {
+  private processString(str: string, values: Record<string, string>): any {
     const pureMatch = str.match(/^\$\{([^}]+)\}$/);
     if (pureMatch) {
       const key = pureMatch[1];

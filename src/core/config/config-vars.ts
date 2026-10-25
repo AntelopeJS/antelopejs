@@ -105,7 +105,10 @@ function substituteObject(
   return changed ? Object.fromEntries(entries) : config;
 }
 
-function substituteString(value: string, lookup: ConfigVarLookup): unknown {
+function substituteString(
+  value: string,
+  lookup: ConfigVarLookup,
+): ConfigVarValue {
   const pure = value.match(PURE_REFERENCE_PATTERN);
   if (pure) {
     return lookup({ token: value, module: pure[1], variable: pure[2] });

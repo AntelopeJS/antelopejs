@@ -39,10 +39,14 @@ async function importConfigInput(
   configPath: string,
   fresh = false,
 ): Promise<ConfigInput> {
-  const jiti = createJiti(configPath, {
+  const options: NonNullable<Parameters<typeof createJiti>[1]> = {
     alias: { [CORE_CONFIG_PACKAGE]: CORE_CONFIG_ENTRY },
-    ...(fresh ? { moduleCache: false, fsCache: false } : {}),
-  });
+  };
+  if (fresh) {
+    options.moduleCache = false;
+    options.fsCache = false;
+  }
+  const jiti = createJiti(configPath, options);
   const loaded = await jiti.import(configPath);
   return (loaded as any).default ?? loaded;
 }

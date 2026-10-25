@@ -12,10 +12,10 @@ import { buildProcessInvocation } from "./windows-command-line";
 
 const Logger = new Logging.Channel("cli.command");
 
-const NON_INTERACTIVE_ENV: Record<string, string> = {
+const NON_INTERACTIVE_ENV = {
   CI: "1",
   GIT_TERMINAL_PROMPT: "0",
-};
+} satisfies Record<string, string>;
 
 const EXEC_ERROR_NAME = "ExecError";
 

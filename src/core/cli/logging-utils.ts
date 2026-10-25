@@ -108,7 +108,7 @@ const WIDE_WIDTH = 2;
 export function stringVisualWidth(str: string): number {
   const ansiFree = stripAnsiCodes(str);
 
-  return [...ansiFree].reduce((acc, c) => {
+  return Array.from(ansiFree).reduce((acc, c) => {
     const cp = c.codePointAt(0)!;
 
     const isWide =

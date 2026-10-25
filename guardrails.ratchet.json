@@ -1,20 +1,17 @@
 {
   "rules": {
     "anti-slop/no-chained-type-assertions": 18,
-    "anti-slop/no-conditional-empty-object-spread": 2,
-    "anti-slop/no-known-value-widening": 48,
-    "anti-slop/no-runtime-typeof": 56,
-    "anti-slop/no-shape-in-symbol-names": 2,
+    "anti-slop/no-known-value-widening": 47,
+    "anti-slop/no-runtime-typeof": 55,
     "anti-slop/no-unknown-parameters": 106,
-    "anti-slop/no-unknown-returns": 38,
+    "anti-slop/no-unknown-returns": 37,
     "anti-slop/no-unsafe-dictionary-type": 125,
-    "anti-slop/require-safety-comment-for-type-assertion": 626,
+    "anti-slop/require-safety-comment-for-type-assertion": 625,
     "eslint/max-lines-per-function": 62,
     "eslint/max-params": 3,
-    "typescript/await-thenable": 2,
+    "typescript/await-thenable": 1,
     "typescript/no-base-to-string": 1,
-    "typescript/no-misused-spread": 1,
-    "typescript/no-redundant-type-constituents": 8,
+    "typescript/no-redundant-type-constituents": 7,
     "typescript/unbound-method": 1
   },
   "oversizeFiles": {
