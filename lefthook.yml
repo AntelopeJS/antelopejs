@@ -1,0 +1,17 @@
+pre-commit:
+  commands:
+    antelopejs-format:
+      run: pnpm exec oxfmt --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
+    antelopejs-lint:
+      glob: "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,vue}"
+      run: pnpm exec oxlint --no-error-on-unmatched-pattern {staged_files}
+    antelopejs-size:
+      run: pnpm exec antelopejs-check-size --staged {staged_files}
+    antelopejs-ratchet:
+      glob: "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,vue}"
+      run: pnpm exec antelopejs-ratchet --staged {staged_files}
+pre-push:
+  commands:
+    antelopejs-typecheck:
+      run: pnpm run typecheck
