@@ -30,8 +30,14 @@ export interface PluginPackageFixture {
   peerRange?: string;
 }
 
+interface PluginManifest {
+  name: string;
+  version: string;
+  peerDependencies?: Record<string, string>;
+}
+
 export function pluginPackageJson(fixture: PluginPackageFixture = {}): string {
-  const packageJson: Record<string, unknown> = {
+  const packageJson: PluginManifest = {
     name: DMS_PACKAGE_NAME,
     version: fixture.version ?? "1.2.3",
   };

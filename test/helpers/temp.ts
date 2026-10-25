@@ -17,7 +17,7 @@ export function cleanupTempDir(dir: string) {
   rmSync(dir, { recursive: true, force: true });
 }
 
-export function writeJson(filePath: string, data: unknown) {
+export function writeJson<T>(filePath: string, data: T) {
   mkdirSync(path.dirname(filePath), { recursive: true });
   writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
@@ -27,7 +27,7 @@ export function readText(filePath: string): string {
 }
 
 export function readJson<T = unknown>(filePath: string): T {
-  return JSON.parse(readText(filePath)) as T;
+  return JSON.parse(readText(filePath));
 }
 
 export function listDirectory(dir: string): string[] {

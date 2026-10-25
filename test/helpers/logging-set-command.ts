@@ -24,7 +24,10 @@ export function stubSetCommand(
   config: Partial<AntelopeConfig>,
 ): SetCommandStubs {
   const stubs: SetCommandStubs = {
-    readConfig: sinon.stub(common, "readConfig").resolves(config as never),
+    // SAFETY: Logging set reads name, logging and environments; these fixtures omit unrelated project fields.
+    readConfig: sinon
+      .stub(common, "readConfig")
+      .resolves(config as AntelopeConfig),
     writeConfig: sinon.stub(common, "writeConfig").resolves(),
     feedback: collectStderr(),
     info: sinon.stub(cliUi, "info"),

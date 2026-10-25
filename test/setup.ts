@@ -57,7 +57,7 @@ function installPrematureExitGuard(): void {
       return exitProcess(code);
     }
     const failingCode =
-      typeof code === "number" && code !== 0 ? code : FAILING_EXIT_CODE;
+      code !== undefined && code !== 0 ? code : FAILING_EXIT_CODE;
     process.stderr.write(
       `\n[test harness] process.exit(${String(code)}) was called before the test run finished; ` +
         `exiting with ${failingCode} so a truncated run cannot report success.\n`,

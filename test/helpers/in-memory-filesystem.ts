@@ -69,6 +69,7 @@ export class InMemoryFileSystem implements IFileSystem {
     return buffer.toString(encoding);
   }
 
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- #229: lint misresolves Buffer; IFileSystem accepts both buffers and strings.
   async writeFile(filePath: string, data: Buffer | string): Promise<void> {
     const parts = filePath.split("/").filter(Boolean);
     const fileName = parts.pop();
@@ -113,6 +114,7 @@ export class InMemoryFileSystem implements IFileSystem {
       throw new Error(`ENOENT: no such file or directory: ${filePath}`);
     }
 
+    // SAFETY: Filesystem consumers in these fixtures read only isFile, isDirectory and size.
     return {
       isFile: () => node.type === "file",
       isDirectory: () => node.type === "directory",

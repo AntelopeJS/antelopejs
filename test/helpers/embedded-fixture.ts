@@ -53,10 +53,7 @@ module.exports = {
 };
 `;
 
-async function writeJson(
-  filePath: string,
-  value: Record<string, unknown>,
-): Promise<void> {
+async function writeJson<T>(filePath: string, value: T): Promise<void> {
   await fs.writeFile(filePath, JSON.stringify(value, null, 2));
 }
 

@@ -50,9 +50,11 @@ function createChild(
       listener: ProcessErrorListener | ProcessCloseListener,
     ) {
       if (event === "error") {
+        // SAFETY: SpawnedProcess.once overloads pair the error event with ProcessErrorListener.
         listeners.error = listener as ProcessErrorListener;
         return undefined;
       }
+      // SAFETY: The remaining SpawnedProcess.once overload pairs close with ProcessCloseListener.
       listeners.close = listener as ProcessCloseListener;
       return undefined;
     },
