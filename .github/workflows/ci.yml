@@ -9,28 +9,14 @@ permissions:
   contents: read
 
 jobs:
+  ci:
+    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
+
   checks:
+    if: always()
+    needs: [ci]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Validate pull request title
-        if: github.event_name == 'pull_request'
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          echo "$PR_TITLE" | grep -Eq '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([^)]+\))?!?: .+'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm format:check
-      - run: pnpm knip
-      - run: pnpm test:coverage
-      - run: pnpm build
-      - run: pnpm exec ts-node test/embedded/run.ts
-      - run: pnpm exec ts-node test/package-consumer/run.ts
-      - run: pnpm --dir playground install
-      - run: pnpm exec ts-node playground/test-playground.ts
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1

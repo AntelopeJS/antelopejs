@@ -53,13 +53,21 @@
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "knip": "knip",
-    "test": "pnpm test:unit && pnpm test:embedded && pnpm test:package-consumer && pnpm test:playground",
+    "test": "pnpm test:coverage && pnpm build && ts-node test/embedded/run.ts && ts-node test/package-consumer/run.ts && pnpm --dir playground install && ts-node playground/test-playground.ts",
     "test:unit": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
     "test:package-consumer": "pnpm build && ts-node test/package-consumer/run.ts",
     "test:playground": "pnpm build && pnpm --dir playground install && ts-node playground/test-playground.ts",
     "test:watch": "mocha --require ts-node/register --require test/setup.ts --watch --watch-extensions ts 'test/**/*.test.ts'",
     "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 90 --statements 90 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
-    "test:embedded": "pnpm build && ts-node test/embedded/run.ts"
+    "test:embedded": "pnpm build && ts-node test/embedded/run.ts",
+    "prepare": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && command -v lefthook >/dev/null 2>&1; then lefthook install; fi",
+    "checks": "antelopejs-checks",
+    "size": "antelopejs-check-size",
+    "ratchet": "antelopejs-ratchet",
+    "sync": "antelopejs-sync",
+    "ratchet:update": "antelopejs-ratchet --update",
+    "sync:check": "antelopejs-sync --check",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@antelopejs/interface-core": ">=0.2.6 <0.3.0",
@@ -76,7 +84,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@antelopejs/tooling-configs": "^0.0.9",
+    "@antelopejs/tooling-configs": "^0.2.0",
     "@types/chai": "^4.3.20",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.15",
@@ -86,6 +94,7 @@
     "chai": "^4.5.0",
     "eslint-plugin-perfectionist": "^5.11.0",
     "knip": "^6.34.0",
+    "lefthook": "^2.2.2",
     "oxfmt": "^0.66.0",
     "oxlint": "1.81.0",
     "oxlint-tsgolint": "^7.0.2001",
