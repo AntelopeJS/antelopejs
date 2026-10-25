@@ -264,7 +264,7 @@ describe("test-module", () => {
       };
 
       sinon.stub(testModule, "loadTestConfig").resolves({
-        config: mockConfig as any,
+        config: mockConfig,
         test: mockConfig.test,
       });
 
@@ -381,7 +381,7 @@ describe("test-module", () => {
       };
 
       sinon.stub(testModule, "loadTestConfig").resolves({
-        config: mockConfig as any,
+        config: mockConfig,
         test: mockConfig.test,
       });
 
@@ -412,7 +412,7 @@ describe("test-module", () => {
       };
 
       sinon.stub(testModule, "loadTestConfig").resolves({
-        config: mockConfig as any,
+        config: mockConfig,
         test: mockConfig.test,
       });
 
@@ -527,7 +527,7 @@ describe("test-module", () => {
           cacheFolder: ".antelope/cache",
           modules: {},
           envOverrides: {},
-        } as any);
+        });
       } catch (error) {
         thrown = error;
       }
@@ -554,7 +554,7 @@ describe("test-module", () => {
           cacheFolder: ".antelope/cache",
           modules: {},
           envOverrides: {},
-        } as any);
+        });
       } catch (error) {
         thrown = error;
       }
@@ -584,7 +584,7 @@ describe("test-module", () => {
         cacheFolder: ".antelope/cache",
         modules: {},
         envOverrides: {},
-      } as any;
+      };
 
       const manager = await testModule.setupTestEnvironment("/module", config);
 
@@ -614,7 +614,7 @@ describe("test-module", () => {
         cacheFolder: ".antelope/cache",
         modules: {},
         envOverrides: {},
-      } as any);
+      });
 
       expect(ensureGraphStub.calledOnceWithExactly(manager)).to.equal(true);
       sinon.assert.callOrder(
@@ -642,7 +642,7 @@ describe("test-module", () => {
         cacheFolder: ".antelope/cache",
         modules: {},
         envOverrides: {},
-      } as any);
+      });
 
       const entry = internal.moduleByFolder.find((e) => e.dir === resolvedRoot);
       expect(entry, "moduleRoot should be registered").to.not.equal(undefined);
@@ -669,7 +669,7 @@ describe("test-module", () => {
         cacheFolder: ".antelope/cache",
         modules: {},
         envOverrides: {},
-      } as any);
+      });
 
       const info = await withTimeout(GetRuntimeInfo(), RUNTIME_INFO_TIMEOUT_MS);
       expect(info).to.deep.equal({

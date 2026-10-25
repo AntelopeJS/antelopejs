@@ -57,17 +57,17 @@ function walk(
   if (typeof value === "function") {
     const maybeProxy = (value as { proxy?: unknown }).proxy;
     if (maybeProxy instanceof AsyncProxy) {
-      neutralizeAsyncProxy(maybeProxy as AsyncProxy, interfaceName, reason);
+      neutralizeAsyncProxy(maybeProxy, interfaceName, reason);
     }
     return;
   }
   if (typeof value !== "object") {
     return;
   }
-  if (seen.has(value as object)) {
+  if (seen.has(value)) {
     return;
   }
-  seen.add(value as object);
+  seen.add(value);
 
   if (value instanceof AsyncProxy) {
     neutralizeAsyncProxy(value, interfaceName, reason);
@@ -81,7 +81,8 @@ function walk(
     return;
   }
 
-  for (const key of Object.keys(value as Record<string, unknown>)) {
+  for (const key of Object.keys(value)) {
+    // SAFETY: the null and primitive branches returned above; string-key access on the remaining object is exposed only as unknown, without claiming a property's contents.
     walk((value as Record<string, unknown>)[key], interfaceName, seen, reason);
   }
 }

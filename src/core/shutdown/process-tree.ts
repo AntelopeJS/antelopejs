@@ -104,8 +104,7 @@ export function collectDescendants(
   const descendants: number[] = [];
   const visited = new Set<number>([rootPid]);
   const queue = [rootPid];
-  while (queue.length > 0) {
-    const pid = queue.shift() as number;
+  for (const pid of queue) {
     for (const child of children.get(pid) ?? []) {
       if (visited.has(child)) {
         continue;

@@ -61,7 +61,7 @@ describe("project modules behavior", () => {
     sinon.stub(common, "readConfig").resolves({
       name: "proj",
       environments: { production: {} },
-    } as any);
+    });
     const loadStub = sinon.stub(ConfigLoader.prototype, "load");
     const handlerStub = sinon.stub();
     sinon.stub(handlers, "get").returns(handlerStub);
@@ -136,7 +136,7 @@ describe("project modules behavior", () => {
     const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     const originalHandler = handlers.get("local");
-    handlers.set("local", async () => ["absMod", "local-src"] as any);
+    handlers.set("local", async () => ["absMod", "local-src"]);
     const absPath = "/tmp/abs-module";
 
     try {
@@ -373,7 +373,7 @@ describe("project modules behavior", () => {
     collectStderr();
 
     const originalHandler = handlers.get("local");
-    handlers.set("local", () => Promise.reject("boom") as any);
+    handlers.set("local", () => Promise.reject("boom"));
     try {
       await projectModulesAddCommand(["modA"], {
         mode: "local",
@@ -411,16 +411,12 @@ describe("project modules behavior", () => {
     collectStderr();
 
     const originalHandler = handlers.get("local");
-    handlers.set(
-      "local",
-      async () =>
-        [
-          "localmod",
-          {
-            source: { type: "package", package: "localmod", version: "1.0.0" },
-          },
-        ] as any,
-    );
+    handlers.set("local", async () => [
+      "localmod",
+      {
+        source: { type: "package", package: "localmod", version: "1.0.0" },
+      },
+    ]);
     try {
       await projectModulesAddCommand(["localmod"], {
         mode: "local",
@@ -514,7 +510,7 @@ describe("project modules behavior", () => {
     const [name, config] = await handler("pkg", {
       mode: "package",
       project: "/tmp/project",
-    } as any);
+    });
 
     expect(execStub.called).to.equal(true);
     expect(name).to.equal("pkg");
@@ -527,7 +523,7 @@ describe("project modules behavior", () => {
     const [name, config] = await handler("pkg@^2.0.0", {
       mode: "package",
       project: "/tmp/project",
-    } as any);
+    });
 
     expect(execStub.called).to.equal(false);
     expect(name).to.equal("pkg");
@@ -544,7 +540,7 @@ describe("project modules behavior", () => {
     const [name, config] = await handler("pkg@beta", {
       mode: "package",
       project: "/tmp/project",
-    } as any);
+    });
 
     expect(execStub.firstCall.args[1]).to.include("dist-tags");
     expect(name).to.equal("pkg");
@@ -563,7 +559,7 @@ describe("project modules behavior", () => {
       await handler("pkg@lastest", {
         mode: "package",
         project: "/tmp/project",
-      } as any);
+      });
     } catch (err) {
       caught = err;
     }
@@ -579,7 +575,7 @@ describe("project modules behavior", () => {
     const handler = handlers.get("package")!;
     let caught: unknown;
     try {
-      await handler("pkg", { mode: "package", project: "/tmp/project" } as any);
+      await handler("pkg", { mode: "package", project: "/tmp/project" });
     } catch (err) {
       caught = err;
     }
@@ -593,7 +589,7 @@ describe("project modules behavior", () => {
       await handler("not-a-url", {
         mode: "git",
         project: "/tmp/project",
-      } as any);
+      });
     } catch (err) {
       caught = err;
     }
@@ -602,7 +598,7 @@ describe("project modules behavior", () => {
     const [name, config] = await handler("https://example.com/repo.git", {
       mode: "git",
       project: "/tmp/project",
-    } as any);
+    });
     expect(name).to.equal("repo");
     expect((config as any).source.remote).to.equal(
       "https://example.com/repo.git",
@@ -681,7 +677,7 @@ describe("project modules behavior", () => {
   it("errors when environment is missing for removal", async () => {
     sinon
       .stub(common, "readConfig")
-      .resolves({ name: "proj", environments: {} } as any);
+      .resolves({ name: "proj", environments: {} });
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     const infoStub = sinon.stub(cliUi, "info");
 
@@ -737,9 +733,7 @@ describe("project modules behavior", () => {
   });
 
   it("errors when no modules are installed", async () => {
-    sinon
-      .stub(common, "readConfig")
-      .resolves({ name: "proj", modules: {} } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
     const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
 
@@ -755,7 +749,7 @@ describe("project modules behavior", () => {
   it("errors when none of the specified modules are installed", async () => {
     sinon
       .stub(common, "readConfig")
-      .resolves({ name: "proj", modules: { foo: {} } } as any);
+      .resolves({ name: "proj", modules: { foo: {} } });
     sinon
       .stub(ConfigLoader.prototype, "load")
       .resolves({ modules: { foo: {} } } as any);
@@ -947,7 +941,7 @@ describe("project modules behavior", () => {
   it("errors when environment is missing for update", async () => {
     sinon
       .stub(common, "readConfig")
-      .resolves({ name: "proj", environments: {} } as any);
+      .resolves({ name: "proj", environments: {} });
     const infoStub = sinon.stub(cliUi, "info");
 
     await expectUnknownEnvironment(
@@ -967,9 +961,7 @@ describe("project modules behavior", () => {
   });
 
   it("errors when no modules are installed for update", async () => {
-    sinon
-      .stub(common, "readConfig")
-      .resolves({ name: "proj", modules: {} } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
     const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
 
@@ -988,7 +980,7 @@ describe("project modules behavior", () => {
           source: { type: "git", remote: "https://example.com/repo.git" },
         },
       },
-    } as any);
+    });
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
         git: {
@@ -1015,7 +1007,7 @@ describe("project modules behavior", () => {
           source: { type: "git", remote: "https://example.com/repo.git" },
         },
       },
-    } as any);
+    });
     const loadStub = sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
         git: {
@@ -1044,7 +1036,7 @@ describe("project modules behavior", () => {
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
+    });
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
@@ -1070,7 +1062,7 @@ describe("project modules behavior", () => {
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
+    });
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
@@ -1094,7 +1086,7 @@ describe("project modules behavior", () => {
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
+    });
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },

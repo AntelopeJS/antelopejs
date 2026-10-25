@@ -182,7 +182,7 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
   });
 
   it("reports an existing project once, before any missing flag", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "existing" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "existing" });
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     const moduleInit = sinon.stub(moduleInitModule, "moduleInitCommand");
     sinon.stub(console, "log");

@@ -156,7 +156,7 @@ describe("project modules install behavior", () => {
     sinon.stub(common, "readConfig").resolves({
       name: "proj",
       environments: { production: {} },
-    } as any);
+    });
     const userConfigStub = sinon.stub(common, "readUserConfig");
     const manifestStub = sinon.stub(gitOps, "loadManifestFromGit");
     sinon.stub(cliUi, "info");
@@ -763,7 +763,7 @@ describe("project modules install behavior", () => {
 
     const loadStub = sinon
       .stub(gitOps, "loadInterfaceFromGit")
-      .resolves(undefined as any);
+      .resolves(undefined);
     const prompts = fakePrompts();
 
     stubTaskOutput();
@@ -817,7 +817,7 @@ describe("project modules install behavior", () => {
       .resolves([fakeManifest as any]);
 
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
-    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(undefined as any);
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(undefined);
 
     const warnStub = sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "info");

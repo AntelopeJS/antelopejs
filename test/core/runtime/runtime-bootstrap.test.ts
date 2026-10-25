@@ -29,13 +29,13 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
   process.removeAllListeners("warning");
 
   for (const listener of snapshot.uncaughtException) {
-    process.on("uncaughtException", listener as any);
+    process.on("uncaughtException", listener);
   }
   for (const listener of snapshot.unhandledRejection) {
-    process.on("unhandledRejection", listener as any);
+    process.on("unhandledRejection", listener);
   }
   for (const listener of snapshot.warning) {
-    process.on("warning", listener as any);
+    process.on("warning", listener);
   }
 }
 
@@ -73,15 +73,13 @@ describe("runtime runtime-bootstrap", () => {
       );
       expect(current.warning.length).to.equal(originalListeners.warning.length);
 
-      const uncaught = current.uncaughtException[
-        current.uncaughtException.length - 1
-      ] as (error: Error) => void;
-      uncaught({ message: "boom-no-stack" } as Error);
+      const uncaught =
+        current.uncaughtException[current.uncaughtException.length - 1];
+      uncaught({ message: "boom-no-stack" });
       uncaught(new Error("boom-with-stack"));
 
-      const rejection = current.unhandledRejection[
-        current.unhandledRejection.length - 1
-      ] as (reason: unknown) => void;
+      const rejection =
+        current.unhandledRejection[current.unhandledRejection.length - 1];
       rejection(new AggregateError([new Error("inner-a"), "inner-b"], "agg"));
       rejection("plain rejection");
 
@@ -153,9 +151,8 @@ describe("runtime runtime-bootstrap", () => {
       bootstrap.setupProcessHandlers(shutdownManager);
 
       const current = snapshotProcessListeners();
-      const uncaught = current.uncaughtException[
-        current.uncaughtException.length - 1
-      ] as (error: Error) => void;
+      const uncaught =
+        current.uncaughtException[current.uncaughtException.length - 1];
       uncaught(new Error("boom"));
 
       expect(shutdownStub.calledOnceWith(1)).to.equal(true);
@@ -181,9 +178,8 @@ describe("runtime runtime-bootstrap", () => {
       bootstrap.releaseProcessShutdownManager(second);
 
       const current = snapshotProcessListeners();
-      const uncaught = current.uncaughtException[
-        current.uncaughtException.length - 1
-      ] as (error: Error) => void;
+      const uncaught =
+        current.uncaughtException[current.uncaughtException.length - 1];
       uncaught(new Error("boom"));
 
       expect(firstShutdown.calledOnceWith(1)).to.equal(true);
@@ -209,9 +205,8 @@ describe("runtime runtime-bootstrap", () => {
       bootstrap.setupProcessHandlers(shutdownManager);
 
       const current = snapshotProcessListeners();
-      const uncaught = current.uncaughtException[
-        current.uncaughtException.length - 1
-      ] as (error: Error) => void;
+      const uncaught =
+        current.uncaughtException[current.uncaughtException.length - 1];
       uncaught(new Error("boom"));
 
       expect(shutdownStub.calledOnceWith(1)).to.equal(true);

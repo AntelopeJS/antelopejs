@@ -220,6 +220,7 @@ function modulesObject(
 }
 
 function assertParses(context: EditContext, source: string): void {
+  // SAFETY: createSourceFile records parser diagnostics on its AST, but TypeScript omits that internal field from SourceFile's public declaration; the fallback also handles an absent field.
   const file = parse(context, source) as TypeScript.SourceFile & {
     parseDiagnostics?: readonly TypeScript.Diagnostic[];
   };

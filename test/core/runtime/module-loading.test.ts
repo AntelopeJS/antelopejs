@@ -44,7 +44,7 @@ function createReloadHarness(): ReloadHarness {
     folder: "/mods/alpha",
     imports: [],
     source: { type: "local", path: "/mods/alpha" },
-  } as any;
+  };
   const manager = {
     getLoadedModuleEntry: sinon.stub().returns(entry),
     placeModule: sinon
@@ -67,7 +67,7 @@ function createReloadHarness(): ReloadHarness {
     cache: {},
     projectFolder: "/project",
     registry: { load: sinon.stub().resolves([manifest]) },
-  } as any;
+  };
   return { oldModule, entry, manager, loaderContext };
 }
 
@@ -216,14 +216,14 @@ describe("runtime module-loading", () => {
     );
   });
   it("resolves watch directories for all source variants", () => {
-    expect(getWatchDirs({ type: "git" } as any)).to.deep.equal([""]);
+    expect(getWatchDirs({ type: "git" })).to.deep.equal([""]);
     expect(
       getWatchDirs({ type: "local", watchDir: ["src", "lib"] } as any),
     ).to.deep.equal(["src", "lib"]);
     expect(
       getWatchDirs({ type: "local", watchDir: "src" } as any),
     ).to.deep.equal(["src"]);
-    expect(getWatchDirs({ type: "local" } as any)).to.deep.equal([""]);
+    expect(getWatchDirs({ type: "local" })).to.deep.equal([""]);
   });
 
   it("ensureGraphIsValid passes when all interfaces are resolved", () => {
@@ -372,7 +372,7 @@ describe("runtime module-loading", () => {
       expect(payload.moduleVersion).to.equal("1.0.0");
     }
 
-    expect((entry.module as any).destroy.calledOnce).to.equal(true);
+    expect(entry.module.destroy.calledOnce).to.equal(true);
     expect(manager.unrequireModuleFiles.calledWith("alpha")).to.equal(true);
     const expectedSource = { type: "local", path: "/mods/alpha", id: "alpha" };
     expect(
@@ -980,8 +980,8 @@ describe("runtime module-loading", () => {
 
     const registryLoadStub = sinon.stub();
     const loaderContext = {
-      fs: {} as any,
-      cache: {} as any,
+      fs: {},
+      cache: {},
       projectFolder: "/project",
       registry: {
         load: registryLoadStub,
@@ -990,7 +990,7 @@ describe("runtime module-loading", () => {
 
     registerCoreModuleInterface(manager, async () => loaderContext);
 
-    manager.getModuleEntry = sinon.stub().returns(undefined) as any;
+    manager.getModuleEntry = sinon.stub().returns(undefined);
     let infoError: unknown;
     try {
       await moduleInterfaceBeta.GetModuleInfo("missing");
@@ -999,12 +999,12 @@ describe("runtime module-loading", () => {
     }
     expect(infoError).to.be.instanceOf(Error);
 
-    manager.getModule = sinon.stub().returns(undefined) as any;
+    manager.getModule = sinon.stub().returns(undefined);
     await moduleInterfaceBeta.StartModule("unknown");
     await moduleInterfaceBeta.StopModule("unknown");
     await moduleInterfaceBeta.DestroyModule("unknown");
 
-    manager.getLoadedModuleEntry = sinon.stub().returns(undefined) as any;
+    manager.getLoadedModuleEntry = sinon.stub().returns(undefined);
     await moduleInterfaceBeta.ReloadModule("unknown");
 
     manager.getModuleEntry = sinon.stub().returns({
@@ -1015,7 +1015,7 @@ describe("runtime module-loading", () => {
       config: {
         config: {},
       },
-    }) as any;
+    });
 
     const info = await moduleInterfaceBeta.GetModuleInfo("alpha");
     expect(info.status).to.equal("unknown");
@@ -1030,7 +1030,7 @@ describe("runtime module-loading", () => {
       imports: [],
       source: { type: "local", path: "/mods/alpha" },
       reload: sinon.stub().resolves(),
-    } as any;
+    };
 
     registryLoadStub.resolves([manifest]);
     await moduleInterfaceBeta.LoadModule(
@@ -1052,7 +1052,7 @@ describe("runtime module-loading", () => {
         config: {},
       },
     };
-    manager.getLoadedModuleEntry = sinon.stub().returns(liveEntry) as any;
+    manager.getLoadedModuleEntry = sinon.stub().returns(liveEntry);
 
     registryLoadStub.resolves([]);
     let reloadNoManifestError: unknown;
@@ -1107,8 +1107,8 @@ describe("runtime module-loading", () => {
       ...graphOf([]),
     } as unknown as ModuleManager;
     const loaderContext = {
-      fs: {} as any,
-      cache: {} as any,
+      fs: {},
+      cache: {},
       projectFolder: "/project",
       registry: {
         load: sinon.stub().resolves([
@@ -1142,8 +1142,8 @@ describe("runtime module-loading", () => {
       ...graphOf([]),
     } as unknown as ModuleManager;
     const loaderContext = {
-      fs: {} as any,
-      cache: {} as any,
+      fs: {},
+      cache: {},
       projectFolder: "/project",
       registry: {
         load: sinon
@@ -1178,8 +1178,8 @@ describe("runtime module-loading", () => {
       ...graphOf([]),
     } as unknown as ModuleManager;
     const loaderContext = {
-      fs: {} as any,
-      cache: {} as any,
+      fs: {},
+      cache: {},
       projectFolder: "/project",
       registry: {
         load: sinon
@@ -1226,8 +1226,8 @@ describe("runtime module-loading", () => {
         ...graphOf([...running, added]),
       };
       const loaderContext = {
-        fs: {} as any,
-        cache: {} as any,
+        fs: {},
+        cache: {},
         projectFolder: "/project",
         registry: {
           load: sinon.stub().resolves([{ name: added.module.id }]),
@@ -1278,9 +1278,7 @@ describe("runtime module-loading", () => {
 
     it("loads a module whose interface a running module implements", async () => {
       const provider = addedModule("provider");
-      (provider.module.manifest.implements as string[]).push(
-        REQUIRED_INTERFACE,
-      );
+      provider.module.manifest.implements.push(REQUIRED_INTERFACE);
       const manager = loadModuleHarness(
         addedModule("consumer", {
           dependencies: { [REQUIRED_INTERFACE]: "*" },
@@ -1297,9 +1295,7 @@ describe("runtime module-loading", () => {
       const consumer = addedModule("consumer", {
         dependencies: { [REQUIRED_INTERFACE]: "*" },
       });
-      (consumer.module.manifest.implements as string[]).push(
-        REQUIRED_INTERFACE,
-      );
+      consumer.module.manifest.implements.push(REQUIRED_INTERFACE);
       const manager = loadModuleHarness(consumer);
 
       expect(await loadModule("consumer")).to.deep.equal(["consumer"]);

@@ -126,12 +126,12 @@ describe("runtime build-runtime", () => {
       JSON.stringify(artifact),
     );
 
-    const loaded = await readBuildArtifactOrThrow("/project", fs as any);
+    const loaded = await readBuildArtifactOrThrow("/project", fs);
     expect(loaded.env).to.equal("default");
 
     let thrown: unknown;
     try {
-      await readBuildArtifactOrThrow("/missing", fs as any);
+      await readBuildArtifactOrThrow("/missing", fs);
     } catch (error) {
       thrown = error;
     }
@@ -170,7 +170,7 @@ describe("runtime build-runtime", () => {
       alpha: createBuildModuleEntry(),
     });
 
-    await ensureBuildModulesExist(artifact, fs as any);
+    await ensureBuildModulesExist(artifact, fs);
 
     const missingArtifact = createArtifact({
       beta: createBuildModuleEntry({ name: "beta", folder: "/modules/beta" }),
@@ -178,7 +178,7 @@ describe("runtime build-runtime", () => {
 
     let thrown: unknown;
     try {
-      await ensureBuildModulesExist(missingArtifact, fs as any);
+      await ensureBuildModulesExist(missingArtifact, fs);
     } catch (error) {
       thrown = error;
     }
@@ -195,7 +195,7 @@ describe("runtime build-runtime", () => {
       projectFolder: "/project",
       modules: {},
       envOverrides: {},
-    } as NormalizedLoadedConfig;
+    };
 
     const entries: ModuleManifestEntry[] = [
       {
@@ -229,7 +229,7 @@ describe("runtime build-runtime", () => {
       normalizedConfig,
       "production",
       entries,
-      fs as any,
+      fs,
     );
 
     const written = JSON.parse(

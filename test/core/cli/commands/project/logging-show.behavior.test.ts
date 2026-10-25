@@ -17,7 +17,7 @@ function stubLogging(logging: unknown): void {
   sinon.stub(common, "readConfig").resolves({
     name: "test-project",
     environments: { staging: {} },
-  } as any);
+  });
   sinon.stub(ConfigLoader.prototype, "load").resolves({
     modules: {},
     logging,
@@ -54,7 +54,7 @@ describe("project logging show behavior", () => {
   it("show rejects an unknown environment", async () => {
     sinon
       .stub(common, "readConfig")
-      .resolves({ name: "test-project", environments: {} } as any);
+      .resolves({ name: "test-project", environments: {} });
     const loadStub = sinon.stub(ConfigLoader.prototype, "load");
     const { ui, result } = createMemoryUi();
 

@@ -2,6 +2,7 @@ import path from "node:path";
 import type {
   AntelopeConfig,
   ModuleSource,
+  ModuleSourceLocal,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 
@@ -137,16 +138,21 @@ async function analyzeConfig(
         registry.load(projectFolder, cache, {
           ...module.source,
           id: name,
-        } as any),
+        }),
       ),
     )
   ).flat();
 
   try {
     const coreRoot = path.resolve(__dirname, "../../../../../..");
+    const coreSource = {
+      type: "local",
+      path: coreRoot,
+      id: "antelopejs",
+    } satisfies ModuleSourceLocal;
     const coreManifest = await ModuleManifest.create(
       coreRoot,
-      { type: "local", path: coreRoot, id: "antelopejs" } as any,
+      coreSource,
       "antelopejs",
       fs,
     );
@@ -319,9 +325,7 @@ async function selectImplementation(
     interfaceName,
     candidates,
   );
-  const loaderIdentifier = context.registry.getLoaderIdentifier(
-    chosen.source as any,
-  );
+  const loaderIdentifier = context.registry.getLoaderIdentifier(chosen.source);
   if (!loaderIdentifier) {
     return;
   }

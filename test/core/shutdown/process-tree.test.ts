@@ -169,7 +169,7 @@ describe("Process tree", () => {
       const exited = new Promise<void>((resolve) =>
         child.once("exit", () => resolve()),
       );
-      const terminated = await terminateProcessTree(child.pid as number);
+      const terminated = await terminateProcessTree(child.pid);
       child.kill("SIGTERM");
       await exited;
 

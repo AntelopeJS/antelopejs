@@ -157,12 +157,13 @@ export class ConfigParser {
         continue;
       }
       if (typeof config === "string") {
+        const source = {
+          type: "package",
+          package: name,
+          version: config,
+        } satisfies ModuleSourcePackage;
         result[name] = {
-          source: {
-            type: "package",
-            package: name,
-            version: config,
-          } as ModuleSourcePackage,
+          source,
           config: {},
           importOverrides: [],
           disabledExports: [],
@@ -174,7 +175,7 @@ export class ConfigParser {
             type: "package",
             package: name,
             version: config.version,
-          } as ModuleSourcePackage;
+          } satisfies ModuleSourcePackage;
         }
 
         let importOverrides: ImportOverride[] = [];

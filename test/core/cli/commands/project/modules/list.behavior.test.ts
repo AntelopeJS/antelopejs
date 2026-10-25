@@ -41,7 +41,7 @@ function stubProject(modules: Record<string, unknown>): sinon.SinonStub {
   sinon.stub(common, "readConfig").resolves({
     name: "test-project",
     environments: { staging: {} },
-  } as any);
+  });
   return sinon
     .stub(ConfigLoader.prototype, "load")
     .resolves({ modules } as any);

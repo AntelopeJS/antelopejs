@@ -130,7 +130,7 @@ describe("core/beta module interface", () => {
     try {
       await moduleInterfaceBeta.LoadModule(
         "bad",
-        { source: { type: "unknown" } as any },
+        { source: { type: "unknown" } },
         false,
       );
     } catch (err) {

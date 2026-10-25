@@ -65,7 +65,7 @@ describe("launch", () => {
       construct: sinon.stub().resolves(),
       start: sinon.stub(),
       setProviderRoutes: sinon.stub(),
-    } as any;
+    };
     const localModuleB = {
       id: "modB",
       manifest: {
@@ -78,7 +78,7 @@ describe("launch", () => {
       construct: sinon.stub().resolves(),
       start: sinon.stub(),
       setProviderRoutes: sinon.stub(),
-    } as any;
+    };
 
     const loaded = new Map<string, any>([
       ["modA", { module: localModule, config: { config: { flag: true } } }],
@@ -92,7 +92,7 @@ describe("launch", () => {
     ) {
       addedModules = modules;
       this.loaded = loaded;
-      return [] as any;
+      return [];
     });
 
     sinon.stub(ModuleManager.prototype, "constructAll").resolves();
@@ -165,7 +165,7 @@ describe("launch", () => {
       .stub(ModuleManager.prototype, "addModules")
       .callsFake(function (this: any) {
         this.loaded = undefined;
-        return [] as any;
+        return [];
       });
     sinon.stub(ModuleManager.prototype, "getAllManagedModules").returns([]);
     sinon.stub(ModuleManager.prototype, "constructAll").resolves();
