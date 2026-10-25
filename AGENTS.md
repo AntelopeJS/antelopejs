@@ -9,9 +9,9 @@ The core implements `@antelopejs/interface-core`, and `ImplementInterface` refus
 ## Tests
 
 - Unit suites live in `test/` at the repository root, not under `src/`. They run with mocha through ts-node, and `test/setup.ts` loads first.
-- `pnpm test` also builds `dist` and runs three end-to-end suites against it: `test/embedded` (a host app embedding the runtime), `test/package-consumer` (the packed package as a consumer installs it), and `playground/` (a real project with its own lockfile).
+- `pnpm test` runs the unit suites under coverage, builds `dist` once, then runs three end-to-end suites against it: `test/embedded` (a host app embedding the runtime), `test/package-consumer` (the packed package as a consumer installs it), and `playground/` (a real project with its own lockfile).
 - The CLI picks Unicode or ASCII symbols from `TERM` and the locale, and the output tests expect Unicode. With `TERM=dumb`, which some sandboxes set, eight tests fail on `->` against `→`. Run the tests with `TERM=xterm-256color`.
-- Coverage must stay at 90% for lines, functions, branches and statements (`pnpm test:coverage`, run in CI).
+- Coverage must stay at 90% for lines, functions, branches and statements; `pnpm test` enforces it through `pnpm test:coverage`.
 
 ## Shipped files
 

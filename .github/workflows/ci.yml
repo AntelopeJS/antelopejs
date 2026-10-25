@@ -11,8 +11,6 @@ permissions:
 jobs:
   ci:
     uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
-    with:
-      extra-commands: pnpm test:coverage
 
   checks:
     if: always()

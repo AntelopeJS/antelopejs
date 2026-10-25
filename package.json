@@ -53,7 +53,7 @@
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "knip": "knip",
-    "test": "pnpm test:unit && pnpm test:embedded && pnpm test:package-consumer && pnpm test:playground",
+    "test": "pnpm test:coverage && pnpm build && ts-node test/embedded/run.ts && ts-node test/package-consumer/run.ts && pnpm --dir playground install && ts-node playground/test-playground.ts",
     "test:unit": "mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
     "test:package-consumer": "pnpm build && ts-node test/package-consumer/run.ts",
     "test:playground": "pnpm build && pnpm --dir playground install && ts-node playground/test-playground.ts",
