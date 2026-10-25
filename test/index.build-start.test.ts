@@ -14,7 +14,13 @@ import { ModuleCache } from "../src/core/module-cache";
 import { FileWatcher } from "../src/core/watch/file-watcher";
 import type { BuildArtifact } from "../src/core/build/build-artifact";
 import { DownloaderRegistry } from "../src/core/downloaders/registry";
-import { cleanupTempDir, makeTempDir, writeJson } from "./helpers/temp";
+import {
+  readJson,
+  readText,
+  writeJson,
+  makeTempDir,
+  cleanupTempDir,
+} from "./helpers/temp";
 
 interface ArtifactModuleInput {
   id: string;
@@ -154,9 +160,7 @@ describe("build and launchFromBuild", () => {
       "build",
       "build.json",
     );
-    const artifact = JSON.parse(
-      fs.readFileSync(artifactPath, "utf-8"),
-    ) as BuildArtifact;
+    const artifact = readJson<BuildArtifact>(artifactPath);
 
     expect(artifact.env).to.equal("production");
     expect(artifact.config.name).to.equal("sample");
@@ -291,7 +295,7 @@ describe("build and launchFromBuild", () => {
       "build",
       "build.json",
     );
-    const builtArtifact = fs.readFileSync(artifactPath, "utf-8");
+    const builtArtifact = readText(artifactPath);
 
     process.env[TOKEN_VARIABLE] = "runtime-secret";
     writeTsConfig(
@@ -310,7 +314,7 @@ describe("build and launchFromBuild", () => {
 
     expect(readRecordedConfig()).to.deep.equal({ token: "runtime-secret" });
     expect(warnStub.called).to.equal(false);
-    expect(fs.readFileSync(artifactPath, "utf-8")).to.equal(builtArtifact);
+    expect(readText(artifactPath)).to.equal(builtArtifact);
   });
 
   it("launchFromBuild starts with the build configuration by default", async () => {

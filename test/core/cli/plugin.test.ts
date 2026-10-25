@@ -1,10 +1,10 @@
 import path from "node:path";
 import { expect } from "chai";
-import { chmodSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, writeFileSync } from "node:fs";
 
 import { runCLI } from "../../../src/core/cli";
 import { delegateToPlugin } from "../../../src/core/cli/plugin";
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { readText, makeTempDir, cleanupTempDir } from "../../helpers/temp";
 import {
   DMS_EXECUTABLE,
   installedDependencies,
@@ -59,9 +59,7 @@ describe("CLI plugin delegation", () => {
     const result = await delegateToPlugin(["dms", "deploy", "--region", "eu"]);
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
-    expect(readFileSync(plugin.output, "utf8")).to.equal(
-      "deploy\n--region\neu\n",
-    );
+    expect(readText(plugin.output)).to.equal("deploy\n--region\neu\n");
   });
 
   it("forwards plugin flags verbatim instead of parsing them", async () => {
@@ -70,9 +68,7 @@ describe("CLI plugin delegation", () => {
     const result = await delegateToPlugin(["dms", "--help", "--", "--verbose"]);
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
-    expect(readFileSync(plugin.output, "utf8")).to.equal(
-      "--help\n--\n--verbose\n",
-    );
+    expect(readText(plugin.output)).to.equal("--help\n--\n--verbose\n");
   });
 
   it("passes the global options before the plugin name as environment", async () => {
@@ -90,7 +86,7 @@ describe("CLI plugin delegation", () => {
     ]);
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
-    expect(readFileSync(path.join(plugin, "invocation"), "utf8")).to.equal(
+    expect(readText(path.join(plugin, "invocation"))).to.equal(
       "dev\n1\ncli,api\n",
     );
   });
@@ -125,7 +121,7 @@ describe("CLI plugin delegation", () => {
     });
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
-    expect(readFileSync(plugin.output, "utf8")).to.equal("run\n");
+    expect(readText(plugin.output)).to.equal("run\n");
     expect(output.infos).to.deep.equal([
       `Running third-party plugin ajs-custom (${path.join(plugin.directory, "ajs-custom")})`,
     ]);
@@ -165,7 +161,7 @@ describe("CLI plugin delegation", () => {
     });
 
     expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
-    expect(readFileSync(plugin.output, "utf8")).to.equal("run\n");
+    expect(readText(plugin.output)).to.equal("run\n");
   });
 
   it("announces a third-party plugin before running it", async () => {

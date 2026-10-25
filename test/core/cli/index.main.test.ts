@@ -25,18 +25,15 @@ describe("CLI main guard", () => {
   const cliPath = require.resolve("../../../src/core/cli/index");
 
   function stubRunCliDeps() {
-    const originalReadFileSync = fs.readFileSync;
     const packageJsonPath = path.join(
       path.dirname(cliPath),
       "../../../package.json",
     );
-    sinon.stub(fs, "readFileSync").callsFake((...args: any[]) => {
-      const target = args[0];
-      if (typeof target === "string" && target === packageJsonPath) {
-        return JSON.stringify({ version: "0.0.0" });
-      }
-      return (originalReadFileSync as any)(...args);
-    });
+    sinon
+      .stub(fs, "readFileSync")
+      .callThrough()
+      .withArgs(packageJsonPath)
+      .returns(JSON.stringify({ version: "0.0.0" }));
     sinon.stub(logging, "setupAntelopeProjectLogging");
     sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
     sinon.stub(Command.prototype, "getOptionValue").returns(undefined);

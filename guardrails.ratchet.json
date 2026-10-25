@@ -1,18 +1,15 @@
 {
   "rules": {
     "antelopejs/no-comments": 93,
-    "antelopejs/no-constant-value-assertion": 1,
-    "antelopejs/no-fs-read-in-tests": 14,
-    "antelopejs/require-assertion": 7,
     "anti-slop/no-chained-type-assertions": 20,
     "anti-slop/no-conditional-empty-object-spread": 2,
     "anti-slop/no-known-value-widening": 48,
-    "anti-slop/no-runtime-typeof": 57,
+    "anti-slop/no-runtime-typeof": 56,
     "anti-slop/no-shape-in-symbol-names": 2,
     "anti-slop/no-unknown-parameters": 108,
     "anti-slop/no-unknown-returns": 38,
     "anti-slop/no-unsafe-dictionary-type": 127,
-    "anti-slop/require-safety-comment-for-type-assertion": 779,
+    "anti-slop/require-safety-comment-for-type-assertion": 778,
     "eslint/max-lines-per-function": 62,
     "eslint/max-params": 3,
     "typescript/await-thenable": 2,
@@ -22,12 +19,10 @@
     "typescript/unbound-method": 1
   },
   "oversizeFiles": {
-    ".github/assets/logo.png": 21412,
     "src/core/module-manager.ts": 46457,
     "src/core/runtime/module-loading.ts": 21598,
     "test/core/cli/commands/project/modules.behavior.test.ts": 42671,
     "test/core/cli/commands/project/modules/install.behavior.test.ts": 30349,
-    "test/core/cli/output/ui.test.ts": 19726,
     "test/core/downloaders/git.test.ts": 20741,
     "test/core/downloaders/package.test.ts": 22932,
     "test/core/module-lifecycle.test.ts": 17695,

@@ -46,8 +46,8 @@ importers:
         version: 5.9.3
     devDependencies:
       '@antelopejs/tooling-configs':
-        specifier: ^0.2.0
-        version: 0.2.0(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: ^0.2.2
+        version: 0.2.2(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       '@types/chai':
         specifier: ^4.3.20
         version: 4.3.20
@@ -108,8 +108,8 @@ packages:
   '@antelopejs/interface-core@0.2.6':
     resolution: {integrity: sha512-PJp58D1snKLVEmpfn9Yj2htuohZhUxHqyyec3xtkPPy61mtACs0YznnhcgbYQNhIy/q8J+lSwDICPZIsKjhAIA==}
 
-  '@antelopejs/tooling-configs@0.2.0':
-    resolution: {integrity: sha512-D3yCA9ZuvuDfzz8lS5VKyP8sgDkSdM0k1Awp3Q8qwq3u1/dc8UF4ep3SHW5fZpTQpLwNRcEDv1DSrRx+b7w9aA==}
+  '@antelopejs/tooling-configs@0.2.2':
+    resolution: {integrity: sha512-uW2TlQVeiWv9srX2sxEKcvApev6gffr5Yf244uTMJ2mJ8wBzrk/HG6uzoqEFfgEe2mT4AAkdMbSMuKY6npB0Bg==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -1361,6 +1361,11 @@ packages:
   dotenv@17.4.2:
     resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
     engines: {node: '>=12'}
+
+  dts-bundle-generator@9.5.1:
+    resolution: {integrity: sha512-DxpJOb2FNnEyOzMkG11sxO2dmxPjthoVWxfKqWYJ/bI/rT1rvTMktF5EKjAYrRZu6Z6t3NhOUZ0sZ5ZXevOfbA==}
+    engines: {node: '>=14.0.0'}
+    hasBin: true
 
   duplexify@3.7.1:
     resolution: {integrity: sha512-07z8uv2wMyS51kKhD1KsdXJg5WQ6t93RneqRxUHnskXVtlYYkLqM0gqStQZ3pj073g687jPCHrqNfCzawLYh5g==}
@@ -2642,9 +2647,10 @@ snapshots:
     dependencies:
       reflect-metadata: 0.2.2
 
-  '@antelopejs/tooling-configs@0.2.0(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
+  '@antelopejs/tooling-configs@0.2.2(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
     dependencies:
       '@oxlint/plugins': 1.81.0
+      dts-bundle-generator: 9.5.1
       yaml: 2.9.1
     optionalDependencies:
       eslint-plugin-perfectionist: 5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3)
@@ -3674,6 +3680,11 @@ snapshots:
   dotenv@17.3.1: {}
 
   dotenv@17.4.2: {}
+
+  dts-bundle-generator@9.5.1:
+    dependencies:
+      typescript: 5.9.3
+      yargs: 17.7.2
 
   duplexify@3.7.1:
     dependencies:

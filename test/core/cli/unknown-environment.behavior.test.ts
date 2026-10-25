@@ -1,6 +1,5 @@
 import sinon from "sinon";
 import { expect } from "chai";
-import { readFileSync } from "node:fs";
 
 import * as indexModule from "../../../src/index";
 import * as logging from "../../../src/logging";
@@ -11,7 +10,7 @@ import { ConfigLoader } from "../../../src/core/config";
 import * as gitOps from "../../../src/core/cli/git-operations";
 import { stripAnsi } from "../../../src/core/cli/logging-utils";
 import * as versionCheck from "../../../src/core/cli/version-check";
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { readText, makeTempDir, cleanupTempDir } from "../../helpers/temp";
 import { findConfigPath } from "../../../src/core/config/config-paths";
 import * as buildArtifactModule from "../../../src/core/build/build-artifact";
 import { NodeFileSystem } from "../../../src/core/filesystem";
@@ -82,9 +81,8 @@ describe("unknown --env", () => {
       modules: { billing: "1.0.0" },
       environments: { production: {} },
     });
-    configSource = readFileSync(
+    configSource = readText(
       await findConfigPath(projectDir, new NodeFileSystem()),
-      "utf8",
     );
     sinon.stub(logging, "setupAntelopeProjectLogging");
     sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
@@ -126,10 +124,7 @@ describe("unknown --env", () => {
       expect(workStubs.some((stub) => stub.called)).to.equal(false);
       expect((console.log as sinon.SinonStub).called).to.equal(false);
       expect(
-        readFileSync(
-          await findConfigPath(projectDir, new NodeFileSystem()),
-          "utf8",
-        ),
+        readText(await findConfigPath(projectDir, new NodeFileSystem())),
       ).to.equal(configSource);
     });
   });

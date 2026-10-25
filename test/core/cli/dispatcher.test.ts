@@ -1,10 +1,10 @@
 import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import { chmodSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, writeFileSync } from "node:fs";
 
 import * as fullCLI from "../../../src/core/cli/full-cli";
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { readText, makeTempDir, cleanupTempDir } from "../../helpers/temp";
 import * as projectLaunch from "../../../src/core/runtime/project-launch";
 import { isProductionStartInvocation, runCLI } from "../../../src/core/cli";
 
@@ -120,7 +120,7 @@ describe("CLI dispatcher", () => {
     await runCLI(["--no-color", "help", "custom", "run"]);
 
     expect(runFullCLI.called).to.equal(false);
-    expect(readFileSync(argumentsFile, "utf8").trim()).to.equal("run --help");
+    expect(readText(argumentsFile).trim()).to.equal("run --help");
     process.exitCode = originalExitCode;
   });
 

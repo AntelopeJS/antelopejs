@@ -1,4 +1,5 @@
 import sinon from "sinon";
+import { expect } from "chai";
 import lockfile from "proper-lockfile";
 
 import { acquireLock } from "../../src/utils/lock";
@@ -21,7 +22,8 @@ describe("Lock Utilities", () => {
       sinon.stub(lockfile, "unlock").rejects(new Error("unlock failed"));
 
       const release = await acquireLock("test-lock");
-      await release();
+
+      expect(await release()).to.equal(undefined);
 
       cleanupTempDir(tempHome);
     });

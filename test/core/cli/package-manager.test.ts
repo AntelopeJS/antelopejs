@@ -3,7 +3,12 @@ import { expect } from "chai";
 
 import * as cliUi from "../../../src/core/cli/cli-ui";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
-import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
+import {
+  readJson,
+  writeJson,
+  makeTempDir,
+  cleanupTempDir,
+} from "../../helpers/temp";
 import {
   getInstallCommand,
   getInstallPackagesCommand,
@@ -369,8 +374,8 @@ describe("Package Manager Utils", () => {
       try {
         writeJson(`${tempDir}/package.json`, { name: "test" });
         savePackageManagerToPackageJson("npm", tempDir);
-        const pkg = JSON.parse(
-          require("node:fs").readFileSync(`${tempDir}/package.json`, "utf8"),
+        const pkg = readJson<{ packageManager: string }>(
+          `${tempDir}/package.json`,
         );
         expect(pkg.packageManager).to.include("npm@");
       } finally {

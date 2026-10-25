@@ -3,6 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
+import { listDirectory } from "../helpers/temp";
+
 interface PackedManifest {
   dependencies?: Record<string, string>;
   antelopeJs?: PackedAntelopeJsManifest;
@@ -55,9 +57,9 @@ function packCore(): string {
     ],
     root,
   );
-  const tarball = fs
-    .readdirSync(packFolder)
-    .find((file) => file.endsWith(".tgz"));
+  const tarball = listDirectory(packFolder).find((file) =>
+    file.endsWith(".tgz"),
+  );
   if (!tarball) {
     throw new Error("pnpm pack did not produce a tarball.");
   }
@@ -88,8 +90,7 @@ function inspectSkills(tarball: string): void {
     throw new Error("Packed core does not declare its agent skills.");
   }
   const packedFiles = run("tar", ["-tf", tarball], root).split("\n");
-  const missing = fs
-    .readdirSync(path.join(root, skillsFolder))
+  const missing = listDirectory(path.join(root, skillsFolder))
     .map((skill) => `package/${skillsFolder}/${skill}/${skillFile}`)
     .filter((file) => !packedFiles.includes(file));
   if (missing.length > 0) {

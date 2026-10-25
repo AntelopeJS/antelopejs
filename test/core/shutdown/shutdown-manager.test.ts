@@ -231,11 +231,17 @@ describe("ShutdownManager", () => {
       manager = new ShutdownManager(CUSTOM_TIMEOUT_MS);
       const neverResolves = () => new Promise<void>(() => {});
       manager.register(neverResolves, 0);
+      let isSettled = false;
 
-      const shutdownPromise = manager.shutdown();
-      clock.tick(CUSTOM_TIMEOUT_MS);
-
+      const shutdownPromise = manager.shutdown().then(() => {
+        isSettled = true;
+      });
+      await clock.tickAsync(0);
+      expect(isSettled).to.equal(false);
+      await clock.tickAsync(CUSTOM_TIMEOUT_MS);
       await shutdownPromise;
+
+      expect(isSettled).to.equal(true);
     });
 
     it("still runs the handlers after the one that timed out", async () => {

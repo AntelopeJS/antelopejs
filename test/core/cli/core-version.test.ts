@@ -2,18 +2,11 @@ import fs from "node:fs";
 import sinon from "sinon";
 import { expect } from "chai";
 
-import {
-  CORE_PACKAGE_NAME,
-  getCoreVersion,
-} from "../../../src/core/cli/core-version";
+import { getCoreVersion } from "../../../src/core/cli/core-version";
 
 describe("Core version", () => {
   afterEach(() => {
     sinon.restore();
-  });
-
-  it("names the core package", () => {
-    expect(CORE_PACKAGE_NAME).to.equal("@antelopejs/core");
   });
 
   it("reads the version of the core package.json", () => {

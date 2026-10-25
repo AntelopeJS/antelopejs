@@ -50,7 +50,7 @@ function verifyHelpStaysLight(folder) {
   if (!output.includes(HELP_HEADER)) {
     throw new Error(`Unexpected ajs --help output:\n${output}`);
   }
-  const loaded = JSON.parse(fs.readFileSync(loadedModulesFile, "utf8"));
+  const loaded = require(loadedModulesFile);
   const heavy = loaded.filter((file) => HEAVY_MODULE_PATTERN.test(file));
   if (heavy.length > 0) {
     throw new Error(`ajs --help loaded heavy modules:\n${heavy.join("\n")}`);
