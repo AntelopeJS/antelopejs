@@ -41,17 +41,17 @@ function setTTY(stdout: boolean, stderr: boolean, columns?: number) {
     if (stdoutIsTTY) {
       Object.defineProperty(process.stdout, "isTTY", stdoutIsTTY);
     } else {
-      delete (process.stdout as any).isTTY;
+      Reflect.deleteProperty(process.stdout, "isTTY");
     }
     if (stderrIsTTY) {
       Object.defineProperty(process.stderr, "isTTY", stderrIsTTY);
     } else {
-      delete (process.stderr as any).isTTY;
+      Reflect.deleteProperty(process.stderr, "isTTY");
     }
     if (stdoutColumns) {
       Object.defineProperty(process.stdout, "columns", stdoutColumns);
     } else if (columns !== undefined) {
-      delete (process.stdout as any).columns;
+      Reflect.deleteProperty(process.stdout, "columns");
     }
   };
 }

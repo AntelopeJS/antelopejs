@@ -10,21 +10,13 @@ import {
 } from "../../../../src/core/cli/output";
 import { USAGE_EXIT_CODE } from "../../../../src/core/cli/exit-codes";
 import { CANCEL, fakePrompts } from "../../../helpers/fake-prompts";
+import { expectInstanceOf, rejectionOf } from "../fixtures";
 
 const COMMAND = "ajs project init demo";
 
 interface InitFlags {
   name?: string;
   template?: string;
-}
-
-async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
-  try {
-    await promise;
-  } catch (error) {
-    return error;
-  }
-  throw new Error("Expected the promise to reject");
 }
 
 describe("createPrompter", () => {
@@ -127,7 +119,8 @@ describe("createPrompter", () => {
     );
 
     expect(error).to.be.instanceOf(NeedsInputError);
-    const needsInput = error as NeedsInputError;
+    expectInstanceOf(error, NeedsInputError);
+    const needsInput = error;
     expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
     expect(needsInput.problem.fixes).to.deep.equal([
       "Pass it as a flag: ajs project init demo --name <name>",
@@ -174,7 +167,7 @@ describe("createPrompter", () => {
     );
 
     expect(error).to.be.instanceOf(CancelledError);
-    expect((error as Error).message).to.equal("Cancelled");
+    expect(error.message).to.equal("Cancelled");
   });
 
   describe("requireAnswers", () => {
@@ -188,7 +181,8 @@ describe("createPrompter", () => {
       try {
         prompter.requireAnswers(["--name <name>", "--pm <name>"]);
       } catch (error) {
-        expect((error as NeedsInputError).problem.fixes).to.deep.equal([
+        expectInstanceOf(error, NeedsInputError);
+        expect(error.problem.fixes).to.deep.equal([
           "Pass them as flags: ajs project init demo --name <name> --pm <name>",
         ]);
       }
