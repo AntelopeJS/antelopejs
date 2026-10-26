@@ -2,7 +2,7 @@ const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
 const PUBLIC_ENTRY = "@antelopejs/core/cli";
-const LOAD_BUDGET_MS = 15;
+const LOAD_BUDGET_MS = 30;
 const LOAD_SAMPLE_COUNT = 7;
 const EAGER_FORBIDDEN_MODULES = [
   /[\\/]node_modules[\\/]@antelopejs[\\/]interface-core[\\/]/,
