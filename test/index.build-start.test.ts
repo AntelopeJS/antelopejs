@@ -140,228 +140,264 @@ function readRecordedConfig() {
   return testGlobals[RECORDED_CONFIG_KEY];
 }
 
-describe("build and launchFromBuild", () => {
-  const tempDirs: string[] = [];
+{
+  let registerBuildAndLaunchFromBuild: (this: Mocha.Suite) => void;
 
-  afterEach(() => {
-    sinon.restore();
-    detachProxy(ListModules);
-    delete testGlobals[RECORDED_CONFIG_KEY];
-    delete process.env[TOKEN_VARIABLE];
-    for (const dir of tempDirs.splice(0)) {
-      cleanupTempDir(dir);
-    }
-  });
+  const initializeTempDirs = () => [];
+  let tempDirs: string[];
 
-  it("build creates .antelope/build/build.json", async () => {
-    const projectFolder = makeTempDir("antelope-build-");
-    tempDirs.push(projectFolder);
-    writeTsConfig(projectFolder, {
-      name: "sample",
-      modules: {},
+  const checkBuildCreatesAntelopeBuildBuild: (this: Mocha.Suite) => void =
+    function () {
+      it("build creates .antelope/build/build.json", async () => {
+        const projectFolder = makeTempDir("antelope-build-");
+        tempDirs.push(projectFolder);
+        writeTsConfig(projectFolder, {
+          name: "sample",
+          modules: {},
+        });
+
+        sinon.stub(ModuleCache.prototype, "load").resolves();
+
+        await build(projectFolder, "production");
+
+        const artifactPath = path.join(
+          projectFolder,
+          ".antelope",
+          "build",
+          "build.json",
+        );
+        const artifact = readJson<BuildArtifact>(artifactPath);
+
+        expect(artifact.env).to.equal("production");
+        expect(artifact.config.name).to.equal("sample");
+        expect(Object.keys(artifact.modules)).to.have.length(0);
+      });
+
+      it("launchFromBuild throws when build artifact is missing", async () => {
+        const projectFolder = makeTempDir("antelope-start-missing-");
+        tempDirs.push(projectFolder);
+
+        let thrown: unknown;
+        try {
+          await launchFromBuild(projectFolder);
+        } catch (err) {
+          thrown = err;
+        }
+
+        expect(thrown).to.be.instanceOf(Error);
+        assert.ok(thrown instanceof Error);
+        expect(thrown.message).to.include(
+          "No build found at .antelope/build/build.json",
+        );
+      });
+
+      it("launchFromBuild warns when build is stale", async () => {
+        const projectFolder = makeTempDir("antelope-start-stale-");
+        tempDirs.push(projectFolder);
+
+        writeTsConfig(projectFolder, {
+          name: "sample",
+          modules: {},
+        });
+        const artifact = createArtifact(projectFolder, "outdated-hash");
+        writeJson(
+          path.join(projectFolder, ".antelope", "build", "build.json"),
+          artifact,
+        );
+
+        const warnStub = sinon.stub(Logging, "Warn");
+
+        await launchFromBuild(projectFolder);
+
+        expect(warnStub.called).to.equal(true);
+        expect(warnStub.firstCall.args.join(" ")).to.include(
+          "Configuration has changed since last build",
+        );
+      });
+
+      it("launchFromBuild implements the core modules interface", async () => {
+        const projectFolder = makeTempDir("antelope-start-modules-interface-");
+        tempDirs.push(projectFolder);
+
+        writeTsConfig(projectFolder, {
+          name: "sample",
+          modules: {},
+        });
+        const artifact = createArtifact(projectFolder, "abc123");
+        writeJson(
+          path.join(projectFolder, ".antelope", "build", "build.json"),
+          artifact,
+        );
+
+        detachProxy(ListModules);
+
+        await launchFromBuild(projectFolder);
+
+        const result = await settlesOrPending(ListModules(), PROXY_TIMEOUT_MS);
+
+        expect(result).to.not.equal(
+          PENDING,
+          "ListModules() never settled: no provider for @antelopejs/interface-core/modules",
+        );
+        expect(result).to.be.an("array");
+      });
+
+      it("launchFromBuild skips download and watch paths", async () => {
+        const projectFolder = makeTempDir("antelope-start-production-");
+        tempDirs.push(projectFolder);
+        writeTsConfig(projectFolder, { name: "sample", modules: {} });
+        writeJson(
+          path.join(projectFolder, ".antelope", "build", "build.json"),
+          createArtifact(projectFolder, "abc123"),
+        );
+        const download = sinon.stub(DownloaderRegistry.prototype, "load");
+        const watch = sinon.stub(FileWatcher.prototype, "startWatching");
+
+        await launchFromBuild(projectFolder, "production");
+
+        expect(download.called).to.equal(false);
+        expect(watch.called).to.equal(false);
+      });
+    };
+
+  const checkLaunchFromBuildThrowsWhenAModule: (this: Mocha.Suite) => void =
+    function () {
+      it("launchFromBuild throws when a module folder is missing", async () => {
+        const projectFolder = makeTempDir("antelope-start-module-missing-");
+        tempDirs.push(projectFolder);
+
+        writeTsConfig(projectFolder, {
+          name: "sample",
+          modules: {},
+        });
+
+        const artifact = createArtifact(projectFolder, "abc123", [
+          { id: "alpha", folder: "/missing/alpha" },
+        ]);
+        writeJson(
+          path.join(projectFolder, ".antelope", "build", "build.json"),
+          artifact,
+        );
+
+        let thrown: unknown;
+        try {
+          await launchFromBuild(projectFolder);
+        } catch (err) {
+          thrown = err;
+        }
+
+        expect(thrown).to.be.instanceOf(Error);
+        assert.ok(thrown instanceof Error);
+        expect(thrown.message).to.include("Module 'alpha' not found");
+        assert.ok(thrown instanceof Error);
+        expect(thrown.message).to.include(
+          "Run 'ajs project build' to rebuild.",
+        );
+      });
+
+      it("launchFromBuild starts with the refreshed configuration", async () => {
+        const projectFolder = makeTempDir("antelope-start-refresh-");
+        tempDirs.push(projectFolder);
+        writeRecordingModule(projectFolder);
+        writeTsConfig(projectFolder, recorderConfig({ token: "placeholder" }));
+        await build(projectFolder, "default");
+        const artifactPath = path.join(
+          projectFolder,
+          ".antelope",
+          "build",
+          "build.json",
+        );
+        const builtArtifact = readText(artifactPath);
+
+        process.env[TOKEN_VARIABLE] = "runtime-secret";
+        writeTsConfig(
+          projectFolder,
+          recorderConfig(
+            { token: "unset" },
+            {
+              envOverrides: {
+                [TOKEN_VARIABLE]: "modules.recorder.config.token",
+              },
+            },
+          ),
+        );
+        const warnStub = sinon.stub(Logging, "Warn");
+
+        const manager = await launchFromBuild(projectFolder, "production", {
+          refreshConfig: true,
+        });
+        await manager.destroyAll();
+
+        expect(readRecordedConfig()).to.deep.equal({ token: "runtime-secret" });
+        expect(warnStub.called).to.equal(false);
+        expect(readText(artifactPath)).to.equal(builtArtifact);
+      });
+
+      it("launchFromBuild starts with the build configuration by default", async () => {
+        const projectFolder = makeTempDir("antelope-start-no-refresh-");
+        tempDirs.push(projectFolder);
+        writeRecordingModule(projectFolder);
+        writeTsConfig(projectFolder, recorderConfig({ token: "placeholder" }));
+        await build(projectFolder, "default");
+        writeTsConfig(
+          projectFolder,
+          recorderConfig({ token: "runtime-secret" }),
+        );
+        sinon.stub(Logging, "Warn");
+
+        const manager = await launchFromBuild(projectFolder, "default");
+        await manager.destroyAll();
+
+        expect(readRecordedConfig()).to.deep.equal({ token: "placeholder" });
+      });
+
+      it("launchFromBuild refuses to refresh a build of another module set", async () => {
+        const projectFolder = makeTempDir("antelope-start-refresh-changed-");
+        tempDirs.push(projectFolder);
+        writeRecordingModule(projectFolder);
+        writeTsConfig(projectFolder, recorderConfig({}));
+        await build(projectFolder, "default");
+        writeTsConfig(projectFolder, { name: "sample", modules: {} });
+
+        let thrown: unknown;
+        try {
+          await launchFromBuild(projectFolder, "default", {
+            refreshConfig: true,
+          });
+        } catch (err) {
+          thrown = err;
+        }
+
+        expect(thrown).to.be.instanceOf(BuildModuleSetChangedError);
+        assert.ok(thrown instanceof BuildModuleSetChangedError);
+        expect(thrown.changedModules).to.deep.equal(["recorder"]);
+        expect(readRecordedConfig()).to.equal(undefined);
+      });
+    };
+
+  registerBuildAndLaunchFromBuild = () => {
+    tempDirs = initializeTempDirs();
+
+    afterEach(() => {
+      sinon.restore();
+      detachProxy(ListModules);
+      delete testGlobals[RECORDED_CONFIG_KEY];
+      delete process.env[TOKEN_VARIABLE];
+      for (const dir of tempDirs.splice(0)) {
+        cleanupTempDir(dir);
+      }
     });
 
-    sinon.stub(ModuleCache.prototype, "load").resolves();
-
-    await build(projectFolder, "production");
-
-    const artifactPath = path.join(
-      projectFolder,
-      ".antelope",
-      "build",
-      "build.json",
-    );
-    const artifact = readJson<BuildArtifact>(artifactPath);
-
-    expect(artifact.env).to.equal("production");
-    expect(artifact.config.name).to.equal("sample");
-    expect(Object.keys(artifact.modules)).to.have.length(0);
-  });
-
-  it("launchFromBuild throws when build artifact is missing", async () => {
-    const projectFolder = makeTempDir("antelope-start-missing-");
-    tempDirs.push(projectFolder);
-
-    let thrown: unknown;
-    try {
-      await launchFromBuild(projectFolder);
-    } catch (err) {
-      thrown = err;
-    }
-
-    expect(thrown).to.be.instanceOf(Error);
-    assert.ok(thrown instanceof Error);
-    expect(thrown.message).to.include(
-      "No build found at .antelope/build/build.json",
-    );
-  });
-
-  it("launchFromBuild warns when build is stale", async () => {
-    const projectFolder = makeTempDir("antelope-start-stale-");
-    tempDirs.push(projectFolder);
-
-    writeTsConfig(projectFolder, {
-      name: "sample",
-      modules: {},
-    });
-    const artifact = createArtifact(projectFolder, "outdated-hash");
-    writeJson(
-      path.join(projectFolder, ".antelope", "build", "build.json"),
-      artifact,
-    );
-
-    const warnStub = sinon.stub(Logging, "Warn");
-
-    await launchFromBuild(projectFolder);
-
-    expect(warnStub.called).to.equal(true);
-    expect(warnStub.firstCall.args.join(" ")).to.include(
-      "Configuration has changed since last build",
-    );
-  });
-
-  it("launchFromBuild implements the core modules interface", async () => {
-    const projectFolder = makeTempDir("antelope-start-modules-interface-");
-    tempDirs.push(projectFolder);
-
-    writeTsConfig(projectFolder, {
-      name: "sample",
-      modules: {},
-    });
-    const artifact = createArtifact(projectFolder, "abc123");
-    writeJson(
-      path.join(projectFolder, ".antelope", "build", "build.json"),
-      artifact,
-    );
-
-    detachProxy(ListModules);
-
-    await launchFromBuild(projectFolder);
-
-    const result = await settlesOrPending(ListModules(), PROXY_TIMEOUT_MS);
-
-    expect(result).to.not.equal(
-      PENDING,
-      "ListModules() never settled: no provider for @antelopejs/interface-core/modules",
-    );
-    expect(result).to.be.an("array");
-  });
-
-  it("launchFromBuild skips download and watch paths", async () => {
-    const projectFolder = makeTempDir("antelope-start-production-");
-    tempDirs.push(projectFolder);
-    writeTsConfig(projectFolder, { name: "sample", modules: {} });
-    writeJson(
-      path.join(projectFolder, ".antelope", "build", "build.json"),
-      createArtifact(projectFolder, "abc123"),
-    );
-    const download = sinon.stub(DownloaderRegistry.prototype, "load");
-    const watch = sinon.stub(FileWatcher.prototype, "startWatching");
-
-    await launchFromBuild(projectFolder, "production");
-
-    expect(download.called).to.equal(false);
-    expect(watch.called).to.equal(false);
-  });
-
-  it("launchFromBuild throws when a module folder is missing", async () => {
-    const projectFolder = makeTempDir("antelope-start-module-missing-");
-    tempDirs.push(projectFolder);
-
-    writeTsConfig(projectFolder, {
-      name: "sample",
-      modules: {},
+    describe("build creates .antelope/build/build.json", function () {
+      checkBuildCreatesAntelopeBuildBuild.call(this);
     });
 
-    const artifact = createArtifact(projectFolder, "abc123", [
-      { id: "alpha", folder: "/missing/alpha" },
-    ]);
-    writeJson(
-      path.join(projectFolder, ".antelope", "build", "build.json"),
-      artifact,
-    );
-
-    let thrown: unknown;
-    try {
-      await launchFromBuild(projectFolder);
-    } catch (err) {
-      thrown = err;
-    }
-
-    expect(thrown).to.be.instanceOf(Error);
-    assert.ok(thrown instanceof Error);
-    expect(thrown.message).to.include("Module 'alpha' not found");
-    assert.ok(thrown instanceof Error);
-    expect(thrown.message).to.include("Run 'ajs project build' to rebuild.");
-  });
-
-  it("launchFromBuild starts with the refreshed configuration", async () => {
-    const projectFolder = makeTempDir("antelope-start-refresh-");
-    tempDirs.push(projectFolder);
-    writeRecordingModule(projectFolder);
-    writeTsConfig(projectFolder, recorderConfig({ token: "placeholder" }));
-    await build(projectFolder, "default");
-    const artifactPath = path.join(
-      projectFolder,
-      ".antelope",
-      "build",
-      "build.json",
-    );
-    const builtArtifact = readText(artifactPath);
-
-    process.env[TOKEN_VARIABLE] = "runtime-secret";
-    writeTsConfig(
-      projectFolder,
-      recorderConfig(
-        { token: "unset" },
-        { envOverrides: { [TOKEN_VARIABLE]: "modules.recorder.config.token" } },
-      ),
-    );
-    const warnStub = sinon.stub(Logging, "Warn");
-
-    const manager = await launchFromBuild(projectFolder, "production", {
-      refreshConfig: true,
+    describe("launchFromBuild throws when a module folder is missing", function () {
+      checkLaunchFromBuildThrowsWhenAModule.call(this);
     });
-    await manager.destroyAll();
+  };
 
-    expect(readRecordedConfig()).to.deep.equal({ token: "runtime-secret" });
-    expect(warnStub.called).to.equal(false);
-    expect(readText(artifactPath)).to.equal(builtArtifact);
+  describe("build and launchFromBuild", function () {
+    registerBuildAndLaunchFromBuild.call(this);
   });
-
-  it("launchFromBuild starts with the build configuration by default", async () => {
-    const projectFolder = makeTempDir("antelope-start-no-refresh-");
-    tempDirs.push(projectFolder);
-    writeRecordingModule(projectFolder);
-    writeTsConfig(projectFolder, recorderConfig({ token: "placeholder" }));
-    await build(projectFolder, "default");
-    writeTsConfig(projectFolder, recorderConfig({ token: "runtime-secret" }));
-    sinon.stub(Logging, "Warn");
-
-    const manager = await launchFromBuild(projectFolder, "default");
-    await manager.destroyAll();
-
-    expect(readRecordedConfig()).to.deep.equal({ token: "placeholder" });
-  });
-
-  it("launchFromBuild refuses to refresh a build of another module set", async () => {
-    const projectFolder = makeTempDir("antelope-start-refresh-changed-");
-    tempDirs.push(projectFolder);
-    writeRecordingModule(projectFolder);
-    writeTsConfig(projectFolder, recorderConfig({}));
-    await build(projectFolder, "default");
-    writeTsConfig(projectFolder, { name: "sample", modules: {} });
-
-    let thrown: unknown;
-    try {
-      await launchFromBuild(projectFolder, "default", { refreshConfig: true });
-    } catch (err) {
-      thrown = err;
-    }
-
-    expect(thrown).to.be.instanceOf(BuildModuleSetChangedError);
-    assert.ok(thrown instanceof BuildModuleSetChangedError);
-    expect(thrown.changedModules).to.deep.equal(["recorder"]);
-    expect(readRecordedConfig()).to.equal(undefined);
-  });
-});
+}

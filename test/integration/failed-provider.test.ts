@@ -15,6 +15,12 @@ interface ProcessResult {
   output: string;
 }
 
+async function createModuleFolders(projectFolder: string) {
+  for (const folder of ["iface-frontend", "api", "dms", "dms-api"]) {
+    await fs.mkdir(path.join(projectFolder, folder), { recursive: true });
+  }
+}
+
 /**
  * The shape that used to hang: `api` publishes a config variable `dms` reads,
  * and `dms` serves an interface `dms-api` awaits from its own construct.
@@ -29,9 +35,7 @@ async function createFailedProviderProject(leaksHandle: boolean) {
   const write = (file: string, content: string) =>
     fs.writeFile(path.join(projectFolder, file), content);
 
-  for (const folder of ["iface-frontend", "api", "dms", "dms-api"]) {
-    await fs.mkdir(path.join(projectFolder, folder), { recursive: true });
-  }
+  await createModuleFolders(projectFolder);
 
   await write(
     "iface-frontend/package.json",

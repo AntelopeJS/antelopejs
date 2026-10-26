@@ -123,196 +123,227 @@ async function refreshError(
   return undefined;
 }
 
-describe("runtime build-refresh", () => {
-  afterEach(() => {
-    sinon.restore();
-    delete process.env[OVERRIDE_VARIABLE];
-  });
+{
+  let registerRuntimeBuildRefresh: (this: Mocha.Suite) => void;
 
-  it("swaps every module configuration when the module set is unchanged", async () => {
-    const refreshed = await refresh(runtimeConfig());
-    const built = createArtifact();
+  const checkSwapsEveryModuleConfigurationWhen: (this: Mocha.Suite) => void =
+    function () {
+      it("swaps every module configuration when the module set is unchanged", async () => {
+        const refreshed = await refresh(runtimeConfig());
+        const built = createArtifact();
 
-    expect(refreshed.modules.api.config).to.deep.equal({ token: SECRET });
-    expect(refreshed.modules.database.config).to.deep.equal({
-      host: "db.internal",
-    });
-    expect(refreshed.env).to.equal(ENV);
-    expect(refreshed.modules.api.folder).to.equal(built.modules.api.folder);
-    expect(refreshed.modules.database.source).to.deep.equal(
-      built.modules.database.source,
-    );
-    expect(refreshed.config.cacheFolder).to.equal(built.config.cacheFolder);
-    expect(refreshed.buildTime).to.equal(built.buildTime);
-  });
+        expect(refreshed.modules.api.config).to.deep.equal({ token: SECRET });
+        expect(refreshed.modules.database.config).to.deep.equal({
+          host: "db.internal",
+        });
+        expect(refreshed.env).to.equal(ENV);
+        expect(refreshed.modules.api.folder).to.equal(built.modules.api.folder);
+        expect(refreshed.modules.database.source).to.deep.equal(
+          built.modules.database.source,
+        );
+        expect(refreshed.config.cacheFolder).to.equal(built.config.cacheFolder);
+        expect(refreshed.buildTime).to.equal(built.buildTime);
+      });
 
-  it("stores the hash computeConfigHash gives the new configuration", async () => {
-    const fs = await createProject(runtimeConfig());
-    const loaded = await new configLoader.ConfigLoader(fs).load(PROJECT, ENV);
+      it("stores the hash computeConfigHash gives the new configuration", async () => {
+        const fs = await createProject(runtimeConfig());
+        const loaded = await new configLoader.ConfigLoader(fs).load(
+          PROJECT,
+          ENV,
+        );
 
-    const refreshed = refreshBuildArtifact(
-      createArtifact(),
-      loaded,
-      ENV,
-      PROJECT,
-    );
+        const refreshed = refreshBuildArtifact(
+          createArtifact(),
+          loaded,
+          ENV,
+          PROJECT,
+        );
 
-    expect(refreshed.configHash).to.equal(
-      await computeConfigHash(PROJECT, ENV, fs),
-    );
-  });
+        expect(refreshed.configHash).to.equal(
+          await computeConfigHash(PROJECT, ENV, fs),
+        );
+      });
 
-  it("applies environment overrides from the runtime environment", async () => {
-    process.env[OVERRIDE_VARIABLE] = "db.from-env";
+      it("applies environment overrides from the runtime environment", async () => {
+        process.env[OVERRIDE_VARIABLE] = "db.from-env";
 
-    const refreshed = await refresh(
-      runtimeConfig({
-        envOverrides: { [OVERRIDE_VARIABLE]: "modules.database.config.host" },
-      }),
-    );
+        const refreshed = await refresh(
+          runtimeConfig({
+            envOverrides: {
+              [OVERRIDE_VARIABLE]: "modules.database.config.host",
+            },
+          }),
+        );
 
-    expect(refreshed.modules.database.config).to.deep.equal({
-      host: "db.from-env",
-    });
-    expect(refreshed.config.envOverrides).to.deep.equal({
-      [OVERRIDE_VARIABLE]: "modules.database.config.host",
-    });
-  });
+        expect(refreshed.modules.database.config).to.deep.equal({
+          host: "db.from-env",
+        });
+        expect(refreshed.config.envOverrides).to.deep.equal({
+          [OVERRIDE_VARIABLE]: "modules.database.config.host",
+        });
+      });
 
-  it("applies the configuration of the requested environment", async () => {
-    const refreshed = await refresh(
-      runtimeConfig({
-        environments: {
-          [ENV]: { modules: { database: { config: { host: "db.prod" } } } },
-        },
-      }),
-    );
+      it("applies the configuration of the requested environment", async () => {
+        const refreshed = await refresh(
+          runtimeConfig({
+            environments: {
+              [ENV]: { modules: { database: { config: { host: "db.prod" } } } },
+            },
+          }),
+        );
 
-    expect(refreshed.modules.database.config).to.deep.equal({
-      host: "db.prod",
-    });
-  });
+        expect(refreshed.modules.database.config).to.deep.equal({
+          host: "db.prod",
+        });
+      });
 
-  it("refreshes import overrides and disabled exports from the configuration", async () => {
-    const config = runtimeConfig();
-    config.modules!.api = {
-      source: { type: "local", path: "./modules/api" },
-      importOverrides: { "@example/cache": "database" },
-      disabledExports: ["@example/metrics"],
+      it("refreshes import overrides and disabled exports from the configuration", async () => {
+        const config = runtimeConfig();
+        config.modules!.api = {
+          source: { type: "local", path: "./modules/api" },
+          importOverrides: { "@example/cache": "database" },
+          disabledExports: ["@example/metrics"],
+        };
+
+        const refreshed = await refresh(config);
+
+        expect(refreshed.modules.api.importOverrides).to.deep.equal([
+          { interface: "@example/cache", source: "database", id: undefined },
+        ]);
+        expect(refreshed.modules.api.disabledExports).to.deep.equal([
+          "@example/metrics",
+        ]);
+      });
+
+      it("matches a relative local module path with the resolved path of the build", async () => {
+        const config = runtimeConfig();
+        config.modules!.api = {
+          source: { type: "local", path: "modules/../modules/api" },
+        };
+
+        const refreshed = await refresh(config);
+
+        expect(refreshed.modules.api.config).to.deep.equal({});
+      });
+
+      it("rejects a local module loaded from another path", async () => {
+        const config = runtimeConfig();
+        config.modules!.api = {
+          source: { type: "local", path: "./other/api" },
+        };
+
+        const error = await refreshError(config);
+
+        expect(error).to.be.instanceOf(BuildModuleSetChangedError);
+        assert.ok(error instanceof BuildModuleSetChangedError);
+        expect(error.changedModules).to.deep.equal(["api"]);
+      });
+
+      it("rejects a module the build does not contain", async () => {
+        const config = runtimeConfig();
+        config.modules!.cache = "2.0.0";
+
+        const error = await refreshError(config);
+
+        assert.ok(error instanceof BuildModuleSetChangedError);
+        expect(error.changedModules).to.deep.equal(["cache"]);
+      });
+
+      it("rejects a build module the configuration no longer loads", async () => {
+        const config = runtimeConfig();
+        delete config.modules!.database;
+
+        const error = await refreshError(config);
+
+        assert.ok(error instanceof BuildModuleSetChangedError);
+        expect(error.changedModules).to.deep.equal(["database"]);
+      });
     };
 
-    const refreshed = await refresh(config);
+  const checkRejectsAModuleRequestedAt: (this: Mocha.Suite) => void =
+    function () {
+      it("rejects a module requested at another version", async () => {
+        const config = runtimeConfig();
+        config.modules!.database = "2.0.0";
 
-    expect(refreshed.modules.api.importOverrides).to.deep.equal([
-      { interface: "@example/cache", source: "database", id: undefined },
-    ]);
-    expect(refreshed.modules.api.disabledExports).to.deep.equal([
-      "@example/metrics",
-    ]);
-  });
+        const error = await refreshError(config);
 
-  it("matches a relative local module path with the resolved path of the build", async () => {
-    const config = runtimeConfig();
-    config.modules!.api = {
-      source: { type: "local", path: "modules/../modules/api" },
+        assert.ok(error instanceof BuildModuleSetChangedError);
+        expect(error.changedModules).to.deep.equal(["database"]);
+      });
+
+      it("rejects a local folder source, whose modules the build does not trace back to it", async () => {
+        const config = runtimeConfig();
+        delete config.modules!.api;
+        config.modules!.modules = {
+          source: { type: "local-folder", path: "./modules" },
+        };
+
+        const error = await refreshError(config);
+
+        assert.ok(error instanceof BuildModuleSetChangedError);
+        expect(error.changedModules).to.deep.equal(["api", "modules"]);
+      });
+
+      it("keeps configuration values out of the module set error", async () => {
+        const config = runtimeConfig();
+        config.modules!.database = {
+          version: "2.0.0",
+          config: { password: SECRET },
+        };
+
+        const error = await refreshError(config);
+        assert.ok(error instanceof Error);
+
+        expect(error.message).to.include("database");
+        expect(error.message).to.include("ajs project build");
+        expect(error.message).to.not.include(SECRET);
+      });
+
+      it("reads the build artifact without rewriting it", async () => {
+        const fs = await createProject(runtimeConfig());
+        await writeBuildArtifact(PROJECT, createArtifact(), fs);
+        const onDisk = await fs.readFileString(getBuildArtifactPath(PROJECT));
+
+        const refreshed = await readRefreshedBuildArtifact(PROJECT, ENV, fs);
+
+        expect(refreshed.modules.api.config).to.deep.equal({ token: SECRET });
+        expect(await fs.readFileString(getBuildArtifactPath(PROJECT))).to.equal(
+          onDisk,
+        );
+      });
+
+      it("finds a module set change among aggregated launch errors", () => {
+        const change = new BuildModuleSetChangedError(["api"]);
+
+        expect(findBuildModuleSetChange(change)).to.equal(change);
+        expect(
+          findBuildModuleSetChange(
+            new AggregateError([new Error("cleanup"), change], "launch failed"),
+          ),
+        ).to.equal(change);
+        expect(findBuildModuleSetChange(new Error("other"))).to.equal(
+          undefined,
+        );
+      });
     };
 
-    const refreshed = await refresh(config);
+  registerRuntimeBuildRefresh = () => {
+    afterEach(() => {
+      sinon.restore();
+      delete process.env[OVERRIDE_VARIABLE];
+    });
 
-    expect(refreshed.modules.api.config).to.deep.equal({});
+    describe("swaps every module configuration when the module set is unchanged", function () {
+      checkSwapsEveryModuleConfigurationWhen.call(this);
+    });
+
+    describe("rejects a module requested at another version", function () {
+      checkRejectsAModuleRequestedAt.call(this);
+    });
+  };
+
+  describe("runtime build-refresh", function () {
+    registerRuntimeBuildRefresh.call(this);
   });
-
-  it("rejects a local module loaded from another path", async () => {
-    const config = runtimeConfig();
-    config.modules!.api = { source: { type: "local", path: "./other/api" } };
-
-    const error = await refreshError(config);
-
-    expect(error).to.be.instanceOf(BuildModuleSetChangedError);
-    assert.ok(error instanceof BuildModuleSetChangedError);
-    expect(error.changedModules).to.deep.equal(["api"]);
-  });
-
-  it("rejects a module the build does not contain", async () => {
-    const config = runtimeConfig();
-    config.modules!.cache = "2.0.0";
-
-    const error = await refreshError(config);
-
-    assert.ok(error instanceof BuildModuleSetChangedError);
-    expect(error.changedModules).to.deep.equal(["cache"]);
-  });
-
-  it("rejects a build module the configuration no longer loads", async () => {
-    const config = runtimeConfig();
-    delete config.modules!.database;
-
-    const error = await refreshError(config);
-
-    assert.ok(error instanceof BuildModuleSetChangedError);
-    expect(error.changedModules).to.deep.equal(["database"]);
-  });
-
-  it("rejects a module requested at another version", async () => {
-    const config = runtimeConfig();
-    config.modules!.database = "2.0.0";
-
-    const error = await refreshError(config);
-
-    assert.ok(error instanceof BuildModuleSetChangedError);
-    expect(error.changedModules).to.deep.equal(["database"]);
-  });
-
-  it("rejects a local folder source, whose modules the build does not trace back to it", async () => {
-    const config = runtimeConfig();
-    delete config.modules!.api;
-    config.modules!.modules = {
-      source: { type: "local-folder", path: "./modules" },
-    };
-
-    const error = await refreshError(config);
-
-    assert.ok(error instanceof BuildModuleSetChangedError);
-    expect(error.changedModules).to.deep.equal(["api", "modules"]);
-  });
-
-  it("keeps configuration values out of the module set error", async () => {
-    const config = runtimeConfig();
-    config.modules!.database = {
-      version: "2.0.0",
-      config: { password: SECRET },
-    };
-
-    const error = await refreshError(config);
-    assert.ok(error instanceof Error);
-
-    expect(error.message).to.include("database");
-    expect(error.message).to.include("ajs project build");
-    expect(error.message).to.not.include(SECRET);
-  });
-
-  it("reads the build artifact without rewriting it", async () => {
-    const fs = await createProject(runtimeConfig());
-    await writeBuildArtifact(PROJECT, createArtifact(), fs);
-    const onDisk = await fs.readFileString(getBuildArtifactPath(PROJECT));
-
-    const refreshed = await readRefreshedBuildArtifact(PROJECT, ENV, fs);
-
-    expect(refreshed.modules.api.config).to.deep.equal({ token: SECRET });
-    expect(await fs.readFileString(getBuildArtifactPath(PROJECT))).to.equal(
-      onDisk,
-    );
-  });
-
-  it("finds a module set change among aggregated launch errors", () => {
-    const change = new BuildModuleSetChangedError(["api"]);
-
-    expect(findBuildModuleSetChange(change)).to.equal(change);
-    expect(
-      findBuildModuleSetChange(
-        new AggregateError([new Error("cleanup"), change], "launch failed"),
-      ),
-    ).to.equal(change);
-    expect(findBuildModuleSetChange(new Error("other"))).to.equal(undefined);
-  });
-});
+}

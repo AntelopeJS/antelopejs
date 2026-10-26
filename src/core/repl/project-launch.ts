@@ -68,9 +68,7 @@ function excludeProjectState(
 async function setupWatching(
   manager: ModuleManager,
   fs: NodeFileSystem,
-  projectFolder: string,
-  env: string,
-  options: LaunchOptions,
+  { projectFolder, env, options }: Omit<PostLaunch, "started">,
   shutdownManager: ShutdownManager,
   loaderContext: LoaderContext,
 ): Promise<void> {
@@ -143,9 +141,7 @@ async function startWatching({
   await setupWatching(
     started.manager,
     started.fs,
-    projectFolder,
-    env,
-    options,
+    { projectFolder, env, options },
     started.shutdownManager,
     await started.loadContext(),
   );

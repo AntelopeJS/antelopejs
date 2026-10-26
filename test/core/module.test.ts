@@ -23,270 +23,300 @@ const manifestFields = {
 };
 const manifest = manifestFixture(manifestFields);
 
-describe("Module", () => {
-  it("leaves no active owner token when a destroyed module is destroyed again", async () => {
-    const mod = new Module(
-      manifestFixture({ ...manifestFields, name: "twice-destroyed" }),
-      sinon.stub().resolves({ construct() {}, destroy() {} }),
-    );
-    const ownerTokens = () =>
-      [...internal.activeOwnerTokens.keys()].filter((owner) =>
-        owner.startsWith("twice-destroyed"),
-      );
+{
+  let registerModule: (this: Mocha.Suite) => void;
 
-    await mod.construct({});
-    expect(ownerTokens()).to.have.length(1);
-    await mod.destroy();
-    expect(ownerTokens()).to.deep.equal([]);
-    await mod.destroy();
+  const checkLeavesNoActiveOwnerToken: (this: Mocha.Suite) => void =
+    function () {
+      it("leaves no active owner token when a destroyed module is destroyed again", async () => {
+        const mod = new Module(
+          manifestFixture({ ...manifestFields, name: "twice-destroyed" }),
+          sinon.stub().resolves({ construct() {}, destroy() {} }),
+        );
+        const ownerTokens = () =>
+          [...internal.activeOwnerTokens.keys()].filter((owner) =>
+            owner.startsWith("twice-destroyed"),
+          );
 
-    expect(ownerTokens()).to.deep.equal([]);
-    expect(mod.state).to.equal(ModuleState.Loaded);
-  });
+        await mod.construct({});
+        expect(ownerTokens()).to.have.length(1);
+        await mod.destroy();
+        expect(ownerTokens()).to.deep.equal([]);
+        await mod.destroy();
 
-  it("publishes config variables and loads the module only once", async () => {
-    const callbacks = {
-      provide: sinon.stub().resolves({ API_PORT: 5010 }),
-      construct: sinon.spy(),
-    };
-    const loader = sinon.stub().resolves(callbacks);
-    const mod = new Module(manifest, loader);
-
-    const published = await mod.provide({ port: 5010 });
-    await mod.construct({ port: 5010 });
-
-    expect(published).to.deep.equal({ API_PORT: 5010 });
-    expect(loader.calledOnce).to.equal(true);
-    expect(callbacks.provide.calledOnce).to.equal(true);
-    expect(callbacks.construct.calledOnce).to.equal(true);
-    expect(mod.state).to.equal(ModuleState.Constructed);
-  });
-
-  it("publishes nothing once the module is constructed", async () => {
-    const callbacks = { provide: sinon.stub().resolves({ API_PORT: 5010 }) };
-    const mod = new Module(manifest, sinon.stub().resolves(callbacks));
-
-    await mod.construct({});
-    const published = await mod.provide({});
-
-    expect(published).to.equal(undefined);
-    expect(callbacks.provide.called).to.equal(false);
-  });
-
-  it("reloads the module code after a destroy", async () => {
-    const loader = sinon.stub().resolves({ construct: sinon.spy() });
-    const mod = new Module(manifest, loader);
-
-    await mod.construct({});
-    await mod.destroy();
-    await mod.construct({});
-
-    expect(loader.calledTwice).to.equal(true);
-  });
-
-  it("should load and run lifecycle callbacks", async () => {
-    const callbacks = {
-      construct: sinon.spy(),
-      start: sinon.spy(),
-      stop: sinon.spy(),
-      destroy: sinon.spy(),
-    };
-
-    const loader = sinon.stub().resolves(callbacks);
-    const mod = new Module(manifest, loader);
-
-    await mod.construct({ foo: "bar" });
-    await mod.start();
-    await mod.stop();
-    await mod.destroy();
-
-    expect(loader.calledOnce).to.equal(true);
-    expect(callbacks.construct.calledOnce).to.equal(true);
-    expect(callbacks.start.calledOnce).to.equal(true);
-    expect(callbacks.stop.calledOnce).to.equal(true);
-    expect(callbacks.destroy.calledOnce).to.equal(true);
-  });
-
-  it("runs a generation in one stable module context", async () => {
-    const contexts: ModuleExecutionContext[] = [];
-    const capture = () => {
-      const context = GetModuleContext();
-      if (context) {
-        contexts.push(context);
-      }
-    };
-    const mod = new Module(
-      manifestFixture({ ...manifestFields, name: "context-module" }),
-      async () => {
-        capture();
-        return {
-          construct: capture,
-          start: capture,
-          stop: capture,
-          destroy: capture,
-        };
-      },
-    );
-
-    await mod.construct({});
-    await mod.start();
-    await mod.stop();
-    await mod.destroy();
-
-    expect(contexts.map(({ module }) => module)).to.deep.equal(
-      Array(5).fill("context-module"),
-    );
-    expect(new Set(contexts.map(({ owner }) => owner)).size).to.equal(1);
-    expect(contexts[0].owner).to.match(/^context-module#\d+$/);
-  });
-
-  it("uses distinct owners for replacement generations", async () => {
-    const owners: Array<string | undefined> = [];
-    const createModule = () =>
-      new Module(
-        manifestFixture({ ...manifestFields, name: "replacement" }),
-        async () => ({
-          construct: () => {
-            owners.push(GetModuleContext()?.owner);
-          },
-        }),
-      );
-    const oldModule = createModule();
-    const replacement = createModule();
-
-    await oldModule.construct({});
-    await replacement.construct({});
-
-    expect(owners[0]).to.not.equal(owners[1]);
-  });
-
-  it("emits successful destroy from the generation context after retry", async () => {
-    const contexts: ModuleExecutionContext[] = [];
-    const emit = Events.ModuleDestroyed.emit.bind(Events.ModuleDestroyed);
-    const destroyed = sinon
-      .stub(Events.ModuleDestroyed, "emit")
-      .callsFake((moduleId) => {
-        const context = GetModuleContext();
-        if (context) {
-          contexts.push(context);
-        }
-        emit(moduleId);
+        expect(ownerTokens()).to.deep.equal([]);
+        expect(mod.state).to.equal(ModuleState.Loaded);
       });
-    const destroy = sinon.stub();
-    destroy.onFirstCall().rejects(new Error("destroy failed"));
-    destroy.onSecondCall().resolves();
-    const mod = new Module(manifest, sinon.stub().resolves({ destroy }));
 
-    try {
-      await mod.construct({});
-      await mod.destroy().catch(() => undefined);
-      await mod.destroy();
-      expect(destroyed.calledOnce).to.equal(true);
-      expect(contexts[0]).to.include({ module: "mod" });
-      expect(contexts[0].owner).to.match(/^mod#\d+$/);
-    } finally {
-      destroyed.restore();
-    }
-  });
+      it("publishes config variables and loads the module only once", async () => {
+        const callbacks = {
+          provide: sinon.stub().resolves({ API_PORT: 5010 }),
+          construct: sinon.spy(),
+        };
+        const loader = sinon.stub().resolves(callbacks);
+        const mod = new Module(manifest, loader);
 
-  it("should not reload callbacks when already constructed", async () => {
-    const loader = sinon.stub().resolves({});
-    const mod = new Module(manifest, loader);
+        const published = await mod.provide({ port: 5010 });
+        await mod.construct({ port: 5010 });
 
-    await mod.construct({});
-    await mod.construct({});
+        expect(published).to.deep.equal({ API_PORT: 5010 });
+        expect(loader.calledOnce).to.equal(true);
+        expect(callbacks.provide.calledOnce).to.equal(true);
+        expect(callbacks.construct.calledOnce).to.equal(true);
+        expect(mod.state).to.equal(ModuleState.Constructed);
+      });
 
-    expect(loader.calledOnce).to.equal(true);
-  });
+      it("publishes nothing once the module is constructed", async () => {
+        const callbacks = {
+          provide: sinon.stub().resolves({ API_PORT: 5010 }),
+        };
+        const mod = new Module(manifest, sinon.stub().resolves(callbacks));
 
-  it("should reload manifest and update version", async () => {
-    const reloadManifest = manifestFixture({
-      ...manifestFields,
-      version: "1.0.0",
-      reload: sinon.stub(),
-    });
-    reloadManifest.reload.callsFake(async () => {
-      reloadManifest.version = "1.0.1";
-    });
+        await mod.construct({});
+        const published = await mod.provide({});
 
-    const loader = sinon.stub().resolves({});
-    const mod = new Module(reloadManifest, loader);
+        expect(published).to.equal(undefined);
+        expect(callbacks.provide.called).to.equal(false);
+      });
 
-    await mod.reload();
+      it("reloads the module code after a destroy", async () => {
+        const loader = sinon.stub().resolves({ construct: sinon.spy() });
+        const mod = new Module(manifest, loader);
 
-    expect(reloadManifest.reload.calledOnce).to.equal(true);
-    expect(mod.version).to.equal("1.0.1");
-  });
+        await mod.construct({});
+        await mod.destroy();
+        await mod.construct({});
 
-  it("should throw and log when loader fails during construct", async () => {
-    const loader = sinon.stub().rejects(new Error("load failed"));
-    const mod = new Module(manifest, loader);
+        expect(loader.calledTwice).to.equal(true);
+      });
 
-    try {
-      await mod.construct({});
-      expect.fail("should have thrown");
-    } catch (err: any) {
-      expect(err.message).to.equal("load failed");
-    }
-  });
+      it("should load and run lifecycle callbacks", async () => {
+        const callbacks = {
+          construct: sinon.spy(),
+          start: sinon.spy(),
+          stop: sinon.spy(),
+          destroy: sinon.spy(),
+        };
 
-  it("should throw and log when manifest reload fails", async () => {
-    const reloadManifest = manifestFixture({
-      ...manifestFields,
-      reload: sinon.stub().rejects(new Error("reload failed")),
-    });
+        const loader = sinon.stub().resolves(callbacks);
+        const mod = new Module(manifest, loader);
 
-    const loader = sinon.stub().resolves({});
-    const mod = new Module(reloadManifest, loader);
+        await mod.construct({ foo: "bar" });
+        await mod.start();
+        await mod.stop();
+        await mod.destroy();
 
-    try {
-      await mod.reload();
-      expect.fail("should have thrown");
-    } catch (err: any) {
-      expect(err.message).to.equal("reload failed");
-    }
-  });
+        expect(loader.calledOnce).to.equal(true);
+        expect(callbacks.construct.calledOnce).to.equal(true);
+        expect(callbacks.start.calledOnce).to.equal(true);
+        expect(callbacks.stop.calledOnce).to.equal(true);
+        expect(callbacks.destroy.calledOnce).to.equal(true);
+      });
 
-  it("should throw and log when destroy fails", async () => {
-    const callbacks = {
-      destroy: sinon.stub().rejects(new Error("destroy failed")),
+      it("runs a generation in one stable module context", async () => {
+        const contexts: ModuleExecutionContext[] = [];
+        const capture = () => {
+          const context = GetModuleContext();
+          if (context) {
+            contexts.push(context);
+          }
+        };
+        const mod = new Module(
+          manifestFixture({ ...manifestFields, name: "context-module" }),
+          async () => {
+            capture();
+            return {
+              construct: capture,
+              start: capture,
+              stop: capture,
+              destroy: capture,
+            };
+          },
+        );
+
+        await mod.construct({});
+        await mod.start();
+        await mod.stop();
+        await mod.destroy();
+
+        expect(contexts.map(({ module }) => module)).to.deep.equal(
+          Array(5).fill("context-module"),
+        );
+        expect(new Set(contexts.map(({ owner }) => owner)).size).to.equal(1);
+        expect(contexts[0].owner).to.match(/^context-module#\d+$/);
+      });
     };
 
-    const loader = sinon.stub().resolves(callbacks);
-    const mod = new Module(manifest, loader);
+  const checkUsesDistinctOwnersForReplacement: (this: Mocha.Suite) => void =
+    function () {
+      it("uses distinct owners for replacement generations", async () => {
+        const owners: Array<string | undefined> = [];
+        const createModule = () =>
+          new Module(
+            manifestFixture({ ...manifestFields, name: "replacement" }),
+            async () => ({
+              construct: () => {
+                owners.push(GetModuleContext()?.owner);
+              },
+            }),
+          );
+        const oldModule = createModule();
+        const replacement = createModule();
 
-    await mod.construct({});
-    await mod.start();
+        await oldModule.construct({});
+        await replacement.construct({});
 
-    try {
-      await mod.destroy();
-      expect.fail("should have thrown");
-    } catch (err: any) {
-      expect(err.message).to.equal("destroy failed");
-    }
-  });
+        expect(owners[0]).to.not.equal(owners[1]);
+      });
 
-  it("should await async stop callback", async () => {
-    let stopResolved = false;
-    const callbacks = {
-      stop: async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 10);
+      it("emits successful destroy from the generation context after retry", async () => {
+        const contexts: ModuleExecutionContext[] = [];
+        const emit = Events.ModuleDestroyed.emit.bind(Events.ModuleDestroyed);
+        const destroyed = sinon
+          .stub(Events.ModuleDestroyed, "emit")
+          .callsFake((moduleId) => {
+            const context = GetModuleContext();
+            if (context) {
+              contexts.push(context);
+            }
+            emit(moduleId);
+          });
+        const destroy = sinon.stub();
+        destroy.onFirstCall().rejects(new Error("destroy failed"));
+        destroy.onSecondCall().resolves();
+        const mod = new Module(manifest, sinon.stub().resolves({ destroy }));
+
+        try {
+          await mod.construct({});
+          await mod.destroy().catch(() => undefined);
+          await mod.destroy();
+          expect(destroyed.calledOnce).to.equal(true);
+          expect(contexts[0]).to.include({ module: "mod" });
+          expect(contexts[0].owner).to.match(/^mod#\d+$/);
+        } finally {
+          destroyed.restore();
+        }
+      });
+
+      it("should not reload callbacks when already constructed", async () => {
+        const loader = sinon.stub().resolves({});
+        const mod = new Module(manifest, loader);
+
+        await mod.construct({});
+        await mod.construct({});
+
+        expect(loader.calledOnce).to.equal(true);
+      });
+
+      it("should reload manifest and update version", async () => {
+        const reloadManifest = manifestFixture({
+          ...manifestFields,
+          version: "1.0.0",
+          reload: sinon.stub(),
         });
-        stopResolved = true;
-      },
+        reloadManifest.reload.callsFake(async () => {
+          reloadManifest.version = "1.0.1";
+        });
+
+        const loader = sinon.stub().resolves({});
+        const mod = new Module(reloadManifest, loader);
+
+        await mod.reload();
+
+        expect(reloadManifest.reload.calledOnce).to.equal(true);
+        expect(mod.version).to.equal("1.0.1");
+      });
+
+      it("should throw and log when loader fails during construct", async () => {
+        const loader = sinon.stub().rejects(new Error("load failed"));
+        const mod = new Module(manifest, loader);
+
+        try {
+          await mod.construct({});
+          expect.fail("should have thrown");
+        } catch (err: any) {
+          expect(err.message).to.equal("load failed");
+        }
+      });
+
+      it("should throw and log when manifest reload fails", async () => {
+        const reloadManifest = manifestFixture({
+          ...manifestFields,
+          reload: sinon.stub().rejects(new Error("reload failed")),
+        });
+
+        const loader = sinon.stub().resolves({});
+        const mod = new Module(reloadManifest, loader);
+
+        try {
+          await mod.reload();
+          expect.fail("should have thrown");
+        } catch (err: any) {
+          expect(err.message).to.equal("reload failed");
+        }
+      });
     };
 
-    const loader = sinon.stub().resolves(callbacks);
-    const mod = new Module(manifest, loader);
+  const checkShouldThrowAndLogWhen: (this: Mocha.Suite) => void = function () {
+    it("should throw and log when destroy fails", async () => {
+      const callbacks = {
+        destroy: sinon.stub().rejects(new Error("destroy failed")),
+      };
 
-    await mod.construct({});
-    await mod.start();
-    await mod.stop();
+      const loader = sinon.stub().resolves(callbacks);
+      const mod = new Module(manifest, loader);
 
-    expect(stopResolved).to.equal(true);
+      await mod.construct({});
+      await mod.start();
+
+      try {
+        await mod.destroy();
+        expect.fail("should have thrown");
+      } catch (err: any) {
+        expect(err.message).to.equal("destroy failed");
+      }
+    });
+
+    it("should await async stop callback", async () => {
+      let stopResolved = false;
+      const callbacks = {
+        stop: async () => {
+          await new Promise((resolve) => {
+            setTimeout(resolve, 10);
+          });
+          stopResolved = true;
+        },
+      };
+
+      const loader = sinon.stub().resolves(callbacks);
+      const mod = new Module(manifest, loader);
+
+      await mod.construct({});
+      await mod.start();
+      await mod.stop();
+
+      expect(stopResolved).to.equal(true);
+    });
+  };
+
+  registerModule = () => {
+    describe("leaves no active owner token when a destroyed module is destroyed again", function () {
+      checkLeavesNoActiveOwnerToken.call(this);
+    });
+
+    describe("uses distinct owners for replacement generations", function () {
+      checkUsesDistinctOwnersForReplacement.call(this);
+    });
+
+    describe("should throw and log when destroy fails", function () {
+      checkShouldThrowAndLogWhen.call(this);
+    });
+  };
+
+  describe("Module", function () {
+    registerModule.call(this);
   });
-});
+}
 
 const SPANS_PER_CONSTRUCT = 2;
 

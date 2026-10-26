@@ -18,10 +18,12 @@ interface InitFlags {
   template?: string;
 }
 
-describe("createPrompter", () => {
-  afterEach(() => {
-    sinon.restore();
-  });
+{
+let registerCreatePrompter: (this: Mocha.Suite) => void;
+
+
+const checkTakesTheAnswerGivenOn: (this: Mocha.Suite) => void = function () {
+
 
   it("takes the answer given on the command line without asking", async () => {
     const prompts = fakePrompts({ isInteractive: false });
@@ -37,6 +39,7 @@ describe("createPrompter", () => {
     expect(prompts.asked).to.deep.equal([]);
   });
 
+
   it("answers with the default when defaults are accepted", async () => {
     const prompts = fakePrompts({ isInteractive: true });
     const prompter = createPrompter({ command: COMMAND, acceptsDefaults: true });
@@ -50,6 +53,7 @@ describe("createPrompter", () => {
     expect(isGitInitialized).to.equal(true);
     expect(prompts.asked).to.deep.equal([]);
   });
+
 
   it("asks when the session is interactive", async () => {
     const prompts = fakePrompts({ answers: ["pnpm"] });
@@ -74,6 +78,7 @@ describe("createPrompter", () => {
       { value: "pnpm", label: "pnpm", hint: "fast" },
     ]);
   });
+
 
   it("draws prompts on the prompt output stream", async () => {
     const prompts = fakePrompts({ answers: ["shop", true, ["api"]] });
@@ -106,6 +111,7 @@ describe("createPrompter", () => {
     expect(prompts.asked[2].options).to.include({ required: false });
   });
 
+
   it("fails with NeedsInputError naming the flag when it cannot ask", async () => {
     const prompts = fakePrompts({ isInteractive: false });
     const prompter = createPrompter({
@@ -127,6 +133,10 @@ describe("createPrompter", () => {
     ]);
     expect(prompts.asked).to.deep.equal([]);
   });
+};
+
+const checkDoesNotOfferDefaultsOn: (this: Mocha.Suite) => void = function () {
+
 
   it("does not offer defaults on a question without one", async () => {
     fakePrompts({ isInteractive: false });
@@ -141,6 +151,7 @@ describe("createPrompter", () => {
 
     expect(error).to.be.instanceOf(NeedsInputError);
   });
+
 
   it("answers an optional question with its default when it cannot ask", async () => {
     fakePrompts({ isInteractive: false });
@@ -157,6 +168,7 @@ describe("createPrompter", () => {
     expect(interfaces).to.deep.equal([]);
   });
 
+
   it("throws CancelledError when the prompt is cancelled", async () => {
     fakePrompts({ answers: [CANCEL] });
     const prompter = createPrompter({ command: COMMAND });
@@ -168,8 +180,13 @@ describe("createPrompter", () => {
     expect(error).to.be.instanceOf(CancelledError);
     expect(error.message).to.equal("Cancelled");
   });
+};
 
-  describe("requireAnswers", () => {
+let registerRequireAnswers: (this: Mocha.Suite) => void;
+{
+
+registerRequireAnswers = () => {
+
     it("names every missing flag at once when it cannot ask", () => {
       fakePrompts({ isInteractive: false });
       const prompter = createPrompter({ command: COMMAND });
@@ -187,6 +204,7 @@ describe("createPrompter", () => {
       }
     });
 
+
     it("accepts a run that can ask or takes the defaults", () => {
       fakePrompts({ isInteractive: true });
       expect(() =>
@@ -202,6 +220,7 @@ describe("createPrompter", () => {
       expect(() => withDefaults.requireAnswers(["--name <name>"])).not.to.throw();
     });
 
+
     it("accepts a run that gave every answer", () => {
       fakePrompts({ isInteractive: false });
 
@@ -209,8 +228,25 @@ describe("createPrompter", () => {
         createPrompter({ command: COMMAND }).requireAnswers([]),
       ).not.to.throw();
     });
+
+};
+}
+
+registerCreatePrompter = () => {
+
+  afterEach(() => {
+    sinon.restore();
   });
-});
+
+describe("takes the answer given on the command line without asking",function(){checkTakesTheAnswerGivenOn.call(this);});
+
+describe("does not offer defaults on a question without one",function(){checkDoesNotOfferDefaultsOn.call(this);});
+describe("requireAnswers", function(){registerRequireAnswers.call(this);});
+
+};
+
+describe("createPrompter", function(){registerCreatePrompter.call(this);});
+}
 
 describe("missingFlags", () => {
   it("lists the flags of the options left undefined", () => {

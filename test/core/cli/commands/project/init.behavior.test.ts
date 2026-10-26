@@ -101,395 +101,435 @@ async function failureOf<T>(run: () => Promise<T>): Promise<Error> {
   throw new Error("Expected project init to fail");
 }
 
-describe("project init behavior", () => {
+{
+  let registerProjectInitBehavior: (this: Mocha.Suite) => void;
+
   let tempRoot: string;
+
   let projectDir: string;
 
-  beforeEach(() => {
-    tempRoot = makeTempDir();
-    projectDir = `${tempRoot}/my-project`;
-  });
+  const checkCreatesProjectAndInitializesModule: (this: Mocha.Suite) => void =
+    function () {
+      it("creates project and initializes module", async () => {
+        const stubs = stubInit();
+        const prompts = fakePrompts({ answers: ["my-project", false] });
 
-  afterEach(() => {
-    sinon.restore();
-    cleanupTempDir(tempRoot);
-    process.exitCode = undefined;
-  });
+        await cmdInit().parseAsync(["node", "test", projectDir]);
 
-  it("creates project and initializes module", async () => {
-    const stubs = stubInit();
-    const prompts = fakePrompts({ answers: ["my-project", false] });
+        expect(stubs.writeConfig.calledOnce).to.equal(true);
+        expect(stubs.moduleInit.calledOnce).to.equal(true);
+        expect(stubs.add.calledOnce).to.equal(true);
+        expect(prompts.asked.map((prompt) => prompt.kind)).to.deep.equal([
+          "text",
+          "confirm",
+        ]);
+        expect(prompts.asked[0].options).to.include({
+          defaultValue: "my-project",
+        });
+      });
 
-    await cmdInit().parseAsync(["node", "test", projectDir]);
+      it("creates antelope.config.ts with defineConfig and minimal config", async () => {
+        const stubs = stubInit();
+        stubs.writeConfig.restore();
+        fakePrompts({ answers: ["my-project", false] });
 
-    expect(stubs.writeConfig.calledOnce).to.equal(true);
-    expect(stubs.moduleInit.calledOnce).to.equal(true);
-    expect(stubs.add.calledOnce).to.equal(true);
-    expect(prompts.asked.map((prompt) => prompt.kind)).to.deep.equal([
-      "text",
-      "confirm",
-    ]);
-    expect(prompts.asked[0].options).to.include({ defaultValue: "my-project" });
-  });
+        await cmdInit().parseAsync(["node", "test", projectDir]);
 
-  it("creates antelope.config.ts with defineConfig and minimal config", async () => {
-    const stubs = stubInit();
-    stubs.writeConfig.restore();
-    fakePrompts({ answers: ["my-project", false] });
+        const configContent = await readFile(
+          path.join(projectDir, "antelope.config.ts"),
+          "utf-8",
+        );
+        expect(configContent).to.include(
+          "import { defineConfig } from '@antelopejs/interface-core/config';",
+        );
+        expect(configContent).to.include("export default defineConfig({");
+        expect(configContent).to.include('name: "my-project"');
+        expect(configContent).to.include("modules: {}");
+      });
 
-    await cmdInit().parseAsync(["node", "test", projectDir]);
-
-    const configContent = await readFile(
-      path.join(projectDir, "antelope.config.ts"),
-      "utf-8",
-    );
-    expect(configContent).to.include(
-      "import { defineConfig } from '@antelopejs/interface-core/config';",
-    );
-    expect(configContent).to.include("export default defineConfig({");
-    expect(configContent).to.include('name: "my-project"');
-    expect(configContent).to.include("modules: {}");
-  });
-
-  it("creates a complete project without rewriting its dynamic config and prints its setup steps", async () => {
-    const stubs = stubInit();
-    stubs.moduleInit.restore();
-    stubs.writeConfig.restore();
-    stubs.add.restore();
-    stubs.readConfig.restore();
-    const config = `const database = process.env.MONGODB_DATABASE ?? "demo";
+      it("creates a complete project without rewriting its dynamic config and prints its setup steps", async () => {
+        const stubs = stubInit();
+        stubs.moduleInit.restore();
+        stubs.writeConfig.restore();
+        stubs.add.restore();
+        stubs.readConfig.restore();
+        const config = `const database = process.env.MONGODB_DATABASE ?? "demo";
 export default () => ({ name: "dashboard", modules: { mongodb: { config: { database } } } });
 `;
-    stubProjectTemplate(config);
-    fakePrompts({ isInteractive: false });
+        stubProjectTemplate(config);
+        fakePrompts({ isInteractive: false });
 
-    await cmdInit().parseAsync([
-      "node",
-      "test",
-      projectDir,
-      "--template",
-      "Dashboard",
-      "--no-git-init",
-    ]);
+        await cmdInit().parseAsync([
+          "node",
+          "test",
+          projectDir,
+          "--template",
+          "Dashboard",
+          "--no-git-init",
+        ]);
 
-    expect(
-      await readFile(path.join(projectDir, "antelope.config.ts"), "utf8"),
-    ).to.equal(config);
-    expect(stubs.feedback())
-      .to.include("pnpm setup")
-      .and.include("Prepare the dashboard");
-    expect(stubs.feedback()).to.not.include("ajs project dev --watch");
-    expect(
-      JSON.parse(await readFile(path.join(projectDir, "package.json"), "utf8"))
-        .packageManager,
-    ).to.equal("pnpm@10.2.0");
-  });
+        expect(
+          await readFile(path.join(projectDir, "antelope.config.ts"), "utf8"),
+        ).to.equal(config);
+        expect(stubs.feedback())
+          .to.include("pnpm setup")
+          .and.include("Prepare the dashboard");
+        expect(stubs.feedback()).to.not.include("ajs project dev --watch");
+        expect(
+          JSON.parse(
+            await readFile(path.join(projectDir, "package.json"), "utf8"),
+          ).packageManager,
+        ).to.equal("pnpm@10.2.0");
+      });
 
-  it("reports an existing project once, before any missing flag", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "existing" });
-    const writeStub = sinon.stub(common, "writeConfig").resolves();
-    const moduleInit = sinon.stub(moduleInitModule, "moduleInitCommand");
-    sinon.stub(console, "log");
-    fakePrompts({ isInteractive: false });
-    const existing = path.resolve(tempRoot, "existing");
+      it("reports an existing project once, before any missing flag", async () => {
+        sinon.stub(common, "readConfig").resolves({ name: "existing" });
+        const writeStub = sinon.stub(common, "writeConfig").resolves();
+        const moduleInit = sinon.stub(moduleInitModule, "moduleInitCommand");
+        sinon.stub(console, "log");
+        fakePrompts({ isInteractive: false });
+        const existing = path.resolve(tempRoot, "existing");
 
-    const failure = await failureOf(() =>
-      cmdInit().parseAsync(["node", "test", existing]),
-    );
+        const failure = await failureOf(() =>
+          cmdInit().parseAsync(["node", "test", existing]),
+        );
 
-    expect(failure).to.be.instanceOf(CliError);
-    expect(failure).to.not.be.instanceOf(NeedsInputError);
-    expectInstanceOf(failure, CliError);
-    expect(failure.problem).to.deep.equal({
-      title: `Project already exists at ${existing}`,
-      fixes: [
-        "Pass another directory: ajs project init <project>",
-        "Or delete the existing project",
-      ],
+        expect(failure).to.be.instanceOf(CliError);
+        expect(failure).to.not.be.instanceOf(NeedsInputError);
+        expectInstanceOf(failure, CliError);
+        expect(failure.problem).to.deep.equal({
+          title: `Project already exists at ${existing}`,
+          fixes: [
+            "Pass another directory: ajs project init <project>",
+            "Or delete the existing project",
+          ],
+        });
+        expect(failure.exitCode).to.equal(FAILURE_EXIT_CODE);
+        expect(writeStub.called).to.equal(false);
+        expect(moduleInit.called).to.equal(false);
+      });
+    };
+
+  const checkImportsAnExistingModuleWhen: (this: Mocha.Suite) => void =
+    function () {
+      it("imports an existing module when selected", async () => {
+        const stubs = stubInit();
+        fakePrompts({
+          answers: ["my-project", true, "git", "https://example.com/repo.git"],
+        });
+
+        await cmdInit().parseAsync(["node", "test", projectDir]);
+
+        expect(stubs.writeConfig.calledOnce).to.equal(true);
+        expect(stubs.add.calledOnce).to.equal(true);
+        expect(stubs.add.firstCall.args[0]).to.deep.equal([
+          "https://example.com/repo.git",
+        ]);
+        expect(stubs.add.firstCall.args[1]).to.deep.include({
+          mode: "git",
+          project: path.resolve(projectDir),
+        });
+        expect(stubs.moduleInit.called).to.equal(false);
+      });
+
+      it("passes the module flags and its prompter to module init", async () => {
+        const stubs = stubInit();
+        const prompts = fakePrompts({ isInteractive: false });
+
+        await cmdInit().parseAsync([
+          "node",
+          "test",
+          projectDir,
+          "--name",
+          "shop",
+          "--template",
+          "basic",
+          "--interfaces",
+          "api,auth",
+          "--pm",
+          "pnpm",
+          "--no-git-init",
+        ]);
+
+        expect(prompts.asked).to.deep.equal([]);
+        const [modulePath, moduleOptions, context] =
+          stubs.moduleInit.firstCall.args;
+        expect(modulePath).to.equal(path.resolve(projectDir));
+        expect(moduleOptions).to.deep.equal({
+          template: "basic",
+          interfaces: ["api", "auth"],
+          pm: "pnpm",
+          gitInit: false,
+        });
+        expect(context.isFromProject).to.equal(true);
+        expect(context.prompter.isInteractive).to.equal(false);
+        expect(stubs.writeConfig.firstCall.args[1]).to.deep.include({
+          name: "shop",
+        });
+      });
+
+      it("keeps --git out of the git repository toggle", async () => {
+        stubInit();
+        fakePrompts({ isInteractive: false });
+
+        let thrown: unknown;
+        try {
+          await cmdInit()
+            .exitOverride()
+            .configureOutput({ writeErr: () => undefined })
+            .parseAsync(["node", "test", projectDir, "--no-git"]);
+        } catch (error) {
+          thrown = error;
+        }
+
+        expectInstanceOf(thrown, CommanderError);
+        expect(thrown.code).to.equal("commander.unknownOption");
+      });
+
+      it("takes the defaults with --yes", async () => {
+        const stubs = stubInit();
+        const prompts = fakePrompts({ isInteractive: false });
+
+        await cmdInit().parseAsync(["node", "test", projectDir, "--yes"]);
+
+        expect(prompts.asked).to.deep.equal([]);
+        expect(stubs.moduleInit.calledOnce).to.equal(true);
+        expect(stubs.writeConfig.firstCall.args[1]).to.deep.include({
+          name: "my-project",
+        });
+      });
+
+      it("does not offer an import when a template is given", async () => {
+        const stubs = stubInit();
+        const prompts = fakePrompts({ answers: ["shop"] });
+
+        await cmdInit().parseAsync([
+          "node",
+          "test",
+          projectDir,
+          "--template",
+          "basic",
+        ]);
+
+        expect(prompts.messages()).to.deep.equal([
+          "What would you like to name your project?",
+        ]);
+        expect(stubs.moduleInit.calledOnce).to.equal(true);
+      });
+    };
+
+  const checkNamesTheDirectoryAfterThe: (this: Mocha.Suite) => void =
+    function () {
+      it("names the directory after the project without a terminal", async () => {
+        const stubs = stubInit();
+        const prompts = fakePrompts({ isInteractive: false });
+
+        await cmdInit().parseAsync([
+          "node",
+          "test",
+          projectDir,
+          "--template",
+          "basic",
+          "--pm",
+          "pnpm",
+          "--no-git-init",
+        ]);
+
+        expect(prompts.asked).to.deep.equal([]);
+        expect(stubs.writeConfig.firstCall.args[1]).to.deep.include({
+          name: "my-project",
+        });
+      });
+
+      it("names every missing flag without a terminal and writes nothing", async () => {
+        const stubs = stubInit();
+        stubs.moduleInit.restore();
+        sinon
+          .stub(common, "readUserConfig")
+          .resolves({ git: common.DEFAULT_GIT_REPO });
+        sinon.stub(gitOps, "loadManifestFromGit").resolves({
+          templates: [{ name: "basic", repository: "", branch: "" }],
+          interfaces: {},
+          starredInterfaces: [],
+        });
+        const copy = sinon.stub(gitOps, "copyTemplate");
+        fakePrompts({ isInteractive: false });
+
+        const failure = await failureOf(() =>
+          cmdInit().parseAsync(["node", "test", "demo", "--pm", "npm"]),
+        );
+
+        expect(failure).to.be.instanceOf(NeedsInputError);
+        expectInstanceOf(failure, NeedsInputError);
+        const needsInput = failure;
+        expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
+        expect(needsInput.problem.fixes).to.deep.equal([
+          "Pass them as flags: ajs project init demo --template <name> --[no-]git-init",
+          "Or accept the defaults: ajs project init demo --yes",
+        ]);
+        expect(copy.called).to.equal(false);
+        expect(stubs.writeConfig.called).to.equal(false);
+      });
+
+      it("omits cd instruction when initializing in current directory", async () => {
+        const stubs = stubInit();
+        fakePrompts({ answers: ["my-project", false] });
+
+        await cmdInit().parseAsync(["node", "test", "."]);
+
+        expect(stubs.feedback()).to.include("Created project my-project");
+        expect(stubs.feedback()).to.not.include("cd ");
+      });
+
+      it("reports a failed module creation once and writes no project", async () => {
+        const stubs = stubInit();
+        stubs.error.restore();
+        stubs.moduleInit.rejects(
+          new CliError({
+            title: "Could not fetch templates",
+            reason: "The repository does not exist.",
+            fixes: ["Or go back to the default repository: ajs config reset"],
+          }),
+        );
+        fakePrompts({ isInteractive: false });
+
+        await runWithErrorBoundary(async () => {
+          await cmdInit().parseAsync([
+            "node",
+            "test",
+            projectDir,
+            "--template",
+            "basic",
+            "--pm",
+            "pnpm",
+            "--no-git-init",
+          ]);
+        });
+
+        expect(stubs.feedback()).to.equal(
+          [
+            `${levels.error} Could not fetch templates`,
+            "  The repository does not exist.",
+            `  ${levels.hint} Or go back to the default repository: ajs config reset`,
+            "",
+          ].join("\n"),
+        );
+        expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
+        expect(stubs.writeConfig.called).to.equal(false);
+        expect(stubs.add.called).to.equal(false);
+        expect(existsSync(projectDir)).to.equal(false);
+      });
+    };
+
+  const checkLetsAnyModuleCreationFailure: (this: Mocha.Suite) => void =
+    function () {
+      it("lets any module creation failure reach the error boundary", async () => {
+        const stubs = stubInit();
+        stubs.moduleInit.callsFake(() => Promise.reject("boom"));
+        fakePrompts({ answers: ["my-project", false] });
+
+        let failure: unknown;
+        try {
+          await cmdInit().parseAsync(["node", "test", projectDir]);
+        } catch (error) {
+          failure = error;
+        }
+
+        expect(failure).to.equal("boom");
+        expect(stubs.add.called).to.equal(false);
+        expect(stubs.error.called).to.equal(false);
+        expect(process.exitCode).to.equal(undefined);
+      });
+
+      it("lets a usage error of module init reach the error boundary", async () => {
+        const stubs = stubInit();
+        const usageError = new CliError({
+          title: "Unknown template 'missing'",
+          exitCode: USAGE_EXIT_CODE,
+        });
+        stubs.moduleInit.rejects(usageError);
+        fakePrompts({ answers: ["my-project", false] });
+
+        const failure = await failureOf(() =>
+          cmdInit().parseAsync(["node", "test", projectDir]),
+        );
+
+        expect(failure).to.equal(usageError);
+        expect(stubs.error.called).to.equal(false);
+        expect(stubs.writeConfig.called).to.equal(false);
+      });
+
+      it("writes the project configuration only once the module is created", async () => {
+        const stubs = stubInit();
+        fakePrompts({ answers: ["my-project", false] });
+
+        await cmdInit().parseAsync(["node", "test", projectDir]);
+
+        expect(stubs.writeConfig.calledAfter(stubs.moduleInit)).to.equal(true);
+        expect(stubs.add.calledAfter(stubs.writeConfig)).to.equal(true);
+      });
+
+      it("leaves nothing behind when the module prompts are cancelled", async () => {
+        const stubs = stubInit();
+        const cancellation = new CancelledError();
+        stubs.moduleInit.rejects(cancellation);
+        fakePrompts({ answers: ["my-project", false] });
+
+        const failure = await failureOf(() =>
+          cmdInit().parseAsync(["node", "test", projectDir]),
+        );
+
+        expect(failure).to.equal(cancellation);
+        expect(stubs.writeConfig.called).to.equal(false);
+        expect(stubs.add.called).to.equal(false);
+        expect(stubs.error.called).to.equal(false);
+        expect(existsSync(projectDir)).to.equal(false);
+      });
+
+      it("leaves nothing behind when the import prompts are cancelled", async () => {
+        const stubs = stubInit();
+        fakePrompts({ answers: ["my-project", true, CANCEL] });
+
+        const failure = await failureOf(() =>
+          cmdInit().parseAsync(["node", "test", projectDir]),
+        );
+
+        expect(failure).to.be.instanceOf(CancelledError);
+        expect(stubs.writeConfig.called).to.equal(false);
+        expect(existsSync(projectDir)).to.equal(false);
+      });
+    };
+
+  registerProjectInitBehavior = () => {
+    beforeEach(() => {
+      tempRoot = makeTempDir();
+      projectDir = `${tempRoot}/my-project`;
     });
-    expect(failure.exitCode).to.equal(FAILURE_EXIT_CODE);
-    expect(writeStub.called).to.equal(false);
-    expect(moduleInit.called).to.equal(false);
-  });
 
-  it("imports an existing module when selected", async () => {
-    const stubs = stubInit();
-    fakePrompts({
-      answers: ["my-project", true, "git", "https://example.com/repo.git"],
+    afterEach(() => {
+      sinon.restore();
+      cleanupTempDir(tempRoot);
+      process.exitCode = undefined;
     });
 
-    await cmdInit().parseAsync(["node", "test", projectDir]);
-
-    expect(stubs.writeConfig.calledOnce).to.equal(true);
-    expect(stubs.add.calledOnce).to.equal(true);
-    expect(stubs.add.firstCall.args[0]).to.deep.equal([
-      "https://example.com/repo.git",
-    ]);
-    expect(stubs.add.firstCall.args[1]).to.deep.include({
-      mode: "git",
-      project: path.resolve(projectDir),
-    });
-    expect(stubs.moduleInit.called).to.equal(false);
-  });
-
-  it("passes the module flags and its prompter to module init", async () => {
-    const stubs = stubInit();
-    const prompts = fakePrompts({ isInteractive: false });
-
-    await cmdInit().parseAsync([
-      "node",
-      "test",
-      projectDir,
-      "--name",
-      "shop",
-      "--template",
-      "basic",
-      "--interfaces",
-      "api,auth",
-      "--pm",
-      "pnpm",
-      "--no-git-init",
-    ]);
-
-    expect(prompts.asked).to.deep.equal([]);
-    const [modulePath, moduleOptions, context] =
-      stubs.moduleInit.firstCall.args;
-    expect(modulePath).to.equal(path.resolve(projectDir));
-    expect(moduleOptions).to.deep.equal({
-      template: "basic",
-      interfaces: ["api", "auth"],
-      pm: "pnpm",
-      gitInit: false,
-    });
-    expect(context.isFromProject).to.equal(true);
-    expect(context.prompter.isInteractive).to.equal(false);
-    expect(stubs.writeConfig.firstCall.args[1]).to.deep.include({
-      name: "shop",
-    });
-  });
-
-  it("keeps --git out of the git repository toggle", async () => {
-    stubInit();
-    fakePrompts({ isInteractive: false });
-
-    let thrown: unknown;
-    try {
-      await cmdInit()
-        .exitOverride()
-        .configureOutput({ writeErr: () => undefined })
-        .parseAsync(["node", "test", projectDir, "--no-git"]);
-    } catch (error) {
-      thrown = error;
-    }
-
-    expectInstanceOf(thrown, CommanderError);
-    expect(thrown.code).to.equal("commander.unknownOption");
-  });
-
-  it("takes the defaults with --yes", async () => {
-    const stubs = stubInit();
-    const prompts = fakePrompts({ isInteractive: false });
-
-    await cmdInit().parseAsync(["node", "test", projectDir, "--yes"]);
-
-    expect(prompts.asked).to.deep.equal([]);
-    expect(stubs.moduleInit.calledOnce).to.equal(true);
-    expect(stubs.writeConfig.firstCall.args[1]).to.deep.include({
-      name: "my-project",
-    });
-  });
-
-  it("does not offer an import when a template is given", async () => {
-    const stubs = stubInit();
-    const prompts = fakePrompts({ answers: ["shop"] });
-
-    await cmdInit().parseAsync([
-      "node",
-      "test",
-      projectDir,
-      "--template",
-      "basic",
-    ]);
-
-    expect(prompts.messages()).to.deep.equal([
-      "What would you like to name your project?",
-    ]);
-    expect(stubs.moduleInit.calledOnce).to.equal(true);
-  });
-
-  it("names the directory after the project without a terminal", async () => {
-    const stubs = stubInit();
-    const prompts = fakePrompts({ isInteractive: false });
-
-    await cmdInit().parseAsync([
-      "node",
-      "test",
-      projectDir,
-      "--template",
-      "basic",
-      "--pm",
-      "pnpm",
-      "--no-git-init",
-    ]);
-
-    expect(prompts.asked).to.deep.equal([]);
-    expect(stubs.writeConfig.firstCall.args[1]).to.deep.include({
-      name: "my-project",
-    });
-  });
-
-  it("names every missing flag without a terminal and writes nothing", async () => {
-    const stubs = stubInit();
-    stubs.moduleInit.restore();
-    sinon
-      .stub(common, "readUserConfig")
-      .resolves({ git: common.DEFAULT_GIT_REPO });
-    sinon.stub(gitOps, "loadManifestFromGit").resolves({
-      templates: [{ name: "basic", repository: "", branch: "" }],
-      interfaces: {},
-      starredInterfaces: [],
-    });
-    const copy = sinon.stub(gitOps, "copyTemplate");
-    fakePrompts({ isInteractive: false });
-
-    const failure = await failureOf(() =>
-      cmdInit().parseAsync(["node", "test", "demo", "--pm", "npm"]),
-    );
-
-    expect(failure).to.be.instanceOf(NeedsInputError);
-    expectInstanceOf(failure, NeedsInputError);
-    const needsInput = failure;
-    expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
-    expect(needsInput.problem.fixes).to.deep.equal([
-      "Pass them as flags: ajs project init demo --template <name> --[no-]git-init",
-      "Or accept the defaults: ajs project init demo --yes",
-    ]);
-    expect(copy.called).to.equal(false);
-    expect(stubs.writeConfig.called).to.equal(false);
-  });
-
-  it("omits cd instruction when initializing in current directory", async () => {
-    const stubs = stubInit();
-    fakePrompts({ answers: ["my-project", false] });
-
-    await cmdInit().parseAsync(["node", "test", "."]);
-
-    expect(stubs.feedback()).to.include("Created project my-project");
-    expect(stubs.feedback()).to.not.include("cd ");
-  });
-
-  it("reports a failed module creation once and writes no project", async () => {
-    const stubs = stubInit();
-    stubs.error.restore();
-    stubs.moduleInit.rejects(
-      new CliError({
-        title: "Could not fetch templates",
-        reason: "The repository does not exist.",
-        fixes: ["Or go back to the default repository: ajs config reset"],
-      }),
-    );
-    fakePrompts({ isInteractive: false });
-
-    await runWithErrorBoundary(async () => {
-      await cmdInit().parseAsync([
-        "node",
-        "test",
-        projectDir,
-        "--template",
-        "basic",
-        "--pm",
-        "pnpm",
-        "--no-git-init",
-      ]);
+    describe("creates project and initializes module", function () {
+      checkCreatesProjectAndInitializesModule.call(this);
     });
 
-    expect(stubs.feedback()).to.equal(
-      [
-        `${levels.error} Could not fetch templates`,
-        "  The repository does not exist.",
-        `  ${levels.hint} Or go back to the default repository: ajs config reset`,
-        "",
-      ].join("\n"),
-    );
-    expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
-    expect(stubs.writeConfig.called).to.equal(false);
-    expect(stubs.add.called).to.equal(false);
-    expect(existsSync(projectDir)).to.equal(false);
-  });
-
-  it("lets any module creation failure reach the error boundary", async () => {
-    const stubs = stubInit();
-    stubs.moduleInit.callsFake(() => Promise.reject("boom"));
-    fakePrompts({ answers: ["my-project", false] });
-
-    let failure: unknown;
-    try {
-      await cmdInit().parseAsync(["node", "test", projectDir]);
-    } catch (error) {
-      failure = error;
-    }
-
-    expect(failure).to.equal("boom");
-    expect(stubs.add.called).to.equal(false);
-    expect(stubs.error.called).to.equal(false);
-    expect(process.exitCode).to.equal(undefined);
-  });
-
-  it("lets a usage error of module init reach the error boundary", async () => {
-    const stubs = stubInit();
-    const usageError = new CliError({
-      title: "Unknown template 'missing'",
-      exitCode: USAGE_EXIT_CODE,
+    describe("imports an existing module when selected", function () {
+      checkImportsAnExistingModuleWhen.call(this);
     });
-    stubs.moduleInit.rejects(usageError);
-    fakePrompts({ answers: ["my-project", false] });
 
-    const failure = await failureOf(() =>
-      cmdInit().parseAsync(["node", "test", projectDir]),
-    );
+    describe("names the directory after the project without a terminal", function () {
+      checkNamesTheDirectoryAfterThe.call(this);
+    });
 
-    expect(failure).to.equal(usageError);
-    expect(stubs.error.called).to.equal(false);
-    expect(stubs.writeConfig.called).to.equal(false);
+    describe("lets any module creation failure reach the error boundary", function () {
+      checkLetsAnyModuleCreationFailure.call(this);
+    });
+  };
+
+  describe("project init behavior", function () {
+    registerProjectInitBehavior.call(this);
   });
-
-  it("writes the project configuration only once the module is created", async () => {
-    const stubs = stubInit();
-    fakePrompts({ answers: ["my-project", false] });
-
-    await cmdInit().parseAsync(["node", "test", projectDir]);
-
-    expect(stubs.writeConfig.calledAfter(stubs.moduleInit)).to.equal(true);
-    expect(stubs.add.calledAfter(stubs.writeConfig)).to.equal(true);
-  });
-
-  it("leaves nothing behind when the module prompts are cancelled", async () => {
-    const stubs = stubInit();
-    const cancellation = new CancelledError();
-    stubs.moduleInit.rejects(cancellation);
-    fakePrompts({ answers: ["my-project", false] });
-
-    const failure = await failureOf(() =>
-      cmdInit().parseAsync(["node", "test", projectDir]),
-    );
-
-    expect(failure).to.equal(cancellation);
-    expect(stubs.writeConfig.called).to.equal(false);
-    expect(stubs.add.called).to.equal(false);
-    expect(stubs.error.called).to.equal(false);
-    expect(existsSync(projectDir)).to.equal(false);
-  });
-
-  it("leaves nothing behind when the import prompts are cancelled", async () => {
-    const stubs = stubInit();
-    fakePrompts({ answers: ["my-project", true, CANCEL] });
-
-    const failure = await failureOf(() =>
-      cmdInit().parseAsync(["node", "test", projectDir]),
-    );
-
-    expect(failure).to.be.instanceOf(CancelledError);
-    expect(stubs.writeConfig.called).to.equal(false);
-    expect(existsSync(projectDir)).to.equal(false);
-  });
-});
+}

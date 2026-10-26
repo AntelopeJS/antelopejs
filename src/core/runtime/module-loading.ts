@@ -1,107 +1,34 @@
-import * as coreInterfaceBeta from "@antelopejs/interface-core";
 import type {
   ModuleSource,
   ModuleSourceLocal,
 } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
-import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
-import path from "node:path";
 
-import { ModuleState } from "../../types";
-import type { ExpandedModuleConfig, ModuleDeclarationChanges } from "../config";
-import {
-  listModuleDeclarations,
-  removeModuleDeclaration,
-  saveModuleDeclaration,
-} from "../config";
+import type { ExpandedModuleConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { ManagedModule, ModuleConfig, ModuleManager } from "../modules";
-import { Module, ModuleCache, ModuleManifest, unpackErrors } from "../modules";
+import { ModuleCache, ModuleManifest, unpackErrors } from "../modules";
 import { pluralize, runTask } from "../output";
 import {
-  findUnresolvedInterfaces,
-  type InterfaceConsumer,
-  type InterfaceProvider,
-  type InterfaceResolutionResult,
-  type UnresolvedInterface,
-} from "../resolution";
+  registerCoreInterfaces as registerInterfaces,
+  registerCoreModuleInterface as registerModuleInterface,
+} from "./core-module-interface";
+import {
+  activateLoadedModules as activateModules,
+  ensureGraphIsValid as validateGraph,
+} from "./module-interfaces";
 import { moduleLoadFailure } from "./module-load-failure";
+import { reloadWatchedModule as reloadModule } from "./module-reloading";
 import type {
   LoaderConfig,
   LoaderContext,
   LoaderContextProvider,
   ModuleManifestEntry,
   ModuleOverrideMap,
-  ModuleOverrideRef,
   NormalizedLoadedConfig,
 } from "./runtime-types";
 
 const Logger = new Logging.Channel("loader");
-const CORE_MODULE_ID = "antelopejs";
-
-const MODULE_STATUS_MAP = {
-  loaded: "loaded",
-  constructed: "constructed",
-  active: "active",
-} satisfies Record<string, moduleInterfaceBeta.ModuleInfo["status"]>;
-
-function mapImportOverrides(
-  overrides?: Record<string, string[]>,
-): ModuleOverrideMap {
-  const mapped: ModuleOverrideMap = new Map();
-  if (!overrides) {
-    return mapped;
-  }
-
-  for (const [interfaceName, modules] of Object.entries(overrides)) {
-    const overrideEntries = modules.map((module): ModuleOverrideRef => ({
-      module,
-    }));
-    mapped.set(interfaceName, overrideEntries);
-  }
-
-  return mapped;
-}
-
-function exportImportOverrides(overrides?: ModuleOverrideMap) {
-  const result: Record<string, string[]> = {};
-  if (!overrides) {
-    return result;
-  }
-
-  for (const [interfaceName, modules] of overrides.entries()) {
-    result[interfaceName] = modules.flatMap((entry) =>
-      entry.module === undefined ? [] : [entry.module],
-    );
-  }
-
-  return result;
-}
-
-function getModuleStatus(module: {
-  state: string;
-}): moduleInterfaceBeta.ModuleInfo["status"] {
-  const statuses: typeof MODULE_STATUS_MAP &
-    Record<string, moduleInterfaceBeta.ModuleInfo["status"]> =
-    MODULE_STATUS_MAP;
-  return statuses[module.state] ?? "unknown";
-}
-
-function toModuleSource(
-  source: moduleInterfaceBeta.ModuleDefinition["source"],
-): ModuleSource {
-  const type = source?.type;
-  if (
-    type !== "local" &&
-    type !== "git" &&
-    type !== "package" &&
-    type !== "local-folder"
-  ) {
-    throw new Error(`Unsupported module source type: ${String(type)}`);
-  }
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Beta source declarations allow arbitrary id/ignoreCache values; validating more than type would change the accepted definition contract (#228).
-  return source as ModuleSource;
-}
 
 export async function createLoaderContext(
   config: LoaderConfig,
@@ -132,153 +59,25 @@ export async function createLoaderContext(
   };
 }
 
-/**
- * Takes down the running generation of every module `manifests` replaces, so
- * `LoadModule` on an id that is already loaded behaves like a reload. Without
- * this the replacement is required from the files the previous generation
- * left in the require cache, whose interface calls are bound to its
- * now-invalidated context: its `construct` fails with
- * `ModuleContextInvalidatedError`.
- */
-async function retireReplacedModules(
-  manager: ModuleManager,
-  manifests: ModuleManifest[],
-): Promise<void> {
-  for (const manifest of manifests) {
-    const previous = manager.getLoadedModuleEntry(manifest.name);
-    if (!previous) {
-      continue;
-    }
-    await previous.module.stop();
-    await previous.module.destroy();
-    manager.unrequireModuleFiles(manifest.name);
-  }
-}
-
-/**
- * Checks the interfaces of modules `LoadModule` just added, then constructs
- * and optionally starts them. When any of that fails, they are destroyed and
- * dropped again: a module left behind would still count as a consumer of its
- * interface packages, and every later load would fail its checks.
- */
 export async function activateLoadedModules(
   manager: ModuleManager,
   created: ManagedModule[],
   autostart: boolean,
 ): Promise<void> {
-  try {
-    ensureInterfacesResolved(manager, created);
-    await manager.constructModules(created);
-    if (autostart) {
-      await manager.startModules(created);
-    }
-  } catch (error) {
-    await Promise.allSettled(created.map(({ module }) => module.destroy()));
-    manager.discardModules(created.map(({ module }) => module.id));
-    throw error;
-  }
+  return activateModules(manager, created, autostart);
 }
 
 export function registerCoreModuleInterface(
   manager: ModuleManager,
   loadContext: LoaderContextProvider,
 ): void {
-  moduleInterfaceBeta.RunWithModuleContext({ module: CORE_MODULE_ID }, () =>
-    coreInterfaceBeta.ImplementInterface(moduleInterfaceBeta, {
-      ListModules: async () => manager.listModules(),
-      GetModuleInfo: async (moduleId: string) => {
-        const entry = manager.getModuleEntry(moduleId);
-        if (!entry) {
-          throw new Error(`Module not found: ${moduleId}`);
-        }
-
-        return {
-          source: entry.module.manifest.source,
-          config: entry.config.config,
-          disabledExports: [...(entry.config.disabledExports ?? new Set())],
-          importOverrides: exportImportOverrides(entry.config.importOverrides),
-          localPath: entry.module.manifest.folder,
-          status: getModuleStatus(entry.module),
-        };
-      },
-      LoadModule: async (
-        moduleId: string,
-        declaration: moduleInterfaceBeta.ModuleDefinition,
-        autostart = false,
-      ) => {
-        const source = toModuleSource(declaration.source);
-        const loaderContext = await loadContext();
-        const manifests = await loaderContext.registry.load(
-          loaderContext.projectFolder,
-          loaderContext.cache,
-          {
-            ...source,
-            id: moduleId,
-          },
-        );
-
-        await retireReplacedModules(manager, manifests);
-
-        const moduleConfig: ModuleConfig = {
-          config: declaration.config,
-          disabledExports: new Set(declaration.disabledExports ?? []),
-          importOverrides: mapImportOverrides(declaration.importOverrides),
-        };
-
-        const created = manager.addModules(
-          manifests.map((manifest) => ({ manifest, config: moduleConfig })),
-        );
-        await activateLoadedModules(manager, created, autostart);
-        return created.map(({ module }) => module.id);
-      },
-      StartModule: async (moduleId: string) => {
-        const entry = manager.getModuleEntry(moduleId);
-        if (entry) {
-          await manager.startModules([entry]);
-        }
-      },
-      StopModule: async (moduleId: string) => {
-        await manager.getModule(moduleId)?.stop();
-      },
-      DestroyModule: async (moduleId: string) => {
-        await manager.getModule(moduleId)?.destroy();
-      },
-      ListModuleDeclarations: async () =>
-        listModuleDeclarations((await loadContext()).projectFolder),
-      SaveModuleDeclaration: async (
-        moduleId: string,
-        changes: ModuleDeclarationChanges,
-      ) =>
-        saveModuleDeclaration(
-          (await loadContext()).projectFolder,
-          moduleId,
-          changes,
-        ),
-      RemoveModuleDeclaration: async (moduleId: string) =>
-        removeModuleDeclaration((await loadContext()).projectFolder, moduleId),
-      ReloadModule: async (moduleId: string) => {
-        await reloadLoadedModuleFromSource(
-          manager,
-          await loadContext(),
-          moduleId,
-        );
-      },
-    }),
-  );
+  return registerModuleInterface(manager, loadContext);
 }
 
 export async function registerCoreInterfaces(
   manager: ModuleManager,
 ): Promise<ModuleManifest> {
-  const coreFolder = path.resolve(path.join(__dirname, "..", "..", ".."));
-  const coreSource: ModuleSourceLocal = { type: "local", path: coreFolder };
-  const coreManifest = await ModuleManifest.create(
-    coreFolder,
-    coreSource,
-    "antelopejs",
-  );
-  manager.addStaticModule({ manifest: coreManifest });
-  return coreManifest;
+  return registerInterfaces(manager);
 }
 
 export function buildModuleOverrides(
@@ -419,144 +218,12 @@ export function getWatchDirs(source: ModuleSource): string[] {
   return localSource.watchDir ? [localSource.watchDir] : [""];
 }
 
-async function loadModuleManifestFromSource(
-  loaderContext: LoaderContext,
-  source: ModuleSource,
-  moduleId: string,
-  reload = false,
-): Promise<ModuleManifest> {
-  const manifests = await loaderContext.registry.load(
-    loaderContext.projectFolder,
-    loaderContext.cache,
-    {
-      ...source,
-      id: moduleId,
-    },
-    { reload },
-  );
-  const [manifest] = manifests;
-  if (!manifest) {
-    throw new Error(
-      `Failed to reload module ${moduleId}: no manifest returned`,
-    );
-  }
-  return manifest;
-}
-
-function ensureReloadedModuleId(module: Module, moduleId: string): void {
-  if (module.id !== moduleId) {
-    throw new Error(
-      `Reloaded module id mismatch: expected ${moduleId}, got ${module.id}`,
-    );
-  }
-}
-
-async function reloadLoadedModuleFromSource(
-  manager: ModuleManager,
-  loaderContext: LoaderContext,
-  moduleId: string,
-): Promise<void> {
-  const entry = manager.getLoadedModuleEntry(moduleId);
-  if (!entry) {
-    return;
-  }
-
-  const previous = entry.module;
-  const manifest = manager.placeModule(
-    moduleId,
-    await loadModuleManifestFromSource(
-      loaderContext,
-      previous.manifest.source,
-      moduleId,
-      true,
-    ),
-  );
-  const replacement = new Module(manifest);
-  try {
-    ensureReloadedModuleId(replacement, moduleId);
-    manager.checkReplacement(moduleId, replacement);
-  } catch (error) {
-    manager.discardPlacedModule(manifest);
-    throw error;
-  }
-  const previousWasActive = previous.state === ModuleState.Active;
-  try {
-    await previous.destroy();
-  } catch (error) {
-    manager.discardPlacedModule(manifest);
-    const recoveryErrors = await recoverPreviousModule(
-      manager,
-      entry,
-      previousWasActive,
-    );
-    throw new AggregateError(
-      [...unpackErrors(error), ...recoveryErrors],
-      `Failed to destroy module ${moduleId} during reload`,
-    );
-  }
-  manager.unrequireModuleFiles(moduleId);
-  await activateReplacement(manager, entry, replacement);
-}
-
-async function recoverPreviousModule(
-  manager: ModuleManager,
-  previous: ManagedModule,
-  previousWasActive: boolean,
-): Promise<unknown[]> {
-  if (!previousWasActive || previous.module.state !== ModuleState.Constructed) {
-    return [];
-  }
-  try {
-    await manager.startModules([previous]);
-    return [];
-  } catch (error) {
-    return [error];
-  }
-}
-
-async function activateReplacement(
-  manager: ModuleManager,
-  entry: ManagedModule,
-  replacement: Module,
-): Promise<void> {
-  let replacementInstalled = false;
-  try {
-    replacementInstalled = Boolean(
-      manager.replaceLoadedModule(replacement.id, replacement),
-    );
-    if (!replacementInstalled) {
-      throw new Error(`Failed to replace module ${replacement.id}`);
-    }
-    manager.refreshAssociations();
-    const replacementEntry = { module: replacement, config: entry.config };
-    await manager.constructModules([replacementEntry]);
-    await manager.startModules([replacementEntry]);
-  } catch (error) {
-    const cleanupErrors = replacementInstalled
-      ? await cleanupReplacement(replacement)
-      : [];
-    throw new AggregateError(
-      [...unpackErrors(error), ...cleanupErrors],
-      `Failed to activate replacement module ${replacement.id}`,
-    );
-  }
-}
-
-async function cleanupReplacement(replacement: Module): Promise<unknown[]> {
-  try {
-    await replacement.destroy();
-    return [];
-  } catch (error) {
-    return unpackErrors(error);
-  }
-}
-
 export async function reloadWatchedModule(
   manager: ModuleManager,
   moduleId: string,
   loaderContext: LoaderContext,
 ): Promise<void> {
-  await reloadLoadedModuleFromSource(manager, loaderContext, moduleId);
+  return reloadModule(manager, moduleId, loaderContext);
 }
 
 export async function loadModuleEntriesForManager(
@@ -612,83 +279,6 @@ export async function destroyModulesAfterFailure(
   throw error;
 }
 
-function collectInterfaceProviders(
-  manager: ModuleManager,
-): InterfaceProvider[] {
-  return manager.getAllManagedModules().map(({ module, config }) => ({
-    name: module.manifest.manifest.name,
-    implements: module.manifest.implements ?? [],
-    disabledExports: config.disabledExports,
-  }));
-}
-
-function collectStaticPackages(manager: ModuleManager): string[] {
-  const loadedIds = new Set(
-    [...manager.getLoadedModules()].map(({ module }) => module.id),
-  );
-  return manager
-    .getAllManagedModules()
-    .filter(({ module }) => !loadedIds.has(module.id))
-    .flatMap(({ module }) => [
-      module.manifest.manifest.name,
-      ...Object.keys(module.manifest.manifest.dependencies ?? {}),
-    ]);
-}
-
-function toInterfaceConsumer({ module }: ManagedModule): InterfaceConsumer {
-  return {
-    id: module.id,
-    folder: module.manifest.folder,
-    dependencies: module.manifest.manifest.dependencies ?? {},
-    optionalDependencies: module.manifest.manifest.optionalDependencies ?? {},
-  };
-}
-
-function unresolvedInterfacesError(unresolved: UnresolvedInterface[]): Error {
-  const details = unresolved
-    .map(
-      ({ moduleId, interfacePackage }) =>
-        `  - ${moduleId} requires ${interfacePackage}`,
-    )
-    .join("\n");
-  return new Error(
-    `Unresolved interface dependencies:\n${details}\n\nRun 'ajs project modules install' to resolve missing dependencies.`,
-  );
-}
-
-/**
- * Checks that every interface `consumers` require is implemented by a module
- * the manager holds, them included, and tells which optional ones nothing
- * implements.
- *
- * @throws the "Unresolved interface dependencies" error naming each missing
- * interface and the module that requires it.
- */
-function ensureInterfacesResolved(
-  manager: ModuleManager,
-  consumers: Iterable<ManagedModule>,
-): InterfaceResolutionResult {
-  const result = findUnresolvedInterfaces(
-    collectInterfaceProviders(manager),
-    [...consumers].map(toInterfaceConsumer),
-    collectStaticPackages(manager),
-  );
-  if (result.unresolved.length > 0) {
-    throw unresolvedInterfacesError(result.unresolved);
-  }
-  return result;
-}
-
-/**
- * Checks the interfaces of every loaded module at startup, and stubs the
- * optional ones nothing implements.
- */
 export function ensureGraphIsValid(manager: ModuleManager): void {
-  const { stubbed } = ensureInterfacesResolved(
-    manager,
-    manager.getLoadedModules(),
-  );
-  if (stubbed.length > 0) {
-    manager.registerStubbedInterfaces(stubbed);
-  }
+  return validateGraph(manager);
 }
