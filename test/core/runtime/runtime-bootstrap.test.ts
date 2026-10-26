@@ -1,5 +1,6 @@
 import sinon from "sinon";
 import { expect } from "chai";
+import assert from "node:assert/strict";
 import EventEmitter from "node:events";
 import { Logging } from "@antelopejs/interface-core/logging";
 import { ModuleContextInvalidatedError } from "@antelopejs/interface-core";
@@ -43,9 +44,10 @@ function loadBootstrapModule() {
   const modulePath =
     require.resolve("../../../src/core/runtime/runtime-bootstrap");
   delete require.cache[modulePath];
-  return require(
+  const bootstrap: typeof import("../../../src/core/runtime/runtime-bootstrap") = require(
     modulePath,
-  ) as typeof import("../../../src/core/runtime/runtime-bootstrap");
+  );
+  return bootstrap;
 }
 
 describe("runtime runtime-bootstrap", () => {
@@ -117,12 +119,10 @@ describe("runtime runtime-bootstrap", () => {
       bootstrap.setupProcessHandlers(shutdownManager);
       const withdraw = bootstrap.tolerateInvalidatedModuleWork();
       const current = snapshotProcessListeners();
-      const uncaught = current.uncaughtException.at(-1) as (
-        error: Error,
-      ) => void;
-      const rejection = current.unhandledRejection.at(-1) as (
-        reason: unknown,
-      ) => void;
+      const uncaught = current.uncaughtException.at(-1);
+      const rejection = current.unhandledRejection.at(-1);
+      assert.ok(uncaught);
+      assert.ok(rejection);
 
       uncaught(orphaned);
       rejection(orphaned);
@@ -252,10 +252,11 @@ describe("runtime runtime-bootstrap", () => {
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       name: "sample",
       cacheFolder: ".cache",
+      // @ts-expect-error Missing modules exercises runtime normalization of partially loaded input (#228).
       modules: undefined,
       envOverrides: {},
       logging: { enabled: true },
-    } as any);
+    });
 
     const setupLoggingStub = sinon.stub(logging, "setupAntelopeProjectLogging");
     const addFilterStub = sinon.stub(logging, "addChannelFilter");
@@ -289,9 +290,10 @@ describe("runtime runtime-bootstrap", () => {
       {
         name: "sample",
         cacheFolder: "/var/cache",
+        // @ts-expect-error Missing modules exercises runtime normalization of partially loaded input (#228).
         modules: undefined,
         envOverrides: {},
-      } as any,
+      },
       "/project",
     );
 
@@ -309,10 +311,9 @@ describe("runtime runtime-bootstrap", () => {
     try {
       bootstrap.setupProcessHandlers();
       const listeners = process.listeners("unhandledRejection");
-      const rejection = listeners[listeners.length - 1] as (
-        reason: unknown,
-      ) => void;
-      rejection(aggregate);
+      const rejection = listeners[listeners.length - 1];
+      assert.ok(rejection);
+      rejection(aggregate, Promise.resolve());
 
       expect(errorStub.args).to.deep.equal([
         ["Unhandled rejection:", aggregate],

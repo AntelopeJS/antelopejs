@@ -1,6 +1,11 @@
+import assert from "node:assert/strict";
 import sinon from "sinon";
 import { expect } from "chai";
-import type { AntelopeConfig } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  ModuleSourceLocal,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 
 import * as configLoader from "../../../src/core/config/config-loader";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
@@ -25,8 +30,8 @@ const OVERRIDE_VARIABLE = "ANTELOPEJS_TEST_DATABASE_HOST";
 
 function createEntry(
   name: string,
-  source: BuildModuleEntry["source"],
-  config: unknown,
+  source: (ModuleSourceLocal | ModuleSourcePackage) & { id: string },
+  config: BuildModuleEntry["config"],
 ): BuildModuleEntry {
   const folder = `/project/.antelope/cache/${name}`;
   return {
@@ -58,7 +63,7 @@ function createArtifact(): BuildArtifact {
     modules: {
       api: createEntry(
         "api",
-        { type: "local", path: "/project/modules/api", id: "api" } as never,
+        { type: "local", path: "/project/modules/api", id: "api" },
         { token: "placeholder" },
       ),
       database: createEntry(
@@ -68,7 +73,7 @@ function createArtifact(): BuildArtifact {
           package: "database",
           version: "1.0.0",
           id: "database",
-        } as never,
+        },
         { host: "localhost" },
       ),
     },
@@ -106,10 +111,13 @@ async function refresh(config: AntelopeConfig): Promise<BuildArtifact> {
   return refreshBuildArtifact(createArtifact(), loaded, ENV, PROJECT);
 }
 
-async function refreshError(config: AntelopeConfig): Promise<unknown> {
+async function refreshError(
+  config: AntelopeConfig,
+): Promise<Error | undefined> {
   try {
     await refresh(config);
   } catch (error) {
+    assert.ok(error instanceof Error);
     return error;
   }
   return undefined;
@@ -221,9 +229,8 @@ describe("runtime build-refresh", () => {
     const error = await refreshError(config);
 
     expect(error).to.be.instanceOf(BuildModuleSetChangedError);
-    expect((error as BuildModuleSetChangedError).changedModules).to.deep.equal([
-      "api",
-    ]);
+    assert.ok(error instanceof BuildModuleSetChangedError);
+    expect(error.changedModules).to.deep.equal(["api"]);
   });
 
   it("rejects a module the build does not contain", async () => {
@@ -232,9 +239,8 @@ describe("runtime build-refresh", () => {
 
     const error = await refreshError(config);
 
-    expect((error as BuildModuleSetChangedError).changedModules).to.deep.equal([
-      "cache",
-    ]);
+    assert.ok(error instanceof BuildModuleSetChangedError);
+    expect(error.changedModules).to.deep.equal(["cache"]);
   });
 
   it("rejects a build module the configuration no longer loads", async () => {
@@ -243,9 +249,8 @@ describe("runtime build-refresh", () => {
 
     const error = await refreshError(config);
 
-    expect((error as BuildModuleSetChangedError).changedModules).to.deep.equal([
-      "database",
-    ]);
+    assert.ok(error instanceof BuildModuleSetChangedError);
+    expect(error.changedModules).to.deep.equal(["database"]);
   });
 
   it("rejects a module requested at another version", async () => {
@@ -254,9 +259,8 @@ describe("runtime build-refresh", () => {
 
     const error = await refreshError(config);
 
-    expect((error as BuildModuleSetChangedError).changedModules).to.deep.equal([
-      "database",
-    ]);
+    assert.ok(error instanceof BuildModuleSetChangedError);
+    expect(error.changedModules).to.deep.equal(["database"]);
   });
 
   it("rejects a local folder source, whose modules the build does not trace back to it", async () => {
@@ -268,10 +272,8 @@ describe("runtime build-refresh", () => {
 
     const error = await refreshError(config);
 
-    expect((error as BuildModuleSetChangedError).changedModules).to.deep.equal([
-      "api",
-      "modules",
-    ]);
+    assert.ok(error instanceof BuildModuleSetChangedError);
+    expect(error.changedModules).to.deep.equal(["api", "modules"]);
   });
 
   it("keeps configuration values out of the module set error", async () => {
@@ -281,7 +283,8 @@ describe("runtime build-refresh", () => {
       config: { password: SECRET },
     };
 
-    const error = (await refreshError(config)) as Error;
+    const error = await refreshError(config);
+    assert.ok(error instanceof Error);
 
     expect(error.message).to.include("database");
     expect(error.message).to.include("ajs project build");

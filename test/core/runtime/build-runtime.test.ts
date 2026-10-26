@@ -1,4 +1,7 @@
+import { manifestFixture } from "../../helpers/module-fixtures";
+import assert from "node:assert/strict";
 import sinon from "sinon";
+import { NodeFileSystem } from "../../../src/core/filesystem";
 import { expect } from "chai";
 import { Logging } from "@antelopejs/interface-core/logging";
 
@@ -24,7 +27,7 @@ import {
 function createBuildModuleEntry(
   overrides?: Partial<BuildModuleEntry>,
 ): BuildModuleEntry {
-  return {
+  return manifestFixture({
     folder: "/modules/alpha",
     source: { type: "local" },
     name: "alpha",
@@ -37,7 +40,7 @@ function createBuildModuleEntry(
     baseUrl: "/modules/alpha",
     paths: [],
     ...overrides,
-  };
+  });
 }
 
 function createArtifact(
@@ -72,10 +75,12 @@ describe("runtime build-runtime", () => {
         ],
         disabledExports: ["core@beta"],
       }),
-      beta: createBuildModuleEntry({
-        name: "beta",
-        folder: "/modules/beta",
-      }),
+      beta: createBuildModuleEntry(
+        manifestFixture({
+          name: "beta",
+          folder: "/modules/beta",
+        }),
+      ),
     });
 
     const entries = mapArtifactModuleEntries(artifact);
@@ -137,7 +142,8 @@ describe("runtime build-runtime", () => {
     }
 
     expect(thrown).to.be.instanceOf(Error);
-    expect((thrown as Error).message).to.include("No build found");
+    assert.ok(thrown instanceof Error);
+    expect(thrown.message).to.include("No build found");
   });
 
   it("warns when build is stale or hash computation fails", async () => {
@@ -145,13 +151,21 @@ describe("runtime build-runtime", () => {
     const warnStub = sinon.stub(Logging, "Warn");
 
     sinon.stub(buildArtifact, "computeConfigHash").resolves("hash");
-    await warnIfBuildIsStale("/project", artifact, {} as any);
+    await warnIfBuildIsStale(
+      "/project",
+      artifact,
+      sinon.createStubInstance(NodeFileSystem),
+    );
     expect(warnStub.called).to.equal(false);
 
     sinon.restore();
     const warnStubStale = sinon.stub(Logging, "Warn");
     sinon.stub(buildArtifact, "computeConfigHash").resolves("new-hash");
-    await warnIfBuildIsStale("/project", artifact, {} as any);
+    await warnIfBuildIsStale(
+      "/project",
+      artifact,
+      sinon.createStubInstance(NodeFileSystem),
+    );
     expect(warnStubStale.calledOnce).to.equal(true);
 
     sinon.restore();
@@ -159,7 +173,11 @@ describe("runtime build-runtime", () => {
     sinon
       .stub(buildArtifact, "computeConfigHash")
       .rejects(new Error("hash fail"));
-    await warnIfBuildIsStale("/project", artifact, {} as any);
+    await warnIfBuildIsStale(
+      "/project",
+      artifact,
+      sinon.createStubInstance(NodeFileSystem),
+    );
     expect(warnStubError.calledOnce).to.equal(true);
   });
 
@@ -173,7 +191,9 @@ describe("runtime build-runtime", () => {
     await ensureBuildModulesExist(artifact, fs);
 
     const missingArtifact = createArtifact({
-      beta: createBuildModuleEntry({ name: "beta", folder: "/modules/beta" }),
+      beta: createBuildModuleEntry(
+        manifestFixture({ name: "beta", folder: "/modules/beta" }),
+      ),
     });
 
     let thrown: unknown;
@@ -184,7 +204,8 @@ describe("runtime build-runtime", () => {
     }
 
     expect(thrown).to.be.instanceOf(Error);
-    expect((thrown as Error).message).to.include("Module 'beta' not found");
+    assert.ok(thrown instanceof Error);
+    expect(thrown.message).to.include("Module 'beta' not found");
   });
 
   it("writes project build artifact with module overrides", async () => {
@@ -199,10 +220,10 @@ describe("runtime build-runtime", () => {
 
     const entries: ModuleManifestEntry[] = [
       {
-        manifest: {
+        manifest: manifestFixture({
           name: "alpha",
           serialize: () => createBuildModuleEntry(),
-        } as any,
+        }),
         config: {
           config: { feature: true },
           importOverrides: new Map([
@@ -212,11 +233,11 @@ describe("runtime build-runtime", () => {
         },
       },
       {
-        manifest: {
+        manifest: manifestFixture({
           name: "beta",
           serialize: () =>
             createBuildModuleEntry({ name: "beta", folder: "/modules/beta" }),
-        } as any,
+        }),
         config: {
           config: { enabled: true },
         },
@@ -232,9 +253,9 @@ describe("runtime build-runtime", () => {
       fs,
     );
 
-    const written = JSON.parse(
+    const written: BuildArtifact = JSON.parse(
       await fs.readFileString("/project/.antelope/build/build.json", "utf-8"),
-    ) as BuildArtifact;
+    );
 
     expect(written.configHash).to.equal("computed-hash");
     expect(written.env).to.equal("production");
