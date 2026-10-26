@@ -1,19 +1,22 @@
-import path from "node:path";
-import type * as TypeScript from "typescript";
-import { homedir } from "node:os";
-import { mkdirSync } from "node:fs";
-import { stat, writeFile as writeFileNode } from "node:fs/promises";
 import type {
   AntelopeConfig,
   AntelopeModuleConfig,
 } from "@antelopejs/interface-core/config";
+import { mkdirSync } from "node:fs";
+import { stat, writeFile as writeFileNode } from "node:fs/promises";
+import { homedir } from "node:os";
+import path from "node:path";
+import type * as TypeScript from "typescript";
 
-import { CliError, getProcessUi } from "../core/output/index";
-import type { IFileSystem } from "../types/index";
-import { NodeFileSystem } from "../core/filesystem/index";
-import { loadTsConfigFile } from "../core/config/config-loader";
-import type { ModulePackageJson } from "../core/modules/module-manifest";
-import { TS_CONFIG_FILE, tryFindConfigPath } from "../core/config/config-paths";
+import {
+  loadTsConfigFile,
+  tryFindConfigPath,
+  TS_CONFIG_FILE,
+} from "../core/config";
+import { NodeFileSystem } from "../core/filesystem";
+import type { ModulePackageJson } from "../core/modules";
+import { CliError, getProcessUi } from "../core/output";
+import type { IFileSystem } from "../types";
 
 const DEFAULT_INDENTATION = "  ";
 const DEFINE_CONFIG_IMPORT_LINE =

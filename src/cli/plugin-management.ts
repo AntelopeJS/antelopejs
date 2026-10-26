@@ -1,19 +1,32 @@
-import { CORE_PACKAGE_NAME, getCoreVersion } from "./core-version";
-import { runGlobalInstall } from "./command-runner";
-import { consoleOutput, type CommandOutput } from "../core/output/cli-ui";
-import type { InheritedProcessOptions } from "./process-runner";
 import {
   FAILURE_EXIT_CODE,
   SUCCESS_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../core/output/exit-codes";
-import {
+  consoleOutput,
   displayPath,
   getProcessPalette,
   type CliProblem,
+  type CommandOutput,
   type TableColumn,
   type Ui,
-} from "../core/output/index";
+} from "../core/output";
+import { runGlobalInstall } from "./command-runner";
+import { CORE_PACKAGE_NAME, getCoreVersion } from "./core-version";
+import {
+  LOCAL_EXECUTABLE_SOURCE,
+  PATH_EXECUTABLE_SOURCE,
+  resolveExecutable,
+  type ExecutableLookup,
+  type ExecutableSource,
+} from "./executable-lookup";
+import {
+  detectGlobalInstallation,
+  formatGlobalCommand,
+  getGlobalInstallCommand,
+  getLatestPackageSpec,
+  type GlobalInstallation,
+  type GlobalInstallationDetector,
+} from "./global-package-manager";
 import {
   evaluatePluginCompatibility,
   type PluginCompatibility,
@@ -28,21 +41,7 @@ import {
   officialPluginNames,
   type OfficialPlugin,
 } from "./plugin-registry";
-import {
-  detectGlobalInstallation,
-  formatGlobalCommand,
-  getGlobalInstallCommand,
-  getLatestPackageSpec,
-  type GlobalInstallation,
-  type GlobalInstallationDetector,
-} from "./global-package-manager";
-import {
-  LOCAL_EXECUTABLE_SOURCE,
-  PATH_EXECUTABLE_SOURCE,
-  resolveExecutable,
-  type ExecutableLookup,
-  type ExecutableSource,
-} from "./executable-lookup";
+import type { InheritedProcessOptions } from "./process-runner";
 
 export interface PluginStatus {
   plugin: OfficialPlugin;

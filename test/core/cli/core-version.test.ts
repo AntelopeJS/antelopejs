@@ -1,8 +1,8 @@
+import { expect } from "chai";
 import fs from "node:fs";
 import sinon from "sinon";
-import { expect } from "chai";
 
-import { getCoreVersion } from "../../../src/cli/core-version";
+import { getCoreVersion } from "../../../src/cli";
 
 describe("Core version", () => {
   afterEach(() => {

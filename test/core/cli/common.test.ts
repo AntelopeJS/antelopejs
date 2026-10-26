@@ -1,10 +1,6 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import { getProcessUi } from "../../../src/core/output/index";
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
-import * as configLoader from "../../../src/core/config/config-loader";
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   DEFAULT_GIT_REPO,
   detectIndentation,
@@ -15,7 +11,11 @@ import {
   writeConfig,
   writeModuleManifest,
   writeUserConfig,
-} from "../../../src/cli/common";
+} from "../../../src/cli";
+import { configLoaderModule as configLoader } from "../../../src/core/config";
+import { getProcessUi } from "../../../src/core/output";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 describe("CLI Common", () => {
   afterEach(() => {

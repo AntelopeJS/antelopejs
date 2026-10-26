@@ -1,9 +1,8 @@
 import { Command } from "commander";
 
-import type { Ui } from "../../core/output/index";
-import { Options } from "../options";
-import { type HelpExample, withExamples } from "../../core/output/help";
+import { type HelpExample, type Ui, withExamples } from "../../core/output";
 import { lazyAction } from "../lazy-action";
+import { Options } from "../options";
 
 const PLUGINS_SUMMARY = "List official plugins";
 const PLUGINS_EXAMPLES: HelpExample[] = [

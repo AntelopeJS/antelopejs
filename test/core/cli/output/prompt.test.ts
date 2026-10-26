@@ -1,16 +1,15 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
 import {
-  CancelledError,
-  createPrompter,
-  missingFlags,
-  NeedsInputError,
-  promptEnvironment,
-} from "../../../../src/core/output/index";
-import { USAGE_EXIT_CODE } from "../../../../src/core/output/exit-codes";
-import { CANCEL, fakePrompts } from "../../../helpers/fake-prompts";
-import { expectInstanceOf, rejectionOf } from "../fixtures";
+CancelledError,
+createPrompter,
+missingFlags,
+NeedsInputError,
+promptEnvironment,USAGE_EXIT_CODE
+} from "../../../../src/core/output";
+import { CANCEL,fakePrompts } from "../../../helpers/fake-prompts";
+import { expectInstanceOf,rejectionOf } from "../fixtures";
 
 const COMMAND = "ajs project init demo";
 

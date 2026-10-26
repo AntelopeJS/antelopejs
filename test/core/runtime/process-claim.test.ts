@@ -1,26 +1,24 @@
+import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
-import { expect } from "chai";
 
-import { managerFixture } from "../../helpers/module-fixtures";
-import type { ShutdownManager } from "../../../src/core/runtime/shutdown/index";
-import * as processTree from "../../../src/core/runtime/shutdown/process-tree";
-import { captureOutputAsync } from "../../helpers/capture-output";
 import {
   CANCELLED_EXIT_CODE,
   SUCCESS_EXIT_CODE,
-} from "../../../src/core/output/exit-codes";
-import {
-  DEFAULT_RUNTIME_POLICY,
-  EMBEDDED_RUNTIME_POLICY,
-  resolveRuntimePolicy,
-} from "../../../src/core/runtime/runtime-policy";
+} from "../../../src/core/output";
+import type { ShutdownManager } from "../../../src/core/runtime";
 import {
   claimProcess,
   createShutdownManager,
+  DEFAULT_RUNTIME_POLICY,
+  EMBEDDED_RUNTIME_POLICY,
   getActiveShutdownManager,
+  shutdownProcessTreeModule as processTree,
   registerModuleShutdownHandler,
-} from "../../../src/core/runtime/process-claim";
+  resolveRuntimePolicy,
+} from "../../../src/core/runtime";
+import { captureOutputAsync } from "../../helpers/capture-output";
+import { managerFixture } from "../../helpers/module-fixtures";
 
 const SHUTDOWN_TIMEOUT_MS = 10000;
 

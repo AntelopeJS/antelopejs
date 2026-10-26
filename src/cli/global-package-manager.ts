@@ -1,13 +1,13 @@
-import { join } from "node:path";
-import { realpathSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { realpathSync } from "node:fs";
+import { join } from "node:path";
 
-import { buildProcessInvocation } from "../core/output/windows-command-line";
 import {
+  buildProcessInvocation,
   DEFAULT_PACKAGE_MANAGER,
   packageManagerExecutable,
   type PackageManagerName,
-} from "../core/output/package-manager-name";
+} from "../core/output";
 
 const LATEST_TAG = "latest";
 const GLOBAL_ROOT_TIMEOUT_MS = 5000;

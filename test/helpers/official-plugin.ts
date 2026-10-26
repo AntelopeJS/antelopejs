@@ -1,9 +1,11 @@
 import path from "node:path";
 
-import type { PluginPackageReader } from "../../src/cli/plugin-package";
-import type { PluginDelegationDependencies } from "../../src/cli/plugin";
+import type {
+  PluginDelegationDependencies,
+  PluginPackageReader,
+  ResolvedExecutable,
+} from "../../src/cli";
 import { createGlobalRootResolver, createPackageReader } from "./cli-plugins";
-import type { ResolvedExecutable } from "../../src/cli/executable-lookup";
 
 export const DMS_PACKAGE_NAME = "@antelopejs/dms-frontend";
 export const DMS_EXECUTABLE = "/usr/bin/ajs-dms";

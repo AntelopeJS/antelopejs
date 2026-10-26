@@ -1,7 +1,7 @@
-import path from "node:path";
-import { homedir } from "node:os";
-import lockfile from "proper-lockfile";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
+import lockfile from "proper-lockfile";
 
 const DEFAULT_LOCK_TIMEOUT_MS = 30000;
 

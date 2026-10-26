@@ -5,7 +5,7 @@ import {
   ConfigEditError,
   removeModuleEntry,
   setModuleEntry,
-} from "../../../src/core/config/config-editor";
+} from "../../../src/core/config";
 
 const FILE = "antelope.config.ts";
 

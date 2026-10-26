@@ -1,4 +1,4 @@
-import { formatHelpItem, helpWidth } from "../core/output/help";
+import { formatHelpItem, helpWidth } from "../core/output";
 
 const PLUGIN_NAME_WIDTH = 9;
 

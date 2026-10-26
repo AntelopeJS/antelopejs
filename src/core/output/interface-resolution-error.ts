@@ -1,4 +1,4 @@
-import type { ResolvedPackage } from "../../utils/package-resolution";
+import type { ResolvedPackage } from "../../utils";
 
 const INTERFACE_RESOLUTION_ERROR_NAME = "InterfaceResolutionError";
 const INTERFACE_RESOLUTION_HEADLINE =

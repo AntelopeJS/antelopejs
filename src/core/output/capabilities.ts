@@ -1,3 +1,4 @@
+import { isEnabledFlag, isSet } from "./flags";
 import type {
   CapabilityContext,
   ChannelFlags,
@@ -6,7 +7,6 @@ import type {
   OutputStream,
   OutputStreams,
 } from "./types";
-import { isEnabledFlag, isSet } from "./flags";
 import { isQuietRun, isVerboseRun } from "./verbosity";
 
 interface EnvironmentMatch {

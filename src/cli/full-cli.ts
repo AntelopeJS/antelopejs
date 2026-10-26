@@ -1,33 +1,31 @@
-import { type AddHelpTextContext, Command } from "commander";
+import { Command, type AddHelpTextContext } from "commander";
 
-import { Options } from "./options";
-import {
-  getProcessPalette,
-  normalizeVerboseArguments,
-  unbreakable,
-  wrapText,
-} from "../core/output/index";
-import cmdConfig from "./commands/config/index";
-import cmdModule from "./commands/module/index";
-import cmdUpdate from "./commands/update";
-import cmdPlugins from "./commands/plugins";
-import cmdProject from "./commands/project/index";
-import { getCoreVersion } from "./core-version";
-import { formatUsageErrors } from "../core/output/usage-errors";
 import {
   applyHelpConventions,
   formatExamples,
+  formatUsageErrors,
+  getProcessPalette,
   helpTextWidth,
+  normalizeVerboseArguments,
+  unbreakable,
+  wrapText,
   type HelpExample,
-} from "../core/output/help";
-import { reportAvailableUpdate, startUpdateCheck } from "./version-check";
-import { formatOfficialPluginsHelp } from "./plugin-registry";
+} from "../core/output";
 import {
   addChannelFilter,
   defaultConfigLogging,
   setLogAudience,
   setupAntelopeProjectLogging,
-} from "../logging/index";
+} from "../logging";
+import cmdConfig from "./commands/config/index";
+import cmdModule from "./commands/module/index";
+import cmdPlugins from "./commands/plugins";
+import cmdProject from "./commands/project/index";
+import cmdUpdate from "./commands/update";
+import { getCoreVersion } from "./core-version";
+import { Options } from "./options";
+import { formatOfficialPluginsHelp } from "./plugin-registry";
+import { reportAvailableUpdate, startUpdateCheck } from "./version-check";
 
 const HELP_COMMAND_NAME = "help";
 const BARE_INVOCATION_ARGUMENT_COUNT = 2;

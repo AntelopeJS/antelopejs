@@ -1,13 +1,13 @@
 import { Command, Option } from "commander";
 
-import { withExamples } from "../../../../core/output/help";
-import { FORMATTER_LEVELS } from "./set-operations";
+import { withExamples } from "../../../../core/output";
 import { lazyAction } from "../../../lazy-action";
 import {
   addRenamedOption,
   Options,
   type RenamedOption,
 } from "../../../options";
+import { FORMATTER_LEVELS } from "./set-operations";
 
 const RENAMED_OPTIONS: RenamedOption[] = [
   {

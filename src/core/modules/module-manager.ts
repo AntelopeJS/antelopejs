@@ -1,8 +1,51 @@
+import type { ConfigVars } from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
 import * as path from "node:path";
 import { satisfies, validRange } from "semver";
-import { Logging } from "@antelopejs/interface-core/logging";
-import type { ConfigVars } from "@antelopejs/interface-core/config";
 
+import { ModuleState } from "../../types";
+import {
+  clearPathResolutionCache,
+  createPathWithinMatcher,
+  type PathMatcher,
+  type ResolvedPackage,
+  resolvePackage,
+  resolvePackageAtRoot,
+} from "../../utils";
+import {
+  buildConfigVarPlan,
+  type ConfigVarPlan,
+  ConfigVarStore,
+  declaredConfigVars,
+} from "../config";
+import {
+  type InterfaceRangeConflict,
+  InterfaceResolutionError,
+  type PreloadedInterfaceCopy,
+} from "../output";
+import type {
+  BindingConnection,
+  BindingGraph,
+  BindingInterface,
+  BindingModule,
+  UnresolvedInterface,
+} from "../resolution";
+import {
+  buildBindingGraph,
+  clearStubInterfaceWarnings,
+  InterfaceBindingError,
+  logStubInterfaceWarningOnce,
+  neutralizeInterfacePackage,
+  readInterfaceDependencies,
+} from "../resolution";
+import {
+  type InterfaceConnectionRef,
+  InterfaceRegistry,
+} from "./interface-registry";
+import {
+  announceModulesStarted,
+  announceModulesStopping,
+} from "./lifecycle-signals";
 import { Module } from "./module";
 import {
   aggregateErrors,
@@ -11,57 +54,14 @@ import {
 } from "./module-errors";
 import { ModuleIsolation } from "./module-isolation";
 import {
-  announceModulesStarted,
-  announceModulesStopping,
-} from "./lifecycle-signals";
-import { ModuleState } from "../../types/index";
-import { ModuleTracker } from "./module-tracker";
-import { Resolver } from "./resolver";
-import { ModuleRegistry } from "./module-registry";
-import { PathMapper } from "./path-mapper";
-import { declaredConfigVars } from "../config/config-vars";
-import { ConfigVarStore } from "../config/config-var-store";
-import { ResolverDetour } from "./resolver-detour";
-import type { UnresolvedInterface } from "../resolution/interface-resolution";
-import {
   type ModuleManifest,
   resolveManifestEntryFile,
 } from "./module-manifest";
-import {
-  buildConfigVarPlan,
-  type ConfigVarPlan,
-} from "../config/config-var-graph";
-import {
-  type InterfaceConnectionRef,
-  InterfaceRegistry,
-} from "./interface-registry";
-import {
-  clearStubInterfaceWarnings,
-  logStubInterfaceWarningOnce,
-  neutralizeInterfacePackage,
-} from "../resolution/stub-interface-runtime";
-import {
-  clearPathResolutionCache,
-  createPathWithinMatcher,
-  type PathMatcher,
-  type ResolvedPackage,
-  resolvePackage,
-  resolvePackageAtRoot,
-} from "../../utils/package-resolution";
-import { buildBindingGraph } from "../resolution/binding-graph";
-import { InterfaceBindingError } from "../resolution/binding-diagnostics";
-import { readInterfaceDependencies } from "../resolution/interface-dependencies";
-import type {
-  BindingConnection,
-  BindingGraph,
-  BindingInterface,
-  BindingModule,
-} from "../resolution/binding-graph-types";
-import {
-  InterfaceResolutionError,
-  type InterfaceRangeConflict,
-  type PreloadedInterfaceCopy,
-} from "../output/interface-resolution-error";
+import { ModuleRegistry } from "./module-registry";
+import { ModuleTracker } from "./module-tracker";
+import { PathMapper } from "./path-mapper";
+import { Resolver } from "./resolver";
+import { ResolverDetour } from "./resolver-detour";
 
 const Logger = new Logging.Channel("loader");
 const INTERFACE_CORE_PACKAGE = "@antelopejs/interface-core";

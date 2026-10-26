@@ -1,7 +1,9 @@
-import { pluralize } from "../output/format";
-import { CliError } from "../output/errors";
-import { describeFailure } from "../output/failures";
-import { getProcessTasks } from "../output/tasks";
+import {
+  CliError,
+  describeFailure,
+  getProcessTasks,
+  pluralize,
+} from "../output";
 
 function uniqueFixes(failures: unknown[]): string[] {
   const fixes = failures.flatMap(

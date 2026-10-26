@@ -1,18 +1,11 @@
-import sinon from "sinon";
 import { expect } from "chai";
 import assert from "node:assert/strict";
-import { isObject } from "../../../src/utils/object";
+import sinon from "sinon";
+import { isObject } from "../../../src/utils";
 
-import { ConfigLoader } from "../../../src/core/config/config-loader";
-import * as configLoader from "../../../src/core/config/config-loader";
+import { ConfigLoader,configLoaderModule as configLoader,ConfigVarStore } from "../../../src/core/config";
+import { computeConfigHash,createBuildArtifact,readBuildArtifact,writeBuildArtifact } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
-import { ConfigVarStore } from "../../../src/core/config/config-var-store";
-import {
-  computeConfigHash,
-  createBuildArtifact,
-  readBuildArtifact,
-  writeBuildArtifact,
-} from "../../../src/core/modules/build-artifact";
 
 function resolveWith<T>(config: T, port: number) {
   const store = new ConfigVarStore();

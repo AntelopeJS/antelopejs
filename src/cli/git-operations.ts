@@ -1,13 +1,12 @@
-import path from "node:path";
-import { homedir } from "node:os";
-import { stat } from "node:fs/promises";
-import fs, { mkdirSync, rmSync } from "node:fs";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
+import fs, { mkdirSync, rmSync } from "node:fs";
+import { stat } from "node:fs/promises";
+import { homedir } from "node:os";
+import path from "node:path";
 
-import { ExecError, ExecuteCMD } from "../core/output/command";
-import { acquireLock } from "../utils/lock";
-import type { NextStep } from "../core/output/index";
-import type { PackageManagerName } from "../core/output/package-manager-name";
+import type { NextStep, PackageManagerName } from "../core/output";
+import { ExecError, ExecuteCMD } from "../core/output";
+import { acquireLock } from "./lock";
 
 async function runGitCommand(command: string, cwd: string): Promise<void> {
   const result = await ExecuteCMD(command, { cwd });

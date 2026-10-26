@@ -1,4 +1,4 @@
-import { SUCCESS_EXIT_CODE } from "../core/output/exit-codes";
+import { SUCCESS_EXIT_CODE } from "../core/output";
 
 export const FORCED_EXIT_GRACE_MS = 2000;
 

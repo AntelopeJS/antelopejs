@@ -1,10 +1,9 @@
 import fs from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
 import semver from "semver";
-import { homedir } from "node:os";
 
-import { info } from "../core/output/cli-ui";
-import { getProcessUi, isQuietRun } from "../core/output/index";
+import { getProcessUi, info, isQuietRun } from "../core/output";
 import { CORE_PACKAGE_NAME } from "./core-version";
 
 const UPDATE_COMMAND = "ajs update";

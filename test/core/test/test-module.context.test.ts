@@ -4,7 +4,7 @@ import {
 } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import sinon from "sinon";
-import * as testModule from "../../../src/core/test/test-module";
+import { testModuleModule as testModule } from "../../../src/core/test";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   loadedConfigFixture,

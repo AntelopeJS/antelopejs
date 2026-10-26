@@ -1,12 +1,15 @@
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
 import { chmodSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import sinon from "sinon";
 
-import * as fullCLI from "../../../src/cli/full-cli";
-import { readText, makeTempDir, cleanupTempDir } from "../../helpers/temp";
-import * as projectLaunch from "../../../src/core/repl/project-launch";
-import { isProductionStartInvocation, runCLI } from "../../../src/core/cli";
+import {
+  fullCliModule as fullCLI,
+  isProductionStartInvocation,
+  runCLI,
+} from "../../../src/cli";
+import { projectLaunchModule as projectLaunch } from "../../../src/core/repl";
+import { cleanupTempDir, makeTempDir, readText } from "../../helpers/temp";
 
 describe("CLI dispatcher", () => {
   const originalPath = process.env.PATH;

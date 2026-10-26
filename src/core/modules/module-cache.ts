@@ -1,10 +1,10 @@
+import * as fsNode from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { satisfies } from "semver";
-import * as fsNode from "node:fs/promises";
 
-import type { IFileSystem } from "../../types/index";
-import { NodeFileSystem } from "../filesystem/index";
+import type { IFileSystem } from "../../types";
+import { NodeFileSystem } from "../filesystem";
 
 export class ModuleCache {
   private manifest: Record<string, string> = {};

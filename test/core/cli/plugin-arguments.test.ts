@@ -1,9 +1,6 @@
 import { expect } from "chai";
 
-import {
-  helpAsPluginArguments,
-  parsePluginInvocation,
-} from "../../../src/cli/plugin-arguments";
+import { helpAsPluginArguments, parsePluginInvocation } from "../../../src/cli";
 
 describe("Plugin invocation", () => {
   it("keeps a command line without global options as is", () => {

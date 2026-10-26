@@ -1,11 +1,11 @@
-import { constants } from "node:os";
 import { spawn } from "node:child_process";
+import { constants } from "node:os";
 
-import { buildProcessInvocation } from "../core/output/windows-command-line";
 import {
+  buildProcessInvocation,
   FAILURE_EXIT_CODE,
   SIGNAL_EXIT_CODE_OFFSET,
-} from "../core/output/exit-codes";
+} from "../core/output";
 
 const FORWARDED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 const SIGNAL_NUMBERS: Record<string, number> = constants.signals;

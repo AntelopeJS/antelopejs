@@ -4,11 +4,13 @@ import eventLog, {
   type Log,
 } from "@antelopejs/interface-core/logging/listener";
 
-import { mergeDeep } from "../utils/object";
-import { getProcessTasks } from "../core/output/tasks";
-import { processStreams } from "../core/output/capabilities";
-import type { OutputChannel } from "../core/output/types";
-import { formatLogMessageWithRightAlignedDate } from "../core/output/logging-utils";
+import type { OutputChannel } from "../core/output";
+import {
+  formatLogMessageWithRightAlignedDate,
+  getProcessTasks,
+  processStreams,
+} from "../core/output";
+import { mergeDeep } from "../utils";
 import { renderLogTemplate } from "./log-template";
 
 const DEFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";

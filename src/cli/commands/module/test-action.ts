@@ -1,15 +1,15 @@
-import path from "node:path";
 import { stat } from "node:fs/promises";
+import path from "node:path";
 
-import { TestModule } from "../../../index";
-import { readModuleManifest } from "../../common";
-import type { ModulePackageJson } from "../../../core/modules/module-manifest";
+import type { ModulePackageJson } from "../../../core/modules";
 import {
   CliError,
   displayPath,
   getProcessPalette,
   getProcessUi,
-} from "../../../core/output/index";
+} from "../../../core/output";
+import { TestModule } from "../../../core/test";
+import { readModuleManifest } from "../../common";
 
 interface TestOptions {
   file?: string[];

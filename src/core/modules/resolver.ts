@@ -1,27 +1,22 @@
-import path from "node:path";
-import { ReleaseOwner } from "@antelopejs/interface-core/modules";
 import {
   getModuleContext,
   type ModuleExecutionContext,
   runWithModuleContext,
 } from "@antelopejs/interface-core/internal";
+import { ReleaseOwner } from "@antelopejs/interface-core/modules";
+import path from "node:path";
 
-import type { PathMapper } from "./path-mapper";
-import { ObservableMap } from "../resolution/observable-map";
+import { normalizeExistingPath, resolvePackage } from "../../utils";
 import {
-  normalizeExistingPath,
-  resolvePackage,
-} from "../../utils/package-resolution";
-import type { ModuleManifest } from "./module-manifest";
-import type { BindingGraph } from "../resolution/binding-graph-types";
-import {
-  PathOwnerIndex,
-  type PathOwnerRoot,
-} from "../resolution/path-owner-index";
-import {
+  type BindingGraph,
   type CanonicalPackage,
   InterfaceInstances,
-} from "../resolution/interface-instances";
+  ObservableMap,
+  PathOwnerIndex,
+  type PathOwnerRoot,
+} from "../resolution";
+import type { ModuleManifest } from "./module-manifest";
+import type { PathMapper } from "./path-mapper";
 
 export interface ModuleRef {
   id: string;

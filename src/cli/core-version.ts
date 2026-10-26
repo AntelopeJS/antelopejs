@@ -1,5 +1,5 @@
-import { join } from "node:path";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const UNKNOWN_CORE_VERSION = "0.0.0";
 const CORE_PACKAGE_JSON = join(__dirname, "../../package.json");

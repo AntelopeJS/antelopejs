@@ -1,16 +1,12 @@
 import { expect } from "chai";
 
 import {
-  describeFailure,
-  reportFailure,
-  translateFailure,
-} from "../../../../src/core/output/index";
-import { FAILURE_EXIT_CODE } from "../../../../src/core/output/exit-codes";
-import {
-  InterfaceResolutionError,
-  type InterfaceRangeConflict,
-  type PreloadedInterfaceCopy,
-} from "../../../../src/core/output/interface-resolution-error";
+describeFailure,
+FAILURE_EXIT_CODE,InterfaceResolutionError,
+reportFailure,
+translateFailure,
+type InterfaceRangeConflict,type PreloadedInterfaceCopy
+} from "../../../../src/core/output";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 
 const PACKAGE_NAME = "@antelopejs/interface-core";

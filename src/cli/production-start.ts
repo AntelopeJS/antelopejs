@@ -1,18 +1,15 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import {
-  DEFAULT_ENV,
-  LAUNCH_ENVIRONMENT_VARIABLE,
-} from "../core/config/config-paths";
-import { launchFromBuild } from "../core/repl/project-launch";
-import { findBuildModuleSetChange } from "../core/runtime/build-refresh";
+import { DEFAULT_ENV, LAUNCH_ENVIRONMENT_VARIABLE } from "../core/config";
 import {
   BUILD_MODULE_SET_CHANGED_EXIT_CODE,
   FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../core/output/exit-codes";
-import { normalizeVerboseArguments } from "../core/output/verbosity";
+  normalizeVerboseArguments,
+} from "../core/output";
+import { launchFromBuild } from "../core/repl";
+import { findBuildModuleSetChange } from "../core/runtime";
 
 export interface ProductionStartOptions {
   concurrency?: number;

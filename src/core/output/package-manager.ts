@@ -1,16 +1,16 @@
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
 
+import type { IFileSystem } from "../../types";
+import { NodeFileSystem } from "../filesystem";
 import { info, warning } from "./cli-ui";
-import { getProcessPalette } from "./index";
-import type { IFileSystem } from "../../types/index";
-import { NodeFileSystem } from "../filesystem/index";
 import {
   DEFAULT_PACKAGE_MANAGER,
   PACKAGE_MANAGER_NAMES,
   type PackageManagerName,
 } from "./package-manager-name";
+import { getProcessPalette } from "./tasks";
 const PACKAGE_MANAGER_PATTERN = /^(npm|yarn|pnpm)@([0-9A-Za-z._+-]+)$/;
 const LOCKFILES: Record<PackageManagerName, string[]> = {
   npm: ["npm-shrinkwrap.json", "package-lock.json"],

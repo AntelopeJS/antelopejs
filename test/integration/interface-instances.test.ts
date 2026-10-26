@@ -1,5 +1,5 @@
-import assert from "node:assert/strict";
 import { expect } from "chai";
+import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 
 import launch, { type ModuleManager } from "../../src";

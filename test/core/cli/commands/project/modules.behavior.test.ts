@@ -1,38 +1,42 @@
-import sinon from "sinon";
-import { expect } from "chai";
 import type {
   AntelopeConfig,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+import { expect } from "chai";
+import sinon from "sinon";
 
-import { stubLoadedConfig, moduleManifest } from "../../fixtures";
-import * as cliUi from "../../../../../src/core/output/cli-ui";
-import { getProcessUi } from "../../../../../src/core/output/index";
-import * as common from "../../../../../src/cli/common";
+import {
+  commandsProjectModulesUpdateCommand as cmdUpdate,
+  commonModule as common,
+  handlers,
+  MODULE_SOURCE_MODES,
+  projectModulesAddCommand,
+  projectModulesRemoveCommand,
+} from "../../../../../src/cli";
 import { ConfigLoader } from "../../../../../src/core/config";
-import * as command from "../../../../../src/core/output/command";
-import { ModuleCache } from "../../../../../src/core/modules/module-cache";
-import { stripAnsi } from "../../../../../src/core/output/logging-utils";
-import * as packageDownloader from "../../../../../src/core/downloaders/package";
-import { DownloaderRegistry } from "../../../../../src/core/downloaders/registry";
-import cmdUpdate from "../../../../../src/cli/commands/project/modules/update";
+import {
+  DownloaderRegistry,
+  packageModule as packageDownloader,
+} from "../../../../../src/core/downloaders";
+import { ModuleCache } from "../../../../../src/core/modules";
+import {
+  cliUiModule as cliUi,
+  commandModule as command,
+  getProcessUi,
+  stripAnsi,
+} from "../../../../../src/core/output";
+import { useAsciiSymbols } from "../../../../helpers/ascii-symbols";
+import { collectStderr } from "../../../../helpers/capture-output";
+import {
+  expectProjectNotFound,
+  expectUnknownEnvironment,
+} from "../../../../helpers/cli-error";
 import {
   cleanupTempDir,
   makeTempDir,
   writeJson,
 } from "../../../../helpers/temp";
-import {
-  expectProjectNotFound,
-  expectUnknownEnvironment,
-} from "../../../../helpers/cli-error";
-import { projectModulesRemoveCommand } from "../../../../../src/cli/commands/project/modules/remove-action";
-import {
-  handlers,
-  projectModulesAddCommand,
-} from "../../../../../src/cli/commands/project/modules/add-action";
-import { MODULE_SOURCE_MODES } from "../../../../../src/cli/commands/project/modules/add";
-import { collectStderr } from "../../../../helpers/capture-output";
-import { useAsciiSymbols } from "../../../../helpers/ascii-symbols";
+import { moduleManifest, stubLoadedConfig } from "../../fixtures";
 
 function messageLines(stub: sinon.SinonStub): string[] {
   return stub

@@ -1,7 +1,7 @@
 import type * as fsSync from "node:fs";
 import * as fs from "node:fs/promises";
 
-import type { IFileSystem } from "../../types/index";
+import type { IFileSystem } from "../../types";
 
 export class NodeFileSystem implements IFileSystem {
   async readFile(filePath: string): Promise<Buffer> {

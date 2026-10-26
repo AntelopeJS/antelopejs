@@ -1,5 +1,5 @@
-import { createColors } from "picocolors";
 import type { AntelopeLogging } from "@antelopejs/interface-core/config";
+import { createColors } from "picocolors";
 
 import { hasProcessColorSupport } from "./capabilities";
 

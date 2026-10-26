@@ -1,7 +1,7 @@
-import sinon from "sinon";
 import { expect } from "chai";
 import { ChildProcess } from "node:child_process";
 import { PassThrough } from "node:stream";
+import sinon from "sinon";
 
 import { expectInstanceOf, rejectionOf } from "./fixtures";
 
@@ -11,7 +11,7 @@ import {
   ExecuteCMD,
   ExecuteFile,
   nonInteractiveOptions,
-} from "../../../src/core/output/command";
+} from "../../../src/core/output";
 
 describe("Command Execution", () => {
   afterEach(() => {

@@ -1,7 +1,7 @@
-import { delimiter, dirname, join } from "node:path";
 import { access, constants } from "node:fs/promises";
+import { delimiter, dirname, join } from "node:path";
 
-import { WINDOWS_PLATFORM } from "../core/output/package-manager-name";
+import { WINDOWS_PLATFORM } from "../core/output";
 
 const WINDOWS_EXECUTABLE_EXTENSIONS = [".cmd", ".exe", ".bat"];
 const NODE_MODULES_BIN = join("node_modules", ".bin");

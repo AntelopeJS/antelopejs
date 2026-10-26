@@ -1,45 +1,50 @@
-import path from "node:path";
 import type {
   AntelopeConfig,
   ModuleSource,
   ModuleSourceLocal,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+import path from "node:path";
 
-import { ExecuteCMD } from "../../../../core/output/command";
-import { addModules, type AddCommandResult } from "./add-action";
-import { ModuleCache } from "../../../../core/modules/module-cache";
-import { NodeFileSystem } from "../../../../core/filesystem/index";
-import { ModuleManifest } from "../../../../core/modules/module-manifest";
-import { info, warning } from "../../../../core/output/cli-ui";
-import { registerGitDownloader } from "../../../../core/downloaders/git";
-import { ConfigLoader, type LoadedConfig } from "../../../../core/config/index";
-import { DownloaderRegistry } from "../../../../core/downloaders/registry";
-import { registerLocalDownloader } from "../../../../core/downloaders/local";
-import { registerPackageDownloader } from "../../../../core/downloaders/package";
-import { registerLocalFolderDownloader } from "../../../../core/downloaders/local-folder";
-import { findUnresolvedInterfaces } from "../../../../core/resolution/interface-resolution";
 import {
-  type GitManifest,
-  loadInterfaceFromGit,
-  loadManifestFromGit,
-  type ModuleInterfaceInfo,
-} from "../../../git-operations";
+  ConfigLoader,
+  TS_CONFIG_FILE,
+  type LoadedConfig,
+} from "../../../../core/config";
+import {
+  DownloaderRegistry,
+  registerGitDownloader,
+  registerLocalDownloader,
+  registerLocalFolderDownloader,
+  registerPackageDownloader,
+} from "../../../../core/downloaders";
+import { NodeFileSystem } from "../../../../core/filesystem";
+import { ModuleCache, ModuleManifest } from "../../../../core/modules";
 import {
   CliError,
   createPrompter,
   describeFailure,
+  ExecuteCMD,
   getProcessPalette,
   getProcessUi,
+  info,
   pluralize,
   runTask,
+  warning,
   type NextStep,
   type Prompter,
-} from "../../../../core/output/index";
-import { TS_CONFIG_FILE } from "../../../../core/config/config-paths";
+} from "../../../../core/output";
+import { findUnresolvedInterfaces } from "../../../../core/resolution";
 import { displayNonDefaultGitWarning, readUserConfig } from "../../../common";
+import {
+  loadInterfaceFromGit,
+  loadManifestFromGit,
+  type GitManifest,
+  type ModuleInterfaceInfo,
+} from "../../../git-operations";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
+import { addModules, type AddCommandResult } from "./add-action";
 
 interface InstallOptions {
   project: string;

@@ -4,11 +4,13 @@ import { expect } from "chai";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Module as CoreModule } from "../../src/core/modules/module";
-import { ModuleManager } from "../../src/core/modules/module-manager";
-import { ModuleManifest } from "../../src/core/modules/module-manifest";
-import { PathMapper } from "../../src/core/modules/path-mapper";
-import { Resolver } from "../../src/core/modules/resolver";
+import {
+  Module as CoreModule,
+  ModuleManager,
+  ModuleManifest,
+  PathMapper,
+  Resolver,
+} from "../../src/core/modules";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import { manifestFixture } from "../helpers/module-fixtures";
 import { nodeModule } from "../helpers/node-module";

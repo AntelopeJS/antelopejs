@@ -1,20 +1,17 @@
-import sinon from "sinon";
 import { expect } from "chai";
 import { CommanderError } from "commander";
+import sinon from "sinon";
 
 import {
-  CancelledError,
-  CliError,
-  getProcessUi,
-  runWithErrorBoundary,
-} from "../../../../src/core/output/index";
-import { CANCELLED_MESSAGE } from "../../../../src/core/output/cancellation";
-import {
-  CANCELLED_EXIT_CODE,
-  FAILURE_EXIT_CODE,
-  SUCCESS_EXIT_CODE,
-  USAGE_EXIT_CODE,
-} from "../../../../src/core/output/exit-codes";
+CANCELLED_EXIT_CODE,
+CANCELLED_MESSAGE,
+CancelledError,
+CliError,
+FAILURE_EXIT_CODE,
+getProcessUi,
+runWithErrorBoundary,
+SUCCESS_EXIT_CODE,USAGE_EXIT_CODE
+} from "../../../../src/core/output";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 
 const BUILD_EXIT_CODE = 3;

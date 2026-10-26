@@ -1,7 +1,7 @@
-import { expect } from "chai";
 import { internal } from "@antelopejs/interface-core/internal";
+import { expect } from "chai";
 
-import { InterfaceRegistry } from "../../src/core/modules/interface-registry";
+import { InterfaceRegistry } from "../../src/core/modules";
 
 describe("InterfaceRegistry", () => {
   beforeEach(() => {

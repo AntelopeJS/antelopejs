@@ -1,15 +1,15 @@
 import type { AntelopeLogging } from "@antelopejs/interface-core/config";
 
-import { ConfigLoader } from "../../../../core/config/index";
-import { mergeDeep } from "../../../../utils/object";
-import { NodeFileSystem } from "../../../../core/filesystem/index";
-import { defaultConfigLogging, levelNames } from "../../../../logging/index";
+import { ConfigLoader } from "../../../../core/config";
+import { NodeFileSystem } from "../../../../core/filesystem";
 import {
   getProcessUi,
   writeData,
   type DetailEntry,
   type Ui,
-} from "../../../../core/output/index";
+} from "../../../../core/output";
+import { defaultConfigLogging, levelNames } from "../../../../logging";
+import { mergeDeep } from "../../../../utils";
 import { resolveProjectContext } from "../../shared/project-command";
 
 interface ShowOptions {

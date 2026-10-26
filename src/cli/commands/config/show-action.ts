@@ -1,10 +1,10 @@
-import { getDefaultUserConfig, readUserConfig } from "../../common";
 import {
   getProcessUi,
   writeData,
   type DetailEntry,
   type Ui,
-} from "../../../core/output/index";
+} from "../../../core/output";
+import { getDefaultUserConfig, readUserConfig } from "../../common";
 
 interface ShowOptions {
   json?: boolean;

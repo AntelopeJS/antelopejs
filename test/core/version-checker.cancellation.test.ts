@@ -1,11 +1,13 @@
-import sinon from "sinon";
-import { expect } from "chai";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import { expect } from "chai";
+import sinon from "sinon";
 
-import * as cliUi from "../../src/core/output/cli-ui";
-import * as command from "../../src/core/output/command";
-import type { ExpandedModuleConfig } from "../../src/core/config/config-parser";
-import { checkOutdatedModules } from "../../src/core/modules/version-checker";
+import type { ExpandedModuleConfig } from "../../src/core/config";
+import { checkOutdatedModules } from "../../src/core/modules";
+import {
+  cliUiModule as cliUi,
+  commandModule as command,
+} from "../../src/core/output";
 import {
   installHangingNpm,
   isRunning,

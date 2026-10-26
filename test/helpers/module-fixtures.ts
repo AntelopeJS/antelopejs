@@ -1,27 +1,26 @@
-import sinon from "sinon";
 import type {
   ModuleSource,
+  ModuleSourceGit,
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
-  ModuleSourceGit,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+import sinon from "sinon";
 
-import { Module } from "../../src/core/modules/module";
+import type { ExpandedModuleConfig, LoadedConfig } from "../../src/core/config";
+import { DownloaderRegistry } from "../../src/core/downloaders";
+import { NodeFileSystem } from "../../src/core/filesystem";
 import {
+  Module,
+  ModuleCache,
+  ModuleManager,
   ModuleManifest,
   type ModulePackageJson,
-} from "../../src/core/modules/module-manifest";
-import { ModuleManager } from "../../src/core/modules/module-manager";
-import { ModuleCache } from "../../src/core/modules/module-cache";
-import { DownloaderRegistry } from "../../src/core/downloaders/registry";
-import { NodeFileSystem } from "../../src/core/filesystem/index";
+} from "../../src/core/modules";
 import type {
   LoaderContext,
   NormalizedLoadedConfig,
-} from "../../src/core/runtime/runtime-types";
-import type { ExpandedModuleConfig } from "../../src/core/config/config-parser";
-import type { LoadedConfig } from "../../src/core/config/config-loader";
+} from "../../src/core/runtime";
 import { ModuleState } from "../../src/types";
 
 type ManifestFields = Omit<Partial<ModuleManifest>, "source" | "manifest"> & {

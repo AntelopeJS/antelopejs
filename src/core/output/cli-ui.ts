@@ -1,12 +1,10 @@
-import {
-  getProcessTasks,
-  getProcessUi,
-  type CliProblem,
-  type MessageLevel,
-  type OutputStream,
-  type TaskHandle,
-  type TaskList,
-} from "./index";
+import { getProcessTasks, getProcessUi, type TaskList } from "./tasks";
+import type {
+  CliProblem,
+  MessageLevel,
+  OutputStream,
+  TaskHandle,
+} from "./types";
 
 const LINE_END = "\n";
 

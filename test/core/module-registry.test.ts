@@ -1,8 +1,7 @@
-import { manifestFixture } from "../helpers/module-fixtures";
 import { expect } from "chai";
+import { manifestFixture } from "../helpers/module-fixtures";
 
-import { Module } from "../../src/core/modules/module";
-import { ModuleRegistry } from "../../src/core/modules/module-registry";
+import { Module, ModuleRegistry } from "../../src/core/modules";
 
 const manifest = manifestFixture({
   name: "mod",

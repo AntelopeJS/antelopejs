@@ -1,10 +1,10 @@
 import { Logging } from "@antelopejs/interface-core/logging";
 
-import type { ModuleManager } from "../modules/module-manager";
-import type { TaskHandle } from "../output/types";
-import { getProcessTasks } from "../output/tasks";
-import type { RuntimePolicy } from "./runtime-policy";
+import type { ModuleManager } from "../modules";
+import type { TaskHandle } from "../output";
+import { getProcessTasks } from "../output";
 import { releaseProcessShutdownManager } from "./runtime-bootstrap";
+import type { RuntimePolicy } from "./runtime-policy";
 import {
   DEFAULT_SHUTDOWN_TIMEOUT_MS,
   killProcessTree,

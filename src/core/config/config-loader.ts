@@ -1,15 +1,15 @@
-import { createJiti } from "jiti";
 import type {
   AntelopeConfig,
   AntelopeLogging,
   AntelopeTestConfig,
   ConfigInput,
 } from "@antelopejs/interface-core/config";
+import { createJiti } from "jiti";
 
+import type { IFileSystem } from "../../types";
+import { mergeDeep } from "../../utils";
 // oxlint-disable-next-line import/no-self-import, import/no-cycle -- test seam: calls go through `self.` so `sinon.stub(module, "fn")` takes effect
 import * as self from "./config-loader";
-import type { IFileSystem } from "../../types";
-import { mergeDeep } from "../../utils/object";
 import { ConfigParser, type ExpandedModuleConfig } from "./config-parser";
 import {
   DEFAULT_CACHE_DIR,

@@ -1,14 +1,14 @@
-import fs from "node:fs";
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
+import fs from "node:fs";
+import path from "node:path";
+import sinon from "sinon";
 
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import {
   clearPathResolutionCache,
   getPathResolutionCacheGeneration,
   isPathWithin,
-} from "../../../src/utils/package-resolution";
+} from "../../../src/utils";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 const FILE_COUNT = 40;
 const ROOT_COUNT = 8;

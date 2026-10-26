@@ -1,30 +1,30 @@
-import path from "node:path";
 import { expect } from "chai";
+import path from "node:path";
 
-import type { GlobalInstallation } from "../../../src/cli/global-package-manager";
-import type { ExecutableSource } from "../../../src/cli/executable-lookup";
 import {
   describePluginStatus,
+  findOfficialPlugin,
   getPluginStatuses,
   renderPluginReports,
   runUpdate,
+  type ExecutableSource,
+  type GlobalInstallation,
   type PluginReport,
-} from "../../../src/cli/plugin-management";
-import { findOfficialPlugin } from "../../../src/cli/plugin-registry";
-import { createMemoryUi } from "../../helpers/memory-ui";
+} from "../../../src/cli";
 import {
   createGlobalRootResolver,
-  plainProblem,
   createOutput,
   createPackageReader,
   createProcessRunner,
   formatSpawnCalls,
+  plainProblem,
 } from "../../helpers/cli-plugins";
+import { createMemoryUi } from "../../helpers/memory-ui";
 import {
+  CORE_VERSION,
   createInstalledReader,
   createLocalReader,
   createShimReader,
-  CORE_VERSION,
   DMS_EXECUTABLE,
   GLOBAL_DMS,
   GLOBAL_ROOT,

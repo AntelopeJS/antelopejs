@@ -3,12 +3,12 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { consumeOwnConfigWrite } from "../../../src/core/config/config-writes";
 import {
+  consumeOwnConfigWrite,
   listModuleDeclarations,
   removeModuleDeclaration,
   saveModuleDeclaration,
-} from "../../../src/core/config/module-declarations";
+} from "../../../src/core/config";
 
 const CONFIG = `export default {
   name: "demo",

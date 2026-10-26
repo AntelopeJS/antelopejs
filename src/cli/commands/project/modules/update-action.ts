@@ -3,26 +3,26 @@ import type {
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 
-import { ConfigLoader } from "../../../../core/config/index";
-import { FAILURE_EXIT_CODE } from "../../../../core/output/exit-codes";
-import type { ExpandedModuleConfig } from "../../../../core/config/config-parser";
-import { NodeFileSystem } from "../../../../core/filesystem/index";
-import { writeConfig } from "../../../common";
-import { error as errorUI, info } from "../../../../core/output/cli-ui";
-import {
-  getProcessUi,
-  pluralize,
-  type NextStep,
-} from "../../../../core/output/index";
-import { TS_CONFIG_FILE } from "../../../../core/config/config-paths";
-import { formatNames } from "../../shared/names";
-import { scopedCommand } from "../../shared/next-steps";
-import { resolveProjectContext } from "../../shared/project-command";
+import type { ExpandedModuleConfig } from "../../../../core/config";
+import { ConfigLoader, TS_CONFIG_FILE } from "../../../../core/config";
+import { NodeFileSystem } from "../../../../core/filesystem";
 import {
   bumpVersionSpec,
   checkOutdatedModules,
   type OutdatedModule,
-} from "../../../../core/modules/version-checker";
+} from "../../../../core/modules";
+import {
+  error as errorUI,
+  FAILURE_EXIT_CODE,
+  getProcessUi,
+  info,
+  pluralize,
+  type NextStep,
+} from "../../../../core/output";
+import { writeConfig } from "../../../common";
+import { formatNames } from "../../shared/names";
+import { scopedCommand } from "../../shared/next-steps";
+import { resolveProjectContext } from "../../shared/project-command";
 
 interface UpdateOptions {
   project: string;

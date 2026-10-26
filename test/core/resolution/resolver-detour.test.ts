@@ -1,9 +1,11 @@
-import { nodeModule } from "../../helpers/node-module";
 import { expect } from "chai";
+import { nodeModule } from "../../helpers/node-module";
 
-import { Resolver } from "../../../src/core/modules/resolver";
-import { PathMapper } from "../../../src/core/modules/path-mapper";
-import { ResolverDetour } from "../../../src/core/modules/resolver-detour";
+import {
+  PathMapper,
+  Resolver,
+  ResolverDetour,
+} from "../../../src/core/modules";
 
 type ModuleResolver = (request: string) => string;
 

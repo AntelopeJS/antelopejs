@@ -1,4 +1,4 @@
-import { getProcessPalette } from "../../../core/output/index";
+import { getProcessPalette } from "../../../core/output";
 
 const NAME_SEPARATOR = ", ";
 

@@ -1,14 +1,14 @@
 import semver from "semver";
 
-import { getProcessPalette, type CliProblem } from "../core/output/index";
+import { getProcessPalette, type CliProblem } from "../core/output";
 import { CORE_PACKAGE_NAME } from "./core-version";
 import type { ResolvedExecutable } from "./executable-lookup";
-import { type OfficialPlugin, officialPluginLabel } from "./plugin-registry";
 import {
   resolvePluginPackage,
   type PluginPackage,
   type PluginPackageLookup,
 } from "./plugin-package";
+import { officialPluginLabel, type OfficialPlugin } from "./plugin-registry";
 
 interface CompatiblePluginResult {
   status: "compatible";

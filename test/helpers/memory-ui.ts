@@ -1,8 +1,4 @@
-import {
-  createUi,
-  type OutputStream,
-  type Ui,
-} from "../../src/core/output/index";
+import { createUi, type OutputStream, type Ui } from "../../src/core/output";
 
 export class MemoryStream implements OutputStream {
   private readonly chunks: string[] = [];

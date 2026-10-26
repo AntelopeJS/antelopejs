@@ -1,7 +1,7 @@
 import path from "node:path";
 
-import { displayPath } from "../../../core/output/index";
-import { DEFAULT_ENV } from "../../../core/config/config-paths";
+import { DEFAULT_ENV } from "../../../core/config";
+import { displayPath } from "../../../core/output";
 
 export interface CommandScope {
   project: string;

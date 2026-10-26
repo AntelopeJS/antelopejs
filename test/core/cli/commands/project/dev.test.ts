@@ -1,8 +1,8 @@
-import sinon from "sinon";
 import { expect } from "chai";
 import { ChildProcess } from "node:child_process";
+import sinon from "sinon";
 
-import { terminateChildProcess } from "../../../../../src/cli/commands/project/dev-action";
+import { terminateChildProcess } from "../../../../../src/cli";
 
 describe("dev command child process", () => {
   it("should send SIGTERM and resolve when child exits", async () => {

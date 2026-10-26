@@ -1,8 +1,8 @@
 import { Command } from "commander";
 
-import { Options } from "../../options";
-import { withExamples } from "../../../core/output/help";
+import { withExamples } from "../../../core/output";
 import { lazyAction } from "../../lazy-action";
+import { Options } from "../../options";
 
 export default function () {
   const command = new Command("build")

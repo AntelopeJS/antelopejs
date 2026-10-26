@@ -1,9 +1,8 @@
 import { expect } from "chai";
-import sinon from "sinon";
 import Mocha from "mocha";
+import sinon from "sinon";
 
-import { TestRunner } from "../../../src/core/test/test-runner";
-import { TestContext } from "../../../src/core/test/test-context";
+import { TestContext, TestRunner } from "../../../src/core/test";
 
 describe("TestRunner", () => {
   it("should run tests and call setup/cleanup", async () => {

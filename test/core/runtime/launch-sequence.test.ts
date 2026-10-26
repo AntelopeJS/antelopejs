@@ -1,27 +1,27 @@
-import { loaderFixture } from "../../helpers/module-fixtures";
-import { nodeModule } from "../../helpers/node-module";
-import os from "node:os";
-import sinon from "sinon";
-import path from "node:path";
+import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
+import * as runtimeInterface from "@antelopejs/interface-core/runtime";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
-import * as runtimeInterface from "@antelopejs/interface-core/runtime";
-import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
+import os from "node:os";
+import path from "node:path";
+import sinon from "sinon";
+import { loaderFixture } from "../../helpers/module-fixtures";
+import { nodeModule } from "../../helpers/node-module";
 
-import { ShutdownManager } from "../../../src/core/runtime/shutdown/index";
-import * as processClaim from "../../../src/core/runtime/process-claim";
+import { NodeFileSystem } from "../../../src/core/filesystem";
+import { ModuleManifest } from "../../../src/core/modules";
 import {
+  type ProjectPreparer,
+  EMBEDDED_RUNTIME_POLICY,
   LaunchInterruptedError,
   type LaunchStep,
+  ShutdownManager,
+  processClaimModule as processClaim,
+  runLaunchSequence,
   runLaunchSteps,
-} from "../../../src/core/runtime/launch-steps";
-import { NodeFileSystem } from "../../../src/core/filesystem/index";
-import { ModuleManifest } from "../../../src/core/modules/module-manifest";
+} from "../../../src/core/runtime";
 import * as logging from "../../../src/logging";
-import { runLaunchSequence } from "../../../src/core/runtime/launch-sequence";
-import { EMBEDDED_RUNTIME_POLICY } from "../../../src/core/runtime/runtime-policy";
-import type { ProjectPreparer } from "../../../src/core/runtime/runtime-types";
 
 const STARTED_FLAG = "__ajsLaunchSequenceStarted";
 const CONSTRUCTED_HOOK = "__ajsLaunchSequenceConstructed";

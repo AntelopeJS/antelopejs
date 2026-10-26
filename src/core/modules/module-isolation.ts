@@ -1,15 +1,15 @@
+import { realpathSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { realpathSync } from "node:fs";
 
-import type { ModuleManifest } from "./module-manifest";
-import { createPathWithinMatcher } from "../../utils/package-resolution";
+import { createPathWithinMatcher } from "../../utils";
 import {
   createInstanceCopy,
   nextInstanceCopyPath,
   pruneStaleInstanceCopies,
   removeInstanceCopy,
-} from "../resolution/instance-copies";
+} from "../resolution";
+import type { ModuleManifest } from "./module-manifest";
 
 const DEFAULT_INSTANCE_ROOT = path.join(os.tmpdir(), "antelopejs-instances");
 

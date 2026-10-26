@@ -1,20 +1,19 @@
-import path from "node:path";
 import { expect } from "chai";
 import { chmodSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
-import { runCLI } from "../../../src/core/cli";
-import { delegateToPlugin } from "../../../src/cli/plugin";
-import { readText, makeTempDir, cleanupTempDir } from "../../helpers/temp";
-import {
-  DMS_EXECUTABLE,
-  installedDependencies,
-  pluginPackageJson,
-} from "../../helpers/official-plugin";
+import { delegateToPlugin, runCLI } from "../../../src/cli";
 import {
   createControllableProcessRunner,
   createOutput,
   createProcessRunner,
 } from "../../helpers/cli-plugins";
+import {
+  DMS_EXECUTABLE,
+  installedDependencies,
+  pluginPackageJson,
+} from "../../helpers/official-plugin";
+import { cleanupTempDir, makeTempDir, readText } from "../../helpers/temp";
 
 interface PluginFixture {
   directory: string;

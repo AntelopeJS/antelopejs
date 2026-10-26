@@ -1,8 +1,8 @@
 import { Command, Option } from "commander";
 
-import { Options } from "../../options";
-import { withExamples } from "../../../core/output/help";
+import { withExamples } from "../../../core/output";
 import { lazyAction } from "../../lazy-action";
+import { Options } from "../../options";
 
 const WATCH_OPTION = new Option(
   "-w, --watch",

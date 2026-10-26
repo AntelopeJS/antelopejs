@@ -1,20 +1,23 @@
-import path from "node:path";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
+import path from "node:path";
 
 import type { IFileSystem } from "../../types";
-import { toModuleConfig } from "./module-loading";
-import type { ExpandedModuleConfig } from "../config/config-parser";
-import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
 import {
-  readBuildArtifactOrThrow,
-  serializeModuleConfig,
-} from "./build-runtime";
+  ConfigLoader,
+  type ExpandedModuleConfig,
+  type LoadedConfig,
+} from "../config";
 import {
   type BuildArtifact,
   type BuildModuleEntry,
   hashResolvedConfig,
   toStableJson,
-} from "../modules/build-artifact";
+} from "../modules";
+import {
+  readBuildArtifactOrThrow,
+  serializeModuleConfig,
+} from "./build-runtime";
+import { toModuleConfig } from "./module-loading";
 
 const REBUILD_HINT = "Run 'ajs project build' to rebuild.";
 

@@ -1,8 +1,8 @@
 import { Command } from "commander";
 
-import { CONFIG_KEYS } from "./keys";
-import { withExamples } from "../../../core/output/help";
+import { withExamples } from "../../../core/output";
 import { lazyAction } from "../../lazy-action";
+import { CONFIG_KEYS } from "./keys";
 
 export default function () {
   const command = new Command("set")

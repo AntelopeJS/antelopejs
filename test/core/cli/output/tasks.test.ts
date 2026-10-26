@@ -1,15 +1,15 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { rejectionOf } from "../fixtures";
 import {
-  getProcessTasks,
-  getProcessUi,
-  runTask,
-  TaskList,
-  type OutputCapabilities,
-} from "../../../../src/core/output/index";
+getProcessTasks,
+getProcessUi,
+runTask,
+TaskList,
+type OutputCapabilities,
+} from "../../../../src/core/output";
 import { MemoryStream } from "../../../helpers/memory-ui";
+import { rejectionOf } from "../fixtures";
 
 const ERASE_ONE_LINE = "\x1b[1A\r\x1b[J";
 const ERASE_TWO_LINES = "\x1b[2A\r\x1b[J";

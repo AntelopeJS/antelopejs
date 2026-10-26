@@ -5,9 +5,9 @@ import { CancelledError, NeedsInputError } from "./errors";
 import type {
   MultiSelectQuestion,
   OutputStream,
+  PromptChoice,
   Prompter,
   PrompterOptions,
-  PromptChoice,
   Question,
   SelectQuestion,
 } from "./types";

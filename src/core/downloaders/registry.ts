@@ -1,9 +1,8 @@
-import * as path from "node:path";
-import { Logging } from "@antelopejs/interface-core/logging";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
+import * as path from "node:path";
 
-import type { ModuleCache } from "../modules/module-cache";
-import type { ModuleManifest } from "../modules/module-manifest";
+import type { ModuleCache, ModuleManifest } from "../modules";
 
 const Logger = new Logging.Channel("loader.common");
 

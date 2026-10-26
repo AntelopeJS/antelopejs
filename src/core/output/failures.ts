@@ -1,10 +1,10 @@
 import { ExecError } from "./command";
-import { stripAnsiCodes } from "./logging-utils";
 import { CliError } from "./errors";
 import { FAILURE_EXIT_CODE } from "./exit-codes";
-import type { CliProblem, FailureTranslator, Ui } from "./types";
-import { translateExecError, translateFailure } from "./translations";
+import { stripAnsiCodes } from "./logging-utils";
 import { getProcessUi } from "./tasks";
+import { translateExecError, translateFailure } from "./translations";
+import type { CliProblem, FailureTranslator, Ui } from "./types";
 import { isVerboseRun } from "./verbosity";
 
 const OUTPUT_TAIL_LINE_COUNT = 3;
@@ -29,7 +29,9 @@ function commandOutputTail(error: ExecError): string[] {
   return [OUTPUT_HEADING, ...lines.map((line) => `${OUTPUT_INDENT}${line}`)];
 }
 
-function genericProblem(error: Parameters<typeof describeFailure>[0]): CliProblem {
+function genericProblem(
+  error: Parameters<typeof describeFailure>[0],
+): CliProblem {
   if (error instanceof Error) {
     const [headline] = stripAnsiCodes(error.message).split(LINE_BREAK_PATTERN);
     return { title: headline || error.name };
@@ -84,7 +86,9 @@ function explainFailure(
   return translate?.(error) ?? translateFailure(error);
 }
 
-function hasHiddenOutput(error: Parameters<typeof describeFailure>[0]): boolean {
+function hasHiddenOutput(
+  error: Parameters<typeof describeFailure>[0],
+): boolean {
   if (!(error instanceof ExecError)) {
     return false;
   }
@@ -93,7 +97,10 @@ function hasHiddenOutput(error: Parameters<typeof describeFailure>[0]): boolean 
   return outputLines(error).length > shownLineCount;
 }
 
-function verboseHint(chain: unknown[], translate?: FailureTranslator): string[] {
+function verboseHint(
+  chain: unknown[],
+  translate?: FailureTranslator,
+): string[] {
   if (chain.some(hasHiddenOutput)) {
     return [COMMAND_OUTPUT_HINT];
   }

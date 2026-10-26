@@ -1,12 +1,12 @@
-import { NO_COLOR_FLAG } from "../core/output/capabilities";
 import {
   ALL_LOG_CHANNELS,
   isQuietArgument,
   isVerboseArgument,
+  NO_COLOR_FLAG,
   QUIET_ENVIRONMENT_VARIABLE,
   VERBOSE_ASSIGNMENT_PREFIX,
   VERBOSE_ENVIRONMENT_VARIABLE,
-} from "../core/output/verbosity";
+} from "../core/output";
 
 const NO_COLOR_ENVIRONMENT_VARIABLE = "NO_COLOR";
 const ENABLED_FLAG_VALUE = "1";

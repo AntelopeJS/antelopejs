@@ -1,15 +1,15 @@
+import { RunWithResponsibleModule } from "@antelopejs/interface-core";
+import { Logging } from "@antelopejs/interface-core/logging";
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { Logging } from "@antelopejs/interface-core/logging";
-import { RunWithResponsibleModule } from "@antelopejs/interface-core";
 
+import { getProcessTasks } from "../../src/core/output";
 import {
   addChannelFilter,
   levelMap,
   setLogAudience,
   setupAntelopeProjectLogging,
 } from "../../src/logging";
-import { getProcessTasks } from "../../src/core/output/tasks";
 import { CapturedOutput, captureOutput } from "../helpers/capture-output";
 
 const ASYNC_CONTEXT_WARNING =

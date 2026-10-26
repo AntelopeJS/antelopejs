@@ -1,10 +1,10 @@
+import { displayPath } from "./format";
 import type {
   InterfacePackageCopy,
   InterfaceRangeConflict,
   InterfaceResolutionError,
   PreloadedInterfaceCopy,
 } from "./interface-resolution-error";
-import { displayPath } from "./format";
 import type { CliProblem } from "./types";
 
 const INTERFACE_CONFLICT_TITLE = "Incompatible interface package resolution";

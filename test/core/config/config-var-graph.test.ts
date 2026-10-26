@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { buildConfigVarPlan } from "../../../src/core/config/config-var-graph";
+import { buildConfigVarPlan } from "../../../src/core/config";
 
 describe("buildConfigVarPlan", () => {
   it("stages providers only, never their consumers", () => {

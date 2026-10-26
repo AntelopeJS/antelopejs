@@ -1,27 +1,27 @@
-import assert from "node:assert/strict";
-import sinon from "sinon";
-import { expect } from "chai";
 import type {
   AntelopeConfig,
   ModuleSourceLocal,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+import { expect } from "chai";
+import assert from "node:assert/strict";
+import sinon from "sinon";
 
-import * as configLoader from "../../../src/core/config/config-loader";
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { configLoaderModule as configLoader } from "../../../src/core/config";
 import {
   type BuildArtifact,
   type BuildModuleEntry,
   computeConfigHash,
   getBuildArtifactPath,
   writeBuildArtifact,
-} from "../../../src/core/modules/build-artifact";
+} from "../../../src/core/modules";
 import {
   BuildModuleSetChangedError,
   findBuildModuleSetChange,
   readRefreshedBuildArtifact,
   refreshBuildArtifact,
-} from "../../../src/core/runtime/build-refresh";
+} from "../../../src/core/runtime";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 const PROJECT = "/project";
 const ENV = "production";

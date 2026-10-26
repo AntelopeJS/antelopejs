@@ -1,17 +1,16 @@
-import type { CommandOutput } from "../../src/core/output/cli-ui";
-import type { CliProblem } from "../../src/core/output/index";
-import { stripAnsi } from "../../src/core/output/logging-utils";
-import type { PluginPackageReader } from "../../src/cli/plugin-package";
-import type { GlobalRootResolver } from "../../src/cli/global-package-manager";
 import type {
   ForwardedSignal,
+  GlobalRootResolver,
   InheritedSpawnOptions,
+  PluginPackageReader,
   ProcessCloseListener,
   ProcessErrorListener,
   ProcessRunner,
   SignalTarget,
   SpawnedProcess,
-} from "../../src/cli/process-runner";
+} from "../../src/cli";
+import type { CliProblem, CommandOutput } from "../../src/core/output";
+import { stripAnsi } from "../../src/core/output";
 
 export interface SpawnCall {
   executable: string;

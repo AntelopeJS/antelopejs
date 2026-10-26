@@ -12,7 +12,6 @@ import {
   wrapText,
 } from "./format";
 import { LEVEL_COLORS, selectSymbols } from "./symbols";
-import { isQuietRun } from "./verbosity";
 import type {
   CliProblem,
   DetailEntry,
@@ -30,6 +29,7 @@ import type {
   Ui,
   UiOptions,
 } from "./types";
+import { isQuietRun } from "./verbosity";
 
 type ChannelState = "empty" | "heading" | "content";
 
@@ -62,7 +62,9 @@ function columnWidthLimit(widths: number[], available: number): number {
     Math.floor(
       (available - sum(sorted.slice(0, index))) / (sorted.length - index),
     );
-  const index = sorted.findIndex((width, position) => width > limitFrom(position));
+  const index = sorted.findIndex(
+    (width, position) => width > limitFrom(position),
+  );
   return index < 0 ? Infinity : limitFrom(index);
 }
 
@@ -267,7 +269,10 @@ class StreamUi implements Ui {
   private writeNextStep(step: NextStep, width: number): void {
     const palette = this.palettes.feedback;
     if (!step.description) {
-      this.writeLine("feedback", `${DETAIL_INDENT}${palette.cyan(step.command)}`);
+      this.writeLine(
+        "feedback",
+        `${DETAIL_INDENT}${palette.cyan(step.command)}`,
+      );
       return;
     }
     const command = palette.cyan(padVisible(step.command, width));
@@ -371,9 +376,5 @@ export function createUi(options: UiOptions = {}): Ui {
   const capabilities =
     options.capabilities ??
     detectCapabilities({ ...processCapabilityContext(), streams });
-  return new StreamUi(
-    streams,
-    capabilities,
-    options.isQuiet ?? isQuietRun(),
-  );
+  return new StreamUi(streams, capabilities, options.isQuiet ?? isQuietRun());
 }

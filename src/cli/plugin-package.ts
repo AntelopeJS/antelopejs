@@ -1,7 +1,7 @@
-import { dirname, join } from "node:path";
 import { readFile, realpath } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
-import type { PackageManagerName } from "../core/output/package-manager-name";
+import type { PackageManagerName } from "../core/output";
 import {
   PATH_EXECUTABLE_SOURCE,
   type ResolvedExecutable,

@@ -1,7 +1,7 @@
-import path from "node:path";
 import { expect } from "chai";
+import path from "node:path";
 
-import { scopedCommand } from "../../../../../src/cli/commands/shared/next-steps";
+import { scopedCommand } from "../../../../../src/cli";
 
 describe("scopedCommand", () => {
   it("adds no flag for the current project and the default environment", () => {

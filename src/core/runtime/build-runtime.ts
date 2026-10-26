@@ -1,16 +1,8 @@
-import path from "node:path";
 import { Logging } from "@antelopejs/interface-core/logging";
+import path from "node:path";
 
 import type { IFileSystem } from "../../types";
-import type { NodeFileSystem } from "../filesystem/index";
-import type { ModuleConfig } from "../modules/module-manager";
-import { ModuleManifest } from "../modules/module-manifest";
-import type { InterfaceConnectionRef } from "../modules/interface-registry";
-import type {
-  ModuleManifestEntry,
-  ModuleOverrideMap,
-  NormalizedLoadedConfig,
-} from "./runtime-types";
+import type { NodeFileSystem } from "../filesystem";
 import {
   type BuildArtifact,
   type BuildImportOverride,
@@ -18,9 +10,17 @@ import {
   computeConfigHash,
   createBuildArtifact,
   getBuildArtifactPath,
+  type InterfaceConnectionRef,
+  type ModuleConfig,
+  ModuleManifest,
   readBuildArtifact,
   writeBuildArtifact,
-} from "../modules/build-artifact";
+} from "../modules";
+import type {
+  ModuleManifestEntry,
+  ModuleOverrideMap,
+  NormalizedLoadedConfig,
+} from "./runtime-types";
 
 const STALE_BUILD_WARNING = `Configuration has changed since last build. Run 'ajs project build' to update.`;
 const BUILD_MISSING_REBUILD_HINT = "Run 'ajs project build --env <env>' first.";

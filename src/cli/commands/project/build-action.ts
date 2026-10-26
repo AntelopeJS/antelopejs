@@ -1,16 +1,13 @@
 import type { Command } from "commander";
 
-import { build } from "../../../index";
-import { info } from "../../../core/output/cli-ui";
+import { build } from "../../../core/build";
+import { getBuildArtifactPath, readBuildArtifact } from "../../../core/modules";
 import {
   displayPath,
   getProcessUi,
+  info,
   pluralize,
-} from "../../../core/output/index";
-import {
-  getBuildArtifactPath,
-  readBuildArtifact,
-} from "../../../core/modules/build-artifact";
+} from "../../../core/output";
 import { scopedCommand } from "../shared/next-steps";
 import {
   findProject,

@@ -1,37 +1,34 @@
+import { Logging } from "@antelopejs/interface-core/logging";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Writable } from "node:stream";
-import { Logging } from "@antelopejs/interface-core/logging";
 
-import type { BuildLaunchOptions, LaunchOptions } from "../../types/index";
-import type { NodeFileSystem } from "../filesystem/index";
-import type { ModuleManager } from "../modules/module-manager";
-import { getActiveShutdownManager } from "../runtime/process-claim";
-import { type LaunchStep, runLaunchSteps } from "../runtime/launch-steps";
-import { tolerateInvalidatedModuleWork } from "../runtime/runtime-bootstrap";
+import type { BuildLaunchOptions, LaunchOptions } from "../../types";
 import {
+  consumeOwnConfigWrite,
   DEFAULT_ENV,
   PROJECT_STATE_DIR,
   tryFindConfigPath,
-} from "../config/config-paths";
-import { consumeOwnConfigWrite } from "../config/config-writes";
-import type { ShutdownManager } from "../runtime/shutdown/index";
-import type { FileWatcher } from "../runtime/watch/file-watcher";
+} from "../config";
+import type { NodeFileSystem } from "../filesystem";
+import type { ModuleManager } from "../modules";
 import {
+  type FileWatcher,
+  type LoaderContext,
+  type ProjectPreparer,
+  type ShutdownManager,
+  type StartedProject,
   DEFAULT_RUNTIME_POLICY,
-  type RuntimePolicy,
-} from "../runtime/runtime-policy";
-import type {
-  LoaderContext,
-  ProjectPreparer,
-  StartedProject,
-} from "../runtime/runtime-types";
-import {
+  getActiveShutdownManager,
+  type LaunchStep,
   prepareFromArtifact,
   prepareFromConfig,
   prepareFromRefreshedArtifact,
   runLaunchSequence,
-} from "../runtime/launch-sequence";
+  runLaunchSteps,
+  type RuntimePolicy,
+  tolerateInvalidatedModuleWork,
+} from "../runtime";
 
 const Logger = new Logging.Channel("loader");
 
@@ -78,9 +75,9 @@ async function setupWatching(
   loaderContext: LoaderContext,
 ): Promise<void> {
   const [{ FileWatcher }, { HotReload }, moduleLoading] = await Promise.all([
-    import("../runtime/watch/file-watcher"),
-    import("../runtime/watch/hot-reload"),
-    import("../runtime/module-loading"),
+    import("../runtime").then((entry) => entry.watchFileWatcherModule),
+    import("../runtime").then((entry) => entry.watchHotReloadModule),
+    import("../runtime").then((entry) => entry.moduleLoadingModule),
   ]);
   const watcher = new FileWatcher(fs);
   excludeProjectState(watcher, projectFolder, loaderContext);

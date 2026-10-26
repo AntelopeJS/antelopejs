@@ -1,15 +1,13 @@
 import { expect } from "chai";
 
-import { ExecError } from "../../../../src/core/output/command";
 import {
-  CliError,
-  describeFailure,
-  reportFailure,
-} from "../../../../src/core/output/index";
-import {
-  FAILURE_EXIT_CODE,
-  USAGE_EXIT_CODE,
-} from "../../../../src/core/output/exit-codes";
+CliError,
+describeFailure,
+ExecError,
+FAILURE_EXIT_CODE,
+reportFailure,
+USAGE_EXIT_CODE
+} from "../../../../src/core/output";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 
 const COMMAND_OUTPUT_HINT = "Run with --verbose to see the command output.";

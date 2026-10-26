@@ -1,12 +1,12 @@
 import { Command } from "commander";
 
-import cmdDev from "./dev";
-import cmdRun from "./run";
-import cmdInit from "./init";
 import cmdBuild from "./build";
-import cmdStart from "./start";
-import cmdModule from "./modules/index";
+import cmdDev from "./dev";
+import cmdInit from "./init";
 import cmdLogging from "./logging/index";
+import cmdModule from "./modules/index";
+import cmdRun from "./run";
+import cmdStart from "./start";
 
 export default function () {
   return new Command("project")

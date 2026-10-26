@@ -1,13 +1,13 @@
-import path from "node:path";
 import * as coreInterfaceBeta from "@antelopejs/interface-core";
 import { RunWithModuleContext } from "@antelopejs/interface-core/modules";
-import * as runtimeInterfaceBeta from "@antelopejs/interface-core/runtime";
 import type {
   DevServerEndpoint,
   DevServerEntry,
   DevServerRegistry,
   RuntimeInfo,
 } from "@antelopejs/interface-core/runtime";
+import * as runtimeInterfaceBeta from "@antelopejs/interface-core/runtime";
+import path from "node:path";
 
 import type { IFileSystem } from "../../types";
 import type { ShutdownManager } from "./shutdown/index";

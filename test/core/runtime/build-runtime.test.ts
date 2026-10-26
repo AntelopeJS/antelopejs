@@ -1,20 +1,19 @@
-import { manifestFixture } from "../../helpers/module-fixtures";
+import { Logging } from "@antelopejs/interface-core/logging";
+import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
-import { NodeFileSystem } from "../../../src/core/filesystem/index";
-import { expect } from "chai";
-import { Logging } from "@antelopejs/interface-core/logging";
+import { NodeFileSystem } from "../../../src/core/filesystem";
+import { manifestFixture } from "../../helpers/module-fixtures";
 
-import * as buildArtifact from "../../../src/core/modules/build-artifact";
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import type {
   BuildArtifact,
   BuildModuleEntry,
-} from "../../../src/core/modules/build-artifact";
+} from "../../../src/core/modules";
+import { buildArtifactModule as buildArtifact } from "../../../src/core/modules";
 import type {
   ModuleManifestEntry,
   NormalizedLoadedConfig,
-} from "../../../src/core/runtime/runtime-types";
+} from "../../../src/core/runtime";
 import {
   ensureBuildModulesExist,
   mapArtifactModuleEntries,
@@ -22,7 +21,8 @@ import {
   serializeModuleConfig,
   warnIfBuildIsStale,
   writeProjectBuildArtifact,
-} from "../../../src/core/runtime/build-runtime";
+} from "../../../src/core/runtime";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 function createBuildModuleEntry(
   overrides?: Partial<BuildModuleEntry>,

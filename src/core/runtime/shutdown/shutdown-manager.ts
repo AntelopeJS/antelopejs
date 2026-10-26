@@ -4,7 +4,7 @@ import {
   CANCELLED_EXIT_CODE,
   FAILURE_EXIT_CODE,
   SUCCESS_EXIT_CODE,
-} from "../../output/exit-codes";
+} from "../../output";
 
 export type ShutdownHandler = () => Promise<void> | void;
 

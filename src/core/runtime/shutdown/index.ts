@@ -1,2 +1,2 @@
-export * from "./shutdown-manager";
 export * from "./process-tree";
+export * from "./shutdown-manager";

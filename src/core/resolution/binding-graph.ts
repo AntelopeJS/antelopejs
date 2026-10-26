@@ -7,12 +7,7 @@ import {
   describeRunningRebind,
   describeUnsettledCycle,
 } from "./binding-diagnostics";
-import { ProviderTable } from "./binding-providers";
 import { orderComponents } from "./binding-graph-order";
-import {
-  collectBindingWarnings,
-  collectStartupDivergence,
-} from "./binding-graph-warnings";
 import type {
   BindingConnection,
   BindingGraph,
@@ -22,6 +17,11 @@ import type {
   InterfaceBinding,
   ModuleBindings,
 } from "./binding-graph-types";
+import {
+  collectBindingWarnings,
+  collectStartupDivergence,
+} from "./binding-graph-warnings";
+import { ProviderTable } from "./binding-providers";
 
 const MAX_CYCLE_ROUNDS = 10;
 

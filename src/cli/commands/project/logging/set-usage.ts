@@ -3,8 +3,8 @@ import {
   getProcessPalette,
   NeedsInputError,
   type Prompter,
-} from "../../../../core/output/index";
-import { USAGE_EXIT_CODE } from "../../../../core/output/exit-codes";
+  USAGE_EXIT_CODE,
+} from "../../../../core/output";
 import type { SetOptions } from "./set-operations";
 
 type SettingOption = keyof Omit<SetOptions, "project" | "env" | "interactive">;

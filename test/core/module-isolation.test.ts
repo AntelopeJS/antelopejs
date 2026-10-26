@@ -1,6 +1,5 @@
-import path from "node:path";
+import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
-import { tmpdir } from "node:os";
 import {
   existsSync,
   mkdirSync,
@@ -8,10 +7,10 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
-import { ModuleIsolation } from "../../src/core/modules/module-isolation";
-import { ModuleManifest } from "../../src/core/modules/module-manifest";
+import { ModuleIsolation, ModuleManifest } from "../../src/core/modules";
 
 describe("ModuleIsolation", () => {
   let root: string;

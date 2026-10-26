@@ -5,7 +5,7 @@ import {
   collectDescendants,
   killProcessTree,
   terminateProcessTree,
-} from "../../../src/core/runtime/shutdown/process-tree";
+} from "../../../src/core/runtime";
 
 interface FakeProcess {
   pid: number;

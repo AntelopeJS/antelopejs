@@ -67,7 +67,9 @@ export async function runCLI(
 }
 
 async function runCLIAsMain(): Promise<void> {
-  const { runWithErrorBoundary } = await import("../output/boundary");
+  const { runWithErrorBoundary } = await import("../output").then(
+    (entry) => entry.boundaryModule,
+  );
   await runWithErrorBoundary(() => runCLI());
   const { forceExitOnFailure } = await import("../../cli/failure-exit");
   forceExitOnFailure();

@@ -1,15 +1,15 @@
-import {
-  CONFIG_KEYS,
-  invalidConfigKeyError,
-  invalidConfigValueError,
-} from "./keys";
-import { getProcessUi } from "../../../core/output/index";
+import { getProcessUi } from "../../../core/output";
 import {
   displayNonDefaultGitWarning,
   readUserConfig,
   type UserConfig,
   writeUserConfig,
 } from "../../common";
+import {
+  CONFIG_KEYS,
+  invalidConfigKeyError,
+  invalidConfigValueError,
+} from "./keys";
 
 const NOT_SET_LABEL = "not set";
 

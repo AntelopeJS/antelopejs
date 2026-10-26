@@ -1,7 +1,7 @@
-import path from "node:path";
 import { Command, Option } from "commander";
+import path from "node:path";
 
-import { withExamples } from "../../../core/output/help";
+import { withExamples } from "../../../core/output";
 import { lazyAction } from "../../lazy-action";
 
 const filesOption = new Option(

@@ -1,18 +1,16 @@
+import { expect } from "chai";
+import sinon from "sinon";
 import {
   loadedConfigFixture,
   manifestFixture,
 } from "./helpers/module-fixtures";
-import sinon from "sinon";
-import { expect } from "chai";
 
+import { ConfigLoader } from "../src/core/config";
+import { DownloaderRegistry } from "../src/core/downloaders";
+import { ModuleCache, ModuleManager } from "../src/core/modules";
+import { ReplSession } from "../src/core/repl";
+import { FileWatcher, HotReload } from "../src/core/runtime";
 import { launch } from "../src/index";
-import { ModuleCache } from "../src/core/modules/module-cache";
-import { HotReload } from "../src/core/runtime/watch/hot-reload";
-import { ModuleManager } from "../src/core/modules/module-manager";
-import { ReplSession } from "../src/core/repl/repl-session";
-import { FileWatcher } from "../src/core/runtime/watch/file-watcher";
-import { ConfigLoader } from "../src/core/config/config-loader";
-import { DownloaderRegistry } from "../src/core/downloaders/registry";
 
 describe("launch", () => {
   afterEach(() => {

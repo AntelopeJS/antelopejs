@@ -1,21 +1,19 @@
 import { ModuleState } from "../../src/types";
 import {
   loadedConfigFixture,
-  moduleFixture,
   manifestFixture,
+  moduleFixture,
 } from "../helpers/module-fixtures";
 
-import sinon from "sinon";
-import { expect } from "chai";
 import { internal } from "@antelopejs/interface-core/internal";
 import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
+import { expect } from "chai";
+import sinon from "sinon";
 
+import { ConfigLoader } from "../../src/core/config";
+import { DownloaderRegistry } from "../../src/core/downloaders";
+import { Module, ModuleCache, ModuleManager } from "../../src/core/modules";
 import { launch } from "../../src/index";
-import { Module } from "../../src/core/modules/module";
-import { ModuleCache } from "../../src/core/modules/module-cache";
-import { ModuleManager } from "../../src/core/modules/module-manager";
-import { ConfigLoader } from "../../src/core/config/config-loader";
-import { DownloaderRegistry } from "../../src/core/downloaders/registry";
 
 describe("core/beta module interface", () => {
   afterEach(() => {

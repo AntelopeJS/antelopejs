@@ -1,14 +1,13 @@
-import type { CommandOutput } from "../core/output/cli-ui";
-import { FAILURE_EXIT_CODE } from "../core/output/exit-codes";
-import type { PackageManagerName } from "../core/output/package-manager-name";
-import {
-  runInheritedProcess,
-  type InheritedProcessOptions,
-} from "./process-runner";
+import type { CommandOutput, PackageManagerName } from "../core/output";
+import { FAILURE_EXIT_CODE } from "../core/output";
 import {
   formatGlobalCommand,
   getGlobalInstallCommand,
 } from "./global-package-manager";
+import {
+  runInheritedProcess,
+  type InheritedProcessOptions,
+} from "./process-runner";
 
 export interface CommandExecution {
   command: string;

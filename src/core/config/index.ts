@@ -1,3 +1,11 @@
+export * from "./config-editor";
 export * from "./config-loader";
+export * as configLoaderModule from "./config-loader";
 export * from "./config-parser";
 export * from "./config-paths";
+export * from "./config-var-graph";
+export * from "./config-var-store";
+export * from "./config-vars";
+export * from "./config-writes";
+export * from "./module-declarations";
+export * from "./module-entry";

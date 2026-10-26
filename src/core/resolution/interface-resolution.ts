@@ -1,4 +1,4 @@
-import { resolvePackage } from "../../utils/package-resolution";
+import { resolvePackage } from "../../utils";
 
 export interface InterfaceProvider {
   /**

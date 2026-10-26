@@ -1,13 +1,13 @@
-import path from "node:path";
-import crypto from "node:crypto";
 import type {
   AntelopeLogging,
   ModuleSource,
 } from "@antelopejs/interface-core/config";
+import crypto from "node:crypto";
+import path from "node:path";
 
-import type { IFileSystem } from "../../types/index";
-import { NodeFileSystem } from "../filesystem/index";
-import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
+import type { IFileSystem } from "../../types";
+import { ConfigLoader, type LoadedConfig } from "../config";
+import { NodeFileSystem } from "../filesystem";
 import type { ModulePackageJson } from "./module-manifest";
 
 const BUILD_ARTIFACT_VERSION = "1";
@@ -79,12 +79,16 @@ interface RawProjectConfig {
   [key: string]: Parameters<typeof toStableJson>[0];
 }
 
-function isRawProjectConfig(value: Parameters<typeof toStableJson>[0]): value is RawProjectConfig {
+function isRawProjectConfig(
+  value: Parameters<typeof toStableJson>[0],
+): value is RawProjectConfig {
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Stable hashing accepts all non-null objects, including arrays and class instances; a narrower config schema changes serialization.
   return typeof value === "object" && value !== null;
 }
 
-function toStableHashValue(value: Parameters<typeof toStableJson>[0]): Parameters<typeof toStableJson>[0] {
+function toStableHashValue(
+  value: Parameters<typeof toStableJson>[0],
+): Parameters<typeof toStableJson>[0] {
   if (Array.isArray(value)) {
     return value.map((item) => toStableHashValue(item));
   }

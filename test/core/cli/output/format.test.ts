@@ -1,16 +1,16 @@
-import path from "node:path";
 import { expect } from "chai";
+import path from "node:path";
 
 import {
-  createPalette,
-  displayPath,
-  formatDuration,
-  padVisible,
-  pluralize,
-  SYMBOL_SETS,
-  truncate,
-  visibleWidth,
-} from "../../../../src/core/output/index";
+createPalette,
+displayPath,
+formatDuration,
+padVisible,
+pluralize,
+SYMBOL_SETS,
+truncate,
+visibleWidth,
+} from "../../../../src/core/output";
 
 describe("output format", () => {
   it("pluralizes regular and irregular nouns", () => {

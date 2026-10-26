@@ -1,25 +1,26 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import { buildArtifact } from "./fixtures";
-import * as indexModule from "../../../src/index";
-import * as logging from "../../../src/logging";
-import { runCLI } from "../../../src/core/cli/index";
-import * as cliUi from "../../../src/core/output/cli-ui";
-import { writeConfig } from "../../../src/cli/common";
-import { ConfigLoader } from "../../../src/core/config";
-import * as gitOps from "../../../src/cli/git-operations";
-import { stripAnsi } from "../../../src/core/output/logging-utils";
-import * as versionCheck from "../../../src/cli/version-check";
-import { readText, makeTempDir, cleanupTempDir } from "../../helpers/temp";
-import { findConfigPath } from "../../../src/core/config/config-paths";
-import * as buildArtifactModule from "../../../src/core/modules/build-artifact";
-import { NodeFileSystem } from "../../../src/core/filesystem/index";
-import { USAGE_EXIT_CODE } from "../../../src/core/output/exit-codes";
 import {
+  gitOperationsModule as gitOps,
+  runCLI,
+  versionCheckModule as versionCheck,
+  writeConfig,
+} from "../../../src/cli";
+import * as indexModule from "../../../src/core/build";
+import { ConfigLoader, findConfigPath } from "../../../src/core/config";
+import { NodeFileSystem } from "../../../src/core/filesystem";
+import { buildArtifactModule } from "../../../src/core/modules";
+import {
+  cliUiModule as cliUi,
   getProcessUi,
   runWithErrorBoundary,
-} from "../../../src/core/output/index";
+  stripAnsi,
+  USAGE_EXIT_CODE,
+} from "../../../src/core/output";
+import * as logging from "../../../src/logging";
+import { cleanupTempDir, makeTempDir, readText } from "../../helpers/temp";
+import { buildArtifact } from "./fixtures";
 
 const UNKNOWN_ENVIRONMENT = "staging";
 const ACCEPTED_ENVIRONMENT = "PRODUCTION";

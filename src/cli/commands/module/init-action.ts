@@ -1,20 +1,30 @@
-import path from "node:path";
 import * as childProcess from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
-import { ExecuteCMD } from "../../../core/output/command";
-import { USAGE_EXIT_CODE } from "../../../core/output/exit-codes";
-import { displayNonDefaultGitWarning, readUserConfig } from "../../common";
 import {
+  type AnswerFlag,
+  CliError,
+  createPrompter,
   DEFAULT_PACKAGE_MANAGER,
+  displayPath,
+  ExecuteCMD,
+  getInstallCommand,
+  getProcessPalette,
+  getProcessUi,
+  missingFlags,
   PACKAGE_MANAGER_NAMES,
   type PackageManagerName,
-} from "../../../core/output/package-manager-name";
-import { Spinner, success, warning } from "../../../core/output/cli-ui";
-import {
-  getInstallCommand,
+  type Prompter,
+  runTask,
   savePackageManagerToPackageJson,
-} from "../../../core/output/package-manager";
+  Spinner,
+  success,
+  translateFailure,
+  USAGE_EXIT_CODE,
+  warning,
+} from "../../../core/output";
+import { displayNonDefaultGitWarning, readUserConfig } from "../../common";
 import {
   copyTemplate,
   type GitManifest,
@@ -23,18 +33,6 @@ import {
   loadManifestFromGit,
   type Template,
 } from "../../git-operations";
-import {
-  CliError,
-  createPrompter,
-  displayPath,
-  getProcessPalette,
-  getProcessUi,
-  missingFlags,
-  runTask,
-  type AnswerFlag,
-  type Prompter,
-  translateFailure,
-} from "../../../core/output/index";
 
 export interface ModuleInitOptions {
   git?: string;

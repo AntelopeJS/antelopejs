@@ -1,17 +1,23 @@
-import path from "node:path";
 import type { Command } from "commander";
-import fs, { unlinkSync, writeFileSync } from "node:fs";
 import { type ChildProcess, fork } from "node:child_process";
+import fs, { unlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
-import { ModuleCache } from "../../../core/modules/module-cache";
-import { info, warning } from "../../../core/output/cli-ui";
-import { getProcessUi, reportFailure } from "../../../core/output/index";
-import startAntelope, { DEFAULT_ENV, type LaunchOptions } from "../../../index";
+import { DEFAULT_ENV } from "../../../core/config";
+import { ModuleCache } from "../../../core/modules";
+import {
+  getProcessUi,
+  info,
+  reportFailure,
+  warning,
+} from "../../../core/output";
+import { launch as startAntelope } from "../../../core/repl";
 import {
   DEFAULT_SHUTDOWN_TIMEOUT_MS,
   SHUTDOWN_CLEANUP_TIMEOUT_MS,
   ShutdownManager,
-} from "../../../core/runtime/shutdown/index";
+} from "../../../core/runtime";
+import type { LaunchOptions } from "../../../types";
 import {
   resolveInheritedVerbose,
   validateProjectExists,

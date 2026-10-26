@@ -1,12 +1,14 @@
-import { defaultConfigLogging } from "../../../../logging/index";
-import { writeConfig } from "../../../common";
-import { info, success, warning } from "../../../../core/output/cli-ui";
 import {
   createPrompter,
   getProcessPalette,
   getProcessUi,
+  info,
+  success,
+  warning,
   type Prompter,
-} from "../../../../core/output/index";
+} from "../../../../core/output";
+import { defaultConfigLogging } from "../../../../logging";
+import { writeConfig } from "../../../common";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import {

@@ -1,5 +1,4 @@
-import { CliError } from "../../../core/output/index";
-import { USAGE_EXIT_CODE } from "../../../core/output/exit-codes";
+import { CliError, USAGE_EXIT_CODE } from "../../../core/output";
 import { isGitRepositoryUrl } from "../../git-url";
 
 interface ConfigValueRule {

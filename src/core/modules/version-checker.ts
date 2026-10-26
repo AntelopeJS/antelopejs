@@ -1,22 +1,22 @@
-import { satisfies, validRange } from "semver";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import { satisfies, validRange } from "semver";
 
-import { type CommandResult, ExecError, ExecuteFile } from "../output/command";
-import { warning } from "../output/cli-ui";
+import type { ExpandedModuleConfig } from "../config";
 import {
   CliError,
+  type CommandResult,
+  ExecError,
+  ExecuteFile,
+  type PackageManagerName,
   describeFailure,
   getProcessTasks,
   getProcessUi,
+  packageManagerExecutable,
+  parsePackageInfoOutput,
   pluralize,
   truncate,
-} from "../output/index";
-import { parsePackageInfoOutput } from "../output/package-manager";
-import {
-  type PackageManagerName,
-  packageManagerExecutable,
-} from "../output/package-manager-name";
-import type { ExpandedModuleConfig } from "../config/config-parser";
+  warning,
+} from "../output";
 
 export interface OutdatedModule {
   name: string;

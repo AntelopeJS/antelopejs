@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 
-import { getProcessUi, writeData, type Ui } from "../../core/output/index";
+import { getProcessUi, writeData, type Ui } from "../../core/output";
 import {
   describePluginStatus,
   getPluginStatuses,

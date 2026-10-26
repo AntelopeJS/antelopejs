@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { ObservableMap } from "../../../src/core/resolution/observable-map";
+import { ObservableMap } from "../../../src/core/resolution";
 
 describe("ObservableMap", () => {
   it("reports set, delete and clear as changes", () => {

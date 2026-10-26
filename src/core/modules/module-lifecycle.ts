@@ -1,7 +1,7 @@
-import { Events } from "@antelopejs/interface-core/modules";
 import type { ConfigVars } from "@antelopejs/interface-core/config";
+import { Events } from "@antelopejs/interface-core/modules";
 
-import { type ModuleCallbacks, ModuleState } from "../../types/index";
+import { type ModuleCallbacks, ModuleState } from "../../types";
 import {
   ModuleDiagnostics,
   type ModuleDiagnosticsContext,

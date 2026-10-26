@@ -1,15 +1,17 @@
-import os from "node:os";
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
 import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import sinon from "sinon";
 
+import {
+  commandsModuleTestCommand as cmdTest,
+  commonModule as common,
+  moduleTestCommand,
+} from "../../../../../src/cli";
+import { CliError, getProcessUi } from "../../../../../src/core/output";
+import { testModuleModule } from "../../../../../src/core/test";
 import { expectInstanceOf, rejectionOf } from "../../fixtures";
-import { CliError, getProcessUi } from "../../../../../src/core/output/index";
-import * as common from "../../../../../src/cli/common";
-import * as testModuleModule from "../../../../../src/core/test/test-module";
-import cmdTest from "../../../../../src/cli/commands/module/test";
-import { moduleTestCommand } from "../../../../../src/cli/commands/module/test-action";
 
 const MODULE_WITH_TESTS = {
   name: "modA",

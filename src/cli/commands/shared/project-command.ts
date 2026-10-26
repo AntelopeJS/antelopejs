@@ -1,19 +1,16 @@
-import type { Command } from "commander";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
+import type { Command } from "commander";
 
-import { Spinner } from "../../../core/output/cli-ui";
+import { DEFAULT_ENV, LAUNCH_ENVIRONMENT_VARIABLE } from "../../../core/config";
+import { NodeFileSystem } from "../../../core/filesystem";
 import {
   CliError,
   getProcessPalette,
   reportCliError,
-} from "../../../core/output/index";
+  Spinner,
+  USAGE_EXIT_CODE,
+} from "../../../core/output";
 import { readConfig } from "../../common";
-import { USAGE_EXIT_CODE } from "../../../core/output/exit-codes";
-import { NodeFileSystem } from "../../../core/filesystem/index";
-import {
-  DEFAULT_ENV,
-  LAUNCH_ENVIRONMENT_VARIABLE,
-} from "../../../core/config/config-paths";
 
 export interface ProjectCommandOptions {
   project: string;

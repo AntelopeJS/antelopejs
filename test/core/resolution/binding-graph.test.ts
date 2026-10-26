@@ -1,12 +1,12 @@
 import { expect } from "chai";
 
-import { buildBindingGraph } from "../../../src/core/resolution/binding-graph";
 import type {
   BindingConnection,
   BindingGraph,
   BindingInterface,
   BindingModule,
-} from "../../../src/core/resolution/binding-graph-types";
+} from "../../../src/core/resolution";
+import { buildBindingGraph } from "../../../src/core/resolution";
 
 const DB = "database";
 const API = "data-api";

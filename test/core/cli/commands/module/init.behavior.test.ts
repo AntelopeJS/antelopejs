@@ -1,33 +1,33 @@
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
 import { writeFileSync } from "node:fs";
+import path from "node:path";
+import sinon from "sinon";
 
-import { expectInstanceOf } from "../../fixtures";
-import * as cliUi from "../../../../../src/core/output/cli-ui";
-import * as common from "../../../../../src/cli/common";
-import * as command from "../../../../../src/core/output/command";
-import * as gitOps from "../../../../../src/cli/git-operations";
+import {
+  commandsModuleInitCommand as cmdModuleInit,
+  commonModule as common,
+  gitOperationsModule as gitOps,
+  moduleInitCommand,
+} from "../../../../../src/cli";
 import {
   CliError,
+  cliUiModule as cliUi,
+  commandModule as command,
+  FAILURE_EXIT_CODE,
   getProcessUi,
   NeedsInputError,
+  packageManagerModule as pkgManager,
   runWithErrorBoundary,
-} from "../../../../../src/core/output/index";
-import {
-  FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../../../src/core/output/exit-codes";
-import {
-  readJson,
-  makeTempDir,
-  cleanupTempDir,
-} from "../../../../helpers/temp";
-import * as pkgManager from "../../../../../src/core/output/package-manager";
-import cmdModuleInit from "../../../../../src/cli/commands/module/init";
-import { moduleInitCommand } from "../../../../../src/cli/commands/module/init-action";
-import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
+} from "../../../../../src/core/output";
 import { collectStderr } from "../../../../helpers/capture-output";
+import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
+import {
+  cleanupTempDir,
+  makeTempDir,
+  readJson,
+} from "../../../../helpers/temp";
+import { expectInstanceOf } from "../../fixtures";
 
 const { levels } = getProcessUi().symbols;
 

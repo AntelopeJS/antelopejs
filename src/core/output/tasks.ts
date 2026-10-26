@@ -4,9 +4,8 @@ import {
   processCapabilityContext,
   processStreams,
 } from "./capabilities";
-import { selectSymbols } from "./symbols";
 import { createPalette, formatDuration, truncate } from "./format";
-import { createUi } from "./ui";
+import { selectSymbols } from "./symbols";
 import type {
   MessageLevel,
   MessageOptions,
@@ -19,6 +18,7 @@ import type {
   TaskListOptions,
   Ui,
 } from "./types";
+import { createUi } from "./ui";
 
 type TaskOutcome = Extract<MessageLevel, "success" | "warn" | "skip" | "error">;
 
@@ -105,7 +105,8 @@ export class TaskList {
     const capabilities = options.capabilities ?? detectCapabilities(context);
     this.feedback = streams.feedback;
     this.targets = [streams.result, streams.feedback];
-    this.isLive = options.isLive ?? (!options.isQuiet && hasLiveProgress(context));
+    this.isLive =
+      options.isLive ?? (!options.isQuiet && hasLiveProgress(context));
     this.now = options.now ?? Date.now;
     this.palette = createPalette(capabilities.colors.feedback);
     this.symbols = selectSymbols(capabilities.hasUnicode);

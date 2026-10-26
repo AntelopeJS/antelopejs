@@ -1,11 +1,11 @@
 import { expect } from "chai";
 
-import { expectInstanceOf } from "./fixtures";
-import { runInheritedProcess } from "../../../src/cli/process-runner";
+import { runInheritedProcess } from "../../../src/cli";
 import {
   createControllableProcessRunner,
   createSignalTarget,
 } from "../../helpers/cli-plugins";
+import { expectInstanceOf } from "./fixtures";
 
 describe("Inherited process runner", () => {
   it("spawns with inherited stdio and verbatim arguments", async () => {

@@ -1,9 +1,9 @@
 import { Command } from "commander";
 
-import type { Ui } from "../../../core/output/index";
-import { Options } from "../../options";
-import { withExamples } from "../../../core/output/help";
+import type { Ui } from "../../../core/output";
+import { withExamples } from "../../../core/output";
 import { lazyAction } from "../../lazy-action";
+import { Options } from "../../options";
 
 export default function (ui?: Ui) {
   const command = new Command("show")

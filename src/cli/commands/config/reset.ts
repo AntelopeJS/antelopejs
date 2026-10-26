@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { withExamples } from "../../../core/output/help";
+import { withExamples } from "../../../core/output";
 import { lazyAction } from "../../lazy-action";
 
 export default function () {

@@ -3,8 +3,8 @@ import type {
   AntelopeLogging,
 } from "@antelopejs/interface-core/config";
 
-import { defaultConfigLogging } from "../../../../logging/index";
-import { diffDeep, mergeDeep } from "../../../../utils/object";
+import { defaultConfigLogging } from "../../../../logging";
+import { diffDeep, mergeDeep } from "../../../../utils";
 
 export interface ModuleTrackingDraft {
   enabled: boolean;

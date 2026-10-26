@@ -1,7 +1,9 @@
 import { expect } from "chai";
 
-import { NeedsInputError } from "../../../../../src/core/output/index";
-import { USAGE_EXIT_CODE } from "../../../../../src/core/output/exit-codes";
+import {
+  NeedsInputError,
+  USAGE_EXIT_CODE,
+} from "../../../../../src/core/output";
 import { captureCliError } from "../../../../helpers/cli-error";
 import {
   messagesOf,

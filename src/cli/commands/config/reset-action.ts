@@ -2,7 +2,7 @@ import {
   createPrompter,
   getProcessUi,
   type DetailEntry,
-} from "../../../core/output/index";
+} from "../../../core/output";
 import {
   getDefaultUserConfig,
   readUserConfig,

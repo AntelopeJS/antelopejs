@@ -6,15 +6,15 @@ import type {
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 
-import { ConfigLoader } from "../../../../core/config/index";
-import { NodeFileSystem } from "../../../../core/filesystem/index";
+import { ConfigLoader } from "../../../../core/config";
+import { NodeFileSystem } from "../../../../core/filesystem";
 import {
   getProcessUi,
   pluralize,
   writeData,
   type TableColumn,
   type Ui,
-} from "../../../../core/output/index";
+} from "../../../../core/output";
 import { resolveProjectContext } from "../../shared/project-command";
 
 interface ListOptions {

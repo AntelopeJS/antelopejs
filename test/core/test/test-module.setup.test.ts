@@ -2,8 +2,8 @@ import { expect } from "chai";
 import assert from "node:assert/strict";
 import path from "node:path";
 import sinon from "sinon";
-import { ModuleManager } from "../../../src/core/modules/module-manager";
-import * as testModule from "../../../src/core/test/test-module";
+import { ModuleManager } from "../../../src/core/modules";
+import { testModuleModule as testModule } from "../../../src/core/test";
 import { interfaceProxy } from "../../helpers/interface-proxy";
 
 const RUNTIME_INFO_TIMEOUT_MS = 1000;
@@ -35,7 +35,9 @@ describe("test-module", () => {
   });
   describe("setupTestEnvironment", () => {
     it("destroys the manager when startup fails", async () => {
-      const moduleLoading = require("../../../src/core/runtime/module-loading");
+      const {
+        moduleLoadingModule: moduleLoading,
+      } = require("../../../src/core/runtime");
       const startupFailure = new Error("start failed");
       sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);
       sinon
@@ -62,7 +64,9 @@ describe("test-module", () => {
     });
 
     it("aggregates startup and test-runtime cleanup errors", async () => {
-      const moduleLoading = require("../../../src/core/runtime/module-loading");
+      const {
+        moduleLoadingModule: moduleLoading,
+      } = require("../../../src/core/runtime");
       const startupFailure = new Error("start failed");
       sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);
       sinon
@@ -94,7 +98,9 @@ describe("test-module", () => {
 
     it("enables auto-stub on the module manager resolver", async () => {
       const { internal } = await import("@antelopejs/interface-core/internal");
-      const moduleLoading = require("../../../src/core/runtime/module-loading");
+      const {
+        moduleLoadingModule: moduleLoading,
+      } = require("../../../src/core/runtime");
 
       const loadEntriesStub = sinon
         .stub(moduleLoading, "loadModuleEntriesForManager")
@@ -123,7 +129,9 @@ describe("test-module", () => {
 
     it("validates the module graph before constructing modules so standalone interfaces get canonicalized", async () => {
       const { internal } = await import("@antelopejs/interface-core/internal");
-      const moduleLoading = require("../../../src/core/runtime/module-loading");
+      const {
+        moduleLoadingModule: moduleLoading,
+      } = require("../../../src/core/runtime");
 
       const loadEntriesStub = sinon
         .stub(moduleLoading, "loadModuleEntriesForManager")
@@ -159,7 +167,9 @@ describe("test-module", () => {
   describe("setupTestEnvironment", () => {
     it("registers moduleRoot in internal.moduleByFolder so test-file frames find a module", async () => {
       const { internal } = await import("@antelopejs/interface-core/internal");
-      const moduleLoading = require("../../../src/core/runtime/module-loading");
+      const {
+        moduleLoadingModule: moduleLoading,
+      } = require("../../../src/core/runtime");
 
       sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);
       sinon.stub(moduleLoading, "constructAndStartModules").resolves();
@@ -187,7 +197,9 @@ describe("test-module", () => {
       const { internal } = await import("@antelopejs/interface-core/internal");
       const { GetRuntimeInfo } =
         await import("@antelopejs/interface-core/runtime");
-      const moduleLoading = require("../../../src/core/runtime/module-loading");
+      const {
+        moduleLoadingModule: moduleLoading,
+      } = require("../../../src/core/runtime");
 
       sinon.stub(moduleLoading, "loadModuleEntriesForManager").resolves([]);
       sinon.stub(moduleLoading, "constructAndStartModules").resolves();

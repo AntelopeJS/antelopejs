@@ -1,14 +1,14 @@
-import { manifestFixture } from "../../helpers/module-fixtures";
-import path from "node:path";
 import { expect } from "chai";
 import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { manifestFixture } from "../../helpers/module-fixtures";
 
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import {
   findUnresolvedInterfaces,
   type InterfaceConsumer,
   type InterfaceProvider,
-} from "../../../src/core/resolution/interface-resolution";
+} from "../../../src/core/resolution";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 const CORE_INTERFACE_PKG = "@antelopejs/interface-core";
 const CONSUMER_FOLDER = path.resolve(__dirname, "..", "..", "..");

@@ -1,6 +1,6 @@
 import sinon from "sinon";
 
-import { getProcessUi, SYMBOL_SETS } from "../../src/core/output/index";
+import { getProcessUi, SYMBOL_SETS } from "../../src/core/output";
 
 /**
  * Draws the process output with the ASCII symbol set until `sinon.restore()`,

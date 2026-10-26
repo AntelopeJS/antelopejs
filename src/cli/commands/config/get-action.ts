@@ -1,11 +1,11 @@
-import { CONFIG_KEYS, invalidConfigKeyError } from "./keys";
-import { readUserConfig } from "../../common";
 import {
   CliError,
   getProcessUi,
   writeData,
   type Ui,
-} from "../../../core/output/index";
+} from "../../../core/output";
+import { readUserConfig } from "../../common";
+import { CONFIG_KEYS, invalidConfigKeyError } from "./keys";
 
 interface GetOptions {
   json?: boolean;

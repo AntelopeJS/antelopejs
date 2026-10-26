@@ -1,10 +1,10 @@
 import { Command } from "commander";
 
-import { CONFIG_KEYS } from "./keys";
-import type { Ui } from "../../../core/output/index";
-import { Options } from "../../options";
-import { withExamples } from "../../../core/output/help";
+import type { Ui } from "../../../core/output";
+import { withExamples } from "../../../core/output";
 import { lazyAction } from "../../lazy-action";
+import { Options } from "../../options";
+import { CONFIG_KEYS } from "./keys";
 
 export default function (ui?: Ui) {
   const command = new Command("get")

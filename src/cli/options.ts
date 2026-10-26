@@ -1,13 +1,13 @@
-import path from "node:path";
 import { type Command, Option } from "commander";
+import path from "node:path";
 
-import { warning } from "../core/output/cli-ui";
-import { LAUNCH_ENVIRONMENT_VARIABLE } from "../core/config/config-paths";
+import { LAUNCH_ENVIRONMENT_VARIABLE } from "../core/config";
 import {
   ALL_LOG_CHANNELS,
+  PACKAGE_MANAGER_NAMES,
   QUIET_ENVIRONMENT_VARIABLE,
-} from "../core/output/verbosity";
-import { PACKAGE_MANAGER_NAMES } from "../core/output/package-manager-name";
+  warning,
+} from "../core/output";
 
 const LIST_SEPARATOR = ",";
 const CURRENT_DIRECTORY = "current directory";

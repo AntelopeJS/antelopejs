@@ -1,19 +1,8 @@
-import path from "node:path";
-import { mkdir, stat } from "node:fs/promises";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
+import { mkdir, stat } from "node:fs/promises";
+import path from "node:path";
 
-import {
-  moduleInitCommand,
-  type ModuleInitOptions,
-  TEMPLATE_FLAG,
-  YES_FLAG,
-} from "../module/init-action";
-import { readConfig, writeConfig } from "../../common";
-import { TS_CONFIG_FILE } from "../../../core/config/config-paths";
-import type { Template } from "../../git-operations";
-import type { PackageManagerName } from "../../../core/output/package-manager-name";
-import { addModules, handlers } from "./modules/add-action";
-import { Spinner } from "../../../core/output/cli-ui";
+import { TS_CONFIG_FILE } from "../../../core/config";
 import {
   CliError,
   createPrompter,
@@ -21,8 +10,19 @@ import {
   getProcessPalette,
   getProcessUi,
   type NextStep,
+  type PackageManagerName,
   type Prompter,
-} from "../../../core/output/index";
+  Spinner,
+} from "../../../core/output";
+import { readConfig, writeConfig } from "../../common";
+import type { Template } from "../../git-operations";
+import {
+  moduleInitCommand,
+  type ModuleInitOptions,
+  TEMPLATE_FLAG,
+  YES_FLAG,
+} from "../module/init-action";
+import { addModules, handlers } from "./modules/add-action";
 
 export interface ProjectInitOptions {
   name?: string;

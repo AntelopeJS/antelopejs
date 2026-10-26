@@ -1,10 +1,10 @@
+import { expect } from "chai";
+import { type ChildProcess, spawn } from "node:child_process";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { expect } from "chai";
-import fs from "node:fs/promises";
-import { type ChildProcess, spawn } from "node:child_process";
 
-import { CANCELLED_EXIT_CODE } from "../../src/core/output/exit-codes";
+import { CANCELLED_EXIT_CODE } from "../../src/core/output";
 
 const CLI_ENTRY = path.resolve(__dirname, "../../src/core/cli/index.ts");
 const TEST_TIMEOUT_MS = 90000;

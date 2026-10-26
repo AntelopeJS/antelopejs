@@ -1,33 +1,17 @@
-import { getCoreVersion } from "./core-version";
 import {
+  consoleOutput,
   createPrompter,
   displayPath,
+  FAILURE_EXIT_CODE,
   getProcessPalette,
   promptEnvironment,
-  type CliProblem,
-} from "../core/output/index";
-import type { PluginPackageLookup } from "./plugin-package";
-import { consoleOutput, type CommandOutput } from "../core/output/cli-ui";
-import type { InheritedProcessOptions } from "./process-runner";
-import {
-  parsePluginInvocation,
-  type PluginInvocation,
-} from "./plugin-arguments";
-import { runCommand, runGlobalInstall } from "./command-runner";
-import type { PackageManagerName } from "../core/output/package-manager-name";
-import {
-  FAILURE_EXIT_CODE,
   SUCCESS_EXIT_CODE,
-} from "../core/output/exit-codes";
-import {
-  checkPluginCompatibility,
-  reportCompatibility,
-} from "./plugin-compatibility";
-import {
-  findOfficialPlugin,
-  officialPluginLabel,
-  type OfficialPlugin,
-} from "./plugin-registry";
+  type CliProblem,
+  type CommandOutput,
+  type PackageManagerName,
+} from "../core/output";
+import { runCommand, runGlobalInstall } from "./command-runner";
+import { getCoreVersion } from "./core-version";
 import {
   resolveExecutable,
   type ExecutableLookup,
@@ -38,6 +22,21 @@ import {
   formatGlobalCommand,
   getGlobalInstallCommand,
 } from "./global-package-manager";
+import {
+  parsePluginInvocation,
+  type PluginInvocation,
+} from "./plugin-arguments";
+import {
+  checkPluginCompatibility,
+  reportCompatibility,
+} from "./plugin-compatibility";
+import type { PluginPackageLookup } from "./plugin-package";
+import {
+  findOfficialPlugin,
+  officialPluginLabel,
+  type OfficialPlugin,
+} from "./plugin-registry";
+import type { InheritedProcessOptions } from "./process-runner";
 
 const PLUGIN_PREFIX = "ajs-";
 const PLUGIN_INSTALL_COMMAND = "ajs";

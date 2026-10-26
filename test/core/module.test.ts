@@ -1,15 +1,15 @@
-import { manifestFixture } from "../helpers/module-fixtures";
-import sinon from "sinon";
-import { expect } from "chai";
 import {
   Events,
   GetModuleContext,
   type ModuleExecutionContext,
 } from "@antelopejs/interface-core/modules";
+import { expect } from "chai";
+import sinon from "sinon";
+import { manifestFixture } from "../helpers/module-fixtures";
 
 import { internal } from "@antelopejs/interface-core/internal";
+import { Module } from "../../src/core/modules";
 import { ModuleState } from "../../src/types";
-import { Module } from "../../src/core/modules/module";
 import {
   type DiagnosticsRecorder,
   recordModuleDiagnostics,

@@ -1,16 +1,16 @@
-import sinon from "sinon";
 import { expect } from "chai";
 import { EventEmitter } from "node:events";
+import sinon from "sinon";
 
+import {
+  CANCELLED_EXIT_CODE,
+  FAILURE_EXIT_CODE,
+} from "../../../src/core/output";
 import {
   SHUTDOWN_CLEANUP_TIMEOUT_MS,
   ShutdownManager,
   type SignalShutdownListener,
-} from "../../../src/core/runtime/shutdown/shutdown-manager";
-import {
-  CANCELLED_EXIT_CODE,
-  FAILURE_EXIT_CODE,
-} from "../../../src/core/output/exit-codes";
+} from "../../../src/core/runtime";
 
 const WAIT_FOR_SIGNAL_MS = 10;
 const NEGATIVE_TIMEOUT_WARNING = "TimeoutNegativeWarning";

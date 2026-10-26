@@ -1,7 +1,7 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import { HotReload } from "../../../src/core/runtime/watch/hot-reload";
+import { HotReload } from "../../../src/core/runtime";
 
 describe("HotReload", () => {
   it("should batch reloads within debounce window", async () => {

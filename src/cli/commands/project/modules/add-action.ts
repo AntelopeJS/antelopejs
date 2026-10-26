@@ -1,23 +1,34 @@
-import path from "node:path";
-import { readFile, stat } from "node:fs/promises";
 import type {
   AntelopeConfig,
   AntelopeModuleConfig,
 } from "@antelopejs/interface-core/config";
+import { readFile, stat } from "node:fs/promises";
+import path from "node:path";
 
-import { ExecuteCMD } from "../../../../core/output/command";
-import { ConfigLoader, type LoadedConfig } from "../../../../core/config/index";
-import { ModuleCache } from "../../../../core/modules/module-cache";
-import { NodeFileSystem } from "../../../../core/filesystem/index";
-import { writeConfig } from "../../../common";
-import { FAILURE_EXIT_CODE } from "../../../../core/output/exit-codes";
-import { registerGitDownloader } from "../../../../core/downloaders/git";
-import type { ModulePackageJson } from "../../../../core/modules/module-manifest";
-import { DownloaderRegistry } from "../../../../core/downloaders/registry";
-import { registerLocalDownloader } from "../../../../core/downloaders/local";
-import { registerPackageDownloader } from "../../../../core/downloaders/package";
+import {
+  ConfigLoader,
+  TS_CONFIG_FILE,
+  type LoadedConfig,
+} from "../../../../core/config";
+import {
+  DownloaderRegistry,
+  registerGitDownloader,
+  registerLocalDownloader,
+  registerLocalFolderDownloader,
+  registerPackageDownloader,
+} from "../../../../core/downloaders";
+import { NodeFileSystem } from "../../../../core/filesystem";
+import type { ModulePackageJson } from "../../../../core/modules";
+import {
+  fetchLatestVersion,
+  ModuleCache,
+  toFloatingSpec,
+  validateVersionSpec,
+} from "../../../../core/modules";
 import {
   CliError,
+  ExecuteCMD,
+  FAILURE_EXIT_CODE,
   getProcessPalette,
   getProcessTasks,
   getProcessUi,
@@ -25,16 +36,10 @@ import {
   reportFailure,
   type NextStep,
   type TaskHandle,
-} from "../../../../core/output/index";
-import { TS_CONFIG_FILE } from "../../../../core/config/config-paths";
+} from "../../../../core/output";
+import { writeConfig } from "../../../common";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
-import { registerLocalFolderDownloader } from "../../../../core/downloaders/local-folder";
-import {
-  fetchLatestVersion,
-  toFloatingSpec,
-  validateVersionSpec,
-} from "../../../../core/modules/version-checker";
 
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
 const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];

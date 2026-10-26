@@ -1,14 +1,18 @@
-import sinon from "sinon";
 import { expect } from "chai";
 import { Command } from "commander";
+import sinon from "sinon";
 
-import * as indexModule from "../../../../../src/index";
-import * as cliUi from "../../../../../src/core/output/cli-ui";
-import { getProcessUi } from "../../../../../src/core/output/index";
-import * as common from "../../../../../src/cli/common";
-import { Options } from "../../../../../src/cli/options";
-import { ModuleCache } from "../../../../../src/core/modules/module-cache";
-import cmdRun from "../../../../../src/cli/commands/project/run";
+import {
+  commandsProjectRunCommand as cmdRun,
+  commonModule as common,
+  Options,
+} from "../../../../../src/cli";
+import { ModuleCache } from "../../../../../src/core/modules";
+import {
+  cliUiModule as cliUi,
+  getProcessUi,
+} from "../../../../../src/core/output";
+import { launchModule as indexModule } from "../../../../../src/core/repl";
 import { collectStderr } from "../../../../helpers/capture-output";
 
 const fsPromises = require("node:fs").promises;
@@ -37,7 +41,7 @@ describe("project run behavior", () => {
 
   it("runs project using startAntelope", async () => {
     sinon.stub(common, "readConfig").resolves({ name: "test-project" });
-    const startStub = sinon.stub(indexModule, "default").resolves();
+    const startStub = sinon.stub(indexModule, "launch").resolves();
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
     collectStderr();
@@ -53,7 +57,7 @@ describe("project run behavior", () => {
 
   it("warns when watch mode is enabled", async () => {
     sinon.stub(common, "readConfig").resolves({ name: "test-project" });
-    const startStub = sinon.stub(indexModule, "default").resolves();
+    const startStub = sinon.stub(indexModule, "launch").resolves();
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
     collectStderr();
@@ -77,7 +81,7 @@ describe("project run behavior", () => {
   it("sets exit code when startAntelope throws", async () => {
     sinon.stub(common, "readConfig").resolves({ name: "test-project" });
     const startStub = sinon
-      .stub(indexModule, "default")
+      .stub(indexModule, "launch")
       .rejects(new Error("boom"));
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
@@ -238,7 +242,7 @@ describe("project run behavior", () => {
 
   it("handles non-error failures from startAntelope", async () => {
     sinon.stub(common, "readConfig").resolves({ name: "test-project" });
-    const startStub = sinon.stub(indexModule, "default").callsFake(async () => {
+    const startStub = sinon.stub(indexModule, "launch").callsFake(async () => {
       throw 123;
     });
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();

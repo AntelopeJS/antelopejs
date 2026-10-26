@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import sinon from "sinon";
-import { ConfigLoader } from "../../../src/core/config/config-loader";
-import * as testModule from "../../../src/core/test/test-module";
+import { ConfigLoader } from "../../../src/core/config";
+import { testModuleModule as testModule } from "../../../src/core/test";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   loadedConfigFixture,

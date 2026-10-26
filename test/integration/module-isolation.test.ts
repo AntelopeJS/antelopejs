@@ -1,9 +1,9 @@
+import { ReloadModule } from "@antelopejs/interface-core/modules";
+import { expect } from "chai";
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { expect } from "chai";
-import fs from "node:fs/promises";
-import { ReloadModule } from "@antelopejs/interface-core/modules";
 
 import launch, { type ModuleManager } from "../../src";
 

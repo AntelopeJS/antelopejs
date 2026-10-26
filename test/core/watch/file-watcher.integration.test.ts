@@ -1,11 +1,11 @@
-import path from "node:path";
-import { tmpdir } from "node:os";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import { expect } from "chai";
 
-import { NodeFileSystem } from "../../../src/core/filesystem/index";
-import { FileWatcher } from "../../../src/core/runtime/watch/file-watcher";
+import { NodeFileSystem } from "../../../src/core/filesystem";
+import { FileWatcher } from "../../../src/core/runtime";
 
 const EVENT_SETTLE_MS = 300;
 

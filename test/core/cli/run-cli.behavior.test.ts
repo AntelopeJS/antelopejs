@@ -1,27 +1,27 @@
-import fs from "node:fs";
-import sinon from "sinon";
 import { expect } from "chai";
 import { Command, CommanderError } from "commander";
-import { createMemoryUi } from "../../helpers/memory-ui";
+import fs from "node:fs";
+import sinon from "sinon";
 import { captureOutputAsync } from "../../helpers/capture-output";
+import { createMemoryUi } from "../../helpers/memory-ui";
 
-import { expectInstanceOf } from "./fixtures";
-import * as logging from "../../../src/logging";
-import * as common from "../../../src/cli/common";
-import { runCLI } from "../../../src/cli/full-cli";
-import * as versionCheck from "../../../src/cli/version-check";
 import {
-  CancelledError,
-  CliError,
-  runWithErrorBoundary,
-} from "../../../src/core/output/index";
-import { CANCELLED_MESSAGE } from "../../../src/core/output/cancellation";
+  commonModule as common,
+  runFullCLI as runCLI,
+  versionCheckModule as versionCheck,
+} from "../../../src/cli";
 import {
   CANCELLED_EXIT_CODE,
+  CANCELLED_MESSAGE,
+  CancelledError,
+  CliError,
   FAILURE_EXIT_CODE,
+  runWithErrorBoundary,
   SUCCESS_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../src/core/output/exit-codes";
+} from "../../../src/core/output";
+import * as logging from "../../../src/logging";
+import { expectInstanceOf } from "./fixtures";
 
 describe("runCLI behavior", () => {
   const originalArgv = process.argv.slice();

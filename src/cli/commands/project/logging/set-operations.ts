@@ -1,5 +1,5 @@
-import { levelMap } from "../../../../logging/index";
-import { getProcessPalette } from "../../../../core/output/index";
+import { getProcessPalette } from "../../../../core/output";
+import { levelMap } from "../../../../logging";
 import type { LoggingDraft, ModuleTrackingDraft } from "./logging-draft";
 
 export interface SetOptions {

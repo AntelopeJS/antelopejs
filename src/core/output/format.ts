@@ -70,7 +70,11 @@ export function visibleWidth(text: string): number {
  * Cuts `text` to `width` visible characters, `ellipsis` included, when it is
  * longer. A cut text loses its colors.
  */
-export function truncate(text: string, width: number, ellipsis: string): string {
+export function truncate(
+  text: string,
+  width: number,
+  ellipsis: string,
+): string {
   if (visibleWidth(text) <= width) {
     return text;
   }

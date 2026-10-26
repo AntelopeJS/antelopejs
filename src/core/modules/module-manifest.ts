@@ -1,10 +1,10 @@
-import * as path from "node:path";
+import type { ModuleSource } from "@antelopejs/interface-core/config";
 import { statSync } from "node:fs";
 import { createRequire } from "node:module";
-import type { ModuleSource } from "@antelopejs/interface-core/config";
+import * as path from "node:path";
 
-import type { IFileSystem } from "../../types/index";
-import { NodeFileSystem } from "../filesystem/index";
+import type { IFileSystem } from "../../types";
+import { NodeFileSystem } from "../filesystem";
 import type {
   BuildAliasEntry,
   BuildModuleEntry,

@@ -1,6 +1,6 @@
 import { ExecError } from "./command";
-import { InterfaceResolutionError } from "./interface-resolution-error";
 import { describeInterfaceConflicts } from "./interface-conflicts";
+import { InterfaceResolutionError } from "./interface-resolution-error";
 import { stripAnsiCodes } from "./logging-utils";
 import type { CliProblem } from "./types";
 
@@ -27,7 +27,8 @@ const EXEC_TRANSLATIONS: ExecTranslation[] = [
     output: /\bE404\b/,
     describe: ([, name]) => ({
       title: `Package '${name}' not found on the npm registry`,
-      reason: "The registry answered 404: the name is wrong or the package is private.",
+      reason:
+        "The registry answered 404: the name is wrong or the package is private.",
       fixes: [`Check the name: npm view ${name}`],
     }),
   },
@@ -144,7 +145,8 @@ export function translateFailure(error: unknown): CliProblem | undefined {
     return describeInterfaceConflicts(error);
   }
   if (isSystemError(error)) {
-    const translations: typeof SYSTEM_ERROR_TRANSLATIONS & Record<string, SystemErrorTranslation> = SYSTEM_ERROR_TRANSLATIONS;
+    const translations: typeof SYSTEM_ERROR_TRANSLATIONS &
+      Record<string, SystemErrorTranslation> = SYSTEM_ERROR_TRANSLATIONS;
     return translations[error.code ?? ""]?.(error);
   }
   return undefined;

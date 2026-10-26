@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { IFileSystem } from "../../../types/index";
+import type { IFileSystem } from "../../../types";
 
 export class FileHasher {
   constructor(private fs: IFileSystem) {}

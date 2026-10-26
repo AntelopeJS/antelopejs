@@ -1,13 +1,14 @@
 import type { Command } from "commander";
 
-import { info } from "../../../core/output/cli-ui";
+import { DEFAULT_ENV } from "../../../core/config";
 import {
   displayPath,
   getProcessUi,
+  info,
   reportFailure,
-} from "../../../core/output/index";
+} from "../../../core/output";
+import type { BuildLaunchOptions } from "../../../types";
 import { startFailureExitCode, startFromBuild } from "../../production-start";
-import { type BuildLaunchOptions, DEFAULT_ENV } from "../../../index";
 import {
   type ProjectCommandOptions,
   resolveInheritedVerbose,

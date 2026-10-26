@@ -1,10 +1,10 @@
 import { expect } from "chai";
 
-import { CliError } from "../../src/core/output/index";
 import {
+  CliError,
   FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../src/core/output/exit-codes";
+} from "../../src/core/output";
 
 export async function captureCliError<T>(
   run: () => Promise<T>,

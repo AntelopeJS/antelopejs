@@ -1,16 +1,16 @@
-import { ConfigLoader } from "../../../../core/config/index";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
-import { NodeFileSystem } from "../../../../core/filesystem/index";
-import { error, info } from "../../../../core/output/cli-ui";
-import { writeConfig } from "../../../common";
-import { FAILURE_EXIT_CODE } from "../../../../core/output/exit-codes";
+import { ConfigLoader, TS_CONFIG_FILE } from "../../../../core/config";
+import { NodeFileSystem } from "../../../../core/filesystem";
 import {
+  error,
+  FAILURE_EXIT_CODE,
   getProcessPalette,
   getProcessUi,
+  info,
   pluralize,
   type NextStep,
-} from "../../../../core/output/index";
-import { TS_CONFIG_FILE } from "../../../../core/config/config-paths";
+} from "../../../../core/output";
+import { writeConfig } from "../../../common";
 import { formatNames } from "../../shared/names";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";

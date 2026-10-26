@@ -1,12 +1,12 @@
-import path from "node:path";
 import { expect } from "chai";
+import path from "node:path";
 
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   findConfigPath,
   getModuleConfigPath,
   tryFindConfigPath,
-} from "../../../src/core/config/config-paths";
+} from "../../../src/core/config";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 describe("config-paths", () => {
   let fs: InMemoryFileSystem;

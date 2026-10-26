@@ -1,6 +1,6 @@
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import fs from "node:fs/promises";
 
 export const CORE_INTERFACE_NAME = "@antelopejs/interface-core";
 export const DATABASE = "@instances/interface-database";

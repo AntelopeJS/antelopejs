@@ -1,8 +1,8 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import { rejectionOf } from "./fixtures";
-import { delegateToPlugin } from "../../../src/cli/plugin";
+import { delegateToPlugin } from "../../../src/cli";
+import { CancelledError } from "../../../src/core/output";
 import {
   createGlobalRootResolver,
   createOutput,
@@ -10,9 +10,10 @@ import {
   formatSpawnCalls,
   plainProblem,
 } from "../../helpers/cli-plugins";
+import { CANCEL, fakePrompts } from "../../helpers/fake-prompts";
 import {
-  createInstalledReader,
   CORE_VERSION,
+  createInstalledReader,
   createLocalReader,
   DMS_EXECUTABLE,
   GLOBAL_DMS,
@@ -20,8 +21,7 @@ import {
   LOCAL_DMS_EXECUTABLE,
   localExecutable,
 } from "../../helpers/official-plugin";
-import { CANCEL, fakePrompts } from "../../helpers/fake-prompts";
-import { CancelledError } from "../../../src/core/output/index";
+import { rejectionOf } from "./fixtures";
 
 function missingPluginProblem(installCommand: string) {
   return {

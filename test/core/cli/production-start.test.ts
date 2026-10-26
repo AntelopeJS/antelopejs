@@ -1,20 +1,20 @@
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
+import path from "node:path";
+import sinon from "sinon";
 
-import { expectInstanceOf } from "./fixtures";
-import * as projectLaunch from "../../../src/core/repl/project-launch";
-import { BuildModuleSetChangedError } from "../../../src/core/runtime/build-refresh";
-import {
-  BUILD_MODULE_SET_CHANGED_EXIT_CODE,
-  FAILURE_EXIT_CODE,
-  USAGE_EXIT_CODE,
-} from "../../../src/core/output/exit-codes";
 import {
   parseProductionStartArgs,
   runProductionStart,
   startFailureExitCode,
-} from "../../../src/cli/production-start";
+} from "../../../src/cli";
+import {
+  BUILD_MODULE_SET_CHANGED_EXIT_CODE,
+  FAILURE_EXIT_CODE,
+  USAGE_EXIT_CODE,
+} from "../../../src/core/output";
+import { projectLaunchModule as projectLaunch } from "../../../src/core/repl";
+import { BuildModuleSetChangedError } from "../../../src/core/runtime";
+import { expectInstanceOf } from "./fixtures";
 
 describe("production start", () => {
   const originalProject = process.env.ANTELOPEJS_PROJECT;
