@@ -3,18 +3,27 @@ import assert from "node:assert/strict";
 import sinon from "sinon";
 import { isObject } from "../../../src/utils";
 
-import { ConfigLoader,configLoaderModule as configLoader,ConfigVarStore } from "../../../src/core/config";
-import { computeConfigHash,createBuildArtifact,readBuildArtifact,writeBuildArtifact } from "../../../src/core/modules";
+import {
+  ConfigLoader,
+  configLoaderModule as configLoader,
+  ConfigVarStore,
+} from "../../../src/core/config";
+import {
+  computeConfigHash,
+  createBuildArtifact,
+  readBuildArtifact,
+  writeBuildArtifact,
+} from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 function resolveWith<T>(config: T, port: number) {
   const store = new ConfigVarStore();
   store.record("api", ["API_PORT"], { API_PORT: port });
   const result = store.resolve("dms", config);
-assert.ok(isObject(result));
-assert.ok("apiBaseUrl" in result);
-assert.equal(String(result.apiBaseUrl), result.apiBaseUrl);
-return result;
+  assert.ok(isObject(result));
+  assert.ok("apiBaseUrl" in result);
+  assert.equal(String(result.apiBaseUrl), result.apiBaseUrl);
+  return result;
 }
 
 describe("build artifact", () => {

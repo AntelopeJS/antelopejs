@@ -2,14 +2,15 @@ import { expect } from "chai";
 import sinon from "sinon";
 
 import {
-CancelledError,
-createPrompter,
-missingFlags,
-NeedsInputError,
-promptEnvironment,USAGE_EXIT_CODE
+  CancelledError,
+  createPrompter,
+  missingFlags,
+  NeedsInputError,
+  promptEnvironment,
+  USAGE_EXIT_CODE,
 } from "../../../../src/core/output";
-import { CANCEL,fakePrompts } from "../../../helpers/fake-prompts";
-import { expectInstanceOf,rejectionOf } from "../fixtures";
+import { CANCEL, fakePrompts } from "../../../helpers/fake-prompts";
+import { expectInstanceOf, rejectionOf } from "../fixtures";
 
 const COMMAND = "ajs project init demo";
 
@@ -19,233 +20,230 @@ interface InitFlags {
 }
 
 {
-let registerCreatePrompter: (this: Mocha.Suite) => void;
+  let registerCreatePrompter: (this: Mocha.Suite) => void;
 
-
-const checkTakesTheAnswerGivenOn: (this: Mocha.Suite) => void = function () {
-
-
-  it("takes the answer given on the command line without asking", async () => {
-    const prompts = fakePrompts({ isInteractive: false });
-    const prompter = createPrompter({ command: COMMAND });
-
-    const name = await prompter.text({
-      message: "Project name",
-      flag: "--name <name>",
-      answer: "shop",
-    });
-
-    expect(name).to.equal("shop");
-    expect(prompts.asked).to.deep.equal([]);
-  });
-
-
-  it("answers with the default when defaults are accepted", async () => {
-    const prompts = fakePrompts({ isInteractive: true });
-    const prompter = createPrompter({ command: COMMAND, acceptsDefaults: true });
-
-    const isGitInitialized = await prompter.confirm({
-      message: "Initialize git?",
-      flag: "--git",
-      defaultAnswer: true,
-    });
-
-    expect(isGitInitialized).to.equal(true);
-    expect(prompts.asked).to.deep.equal([]);
-  });
-
-
-  it("asks when the session is interactive", async () => {
-    const prompts = fakePrompts({ answers: ["pnpm"] });
-    const prompter = createPrompter({ command: COMMAND });
-
-    const packageManager = await prompter.select({
-      message: "Package manager",
-      flag: "--pm <name>",
-      choices: [
-        { value: "npm", label: "npm" },
-        { value: "pnpm", label: "pnpm", hint: "fast" },
-      ],
-      defaultAnswer: "npm",
-    });
-
-    expect(packageManager).to.equal("pnpm");
-    expect(prompter.isInteractive).to.equal(true);
-    expect(prompts.asked[0].kind).to.equal("select");
-    expect(prompts.asked[0].options).to.include({ initialValue: "npm" });
-    expect(prompts.asked[0].options.options).to.deep.equal([
-      { value: "npm", label: "npm", hint: undefined },
-      { value: "pnpm", label: "pnpm", hint: "fast" },
-    ]);
-  });
-
-
-  it("draws prompts on the prompt output stream", async () => {
-    const prompts = fakePrompts({ answers: ["shop", true, ["api"]] });
-    const prompter = createPrompter({ command: COMMAND });
-
-    await prompter.text({
-      message: "Project name",
-      flag: "--name <name>",
-      defaultAnswer: "demo",
-    });
-    await prompter.confirm({ message: "Initialize git?", flag: "--git" });
-    const interfaces = await prompter.multiselect({
-      message: "Interfaces",
-      flag: "--interfaces <names>",
-      choices: [{ value: "api", label: "api" }],
-      defaultAnswer: [],
-    });
-
-    expect(interfaces).to.deep.equal(["api"]);
-    expect(prompts.asked.map((prompt) => prompt.kind)).to.deep.equal([
-      "text",
-      "confirm",
-      "multiselect",
-    ]);
-    expect(prompts.asked[0].options).to.include({
-      placeholder: "demo",
-      defaultValue: "demo",
-      output: process.stderr,
-    });
-    expect(prompts.asked[2].options).to.include({ required: false });
-  });
-
-
-  it("fails with NeedsInputError naming the flag when it cannot ask", async () => {
-    const prompts = fakePrompts({ isInteractive: false });
-    const prompter = createPrompter({
-      command: COMMAND,
-      defaultsFlag: "--yes",
-    });
-
-    const error = await rejectionOf(
-      prompter.text({ message: "Project name", flag: "--name <name>" }),
-    );
-
-    expect(error).to.be.instanceOf(NeedsInputError);
-    expectInstanceOf(error, NeedsInputError);
-    const needsInput = error;
-    expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
-    expect(needsInput.problem.fixes).to.deep.equal([
-      "Pass it as a flag: ajs project init demo --name <name>",
-      "Or accept the defaults: ajs project init demo --yes",
-    ]);
-    expect(prompts.asked).to.deep.equal([]);
-  });
-};
-
-const checkDoesNotOfferDefaultsOn: (this: Mocha.Suite) => void = function () {
-
-
-  it("does not offer defaults on a question without one", async () => {
-    fakePrompts({ isInteractive: false });
-    const prompter = createPrompter({
-      command: COMMAND,
-      acceptsDefaults: true,
-    });
-
-    const error = await rejectionOf(
-      prompter.text({ message: "Project name", flag: "--name <name>" }),
-    );
-
-    expect(error).to.be.instanceOf(NeedsInputError);
-  });
-
-
-  it("answers an optional question with its default when it cannot ask", async () => {
-    fakePrompts({ isInteractive: false });
-    const prompter = createPrompter({ command: COMMAND });
-
-    const interfaces = await prompter.multiselect({
-      message: "Interfaces",
-      flag: "--interfaces <names>",
-      choices: [{ value: "api", label: "api" }],
-      defaultAnswer: [],
-      isOptional: true,
-    });
-
-    expect(interfaces).to.deep.equal([]);
-  });
-
-
-  it("throws CancelledError when the prompt is cancelled", async () => {
-    fakePrompts({ answers: [CANCEL] });
-    const prompter = createPrompter({ command: COMMAND });
-
-    const error = await rejectionOf(
-      prompter.confirm({ message: "Continue?", flag: "--yes" }),
-    );
-
-    expect(error).to.be.instanceOf(CancelledError);
-    expect(error.message).to.equal("Cancelled");
-  });
-};
-
-let registerRequireAnswers: (this: Mocha.Suite) => void;
-{
-
-registerRequireAnswers = () => {
-
-    it("names every missing flag at once when it cannot ask", () => {
-      fakePrompts({ isInteractive: false });
+  const checkTakesTheAnswerGivenOn: (this: Mocha.Suite) => void = function () {
+    it("takes the answer given on the command line without asking", async () => {
+      const prompts = fakePrompts({ isInteractive: false });
       const prompter = createPrompter({ command: COMMAND });
 
-      expect(() =>
-        prompter.requireAnswers(["--name <name>", "--pm <name>"]),
-      ).to.throw(NeedsInputError);
-      try {
-        prompter.requireAnswers(["--name <name>", "--pm <name>"]);
-      } catch (error) {
-        expectInstanceOf(error, NeedsInputError);
-        expect(error.problem.fixes).to.deep.equal([
-          "Pass them as flags: ajs project init demo --name <name> --pm <name>",
-        ]);
-      }
+      const name = await prompter.text({
+        message: "Project name",
+        flag: "--name <name>",
+        answer: "shop",
+      });
+
+      expect(name).to.equal("shop");
+      expect(prompts.asked).to.deep.equal([]);
     });
 
-
-    it("accepts a run that can ask or takes the defaults", () => {
-      fakePrompts({ isInteractive: true });
-      expect(() =>
-        createPrompter({ command: COMMAND }).requireAnswers(["--name <name>"]),
-      ).not.to.throw();
-
-      sinon.restore();
-      fakePrompts({ isInteractive: false });
-      const withDefaults = createPrompter({
+    it("answers with the default when defaults are accepted", async () => {
+      const prompts = fakePrompts({ isInteractive: true });
+      const prompter = createPrompter({
         command: COMMAND,
         acceptsDefaults: true,
       });
-      expect(() => withDefaults.requireAnswers(["--name <name>"])).not.to.throw();
+
+      const isGitInitialized = await prompter.confirm({
+        message: "Initialize git?",
+        flag: "--git",
+        defaultAnswer: true,
+      });
+
+      expect(isGitInitialized).to.equal(true);
+      expect(prompts.asked).to.deep.equal([]);
     });
 
+    it("asks when the session is interactive", async () => {
+      const prompts = fakePrompts({ answers: ["pnpm"] });
+      const prompter = createPrompter({ command: COMMAND });
 
-    it("accepts a run that gave every answer", () => {
+      const packageManager = await prompter.select({
+        message: "Package manager",
+        flag: "--pm <name>",
+        choices: [
+          { value: "npm", label: "npm" },
+          { value: "pnpm", label: "pnpm", hint: "fast" },
+        ],
+        defaultAnswer: "npm",
+      });
+
+      expect(packageManager).to.equal("pnpm");
+      expect(prompter.isInteractive).to.equal(true);
+      expect(prompts.asked[0].kind).to.equal("select");
+      expect(prompts.asked[0].options).to.include({ initialValue: "npm" });
+      expect(prompts.asked[0].options.options).to.deep.equal([
+        { value: "npm", label: "npm", hint: undefined },
+        { value: "pnpm", label: "pnpm", hint: "fast" },
+      ]);
+    });
+
+    it("draws prompts on the prompt output stream", async () => {
+      const prompts = fakePrompts({ answers: ["shop", true, ["api"]] });
+      const prompter = createPrompter({ command: COMMAND });
+
+      await prompter.text({
+        message: "Project name",
+        flag: "--name <name>",
+        defaultAnswer: "demo",
+      });
+      await prompter.confirm({ message: "Initialize git?", flag: "--git" });
+      const interfaces = await prompter.multiselect({
+        message: "Interfaces",
+        flag: "--interfaces <names>",
+        choices: [{ value: "api", label: "api" }],
+        defaultAnswer: [],
+      });
+
+      expect(interfaces).to.deep.equal(["api"]);
+      expect(prompts.asked.map((prompt) => prompt.kind)).to.deep.equal([
+        "text",
+        "confirm",
+        "multiselect",
+      ]);
+      expect(prompts.asked[0].options).to.include({
+        placeholder: "demo",
+        defaultValue: "demo",
+        output: process.stderr,
+      });
+      expect(prompts.asked[2].options).to.include({ required: false });
+    });
+
+    it("fails with NeedsInputError naming the flag when it cannot ask", async () => {
+      const prompts = fakePrompts({ isInteractive: false });
+      const prompter = createPrompter({
+        command: COMMAND,
+        defaultsFlag: "--yes",
+      });
+
+      const error = await rejectionOf(
+        prompter.text({ message: "Project name", flag: "--name <name>" }),
+      );
+
+      expect(error).to.be.instanceOf(NeedsInputError);
+      expectInstanceOf(error, NeedsInputError);
+      const needsInput = error;
+      expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
+      expect(needsInput.problem.fixes).to.deep.equal([
+        "Pass it as a flag: ajs project init demo --name <name>",
+        "Or accept the defaults: ajs project init demo --yes",
+      ]);
+      expect(prompts.asked).to.deep.equal([]);
+    });
+  };
+
+  const checkDoesNotOfferDefaultsOn: (this: Mocha.Suite) => void = function () {
+    it("does not offer defaults on a question without one", async () => {
       fakePrompts({ isInteractive: false });
+      const prompter = createPrompter({
+        command: COMMAND,
+        acceptsDefaults: true,
+      });
 
-      expect(() =>
-        createPrompter({ command: COMMAND }).requireAnswers([]),
-      ).not.to.throw();
+      const error = await rejectionOf(
+        prompter.text({ message: "Project name", flag: "--name <name>" }),
+      );
+
+      expect(error).to.be.instanceOf(NeedsInputError);
     });
 
-};
-}
+    it("answers an optional question with its default when it cannot ask", async () => {
+      fakePrompts({ isInteractive: false });
+      const prompter = createPrompter({ command: COMMAND });
 
-registerCreatePrompter = () => {
+      const interfaces = await prompter.multiselect({
+        message: "Interfaces",
+        flag: "--interfaces <names>",
+        choices: [{ value: "api", label: "api" }],
+        defaultAnswer: [],
+        isOptional: true,
+      });
 
-  afterEach(() => {
-    sinon.restore();
+      expect(interfaces).to.deep.equal([]);
+    });
+
+    it("throws CancelledError when the prompt is cancelled", async () => {
+      fakePrompts({ answers: [CANCEL] });
+      const prompter = createPrompter({ command: COMMAND });
+
+      const error = await rejectionOf(
+        prompter.confirm({ message: "Continue?", flag: "--yes" }),
+      );
+
+      expect(error).to.be.instanceOf(CancelledError);
+      expect(error.message).to.equal("Cancelled");
+    });
+  };
+
+  let registerRequireAnswers: (this: Mocha.Suite) => void;
+  {
+    registerRequireAnswers = () => {
+      it("names every missing flag at once when it cannot ask", () => {
+        fakePrompts({ isInteractive: false });
+        const prompter = createPrompter({ command: COMMAND });
+
+        expect(() =>
+          prompter.requireAnswers(["--name <name>", "--pm <name>"]),
+        ).to.throw(NeedsInputError);
+        try {
+          prompter.requireAnswers(["--name <name>", "--pm <name>"]);
+        } catch (error) {
+          expectInstanceOf(error, NeedsInputError);
+          expect(error.problem.fixes).to.deep.equal([
+            "Pass them as flags: ajs project init demo --name <name> --pm <name>",
+          ]);
+        }
+      });
+
+      it("accepts a run that can ask or takes the defaults", () => {
+        fakePrompts({ isInteractive: true });
+        expect(() =>
+          createPrompter({ command: COMMAND }).requireAnswers([
+            "--name <name>",
+          ]),
+        ).not.to.throw();
+
+        sinon.restore();
+        fakePrompts({ isInteractive: false });
+        const withDefaults = createPrompter({
+          command: COMMAND,
+          acceptsDefaults: true,
+        });
+        expect(() =>
+          withDefaults.requireAnswers(["--name <name>"]),
+        ).not.to.throw();
+      });
+
+      it("accepts a run that gave every answer", () => {
+        fakePrompts({ isInteractive: false });
+
+        expect(() =>
+          createPrompter({ command: COMMAND }).requireAnswers([]),
+        ).not.to.throw();
+      });
+    };
+  }
+
+  registerCreatePrompter = () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    describe("takes the answer given on the command line without asking", function () {
+      checkTakesTheAnswerGivenOn.call(this);
+    });
+
+    describe("does not offer defaults on a question without one", function () {
+      checkDoesNotOfferDefaultsOn.call(this);
+    });
+    describe("requireAnswers", function () {
+      registerRequireAnswers.call(this);
+    });
+  };
+
+  describe("createPrompter", function () {
+    registerCreatePrompter.call(this);
   });
-
-describe("takes the answer given on the command line without asking",function(){checkTakesTheAnswerGivenOn.call(this);});
-
-describe("does not offer defaults on a question without one",function(){checkDoesNotOfferDefaultsOn.call(this);});
-describe("requireAnswers", function(){registerRequireAnswers.call(this);});
-
-};
-
-describe("createPrompter", function(){registerCreatePrompter.call(this);});
 }
 
 describe("missingFlags", () => {
