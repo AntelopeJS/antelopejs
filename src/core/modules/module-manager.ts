@@ -1,96 +1,28 @@
-import type { ConfigVars } from "@antelopejs/interface-core/config";
-import { Logging } from "@antelopejs/interface-core/logging";
-import * as path from "node:path";
-import { satisfies, validRange } from "semver";
-
-import { ModuleState } from "../../types";
-import {
-  clearPathResolutionCache,
-  createPathWithinMatcher,
-  type PathMatcher,
-  type ResolvedPackage,
-  resolvePackage,
-  resolvePackageAtRoot,
-} from "../../utils";
-import {
-  buildConfigVarPlan,
-  type ConfigVarPlan,
-  ConfigVarStore,
-  declaredConfigVars,
-} from "../config";
-import {
-  type InterfaceRangeConflict,
-  InterfaceResolutionError,
-  type PreloadedInterfaceCopy,
-} from "../output";
-import type {
-  BindingConnection,
-  BindingGraph,
-  BindingInterface,
-  BindingModule,
-  UnresolvedInterface,
-} from "../resolution";
-import {
-  buildBindingGraph,
-  clearStubInterfaceWarnings,
-  InterfaceBindingError,
-  logStubInterfaceWarningOnce,
-  neutralizeInterfacePackage,
-  readInterfaceDependencies,
-} from "../resolution";
+import { type ResolvedPackage } from "../../utils";
+import { ConfigVarStore } from "../config";
+import type { BindingGraph, UnresolvedInterface } from "../resolution";
 import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
 } from "./interface-registry";
-import {
-  announceModulesStarted,
-  announceModulesStopping,
-} from "./lifecycle-signals";
 import { Module } from "./module";
-import {
-  aggregateErrors,
-  collectRejectedErrors,
-  unpackErrors,
-} from "./module-errors";
 import { ModuleIsolation } from "./module-isolation";
 import {
-  type ModuleManifest,
-  resolveManifestEntryFile,
-} from "./module-manifest";
+  type InterfacePackagePlan,
+  type ManagedModule,
+  bindOperations,
+  type ManagerMethods,
+  type ModuleConfig,
+  operations,
+  defineManagerContext,
+} from "./module-manager-context";
+import { type ModuleManifest } from "./module-manifest";
 import { ModuleRegistry } from "./module-registry";
 import { ModuleTracker } from "./module-tracker";
 import { PathMapper } from "./path-mapper";
 import { Resolver } from "./resolver";
 import { ResolverDetour } from "./resolver-detour";
-
-const Logger = new Logging.Channel("loader");
-const INTERFACE_CORE_PACKAGE = "@antelopejs/interface-core";
-const MS_PER_SECOND = 1000;
-const START_SLOW_WARNING_MS = 10 * MS_PER_SECOND;
-/**
- * `start()` means "ready to serve", and the HTTP gate stays closed until every
- * module has started: one module that never settles would hold the whole
- * project in 503 with nothing in the logs to say why.
- */
-const START_TIMEOUT_MS = 120 * MS_PER_SECOND;
-
-function compareModuleIds(left: string, right: string): number {
-  return left.localeCompare(right);
-}
-
-export interface ModuleConfig {
-  config?: unknown;
-  importOverrides?: Map<string, InterfaceConnectionRef[]>;
-  disabledExports?: Set<string>;
-  exportPriority?: Map<string, number>;
-  /** Started after the others; a failure leaves the project running. */
-  optional?: boolean;
-}
-
-export interface ManagedModule {
-  module: Module;
-  config: ModuleConfig;
-}
+export type { ManagedModule, ModuleConfig } from "./module-manager-context";
 
 interface ModuleManagerDeps {
   registry?: ModuleRegistry;
@@ -98,58 +30,49 @@ interface ModuleManagerDeps {
   interfaceRegistry?: InterfaceRegistry;
   moduleTracker?: ModuleTracker;
 }
-
-interface InterfacePackageConsumer {
-  moduleId: string;
-  range: string;
-  resolvedPackage?: ResolvedPackage;
-}
-
-interface InterfacePackagePlan {
-  canonicalPackage: ResolvedPackage;
-  consumers: InterfacePackageConsumer[];
-}
-
-type ModuleOperation = (module: Module) => Promise<void>;
-
-interface ProvidePhaseResult {
-  errors: unknown[];
-  failed: Set<string>;
-}
-
-interface ModuleOperationResults {
-  errors: unknown[];
-  failed: ManagedModule[];
-}
-
 export class ModuleManager {
   public readonly registry: ModuleRegistry;
+
   public readonly resolver: Resolver;
+
   private readonly interfaceRegistry: InterfaceRegistry;
+
   private readonly moduleTracker: ModuleTracker;
+
   private readonly resolverDetour: ResolverDetour;
+
   private readonly resolvedAssociations = new Map<string, Set<string>>();
+
   private readonly resolvedConnections = new Map<
     string,
     Map<string, InterfaceConnectionRef[]>
   >();
+
   private readonly selectedProviders = new Map<string, Map<string, string>>();
+
   private readonly staticModules: ManagedModule[] = [];
+
   private readonly loaded = new Map<string, ManagedModule>();
+
   private readonly stubbedInterfacePackages = new Map<
     string,
     ResolvedPackage
   >();
+
   private readonly interfacePackagePlans = new Map<
     string,
     InterfacePackagePlan
   >();
-  private readonly configVars = new ConfigVarStore();
-  private pendingCleanup: ManagedModule[] = [];
-  private bindingGraph?: BindingGraph;
-  private readonly isolation = new ModuleIsolation();
-  private startupOrder: string[] = [];
 
+  private readonly configVars = new ConfigVarStore();
+
+  private pendingCleanup: ManagedModule[] = [];
+
+  private bindingGraph?: BindingGraph;
+
+  private readonly isolation = new ModuleIsolation();
+
+  private startupOrder: string[] = [];
   constructor(deps: ModuleManagerDeps = {}) {
     this.registry = deps.registry ?? new ModuleRegistry();
     this.resolver = deps.resolver ?? new Resolver(new PathMapper());
@@ -158,1303 +81,497 @@ export class ModuleManager {
     this.moduleTracker = deps.moduleTracker ?? new ModuleTracker();
   }
 
+  static {
+    preserveDelegateLengths(ModuleManager.prototype);
+    defineManagerContext((manager) => ({
+      fields: {
+        registry: () => manager.registry,
+        resolver: () => manager.resolver,
+        interfaceRegistry: () => manager.interfaceRegistry,
+        moduleTracker: () => manager.moduleTracker,
+        resolverDetour: () => manager.resolverDetour,
+        resolvedAssociations: () => manager.resolvedAssociations,
+        resolvedConnections: () => manager.resolvedConnections,
+        selectedProviders: () => manager.selectedProviders,
+        staticModules: () => manager.staticModules,
+        loaded: () => manager.loaded,
+        stubbedInterfacePackages: () => manager.stubbedInterfacePackages,
+        interfacePackagePlans: () => manager.interfacePackagePlans,
+        configVars: () => manager.configVars,
+        pendingCleanup: () => manager.pendingCleanup,
+        bindingGraph: () => manager.bindingGraph,
+        isolation: () => manager.isolation,
+        startupOrder: () => manager.startupOrder,
+      },
+      writers: {
+        pendingCleanup: (value) => {
+          manager.pendingCleanup = value;
+        },
+        bindingGraph: (value) => {
+          manager.bindingGraph = value;
+        },
+        startupOrder: (value) => {
+          manager.startupOrder = value;
+        },
+      },
+      methods: {
+        restoreModules: (...args) => manager.restoreModules(...args),
+        getModuleEntry: (...args) => manager.getModuleEntry(...args),
+        getAllManagedModules: (...args) =>
+          manager.getAllManagedModules(...args),
+        evictModuleFiles: (...args) => manager.evictModuleFiles(...args),
+        collectAvoidedFolders: (...args) =>
+          manager.collectAvoidedFolders(...args),
+        belongsToInterfacePackageTree: (...args) =>
+          manager.belongsToInterfacePackageTree(...args),
+        placeModule: (...args) => manager.placeModule(...args),
+        registerStubbedInterfacePackage: (...args) =>
+          manager.registerStubbedInterfacePackage(...args),
+        applyInterfaceStubs: (...args) => manager.applyInterfaceStubs(...args),
+        neutralizeInstances: (...args) => manager.neutralizeInstances(...args),
+        collectImplementedInterfaces: (...args) =>
+          manager.collectImplementedInterfaces(...args),
+        startModules: (...args) => manager.startModules(...args),
+        destroyAll: (...args) => manager.destroyAll(...args),
+        constructModule: (...args) => manager.constructModule(...args),
+        planConfigVars: (...args) => manager.planConfigVars(...args),
+        runProvidePhase: (...args) => manager.runProvidePhase(...args),
+        constructReadyModules: (...args) =>
+          manager.constructReadyModules(...args),
+        constructOrDisable: (...args) => manager.constructOrDisable(...args),
+        rejectCallsIntoDeadModules: (...args) =>
+          manager.rejectCallsIntoDeadModules(...args),
+        orphanedInterfaces: (...args) => manager.orphanedInterfaces(...args),
+        hasLiveImplementer: (...args) => manager.hasLiveImplementer(...args),
+        rejectCallsInto: (...args) => manager.rejectCallsInto(...args),
+        findFailedProvider: (...args) => manager.findFailedProvider(...args),
+        provideEntry: (...args) => manager.provideEntry(...args),
+        provideModule: (...args) => manager.provideModule(...args),
+        constructEntry: (...args) => manager.constructEntry(...args),
+        getReverseLifecycleModules: (...args) =>
+          manager.getReverseLifecycleModules(...args),
+        clearManagedState: (...args) => manager.clearManagedState(...args),
+        releaseRuntimeState: (...args) => manager.releaseRuntimeState(...args),
+        trackModuleStart: (...args) => manager.trackModuleStart(...args),
+        rebuildAssociations: (...args) => manager.rebuildAssociations(...args),
+        buildBindings: (...args) => manager.buildBindings(...args),
+        runningBindings: (...args) => manager.runningBindings(...args),
+        logBindingWarnings: (...args) => manager.logBindingWarnings(...args),
+        bindablePackages: (...args) => manager.bindablePackages(...args),
+        collectBindingInterfaces: (...args) =>
+          manager.collectBindingInterfaces(...args),
+        collectBindingModules: (...args) =>
+          manager.collectBindingModules(...args),
+        collectInterfaceSources: (...args) =>
+          manager.collectInterfaceSources(...args),
+        resolveInterfacePackagePaths: (...args) =>
+          manager.resolveInterfacePackagePaths(...args),
+        resolveImplementedPackage: (...args) =>
+          manager.resolveImplementedPackage(...args),
+        collectInterfacePackageConsumers: (...args) =>
+          manager.collectInterfacePackageConsumers(...args),
+        registerInterfacePackage: (...args) =>
+          manager.registerInterfacePackage(...args),
+        validateInterfacePackages: (...args) =>
+          manager.validateInterfacePackages(...args),
+        findRangeConflicts: (...args) => manager.findRangeConflicts(...args),
+        findPreloadedCopies: (...args) => manager.findPreloadedCopies(...args),
+        buildModuleAssociations: (...args) =>
+          manager.buildModuleAssociations(...args),
+        addDefaultAssociations: (...args) =>
+          manager.addDefaultAssociations(...args),
+        applyImportOverrides: (...args) =>
+          manager.applyImportOverrides(...args),
+        addInterfaceSource: (...args) => manager.addInterfaceSource(...args),
+        validateImportOverrides: (...args) =>
+          manager.validateImportOverrides(...args),
+        validateOverrideSource: (...args) =>
+          manager.validateOverrideSource(...args),
+        validateSelfHostedConnection: (...args) =>
+          manager.validateSelfHostedConnection(...args),
+      },
+    }));
+  }
+
   addStaticModule(entry: {
     manifest: ModuleManifest;
     config?: ModuleConfig;
   }): void {
-    const module = new Module(entry.manifest);
-    const config: ModuleConfig = {
-      config: entry.config?.config,
-      importOverrides: entry.config?.importOverrides ?? new Map(),
-      disabledExports: entry.config?.disabledExports ?? new Set(),
-      exportPriority: entry.config?.exportPriority ?? new Map(),
-    };
-    this.registry.register(module);
-    this.staticModules.push({ module, config });
+    return operations(this).addStaticModule(entry);
   }
 
   addModules(
     entries: Array<{ manifest: ModuleManifest; config?: ModuleConfig }>,
   ): ManagedModule[] {
-    const created: ManagedModule[] = [];
-    const replaced = new Map<string, ManagedModule | undefined>();
-    for (const entry of entries) {
-      replaced.set(entry.manifest.name, this.loaded.get(entry.manifest.name));
-      const manifest = this.placeModule(entry.manifest.name, entry.manifest);
-      const module = new Module(manifest);
-      this.isolation.adopt(module.id, manifest);
-      const config: ModuleConfig = {
-        config: entry.config?.config,
-        importOverrides: entry.config?.importOverrides ?? new Map(),
-        disabledExports: entry.config?.disabledExports ?? new Set(),
-        exportPriority: entry.config?.exportPriority ?? new Map(),
-      };
-      this.registry.register(module);
-      const managed = { module, config };
-      this.loaded.set(module.id, managed);
-      created.push(managed);
-    }
-
-    try {
-      this.rebuildAssociations();
-    } catch (error) {
-      this.restoreModules(replaced);
-      throw error;
-    }
-    return created;
+    return operations(this).addModules(entries);
   }
 
-  /**
-   * Undoes an `addModules` whose bindings were refused: every added module is
-   * dropped, a module it replaced is put back, and associations are rebuilt
-   * as they were.
-   */
   private restoreModules(
-    replaced: ReadonlyMap<string, ManagedModule | undefined>,
-  ): void {
-    for (const [id, previous] of replaced) {
-      this.isolation.forget(id);
-      if (previous) {
-        this.loaded.set(id, previous);
-        this.registry.register(previous.module);
-        this.isolation.adopt(id, previous.module.manifest);
-      } else {
-        this.loaded.delete(id);
-        this.registry.unregister(id);
-      }
-    }
-    this.rebuildAssociations();
+    ...args: Parameters<ManagerMethods["restoreModules"]>
+  ) {
+    return operations(this).restoreModules(...args);
   }
 
-  /**
-   * Drops modules that failed to construct or start, already destroyed, so
-   * that what they would have consumed or provided no longer counts in the
-   * next interface checks and bindings.
-   */
   discardModules(ids: readonly string[]): void {
-    for (const id of ids) {
-      this.isolation.forget(id);
-      this.loaded.delete(id);
-      this.registry.unregister(id);
-    }
-    this.rebuildAssociations();
+    return operations(this).discardModules(ids);
   }
 
   listModules(): string[] {
-    return this.registry.list();
+    return operations(this).listModules();
   }
 
   getModule(id: string): Module | undefined {
-    return this.registry.get(id);
+    return operations(this).getModule(id);
   }
 
   getModuleEntry(id: string): ManagedModule | undefined {
-    return (
-      this.loaded.get(id) ??
-      this.staticModules.find((entry) => entry.module.id === id)
-    );
+    return operations(this).getModuleEntry(id);
   }
 
   getLoadedModuleEntry(id: string): ManagedModule | undefined {
-    return this.loaded.get(id);
+    return operations(this).getLoadedModuleEntry(id);
   }
 
   getLoadedModules(): IterableIterator<ManagedModule> {
-    if (!(this.loaded instanceof Map)) {
-      return new Map<string, ManagedModule>().values();
-    }
-    return this.loaded.values();
+    return operations(this).getLoadedModules();
   }
 
   getAllManagedModules(): ManagedModule[] {
-    return [...this.staticModules, ...this.loaded.values()];
+    return operations(this).getAllManagedModules();
   }
 
   unrequireModuleFiles(
     moduleId: string,
     shouldPreserveInterfaceGraph = true,
   ): void {
-    clearPathResolutionCache();
-    this.evictModuleFiles(moduleId, shouldPreserveInterfaceGraph);
+    return operations(this).unrequireModuleFiles(
+      moduleId,
+      shouldPreserveInterfaceGraph,
+    );
   }
 
   private evictModuleFiles(
-    moduleId: string,
-    shouldPreserveInterfaceGraph: boolean,
-  ): void {
-    const entry = this.loaded.get(moduleId);
-    if (!entry) {
-      return;
-    }
-
-    const moduleFolder = path.resolve(entry.module.manifest.folder);
-    const moduleEntryFile = resolveManifestEntryFile(entry.module.manifest);
-    const isInModule = createPathWithinMatcher(moduleFolder);
-    const avoidedMatchers = this.collectAvoidedFolders(
-      moduleId,
-      moduleFolder,
-      isInModule,
-    ).map((folder) => createPathWithinMatcher(folder));
-
-    for (const filePath of Object.keys(require.cache)) {
-      if (!isInModule(filePath)) {
-        continue;
-      }
-      if (
-        shouldPreserveInterfaceGraph &&
-        filePath !== moduleEntryFile &&
-        this.belongsToInterfacePackageTree(filePath, isInModule)
-      ) {
-        continue;
-      }
-      if (!avoidedMatchers.some((isAvoided) => isAvoided(filePath))) {
-        delete require.cache[filePath];
-      }
-    }
+    ...args: Parameters<ManagerMethods["evictModuleFiles"]>
+  ) {
+    return operations(this).evictModuleFiles(...args);
   }
 
   private collectAvoidedFolders(
-    moduleId: string,
-    moduleFolder: string,
-    isInModule: PathMatcher,
-  ): string[] {
-    const avoidedFolders = new Set<string>([
-      path.join(moduleFolder, "node_modules"),
-    ]);
-    for (const [id, other] of this.loaded) {
-      if (id !== moduleId && isInModule(other.module.manifest.folder)) {
-        avoidedFolders.add(path.resolve(other.module.manifest.folder));
-      }
-    }
-    return [...avoidedFolders];
+    ...args: Parameters<ManagerMethods["collectAvoidedFolders"]>
+  ) {
+    return operations(this).collectAvoidedFolders(...args);
   }
 
-  /**
-   * Whether a cached file under the reloading module belongs to an interface
-   * package's OWN tree, and must therefore survive the reload.
-   *
-   * Interface modules are shared instances: evicting one would hand the
-   * reloaded module a second copy of a contract its peers still hold — a
-   * second proxy identity, a second decorator metadata key, a second class.
-   * That argument covers an interface package whose root is the module folder
-   * (a module shipping its own interface) or sits inside it (a nested
-   * interface package).
-   *
-   * It does not cover an interface package whose root CONTAINS the module
-   * folder. A module nested inside another package's tree — a playground
-   * shipped inside the runtime package it exercises — owns every file under
-   * its own folder, even though the resolver tags them: their relative
-   * imports resolve off the enclosing root, so the interface graph swallows
-   * the whole module. Preserving those files makes a hot reload re-run only
-   * the entry point and serve the previous build forever.
-   */
   private belongsToInterfacePackageTree(
-    filePath: string,
-    isInModule: PathMatcher,
-  ): boolean {
-    const root = this.resolver.getInterfaceGraphRoot(filePath);
-    if (!root) {
-      return false;
-    }
-    return isInModule(path.resolve(root));
+    ...args: Parameters<ManagerMethods["belongsToInterfacePackageTree"]>
+  ) {
+    return operations(this).belongsToInterfacePackageTree(...args);
   }
 
-  /** Sets the folder that instance copies of module packages are created under. */
   setInstanceRoot(root: string): void {
-    this.isolation.setRoot(root);
+    return operations(this).setInstanceRoot(root);
   }
 
-  /**
-   * The manifest a module should be loaded from: its own, or an instance copy
-   * of its folder when another loaded module already runs from that folder.
-   */
   placeModule(moduleId: string, manifest: ModuleManifest): ModuleManifest {
-    return this.isolation.place(moduleId, manifest);
+    return operations(this).placeModule(moduleId, manifest);
   }
 
-  /**
-   * Refuses the reload of `moduleId` into `replacement` when the replacement
-   * would change the binding of another running module, before anything of
-   * the running generation is torn down.
-   */
   checkReplacement(moduleId: string, replacement: Module): void {
-    const entry = this.loaded.get(moduleId);
-    if (!entry) {
-      return;
-    }
-    const modules = this.collectBindingModules();
-    modules.set(
-      moduleId,
-      toBindingModule(
-        replacement,
-        entry.config,
-        this.bindablePackages(),
-        this.resolvedConnections,
-      ),
-    );
-    const running = this.runningBindings();
-    running.delete(moduleId);
-    const graph = buildBindingGraph({
-      interfaces: this.collectBindingInterfaces(),
-      modules,
-      running,
-    });
-    if (graph.errors.length > 0) {
-      throw new InterfaceBindingError(graph.errors);
-    }
+    return operations(this).checkReplacement(moduleId, replacement);
   }
 
-  /** Deletes the instance copy behind a placed manifest that will not run. */
   discardPlacedModule(manifest: ModuleManifest): void {
-    this.isolation.discard(manifest);
+    return operations(this).discardPlacedModule(manifest);
   }
 
   replaceLoadedModule(id: string, module: Module): ManagedModule | undefined {
-    const entry = this.loaded.get(id);
-    if (!entry) {
-      return;
-    }
-    this.isolation.adopt(id, module.manifest);
-    entry.module = module;
-    this.registry.register(module);
-    return entry;
+    return operations(this).replaceLoadedModule(id, module);
   }
 
   refreshAssociations(): void {
-    this.rebuildAssociations();
+    return operations(this).refreshAssociations();
   }
 
   hasResolvedInterface(moduleId: string, interfaceName: string): boolean {
-    return this.resolvedAssociations.get(moduleId)?.has(interfaceName) ?? false;
+    return operations(this).hasResolvedInterface(moduleId, interfaceName);
   }
 
   registerStubbedInterfaces(stubbed: UnresolvedInterface[]): void {
-    const packageNames = new Set(
-      stubbed.map((entry) => entry.interfacePackage),
-    );
-    for (const packageName of packageNames) {
-      const entries = stubbed.filter(
-        (entry) => entry.interfacePackage === packageName,
-      );
-      this.registerStubbedInterfacePackage(packageName, entries);
-    }
-    this.buildBindings();
+    return operations(this).registerStubbedInterfaces(stubbed);
   }
 
   private registerStubbedInterfacePackage(
-    packageName: string,
-    entries: UnresolvedInterface[],
-  ): void {
-    const consumers = this.collectInterfacePackageConsumers(packageName);
-    const canonicalPackage = [...consumers]
-      .sort((left, right) => compareModuleIds(left.moduleId, right.moduleId))
-      .find((consumer) => consumer.resolvedPackage)?.resolvedPackage;
-    if (!canonicalPackage) {
-      return;
-    }
-    this.stubbedInterfacePackages.set(packageName, canonicalPackage);
-    this.interfacePackagePlans.set(packageName, {
-      canonicalPackage,
-      consumers,
-    });
-    this.registerInterfacePackage(packageName, canonicalPackage, true);
-    logStubInterfaceWarningOnce(
-      packageName,
-      entries.some((entry) => entry.standalone),
-    );
+    ...args: Parameters<ManagerMethods["registerStubbedInterfacePackage"]>
+  ) {
+    return operations(this).registerStubbedInterfacePackage(...args);
   }
 
-  private applyInterfaceStubs(): void {
-    const implemented = this.collectImplementedInterfaces();
-    const stubbed = Array.from(this.stubbedInterfacePackages);
-    for (const [interfaceName, resolvedPackage] of stubbed) {
-      if (implemented.has(interfaceName)) {
-        this.stubbedInterfacePackages.delete(interfaceName);
-        this.resolver.stubbedInterfacePackages.delete(interfaceName);
-        continue;
-      }
-      if (!this.resolver.interfacePackages.has(interfaceName)) {
-        this.registerInterfacePackage(interfaceName, resolvedPackage, true);
-      }
-      this.neutralizeInstances(interfaceName);
-    }
+  private applyInterfaceStubs() {
+    return operations(this).applyInterfaceStubs();
   }
 
-  private neutralizeInstances(interfaceName: string): void {
-    for (const instance of this.resolver.instances.keysOf(interfaceName)) {
-      let root: string | undefined;
-      try {
-        root = this.resolver.loadInstance(instance);
-      } catch (err) {
-        Logger.Error(`Failed to load interface '${instance}':`, err);
-        continue;
-      }
-      if (root) {
-        neutralizeInterfacePackage(root, interfaceName);
-      }
-    }
+  private neutralizeInstances(
+    ...args: Parameters<ManagerMethods["neutralizeInstances"]>
+  ) {
+    return operations(this).neutralizeInstances(...args);
   }
 
-  private collectImplementedInterfaces(): Set<string> {
-    const implemented = new Set<string>();
-    for (const { module, config } of this.getAllManagedModules()) {
-      for (const iface of module.manifest.implements ?? []) {
-        if (!config.disabledExports?.has(iface)) {
-          implemented.add(iface);
-        }
-      }
-    }
-    return implemented;
+  private collectImplementedInterfaces() {
+    return operations(this).collectImplementedInterfaces();
   }
 
   async constructAll(): Promise<void> {
-    const leaseAcquired = this.resolverDetour.attach();
-    const modules = [...this.loaded.values()];
-    let plan: ConfigVarPlan;
-    let provided: ProvidePhaseResult;
-    try {
-      this.logBindingWarnings();
-      this.validateInterfacePackages();
-      this.applyInterfaceStubs();
-      plan = this.planConfigVars(modules);
-      provided = await this.runProvidePhase(modules, plan);
-    } catch (error) {
-      if (leaseAcquired) {
-        throw aggregateErrors(
-          [error, ...this.releaseRuntimeState()],
-          "Failed to construct modules",
-        );
-      }
-      throw error;
-    }
-
-    const errors = [
-      ...provided.errors,
-      ...(await this.constructReadyModules(modules, plan, provided.failed)),
-    ];
-    if (errors.length === 0) {
-      return;
-    }
-
-    const cleanupCandidates = modules.filter(
-      ({ module }) => module.state !== ModuleState.Loaded,
-    );
-    const cleanupErrors = await runModuleOperations(
-      cleanupCandidates.reverse(),
-      (module) => module.destroy(),
-    );
-    if (leaseAcquired) {
-      cleanupErrors.push(...this.releaseRuntimeState());
-    }
-    throw new AggregateError(
-      [...errors, ...cleanupErrors],
-      "Failed to construct modules",
-    );
+    return operations(this).constructAll();
   }
 
   async constructModules(modules: ManagedModule[]): Promise<void> {
-    const leaseAcquired = this.resolverDetour.attach();
-    try {
-      this.logBindingWarnings();
-      this.validateInterfacePackages();
-      this.applyInterfaceStubs();
-      await Promise.all(
-        modules
-          .filter(
-            (entry) => declaredConfigVars(entry.module.manifest).length > 0,
-          )
-          .map((entry) => this.provideEntry(entry)),
-      );
-      await Promise.all(modules.map((entry) => this.constructEntry(entry)));
-    } catch (error) {
-      if (leaseAcquired) {
-        throw aggregateErrors(
-          [error, ...this.releaseRuntimeState()],
-          "Failed to construct modules",
-        );
-      }
-      throw error;
-    }
+    return operations(this).constructModules(modules);
   }
 
   async startAll(): Promise<void> {
-    try {
-      await this.startModules([...this.loaded.values()]);
-    } catch (error) {
-      let cleanupErrors: unknown[] = [];
-      try {
-        await this.destroyAll();
-      } catch (cleanupError) {
-        cleanupErrors = unpackErrors(cleanupError);
-      }
-      throw new AggregateError(
-        [...unpackErrors(error), ...cleanupErrors],
-        "Failed to start modules",
-      );
-    }
+    return operations(this).startAll();
   }
 
   async startModules(modules: ManagedModule[]): Promise<void> {
-    modules.forEach(({ module }) => {
-      this.trackModuleStart(module.id);
-    });
-    const results = await Promise.allSettled(
-      modules.map(({ module }) => startWithinDeadline(module)),
-    );
-    const errors = collectRejectedErrors(results);
-    if (errors.length > 0) {
-      throw new AggregateError(errors, "Failed to start modules");
-    }
-    announceModulesStarted();
+    return operations(this).startModules(modules);
   }
 
   async stopAll(): Promise<void> {
-    announceModulesStopping();
-    const modules = this.getReverseLifecycleModules();
-    const errors = await runModuleOperations(modules, (module) =>
-      module.stop(),
-    );
-    this.startupOrder = [];
-    if (errors.length > 0) {
-      throw new AggregateError(errors, "Failed to stop modules");
-    }
+    return operations(this).stopAll();
   }
 
   async destroyAll(): Promise<void> {
-    announceModulesStopping();
-    const modules = this.getReverseLifecycleModules();
-    const results = await runTrackedModuleOperations(modules, (module) =>
-      module.destroy(),
-    );
-    this.pendingCleanup = results.failed.filter(
-      ({ module }) => module.state !== ModuleState.Loaded,
-    );
-    clearPathResolutionCache();
-    for (const id of this.loaded.keys()) {
-      this.evictModuleFiles(id, false);
-    }
-    this.isolation.releaseAll();
-    this.resolver.releaseInstances();
-    const errors = [...results.errors, ...this.clearManagedState()];
-    if (errors.length > 0) {
-      throw new AggregateError(errors, "Failed to destroy modules");
-    }
+    return operations(this).destroyAll();
   }
 
   private async constructModule(
-    module: Module,
-    config: Parameters<Module["construct"]>[0],
-  ): Promise<void> {
-    try {
-      await module.construct(config);
-    } catch (error) {
-      Logger.Error(`Failed to construct module:`);
-      Logger.Error(`  - ID: ${module.id}`);
-      Logger.Error(`  - Version: ${module.version}`);
-      Logger.Error("  - Error:", error);
-      throw error;
-    }
+    ...args: Parameters<ManagerMethods["constructModule"]>
+  ) {
+    return operations(this).constructModule(...args);
   }
 
-  private planConfigVars(modules: ManagedModule[]): ConfigVarPlan {
-    return buildConfigVarPlan(
-      modules.map(({ module, config }) => ({
-        id: module.id,
-        declared: declaredConfigVars(module.manifest),
-        config: config.config,
-      })),
-    );
+  private planConfigVars(
+    ...args: Parameters<ManagerMethods["planConfigVars"]>
+  ) {
+    return operations(this).planConfigVars(...args);
   }
 
-  /**
-   * Runs the `provide` phase, stage by stage over the config variable graph.
-   *
-   * Providers whose own configuration reads no other variable publish first
-   * and concurrently; a provider reading from another one waits for it. No
-   * module has constructed at this point, which is precisely what frees
-   * construction from this ordering.
-   */
   private async runProvidePhase(
-    modules: ManagedModule[],
-    plan: ConfigVarPlan,
-  ): Promise<ProvidePhaseResult> {
-    const entries = new Map(modules.map((entry) => [entry.module.id, entry]));
-    const errors: unknown[] = [];
-    const failed = new Set<string>();
-
-    for (const stage of plan.stages) {
-      const runnable = stage.filter((id) => {
-        const blocker = this.findFailedProvider(plan, id, failed);
-        if (!blocker) {
-          return true;
-        }
-        failed.add(id);
-        const message = `Module '${id}' did not provide its config variables: provider '${blocker}' failed.`;
-        Logger.Error(message);
-        errors.push(new Error(message));
-        return false;
-      });
-
-      const results = await Promise.allSettled(
-        runnable.map((id) => this.provideEntry(entries.get(id)!)),
-      );
-      results.forEach((result, index) => {
-        if (result.status === "rejected") {
-          failed.add(runnable[index]);
-          errors.push(result.reason);
-        }
-      });
-    }
-
-    return { errors, failed };
+    ...args: Parameters<ManagerMethods["runProvidePhase"]>
+  ) {
+    return operations(this).runProvidePhase(...args);
   }
 
-  /**
-   * Constructs every module whose configuration resolved, all at once.
-   *
-   * Construction is deliberately flat: ordering it by the config variable
-   * graph would race the interface graph, which orders modules the other way
-   * round. A module reading from a provider that failed is reported rather
-   * than constructed with an unresolved configuration.
-   */
   private async constructReadyModules(
-    modules: ManagedModule[],
-    plan: ConfigVarPlan,
-    failed: Set<string>,
-  ): Promise<unknown[]> {
-    const errors: unknown[] = [];
-    const dead = new Set(failed);
-    const runnable = modules.filter(({ module }) => {
-      if (dead.has(module.id)) {
-        return false;
-      }
-      const blocker = this.findFailedProvider(plan, module.id, failed);
-      if (!blocker) {
-        return true;
-      }
-      dead.add(module.id);
-      const message = `Module '${module.id}' did not construct: provider '${blocker}' failed.`;
-      Logger.Error(message);
-      errors.push(new Error(message));
-      return false;
-    });
-
-    this.rejectCallsIntoDeadModules(dead, dead);
-    const results = await Promise.allSettled(
-      runnable.map((entry) => this.constructOrDisable(entry, dead)),
-    );
-    return [...errors, ...collectRejectedErrors(results)];
+    ...args: Parameters<ManagerMethods["constructReadyModules"]>
+  ) {
+    return operations(this).constructReadyModules(...args);
   }
 
   private async constructOrDisable(
-    entry: ManagedModule,
-    dead: Set<string>,
-  ): Promise<void> {
-    try {
-      await this.constructEntry(entry);
-    } catch (error) {
-      dead.add(entry.module.id);
-      this.rejectCallsIntoDeadModules(dead, [entry.module.id]);
-      throw error;
-    }
+    ...args: Parameters<ManagerMethods["constructOrDisable"]>
+  ) {
+    return operations(this).constructOrDisable(...args);
   }
 
-  /**
-   * Stops the interfaces of modules that will never construct being waited on.
-   *
-   * A module skipped because its provider failed, or one whose own construct
-   * threw, still owes the interfaces it declared. Its peers do not read config
-   * variables from it — they call it — and an unanswered interface call queues
-   * forever, so a named configuration failure turned into a silent hang. The
-   * async proxies of those interfaces are neutralized instead: calls, queued
-   * ones included, reject naming the module that died and the interface.
-   */
   private rejectCallsIntoDeadModules(
-    dead: ReadonlySet<string>,
-    targets: Iterable<string>,
-  ): void {
-    for (const moduleId of targets) {
-      const entry = this.getModuleEntry(moduleId);
-      if (!entry) {
-        continue;
-      }
-      for (const interfaceName of this.orphanedInterfaces(entry, dead)) {
-        this.rejectCallsInto(moduleId, interfaceName);
-      }
-    }
+    ...args: Parameters<ManagerMethods["rejectCallsIntoDeadModules"]>
+  ) {
+    return operations(this).rejectCallsIntoDeadModules(...args);
   }
 
-  /** The interfaces a dead module served and no live module implements. */
   private orphanedInterfaces(
-    entry: ManagedModule,
-    dead: ReadonlySet<string>,
-  ): string[] {
-    return (entry.module.manifest.implements ?? []).filter(
-      (interfaceName) =>
-        !entry.config.disabledExports?.has(interfaceName) &&
-        !this.hasLiveImplementer(interfaceName, dead),
-    );
+    ...args: Parameters<ManagerMethods["orphanedInterfaces"]>
+  ) {
+    return operations(this).orphanedInterfaces(...args);
   }
 
   private hasLiveImplementer(
-    interfaceName: string,
-    dead: ReadonlySet<string>,
-  ): boolean {
-    return this.getAllManagedModules().some(
-      ({ module, config }) =>
-        !dead.has(module.id) &&
-        (module.manifest.implements ?? []).includes(interfaceName) &&
-        !config.disabledExports?.has(interfaceName),
-    );
+    ...args: Parameters<ManagerMethods["hasLiveImplementer"]>
+  ) {
+    return operations(this).hasLiveImplementer(...args);
   }
 
-  private rejectCallsInto(moduleId: string, interfaceName: string): void {
-    const entry = this.getModuleEntry(moduleId);
-    if (!entry) {
-      return;
-    }
-    let instanceRoot: string | undefined;
-    try {
-      instanceRoot = this.resolver.loadInstance(`${interfaceName}@${moduleId}`);
-    } catch (error) {
-      Logger.Trace(
-        `Could not load interface '${interfaceName}' to fail calls into '${moduleId}':`,
-        error,
-      );
-      return;
-    }
-    if (!instanceRoot) {
-      return;
-    }
-    const root = instanceRoot;
-    Logger.Debug(
-      `Interface '${interfaceName}' lost its provider '${moduleId}'; calls into it now reject.`,
-    );
-    entry.module.runInContext(() =>
-      neutralizeInterfacePackage(
-        root,
-        interfaceName,
-        `has no provider: module '${moduleId}' did not construct`,
-      ),
-    );
+  private rejectCallsInto(
+    ...args: Parameters<ManagerMethods["rejectCallsInto"]>
+  ) {
+    return operations(this).rejectCallsInto(...args);
   }
 
   private findFailedProvider(
-    plan: ConfigVarPlan,
-    moduleId: string,
-    failed: Set<string>,
-  ): string | undefined {
-    return [...(plan.dependencies.get(moduleId) ?? [])].find((provider) =>
-      failed.has(provider),
-    );
+    ...args: Parameters<ManagerMethods["findFailedProvider"]>
+  ) {
+    return operations(this).findFailedProvider(...args);
   }
 
-  private async provideEntry(entry: ManagedModule): Promise<void> {
-    const { module, config } = entry;
-    config.config = this.configVars.resolve(module.id, config.config);
-    const published = await this.provideModule(module, config.config);
-    this.configVars.record(
-      module.id,
-      declaredConfigVars(module.manifest),
-      published,
-    );
+  private async provideEntry(
+    ...args: Parameters<ManagerMethods["provideEntry"]>
+  ) {
+    return operations(this).provideEntry(...args);
   }
 
   private async provideModule(
-    module: Module,
-    config: Parameters<Module["provide"]>[0],
-  ): Promise<ConfigVars | void> {
-    try {
-      return await module.provide(config);
-    } catch (error) {
-      Logger.Error(`Failed to provide config variables:`);
-      Logger.Error(`  - ID: ${module.id}`);
-      Logger.Error(`  - Version: ${module.version}`);
-      Logger.Error("  - Error:", error);
-      throw error;
-    }
+    ...args: Parameters<ManagerMethods["provideModule"]>
+  ) {
+    return operations(this).provideModule(...args);
   }
 
-  private async constructEntry(entry: ManagedModule): Promise<void> {
-    const { module, config } = entry;
-    config.config = this.configVars.resolve(module.id, config.config);
-    await this.constructModule(module, config.config);
+  private async constructEntry(
+    ...args: Parameters<ManagerMethods["constructEntry"]>
+  ) {
+    return operations(this).constructEntry(...args);
   }
 
-  private getReverseLifecycleModules(): ManagedModule[] {
-    const orderedIds = [...this.startupOrder].reverse();
-    const seen = new Set(orderedIds);
-    for (const id of [...this.loaded.keys()].reverse()) {
-      if (!seen.has(id)) {
-        orderedIds.push(id);
-      }
-    }
-    const loadedModules = orderedIds.flatMap((id) => {
-      const entry = this.loaded.get(id);
-      return entry ? [entry] : [];
-    });
-    const loadedInstances = new Set(loadedModules.map(({ module }) => module));
-    return [
-      ...loadedModules,
-      ...this.pendingCleanup.filter(
-        ({ module }) => !loadedInstances.has(module),
-      ),
-    ];
+  private getReverseLifecycleModules() {
+    return operations(this).getReverseLifecycleModules();
   }
 
-  private clearManagedState(): unknown[] {
-    this.loaded.clear();
-    this.staticModules.length = 0;
-    this.registry.clear();
-    this.resolvedAssociations.clear();
-    this.resolver.moduleByFolder.clear();
-    this.resolver.modulesById.clear();
-    this.resolver.interfacePackages.clear();
-    this.resolver.interfacePackageEntries.clear();
-    this.resolver.interfacePackageResolveFrom.clear();
-    this.resolver.lifecycleInterfacePackages.clear();
-    this.interfacePackagePlans.clear();
-    this.startupOrder = [];
-    return this.releaseRuntimeState();
+  private clearManagedState() {
+    return operations(this).clearManagedState();
   }
 
-  private releaseRuntimeState(): unknown[] {
-    const errors: unknown[] = [];
-    this.configVars.clear();
-    this.stubbedInterfacePackages.clear();
-    this.resolver.stubbedInterfacePackages.clear();
-    clearStubInterfaceWarnings();
-    this.moduleTracker.clear();
-    this.interfaceRegistry.clear();
-    try {
-      this.resolverDetour.detach();
-    } catch (error) {
-      errors.push(error);
-    }
-    return errors;
+  private releaseRuntimeState() {
+    return operations(this).releaseRuntimeState();
   }
 
-  private trackModuleStart(moduleId: string): void {
-    this.startupOrder = this.startupOrder.filter((id) => id !== moduleId);
-    this.startupOrder.push(moduleId);
+  private trackModuleStart(
+    ...args: Parameters<ManagerMethods["trackModuleStart"]>
+  ) {
+    return operations(this).trackModuleStart(...args);
   }
 
-  /** How every module binds its interfaces, as of the last association rebuild. */
   getBindingGraph(): BindingGraph | undefined {
-    return this.bindingGraph;
+    return operations(this).getBindingGraph();
   }
 
-  private rebuildAssociations(): void {
-    clearPathResolutionCache();
-    const interfaceSources = this.collectInterfaceSources();
-    this.buildModuleAssociations(interfaceSources);
-    this.buildBindings();
+  private rebuildAssociations() {
+    return operations(this).rebuildAssociations();
   }
 
-  private buildBindings(): void {
-    const graph = buildBindingGraph({
-      interfaces: this.collectBindingInterfaces(),
-      modules: this.collectBindingModules(),
-      running: this.runningBindings(),
-    });
-    if (graph.errors.length > 0) {
-      throw new InterfaceBindingError(graph.errors);
-    }
-    this.bindingGraph = graph;
-    this.resolver.setBindings(graph);
+  private buildBindings() {
+    return operations(this).buildBindings();
   }
 
-  /**
-   * Bindings of the modules that have constructed. A rebuild keeps them: a
-   * module loaded at runtime that would change them is refused rather than
-   * re-binding a running module.
-   */
-  private runningBindings(): Map<string, Map<string, string>> {
-    const running = new Map<string, Map<string, string>>();
-    for (const { module } of this.getAllManagedModules()) {
-      const scope = this.bindingGraph?.modules.get(module.id)?.scope;
-      if (module.state === ModuleState.Loaded || !scope) {
-        continue;
-      }
-      const bindings = new Map<string, string>();
-      scope.forEach((binding, interfaceName) => {
-        if (binding.provider) {
-          bindings.set(interfaceName, binding.provider);
-        }
-      });
-      running.set(module.id, bindings);
-    }
-    return running;
+  private runningBindings() {
+    return operations(this).runningBindings();
   }
 
-  private logBindingWarnings(): void {
-    this.bindingGraph?.warnings.forEach((warning) => Logger.Warn(warning));
+  private logBindingWarnings() {
+    return operations(this).logBindingWarnings();
   }
 
-  private bindablePackages(): Set<string> {
-    return new Set(
-      [...this.resolver.interfacePackages.keys()].filter(
-        (packageName) => packageName !== INTERFACE_CORE_PACKAGE,
-      ),
-    );
+  private bindablePackages() {
+    return operations(this).bindablePackages();
   }
 
-  private collectBindingInterfaces(): Map<string, BindingInterface> {
-    const packages = this.bindablePackages();
-    const interfaces = new Map<string, BindingInterface>();
-    for (const name of packages) {
-      const root = this.resolver.interfacePackages.get(name)!;
-      interfaces.set(name, {
-        name,
-        dependencies: readInterfaceDependencies(name, root, packages),
-      });
-    }
-    return interfaces;
+  private collectBindingInterfaces() {
+    return operations(this).collectBindingInterfaces();
   }
 
-  private collectBindingModules(): Map<string, BindingModule> {
-    const packages = this.bindablePackages();
-    const modules = new Map<string, BindingModule>();
-    for (const { module, config } of this.getAllManagedModules()) {
-      modules.set(
-        module.id,
-        toBindingModule(module, config, packages, this.resolvedConnections),
-      );
-    }
-    return modules;
+  private collectBindingModules() {
+    return operations(this).collectBindingModules();
   }
 
-  private collectInterfaceSources(): Map<string, Module[]> {
-    this.resolver.moduleByFolder.clear();
-    this.resolver.modulesById.clear();
-    this.resolver.interfacePackages.clear();
-    this.resolver.interfacePackageEntries.clear();
-    this.resolver.interfacePackageResolveFrom.clear();
-    this.resolver.lifecycleInterfacePackages.clear();
-    this.resolver.stubbedInterfacePackages.clear();
-    this.interfacePackagePlans.clear();
-    this.resolvedAssociations.clear();
-    this.resolvedConnections.clear();
-    this.selectedProviders.clear();
-    this.moduleTracker.clear();
-    this.interfaceRegistry.clear();
-
-    const interfaceSources = new Map<string, Module[]>();
-    for (const { module, config } of this.loaded.values()) {
-      this.resolver.moduleByFolder.set(module.manifest.folder, module);
-      this.resolver.modulesById.set(module.id, module);
-      this.moduleTracker.add({
-        dir: module.manifest.folder,
-        id: module.id,
-        isImplementor: (module.manifest.implements ?? []).length > 0,
-      });
-
-      for (const interfacePackage of module.manifest.implements ?? []) {
-        if (!config.disabledExports?.has(interfacePackage)) {
-          this.addInterfaceSource(interfaceSources, interfacePackage, module);
-        }
-      }
-    }
-
-    for (const { module, config } of this.staticModules) {
-      this.resolver.modulesById.set(module.id, module);
-
-      for (const interfacePackage of module.manifest.implements ?? []) {
-        if (!config.disabledExports?.has(interfacePackage)) {
-          this.addInterfaceSource(interfaceSources, interfacePackage, module);
-        }
-      }
-    }
-    this.resolveInterfacePackagePaths(interfaceSources);
-
-    return interfaceSources;
+  private collectInterfaceSources() {
+    return operations(this).collectInterfaceSources();
   }
 
   private resolveInterfacePackagePaths(
-    interfaceSources: Map<string, Module[]>,
-  ): void {
-    for (const [ifacePkg, modules] of interfaceSources) {
-      const module = [...modules].sort((left, right) =>
-        compareModuleIds(left.id, right.id),
-      )[0];
-      if (!module) {
-        continue;
-      }
-      const canonicalPackage = this.resolveImplementedPackage(ifacePkg, module);
-      if (!canonicalPackage) {
-        continue;
-      }
-      this.interfacePackagePlans.set(ifacePkg, {
-        canonicalPackage,
-        consumers: this.collectInterfacePackageConsumers(ifacePkg),
-      });
-      this.registerInterfacePackage(ifacePkg, canonicalPackage, false);
-    }
-    for (const [packageName, canonicalPackage] of this
-      .stubbedInterfacePackages) {
-      if (interfaceSources.has(packageName)) {
-        continue;
-      }
-      this.interfacePackagePlans.set(packageName, {
-        canonicalPackage,
-        consumers: this.collectInterfacePackageConsumers(packageName),
-      });
-      this.registerInterfacePackage(packageName, canonicalPackage, true);
-    }
+    interfaceSources: Parameters<
+      ManagerMethods["resolveInterfacePackagePaths"]
+    >[0],
+  ) {
+    return operations(this).resolveInterfacePackagePaths(interfaceSources);
   }
 
   private resolveImplementedPackage(
-    packageName: string,
-    module: Module,
-  ): ResolvedPackage | undefined {
-    const resolvedPackage = resolvePackage(packageName, module.manifest.folder);
-    if (resolvedPackage) {
-      return resolvedPackage;
-    }
-    if (module.manifest.manifest.name !== packageName) {
-      return undefined;
-    }
-    return {
-      ...resolvePackageAtRoot(
-        packageName,
-        module.manifest.folder,
-        module.manifest.version,
-      ),
-      antelopeJs: module.manifest.manifest.antelopeJs,
-    };
+    ...args: Parameters<ManagerMethods["resolveImplementedPackage"]>
+  ) {
+    return operations(this).resolveImplementedPackage(...args);
   }
 
   private collectInterfacePackageConsumers(
-    packageName: string,
-  ): InterfacePackageConsumer[] {
-    const consumers: InterfacePackageConsumer[] = [];
-    for (const { module } of this.loaded.values()) {
-      const manifest = module.manifest.manifest;
-      const range =
-        manifest.dependencies?.[packageName] ??
-        manifest.optionalDependencies?.[packageName];
-      if (!range) {
-        continue;
-      }
-      consumers.push({
-        moduleId: module.id,
-        range,
-        resolvedPackage: resolvePackage(packageName, module.manifest.folder),
-      });
-    }
-    return consumers;
+    packageName: Parameters<
+      ManagerMethods["collectInterfacePackageConsumers"]
+    >[0],
+  ) {
+    return operations(this).collectInterfacePackageConsumers(packageName);
   }
 
   private registerInterfacePackage(
-    packageName: string,
-    resolvedPackage: ResolvedPackage,
-    isStubbed = false,
-  ): void {
-    this.resolver.interfacePackages.set(packageName, resolvedPackage.root);
-    this.resolver.interfacePackageEntries.set(
-      packageName,
-      resolvedPackage.entry,
-    );
-    this.resolver.interfacePackageResolveFrom.set(
-      packageName,
-      resolvedPackage.resolveFrom,
-    );
-    if (isStubbed) {
-      this.resolver.stubbedInterfacePackages.add(packageName);
-    } else {
-      this.resolver.stubbedInterfacePackages.delete(packageName);
-    }
-    const implementations = resolvedPackage.antelopeJs?.implements;
-    if (
-      Array.isArray(implementations) &&
-      implementations.includes(packageName)
-    ) {
-      this.resolver.lifecycleInterfacePackages.add(packageName);
-      return;
-    }
-    this.resolver.lifecycleInterfacePackages.delete(packageName);
+    ...args: Parameters<ManagerMethods["registerInterfacePackage"]>
+  ) {
+    return operations(this).registerInterfacePackage(...args);
   }
 
-  private validateInterfacePackages(): void {
-    const plans = [...this.interfacePackagePlans];
-    const rangeConflicts = plans.flatMap(([name, plan]) =>
-      this.findRangeConflicts(name, plan),
-    );
-    const preloadedCopies = plans.flatMap(([name, plan]) =>
-      this.findPreloadedCopies(name, plan),
-    );
-    if (rangeConflicts.length === 0 && preloadedCopies.length === 0) {
-      return;
-    }
-    throw new InterfaceResolutionError({ rangeConflicts, preloadedCopies });
+  private validateInterfacePackages() {
+    return operations(this).validateInterfacePackages();
   }
 
   private findRangeConflicts(
-    packageName: string,
-    plan: InterfacePackagePlan,
-  ): InterfaceRangeConflict[] {
-    return plan.consumers.flatMap((consumer) => {
-      const range = validRange(consumer.range);
-      if (!range || satisfies(plan.canonicalPackage.version, range)) {
-        return [];
-      }
-      return [
-        {
-          moduleId: consumer.moduleId,
-          packageName,
-          range: consumer.range,
-          canonical: plan.canonicalPackage,
-          consumerCopy: consumer.resolvedPackage,
-        },
-      ];
-    });
+    ...args: Parameters<ManagerMethods["findRangeConflicts"]>
+  ) {
+    return operations(this).findRangeConflicts(...args);
   }
 
   private findPreloadedCopies(
-    packageName: string,
-    plan: InterfacePackagePlan,
-  ): PreloadedInterfaceCopy[] {
-    const canonicalRoot = plan.canonicalPackage.realRoot;
-    const loadedFiles = Object.keys(require.cache);
-    return plan.consumers.flatMap(({ moduleId, resolvedPackage: copy }) => {
-      if (!copy || copy.realRoot === canonicalRoot) {
-        return [];
-      }
-      const isInCopy = createPathWithinMatcher(copy.root);
-      const loadedFile = loadedFiles.find((filePath) => isInCopy(filePath));
-      return loadedFile
-        ? [
-            {
-              moduleId,
-              packageName,
-              copy,
-              canonical: plan.canonicalPackage,
-              loadedFile,
-            },
-          ]
-        : [];
-    });
+    ...args: Parameters<ManagerMethods["findPreloadedCopies"]>
+  ) {
+    return operations(this).findPreloadedCopies(...args);
   }
 
   private buildModuleAssociations(
-    interfaceSources: Map<string, Module[]>,
-  ): void {
-    for (const { module, config } of this.loaded.values()) {
-      const connections = new Map<string, InterfaceConnectionRef[]>();
-      const selected = new Map<string, string>();
-      this.addDefaultAssociations(
-        module,
-        connections,
-        selected,
-        interfaceSources,
-      );
-      this.applyImportOverrides(
-        module.id,
-        config.importOverrides,
-        connections,
-        selected,
-      );
-      this.resolvedAssociations.set(module.id, new Set(connections.keys()));
-      this.resolvedConnections.set(module.id, connections);
-      this.selectedProviders.set(module.id, selected);
-      this.interfaceRegistry.setConnections(module.id, connections, selected);
-    }
+    ...args: Parameters<ManagerMethods["buildModuleAssociations"]>
+  ) {
+    return operations(this).buildModuleAssociations(...args);
   }
 
   private addDefaultAssociations(
-    module: Module,
-    connections: Map<string, InterfaceConnectionRef[]>,
-    selected: Map<string, string>,
-    interfaceSources: Map<string, Module[]>,
-  ): void {
-    const dependencies = module.manifest.manifest.dependencies ?? {};
-    const optionalDependencies =
-      module.manifest.manifest.optionalDependencies ?? {};
-    for (const [iface, providers] of interfaceSources) {
-      if (iface in dependencies || iface in optionalDependencies) {
-        const providerIds = providers.map(({ id }) => id).sort();
-        const defaultProvider = providerIds[0];
-        if (!defaultProvider) {
-          continue;
-        }
-        connections.set(
-          iface,
-          providerIds.map((provider) => ({ module: provider })),
-        );
-        selected.set(iface, defaultProvider);
-      }
-    }
+    ...args: Parameters<ManagerMethods["addDefaultAssociations"]>
+  ) {
+    return operations(this).addDefaultAssociations(...args);
   }
 
   private applyImportOverrides(
-    moduleId: string,
-    importOverrides: Map<string, InterfaceConnectionRef[]> | undefined,
-    connections: Map<string, InterfaceConnectionRef[]>,
-    selected: Map<string, string | undefined>,
-  ): void {
-    if (!importOverrides) {
-      return;
-    }
-    for (const [iface, overrides] of importOverrides.entries()) {
-      this.validateImportOverrides(moduleId, iface, overrides);
-      connections.set(iface, overrides);
-      if (overrides[0].module === undefined) {
-        selected.delete(iface);
-      } else {
-        selected.set(iface, overrides[0].module);
-      }
-    }
+    ...args: Parameters<ManagerMethods["applyImportOverrides"]>
+  ) {
+    return operations(this).applyImportOverrides(...args);
   }
 
   private addInterfaceSource(
-    sources: Map<string, Module[]>,
-    interfaceName: string,
-    module: Module,
-  ): void {
-    const providers = sources.get(interfaceName) ?? [];
-    providers.push(module);
-    sources.set(interfaceName, providers);
+    ...args: Parameters<ManagerMethods["addInterfaceSource"]>
+  ) {
+    return operations(this).addInterfaceSource(...args);
   }
 
   private validateImportOverrides(
-    consumerId: string,
-    interfaceName: string,
-    overrides: InterfaceConnectionRef[],
-  ): void {
-    if (overrides.length === 0) {
-      throw new Error(
-        `Module '${consumerId}' has no providers in its '${interfaceName}' import override.`,
-      );
-    }
-    const connectionIds = new Set<string>();
-    for (const override of overrides) {
-      this.validateOverrideSource(consumerId, interfaceName, override.module);
-      if (override.id && connectionIds.has(override.id)) {
-        throw new Error(
-          `Module '${consumerId}' has duplicate connection ID '${override.id}' for '${interfaceName}'.`,
-        );
-      }
-      if (override.id) {
-        connectionIds.add(override.id);
-      }
-    }
+    ...args: Parameters<ManagerMethods["validateImportOverrides"]>
+  ) {
+    return operations(this).validateImportOverrides(...args);
   }
 
   private validateOverrideSource(
-    consumerId: string,
-    interfaceName: string,
-    source: string | undefined,
-  ): void {
-    if (source === undefined) {
-      this.validateSelfHostedConnection(consumerId, interfaceName);
-      return;
-    }
-    const target = this.getModuleEntry(source);
-    const implementsInterface =
-      target?.module.manifest.implements.includes(interfaceName) &&
-      !target.config.disabledExports?.has(interfaceName);
-    if (!implementsInterface) {
-      throw new Error(
-        `Module '${consumerId}' routes '${interfaceName}' to '${source}', but that loaded module does not provide the interface.`,
-      );
-    }
+    ...args: Parameters<ManagerMethods["validateOverrideSource"]>
+  ) {
+    return operations(this).validateOverrideSource(...args);
   }
 
   private validateSelfHostedConnection(
-    consumerId: string,
-    interfaceName: string,
-  ): void {
-    if (this.hasLiveImplementer(interfaceName, new Set())) {
-      throw new Error(
-        `Module '${consumerId}' declares a '${interfaceName}' connection without a source, but loaded modules provide that interface; name the provider.`,
-      );
-    }
+    ...args: Parameters<ManagerMethods["validateSelfHostedConnection"]>
+  ) {
+    return operations(this).validateSelfHostedConnection(...args);
   }
 }
 
-function toBindingConnections(
-  connections: Map<string, InterfaceConnectionRef[]> | undefined,
-): Map<string, BindingConnection[]> {
-  return new Map(
-    [...(connections ?? [])].map(([interfaceName, refs]) => [
-      interfaceName,
-      refs.map(({ module: source, id }) => ({ source, id })),
-    ]),
-  );
-}
-
-function toBindingModule(
-  module: Module,
-  config: ModuleConfig,
-  packages: ReadonlySet<string>,
-  listed: ReadonlyMap<string, Map<string, InterfaceConnectionRef[]>>,
-): BindingModule {
-  const manifest = module.manifest.manifest;
-  const declared = {
-    ...manifest.optionalDependencies,
-    ...manifest.dependencies,
-  };
-  const connections = toBindingConnections(config.importOverrides);
-  return {
-    id: module.id,
-    implements: (module.manifest.implements ?? []).filter(
-      (name) => packages.has(name) && !config.disabledExports?.has(name),
-    ),
-    uses: Object.keys(declared).filter((name) => packages.has(name)),
-    connections,
-    listedConnections: toBindingConnections(listed.get(module.id)),
-    exportPriority: config.exportPriority ?? new Map(),
-  };
-}
-
-/**
- * Starts a module, warning once it is slow and failing it once it is late.
- * The module's own `start` keeps running: its lifecycle queue holds any later
- * transition until it settles.
- */
-function startWithinDeadline(module: Module): Promise<void> {
-  const timers: NodeJS.Timeout[] = [];
-  const deadline = new Promise<never>((_, reject) => {
-    timers.push(
-      setTimeout(() => {
-        Logger.Warn(
-          `Module '${module.id}' is still starting after ${START_SLOW_WARNING_MS / MS_PER_SECOND} s`,
-        );
-      }, START_SLOW_WARNING_MS),
-      setTimeout(() => {
-        reject(
-          new Error(
-            `Module '${module.id}' did not start within ${START_TIMEOUT_MS / MS_PER_SECOND} s`,
-          ),
-        );
-      }, START_TIMEOUT_MS),
+function preserveDelegateLengths(prototype: ModuleManager): void {
+  const template = bindOperations(Object.create(null));
+  for (const [name, operation] of Object.entries(template)) {
+    Object.defineProperty(
+      Object.getOwnPropertyDescriptor(prototype, name)?.value,
+      "length",
+      {
+        value: operation.length,
+      },
     );
-  });
-  return Promise.race([module.start(), deadline]).finally(() => {
-    timers.forEach(clearTimeout);
-  });
-}
-
-async function runModuleOperations(
-  modules: ManagedModule[],
-  operation: ModuleOperation,
-): Promise<unknown[]> {
-  return (await runTrackedModuleOperations(modules, operation)).errors;
-}
-
-async function runTrackedModuleOperations(
-  modules: ManagedModule[],
-  operation: ModuleOperation,
-): Promise<ModuleOperationResults> {
-  const errors: unknown[] = [];
-  const failed: ManagedModule[] = [];
-  for (const entry of modules) {
-    try {
-      await operation(entry.module);
-    } catch (error) {
-      errors.push(...unpackErrors(error));
-      failed.push(entry);
-    }
   }
-  return { errors, failed };
 }

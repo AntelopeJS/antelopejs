@@ -3,7 +3,6 @@
     "eslint/max-lines-per-function": 50
   },
   "oversizeFiles": {
-    "src/core/modules/module-manager.ts": 45587,
     "test/core/cli/commands/project/modules/install.behavior.test.ts": 28996
   }
 }
