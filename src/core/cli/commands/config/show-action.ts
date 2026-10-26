@@ -17,7 +17,8 @@ function describeValue(key: string, value: string): string {
   if (!value) {
     return NOT_SET;
   }
-  const defaults: Record<string, string> = { ...getDefaultUserConfig() };
+  const defaultValues = { ...getDefaultUserConfig() };
+  const defaults: typeof defaultValues & Record<string, string> = defaultValues;
   const isCustom = key in defaults && defaults[key] !== value;
   return isCustom ? `${value} ${CUSTOM_MARKER}` : value;
 }
@@ -35,7 +36,7 @@ function renderConfig(config: Record<string, string>, ui: Ui): void {
 }
 
 async function showConfig(options: ShowOptions, ui: Ui): Promise<void> {
-  const config: Record<string, string> = { ...(await readUserConfig()) };
+  const config = { ...(await readUserConfig()) };
   writeData(ui, {
     data: config,
     isJson: options.json,

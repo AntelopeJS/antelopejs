@@ -68,7 +68,7 @@ function gitReference(source: ModuleSourceGit): string {
   return [source.remote, branch, commit].filter(Boolean).join(" ");
 }
 
-const SOURCE_SUMMARIZERS: Record<string, SourceSummarizer> = {
+const SOURCE_SUMMARIZERS = {
   // SAFETY: summarizeSource dispatches this callback only for the package discriminator.
   package: (source, moduleName) => ({
     kind: "npm",
@@ -89,7 +89,7 @@ const SOURCE_SUMMARIZERS: Record<string, SourceSummarizer> = {
     kind: "folder",
     reference: (source as ModuleSourceLocalFolder).path,
   }),
-};
+} satisfies Record<string, SourceSummarizer>;
 
 function summarizeSource(listing: ModuleListing): SourceSummary {
   // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- ConfigLoader accepts unchecked source values; validating them here would change malformed-config output (#228).

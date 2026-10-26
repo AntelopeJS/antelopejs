@@ -48,14 +48,11 @@ import type {
 const Logger = new Logging.Channel("loader");
 const CORE_MODULE_ID = "antelopejs";
 
-const MODULE_STATUS_MAP: Record<
-  string,
-  moduleInterfaceBeta.ModuleInfo["status"]
-> = {
+const MODULE_STATUS_MAP = {
   loaded: "loaded",
   constructed: "constructed",
   active: "active",
-};
+} satisfies Record<string, moduleInterfaceBeta.ModuleInfo["status"]>;
 
 function mapImportOverrides(
   overrides?: Record<string, string[]>,
@@ -75,9 +72,7 @@ function mapImportOverrides(
   return mapped;
 }
 
-function exportImportOverrides(
-  overrides?: ModuleOverrideMap,
-): Record<string, string[]> {
+function exportImportOverrides(overrides?: ModuleOverrideMap) {
   const result: Record<string, string[]> = {};
   if (!overrides) {
     return result;
@@ -95,7 +90,10 @@ function exportImportOverrides(
 function getModuleStatus(module: {
   state: string;
 }): moduleInterfaceBeta.ModuleInfo["status"] {
-  return MODULE_STATUS_MAP[module.state] ?? "unknown";
+  const statuses: typeof MODULE_STATUS_MAP &
+    Record<string, moduleInterfaceBeta.ModuleInfo["status"]> =
+    MODULE_STATUS_MAP;
+  return statuses[module.state] ?? "unknown";
 }
 
 function toModuleSource(

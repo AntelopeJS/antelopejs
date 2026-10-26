@@ -19,10 +19,7 @@ export interface ExpandedModuleConfig {
   optional?: boolean;
 }
 
-function readExportPriority(
-  name: string,
-  priorities: Record<string, number>,
-): Record<string, number> {
+function readExportPriority(name: string, priorities: Record<string, number>) {
   for (const [interfaceName, priority] of Object.entries(priorities)) {
     if (!Number.isInteger(priority)) {
       throw new Error(
@@ -43,7 +40,7 @@ export class ConfigParser {
     // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- processTemplates accepts open application config; flattening must inspect its existing arbitrary leaves.
     obj: Record<string, any>,
     prefix = "",
-  ): Record<string, string> {
+  ) {
     const result: Record<string, string> = {};
 
     for (const [key, value] of Object.entries(obj)) {
@@ -212,6 +209,7 @@ export class ConfigParser {
       }
     }
 
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- This public parser returns an open module dictionary; its exported declaration must remain Record<string, ExpandedModuleConfig>.
     return result;
   }
 }

@@ -13,7 +13,7 @@ function throwStub(): never {
   throw new Error(STUB_NOT_IMPLEMENTED);
 }
 
-function createFunctionProxyTarget(): StubProxyTarget {
+function createFunctionProxyTarget() {
   return new Proxy(
     {},
     {

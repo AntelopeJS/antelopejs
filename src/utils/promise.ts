@@ -20,6 +20,7 @@ export function CreateDetour<T extends (...args: any[]) => any>(
     return fn(...args);
   }) as T;
 
+  // oxlint-disable-next-line anti-slop/no-known-value-widening -- The exported object return and callback signature must remain identical; inference changes its declaration.
   return {
     fn: wrapped,
     detour: (sideEffect) => {

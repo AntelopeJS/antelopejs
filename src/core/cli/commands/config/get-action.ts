@@ -31,7 +31,8 @@ async function getConfigValue(
   if (!CONFIG_KEYS.includes(key)) {
     throw invalidConfigKeyError(key);
   }
-  const config: Record<string, string> = { ...(await readUserConfig()) };
+  const values = { ...(await readUserConfig()) };
+  const config: typeof values & Record<string, string> = values;
   if (!(key in config)) {
     throw missingKeyError(key);
   }

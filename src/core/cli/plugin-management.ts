@@ -147,12 +147,12 @@ const STATE_LABELS: Record<PluginState, (report: PluginReport) => string> = {
     `needs ${CORE_PACKAGE_NAME} ${report.requiredCoreRange}`,
 };
 
-const UPDATE_HINTS: Record<string, (report: PluginReport) => string> = {
+const UPDATE_HINTS = {
   [SOURCE_LABELS[LOCAL_EXECUTABLE_SOURCE]]: (report) =>
     `Update ${report.package} in this project's package.json`,
   [SOURCE_LABELS[PATH_EXECUTABLE_SOURCE]]: (report) =>
     `Run ${UPDATE_COMMAND} ${report.name} to update ${report.name}`,
-};
+} satisfies Record<string, (report: PluginReport) => string>;
 
 const PLUGIN_COLUMNS: TableColumn<PluginReport>[] = [
   { header: "Plugin", value: (report) => report.name },

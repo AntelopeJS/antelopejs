@@ -9,7 +9,7 @@ interface ConfigValueRule {
   example: string;
 }
 
-const CONFIG_VALUE_RULES: Record<string, ConfigValueRule> = {
+const CONFIG_VALUE_RULES = {
   git: {
     name: "git repository URL",
     isValid: isGitRepositoryUrl,
@@ -17,7 +17,7 @@ const CONFIG_VALUE_RULES: Record<string, ConfigValueRule> = {
       "an https or ssh URL, an scp-like address (git@host:org/repo.git) or an absolute path",
     example: "https://github.com/acme/interfaces.git",
   },
-};
+} satisfies Record<string, ConfigValueRule>;
 
 export const CONFIG_KEYS = Object.keys(CONFIG_VALUE_RULES);
 
@@ -36,7 +36,9 @@ export function invalidConfigValueError(
   key: string,
   value: string,
 ): CliError | undefined {
-  const rule = CONFIG_VALUE_RULES[key];
+  const rules: typeof CONFIG_VALUE_RULES & Record<string, ConfigValueRule> =
+    CONFIG_VALUE_RULES;
+  const rule = rules[key];
   if (!rule || rule.isValid(value)) {
     return undefined;
   }

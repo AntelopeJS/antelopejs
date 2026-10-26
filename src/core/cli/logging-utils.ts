@@ -243,7 +243,7 @@ export function formatDate(date: Date, format = "yyyy-MM-dd HH:mm:ss"): string {
   const padZero = (num: number, length = 2) =>
     String(num).padStart(length, "0");
 
-  const replacements: Record<string, string> = {
+  const replacements = {
     yyyy: String(date.getFullYear()),
     MM: padZero(date.getMonth() + 1),
     dd: padZero(date.getDate()),

@@ -88,7 +88,7 @@ function permissionDenied(error: NodeJS.ErrnoException): CliProblem {
   };
 }
 
-const SYSTEM_ERROR_TRANSLATIONS: Record<string, SystemErrorTranslation> = {
+const SYSTEM_ERROR_TRANSLATIONS = {
   ENOENT: (error) => ({
     title: `Path not found: ${subjectOf(error)}`,
     fixes: ["Check the path, then try again"],
@@ -99,7 +99,7 @@ const SYSTEM_ERROR_TRANSLATIONS: Record<string, SystemErrorTranslation> = {
   }),
   EACCES: permissionDenied,
   EPERM: permissionDenied,
-};
+} satisfies Record<string, SystemErrorTranslation>;
 
 function isSystemError(error: unknown): error is NodeJS.ErrnoException {
   if (!(error instanceof Error)) {
@@ -144,7 +144,8 @@ export function translateFailure(error: unknown): CliProblem | undefined {
     return describeInterfaceConflicts(error);
   }
   if (isSystemError(error)) {
-    return SYSTEM_ERROR_TRANSLATIONS[error.code ?? ""]?.(error);
+    const translations: typeof SYSTEM_ERROR_TRANSLATIONS & Record<string, SystemErrorTranslation> = SYSTEM_ERROR_TRANSLATIONS;
+    return translations[error.code ?? ""]?.(error);
   }
   return undefined;
 }
