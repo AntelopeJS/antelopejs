@@ -1,16 +1,28 @@
-import { Logging } from "@antelopejs/interface-core/logging";
-import {
-  type ChildProcess,
-  type ExecFileOptions,
-  type ExecOptions,
-  exec,
-  execFile,
+import type { Logging } from "@antelopejs/interface-core/logging";
+import type {
+  ChildProcess,
+  ExecFileOptions,
+  ExecOptions,
 } from "node:child_process";
 
+import { loadChildProcess } from "./child-process";
 import { FAILURE_EXIT_CODE } from "./exit-codes";
 import { buildProcessInvocation } from "./windows-command-line";
 
-const Logger = new Logging.Channel("cli.command");
+let channel: Logging.Channel | undefined;
+
+function loadLogging(): typeof import("@antelopejs/interface-core/logging") {
+  return require("@antelopejs/interface-core/logging");
+}
+
+/**
+ * The `cli.command` log channel, created on first use so importing the output
+ * entry does not load `@antelopejs/interface-core/logging`.
+ */
+function logger(): Logging.Channel {
+  channel ??= new (loadLogging().Logging.Channel)("cli.command");
+  return channel;
+}
 
 const NON_INTERACTIVE_ENV = {
   CI: "1",
@@ -110,7 +122,7 @@ function settleCommand(
       code: err ? exitCodeOf(err) : 0,
     };
     if (err) {
-      Logger.Debug(`Command failed with code ${result.code}: ${command}`);
+      logger().Debug(`Command failed with code ${result.code}: ${command}`);
       return reject(new ExecError({ ...result, command }));
     }
     resolve(result);
@@ -131,8 +143,8 @@ export function ExecuteCMD(
   options: ExecOptions,
 ): Promise<CommandResult> {
   return new Promise<CommandResult>((resolve, reject) => {
-    Logger.Trace(`Executing command: ${command}`);
-    const child = exec(
+    logger().Trace(`Executing command: ${command}`);
+    const child = loadChildProcess().exec(
       command,
       nonInteractiveOptions(options),
       settleCommand(command, resolve, reject),
@@ -156,8 +168,8 @@ export function ExecuteFile(
   const command = [executable, ...args].join(" ");
   const invocation = buildProcessInvocation(executable, args);
   return new Promise<CommandResult>((resolve, reject) => {
-    Logger.Trace(`Executing command: ${command}`);
-    const child = execFile(
+    logger().Trace(`Executing command: ${command}`);
+    const child = loadChildProcess().execFile(
       invocation.executable,
       invocation.args,
       {

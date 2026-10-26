@@ -34,12 +34,7 @@ module.exports = {
       {
         name: `${module.name}-entry-only`,
         severity: "error",
-        from: {
-          pathNot:
-            module.name === "output"
-              ? `^(?:${module.path}/|src/core/cli/public\\.ts$)`
-              : `^${module.path}/`,
-        },
+        from: { pathNot: `^${module.path}/` },
         to: {
           path: `^${module.path}/`,
           pathNot:
