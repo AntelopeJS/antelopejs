@@ -23,14 +23,11 @@ import {
 import * as logging from "../../../src/logging";
 import { expectInstanceOf } from "./fixtures";
 
-describe("runCLI behavior", () => {
-  const originalArgv = process.argv.slice();
+{
+  let registerRunCLIBehavior: (this: Mocha.Suite) => void;
 
-  afterEach(() => {
-    process.argv = originalArgv.slice();
-    process.exitCode = undefined;
-    sinon.restore();
-  });
+  const initializeOriginalArgv = () => process.argv.slice();
+  let originalArgv: ReturnType<typeof initializeOriginalArgv>;
 
   function stubCommon() {
     sinon
@@ -47,168 +44,198 @@ describe("runCLI behavior", () => {
     return { getOptionStub, parseStub, updateCheckStub };
   }
 
-  it("writes log lines as feedback of the CLI command", async () => {
-    process.argv = ["node", "ajs", "config", "show"];
-    stubCommon();
-    const audience = sinon.stub(logging, "setLogAudience");
+  const checkWritesLogLinesAsFeedback: (this: Mocha.Suite) => void =
+    function () {
+      it("writes log lines as feedback of the CLI command", async () => {
+        process.argv = ["node", "ajs", "config", "show"];
+        stubCommon();
+        const audience = sinon.stub(logging, "setLogAudience");
 
-    await runCLI();
+        await runCLI();
 
-    expect(audience.calledOnceWithExactly("cli")).to.equal(true);
+        expect(audience.calledOnceWithExactly("cli")).to.equal(true);
+      });
+
+      it("prints the help on stdout instead of parsing when no args are provided", async () => {
+        process.argv = ["node", "ajs"];
+        const { parseStub } = stubCommon();
+        const output = await captureOutputAsync(() => runCLI());
+
+        expect(parseStub.called).to.equal(false);
+        expect(output.stdout).to.contain("Usage: ajs [options] [command]");
+        expect(output.stdout).to.contain("AntelopeJS CLI v0.0.0");
+        expect(output.stderr).to.equal("");
+      });
+
+      it("adds channel filters when verbose is set", async () => {
+        process.argv = ["node", "ajs", "--verbose", "core"];
+        const { getOptionStub } = stubCommon();
+        getOptionStub.returns(["core", "cli"]);
+
+        const addFilterStub = sinon.stub(logging, "addChannelFilter");
+
+        await runCLI();
+
+        expect(addFilterStub.calledWith("core", 0)).to.equal(true);
+        expect(addFilterStub.calledWith("cli", 0)).to.equal(true);
+      });
+
+      it("parses a bare --verbose without reading the command as channels", async () => {
+        process.argv = ["node", "ajs", "--verbose", "project", "dev"];
+        const { parseStub } = stubCommon();
+
+        await runCLI();
+
+        expect(parseStub.firstCall.args).to.deep.equal([
+          ["--verbose=*", "project", "dev"],
+          { from: "user" },
+        ]);
+      });
+
+      it("reports an available update after the command and cancels the check", async () => {
+        process.argv = ["node", "ajs", "config", "show"];
+        const { parseStub, updateCheckStub } = stubCommon();
+        const check = sinon.createStubInstance(versionCheck.UpdateCheck);
+        check.latestVersion = "1.0.0";
+        updateCheckStub.returns(check);
+        const reportStub = sinon.stub(versionCheck, "reportAvailableUpdate");
+
+        await runCLI();
+
+        expect(reportStub.calledOnceWithExactly("0.0.0", check)).to.equal(true);
+        expect(reportStub.calledAfter(parseStub)).to.equal(true);
+        expect(check.cancel.calledAfter(reportStub)).to.equal(true);
+      });
+
+      it("cancels the update check when the command fails", async () => {
+        process.argv = ["node", "ajs", "config", "show"];
+        const { parseStub, updateCheckStub } = stubCommon();
+        const check = sinon.createStubInstance(versionCheck.UpdateCheck);
+        updateCheckStub.returns(check);
+        parseStub.rejects(new Error("boom"));
+        const reportStub = sinon.stub(versionCheck, "reportAvailableUpdate");
+
+        let thrown: unknown;
+        try {
+          await runCLI();
+        } catch (err) {
+          thrown = err;
+        }
+
+        expectInstanceOf(thrown, Error);
+        expect(thrown.message).to.equal("boom");
+        expect(reportStub.called).to.equal(false);
+        expect(check.cancel.calledOnce).to.equal(true);
+      });
+
+      it("reports a cancelled prompt with the cancelled exit code", async () => {
+        process.argv = ["node", "ajs", "project", "init", "demo"];
+        const { parseStub, updateCheckStub } = stubCommon();
+        const check = sinon.createStubInstance(versionCheck.UpdateCheck);
+        updateCheckStub.returns(check);
+        parseStub.rejects(new CancelledError());
+        const exitStub = sinon.stub(process, "exit");
+        const errorStub = sinon.stub(console, "error");
+        const { ui, feedback } = createMemoryUi();
+
+        await runWithErrorBoundary(runCLI, { ui });
+
+        expect(exitStub.called).to.equal(false);
+        expect(errorStub.calledOnceWith(CANCELLED_MESSAGE)).to.equal(true);
+        expect(feedback.text).to.equal("");
+        expect(process.exitCode).to.equal(CANCELLED_EXIT_CODE);
+        expect(check.cancel.calledOnce).to.equal(true);
+      });
+
+      it("reports a command error once with its own exit code", async () => {
+        process.argv = ["node", "ajs", "project", "build", "-e", "staging"];
+        const { parseStub } = stubCommon();
+        parseStub.rejects(
+          new CliError({
+            title: "Unknown environment 'staging'",
+            reason: "Known environments: default",
+            exitCode: USAGE_EXIT_CODE,
+          }),
+        );
+        const { ui, result, feedback } = createMemoryUi();
+
+        await runWithErrorBoundary(runCLI, { ui, verbose: false });
+
+        expect(feedback.text).to.equal(
+          "✖ Unknown environment 'staging'\n  Known environments: default\n",
+        );
+        expect(result.text).to.equal("");
+        expect(process.exitCode).to.equal(USAGE_EXIT_CODE);
+      });
+    };
+
+  const checkReportsAnUnexpectedFailureWithout: (this: Mocha.Suite) => void =
+    function () {
+      it("reports an unexpected failure without its stack trace", async () => {
+        process.argv = ["node", "ajs", "config", "show"];
+        const { parseStub } = stubCommon();
+        parseStub.rejects(new Error("boom"));
+        const { ui, feedback } = createMemoryUi();
+
+        await runWithErrorBoundary(runCLI, { ui, verbose: false });
+
+        expect(feedback.text).to.equal(
+          "✖ boom\n  Run with --verbose for the full trace.\n",
+        );
+        expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
+      });
+
+      it("keeps the usage exit code when commander prints help after an incomplete command", async () => {
+        process.argv = ["node", "ajs", "project"];
+        const { parseStub } = stubCommon();
+        parseStub.rejects(
+          new CommanderError(1, "commander.help", "(outputHelp)"),
+        );
+        const { ui, feedback } = createMemoryUi();
+
+        await runWithErrorBoundary(runCLI, { ui });
+
+        expect(feedback.text).to.equal("");
+        expect(process.exitCode).to.equal(USAGE_EXIT_CODE);
+      });
+
+      it("keeps a successful exit code when commander exits after help", async () => {
+        process.argv = ["node", "ajs", "--help"];
+        const { parseStub } = stubCommon();
+        parseStub.rejects(
+          new CommanderError(0, "commander.helpDisplayed", "(outputHelp)"),
+        );
+        const { ui, feedback } = createMemoryUi();
+
+        await runWithErrorBoundary(runCLI, { ui });
+
+        expect(feedback.text).to.equal("");
+        expect(process.exitCode).to.equal(SUCCESS_EXIT_CODE);
+      });
+    };
+
+  registerRunCLIBehavior = () => {
+    originalArgv = initializeOriginalArgv();
+
+    afterEach(() => {
+      process.argv = originalArgv.slice();
+      process.exitCode = undefined;
+      sinon.restore();
+    });
+
+    describe("writes log lines as feedback of the CLI command", function () {
+      checkWritesLogLinesAsFeedback.call(this);
+    });
+
+    describe("reports an unexpected failure without its stack trace", function () {
+      checkReportsAnUnexpectedFailureWithout.call(this);
+    });
+  };
+
+  describe("runCLI behavior", function () {
+    registerRunCLIBehavior.call(this);
   });
-
-  it("prints the help on stdout instead of parsing when no args are provided", async () => {
-    process.argv = ["node", "ajs"];
-    const { parseStub } = stubCommon();
-    const output = await captureOutputAsync(() => runCLI());
-
-    expect(parseStub.called).to.equal(false);
-    expect(output.stdout).to.contain("Usage: ajs [options] [command]");
-    expect(output.stdout).to.contain("AntelopeJS CLI v0.0.0");
-    expect(output.stderr).to.equal("");
-  });
-
-  it("adds channel filters when verbose is set", async () => {
-    process.argv = ["node", "ajs", "--verbose", "core"];
-    const { getOptionStub } = stubCommon();
-    getOptionStub.returns(["core", "cli"]);
-
-    const addFilterStub = sinon.stub(logging, "addChannelFilter");
-
-    await runCLI();
-
-    expect(addFilterStub.calledWith("core", 0)).to.equal(true);
-    expect(addFilterStub.calledWith("cli", 0)).to.equal(true);
-  });
-
-  it("parses a bare --verbose without reading the command as channels", async () => {
-    process.argv = ["node", "ajs", "--verbose", "project", "dev"];
-    const { parseStub } = stubCommon();
-
-    await runCLI();
-
-    expect(parseStub.firstCall.args).to.deep.equal([
-      ["--verbose=*", "project", "dev"],
-      { from: "user" },
-    ]);
-  });
-
-  it("reports an available update after the command and cancels the check", async () => {
-    process.argv = ["node", "ajs", "config", "show"];
-    const { parseStub, updateCheckStub } = stubCommon();
-    const check = sinon.createStubInstance(versionCheck.UpdateCheck);
-    check.latestVersion = "1.0.0";
-    updateCheckStub.returns(check);
-    const reportStub = sinon.stub(versionCheck, "reportAvailableUpdate");
-
-    await runCLI();
-
-    expect(reportStub.calledOnceWithExactly("0.0.0", check)).to.equal(true);
-    expect(reportStub.calledAfter(parseStub)).to.equal(true);
-    expect(check.cancel.calledAfter(reportStub)).to.equal(true);
-  });
-
-  it("cancels the update check when the command fails", async () => {
-    process.argv = ["node", "ajs", "config", "show"];
-    const { parseStub, updateCheckStub } = stubCommon();
-    const check = sinon.createStubInstance(versionCheck.UpdateCheck);
-    updateCheckStub.returns(check);
-    parseStub.rejects(new Error("boom"));
-    const reportStub = sinon.stub(versionCheck, "reportAvailableUpdate");
-
-    let thrown: unknown;
-    try {
-      await runCLI();
-    } catch (err) {
-      thrown = err;
-    }
-
-    expectInstanceOf(thrown, Error);
-    expect(thrown.message).to.equal("boom");
-    expect(reportStub.called).to.equal(false);
-    expect(check.cancel.calledOnce).to.equal(true);
-  });
-
-  it("reports a cancelled prompt with the cancelled exit code", async () => {
-    process.argv = ["node", "ajs", "project", "init", "demo"];
-    const { parseStub, updateCheckStub } = stubCommon();
-    const check = sinon.createStubInstance(versionCheck.UpdateCheck);
-    updateCheckStub.returns(check);
-    parseStub.rejects(new CancelledError());
-    const exitStub = sinon.stub(process, "exit");
-    const errorStub = sinon.stub(console, "error");
-    const { ui, feedback } = createMemoryUi();
-
-    await runWithErrorBoundary(runCLI, { ui });
-
-    expect(exitStub.called).to.equal(false);
-    expect(errorStub.calledOnceWith(CANCELLED_MESSAGE)).to.equal(true);
-    expect(feedback.text).to.equal("");
-    expect(process.exitCode).to.equal(CANCELLED_EXIT_CODE);
-    expect(check.cancel.calledOnce).to.equal(true);
-  });
-
-  it("reports a command error once with its own exit code", async () => {
-    process.argv = ["node", "ajs", "project", "build", "-e", "staging"];
-    const { parseStub } = stubCommon();
-    parseStub.rejects(
-      new CliError({
-        title: "Unknown environment 'staging'",
-        reason: "Known environments: default",
-        exitCode: USAGE_EXIT_CODE,
-      }),
-    );
-    const { ui, result, feedback } = createMemoryUi();
-
-    await runWithErrorBoundary(runCLI, { ui, verbose: false });
-
-    expect(feedback.text).to.equal(
-      "✖ Unknown environment 'staging'\n  Known environments: default\n",
-    );
-    expect(result.text).to.equal("");
-    expect(process.exitCode).to.equal(USAGE_EXIT_CODE);
-  });
-
-  it("reports an unexpected failure without its stack trace", async () => {
-    process.argv = ["node", "ajs", "config", "show"];
-    const { parseStub } = stubCommon();
-    parseStub.rejects(new Error("boom"));
-    const { ui, feedback } = createMemoryUi();
-
-    await runWithErrorBoundary(runCLI, { ui, verbose: false });
-
-    expect(feedback.text).to.equal(
-      "✖ boom\n  Run with --verbose for the full trace.\n",
-    );
-    expect(process.exitCode).to.equal(FAILURE_EXIT_CODE);
-  });
-
-  it("keeps the usage exit code when commander prints help after an incomplete command", async () => {
-    process.argv = ["node", "ajs", "project"];
-    const { parseStub } = stubCommon();
-    parseStub.rejects(new CommanderError(1, "commander.help", "(outputHelp)"));
-    const { ui, feedback } = createMemoryUi();
-
-    await runWithErrorBoundary(runCLI, { ui });
-
-    expect(feedback.text).to.equal("");
-    expect(process.exitCode).to.equal(USAGE_EXIT_CODE);
-  });
-
-  it("keeps a successful exit code when commander exits after help", async () => {
-    process.argv = ["node", "ajs", "--help"];
-    const { parseStub } = stubCommon();
-    parseStub.rejects(
-      new CommanderError(0, "commander.helpDisplayed", "(outputHelp)"),
-    );
-    const { ui, feedback } = createMemoryUi();
-
-    await runWithErrorBoundary(runCLI, { ui });
-
-    expect(feedback.text).to.equal("");
-    expect(process.exitCode).to.equal(SUCCESS_EXIT_CODE);
-  });
-});
+}
 
 describe("runCLI usage errors", () => {
   const originalArgv = process.argv.slice();

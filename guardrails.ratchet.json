@@ -1,6 +1,0 @@
-{
-  "rules": {
-    "eslint/max-lines-per-function": 49
-  },
-  "oversizeFiles": {}
-}

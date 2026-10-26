@@ -109,163 +109,184 @@ describe("project logging set --level and --format", () => {
   });
 });
 
-describe("project logging set persisting only real changes", () => {
-  useSetCommandSandbox(false);
+{
+  let registerProjectLoggingSetPersistingOnly: (this: Mocha.Suite) => void;
 
-  it("does not write when every setting is already in place", async () => {
-    const config: any = { name: "test-project" };
-    const stubs = stubSetCommand(config);
+  const checkDoesNotWriteWhenEvery: (this: Mocha.Suite) => void = function () {
+    it("does not write when every setting is already in place", async () => {
+      const config: any = { name: "test-project" };
+      const stubs = stubSetCommand(config);
 
-    await runSet("--enable", "--remove-include", "ghost");
+      await runSet("--enable", "--remove-include", "ghost");
 
-    expect(stubs.writeConfig.called).to.equal(false);
-    expect(config.logging).to.equal(undefined);
-    expect(messagesOf(stubs.info)).to.deep.equal([
-      "Nothing to change: Logging is already enabled",
-      "Nothing to change: ghost is not in the include list",
-    ]);
-    expect(stubs.success.called).to.equal(false);
-  });
-
-  it("writes only the changed settings, never the built-in block", async () => {
-    const config: any = { name: "test-project" };
-    const stubs = stubSetCommand(config);
-
-    await runSet("--disable", "--include-module", "billing");
-
-    expect(stubs.writeConfig.calledOnce).to.equal(true);
-    expect(config.logging).to.deep.equal({
-      enabled: false,
-      moduleTracking: { includes: ["billing"] },
+      expect(stubs.writeConfig.called).to.equal(false);
+      expect(config.logging).to.equal(undefined);
+      expect(messagesOf(stubs.info)).to.deep.equal([
+        "Nothing to change: Logging is already enabled",
+        "Nothing to change: ghost is not in the include list",
+      ]);
+      expect(stubs.success.called).to.equal(false);
     });
-  });
 
-  it("treats empty logging entries as their defaults", async () => {
-    const config: any = {
-      name: "test-project",
-      logging: {
-        enabled: null,
-        moduleTracking: null,
-        formatter: null,
-        dateFormat: null,
-      },
-    };
-    const stubs = stubSetCommand(config);
+    it("writes only the changed settings, never the built-in block", async () => {
+      const config: any = { name: "test-project" };
+      const stubs = stubSetCommand(config);
 
-    await runSet(
-      "--include-module",
-      "modA",
-      "--level",
-      "info",
-      "--format",
-      "x",
-    );
+      await runSet("--disable", "--include-module", "billing");
 
-    expect(stubs.writeConfig.calledOnce).to.equal(true);
-    expect(config.logging).to.deep.equal({
-      enabled: null,
-      moduleTracking: { includes: ["modA"] },
-      formatter: { "20": "x" },
-      dateFormat: null,
-    });
-  });
-
-  it("applies every non-interactive setting", async () => {
-    const config: any = {
-      name: "test-project",
-      logging: {
+      expect(stubs.writeConfig.calledOnce).to.equal(true);
+      expect(config.logging).to.deep.equal({
         enabled: false,
-        moduleTracking: {
-          enabled: false,
-          includes: ["modX"],
-          excludes: ["modY"],
-        },
-        dateFormat: "yyyy",
-      },
-    };
-    const stubs = stubSetCommand(config);
-
-    await runSet(
-      "--enable",
-      "--enable-module-tracking",
-      "--include-module",
-      "modA",
-      "--exclude-module",
-      "modB",
-      "--remove-include",
-      "modX",
-      "--remove-exclude",
-      "modY",
-      "--level",
-      "info",
-      "--format",
-      "[info]",
-      "--date-format",
-      "yyyy-MM-dd",
-    );
-
-    expect(stubs.writeConfig.calledOnce).to.equal(true);
-    expect(config.logging).to.deep.equal({
-      enabled: true,
-      moduleTracking: {
-        enabled: true,
-        includes: ["modA"],
-        excludes: ["modB"],
-      },
-      formatter: { "20": "[info]" },
-      dateFormat: "yyyy-MM-dd",
+        moduleTracking: { includes: ["billing"] },
+      });
     });
-    expect(stubs.feedback()).to.include(
-      "Saved the logging configuration of test-project",
-    );
-  });
 
-  it("lists what changed and what did not in the summary", async () => {
-    const config: any = {
-      name: "test-project",
-      logging: {
+    it("treats empty logging entries as their defaults", async () => {
+      const config: any = {
+        name: "test-project",
+        logging: {
+          enabled: null,
+          moduleTracking: null,
+          formatter: null,
+          dateFormat: null,
+        },
+      };
+      const stubs = stubSetCommand(config);
+
+      await runSet(
+        "--include-module",
+        "modA",
+        "--level",
+        "info",
+        "--format",
+        "x",
+      );
+
+      expect(stubs.writeConfig.calledOnce).to.equal(true);
+      expect(config.logging).to.deep.equal({
+        enabled: null,
+        moduleTracking: { includes: ["modA"] },
+        formatter: { "20": "x" },
+        dateFormat: null,
+      });
+    });
+
+    it("applies every non-interactive setting", async () => {
+      const config: any = {
+        name: "test-project",
+        logging: {
+          enabled: false,
+          moduleTracking: {
+            enabled: false,
+            includes: ["modX"],
+            excludes: ["modY"],
+          },
+          dateFormat: "yyyy",
+        },
+      };
+      const stubs = stubSetCommand(config);
+
+      await runSet(
+        "--enable",
+        "--enable-module-tracking",
+        "--include-module",
+        "modA",
+        "--exclude-module",
+        "modB",
+        "--remove-include",
+        "modX",
+        "--remove-exclude",
+        "modY",
+        "--level",
+        "info",
+        "--format",
+        "[info]",
+        "--date-format",
+        "yyyy-MM-dd",
+      );
+
+      expect(stubs.writeConfig.calledOnce).to.equal(true);
+      expect(config.logging).to.deep.equal({
         enabled: true,
-        moduleTracking: { enabled: true, includes: ["modA"], excludes: [] },
-      },
+        moduleTracking: {
+          enabled: true,
+          includes: ["modA"],
+          excludes: ["modB"],
+        },
+        formatter: { "20": "[info]" },
+        dateFormat: "yyyy-MM-dd",
+      });
+      expect(stubs.feedback()).to.include(
+        "Saved the logging configuration of test-project",
+      );
+    });
+  };
+
+  const checkListsWhatChangedAndWhat: (this: Mocha.Suite) => void =
+    function () {
+      it("lists what changed and what did not in the summary", async () => {
+        const config: any = {
+          name: "test-project",
+          logging: {
+            enabled: true,
+            moduleTracking: { enabled: true, includes: ["modA"], excludes: [] },
+          },
+        };
+        const stubs = stubSetCommand(config);
+
+        await runSet(
+          "--disable",
+          "--disable-module-tracking",
+          "--include-module",
+          "modA",
+          "--exclude-module",
+          "modB",
+          "--remove-exclude",
+          "missing",
+        );
+
+        const summary = stubs.feedback();
+        expect(summary).to.include("Logging disabled");
+        expect(summary).to.include("Module tracking disabled");
+        expect(summary).to.include("is already in the include list");
+        expect(summary).to.include("is not in the exclude list");
+        expect(config.logging.moduleTracking.includes).to.deep.equal(["modA"]);
+        expect(config.logging.moduleTracking.excludes).to.deep.equal(["modB"]);
+      });
+
+      it("reports a module tracking toggle that is already in place", async () => {
+        const stubs = stubSetCommand({ name: "test-project" });
+
+        await runSet(
+          "--disable-module-tracking",
+          "--date-format",
+          "yyyy-MM-dd HH:mm:ss",
+        );
+
+        expect(stubs.writeConfig.called).to.equal(false);
+        expect(messagesOf(stubs.info)[0]).to.include(
+          "Module tracking is already disabled",
+        );
+        expect(messagesOf(stubs.info)[1]).to.include("date format is already");
+      });
     };
-    const stubs = stubSetCommand(config);
 
-    await runSet(
-      "--disable",
-      "--disable-module-tracking",
-      "--include-module",
-      "modA",
-      "--exclude-module",
-      "modB",
-      "--remove-exclude",
-      "missing",
-    );
+  registerProjectLoggingSetPersistingOnly = () => {
+    useSetCommandSandbox(false);
 
-    const summary = stubs.feedback();
-    expect(summary).to.include("Logging disabled");
-    expect(summary).to.include("Module tracking disabled");
-    expect(summary).to.include("is already in the include list");
-    expect(summary).to.include("is not in the exclude list");
-    expect(config.logging.moduleTracking.includes).to.deep.equal(["modA"]);
-    expect(config.logging.moduleTracking.excludes).to.deep.equal(["modB"]);
+    describe("does not write when every setting is already in place", function () {
+      checkDoesNotWriteWhenEvery.call(this);
+    });
+
+    describe("lists what changed and what did not in the summary", function () {
+      checkListsWhatChangedAndWhat.call(this);
+    });
+  };
+
+  describe("project logging set persisting only real changes", function () {
+    registerProjectLoggingSetPersistingOnly.call(this);
   });
-
-  it("reports a module tracking toggle that is already in place", async () => {
-    const stubs = stubSetCommand({ name: "test-project" });
-
-    await runSet(
-      "--disable-module-tracking",
-      "--date-format",
-      "yyyy-MM-dd HH:mm:ss",
-    );
-
-    expect(stubs.writeConfig.called).to.equal(false);
-    expect(messagesOf(stubs.info)[0]).to.include(
-      "Module tracking is already disabled",
-    );
-    expect(messagesOf(stubs.info)[1]).to.include("date format is already");
-  });
-});
+}
 
 describe("project logging set with an environment", () => {
   useSetCommandSandbox(false);

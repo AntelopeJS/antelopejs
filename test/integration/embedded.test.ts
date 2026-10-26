@@ -52,206 +52,230 @@ function withHangGuard<T>(promise: Promise<T>): Promise<T> {
   ]);
 }
 
-describe("Embedded runtime", () => {
+{
+  let registerEmbeddedRuntime: (this: Mocha.Suite) => void;
+
   let fixture: EmbeddedFixture;
+
   let runtime: AntelopeRuntime | undefined;
 
-  beforeEach(async () => {
-    fixture = await createEmbeddedFixture();
-  });
+  const checkRoutesAHostInterfaceCall: (this: Mocha.Suite) => void =
+    function () {
+      it("routes a host interface call to a module implementation", async () => {
+        runtime = startEmbedded(fixture);
+        await runtime.start();
 
-  afterEach(async () => {
-    await runtime?.stop();
-    runtime = undefined;
-    await removeEmbeddedFixture(fixture);
-  });
+        const greeter = runtime.use<GreeterInterface>(INTERFACE_PACKAGE);
 
-  it("routes a host interface call to a module implementation", async () => {
-    runtime = startEmbedded(fixture);
-    await runtime.start();
+        expect(await withHangGuard(greeter.Greeter.greet("world"))).to.equal(
+          "Hello world",
+        );
+      });
 
-    const greeter = runtime.use<GreeterInterface>(INTERFACE_PACKAGE);
+      it("routes a host call made through an interface package subpath", async () => {
+        runtime = startEmbedded(fixture);
+        await runtime.start();
 
-    expect(await withHangGuard(greeter.Greeter.greet("world"))).to.equal(
-      "Hello world",
-    );
-  });
+        const greeter = runtime.use<GreeterInterface>(
+          `${INTERFACE_PACKAGE}/${INTERFACE_SUBPATH}`,
+        );
 
-  it("routes a host call made through an interface package subpath", async () => {
-    runtime = startEmbedded(fixture);
-    await runtime.start();
+        expect(await withHangGuard(greeter.Greeter.greet("world"))).to.equal(
+          "Hello world",
+        );
+      });
 
-    const greeter = runtime.use<GreeterInterface>(
-      `${INTERFACE_PACKAGE}/${INTERFACE_SUBPATH}`,
-    );
+      it("rejects a subpath of an interface no loaded module provides", async () => {
+        runtime = startEmbedded(fixture);
+        await runtime.start();
 
-    expect(await withHangGuard(greeter.Greeter.greet("world"))).to.equal(
-      "Hello world",
-    );
-  });
+        expect(() => runtime?.use("missing-pkg/sub")).to.throw(/not provided/);
+      });
 
-  it("rejects a subpath of an interface no loaded module provides", async () => {
-    runtime = startEmbedded(fixture);
-    await runtime.start();
+      it("rejects an interface no loaded module provides", async () => {
+        runtime = startEmbedded(fixture);
+        await runtime.start();
 
-    expect(() => runtime?.use("missing-pkg/sub")).to.throw(/not provided/);
-  });
+        expect(() => runtime?.use("missing-pkg")).to.throw(/not provided/);
+      });
 
-  it("rejects an interface no loaded module provides", async () => {
-    runtime = startEmbedded(fixture);
-    await runtime.start();
+      it("refuses to hand out interfaces before start", () => {
+        runtime = startEmbedded(fixture);
+        expect(() => runtime?.use(INTERFACE_PACKAGE)).to.throw(
+          /not been started/,
+        );
+      });
 
-    expect(() => runtime?.use("missing-pkg")).to.throw(/not provided/);
-  });
+      it("gives the host a module identity that survives an association rebuild", async () => {
+        runtime = startEmbedded(fixture);
+        await runtime.start();
 
-  it("refuses to hand out interfaces before start", () => {
-    runtime = startEmbedded(fixture);
-    expect(() => runtime?.use(INTERFACE_PACKAGE)).to.throw(/not been started/);
-  });
+        runtime.manager.refreshAssociations();
 
-  it("gives the host a module identity that survives an association rebuild", async () => {
-    runtime = startEmbedded(fixture);
-    await runtime.start();
+        const tracked = internal.moduleByFolder.filter(
+          (entry) => entry.id === HOST_MODULE_ID,
+        );
+        expect(tracked).to.have.lengthOf(1);
+        expect(internal.interfaceConnections[HOST_MODULE_ID]).to.have.property(
+          INTERFACE_PACKAGE,
+        );
+      });
 
-    runtime.manager.refreshAssociations();
+      it("keeps host calls working after an association rebuild", async () => {
+        runtime = startEmbedded(fixture);
+        await runtime.start();
 
-    const tracked = internal.moduleByFolder.filter(
-      (entry) => entry.id === HOST_MODULE_ID,
-    );
-    expect(tracked).to.have.lengthOf(1);
-    expect(internal.interfaceConnections[HOST_MODULE_ID]).to.have.property(
-      INTERFACE_PACKAGE,
-    );
-  });
+        runtime.manager.refreshAssociations();
+        const greeter = runtime.use<GreeterInterface>(INTERFACE_PACKAGE);
 
-  it("keeps host calls working after an association rebuild", async () => {
-    runtime = startEmbedded(fixture);
-    await runtime.start();
+        expect(await withHangGuard(greeter.Greeter.greet("again"))).to.equal(
+          "Hello again",
+        );
+      });
 
-    runtime.manager.refreshAssociations();
-    const greeter = runtime.use<GreeterInterface>(INTERFACE_PACKAGE);
+      it("leaves process signal handlers to the host", async () => {
+        const before = {
+          sigint: process.listenerCount("SIGINT"),
+          sigterm: process.listenerCount("SIGTERM"),
+          uncaught: process.listenerCount("uncaughtException"),
+        };
 
-    expect(await withHangGuard(greeter.Greeter.greet("again"))).to.equal(
-      "Hello again",
-    );
-  });
+        runtime = startEmbedded(fixture);
+        await runtime.start();
 
-  it("leaves process signal handlers to the host", async () => {
-    const before = {
-      sigint: process.listenerCount("SIGINT"),
-      sigterm: process.listenerCount("SIGTERM"),
-      uncaught: process.listenerCount("uncaughtException"),
+        expect(process.listenerCount("SIGINT")).to.equal(before.sigint);
+        expect(process.listenerCount("SIGTERM")).to.equal(before.sigterm);
+        expect(process.listenerCount("uncaughtException")).to.equal(
+          before.uncaught,
+        );
+      });
+
+      it("never creates a module cache directory", async () => {
+        runtime = startEmbedded(fixture);
+        await runtime.start();
+
+        const cacheFolder = path.join(
+          fixture.projectFolder,
+          ".antelope",
+          "embedded-cache",
+        );
+        expect(
+          await fs
+            .stat(cacheFolder)
+            .then(() => true)
+            .catch(() => false),
+        ).to.equal(false);
+      });
+
+      it("fails to start when a declared interface resolves to nothing", async () => {
+        runtime = startEmbedded(fixture, {
+          uses: [INTERFACE_PACKAGE, "not-installed-pkg"],
+        });
+
+        const error = await runtime.start().then(
+          () => undefined,
+          (reason: Error) => reason,
+        );
+        expect(error?.message).to.match(/not-installed-pkg/);
+      });
     };
 
-    runtime = startEmbedded(fixture);
-    await runtime.start();
+  const checkDoesNotItselfRejectA: (this: Mocha.Suite) => void = function () {
+    it("does not itself reject a prerelease interface package", async () => {
+      await removeEmbeddedFixture(fixture);
+      fixture = await createEmbeddedFixture({
+        interfaceVersion: "1.0.0-beta.1",
+        providerRange: "latest",
+      });
 
-    expect(process.listenerCount("SIGINT")).to.equal(before.sigint);
-    expect(process.listenerCount("SIGTERM")).to.equal(before.sigterm);
-    expect(process.listenerCount("uncaughtException")).to.equal(
-      before.uncaught,
-    );
-  });
+      runtime = startEmbedded(fixture);
+      await runtime.start();
 
-  it("never creates a module cache directory", async () => {
-    runtime = startEmbedded(fixture);
-    await runtime.start();
-
-    const cacheFolder = path.join(
-      fixture.projectFolder,
-      ".antelope",
-      "embedded-cache",
-    );
-    expect(
-      await fs
-        .stat(cacheFolder)
-        .then(() => true)
-        .catch(() => false),
-    ).to.equal(false);
-  });
-
-  it("fails to start when a declared interface resolves to nothing", async () => {
-    runtime = startEmbedded(fixture, {
-      uses: [INTERFACE_PACKAGE, "not-installed-pkg"],
+      const greeter = runtime.use<GreeterInterface>(INTERFACE_PACKAGE);
+      expect(await withHangGuard(greeter.Greeter.greet("beta"))).to.equal(
+        "Hello beta",
+      );
     });
 
-    const error = await runtime.start().then(
-      () => undefined,
-      (reason: Error) => reason,
-    );
-    expect(error?.message).to.match(/not-installed-pkg/);
-  });
+    it("shares one launch between concurrent start calls", async () => {
+      runtime = startEmbedded(fixture);
 
-  it("does not itself reject a prerelease interface package", async () => {
-    await removeEmbeddedFixture(fixture);
-    fixture = await createEmbeddedFixture({
-      interfaceVersion: "1.0.0-beta.1",
-      providerRange: "latest",
+      await Promise.all([runtime.start(), runtime.start()]);
+
+      expect(runtime.manager.listModules()).to.have.lengthOf(3);
     });
 
-    runtime = startEmbedded(fixture);
-    await runtime.start();
+    it("waits for an in-flight start before shutting down", async () => {
+      runtime = startEmbedded(fixture);
 
-    const greeter = runtime.use<GreeterInterface>(INTERFACE_PACKAGE);
-    expect(await withHangGuard(greeter.Greeter.greet("beta"))).to.equal(
-      "Hello beta",
-    );
-  });
+      const starting = runtime.start();
+      await runtime.stop();
+      await starting;
 
-  it("shares one launch between concurrent start calls", async () => {
-    runtime = startEmbedded(fixture);
-
-    await Promise.all([runtime.start(), runtime.start()]);
-
-    expect(runtime.manager.listModules()).to.have.lengthOf(3);
-  });
-
-  it("waits for an in-flight start before shutting down", async () => {
-    runtime = startEmbedded(fixture);
-
-    const starting = runtime.start();
-    await runtime.stop();
-    await starting;
-
-    expect(runtime.isRunning).to.equal(false);
-  });
-
-  it("restores spinner output after a failed launch", async () => {
-    runtime = startEmbedded(fixture, { uses: ["not-installed-pkg"] });
-    await runtime.start().catch(() => undefined);
-
-    expect(terminalDisplay.isSilent()).to.equal(false);
-  });
-
-  it("refuses to provide an interface the host did not declare", async () => {
-    runtime = startEmbedded(fixture);
-    await runtime.start();
-
-    expect(() =>
-      runtime?.provide(INTERFACE_PACKAGE, { Greeter: { greet: () => "x" } }),
-    ).to.throw(/not declared in 'provides'/);
-  });
-
-  it("attaches a host implementation and releases it on detach", async () => {
-    runtime = startEmbedded(fixture, {
-      uses: [INTERFACE_PACKAGE, HOST_INTERFACE_PACKAGE],
-      provides: [HOST_INTERFACE_PACKAGE],
-    });
-    await runtime.start();
-
-    const handle = runtime.provide(HOST_INTERFACE_PACKAGE, {
-      HostClock: { now: () => "host-time" },
+      expect(runtime.isRunning).to.equal(false);
     });
 
-    const clock = runtime.use<ClockInterface>(HOST_INTERFACE_PACKAGE);
-    expect(await withHangGuard(clock.HostClock.now())).to.equal("host-time");
+    it("restores spinner output after a failed launch", async () => {
+      runtime = startEmbedded(fixture, { uses: ["not-installed-pkg"] });
+      await runtime.start().catch(() => undefined);
 
-    handle.detach();
+      expect(terminalDisplay.isSilent()).to.equal(false);
+    });
 
-    const afterDetach = await withHangGuard(clock.HostClock.now()).then(
-      () => "resolved",
-      (error: Error) => error.message,
-    );
-    expect(afterDetach).to.equal("HANG");
+    it("refuses to provide an interface the host did not declare", async () => {
+      runtime = startEmbedded(fixture);
+      await runtime.start();
+
+      expect(() =>
+        runtime?.provide(INTERFACE_PACKAGE, { Greeter: { greet: () => "x" } }),
+      ).to.throw(/not declared in 'provides'/);
+    });
+
+    it("attaches a host implementation and releases it on detach", async () => {
+      runtime = startEmbedded(fixture, {
+        uses: [INTERFACE_PACKAGE, HOST_INTERFACE_PACKAGE],
+        provides: [HOST_INTERFACE_PACKAGE],
+      });
+      await runtime.start();
+
+      const handle = runtime.provide(HOST_INTERFACE_PACKAGE, {
+        HostClock: { now: () => "host-time" },
+      });
+
+      const clock = runtime.use<ClockInterface>(HOST_INTERFACE_PACKAGE);
+      expect(await withHangGuard(clock.HostClock.now())).to.equal("host-time");
+
+      handle.detach();
+
+      const afterDetach = await withHangGuard(clock.HostClock.now()).then(
+        () => "resolved",
+        (error: Error) => error.message,
+      );
+      expect(afterDetach).to.equal("HANG");
+    });
+  };
+
+  registerEmbeddedRuntime = () => {
+    beforeEach(async () => {
+      fixture = await createEmbeddedFixture();
+    });
+
+    afterEach(async () => {
+      await runtime?.stop();
+      runtime = undefined;
+      await removeEmbeddedFixture(fixture);
+    });
+
+    describe("routes a host interface call to a module implementation", function () {
+      checkRoutesAHostInterfaceCall.call(this);
+    });
+
+    describe("does not itself reject a prerelease interface package", function () {
+      checkDoesNotItselfRejectA.call(this);
+    });
+  };
+
+  describe("Embedded runtime", function () {
+    registerEmbeddedRuntime.call(this);
   });
-});
+}

@@ -29,7 +29,7 @@ The release commit writes `CHANGELOG.md`. release-it and changelogen rewrite it 
 
 ## Guardrails
 
-Finish every change with `pnpm run checks`. It runs typecheck, lint, format, knip, tests, size, ratchet, and sync, and prints only what failed. The change is done when it prints no failure.
+Finish every change with `pnpm run checks`. It runs typecheck, lint, format, knip, tests, size, and sync, and prints only what failed. The change is done when it prints no failure.
 
 The tools enforce most rules, listed in the table at the end. The sections below hold the rules no tool checks.
 
@@ -48,10 +48,6 @@ Hold every test you write or keep to this checklist:
 ### Cleanup proof
 
 A behaviour-preserving cleanup PR shows `antelopejs-api-diff <base-ref>` passing. Published declarations stay unchanged. A comment-only PR shows `antelopejs-comment-proof <base-ref>` passing instead of a verifier. Both compare committed HEAD.
-
-### Debt
-
-`guardrails.ratchet.json` records the lint findings and oversize files this repository already had. Its numbers only go down. After you remove debt, run `pnpm run ratchet:update` and commit the lowered file. A rule listed there is off for `oxlint`. The ratchet counts it instead, and the pre-commit hook rejects it on every line you add.
 
 ### What enforces what
 
@@ -72,6 +68,5 @@ A behaviour-preserving cleanup PR shows `antelopejs-api-diff <base-ref>` passing
 | No dead files, exports, or dependencies                                        | knip                                      |
 | Managed files match the pack                                                   | `antelopejs-sync --check`                 |
 | A test names the wrong implementation it catches                               | review; no tool                           |
-| Existing debt only shrinks                                                     | `antelopejs-ratchet`                      |
 
 <!-- antelopejs-guardrails:end -->

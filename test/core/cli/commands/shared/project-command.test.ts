@@ -28,187 +28,219 @@ function writeProjectConfig(projectFolder: string, source: string): void {
   writeFileSync(path.join(projectFolder, CONFIG_FILE), source);
 }
 
-describe("project command context", () => {
+{
+  let registerProjectCommandContext: (this: Mocha.Suite) => void;
+
   let projectFolder: string;
 
-  beforeEach(() => {
-    projectFolder = makeTempDir("ajs-project-context-");
+  const checkListsTheDefaultEnvironmentFirst: (this: Mocha.Suite) => void =
+    function () {
+      it("lists the default environment first, then the configured ones", () => {
+        expect(
+          listKnownEnvironments({
+            name: "proj",
+            environments: { production: {}, staging: {} },
+          }),
+        ).to.deep.equal(["default", "production", "staging"]);
+      });
+
+      it("resolves the default environment to the root configuration", async () => {
+        writeProjectConfig(projectFolder, `export default { name: "proj" };`);
+
+        const context = await resolveProjectContext(projectFolder);
+
+        expect(context.environment).to.equal("default");
+        expect(context.environmentConfig).to.equal(context.config);
+      });
+
+      it("treats an empty environment name as the default environment", async () => {
+        writeProjectConfig(projectFolder, `export default { name: "proj" };`);
+
+        const context = await resolveProjectContext(projectFolder, "");
+
+        expect(context.environment).to.equal("default");
+      });
+
+      it("resolves a named environment to its environments entry", async () => {
+        writeProjectConfig(
+          projectFolder,
+          `export default { name: "proj", environments: { production: { cacheFolder: "prod" } } };`,
+        );
+
+        const context = await resolveProjectContext(
+          projectFolder,
+          "production",
+        );
+
+        expect(context.environment).to.equal("production");
+        expect(context.environmentConfig).to.deep.equal({
+          cacheFolder: "prod",
+        });
+      });
+
+      it("fails when the folder holds no project", async () => {
+        await expectProjectNotFound(() => resolveProjectContext(projectFolder));
+      });
+
+      it("accepts any environment when a static configuration defines none", async () => {
+        writeProjectConfig(projectFolder, `export default { name: "proj" };`);
+
+        const context = await resolveProjectContext(
+          projectFolder,
+          "PRODUCTION",
+        );
+
+        expect(context.environment).to.equal("PRODUCTION");
+        expect(context.environmentConfig).to.equal(context.config);
+      });
+
+      it("rejects an environment that a static configuration does not define", async () => {
+        writeProjectConfig(
+          projectFolder,
+          `export default { name: "proj", environments: { production: {} } };`,
+        );
+
+        const cliError = await expectUnknownEnvironment(
+          () => resolveProjectContext(projectFolder, "staging"),
+          "staging",
+        );
+
+        expect(cliError.problem.reason).to.equal(
+          "Known environments: default, production",
+        );
+        expect(cliError.problem.fixes).to.deep.equal([
+          'Pass one of them with --env, or add an "environments.staging" entry to the project configuration',
+        ]);
+      });
+
+      it("names ANTELOPEJS_LAUNCH_ENV when it sets the unknown environment", async () => {
+        sinon
+          .stub(process, "env")
+          .value({ ...process.env, ANTELOPEJS_LAUNCH_ENV: "staging" });
+        writeProjectConfig(
+          projectFolder,
+          `export default { name: "proj", environments: { production: {} } };`,
+        );
+
+        const cliError = await expectUnknownEnvironment(
+          () => resolveProjectContext(projectFolder, "staging"),
+          "staging",
+        );
+
+        expect(cliError.problem.fixes).to.deep.equal([
+          `'staging' is set by ANTELOPEJS_LAUNCH_ENV: change it (or pass --env) to one of them, or add an "environments.staging" entry to the project configuration`,
+        ]);
+      });
+
+      it("accepts any environment when a dynamic configuration defines none", async () => {
+        writeProjectConfig(
+          projectFolder,
+          `export default (ctx) => ({ name: "proj-" + ctx.env });`,
+        );
+
+        const context = await resolveProjectContext(
+          projectFolder,
+          "production",
+        );
+
+        expect(context.environment).to.equal("production");
+        expect(context.config.name).to.equal("proj-production");
+        expect(context.environmentConfig).to.equal(context.config);
+      });
+
+      it("rejects an unknown environment when a dynamic configuration defines some", async () => {
+        writeProjectConfig(
+          projectFolder,
+          `export default () => ({ name: "proj", environments: { production: {} } });`,
+        );
+
+        const cliError = await expectUnknownEnvironment(
+          () => resolveProjectContext(projectFolder, "staging"),
+          "staging",
+        );
+
+        expect(cliError.problem.reason).to.equal(
+          "Known environments: default, production",
+        );
+      });
+
+      it("reports the project found behind a spinner", async () => {
+        sinon.stub(common, "readConfig").resolves({ name: "" });
+        sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+        const succeedStub = sinon.stub(cliUi.Spinner.prototype, "succeed");
+
+        const context = await findProject("/tmp/project");
+
+        expect(context.environment).to.equal("default");
+        expect(String(succeedStub.firstCall.args[0])).to.include("unnamed");
+      });
+    };
+
+  const checkStopsTheSpinnerWhenThe: (this: Mocha.Suite) => void = function () {
+    it("stops the spinner when the lookup fails", async () => {
+      sinon.stub(common, "readConfig").resolves(undefined);
+      sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+      const stopStub = sinon.stub(cliUi.Spinner.prototype, "stop").resolves();
+
+      await captureCliError(() => findProject("/tmp/project"));
+
+      expect(stopStub.calledOnce).to.equal(true);
+    });
+
+    it("reports a missing project once and returns false", async () => {
+      sinon.stub(common, "readConfig").resolves(undefined);
+      sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+      sinon.stub(cliUi.Spinner.prototype, "stop").resolves();
+      const problemStub = sinon.stub(getProcessUi(), "problem");
+
+      const hasProject = await validateProjectExists("/tmp/project");
+
+      expect(hasProject).to.equal(false);
+      expect(problemStub.calledOnce).to.equal(true);
+      expect(problemStub.firstCall.args[0].title).to.include(
+        "No AntelopeJS project found at",
+      );
+      expect(process.exitCode).to.equal(1);
+    });
+
+    it("propagates unexpected failures", async () => {
+      sinon.stub(common, "readConfig").rejects(new Error("syntax error"));
+      sinon.stub(cliUi.Spinner.prototype, "start").resolves();
+      sinon.stub(cliUi.Spinner.prototype, "stop").resolves();
+
+      let caught: unknown;
+      try {
+        await validateProjectExists("/tmp/project");
+      } catch (err) {
+        caught = err;
+      }
+
+      expectInstanceOf(caught, Error);
+      expect(caught.message).to.equal("syntax error");
+    });
+  };
+
+  registerProjectCommandContext = () => {
+    beforeEach(() => {
+      projectFolder = makeTempDir("ajs-project-context-");
+    });
+
+    afterEach(() => {
+      sinon.restore();
+      process.exitCode = undefined;
+      cleanupTempDir(projectFolder);
+    });
+
+    describe("lists the default environment first, then the configured ones", function () {
+      checkListsTheDefaultEnvironmentFirst.call(this);
+    });
+
+    describe("stops the spinner when the lookup fails", function () {
+      checkStopsTheSpinnerWhenThe.call(this);
+    });
+  };
+
+  describe("project command context", function () {
+    registerProjectCommandContext.call(this);
   });
-
-  afterEach(() => {
-    sinon.restore();
-    process.exitCode = undefined;
-    cleanupTempDir(projectFolder);
-  });
-
-  it("lists the default environment first, then the configured ones", () => {
-    expect(
-      listKnownEnvironments({
-        name: "proj",
-        environments: { production: {}, staging: {} },
-      }),
-    ).to.deep.equal(["default", "production", "staging"]);
-  });
-
-  it("resolves the default environment to the root configuration", async () => {
-    writeProjectConfig(projectFolder, `export default { name: "proj" };`);
-
-    const context = await resolveProjectContext(projectFolder);
-
-    expect(context.environment).to.equal("default");
-    expect(context.environmentConfig).to.equal(context.config);
-  });
-
-  it("treats an empty environment name as the default environment", async () => {
-    writeProjectConfig(projectFolder, `export default { name: "proj" };`);
-
-    const context = await resolveProjectContext(projectFolder, "");
-
-    expect(context.environment).to.equal("default");
-  });
-
-  it("resolves a named environment to its environments entry", async () => {
-    writeProjectConfig(
-      projectFolder,
-      `export default { name: "proj", environments: { production: { cacheFolder: "prod" } } };`,
-    );
-
-    const context = await resolveProjectContext(projectFolder, "production");
-
-    expect(context.environment).to.equal("production");
-    expect(context.environmentConfig).to.deep.equal({ cacheFolder: "prod" });
-  });
-
-  it("fails when the folder holds no project", async () => {
-    await expectProjectNotFound(() => resolveProjectContext(projectFolder));
-  });
-
-  it("accepts any environment when a static configuration defines none", async () => {
-    writeProjectConfig(projectFolder, `export default { name: "proj" };`);
-
-    const context = await resolveProjectContext(projectFolder, "PRODUCTION");
-
-    expect(context.environment).to.equal("PRODUCTION");
-    expect(context.environmentConfig).to.equal(context.config);
-  });
-
-  it("rejects an environment that a static configuration does not define", async () => {
-    writeProjectConfig(
-      projectFolder,
-      `export default { name: "proj", environments: { production: {} } };`,
-    );
-
-    const cliError = await expectUnknownEnvironment(
-      () => resolveProjectContext(projectFolder, "staging"),
-      "staging",
-    );
-
-    expect(cliError.problem.reason).to.equal(
-      "Known environments: default, production",
-    );
-    expect(cliError.problem.fixes).to.deep.equal([
-      'Pass one of them with --env, or add an "environments.staging" entry to the project configuration',
-    ]);
-  });
-
-  it("names ANTELOPEJS_LAUNCH_ENV when it sets the unknown environment", async () => {
-    sinon
-      .stub(process, "env")
-      .value({ ...process.env, ANTELOPEJS_LAUNCH_ENV: "staging" });
-    writeProjectConfig(
-      projectFolder,
-      `export default { name: "proj", environments: { production: {} } };`,
-    );
-
-    const cliError = await expectUnknownEnvironment(
-      () => resolveProjectContext(projectFolder, "staging"),
-      "staging",
-    );
-
-    expect(cliError.problem.fixes).to.deep.equal([
-      `'staging' is set by ANTELOPEJS_LAUNCH_ENV: change it (or pass --env) to one of them, or add an "environments.staging" entry to the project configuration`,
-    ]);
-  });
-
-  it("accepts any environment when a dynamic configuration defines none", async () => {
-    writeProjectConfig(
-      projectFolder,
-      `export default (ctx) => ({ name: "proj-" + ctx.env });`,
-    );
-
-    const context = await resolveProjectContext(projectFolder, "production");
-
-    expect(context.environment).to.equal("production");
-    expect(context.config.name).to.equal("proj-production");
-    expect(context.environmentConfig).to.equal(context.config);
-  });
-
-  it("rejects an unknown environment when a dynamic configuration defines some", async () => {
-    writeProjectConfig(
-      projectFolder,
-      `export default () => ({ name: "proj", environments: { production: {} } });`,
-    );
-
-    const cliError = await expectUnknownEnvironment(
-      () => resolveProjectContext(projectFolder, "staging"),
-      "staging",
-    );
-
-    expect(cliError.problem.reason).to.equal(
-      "Known environments: default, production",
-    );
-  });
-
-  it("reports the project found behind a spinner", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "" });
-    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
-    const succeedStub = sinon.stub(cliUi.Spinner.prototype, "succeed");
-
-    const context = await findProject("/tmp/project");
-
-    expect(context.environment).to.equal("default");
-    expect(String(succeedStub.firstCall.args[0])).to.include("unnamed");
-  });
-
-  it("stops the spinner when the lookup fails", async () => {
-    sinon.stub(common, "readConfig").resolves(undefined);
-    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
-    const stopStub = sinon.stub(cliUi.Spinner.prototype, "stop").resolves();
-
-    await captureCliError(() => findProject("/tmp/project"));
-
-    expect(stopStub.calledOnce).to.equal(true);
-  });
-
-  it("reports a missing project once and returns false", async () => {
-    sinon.stub(common, "readConfig").resolves(undefined);
-    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
-    sinon.stub(cliUi.Spinner.prototype, "stop").resolves();
-    const problemStub = sinon.stub(getProcessUi(), "problem");
-
-    const hasProject = await validateProjectExists("/tmp/project");
-
-    expect(hasProject).to.equal(false);
-    expect(problemStub.calledOnce).to.equal(true);
-    expect(problemStub.firstCall.args[0].title).to.include(
-      "No AntelopeJS project found at",
-    );
-    expect(process.exitCode).to.equal(1);
-  });
-
-  it("propagates unexpected failures", async () => {
-    sinon.stub(common, "readConfig").rejects(new Error("syntax error"));
-    sinon.stub(cliUi.Spinner.prototype, "start").resolves();
-    sinon.stub(cliUi.Spinner.prototype, "stop").resolves();
-
-    let caught: unknown;
-    try {
-      await validateProjectExists("/tmp/project");
-    } catch (err) {
-      caught = err;
-    }
-
-    expectInstanceOf(caught, Error);
-    expect(caught.message).to.equal("syntax error");
-  });
-});
+}

@@ -10,317 +10,348 @@ import {
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
-describe("ModuleManifest", () => {
-  it("throws when package.json is missing", async () => {
-    const fs = new InMemoryFileSystem();
-    let caught: unknown;
-    try {
-      await ModuleManifest.readManifest("/mod", fs);
-    } catch (err) {
-      caught = err;
-    }
-    expect(caught).to.be.instanceOf(Error);
-  });
-  it("should prefer antelope.module.json over package.json config", async () => {
-    const fs = new InMemoryFileSystem();
+{
+  let registerModuleManifest: (this: Mocha.Suite) => void;
 
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: {
-          implements: ["a@beta"],
-        },
-      }),
-    );
+  const checkThrowsWhenPackageJsonIs: (this: Mocha.Suite) => void =
+    function () {
+      it("throws when package.json is missing", async () => {
+        const fs = new InMemoryFileSystem();
+        let caught: unknown;
+        try {
+          await ModuleManifest.readManifest("/mod", fs);
+        } catch (err) {
+          caught = err;
+        }
+        expect(caught).to.be.instanceOf(Error);
+      });
 
-    await fs.writeFile(
-      "/mod/antelope.module.json",
-      JSON.stringify({
-        implements: ["b@beta"],
-      }),
-    );
+      it("should prefer antelope.module.json over package.json config", async () => {
+        const fs = new InMemoryFileSystem();
 
-    const manifest = await ModuleManifest.readManifest("/mod", fs);
+        await fs.writeFile(
+          "/mod/package.json",
+          JSON.stringify({
+            name: "mod",
+            version: "1.0.0",
+            antelopeJs: {
+              implements: ["a@beta"],
+            },
+          }),
+        );
 
-    expect(manifest.name).to.equal("mod");
-    expect(manifest.antelopeJs?.implements).to.deep.equal(["b@beta"]);
-  });
+        await fs.writeFile(
+          "/mod/antelope.module.json",
+          JSON.stringify({
+            implements: ["b@beta"],
+          }),
+        );
 
-  it("should map baseUrl and paths", async () => {
-    const fs = new InMemoryFileSystem();
+        const manifest = await ModuleManifest.readManifest("/mod", fs);
 
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: {
-          baseUrl: "src",
-          paths: {
-            "@lib/*": ["lib/*"],
+        expect(manifest.name).to.equal("mod");
+        expect(manifest.antelopeJs?.implements).to.deep.equal(["b@beta"]);
+      });
+
+      it("should map baseUrl and paths", async () => {
+        const fs = new InMemoryFileSystem();
+
+        await fs.writeFile(
+          "/mod/package.json",
+          JSON.stringify({
+            name: "mod",
+            version: "1.0.0",
+            antelopeJs: {
+              baseUrl: "src",
+              paths: {
+                "@lib/*": ["lib/*"],
+              },
+            },
+          }),
+        );
+
+        const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+        const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+        expect(manifest.baseUrl).to.equal(path.join("/mod", "src"));
+        expect(manifest.paths).to.deep.equal([
+          {
+            key: "@lib/",
+            values: [path.join("/mod", "src", "lib/")],
           },
-        },
-      }),
-    );
+        ]);
+      });
 
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+      it("should combine module aliases", async () => {
+        const fs = new InMemoryFileSystem();
 
-    expect(manifest.baseUrl).to.equal(path.join("/mod", "src"));
-    expect(manifest.paths).to.deep.equal([
-      {
-        key: "@lib/",
-        values: [path.join("/mod", "src", "lib/")],
-      },
-    ]);
-  });
+        await fs.writeFile(
+          "/mod/package.json",
+          JSON.stringify({
+            name: "mod",
+            version: "1.0.0",
+            _moduleAliases: {
+              "@root": "src",
+            },
+            antelopeJs: {
+              moduleAliases: {
+                "@lib": "lib",
+              },
+            },
+          }),
+        );
 
-  it("should combine module aliases", async () => {
-    const fs = new InMemoryFileSystem();
+        const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+        const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
 
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        _moduleAliases: {
-          "@root": "src",
-        },
-        antelopeJs: {
-          moduleAliases: {
-            "@lib": "lib",
-          },
-        },
-      }),
-    );
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    expect(manifest.srcAliases).to.deep.include({
-      alias: "@root",
-      replace: path.join("/mod", "src"),
-    });
-    expect(manifest.srcAliases).to.deep.include({
-      alias: "@lib",
-      replace: path.join("/mod", "lib"),
-    });
-  });
-
-  it("supports moduleAliases without _moduleAliases", async () => {
-    const fs = new InMemoryFileSystem();
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: {
-          moduleAliases: {
-            "@lib": "lib",
-          },
-        },
-      }),
-    );
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    expect(manifest.srcAliases).to.deep.include({
-      alias: "@lib",
-      replace: path.join("/mod", "lib"),
-    });
-  });
-
-  it("should read dependencies from package.json", async () => {
-    const fs = new InMemoryFileSystem();
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        dependencies: {
-          "@antelopejs/interface-core": "^0.0.2",
-          "@antelopejs/interface-api": "^0.0.2",
-        },
-      }),
-    );
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    expect(manifest.manifest.dependencies).to.deep.equal({
-      "@antelopejs/interface-core": "^0.0.2",
-      "@antelopejs/interface-api": "^0.0.2",
-    });
-  });
-
-  it("reads implements from antelopeJs.implements", async () => {
-    const fs = new InMemoryFileSystem();
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: {
-          implements: ["@antelopejs/interface-database"],
-        },
-      }),
-    );
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    expect(manifest.implements).to.deep.equal([
-      "@antelopejs/interface-database",
-    ]);
-  });
-
-  it("defaults implements to an empty list", async () => {
-    const fs = new InMemoryFileSystem();
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-      }),
-    );
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    expect(manifest.implements).to.deep.equal([]);
-  });
-
-  it("reloads manifest data and updates version", async () => {
-    const fs = new InMemoryFileSystem();
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: { implements: ["@antelopejs/interface-core"] },
-      }),
-    );
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.1",
-        antelopeJs: {
-          implements: ["@antelopejs/interface-api"],
-        },
-      }),
-    );
-
-    await manifest.reload();
-
-    expect(manifest.version).to.equal("1.0.1");
-    expect(manifest.implements).to.deep.equal(["@antelopejs/interface-api"]);
-  });
-
-  it("resets implements when reload removes them", async () => {
-    const fs = new InMemoryFileSystem();
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: { implements: ["@antelopejs/interface-core"] },
-      }),
-    );
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
-
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.1",
-      }),
-    );
-
-    await manifest.reload();
-
-    expect(manifest.implements).to.deep.equal([]);
-  });
-
-  it("serializes and reconstructs from build entries", async () => {
-    const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({
-        name: "mod",
-        version: "1.0.0",
-        antelopeJs: {
-          implements: ["@antelopejs/interface-database"],
-        },
-      }),
-    );
-
-    const source: ModuleSourceLocal = {
-      type: "local",
-      path: "/mod",
-      main: "dist/index.js",
+        expect(manifest.srcAliases).to.deep.include({
+          alias: "@root",
+          replace: path.join("/mod", "src"),
+        });
+        expect(manifest.srcAliases).to.deep.include({
+          alias: "@lib",
+          replace: path.join("/mod", "lib"),
+        });
+      });
     };
-    const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
 
-    const entry = manifest.serialize();
-    const rebuilt = ModuleManifest.fromBuildEntry(entry);
-    const rebuiltEntry = rebuilt.serialize();
+  const checkSupportsModuleAliasesWithoutModuleAliases: (
+    this: Mocha.Suite,
+  ) => void = function () {
+    it("supports moduleAliases without _moduleAliases", async () => {
+      const fs = new InMemoryFileSystem();
 
-    expect(rebuiltEntry.folder).to.equal(entry.folder);
-    expect(rebuiltEntry.name).to.equal(entry.name);
-    expect(rebuiltEntry.version).to.equal(entry.version);
-    expect(rebuiltEntry.main).to.equal(entry.main);
-    expect(rebuiltEntry.implements).to.deep.equal(entry.implements);
-    expect(rebuiltEntry.baseUrl).to.equal(entry.baseUrl);
-    expect(rebuiltEntry.paths).to.deep.equal(entry.paths);
-  });
+      await fs.writeFile(
+        "/mod/package.json",
+        JSON.stringify({
+          name: "mod",
+          version: "1.0.0",
+          antelopeJs: {
+            moduleAliases: {
+              "@lib": "lib",
+            },
+          },
+        }),
+      );
 
-  it("moves a build entry's paths into an instance copy of its folder, and leaves outside paths alone", () => {
-    const manifest = ModuleManifest.fromBuildEntry({
-      folder: "/mod",
-      source: { type: "local" },
-      name: "mod",
-      version: "1.0.0",
-      main: "/mod/dist/index.js",
-      manifest: { name: "mod", version: "1.0.0" },
-      implements: ["@antelopejs/interface-database"],
-      baseUrl: "/mod/dist",
-      paths: [{ key: "@lib/", values: ["/mod/dist/lib/", "/shared/lib/"] }],
-      srcAliases: [{ alias: "@src", replace: "/mod/src" }],
+      const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+      const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+      expect(manifest.srcAliases).to.deep.include({
+        alias: "@lib",
+        replace: path.join("/mod", "lib"),
+      });
     });
 
-    const relocated = manifest.relocate("/copies/mod-2").serialize();
+    it("should read dependencies from package.json", async () => {
+      const fs = new InMemoryFileSystem();
 
-    expect(relocated.folder).to.equal("/copies/mod-2");
-    expect(relocated.main).to.equal("/copies/mod-2/dist/index.js");
-    expect(relocated.baseUrl).to.equal("/copies/mod-2/dist");
-    expect(relocated.paths).to.deep.equal([
-      { key: "@lib/", values: ["/copies/mod-2/dist/lib/", "/shared/lib/"] },
-    ]);
-    expect(relocated.srcAliases).to.deep.equal([
-      { alias: "@src", replace: "/copies/mod-2/src" },
-    ]);
-    expect(relocated.implements).to.deep.equal([
-      "@antelopejs/interface-database",
-    ]);
-    expect(relocated.version).to.equal("1.0.0");
+      await fs.writeFile(
+        "/mod/package.json",
+        JSON.stringify({
+          name: "mod",
+          version: "1.0.0",
+          dependencies: {
+            "@antelopejs/interface-core": "^0.0.2",
+            "@antelopejs/interface-api": "^0.0.2",
+          },
+        }),
+      );
+
+      const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+      const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+      expect(manifest.manifest.dependencies).to.deep.equal({
+        "@antelopejs/interface-core": "^0.0.2",
+        "@antelopejs/interface-api": "^0.0.2",
+      });
+    });
+
+    it("reads implements from antelopeJs.implements", async () => {
+      const fs = new InMemoryFileSystem();
+
+      await fs.writeFile(
+        "/mod/package.json",
+        JSON.stringify({
+          name: "mod",
+          version: "1.0.0",
+          antelopeJs: {
+            implements: ["@antelopejs/interface-database"],
+          },
+        }),
+      );
+
+      const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+      const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+      expect(manifest.implements).to.deep.equal([
+        "@antelopejs/interface-database",
+      ]);
+    });
+
+    it("defaults implements to an empty list", async () => {
+      const fs = new InMemoryFileSystem();
+
+      await fs.writeFile(
+        "/mod/package.json",
+        JSON.stringify({
+          name: "mod",
+          version: "1.0.0",
+        }),
+      );
+
+      const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+      const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+      expect(manifest.implements).to.deep.equal([]);
+    });
+
+    it("reloads manifest data and updates version", async () => {
+      const fs = new InMemoryFileSystem();
+
+      await fs.writeFile(
+        "/mod/package.json",
+        JSON.stringify({
+          name: "mod",
+          version: "1.0.0",
+          antelopeJs: { implements: ["@antelopejs/interface-core"] },
+        }),
+      );
+
+      const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+      const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+      await fs.writeFile(
+        "/mod/package.json",
+        JSON.stringify({
+          name: "mod",
+          version: "1.0.1",
+          antelopeJs: {
+            implements: ["@antelopejs/interface-api"],
+          },
+        }),
+      );
+
+      await manifest.reload();
+
+      expect(manifest.version).to.equal("1.0.1");
+      expect(manifest.implements).to.deep.equal(["@antelopejs/interface-api"]);
+    });
+  };
+
+  const checkResetsImplementsWhenReloadRemoves: (this: Mocha.Suite) => void =
+    function () {
+      it("resets implements when reload removes them", async () => {
+        const fs = new InMemoryFileSystem();
+
+        await fs.writeFile(
+          "/mod/package.json",
+          JSON.stringify({
+            name: "mod",
+            version: "1.0.0",
+            antelopeJs: { implements: ["@antelopejs/interface-core"] },
+          }),
+        );
+
+        const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+        const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+        await fs.writeFile(
+          "/mod/package.json",
+          JSON.stringify({
+            name: "mod",
+            version: "1.0.1",
+          }),
+        );
+
+        await manifest.reload();
+
+        expect(manifest.implements).to.deep.equal([]);
+      });
+
+      it("serializes and reconstructs from build entries", async () => {
+        const fs = new InMemoryFileSystem();
+        await fs.writeFile(
+          "/mod/package.json",
+          JSON.stringify({
+            name: "mod",
+            version: "1.0.0",
+            antelopeJs: {
+              implements: ["@antelopejs/interface-database"],
+            },
+          }),
+        );
+
+        const source: ModuleSourceLocal = {
+          type: "local",
+          path: "/mod",
+          main: "dist/index.js",
+        };
+        const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
+
+        const entry = manifest.serialize();
+        const rebuilt = ModuleManifest.fromBuildEntry(entry);
+        const rebuiltEntry = rebuilt.serialize();
+
+        expect(rebuiltEntry.folder).to.equal(entry.folder);
+        expect(rebuiltEntry.name).to.equal(entry.name);
+        expect(rebuiltEntry.version).to.equal(entry.version);
+        expect(rebuiltEntry.main).to.equal(entry.main);
+        expect(rebuiltEntry.implements).to.deep.equal(entry.implements);
+        expect(rebuiltEntry.baseUrl).to.equal(entry.baseUrl);
+        expect(rebuiltEntry.paths).to.deep.equal(entry.paths);
+      });
+
+      it("moves a build entry's paths into an instance copy of its folder, and leaves outside paths alone", () => {
+        const manifest = ModuleManifest.fromBuildEntry({
+          folder: "/mod",
+          source: { type: "local" },
+          name: "mod",
+          version: "1.0.0",
+          main: "/mod/dist/index.js",
+          manifest: { name: "mod", version: "1.0.0" },
+          implements: ["@antelopejs/interface-database"],
+          baseUrl: "/mod/dist",
+          paths: [{ key: "@lib/", values: ["/mod/dist/lib/", "/shared/lib/"] }],
+          srcAliases: [{ alias: "@src", replace: "/mod/src" }],
+        });
+
+        const relocated = manifest.relocate("/copies/mod-2").serialize();
+
+        expect(relocated.folder).to.equal("/copies/mod-2");
+        expect(relocated.main).to.equal("/copies/mod-2/dist/index.js");
+        expect(relocated.baseUrl).to.equal("/copies/mod-2/dist");
+        expect(relocated.paths).to.deep.equal([
+          { key: "@lib/", values: ["/copies/mod-2/dist/lib/", "/shared/lib/"] },
+        ]);
+        expect(relocated.srcAliases).to.deep.equal([
+          { alias: "@src", replace: "/copies/mod-2/src" },
+        ]);
+        expect(relocated.implements).to.deep.equal([
+          "@antelopejs/interface-database",
+        ]);
+        expect(relocated.version).to.equal("1.0.0");
+      });
+    };
+
+  registerModuleManifest = () => {
+    describe("throws when package.json is missing", function () {
+      checkThrowsWhenPackageJsonIs.call(this);
+    });
+
+    describe("supports moduleAliases without _moduleAliases", function () {
+      checkSupportsModuleAliasesWithoutModuleAliases.call(this);
+    });
+
+    describe("resets implements when reload removes them", function () {
+      checkResetsImplementsWhenReloadRemoves.call(this);
+    });
+  };
+
+  describe("ModuleManifest", function () {
+    registerModuleManifest.call(this);
   });
-});
+}
 
 describe("resolveManifestEntryFile", () => {
   let root: string;

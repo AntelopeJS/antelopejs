@@ -24,437 +24,518 @@ import {
 } from "../../src/core/output";
 import { useAsciiSymbols } from "../helpers/ascii-symbols";
 
-describe("version-checker", () => {
-  afterEach(() => {
-    sinon.restore();
-  });
+{
+  let registerVersionChecker: (this: Mocha.Suite) => void;
 
-  describe("fetchLatestVersion", () => {
-    it("returns parsed version when npm view succeeds", async () => {
-      sinon.stub(command, "ExecuteFile").resolves({
-        code: 0,
-        stdout: "1.2.3\n",
-        stderr: "",
+  let registerFetchLatestVersion: (this: Mocha.Suite) => void;
+  {
+    registerFetchLatestVersion = () => {
+      it("returns parsed version when npm view succeeds", async () => {
+        sinon.stub(command, "ExecuteFile").resolves({
+          code: 0,
+          stdout: "1.2.3\n",
+          stderr: "",
+        });
+
+        const result = await fetchLatestVersion("some-package");
+
+        expect(result).to.equal("1.2.3");
       });
 
-      const result = await fetchLatestVersion("some-package");
+      it("rejects when npm view fails", async () => {
+        sinon.stub(command, "ExecuteFile").rejects(new Error("network error"));
 
-      expect(result).to.equal("1.2.3");
-    });
-
-    it("rejects when npm view fails", async () => {
-      sinon.stub(command, "ExecuteFile").rejects(new Error("network error"));
-
-      try {
-        await fetchLatestVersion("some-package");
-        expect.fail("expected fetchLatestVersion to reject");
-      } catch (err) {
-        expect(String(err)).to.include("network error");
-      }
-    });
-  });
-
-  describe("checkOutdatedModules", () => {
-    beforeEach(() => {
-      sinon.stub(cliUi, "info");
-    });
-
-    it("returns outdated modules only", async () => {
-      const execStub = sinon.stub(command, "ExecuteFile");
-      execStub.callsFake(async (_executable: string, args: string[]) => {
-        if (args.includes("@scope/real-pkg-a"))
-          return { code: 0, stdout: "2.0.0\n", stderr: "" };
-        if (args.includes("@scope/real-pkg-b"))
-          return { code: 0, stdout: "1.0.0\n", stderr: "" };
-        return { code: 1, stdout: "", stderr: "not found" };
+        try {
+          await fetchLatestVersion("some-package");
+          expect.fail("expected fetchLatestVersion to reject");
+        } catch (err) {
+          expect(String(err)).to.include("network error");
+        }
       });
+    };
+  }
 
-      const packageSourceA: ModuleSourcePackage = {
-        type: "package",
-        package: "@scope/real-pkg-a",
-        version: "1.0.0",
-      };
-      const packageSourceB: ModuleSourcePackage = {
-        type: "package",
-        package: "@scope/real-pkg-b",
-        version: "1.0.0",
-      };
-      const localSource: ModuleSourceLocal = {
-        type: "local",
-        path: "/some/path",
-      };
-      const modules = {
-        "config-key-a": {
-          source: packageSourceA,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-        "config-key-b": {
-          source: packageSourceB,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-        "mod-c": {
-          source: localSource,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-      } satisfies Record<string, ExpandedModuleConfig>;
+  let registerCheckOutdatedModules: (this: Mocha.Suite) => void;
+  {
+    const checkReturnsOutdatedModulesOnly: (this: Mocha.Suite) => void =
+      function () {
+        it("returns outdated modules only", async () => {
+          const execStub = sinon.stub(command, "ExecuteFile");
+          execStub.callsFake(async (_executable: string, args: string[]) => {
+            if (args.includes("@scope/real-pkg-a"))
+              return { code: 0, stdout: "2.0.0\n", stderr: "" };
+            if (args.includes("@scope/real-pkg-b"))
+              return { code: 0, stdout: "1.0.0\n", stderr: "" };
+            return { code: 1, stdout: "", stderr: "not found" };
+          });
 
-      const result = await checkOutdatedModules(modules);
+          const packageSourceA: ModuleSourcePackage = {
+            type: "package",
+            package: "@scope/real-pkg-a",
+            version: "1.0.0",
+          };
+          const packageSourceB: ModuleSourcePackage = {
+            type: "package",
+            package: "@scope/real-pkg-b",
+            version: "1.0.0",
+          };
+          const localSource: ModuleSourceLocal = {
+            type: "local",
+            path: "/some/path",
+          };
+          const modules = {
+            "config-key-a": {
+              source: packageSourceA,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+            "config-key-b": {
+              source: packageSourceB,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+            "mod-c": {
+              source: localSource,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+          } satisfies Record<string, ExpandedModuleConfig>;
 
-      expect(result).to.have.lengthOf(1);
-      expect(result[0]).to.deep.equal({
-        name: "config-key-a",
-        current: "1.0.0",
-        latest: "2.0.0",
-      });
-    });
+          const result = await checkOutdatedModules(modules);
 
-    it("does not flag modules whose range already covers the latest version", async () => {
-      sinon.stub(command, "ExecuteFile").resolves({
-        code: 0,
-        stdout: "1.2.0\n",
-        stderr: "",
-      });
+          expect(result).to.have.lengthOf(1);
+          expect(result[0]).to.deep.equal({
+            name: "config-key-a",
+            current: "1.0.0",
+            latest: "2.0.0",
+          });
+        });
 
-      const packageSource: ModuleSourcePackage = {
-        type: "package",
-        package: "mod-a",
-        version: "^1.0.0",
-      };
-      const modules = {
-        "mod-a": {
-          source: packageSource,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-      } satisfies Record<string, ExpandedModuleConfig>;
+        it("does not flag modules whose range already covers the latest version", async () => {
+          sinon.stub(command, "ExecuteFile").resolves({
+            code: 0,
+            stdout: "1.2.0\n",
+            stderr: "",
+          });
 
-      const result = await checkOutdatedModules(modules);
+          const packageSource: ModuleSourcePackage = {
+            type: "package",
+            package: "mod-a",
+            version: "^1.0.0",
+          };
+          const modules = {
+            "mod-a": {
+              source: packageSource,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+          } satisfies Record<string, ExpandedModuleConfig>;
 
-      expect(result).to.deep.equal([]);
-    });
+          const result = await checkOutdatedModules(modules);
 
-    it("flags modules whose range does not cover the latest version", async () => {
-      sinon.stub(command, "ExecuteFile").resolves({
-        code: 0,
-        stdout: "2.0.0\n",
-        stderr: "",
-      });
+          expect(result).to.deep.equal([]);
+        });
 
-      const packageSource: ModuleSourcePackage = {
-        type: "package",
-        package: "mod-a",
-        version: "^1.0.0",
-      };
-      const modules = {
-        "mod-a": {
-          source: packageSource,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-      } satisfies Record<string, ExpandedModuleConfig>;
+        it("flags modules whose range does not cover the latest version", async () => {
+          sinon.stub(command, "ExecuteFile").resolves({
+            code: 0,
+            stdout: "2.0.0\n",
+            stderr: "",
+          });
 
-      const result = await checkOutdatedModules(modules);
+          const packageSource: ModuleSourcePackage = {
+            type: "package",
+            package: "mod-a",
+            version: "^1.0.0",
+          };
+          const modules = {
+            "mod-a": {
+              source: packageSource,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+          } satisfies Record<string, ExpandedModuleConfig>;
 
-      expect(result).to.deep.equal([
-        { name: "mod-a", current: "^1.0.0", latest: "2.0.0" },
-      ]);
-    });
+          const result = await checkOutdatedModules(modules);
 
-    it("returns empty array when all modules are up to date", async () => {
-      sinon.stub(command, "ExecuteFile").resolves({
-        code: 0,
-        stdout: "1.0.0\n",
-        stderr: "",
-      });
-
-      const packageSource: ModuleSourcePackage = {
-        type: "package",
-        package: "mod-a",
-        version: "1.0.0",
-      };
-      const modules = {
-        "mod-a": {
-          source: packageSource,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-      } satisfies Record<string, ExpandedModuleConfig>;
-
-      const result = await checkOutdatedModules(modules);
-
-      expect(result).to.deep.equal([]);
-    });
-
-    it("warns and skips packages whose version probe fails", async () => {
-      const execStub = sinon.stub(command, "ExecuteFile");
-      execStub.callsFake(async (_executable: string, args: string[]) => {
-        if (args.includes("mod-a")) throw new Error("network error");
-        return { code: 0, stdout: "1.0.0\n", stderr: "" };
-      });
-      const warnStub = sinon.stub(cliUi, "warning");
-
-      const packageSourceA: ModuleSourcePackage = {
-        type: "package",
-        package: "mod-a",
-        version: "1.0.0",
-      };
-      const packageSourceB: ModuleSourcePackage = {
-        type: "package",
-        package: "mod-b",
-        version: "1.0.0",
-      };
-      const modules = {
-        "mod-a": {
-          source: packageSourceA,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-        "mod-b": {
-          source: packageSourceB,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-      } satisfies Record<string, ExpandedModuleConfig>;
-
-      const result = await checkOutdatedModules(modules);
-
-      expect(result).to.deep.equal([]);
-      expect(warnStub.calledOnce).to.equal(true);
-      const warned = String(warnStub.firstCall.args[0]);
-      expect(warned).to.include("mod-a");
-      expect(warned).to.include("network error");
-    });
-
-    it("cuts a long probe failure with the ASCII ellipsis", async () => {
-      useAsciiSymbols();
-      sinon.stub(command, "ExecuteFile").rejects(new Error("x".repeat(300)));
-      const warnStub = sinon.stub(cliUi, "warning");
-      const source: ModuleSourcePackage = {
-        type: "package",
-        package: "mod-a",
-        version: "1.0.0",
+          expect(result).to.deep.equal([
+            { name: "mod-a", current: "^1.0.0", latest: "2.0.0" },
+          ]);
+        });
       };
 
-      await checkOutdatedModules({
-        "mod-a": {
-          source,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-      });
+    const checkReturnsEmptyArrayWhenAll: (this: Mocha.Suite) => void =
+      function () {
+        it("returns empty array when all modules are up to date", async () => {
+          sinon.stub(command, "ExecuteFile").resolves({
+            code: 0,
+            stdout: "1.0.0\n",
+            stderr: "",
+          });
 
-      expect(String(warnStub.firstCall.args[0])).to.equal(
-        `Could not check latest version of mod-a: ${"x".repeat(197)}...`,
-      );
-    });
+          const packageSource: ModuleSourcePackage = {
+            type: "package",
+            package: "mod-a",
+            version: "1.0.0",
+          };
+          const modules = {
+            "mod-a": {
+              source: packageSource,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+          } satisfies Record<string, ExpandedModuleConfig>;
 
-    it("emits the slow-check warning when probes exceed the threshold", async () => {
-      const clock = sinon.useFakeTimers();
-      let resolveExec: (value: {
-        code: number;
-        stdout: string;
-        stderr: string;
-      }) => void = () => {};
-      sinon.stub(command, "ExecuteFile").returns(
-        new Promise((resolve) => {
-          resolveExec = resolve;
-        }),
-      );
-      const warnStub = sinon.stub(cliUi, "warning");
+          const result = await checkOutdatedModules(modules);
 
-      const packageSource: ModuleSourcePackage = {
-        type: "package",
-        package: "mod-a",
-        version: "1.0.0",
+          expect(result).to.deep.equal([]);
+        });
+
+        it("warns and skips packages whose version probe fails", async () => {
+          const execStub = sinon.stub(command, "ExecuteFile");
+          execStub.callsFake(async (_executable: string, args: string[]) => {
+            if (args.includes("mod-a")) throw new Error("network error");
+            return { code: 0, stdout: "1.0.0\n", stderr: "" };
+          });
+          const warnStub = sinon.stub(cliUi, "warning");
+
+          const packageSourceA: ModuleSourcePackage = {
+            type: "package",
+            package: "mod-a",
+            version: "1.0.0",
+          };
+          const packageSourceB: ModuleSourcePackage = {
+            type: "package",
+            package: "mod-b",
+            version: "1.0.0",
+          };
+          const modules = {
+            "mod-a": {
+              source: packageSourceA,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+            "mod-b": {
+              source: packageSourceB,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+          } satisfies Record<string, ExpandedModuleConfig>;
+
+          const result = await checkOutdatedModules(modules);
+
+          expect(result).to.deep.equal([]);
+          expect(warnStub.calledOnce).to.equal(true);
+          const warned = String(warnStub.firstCall.args[0]);
+          expect(warned).to.include("mod-a");
+          expect(warned).to.include("network error");
+        });
+
+        it("cuts a long probe failure with the ASCII ellipsis", async () => {
+          useAsciiSymbols();
+          sinon
+            .stub(command, "ExecuteFile")
+            .rejects(new Error("x".repeat(300)));
+          const warnStub = sinon.stub(cliUi, "warning");
+          const source: ModuleSourcePackage = {
+            type: "package",
+            package: "mod-a",
+            version: "1.0.0",
+          };
+
+          await checkOutdatedModules({
+            "mod-a": {
+              source,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+          });
+
+          expect(String(warnStub.firstCall.args[0])).to.equal(
+            `Could not check latest version of mod-a: ${"x".repeat(197)}...`,
+          );
+        });
       };
-      const modules = {
-        "mod-a": {
-          source: packageSource,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-      } satisfies Record<string, ExpandedModuleConfig>;
 
-      const pending = checkOutdatedModules(modules);
+    const checkEmitsTheSlowCheckWarning: (this: Mocha.Suite) => void =
+      function () {
+        it("emits the slow-check warning when probes exceed the threshold", async () => {
+          const clock = sinon.useFakeTimers();
+          let resolveExec: (value: {
+            code: number;
+            stdout: string;
+            stderr: string;
+          }) => void = () => {};
+          sinon.stub(command, "ExecuteFile").returns(
+            new Promise((resolve) => {
+              resolveExec = resolve;
+            }),
+          );
+          const warnStub = sinon.stub(cliUi, "warning");
 
-      await clock.tickAsync(14_999);
-      expect(warnStub.called).to.equal(false);
+          const packageSource: ModuleSourcePackage = {
+            type: "package",
+            package: "mod-a",
+            version: "1.0.0",
+          };
+          const modules = {
+            "mod-a": {
+              source: packageSource,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+          } satisfies Record<string, ExpandedModuleConfig>;
 
-      await clock.tickAsync(2);
-      expect(warnStub.calledOnce).to.equal(true);
-      expect(String(warnStub.firstCall.args[0])).to.include(
-        "longer than expected",
-      );
+          const pending = checkOutdatedModules(modules);
 
-      resolveExec({ code: 0, stdout: "1.0.0\n", stderr: "" });
-      await clock.runAllAsync();
-      await pending;
+          await clock.tickAsync(14_999);
+          expect(warnStub.called).to.equal(false);
 
-      expect(warnStub.calledOnce).to.equal(true);
-    });
+          await clock.tickAsync(2);
+          expect(warnStub.calledOnce).to.equal(true);
+          expect(String(warnStub.firstCall.args[0])).to.include(
+            "longer than expected",
+          );
 
-    it("does not emit the slow-check warning when probes finish quickly", async () => {
-      const clock = sinon.useFakeTimers();
-      sinon.stub(command, "ExecuteFile").resolves({
-        code: 0,
-        stdout: "1.0.0\n",
-        stderr: "",
-      });
-      const warnStub = sinon.stub(cliUi, "warning");
+          resolveExec({ code: 0, stdout: "1.0.0\n", stderr: "" });
+          await clock.runAllAsync();
+          await pending;
 
-      const packageSource: ModuleSourcePackage = {
-        type: "package",
-        package: "mod-a",
-        version: "1.0.0",
+          expect(warnStub.calledOnce).to.equal(true);
+        });
+
+        it("does not emit the slow-check warning when probes finish quickly", async () => {
+          const clock = sinon.useFakeTimers();
+          sinon.stub(command, "ExecuteFile").resolves({
+            code: 0,
+            stdout: "1.0.0\n",
+            stderr: "",
+          });
+          const warnStub = sinon.stub(cliUi, "warning");
+
+          const packageSource: ModuleSourcePackage = {
+            type: "package",
+            package: "mod-a",
+            version: "1.0.0",
+          };
+          const modules = {
+            "mod-a": {
+              source: packageSource,
+              config: {},
+              importOverrides: [],
+              disabledExports: [],
+            },
+          } satisfies Record<string, ExpandedModuleConfig>;
+
+          const pending = checkOutdatedModules(modules);
+          await clock.runAllAsync();
+          await pending;
+
+          expect(warnStub.called).to.equal(false);
+        });
       };
-      const modules = {
-        "mod-a": {
-          source: packageSource,
-          config: {},
-          importOverrides: [],
-          disabledExports: [],
-        },
-      } satisfies Record<string, ExpandedModuleConfig>;
 
-      const pending = checkOutdatedModules(modules);
-      await clock.runAllAsync();
-      await pending;
-
-      expect(warnStub.called).to.equal(false);
-    });
-  });
-
-  describe("isUpToDate", () => {
-    it("compares exact versions and ranges against the latest version", () => {
-      expect(isUpToDate("1.0.0", "1.0.0")).to.equal(true);
-      expect(isUpToDate("1.0.0", "1.1.0")).to.equal(false);
-      expect(isUpToDate("^1.0.0", "1.5.0")).to.equal(true);
-      expect(isUpToDate("^1.0.0", "2.0.0")).to.equal(false);
-    });
-
-    it("treats dist-tags as always up to date since the loader floats them", () => {
-      expect(isUpToDate("latest", "1.0.0")).to.equal(true);
-      expect(isUpToDate("next", "2.0.0")).to.equal(true);
-    });
-  });
-
-  describe("bumpVersionSpec", () => {
-    it("preserves range prefixes when bumping", () => {
-      expect(bumpVersionSpec("^1.0.0", "2.0.0")).to.equal("^2.0.0");
-      expect(bumpVersionSpec("~1.0.0", "1.2.0")).to.equal("~1.2.0");
-      expect(bumpVersionSpec("1.0.0", "2.0.0")).to.equal("2.0.0");
-    });
-  });
-
-  describe("toFloatingSpec", () => {
-    it("prefixes the version with a caret", () => {
-      expect(toFloatingSpec("1.2.3")).to.equal("^1.2.3");
-    });
-  });
-
-  describe("fetchDistTags", () => {
-    it("parses dist-tags JSON output", async () => {
-      sinon.stub(command, "ExecuteFile").resolves({
-        code: 0,
-        stdout: '{"latest":"1.0.0","next":"2.0.0-rc.1"}',
-        stderr: "",
+    registerCheckOutdatedModules = () => {
+      beforeEach(() => {
+        sinon.stub(cliUi, "info");
       });
 
-      const tags = await fetchDistTags("some-package");
-
-      expect(tags).to.deep.equal({ latest: "1.0.0", next: "2.0.0-rc.1" });
-    });
-
-    it("throws when npm view exits with a non-zero code", async () => {
-      sinon.stub(command, "ExecuteFile").resolves({
-        code: 1,
-        stdout: "",
-        stderr: "not found",
+      describe("returns outdated modules only", function () {
+        checkReturnsOutdatedModulesOnly.call(this);
       });
 
-      try {
-        await fetchDistTags("some-package");
-        expect.fail("expected fetchDistTags to throw");
-      } catch (err) {
-        expect(err).to.be.instanceOf(command.ExecError);
-        assert.ok(err instanceof command.ExecError);
-        expect(err.command).to.equal("npm view some-package dist-tags --json");
-        assert.ok(err instanceof command.ExecError);
-        expect(err.stderr).to.equal("not found");
-      }
-    });
-  });
-
-  describe("validateVersionSpec", () => {
-    it("accepts a valid semver range without registry lookup", async () => {
-      const execStub = sinon.stub(command, "ExecuteFile");
-
-      await validateVersionSpec("some-package", "^1.2.0");
-
-      expect(execStub.called).to.equal(false);
-    });
-
-    it("accepts an existing dist-tag", async () => {
-      const execStub = sinon.stub(command, "ExecuteFile").resolves({
-        code: 0,
-        stdout: '{"latest":"1.0.0","beta":"2.0.0-beta.1"}',
-        stderr: "",
+      describe("returns empty array when all modules are up to date", function () {
+        checkReturnsEmptyArrayWhenAll.call(this);
       });
 
-      expect(await validateVersionSpec("some-package", "beta")).to.equal(
-        undefined,
-      );
-      expect(execStub.calledOnce).to.equal(true);
-    });
+      describe("emits the slow-check warning when probes exceed the threshold", function () {
+        checkEmitsTheSlowCheckWarning.call(this);
+      });
+    };
+  }
 
-    it("rejects a spec that is neither range nor dist-tag", async () => {
-      sinon.stub(command, "ExecuteFile").resolves({
-        code: 0,
-        stdout: '{"latest":"1.0.0"}',
-        stderr: "",
+  let registerIsUpToDate: (this: Mocha.Suite) => void;
+  {
+    registerIsUpToDate = () => {
+      it("compares exact versions and ranges against the latest version", () => {
+        expect(isUpToDate("1.0.0", "1.0.0")).to.equal(true);
+        expect(isUpToDate("1.0.0", "1.1.0")).to.equal(false);
+        expect(isUpToDate("^1.0.0", "1.5.0")).to.equal(true);
+        expect(isUpToDate("^1.0.0", "2.0.0")).to.equal(false);
       });
 
-      try {
-        await validateVersionSpec("some-package", "lastest");
-        expect.fail("expected validateVersionSpec to throw");
-      } catch (err) {
-        expect(err).to.be.instanceOf(CliError);
-        expect(String(err)).to.include(
-          "neither a valid semver range nor a dist-tag",
+      it("treats dist-tags as always up to date since the loader floats them", () => {
+        expect(isUpToDate("latest", "1.0.0")).to.equal(true);
+        expect(isUpToDate("next", "2.0.0")).to.equal(true);
+      });
+    };
+  }
+
+  let registerBumpVersionSpec: (this: Mocha.Suite) => void;
+  {
+    registerBumpVersionSpec = () => {
+      it("preserves range prefixes when bumping", () => {
+        expect(bumpVersionSpec("^1.0.0", "2.0.0")).to.equal("^2.0.0");
+        expect(bumpVersionSpec("~1.0.0", "1.2.0")).to.equal("~1.2.0");
+        expect(bumpVersionSpec("1.0.0", "2.0.0")).to.equal("2.0.0");
+      });
+    };
+  }
+
+  let registerToFloatingSpec: (this: Mocha.Suite) => void;
+  {
+    registerToFloatingSpec = () => {
+      it("prefixes the version with a caret", () => {
+        expect(toFloatingSpec("1.2.3")).to.equal("^1.2.3");
+      });
+    };
+  }
+
+  let registerFetchDistTags: (this: Mocha.Suite) => void;
+  {
+    registerFetchDistTags = () => {
+      it("parses dist-tags JSON output", async () => {
+        sinon.stub(command, "ExecuteFile").resolves({
+          code: 0,
+          stdout: '{"latest":"1.0.0","next":"2.0.0-rc.1"}',
+          stderr: "",
+        });
+
+        const tags = await fetchDistTags("some-package");
+
+        expect(tags).to.deep.equal({ latest: "1.0.0", next: "2.0.0-rc.1" });
+      });
+
+      it("throws when npm view exits with a non-zero code", async () => {
+        sinon.stub(command, "ExecuteFile").resolves({
+          code: 1,
+          stdout: "",
+          stderr: "not found",
+        });
+
+        try {
+          await fetchDistTags("some-package");
+          expect.fail("expected fetchDistTags to throw");
+        } catch (err) {
+          expect(err).to.be.instanceOf(command.ExecError);
+          assert.ok(err instanceof command.ExecError);
+          expect(err.command).to.equal(
+            "npm view some-package dist-tags --json",
+          );
+          assert.ok(err instanceof command.ExecError);
+          expect(err.stderr).to.equal("not found");
+        }
+      });
+    };
+  }
+
+  let registerValidateVersionSpec: (this: Mocha.Suite) => void;
+  {
+    registerValidateVersionSpec = () => {
+      it("accepts a valid semver range without registry lookup", async () => {
+        const execStub = sinon.stub(command, "ExecuteFile");
+
+        await validateVersionSpec("some-package", "^1.2.0");
+
+        expect(execStub.called).to.equal(false);
+      });
+
+      it("accepts an existing dist-tag", async () => {
+        const execStub = sinon.stub(command, "ExecuteFile").resolves({
+          code: 0,
+          stdout: '{"latest":"1.0.0","beta":"2.0.0-beta.1"}',
+          stderr: "",
+        });
+
+        expect(await validateVersionSpec("some-package", "beta")).to.equal(
+          undefined,
         );
-      }
+        expect(execStub.calledOnce).to.equal(true);
+      });
+
+      it("rejects a spec that is neither range nor dist-tag", async () => {
+        sinon.stub(command, "ExecuteFile").resolves({
+          code: 0,
+          stdout: '{"latest":"1.0.0"}',
+          stderr: "",
+        });
+
+        try {
+          await validateVersionSpec("some-package", "lastest");
+          expect.fail("expected validateVersionSpec to throw");
+        } catch (err) {
+          expect(err).to.be.instanceOf(CliError);
+          expect(String(err)).to.include(
+            "neither a valid semver range nor a dist-tag",
+          );
+        }
+      });
+    };
+  }
+
+  let registerWarnOutdatedModules: (this: Mocha.Suite) => void;
+  {
+    registerWarnOutdatedModules = () => {
+      it("displays warning when modules are outdated", () => {
+        const warnStub = sinon.stub(cliUi, "warning");
+
+        warnOutdatedModules([{ name: "a", current: "1.0", latest: "2.0" }]);
+
+        expect(warnStub.calledOnce).to.equal(true);
+        expect(warnStub.firstCall.args[0]).to.include("1 module(s)");
+      });
+
+      it("does not display warning when array is empty", () => {
+        const warnStub = sinon.stub(cliUi, "warning");
+
+        warnOutdatedModules([]);
+
+        expect(warnStub.called).to.equal(false);
+      });
+    };
+  }
+
+  registerVersionChecker = () => {
+    afterEach(() => {
+      sinon.restore();
     });
+    describe("fetchLatestVersion", function () {
+      registerFetchLatestVersion.call(this);
+    });
+    describe("checkOutdatedModules", function () {
+      registerCheckOutdatedModules.call(this);
+    });
+    describe("isUpToDate", function () {
+      registerIsUpToDate.call(this);
+    });
+    describe("bumpVersionSpec", function () {
+      registerBumpVersionSpec.call(this);
+    });
+    describe("toFloatingSpec", function () {
+      registerToFloatingSpec.call(this);
+    });
+    describe("fetchDistTags", function () {
+      registerFetchDistTags.call(this);
+    });
+    describe("validateVersionSpec", function () {
+      registerValidateVersionSpec.call(this);
+    });
+    describe("warnOutdatedModules", function () {
+      registerWarnOutdatedModules.call(this);
+    });
+  };
+
+  describe("version-checker", function () {
+    registerVersionChecker.call(this);
   });
-
-  describe("warnOutdatedModules", () => {
-    it("displays warning when modules are outdated", () => {
-      const warnStub = sinon.stub(cliUi, "warning");
-
-      warnOutdatedModules([{ name: "a", current: "1.0", latest: "2.0" }]);
-
-      expect(warnStub.calledOnce).to.equal(true);
-      expect(warnStub.firstCall.args[0]).to.include("1 module(s)");
-    });
-
-    it("does not display warning when array is empty", () => {
-      const warnStub = sinon.stub(cliUi, "warning");
-
-      warnOutdatedModules([]);
-
-      expect(warnStub.called).to.equal(false);
-    });
-  });
-});
+}

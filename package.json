@@ -64,9 +64,7 @@
     "prepare": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && command -v lefthook >/dev/null 2>&1; then lefthook install; fi",
     "checks": "antelopejs-checks",
     "size": "antelopejs-check-size",
-    "ratchet": "antelopejs-ratchet",
     "sync": "antelopejs-sync",
-    "ratchet:update": "antelopejs-ratchet --update",
     "sync:check": "antelopejs-sync --check",
     "typecheck": "tsc --noEmit"
   },

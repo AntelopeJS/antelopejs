@@ -40,7 +40,12 @@ function installFailure(): CliError {
   );
 }
 
-describe("describeFailure", () => {
+{
+let registerDescribeFailure: (this: Mocha.Suite) => void;
+
+
+const checkKeepsTheProblemOfA: (this: Mocha.Suite) => void = function () {
+
   it("keeps the problem of a command error that has no cause", () => {
     const problem = describeFailure(
       new CliError({ title: "Unknown environment 'staging'" }),
@@ -52,6 +57,7 @@ describe("describeFailure", () => {
       details: [],
     });
   });
+
 
   it("shows the last lines of an untranslated command failure without its colors", () => {
     const problem = describeFailure(installFailure(), false);
@@ -65,6 +71,7 @@ describe("describeFailure", () => {
     ]);
   });
 
+
   it("shows the whole command output with --verbose", () => {
     const problem = describeFailure(installFailure(), true);
 
@@ -77,6 +84,7 @@ describe("describeFailure", () => {
     ]);
   });
 
+
   it("reports a command failure on its own with its exit code", () => {
     const problem = describeFailure(tscFailure(), false);
 
@@ -85,6 +93,7 @@ describe("describeFailure", () => {
     );
     expect(problem.details?.at(-1)).to.equal(COMMAND_OUTPUT_HINT);
   });
+
 
   it("omits the output of a translated command failure", () => {
     const problem = describeFailure(
@@ -103,6 +112,7 @@ describe("describeFailure", () => {
     expect(problem.details).to.deep.equal([COMMAND_OUTPUT_HINT]);
   });
 
+
   it("prints neither an output heading nor a hint when the command said nothing", () => {
     const silent = new ExecError({
       command: "false",
@@ -113,6 +123,7 @@ describe("describeFailure", () => {
 
     expect(describeFailure(silent, false).details).to.deep.equal([]);
   });
+
 
   it("reduces an unexpected error to the first line of its message", () => {
     const problem = describeFailure(
@@ -126,6 +137,7 @@ describe("describeFailure", () => {
     });
   });
 
+
   it("shows the stack of an unexpected error with --verbose", () => {
     const error = new Error("boom");
     const details = describeFailure(error, true).details ?? [];
@@ -136,11 +148,13 @@ describe("describeFailure", () => {
     );
   });
 
+
   it("names an error that has no message", () => {
     expect(describeFailure(new TypeError(""), false).title).to.equal(
       "TypeError",
     );
   });
+
 
   it("does not offer a trace for a translated system error", () => {
     const missing = Object.assign(new Error("ENOENT: stat '/nope'"), {
@@ -151,6 +165,7 @@ describe("describeFailure", () => {
     expect(describeFailure(missing, false).details).to.deep.equal([]);
   });
 
+
   it("reports a thrown value that is not an error", () => {
     expect(describeFailure("boom", false)).to.deep.equal({
       title: "boom",
@@ -158,6 +173,10 @@ describe("describeFailure", () => {
     });
     expect(describeFailure(undefined, false).title).to.equal("undefined");
   });
+};
+
+const checkExplainsAFailureWithThe: (this: Mocha.Suite) => void = function () {
+
 
   it("explains a failure with the translate hook before the built-in translations", () => {
     const missing = Object.assign(new Error("ENOENT: stat '/nope'"), {
@@ -177,6 +196,7 @@ describe("describeFailure", () => {
     });
   });
 
+
   it("falls back to the built-in description when the translate hook declines", () => {
     const problem = describeFailure(new Error("boom"), false, () => undefined);
 
@@ -185,6 +205,7 @@ describe("describeFailure", () => {
       details: [STACK_TRACE_HINT],
     });
   });
+
 
   it("keeps the problem of a command error whatever the translate hook says", () => {
     const problem = describeFailure(
@@ -195,6 +216,7 @@ describe("describeFailure", () => {
 
     expect(problem.title).to.equal("Unknown environment 'staging'");
   });
+
 
   it("does not offer a trace for a cause the translate hook explains", () => {
     const refused = new Error("connect ECONNREFUSED 127.0.0.1:5000");
@@ -210,6 +232,7 @@ describe("describeFailure", () => {
     expect(problem.details).to.deep.equal([]);
   });
 
+
   it("offers a trace for the unexplained cause of a command error", () => {
     const failure = new CliError(
       { title: "Cannot reach the backend" },
@@ -220,6 +243,7 @@ describe("describeFailure", () => {
       STACK_TRACE_HINT,
     ]);
   });
+
 
   it("does not offer the command output when all of it is already shown", () => {
     const short = new ExecError({
@@ -236,6 +260,7 @@ describe("describeFailure", () => {
     ]);
   });
 
+
   it("follows a cyclic cause chain once", () => {
     const first = new Error("first");
     const second = new Error("second", { cause: first });
@@ -245,7 +270,18 @@ describe("describeFailure", () => {
       STACK_TRACE_HINT,
     ]);
   });
-});
+};
+
+registerDescribeFailure = () => {
+
+describe("keeps the problem of a command error that has no cause",function(){checkKeepsTheProblemOfA.call(this);});
+
+describe("explains a failure with the translate hook before the built-in translations",function(){checkExplainsAFailureWithThe.call(this);});
+
+};
+
+describe("describeFailure", function(){registerDescribeFailure.call(this);});
+}
 
 describe("reportFailure", () => {
   it("prints what failed, why and the details before the fixes", () => {

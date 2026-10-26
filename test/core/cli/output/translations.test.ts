@@ -10,7 +10,12 @@ function systemError(code: string, path?: string): NodeJS.ErrnoException {
   return Object.assign(new Error(`${code}: system failure`), { code, path });
 }
 
-describe("translateFailure", () => {
+{
+let registerTranslateFailure: (this: Mocha.Suite) => void;
+
+
+const checkNamesAPackageTheNpm: (this: Mocha.Suite) => void = function () {
+
   it("names a package the npm registry does not know", () => {
     const problem = translateFailure(
       execFailure(
@@ -27,6 +32,7 @@ describe("translateFailure", () => {
     });
   });
 
+
   it("explains an unreachable npm registry, whatever the colors of the output", () => {
     const problem = translateFailure(
       execFailure(
@@ -38,6 +44,7 @@ describe("translateFailure", () => {
     expect(problem?.title).to.equal("Cannot reach the npm registry");
     expect(problem?.reason).to.equal("The network request failed (ENOTFOUND).");
   });
+
 
   it("explains a git server that cannot be reached", () => {
     const problem = translateFailure(
@@ -51,6 +58,7 @@ describe("translateFailure", () => {
     expect(problem?.title).to.equal("Cannot reach the git server");
     expect(problem?.reason).to.equal("git failed: Could not resolve host.");
   });
+
 
   it("names the repository of a refused clone", () => {
     const problem = translateFailure(
@@ -70,6 +78,7 @@ describe("translateFailure", () => {
     });
   });
 
+
   it("finds an ssh remote in a clone command", () => {
     const problem = translateFailure(
       execFailure(
@@ -84,6 +93,7 @@ describe("translateFailure", () => {
     );
   });
 
+
   it("names the executable the shell could not find", () => {
     const problem = translateFailure(
       execFailure("npx tsc && pnpx build", "sh: 1: pnpx: not found", 127),
@@ -94,6 +104,7 @@ describe("translateFailure", () => {
       fixes: ["Install pnpx, or make sure it is on your PATH"],
     });
   });
+
 
   it("names the executable bash or Windows could not find", () => {
     expect(
@@ -111,11 +122,13 @@ describe("translateFailure", () => {
     ).to.equal("Command not found: tsc");
   });
 
+
   it("leaves an unknown command failure untranslated", () => {
     expect(translateFailure(execFailure("npx tsc", "error TS2304"))).to.equal(
       undefined,
     );
   });
+
 
   it("names a missing path", () => {
     expect(translateFailure(systemError("ENOENT", "/work/nope"))).to.deep.equal(
@@ -125,6 +138,10 @@ describe("translateFailure", () => {
       },
     );
   });
+};
+
+const checkFallsBackToTheMessage: (this: Mocha.Suite) => void = function () {
+
 
   it("falls back to the message when the system error has no path", () => {
     expect(translateFailure(systemError("ENOENT"))?.title).to.equal(
@@ -132,11 +149,13 @@ describe("translateFailure", () => {
     );
   });
 
+
   it("explains a path that is not a directory", () => {
     expect(translateFailure(systemError("ENOTDIR", "/work/file"))?.title).to.equal(
       "Not a directory: /work/file",
     );
   });
+
 
   it("explains a refused access the same way for EACCES and EPERM", () => {
     const expected = {
@@ -152,6 +171,7 @@ describe("translateFailure", () => {
     );
   });
 
+
   it("leaves other failures untranslated", () => {
     expect(translateFailure(systemError("EBUSY", "/dev/x"))).to.equal(
       undefined,
@@ -159,4 +179,15 @@ describe("translateFailure", () => {
     expect(translateFailure(new Error("boom"))).to.equal(undefined);
     expect(translateFailure("boom")).to.equal(undefined);
   });
-});
+};
+
+registerTranslateFailure = () => {
+
+describe("names a package the npm registry does not know",function(){checkNamesAPackageTheNpm.call(this);});
+
+describe("falls back to the message when the system error has no path",function(){checkFallsBackToTheMessage.call(this);});
+
+};
+
+describe("translateFailure", function(){registerTranslateFailure.call(this);});
+}

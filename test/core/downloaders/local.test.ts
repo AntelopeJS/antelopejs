@@ -21,194 +21,215 @@ function createExecSpy() {
   return { exec, calls };
 }
 
-describe("LocalDownloader", () => {
-  it("should load a local module manifest", async () => {
-    const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({ name: "mod", version: "1.0.0" }),
-    );
+{
+  let registerLocalDownloader1: (this: Mocha.Suite) => void;
 
-    const registry = new DownloaderRegistry();
-    const { exec } = createExecSpy();
-    registerLocalDownloader(registry, { fs, exec });
-
-    const cache = new ModuleCache("/cache", fs);
-    await cache.load();
-
-    const source: ModuleSourceLocal = {
-      type: "local",
-      path: "/mod",
-      id: "mod",
-    };
-    const result = await registry.load("/project", cache, source);
-
-    expect(result).to.have.length(1);
-    expect(result[0].manifest.name).to.equal("mod");
-  });
-
-  it("should use basename when id is missing", async () => {
-    const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({ name: "mod", version: "1.0.0" }),
-    );
-
-    const registry = new DownloaderRegistry();
-    const { exec } = createExecSpy();
-    registerLocalDownloader(registry, { fs, exec });
-
-    const cache = new ModuleCache("/cache", fs);
-    await cache.load();
-
-    const source: ModuleSourceLocal = { type: "local", path: "/mod" };
-    const result = await registry.load("/project", cache, source);
-
-    expect(result).to.have.length(1);
-    expect(result[0].manifest.name).to.equal("mod");
-  });
-
-  it("should run install commands when provided", async () => {
-    const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({ name: "mod", version: "1.0.0" }),
-    );
-
-    const registry = new DownloaderRegistry();
-    const { exec, calls } = createExecSpy();
-    registerLocalDownloader(registry, { fs, exec });
-
-    const cache = new ModuleCache("/cache", fs);
-    await cache.load();
-
-    const source: ModuleSourceLocal = {
-      type: "local",
-      path: "/mod",
-      id: "mod",
-      installCommand: ["npm install", "npm run build"],
-    };
-
-    await registry.load("/project", cache, source);
-
-    expect(calls).to.deep.equal([
-      { command: "npm install", cwd: "/mod" },
-      { command: "npm run build", cwd: "/mod" },
-    ]);
-  });
-
-  it("should throw when install command fails", async () => {
-    const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({ name: "mod", version: "1.0.0" }),
-    );
-
-    const registry = new DownloaderRegistry();
-    const exec = async (_command: string, _options: { cwd?: string }) => ({
-      stdout: "",
-      stderr: "fail",
-      code: 1,
-    });
-    registerLocalDownloader(registry, { fs, exec });
-
-    const cache = new ModuleCache("/cache", fs);
-    await cache.load();
-
-    const source: ModuleSourceLocal = {
-      type: "local",
-      path: "/mod",
-      installCommand: "npm install",
-    };
-
-    try {
-      await registry.load("/project", cache, source);
-      expect.fail("Expected failure");
-    } catch (err) {
-      expect(err).to.be.instanceOf(Error);
-    }
-  });
-
-  it("should include stdout when install command fails without stderr", async () => {
-    const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/mod/package.json",
-      JSON.stringify({ name: "mod", version: "1.0.0" }),
-    );
-
-    const registry = new DownloaderRegistry();
-    const exec = async (_command: string, _options: { cwd?: string }) => ({
-      stdout: "stdout fail",
-      stderr: "",
-      code: 1,
-    });
-    registerLocalDownloader(registry, { fs, exec });
-
-    const cache = new ModuleCache("/cache", fs);
-    await cache.load();
-
-    const source: ModuleSourceLocal = {
-      type: "local",
-      path: "/mod",
-      installCommand: "npm install",
-    };
-
-    try {
-      await registry.load("/project", cache, source);
-      expect.fail("Expected failure");
-    } catch (err) {
-      assert.ok(err instanceof Error);
-      assert.ok(err.cause instanceof ExecError);
-      const failure = err.cause;
-      expect(failure).to.be.instanceOf(ExecError);
-      expect(failure.stdout).to.equal("stdout fail");
-      expect(failure.output).to.equal("stdout fail");
-    }
-  });
-
-  it("uses the default filesystem when deps are omitted", async () => {
-    const tempDir = makeTempDir("local-downloader-");
-    try {
-      writeFileSync(
-        `${tempDir}/package.json`,
+  const checkShouldLoadALocalModule: (this: Mocha.Suite) => void = function () {
+    it("should load a local module manifest", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/mod/package.json",
         JSON.stringify({ name: "mod", version: "1.0.0" }),
       );
 
       const registry = new DownloaderRegistry();
-      registerLocalDownloader(registry);
+      const { exec } = createExecSpy();
+      registerLocalDownloader(registry, { fs, exec });
 
-      const cache = new ModuleCache(`${tempDir}/cache`);
+      const cache = new ModuleCache("/cache", fs);
       await cache.load();
 
-      const source: ModuleSourceLocal = { type: "local", path: tempDir };
+      const source: ModuleSourceLocal = {
+        type: "local",
+        path: "/mod",
+        id: "mod",
+      };
       const result = await registry.load("/project", cache, source);
 
+      expect(result).to.have.length(1);
       expect(result[0].manifest.name).to.equal("mod");
-    } finally {
-      cleanupTempDir(tempDir);
-    }
-  });
+    });
 
-  it("should throw if the path does not exist", async () => {
-    const fs = new InMemoryFileSystem();
-    const registry = new DownloaderRegistry();
-    const { exec } = createExecSpy();
-    registerLocalDownloader(registry, { fs, exec });
+    it("should use basename when id is missing", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/mod/package.json",
+        JSON.stringify({ name: "mod", version: "1.0.0" }),
+      );
 
-    const cache = new ModuleCache("/cache", fs);
-    await cache.load();
+      const registry = new DownloaderRegistry();
+      const { exec } = createExecSpy();
+      registerLocalDownloader(registry, { fs, exec });
 
-    const source: ModuleSourceLocal = {
-      type: "local",
-      path: "/missing",
-      id: "missing",
+      const cache = new ModuleCache("/cache", fs);
+      await cache.load();
+
+      const source: ModuleSourceLocal = { type: "local", path: "/mod" };
+      const result = await registry.load("/project", cache, source);
+
+      expect(result).to.have.length(1);
+      expect(result[0].manifest.name).to.equal("mod");
+    });
+
+    it("should run install commands when provided", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/mod/package.json",
+        JSON.stringify({ name: "mod", version: "1.0.0" }),
+      );
+
+      const registry = new DownloaderRegistry();
+      const { exec, calls } = createExecSpy();
+      registerLocalDownloader(registry, { fs, exec });
+
+      const cache = new ModuleCache("/cache", fs);
+      await cache.load();
+
+      const source: ModuleSourceLocal = {
+        type: "local",
+        path: "/mod",
+        id: "mod",
+        installCommand: ["npm install", "npm run build"],
+      };
+
+      await registry.load("/project", cache, source);
+
+      expect(calls).to.deep.equal([
+        { command: "npm install", cwd: "/mod" },
+        { command: "npm run build", cwd: "/mod" },
+      ]);
+    });
+
+    it("should throw when install command fails", async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/mod/package.json",
+        JSON.stringify({ name: "mod", version: "1.0.0" }),
+      );
+
+      const registry = new DownloaderRegistry();
+      const exec = async (_command: string, _options: { cwd?: string }) => ({
+        stdout: "",
+        stderr: "fail",
+        code: 1,
+      });
+      registerLocalDownloader(registry, { fs, exec });
+
+      const cache = new ModuleCache("/cache", fs);
+      await cache.load();
+
+      const source: ModuleSourceLocal = {
+        type: "local",
+        path: "/mod",
+        installCommand: "npm install",
+      };
+
+      try {
+        await registry.load("/project", cache, source);
+        expect.fail("Expected failure");
+      } catch (err) {
+        expect(err).to.be.instanceOf(Error);
+      }
+    });
+  };
+
+  const checkShouldIncludeStdoutWhenInstall: (this: Mocha.Suite) => void =
+    function () {
+      it("should include stdout when install command fails without stderr", async () => {
+        const fs = new InMemoryFileSystem();
+        await fs.writeFile(
+          "/mod/package.json",
+          JSON.stringify({ name: "mod", version: "1.0.0" }),
+        );
+
+        const registry = new DownloaderRegistry();
+        const exec = async (_command: string, _options: { cwd?: string }) => ({
+          stdout: "stdout fail",
+          stderr: "",
+          code: 1,
+        });
+        registerLocalDownloader(registry, { fs, exec });
+
+        const cache = new ModuleCache("/cache", fs);
+        await cache.load();
+
+        const source: ModuleSourceLocal = {
+          type: "local",
+          path: "/mod",
+          installCommand: "npm install",
+        };
+
+        try {
+          await registry.load("/project", cache, source);
+          expect.fail("Expected failure");
+        } catch (err) {
+          assert.ok(err instanceof Error);
+          assert.ok(err.cause instanceof ExecError);
+          const failure = err.cause;
+          expect(failure).to.be.instanceOf(ExecError);
+          expect(failure.stdout).to.equal("stdout fail");
+          expect(failure.output).to.equal("stdout fail");
+        }
+      });
+
+      it("uses the default filesystem when deps are omitted", async () => {
+        const tempDir = makeTempDir("local-downloader-");
+        try {
+          writeFileSync(
+            `${tempDir}/package.json`,
+            JSON.stringify({ name: "mod", version: "1.0.0" }),
+          );
+
+          const registry = new DownloaderRegistry();
+          registerLocalDownloader(registry);
+
+          const cache = new ModuleCache(`${tempDir}/cache`);
+          await cache.load();
+
+          const source: ModuleSourceLocal = { type: "local", path: tempDir };
+          const result = await registry.load("/project", cache, source);
+
+          expect(result[0].manifest.name).to.equal("mod");
+        } finally {
+          cleanupTempDir(tempDir);
+        }
+      });
+
+      it("should throw if the path does not exist", async () => {
+        const fs = new InMemoryFileSystem();
+        const registry = new DownloaderRegistry();
+        const { exec } = createExecSpy();
+        registerLocalDownloader(registry, { fs, exec });
+
+        const cache = new ModuleCache("/cache", fs);
+        await cache.load();
+
+        const source: ModuleSourceLocal = {
+          type: "local",
+          path: "/missing",
+          id: "missing",
+        };
+
+        try {
+          await registry.load("/project", cache, source);
+          expect.fail("Expected loader to throw");
+        } catch (err) {
+          expect(err).to.be.instanceOf(Error);
+        }
+      });
     };
 
-    try {
-      await registry.load("/project", cache, source);
-      expect.fail("Expected loader to throw");
-    } catch (err) {
-      expect(err).to.be.instanceOf(Error);
-    }
+  registerLocalDownloader1 = () => {
+    describe("should load a local module manifest", function () {
+      checkShouldLoadALocalModule.call(this);
+    });
+
+    describe("should include stdout when install command fails without stderr", function () {
+      checkShouldIncludeStdoutWhenInstall.call(this);
+    });
+  };
+
+  describe("LocalDownloader", function () {
+    registerLocalDownloader1.call(this);
   });
-});
+}

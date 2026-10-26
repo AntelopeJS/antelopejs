@@ -58,76 +58,87 @@ exports.destroy = () => {};
 `;
 }
 
-describe("HMR end-to-end", () => {
-  it("picks up module source edits and runs new code after reload", async function () {
-    this.timeout(20000);
+{
+  let registerHMREndToEnd: (this: Mocha.Suite) => void;
 
-    const projectFolder = await fs.mkdtemp(path.join(os.tmpdir(), "ajs-hmr-"));
-    const modulePath = path.join(projectFolder, "mod");
-    const markerPath = path.join(projectFolder, "marker.txt");
-    const indexPath = path.join(modulePath, "index.js");
+  const checkPicksUpModuleSourceEdits: (this: Mocha.Suite) => void =
+    function () {
+      it("picks up module source edits and runs new code after reload", async function () {
+        this.timeout(20000);
 
-    await fs.mkdir(modulePath, { recursive: true });
-    await fs.writeFile(
-      path.join(modulePath, "package.json"),
-      JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
-    );
-    await fs.writeFile(indexPath, moduleSource("v1"));
+        const projectFolder = await fs.mkdtemp(
+          path.join(os.tmpdir(), "ajs-hmr-"),
+        );
+        const modulePath = path.join(projectFolder, "mod");
+        const markerPath = path.join(projectFolder, "marker.txt");
+        const indexPath = path.join(modulePath, "index.js");
 
-    const config = {
-      name: "hmr-test",
-      modules: {
-        mod: {
-          source: { type: "local", path: "./mod", main: "index.js" },
-          config: { markerPath },
-        },
-      },
+        await fs.mkdir(modulePath, { recursive: true });
+        await fs.writeFile(
+          path.join(modulePath, "package.json"),
+          JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
+        );
+        await fs.writeFile(indexPath, moduleSource("v1"));
+
+        const config = {
+          name: "hmr-test",
+          modules: {
+            mod: {
+              source: { type: "local", path: "./mod", main: "index.js" },
+              config: { markerPath },
+            },
+          },
+        };
+        await fs.writeFile(
+          path.join(projectFolder, "antelope.config.ts"),
+          `export default ${JSON.stringify(config)};\n`,
+        );
+
+        let manager: ModuleManager | undefined;
+        try {
+          manager = await launch(projectFolder, "default", { watch: true });
+
+          await waitFor(
+            async () => (await readMarker(markerPath)) === "v1",
+            2000,
+          );
+
+          await fs.writeFile(indexPath, moduleSource("v2"));
+
+          await waitFor(
+            async () => (await readMarker(markerPath)) === "v2",
+            MARKER_TIMEOUT_MS,
+          );
+
+          expect(await readMarker(markerPath)).to.equal("v2");
+        } finally {
+          if (manager) {
+            await manager.stopAll();
+            await manager.destroyAll();
+          }
+          await fs.rm(projectFolder, { recursive: true, force: true });
+        }
+      });
     };
-    await fs.writeFile(
-      path.join(projectFolder, "antelope.config.ts"),
-      `export default ${JSON.stringify(config)};\n`,
-    );
 
-    let manager: ModuleManager | undefined;
-    try {
-      manager = await launch(projectFolder, "default", { watch: true });
+  const checkAdoptsASourceFileAdded: (this: Mocha.Suite) => void = function () {
+    it("adopts a source file added at runtime and reloads for it and its later edits", async function () {
+      this.timeout(20000);
 
-      await waitFor(async () => (await readMarker(markerPath)) === "v1", 2000);
-
-      await fs.writeFile(indexPath, moduleSource("v2"));
-
-      await waitFor(
-        async () => (await readMarker(markerPath)) === "v2",
-        MARKER_TIMEOUT_MS,
+      const projectFolder = await fs.mkdtemp(
+        path.join(os.tmpdir(), "ajs-hmr-add-"),
       );
+      const modulePath = path.join(projectFolder, "mod");
+      const markerPath = path.join(projectFolder, "marker.txt");
+      const startCountPath = path.join(projectFolder, "start-count.txt");
+      const indexPath = path.join(modulePath, "index.js");
 
-      expect(await readMarker(markerPath)).to.equal("v2");
-    } finally {
-      if (manager) {
-        await manager.stopAll();
-        await manager.destroyAll();
-      }
-      await fs.rm(projectFolder, { recursive: true, force: true });
-    }
-  });
-
-  it("adopts a source file added at runtime and reloads for it and its later edits", async function () {
-    this.timeout(20000);
-
-    const projectFolder = await fs.mkdtemp(
-      path.join(os.tmpdir(), "ajs-hmr-add-"),
-    );
-    const modulePath = path.join(projectFolder, "mod");
-    const markerPath = path.join(projectFolder, "marker.txt");
-    const startCountPath = path.join(projectFolder, "start-count.txt");
-    const indexPath = path.join(modulePath, "index.js");
-
-    await fs.mkdir(modulePath, { recursive: true });
-    await fs.writeFile(
-      path.join(modulePath, "package.json"),
-      JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
-    );
-    const src = `const fs = require("node:fs");
+      await fs.mkdir(modulePath, { recursive: true });
+      await fs.writeFile(
+        path.join(modulePath, "package.json"),
+        JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
+      );
+      const src = `const fs = require("node:fs");
 let cfg;
 exports.construct = (c) => { cfg = c; };
 exports.start = () => {
@@ -140,71 +151,77 @@ exports.start = () => {
 exports.stop = () => {};
 exports.destroy = () => {};
 `;
-    await fs.writeFile(indexPath, src);
+      await fs.writeFile(indexPath, src);
 
-    const config = {
-      name: "hmr-add-test",
-      modules: {
-        mod: {
-          source: { type: "local", path: "./mod", main: "index.js" },
-          config: { markerPath, startCountPath },
+      const config = {
+        name: "hmr-add-test",
+        modules: {
+          mod: {
+            source: { type: "local", path: "./mod", main: "index.js" },
+            config: { markerPath, startCountPath },
+          },
         },
-      },
-    };
-    await fs.writeFile(
-      path.join(projectFolder, "antelope.config.ts"),
-      `export default ${JSON.stringify(config)};\n`,
-    );
-
-    let manager: ModuleManager | undefined;
-    try {
-      manager = await launch(projectFolder, "default", { watch: true });
-      await waitFor(async () => (await readMarker(markerPath)) === "v1", 2000);
-
-      const addedPath = path.join(modulePath, "helper.js");
-      await fs.writeFile(addedPath, "module.exports = 1;");
-      await waitFor(
-        async () =>
-          parseInt(await fs.readFile(startCountPath, "utf-8"), 10) === 2,
-        MARKER_TIMEOUT_MS,
+      };
+      await fs.writeFile(
+        path.join(projectFolder, "antelope.config.ts"),
+        `export default ${JSON.stringify(config)};\n`,
       );
 
-      await fs.writeFile(addedPath, "module.exports = 2;");
-      await waitFor(
-        async () =>
-          parseInt(await fs.readFile(startCountPath, "utf-8"), 10) === 3,
-        MARKER_TIMEOUT_MS,
-      );
+      let manager: ModuleManager | undefined;
+      try {
+        manager = await launch(projectFolder, "default", { watch: true });
+        await waitFor(
+          async () => (await readMarker(markerPath)) === "v1",
+          2000,
+        );
 
-      expect(parseInt(await fs.readFile(startCountPath, "utf-8"), 10)).to.equal(
-        3,
-      );
-    } finally {
-      if (manager) {
-        await manager.stopAll();
-        await manager.destroyAll();
+        const addedPath = path.join(modulePath, "helper.js");
+        await fs.writeFile(addedPath, "module.exports = 1;");
+        await waitFor(
+          async () =>
+            parseInt(await fs.readFile(startCountPath, "utf-8"), 10) === 2,
+          MARKER_TIMEOUT_MS,
+        );
+
+        await fs.writeFile(addedPath, "module.exports = 2;");
+        await waitFor(
+          async () =>
+            parseInt(await fs.readFile(startCountPath, "utf-8"), 10) === 3,
+          MARKER_TIMEOUT_MS,
+        );
+
+        expect(
+          parseInt(await fs.readFile(startCountPath, "utf-8"), 10),
+        ).to.equal(3);
+      } finally {
+        if (manager) {
+          await manager.stopAll();
+          await manager.destroyAll();
+        }
+        await fs.rm(projectFolder, { recursive: true, force: true });
       }
-      await fs.rm(projectFolder, { recursive: true, force: true });
-    }
-  });
+    });
+  };
 
-  it("does not reload when atomic-write temp files appear", async function () {
-    this.timeout(20000);
+  const checkDoesNotReloadWhenAtomic: (this: Mocha.Suite) => void =
+    function () {
+      it("does not reload when atomic-write temp files appear", async function () {
+        this.timeout(20000);
 
-    const projectFolder = await fs.mkdtemp(
-      path.join(os.tmpdir(), "ajs-hmr-atomic-"),
-    );
-    const modulePath = path.join(projectFolder, "mod");
-    const markerPath = path.join(projectFolder, "marker.txt");
-    const indexPath = path.join(modulePath, "index.js");
-    const startCountPath = path.join(projectFolder, "start-count.txt");
+        const projectFolder = await fs.mkdtemp(
+          path.join(os.tmpdir(), "ajs-hmr-atomic-"),
+        );
+        const modulePath = path.join(projectFolder, "mod");
+        const markerPath = path.join(projectFolder, "marker.txt");
+        const indexPath = path.join(modulePath, "index.js");
+        const startCountPath = path.join(projectFolder, "start-count.txt");
 
-    await fs.mkdir(modulePath, { recursive: true });
-    await fs.writeFile(
-      path.join(modulePath, "package.json"),
-      JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
-    );
-    const src = `const fs = require("node:fs");
+        await fs.mkdir(modulePath, { recursive: true });
+        await fs.writeFile(
+          path.join(modulePath, "package.json"),
+          JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
+        );
+        const src = `const fs = require("node:fs");
 let cfg;
 exports.construct = (c) => { cfg = c; };
 exports.start = () => {
@@ -217,44 +234,66 @@ exports.start = () => {
 exports.stop = () => {};
 exports.destroy = () => {};
 `;
-    await fs.writeFile(indexPath, src);
+        await fs.writeFile(indexPath, src);
 
-    const config = {
-      name: "hmr-atomic-test",
-      modules: {
-        mod: {
-          source: { type: "local", path: "./mod", main: "index.js" },
-          config: { markerPath, startCountPath },
-        },
-      },
+        const config = {
+          name: "hmr-atomic-test",
+          modules: {
+            mod: {
+              source: { type: "local", path: "./mod", main: "index.js" },
+              config: { markerPath, startCountPath },
+            },
+          },
+        };
+        await fs.writeFile(
+          path.join(projectFolder, "antelope.config.ts"),
+          `export default ${JSON.stringify(config)};\n`,
+        );
+
+        let manager: ModuleManager | undefined;
+        try {
+          manager = await launch(projectFolder, "default", { watch: true });
+          await waitFor(
+            async () => (await readMarker(markerPath)) === "v1",
+            2000,
+          );
+
+          const tmpPath = path.join(modulePath, "index.js.tmp.9999");
+          await fs.writeFile(tmpPath, "intermediate garbage");
+          await fs.rm(tmpPath);
+
+          await assertStableStartCount(startCountPath, 1, NO_RELOAD_WINDOW_MS);
+
+          const startCount = parseInt(
+            await fs.readFile(startCountPath, "utf-8"),
+            10,
+          );
+          expect(startCount).to.equal(1);
+        } finally {
+          if (manager) {
+            await manager.stopAll();
+            await manager.destroyAll();
+          }
+          await fs.rm(projectFolder, { recursive: true, force: true });
+        }
+      });
     };
-    await fs.writeFile(
-      path.join(projectFolder, "antelope.config.ts"),
-      `export default ${JSON.stringify(config)};\n`,
-    );
 
-    let manager: ModuleManager | undefined;
-    try {
-      manager = await launch(projectFolder, "default", { watch: true });
-      await waitFor(async () => (await readMarker(markerPath)) === "v1", 2000);
+  registerHMREndToEnd = () => {
+    describe("picks up module source edits and runs new code after reload", function () {
+      checkPicksUpModuleSourceEdits.call(this);
+    });
 
-      const tmpPath = path.join(modulePath, "index.js.tmp.9999");
-      await fs.writeFile(tmpPath, "intermediate garbage");
-      await fs.rm(tmpPath);
+    describe("adopts a source file added at runtime and reloads for it and its later edits", function () {
+      checkAdoptsASourceFileAdded.call(this);
+    });
 
-      await assertStableStartCount(startCountPath, 1, NO_RELOAD_WINDOW_MS);
+    describe("does not reload when atomic-write temp files appear", function () {
+      checkDoesNotReloadWhenAtomic.call(this);
+    });
+  };
 
-      const startCount = parseInt(
-        await fs.readFile(startCountPath, "utf-8"),
-        10,
-      );
-      expect(startCount).to.equal(1);
-    } finally {
-      if (manager) {
-        await manager.stopAll();
-        await manager.destroyAll();
-      }
-      await fs.rm(projectFolder, { recursive: true, force: true });
-    }
+  describe("HMR end-to-end", function () {
+    registerHMREndToEnd.call(this);
   });
-});
+}

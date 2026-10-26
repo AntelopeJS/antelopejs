@@ -34,205 +34,230 @@ function missingPluginProblem(installCommand: string) {
   };
 }
 
-describe("Official plugin installation", () => {
-  it("explains how to install the plugin and fails when not interactive", async () => {
-    const output = createOutput();
-    const { runner, calls } = createProcessRunner();
+{
+  let registerOfficialPluginInstallation: (this: Mocha.Suite) => void;
 
-    const result = await delegateToPlugin(["dms"], {
-      lookupExecutable: async () => undefined,
-      isInteractive: () => false,
-      packageManager: "npm",
-      processOptions: { processRunner: runner, platform: "linux" },
-      output,
-    });
+  const checkExplainsHowToInstallThe: (this: Mocha.Suite) => void =
+    function () {
+      it("explains how to install the plugin and fails when not interactive", async () => {
+        const output = createOutput();
+        const { runner, calls } = createProcessRunner();
 
-    expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
-    expect(calls).to.deep.equal([]);
-    expect(output.errors).to.deep.equal([]);
-    expect(output.problems.map(plainProblem)).to.deep.equal([
-      missingPluginProblem("npm install -g @antelopejs/dms-frontend"),
-    ]);
-  });
-
-  it("asks with the shared prompt layer, defaulting to No", async () => {
-    const output = createOutput();
-    const { runner, calls } = createProcessRunner();
-    const prompts = fakePrompts({ answers: [false] });
-
-    try {
-      const result = await delegateToPlugin(["dms"], {
-        lookupExecutable: async () => undefined,
-        packageManager: "npm",
-        processOptions: { processRunner: runner, platform: "linux" },
-        output,
-      });
-
-      expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
-      expect(prompts.asked[0].kind).to.equal("confirm");
-      expect(prompts.asked[0].options).to.include({ initialValue: false });
-      expect(calls).to.deep.equal([]);
-    } finally {
-      sinon.restore();
-    }
-  });
-
-  it("cancels the run when the install prompt is cancelled", async () => {
-    const { runner, calls } = createProcessRunner();
-    fakePrompts({ answers: [CANCEL] });
-
-    try {
-      const error = await rejectionOf(
-        delegateToPlugin(["dms"], {
+        const result = await delegateToPlugin(["dms"], {
           lookupExecutable: async () => undefined,
+          isInteractive: () => false,
           packageManager: "npm",
           processOptions: { processRunner: runner, platform: "linux" },
-          output: createOutput(),
-        }),
-      );
+          output,
+        });
 
-      expect(error).to.be.instanceOf(CancelledError);
-      expect(calls).to.deep.equal([]);
-    } finally {
-      sinon.restore();
-    }
-  });
+        expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
+        expect(calls).to.deep.equal([]);
+        expect(output.errors).to.deep.equal([]);
+        expect(output.problems.map(plainProblem)).to.deep.equal([
+          missingPluginProblem("npm install -g @antelopejs/dms-frontend"),
+        ]);
+      });
 
-  it("prompts, installs and delegates when interactive", async () => {
-    const output = createOutput();
-    const { runner, calls } = createProcessRunner([0, 7]);
-    const questions: string[] = [];
-    let lookupCount = 0;
+      it("asks with the shared prompt layer, defaulting to No", async () => {
+        const output = createOutput();
+        const { runner, calls } = createProcessRunner();
+        const prompts = fakePrompts({ answers: [false] });
 
-    const result = await delegateToPlugin(["dms", "build"], {
-      lookupExecutable: async () => {
-        lookupCount += 1;
-        return lookupCount === 1 ? undefined : GLOBAL_DMS;
-      },
-      packageLookup: { reader: createInstalledReader() },
-      coreVersion: CORE_VERSION,
-      isInteractive: () => true,
-      packageManager: "pnpm",
-      processOptions: { processRunner: runner, platform: "linux" },
-      confirmInstall: async (question) => {
-        questions.push(question);
-        return true;
-      },
-      output,
+        try {
+          const result = await delegateToPlugin(["dms"], {
+            lookupExecutable: async () => undefined,
+            packageManager: "npm",
+            processOptions: { processRunner: runner, platform: "linux" },
+            output,
+          });
+
+          expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
+          expect(prompts.asked[0].kind).to.equal("confirm");
+          expect(prompts.asked[0].options).to.include({ initialValue: false });
+          expect(calls).to.deep.equal([]);
+        } finally {
+          sinon.restore();
+        }
+      });
+
+      it("cancels the run when the install prompt is cancelled", async () => {
+        const { runner, calls } = createProcessRunner();
+        fakePrompts({ answers: [CANCEL] });
+
+        try {
+          const error = await rejectionOf(
+            delegateToPlugin(["dms"], {
+              lookupExecutable: async () => undefined,
+              packageManager: "npm",
+              processOptions: { processRunner: runner, platform: "linux" },
+              output: createOutput(),
+            }),
+          );
+
+          expect(error).to.be.instanceOf(CancelledError);
+          expect(calls).to.deep.equal([]);
+        } finally {
+          sinon.restore();
+        }
+      });
+
+      it("prompts, installs and delegates when interactive", async () => {
+        const output = createOutput();
+        const { runner, calls } = createProcessRunner([0, 7]);
+        const questions: string[] = [];
+        let lookupCount = 0;
+
+        const result = await delegateToPlugin(["dms", "build"], {
+          lookupExecutable: async () => {
+            lookupCount += 1;
+            return lookupCount === 1 ? undefined : GLOBAL_DMS;
+          },
+          packageLookup: { reader: createInstalledReader() },
+          coreVersion: CORE_VERSION,
+          isInteractive: () => true,
+          packageManager: "pnpm",
+          processOptions: { processRunner: runner, platform: "linux" },
+          confirmInstall: async (question) => {
+            questions.push(question);
+            return true;
+          },
+          output,
+        });
+
+        expect(questions).to.deep.equal([
+          "The DMS plugin is not installed. Install @antelopejs/dms-frontend globally now?",
+        ]);
+        expect(formatSpawnCalls(calls)).to.deep.equal([
+          "pnpm add -g @antelopejs/dms-frontend",
+          `${DMS_EXECUTABLE} build`,
+        ]);
+        expect(result).to.deep.equal({ isDelegated: true, exitCode: 7 });
+      });
+
+      it("uses the Windows shim when installing on Windows", async () => {
+        const output = createOutput();
+        const { runner } = createProcessRunner();
+
+        await delegateToPlugin(["dms"], {
+          lookupExecutable: async () => undefined,
+          isInteractive: () => false,
+          packageManager: "npm",
+          processOptions: { processRunner: runner, platform: "win32" },
+          output,
+        });
+
+        expect(plainProblem(output.problems[0]).fixes).to.deep.equal(
+          missingPluginProblem("npm.cmd install -g @antelopejs/dms-frontend")
+            .fixes,
+        );
+      });
+    };
+
+  const checkStopsWhenTheUserDeclines: (this: Mocha.Suite) => void =
+    function () {
+      it("stops when the user declines the installation", async () => {
+        const output = createOutput();
+        const { runner, calls } = createProcessRunner();
+
+        const result = await delegateToPlugin(["dms"], {
+          lookupExecutable: async () => undefined,
+          isInteractive: () => true,
+          packageManager: "yarn",
+          processOptions: { processRunner: runner, platform: "linux" },
+          confirmInstall: async () => false,
+          output,
+        });
+
+        expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
+        expect(calls).to.deep.equal([]);
+        expect(output.problems.map(plainProblem)).to.deep.equal([
+          missingPluginProblem("yarn global add @antelopejs/dms-frontend"),
+        ]);
+      });
+
+      it("reports a failed installation", async () => {
+        const output = createOutput();
+        const { runner } = createProcessRunner([1]);
+
+        const result = await delegateToPlugin(["dms"], {
+          lookupExecutable: async () => undefined,
+          isInteractive: () => true,
+          packageManager: "npm",
+          processOptions: { processRunner: runner, platform: "linux" },
+          confirmInstall: async () => true,
+          output,
+        });
+
+        expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
+        expect(output.errors).to.deep.equal([
+          "Installation failed: npm install -g @antelopejs/dms-frontend",
+        ]);
+      });
+
+      it("never offers a global install when the plugin resolves locally", async () => {
+        const output = createOutput();
+        const { runner, calls } = createProcessRunner([0]);
+        const executablePath = LOCAL_DMS_EXECUTABLE;
+        let prompted = false;
+
+        const result = await delegateToPlugin(["dms", "dev"], {
+          lookupExecutable: async () => localExecutable(executablePath),
+          packageLookup: {
+            reader: createLocalReader({ peerRange: "^1.5.0" }),
+            packageManager: "npm",
+            resolveGlobalRoot: createGlobalRootResolver(GLOBAL_ROOT),
+          },
+          coreVersion: CORE_VERSION,
+          isInteractive: () => true,
+          packageManager: "npm",
+          processOptions: { processRunner: runner, platform: "linux" },
+          confirmInstall: async () => {
+            prompted = true;
+            return true;
+          },
+          output,
+        });
+
+        expect(prompted).to.equal(false);
+        expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
+        expect(formatSpawnCalls(calls)).to.deep.equal([
+          `${executablePath} dev`,
+        ]);
+        expect(output.errors).to.deep.equal([]);
+      });
+
+      it("reports when the installed plugin stays out of PATH", async () => {
+        const output = createOutput();
+        const { runner } = createProcessRunner([0]);
+
+        const result = await delegateToPlugin(["dms"], {
+          lookupExecutable: async () => undefined,
+          isInteractive: () => true,
+          packageManager: "npm",
+          processOptions: { processRunner: runner, platform: "linux" },
+          confirmInstall: async () => true,
+          output,
+        });
+
+        expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
+        expect(output.errors).to.deep.equal([
+          "@antelopejs/dms-frontend was installed but ajs-dms is not available in PATH.",
+        ]);
+      });
+    };
+
+  registerOfficialPluginInstallation = () => {
+    describe("explains how to install the plugin and fails when not interactive", function () {
+      checkExplainsHowToInstallThe.call(this);
     });
 
-    expect(questions).to.deep.equal([
-      "The DMS plugin is not installed. Install @antelopejs/dms-frontend globally now?",
-    ]);
-    expect(formatSpawnCalls(calls)).to.deep.equal([
-      "pnpm add -g @antelopejs/dms-frontend",
-      `${DMS_EXECUTABLE} build`,
-    ]);
-    expect(result).to.deep.equal({ isDelegated: true, exitCode: 7 });
-  });
-
-  it("uses the Windows shim when installing on Windows", async () => {
-    const output = createOutput();
-    const { runner } = createProcessRunner();
-
-    await delegateToPlugin(["dms"], {
-      lookupExecutable: async () => undefined,
-      isInteractive: () => false,
-      packageManager: "npm",
-      processOptions: { processRunner: runner, platform: "win32" },
-      output,
+    describe("stops when the user declines the installation", function () {
+      checkStopsWhenTheUserDeclines.call(this);
     });
+  };
 
-    expect(plainProblem(output.problems[0]).fixes).to.deep.equal(
-      missingPluginProblem("npm.cmd install -g @antelopejs/dms-frontend").fixes,
-    );
+  describe("Official plugin installation", function () {
+    registerOfficialPluginInstallation.call(this);
   });
-
-  it("stops when the user declines the installation", async () => {
-    const output = createOutput();
-    const { runner, calls } = createProcessRunner();
-
-    const result = await delegateToPlugin(["dms"], {
-      lookupExecutable: async () => undefined,
-      isInteractive: () => true,
-      packageManager: "yarn",
-      processOptions: { processRunner: runner, platform: "linux" },
-      confirmInstall: async () => false,
-      output,
-    });
-
-    expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
-    expect(calls).to.deep.equal([]);
-    expect(output.problems.map(plainProblem)).to.deep.equal([
-      missingPluginProblem("yarn global add @antelopejs/dms-frontend"),
-    ]);
-  });
-
-  it("reports a failed installation", async () => {
-    const output = createOutput();
-    const { runner } = createProcessRunner([1]);
-
-    const result = await delegateToPlugin(["dms"], {
-      lookupExecutable: async () => undefined,
-      isInteractive: () => true,
-      packageManager: "npm",
-      processOptions: { processRunner: runner, platform: "linux" },
-      confirmInstall: async () => true,
-      output,
-    });
-
-    expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
-    expect(output.errors).to.deep.equal([
-      "Installation failed: npm install -g @antelopejs/dms-frontend",
-    ]);
-  });
-
-  it("never offers a global install when the plugin resolves locally", async () => {
-    const output = createOutput();
-    const { runner, calls } = createProcessRunner([0]);
-    const executablePath = LOCAL_DMS_EXECUTABLE;
-    let prompted = false;
-
-    const result = await delegateToPlugin(["dms", "dev"], {
-      lookupExecutable: async () => localExecutable(executablePath),
-      packageLookup: {
-        reader: createLocalReader({ peerRange: "^1.5.0" }),
-        packageManager: "npm",
-        resolveGlobalRoot: createGlobalRootResolver(GLOBAL_ROOT),
-      },
-      coreVersion: CORE_VERSION,
-      isInteractive: () => true,
-      packageManager: "npm",
-      processOptions: { processRunner: runner, platform: "linux" },
-      confirmInstall: async () => {
-        prompted = true;
-        return true;
-      },
-      output,
-    });
-
-    expect(prompted).to.equal(false);
-    expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
-    expect(formatSpawnCalls(calls)).to.deep.equal([`${executablePath} dev`]);
-    expect(output.errors).to.deep.equal([]);
-  });
-
-  it("reports when the installed plugin stays out of PATH", async () => {
-    const output = createOutput();
-    const { runner } = createProcessRunner([0]);
-
-    const result = await delegateToPlugin(["dms"], {
-      lookupExecutable: async () => undefined,
-      isInteractive: () => true,
-      packageManager: "npm",
-      processOptions: { processRunner: runner, platform: "linux" },
-      confirmInstall: async () => true,
-      output,
-    });
-
-    expect(result).to.deep.equal({ isDelegated: true, exitCode: 1 });
-    expect(output.errors).to.deep.equal([
-      "@antelopejs/dms-frontend was installed but ajs-dms is not available in PATH.",
-    ]);
-  });
-});
+}

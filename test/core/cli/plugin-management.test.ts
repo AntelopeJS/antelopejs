@@ -241,161 +241,186 @@ describe("Official plugin table", () => {
   });
 });
 
-describe("Official plugin update", () => {
-  it("updates the core and installed plugins", async () => {
-    const { runner, calls } = createProcessRunner([0, 0]);
-    const output = createOutput();
+{
+  let registerOfficialPluginUpdate: (this: Mocha.Suite) => void;
 
-    const exitCode = await runUpdate(undefined, {
-      detectInstallation: () => NPM_INSTALLATION,
-      lookupExecutable: async () => GLOBAL_DMS,
-      packageLookup: { reader: createInstalledReader() },
-      processOptions: { processRunner: runner, platform: "linux" },
-      output,
+  const checkUpdatesTheCoreAndInstalled: (this: Mocha.Suite) => void =
+    function () {
+      it("updates the core and installed plugins", async () => {
+        const { runner, calls } = createProcessRunner([0, 0]);
+        const output = createOutput();
+
+        const exitCode = await runUpdate(undefined, {
+          detectInstallation: () => NPM_INSTALLATION,
+          lookupExecutable: async () => GLOBAL_DMS,
+          packageLookup: { reader: createInstalledReader() },
+          processOptions: { processRunner: runner, platform: "linux" },
+          output,
+        });
+
+        expect(exitCode).to.equal(0);
+        expect(formatSpawnCalls(calls)).to.deep.equal([
+          "npm install -g @antelopejs/core@latest",
+          "npm install -g @antelopejs/dms-frontend@latest",
+        ]);
+        expect(output.infos).to.deep.equal([
+          "Running: npm install -g @antelopejs/core@latest",
+          "Running: npm install -g @antelopejs/dms-frontend@latest",
+        ]);
+      });
+
+      it("updates only the core when no plugin is installed", async () => {
+        const { runner, calls } = createProcessRunner([0]);
+
+        const exitCode = await runUpdate(undefined, {
+          detectInstallation: () => ({
+            packageManager: "pnpm",
+            binaryPath:
+              "/home/user/.local/share/pnpm/global/5/node_modules/ajs",
+          }),
+          lookupExecutable: async () => undefined,
+          processOptions: { processRunner: runner, platform: "linux" },
+          output: createOutput(),
+        });
+
+        expect(exitCode).to.equal(0);
+        expect(formatSpawnCalls(calls)).to.deep.equal([
+          "pnpm add -g @antelopejs/core@latest",
+        ]);
+      });
+
+      it("leaves a locally resolved plugin to the project package manager", async () => {
+        const { runner, calls } = createProcessRunner([0]);
+
+        const exitCode = await runUpdate(undefined, {
+          detectInstallation: () => NPM_INSTALLATION,
+          lookupExecutable: async () => localExecutable(LOCAL_DMS_EXECUTABLE),
+          packageLookup: { reader: createLocalReader() },
+          processOptions: { processRunner: runner, platform: "linux" },
+          output: createOutput(),
+        });
+
+        expect(exitCode).to.equal(0);
+        expect(formatSpawnCalls(calls)).to.deep.equal([
+          "npm install -g @antelopejs/core@latest",
+        ]);
+      });
+
+      it("updates a single plugin by name", async () => {
+        const { runner, calls } = createProcessRunner([0]);
+
+        const exitCode = await runUpdate("dms", {
+          detectInstallation: () => ({
+            packageManager: "yarn",
+            binaryPath: "/home/user/.config/yarn/global/node_modules/ajs",
+          }),
+          processOptions: { processRunner: runner, platform: "linux" },
+          output: createOutput(),
+        });
+
+        expect(exitCode).to.equal(0);
+        expect(formatSpawnCalls(calls)).to.deep.equal([
+          "yarn global add @antelopejs/dms-frontend@latest",
+        ]);
+      });
+
+      it("refuses to update a CLI that is not installed globally", async () => {
+        const { runner, calls } = createProcessRunner();
+        const output = createOutput();
+
+        const exitCode = await runUpdate(undefined, {
+          detectInstallation: () => undefined,
+          processOptions: { processRunner: runner },
+          output,
+        });
+
+        expect(exitCode).to.equal(1);
+        expect(calls).to.deep.equal([]);
+        expect(output.errors).to.deep.equal([]);
+        expect(output.problems).to.have.length(1);
+        expect(output.problems[0].title).to.equal(
+          "ajs is not installed globally",
+        );
+        expect(output.problems[0].fixes).to.deep.equal([
+          "Update @antelopejs/core in the project with its package manager instead",
+        ]);
+      });
+    };
+
+  const checkRejectsUnknownPluginNamesWith: (this: Mocha.Suite) => void =
+    function () {
+      it("rejects unknown plugin names with a usage error", async () => {
+        const { runner, calls } = createProcessRunner();
+        const output = createOutput();
+
+        const exitCode = await runUpdate("unknown", {
+          detectInstallation: () => NPM_INSTALLATION,
+          processOptions: { processRunner: runner },
+          output,
+        });
+
+        expect(exitCode).to.equal(2);
+        expect(calls).to.deep.equal([]);
+        expect(output.problems.map(plainProblem)).to.deep.equal([
+          {
+            title: "Unknown plugin 'unknown'",
+            reason: "Official plugins: dms.",
+            fixes: ["Run ajs plugins to list them"],
+            exitCode: 2,
+          },
+        ]);
+      });
+
+      it("validates the plugin name before the global installation", async () => {
+        const output = createOutput();
+        let isDetected = false;
+
+        const exitCode = await runUpdate("foo", {
+          detectInstallation: () => {
+            isDetected = true;
+            return undefined;
+          },
+          output,
+        });
+
+        expect(exitCode).to.equal(2);
+        expect(isDetected).to.equal(false);
+        expect(output.problems.map((problem) => problem.title)).to.deep.equal([
+          "Unknown plugin 'foo'",
+        ]);
+      });
+
+      it("stops and propagates a failing update", async () => {
+        const { runner, calls } = createProcessRunner([3]);
+        const output = createOutput();
+
+        const exitCode = await runUpdate(undefined, {
+          detectInstallation: () => NPM_INSTALLATION,
+          lookupExecutable: async () => GLOBAL_DMS,
+          packageLookup: { reader: createInstalledReader() },
+          processOptions: { processRunner: runner, platform: "linux" },
+          output,
+        });
+
+        expect(exitCode).to.equal(3);
+        expect(calls).to.have.length(1);
+        expect(output.errors).to.deep.equal([
+          "Update failed: npm install -g @antelopejs/core@latest",
+        ]);
+      });
+    };
+
+  registerOfficialPluginUpdate = () => {
+    describe("updates the core and installed plugins", function () {
+      checkUpdatesTheCoreAndInstalled.call(this);
     });
 
-    expect(exitCode).to.equal(0);
-    expect(formatSpawnCalls(calls)).to.deep.equal([
-      "npm install -g @antelopejs/core@latest",
-      "npm install -g @antelopejs/dms-frontend@latest",
-    ]);
-    expect(output.infos).to.deep.equal([
-      "Running: npm install -g @antelopejs/core@latest",
-      "Running: npm install -g @antelopejs/dms-frontend@latest",
-    ]);
-  });
-
-  it("updates only the core when no plugin is installed", async () => {
-    const { runner, calls } = createProcessRunner([0]);
-
-    const exitCode = await runUpdate(undefined, {
-      detectInstallation: () => ({
-        packageManager: "pnpm",
-        binaryPath: "/home/user/.local/share/pnpm/global/5/node_modules/ajs",
-      }),
-      lookupExecutable: async () => undefined,
-      processOptions: { processRunner: runner, platform: "linux" },
-      output: createOutput(),
+    describe("rejects unknown plugin names with a usage error", function () {
+      checkRejectsUnknownPluginNamesWith.call(this);
     });
+  };
 
-    expect(exitCode).to.equal(0);
-    expect(formatSpawnCalls(calls)).to.deep.equal([
-      "pnpm add -g @antelopejs/core@latest",
-    ]);
+  describe("Official plugin update", function () {
+    registerOfficialPluginUpdate.call(this);
   });
-
-  it("leaves a locally resolved plugin to the project package manager", async () => {
-    const { runner, calls } = createProcessRunner([0]);
-
-    const exitCode = await runUpdate(undefined, {
-      detectInstallation: () => NPM_INSTALLATION,
-      lookupExecutable: async () => localExecutable(LOCAL_DMS_EXECUTABLE),
-      packageLookup: { reader: createLocalReader() },
-      processOptions: { processRunner: runner, platform: "linux" },
-      output: createOutput(),
-    });
-
-    expect(exitCode).to.equal(0);
-    expect(formatSpawnCalls(calls)).to.deep.equal([
-      "npm install -g @antelopejs/core@latest",
-    ]);
-  });
-
-  it("updates a single plugin by name", async () => {
-    const { runner, calls } = createProcessRunner([0]);
-
-    const exitCode = await runUpdate("dms", {
-      detectInstallation: () => ({
-        packageManager: "yarn",
-        binaryPath: "/home/user/.config/yarn/global/node_modules/ajs",
-      }),
-      processOptions: { processRunner: runner, platform: "linux" },
-      output: createOutput(),
-    });
-
-    expect(exitCode).to.equal(0);
-    expect(formatSpawnCalls(calls)).to.deep.equal([
-      "yarn global add @antelopejs/dms-frontend@latest",
-    ]);
-  });
-
-  it("refuses to update a CLI that is not installed globally", async () => {
-    const { runner, calls } = createProcessRunner();
-    const output = createOutput();
-
-    const exitCode = await runUpdate(undefined, {
-      detectInstallation: () => undefined,
-      processOptions: { processRunner: runner },
-      output,
-    });
-
-    expect(exitCode).to.equal(1);
-    expect(calls).to.deep.equal([]);
-    expect(output.errors).to.deep.equal([]);
-    expect(output.problems).to.have.length(1);
-    expect(output.problems[0].title).to.equal("ajs is not installed globally");
-    expect(output.problems[0].fixes).to.deep.equal([
-      "Update @antelopejs/core in the project with its package manager instead",
-    ]);
-  });
-
-  it("rejects unknown plugin names with a usage error", async () => {
-    const { runner, calls } = createProcessRunner();
-    const output = createOutput();
-
-    const exitCode = await runUpdate("unknown", {
-      detectInstallation: () => NPM_INSTALLATION,
-      processOptions: { processRunner: runner },
-      output,
-    });
-
-    expect(exitCode).to.equal(2);
-    expect(calls).to.deep.equal([]);
-    expect(output.problems.map(plainProblem)).to.deep.equal([
-      {
-        title: "Unknown plugin 'unknown'",
-        reason: "Official plugins: dms.",
-        fixes: ["Run ajs plugins to list them"],
-        exitCode: 2,
-      },
-    ]);
-  });
-
-  it("validates the plugin name before the global installation", async () => {
-    const output = createOutput();
-    let isDetected = false;
-
-    const exitCode = await runUpdate("foo", {
-      detectInstallation: () => {
-        isDetected = true;
-        return undefined;
-      },
-      output,
-    });
-
-    expect(exitCode).to.equal(2);
-    expect(isDetected).to.equal(false);
-    expect(output.problems.map((problem) => problem.title)).to.deep.equal([
-      "Unknown plugin 'foo'",
-    ]);
-  });
-
-  it("stops and propagates a failing update", async () => {
-    const { runner, calls } = createProcessRunner([3]);
-    const output = createOutput();
-
-    const exitCode = await runUpdate(undefined, {
-      detectInstallation: () => NPM_INSTALLATION,
-      lookupExecutable: async () => GLOBAL_DMS,
-      packageLookup: { reader: createInstalledReader() },
-      processOptions: { processRunner: runner, platform: "linux" },
-      output,
-    });
-
-    expect(exitCode).to.equal(3);
-    expect(calls).to.have.length(1);
-    expect(output.errors).to.deep.equal([
-      "Update failed: npm install -g @antelopejs/core@latest",
-    ]);
-  });
-});
+}
