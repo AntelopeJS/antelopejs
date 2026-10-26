@@ -22,7 +22,7 @@ interface ModuleSpec {
   exportPriority?: Record<string, number>;
 }
 
-const INTERFACES: Record<string, string[]> = {
+const INTERFACES = {
   [DB]: [],
   [HTTP]: [],
   [DEC]: [HTTP, DB],
@@ -35,7 +35,7 @@ const INTERFACES: Record<string, string[]> = {
   logs: [],
   i1: [],
   i2: [],
-};
+} satisfies Record<string, string[]>;
 
 function interfaces(): Map<string, BindingInterface> {
   return new Map(
@@ -106,9 +106,7 @@ function databasePriority(priority?: number): Record<string, number> {
   return priority === undefined ? {} : { [DB]: priority };
 }
 
-const exampleTree = (
-  pins: Record<string, Record<string, string>> = {},
-): ProjectSpec => ({
+const exampleTree = (pins: Record<string, Record<string, string>> = {}) => ({
   rethink: { implements: [DB] },
   mongo: { implements: [DB] },
   module1: { implements: ["interface1"], uses: [DB], pins: pins.module1 },
@@ -122,7 +120,7 @@ const exampleTree = (
 const diamond = (
   top2Pins: Record<string, string>,
   mPins: Record<string, string> = {},
-): ProjectSpec => ({
+) => ({
   a: { implements: [DB] },
   b: { implements: [DB] },
   top1: { uses: ["iface-m"], pins: { [DB]: "b" } },
@@ -131,10 +129,7 @@ const diamond = (
   n: { implements: ["iface-n"], uses: [DB] },
 });
 
-const dms = (
-  dmsPins: Record<string, string>,
-  mongoPriority?: number,
-): ProjectSpec => ({
+const dms = (dmsPins: Record<string, string>, mongoPriority?: number) => ({
   mongodb: {
     implements: [DB],
     exportPriority: databasePriority(mongoPriority),
@@ -321,7 +316,7 @@ describe("buildBindingGraph: diamonds", () => {
 });
 
 describe("buildBindingGraph: defaults", () => {
-  const branch = (priorities: Record<string, number> = {}): ProjectSpec => ({
+  const branch = (priorities: Record<string, number> = {}) => ({
     mongodb: {
       implements: [DB],
       exportPriority: databasePriority(priorities.mongodb),

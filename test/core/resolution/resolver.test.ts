@@ -1,3 +1,5 @@
+import { manifestFixture, moduleFixture } from "../../helpers/module-fixtures";
+
 import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
@@ -16,21 +18,21 @@ const CORE_CANONICAL_DIR = path.dirname(
   require.resolve(`${CORE_PKG}/package.json`),
 );
 
-const moduleA = {
+const moduleA = moduleFixture({
   id: "modA",
-  manifest: {
+  manifest: manifestFixture({
     srcAliases: [{ alias: "@src", replace: "/modA/src" }],
     paths: [],
-  },
-} as any;
+  }),
+});
 
-const moduleB = {
+const moduleB = moduleFixture({
   id: "modB",
-  manifest: {
+  manifest: manifestFixture({
     srcAliases: [{ alias: "@src", replace: "/mod/src" }],
     paths: [],
-  },
-} as any;
+  }),
+});
 
 describe("Resolver", () => {
   it("returns undefined for @ajs.local requests", () => {
@@ -39,7 +41,7 @@ describe("Resolver", () => {
 
     const result = resolver.resolve("@ajs.local/foo", {
       filename: "/modA/src/index.js",
-    } as any);
+    });
 
     expect(result).to.equal(undefined);
   });
@@ -50,7 +52,7 @@ describe("Resolver", () => {
 
     const result = resolver.resolve("@ajs/foo", {
       filename: "/modA/src/index.js",
-    } as any);
+    });
 
     expect(result).to.equal(undefined);
   });
@@ -62,7 +64,7 @@ describe("Resolver", () => {
 
     const result = resolver.resolve("@src/utils", {
       filename: "/modA/src/index.js",
-    } as any);
+    });
 
     expect(result?.resolvedPath).to.equal("/modA/src/utils");
     expect(result?.resolveFrom).to.equal(undefined);
@@ -74,7 +76,7 @@ describe("Resolver", () => {
 
     const result = resolver.resolve("@ajs/invalid", {
       filename: "/modA/src/index.js",
-    } as any);
+    });
 
     expect(result).to.equal(undefined);
   });
@@ -86,7 +88,7 @@ describe("Resolver", () => {
 
     const result = resolver.resolve("@src/utils", {
       filename: "/modA/src/index.js",
-    } as any);
+    });
 
     expect(result?.resolvedPath).to.equal("/modA/src/utils");
   });
@@ -97,7 +99,7 @@ describe("Resolver", () => {
 
     const result = resolver.resolve("@src/utils", {
       filename: "/modules/mod-a2/index.js",
-    } as any);
+    });
 
     expect(result).to.equal(undefined);
   });
@@ -277,7 +279,10 @@ function createInstanceFixture(): InstanceFixture {
   const moduleFile = (id: string) => path.join(root, "modules", id, "index.js");
   for (const id of ["provider-a", "provider-b", "consumer-a", "consumer-b"]) {
     writeFile(moduleFile(id), "module.exports = {};");
-    const module = { id, manifest: { paths: [], srcAliases: [] } } as any;
+    const module = moduleFixture({
+      id,
+      manifest: manifestFixture({ paths: [], srcAliases: [] }),
+    });
     resolver.moduleByFolder.set(path.dirname(moduleFile(id)), module);
     resolver.modulesById.set(id, module);
   }

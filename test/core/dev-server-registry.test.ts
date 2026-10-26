@@ -1,7 +1,9 @@
+import { interfaceProxy } from "../helpers/interface-proxy";
 import { expect } from "chai";
 import {
   DEV_REGISTRY_PATH,
   type DevServerEndpoint,
+  type DevServerRegistry,
   GetRuntimeInfo,
   RegisterDevServer,
 } from "@antelopejs/interface-core/runtime";
@@ -13,17 +15,10 @@ import {
   registerCoreRuntimeInterface,
 } from "../../src/core/runtime/dev-server-registry";
 
-interface ResettableProxy {
-  onCall(callback: () => undefined, manualDetach?: boolean): void;
-  detach(): void;
-}
-
-interface ProxiedInterfaceFunction {
-  proxy: ResettableProxy;
-}
-
-function resetProxy(interfaceFunction: unknown): void {
-  const { proxy } = interfaceFunction as ProxiedInterfaceFunction;
+function resetProxy<Args extends unknown[], Result>(
+  interfaceFunction: (...args: Args) => Result,
+): void {
+  const proxy = interfaceProxy(interfaceFunction);
   proxy.onCall(() => undefined, true);
   proxy.detach();
 }
@@ -53,7 +48,9 @@ function createStore(
   });
 }
 
-async function readRegistry(fs: InMemoryFileSystem): Promise<unknown> {
+async function readRegistry(
+  fs: InMemoryFileSystem,
+): Promise<DevServerRegistry> {
   return JSON.parse(await fs.readFileString(REGISTRY_PATH));
 }
 
@@ -80,9 +77,7 @@ describe("core/runtime dev server registry", () => {
       await store.register("api", API_ENDPOINTS);
       await store.register("ws", WS_ENDPOINTS);
 
-      const registry = (await readRegistry(fs)) as {
-        servers: Record<string, unknown>;
-      };
+      const registry = await readRegistry(fs);
       expect(registry.servers).to.deep.equal({
         api: { endpoints: API_ENDPOINTS },
         ws: { endpoints: WS_ENDPOINTS },
@@ -98,9 +93,7 @@ describe("core/runtime dev server registry", () => {
         store.register("ws", WS_ENDPOINTS),
       ]);
 
-      const registry = (await readRegistry(fs)) as {
-        servers: Record<string, unknown>;
-      };
+      const registry = await readRegistry(fs);
       expect(registry.servers).to.deep.equal({
         api: { endpoints: API_ENDPOINTS },
         ws: { endpoints: WS_ENDPOINTS },
@@ -195,10 +188,7 @@ describe("core/runtime dev server registry", () => {
       });
 
       await RegisterDevServer("api", API_ENDPOINTS);
-      const registry = (await readRegistry(fs)) as {
-        pid: number;
-        servers: Record<string, unknown>;
-      };
+      const registry = await readRegistry(fs);
       expect(registry.pid).to.equal(process.pid);
       expect(registry.servers).to.deep.equal({
         api: { endpoints: API_ENDPOINTS },

@@ -1,3 +1,10 @@
+import { ModuleState } from "../../src/types";
+import {
+  loadedConfigFixture,
+  moduleFixture,
+  manifestFixture,
+} from "../helpers/module-fixtures";
+
 import sinon from "sinon";
 import { expect } from "chai";
 import { internal } from "@antelopejs/interface-core/internal";
@@ -20,37 +27,39 @@ describe("core/beta module interface", () => {
   });
 
   it("exposes module operations over the core interface", async () => {
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      cacheFolder: ".antelope/cache",
-      modules: {},
-      projectFolder: "/project",
-    } as any);
+    sinon.stub(ConfigLoader.prototype, "load").resolves(
+      loadedConfigFixture({
+        cacheFolder: ".antelope/cache",
+        modules: {},
+        projectFolder: "/project",
+      }),
+    );
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const manifestStub = {
+    const manifestStub = manifestFixture({
       name: "modA",
       version: "1.0.0",
       main: "/mods/modA/index.js",
       folder: "/mods/modA",
       imports: [],
       source: { type: "local", path: "/mods/modA" },
-    } as any;
+    });
 
     const loadStub = sinon.stub(DownloaderRegistry.prototype, "load");
     loadStub.onCall(0).resolves([manifestStub]);
     loadStub.onCall(1).resolves([manifestStub]);
 
     const entry = {
-      module: {
+      module: moduleFixture({
         id: "modA",
-        state: "active",
-        manifest: {
+        state: ModuleState.Active,
+        manifest: manifestFixture({
           source: { type: "local", path: "/mods/modA" },
           folder: "/mods/modA",
-        },
+        }),
         stop: sinon.stub().resolves(),
         destroy: sinon.stub().resolves(),
-      },
+      }),
       config: {
         config: { enabled: true },
         disabledExports: new Set(["foo"]),
@@ -63,22 +72,20 @@ describe("core/beta module interface", () => {
     sinon
       .stub(ModuleManager.prototype, "listModules")
       .returns(["modA", "modB"]);
-    sinon.stub(ModuleManager.prototype, "getModuleEntry").returns(entry as any);
-    sinon
-      .stub(ModuleManager.prototype, "getLoadedModuleEntry")
-      .returns(entry as any);
+    sinon.stub(ModuleManager.prototype, "getModuleEntry").returns(entry);
+    sinon.stub(ModuleManager.prototype, "getLoadedModuleEntry").returns(entry);
     sinon.stub(ModuleManager.prototype, "addModules").returns([
       {
-        module: {
+        module: moduleFixture({
           id: "modA",
-          manifest: {
+          manifest: manifestFixture({
             folder: "/mods/modA",
             implements: [],
             manifest: { name: "modA" },
-          },
-        },
+          }),
+        }),
         config: entry.config,
-      } as any,
+      },
     ]);
     const constructStub = sinon
       .stub(ModuleManager.prototype, "constructModules")
@@ -86,7 +93,7 @@ describe("core/beta module interface", () => {
     const startStub = sinon.stub(ModuleManager.prototype, "startModules");
     const replaceStub = sinon
       .stub(ModuleManager.prototype, "replaceLoadedModule")
-      .returns(entry as any);
+      .returns(entry);
     const refreshStub = sinon.stub(
       ModuleManager.prototype,
       "refreshAssociations",

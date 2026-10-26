@@ -1,6 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
+import { FileHasher } from "../../../src/core/watch/file-hasher";
 import { FileWatcher } from "../../../src/core/watch/file-watcher";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
@@ -325,9 +326,7 @@ describe("FileWatcher", () => {
     watcher.startWatching();
 
     expect(changes).to.deep.equal([]);
-    expect(
-      (watcher as unknown as { watchers: Map<string, unknown> }).watchers.size,
-    ).to.equal(0);
+    expect(watcher["watchers"].size).to.equal(0);
   });
 
   it("does not notify watched-file listeners after stopWatching", async () => {
@@ -354,14 +353,13 @@ describe("FileWatcher", () => {
     await fs.writeFile("/mod/node_modules/ignored.txt", "y");
     await fs.writeFile("/mod/src/ok.txt", "z");
 
-    const hasher = { hashFile: sinon.stub().resolves("hash") } as any;
+    const hasher = sinon.createStubInstance(FileHasher);
+    hasher.hashFile.resolves("hash");
     const watcher = new FileWatcher(fs, hasher);
 
     await watcher.scanModule("mod", "/mod");
 
-    const hashedFiles = (hasher.hashFile as sinon.SinonStub)
-      .getCalls()
-      .map((call: sinon.SinonSpyCall) => call.args[0] as string);
+    const hashedFiles = hasher.hashFile.getCalls().map((call) => call.args[0]);
     expect(hashedFiles).to.include("/mod/src/ok.txt");
     expect(hashedFiles).to.not.include("/mod/.git/ignored.txt");
     expect(hashedFiles).to.not.include("/mod/node_modules/ignored.txt");
@@ -373,14 +371,13 @@ describe("FileWatcher", () => {
     await fs.writeFile("/project/.antelope/dev.json", "{}");
     await fs.writeFile("/project/.antelope/cache/manifest.json", "{}");
 
-    const hasher = { hashFile: sinon.stub().resolves("hash") } as any;
+    const hasher = sinon.createStubInstance(FileHasher);
+    hasher.hashFile.resolves("hash");
     const watcher = new FileWatcher(fs, hasher);
     watcher.excludePath("/project/.antelope");
     await watcher.scanModule("mod", "/project");
 
-    const hashedFiles = (hasher.hashFile as sinon.SinonStub)
-      .getCalls()
-      .map((call: sinon.SinonSpyCall) => call.args[0] as string);
+    const hashedFiles = hasher.hashFile.getCalls().map((call) => call.args[0]);
     expect(hashedFiles).to.deep.equal(["/project/index.js"]);
 
     const changes: string[] = [];

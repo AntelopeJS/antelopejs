@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { expect } from "chai";
 import { internal } from "@antelopejs/interface-core/internal";
 import {
@@ -22,7 +23,8 @@ describe("neutralizeInterfaceAsyncProxies", () => {
     try {
       await iface.doThing(1);
     } catch (e) {
-      error = e as Error;
+      assert.ok(e instanceof Error);
+      error = e;
     }
     expect(error).to.be.instanceOf(Error);
     expect(error?.message).to.match(/test-iface/);

@@ -1,3 +1,4 @@
+import { manifestFixture } from "../../helpers/module-fixtures";
 import path from "node:path";
 import { expect } from "chai";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -16,11 +17,11 @@ describe("findUnresolvedInterfaces", () => {
   it("places missing required deps into unresolved", () => {
     const providers: InterfaceProvider[] = [];
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: CONSUMER_FOLDER,
         dependencies: { [CORE_INTERFACE_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces(providers, consumers);
@@ -36,12 +37,12 @@ describe("findUnresolvedInterfaces", () => {
   it("places missing optional deps into stubbed, not unresolved", () => {
     const providers: InterfaceProvider[] = [];
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: CONSUMER_FOLDER,
         dependencies: {},
         optionalDependencies: { [CORE_INTERFACE_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces(providers, consumers);
@@ -58,12 +59,12 @@ describe("findUnresolvedInterfaces", () => {
   it("ignores deps that are not interface packages", () => {
     const providers: InterfaceProvider[] = [];
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: CONSUMER_FOLDER,
         dependencies: { chai: "*" },
         optionalDependencies: { mocha: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces(providers, consumers);
@@ -77,11 +78,11 @@ describe("findUnresolvedInterfaces", () => {
       { implements: [CORE_INTERFACE_PKG] },
     ];
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: CONSUMER_FOLDER,
         dependencies: { [CORE_INTERFACE_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces(providers, consumers);
@@ -98,12 +99,12 @@ describe("findUnresolvedInterfaces", () => {
       },
     ];
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: CONSUMER_FOLDER,
         dependencies: {},
         optionalDependencies: { [CORE_INTERFACE_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces(providers, consumers);
@@ -115,11 +116,11 @@ describe("findUnresolvedInterfaces", () => {
   it("honors knownResolved as already-implemented", () => {
     const providers: InterfaceProvider[] = [];
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: CONSUMER_FOLDER,
         dependencies: { [CORE_INTERFACE_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces(providers, consumers, [
@@ -138,7 +139,7 @@ describe("findUnresolvedInterfaces (standalone interfaces)", () => {
   function writeInterfacePackage(
     root: string,
     name: string,
-    antelopeJs: Record<string, unknown>,
+    antelopeJs: { standalone?: boolean; implements?: string[] },
   ): void {
     const dir = path.join(root, "node_modules", ...name.split("/"));
     mkdirSync(dir, { recursive: true });
@@ -166,11 +167,11 @@ describe("findUnresolvedInterfaces (standalone interfaces)", () => {
 
   it("routes a missing standalone required dep into stubbed, not unresolved", () => {
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: consumerFolder,
         dependencies: { [STANDALONE_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces([], consumers);
@@ -187,11 +188,11 @@ describe("findUnresolvedInterfaces (standalone interfaces)", () => {
 
   it("still errors (unresolved) for a missing non-standalone required dep", () => {
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: consumerFolder,
         dependencies: { [PLAIN_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces([], consumers);
@@ -205,11 +206,11 @@ describe("findUnresolvedInterfaces (standalone interfaces)", () => {
   it("lets an implementing module win over standalone self-hosting", () => {
     const providers: InterfaceProvider[] = [{ implements: [STANDALONE_PKG] }];
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: consumerFolder,
         dependencies: { [STANDALONE_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces(providers, consumers);
@@ -220,12 +221,12 @@ describe("findUnresolvedInterfaces (standalone interfaces)", () => {
 
   it("marks a missing standalone optional dep as standalone in stubbed", () => {
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "consumer",
         folder: consumerFolder,
         dependencies: {},
         optionalDependencies: { [STANDALONE_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces([], consumers);
@@ -250,7 +251,7 @@ describe("findUnresolvedInterfaces (runtime modules are not interfaces)", () => 
   function writePackage(
     root: string,
     name: string,
-    antelopeJs: Record<string, unknown>,
+    antelopeJs: { standalone?: boolean; implements?: string[] },
   ): void {
     const dir = path.join(root, "node_modules", ...name.split("/"));
     mkdirSync(dir, { recursive: true });
@@ -280,11 +281,11 @@ describe("findUnresolvedInterfaces (runtime modules are not interfaces)", () => 
 
   it("ignores a dependency on a package that implements interfaces", () => {
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "playground",
         folder: consumerFolder,
         dependencies: { [RUNTIME_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces([], consumers);
@@ -298,11 +299,11 @@ describe("findUnresolvedInterfaces (runtime modules are not interfaces)", () => 
       { name: SELF_HOSTING_PKG, implements: [SELF_HOSTING_PKG] },
     ];
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "playground",
         folder: consumerFolder,
         dependencies: { [SELF_HOSTING_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces(providers, consumers, []);
@@ -313,11 +314,11 @@ describe("findUnresolvedInterfaces (runtime modules are not interfaces)", () => 
 
   it("still reports a self-hosting interface package nobody loads", () => {
     const consumers: InterfaceConsumer[] = [
-      {
+      manifestFixture({
         id: "playground",
         folder: consumerFolder,
         dependencies: { [SELF_HOSTING_PKG]: "*" },
-      },
+      }),
     ];
 
     const result = findUnresolvedInterfaces([], consumers);
