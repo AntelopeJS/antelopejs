@@ -43,8 +43,6 @@ function defaultGetParentPid(pid: number): number | undefined {
   } catch {
     return undefined;
   }
-  // The second field (the executable name) may contain spaces, so fields are
-  // read after its closing parenthesis: "<state> <ppid> ...".
   const fields = stat
     .slice(stat.lastIndexOf(")") + 1)
     .trim()
@@ -71,10 +69,10 @@ function isAlive(pid: number, kill: ProcessKill): boolean {
 }
 
 function signal(pid: number, name: string, kill: ProcessKill): void {
+  // oxfmt-ignore
   try {
     kill(pid, name);
   } catch {
-    // The process is already gone, or is not ours to signal.
   }
 }
 

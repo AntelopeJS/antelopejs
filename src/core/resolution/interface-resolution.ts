@@ -91,6 +91,11 @@ function readInterfacePackageInfo(
   };
 }
 
+/**
+ * Lists the interface dependencies of `consumers` that no provider implements.
+ * A standalone interface with no implementer self-hosts, so it is returned in
+ * `stubbed` rather than `unresolved` and does not block startup.
+ */
 export function findUnresolvedInterfaces(
   providers: InterfaceProvider[],
   consumers: InterfaceConsumer[],
@@ -120,8 +125,6 @@ export function findUnresolvedInterfaces(
         modulePackages,
       );
       if (!info.isInterface) continue;
-      // A standalone interface with no implementer self-hosts instead of
-      // blocking startup — route it through the stub/self-host path.
       if (info.standalone) {
         stubbed.push({
           moduleId: consumer.id,

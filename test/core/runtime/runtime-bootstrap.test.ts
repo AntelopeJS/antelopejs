@@ -205,9 +205,7 @@ describe("runtime runtime-bootstrap", () => {
     const shutdownStub = sinon.stub(shutdownManager, "shutdown").resolves();
 
     try {
-      // First call registers handlers without a shutdown manager
       bootstrap.setupProcessHandlers();
-      // Second call wires the manager (must not be ignored)
       bootstrap.setupProcessHandlers(shutdownManager);
 
       const current = snapshotProcessListeners();

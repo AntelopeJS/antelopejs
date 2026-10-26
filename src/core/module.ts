@@ -134,9 +134,12 @@ export class Module {
     );
   }
 
+  /**
+   * Destroys the module's running generation. A module still in the `Loaded`
+   * state is left untouched: it holds no context token, and entering its
+   * context would create one for a generation with nothing to destroy.
+   */
   async destroy(): Promise<void> {
-    // Entering the context of a module that holds no token creates one: a
-    // destroyed generation would come back to life for nothing to destroy.
     if (this.lifecycle.state === ModuleState.Loaded) return;
     await RunWithModuleContext(this.executionContext, async () => {
       try {

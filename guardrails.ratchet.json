@@ -1,6 +1,5 @@
 {
   "rules": {
-    "antelopejs/no-comments": 93,
     "anti-slop/no-chained-type-assertions": 20,
     "anti-slop/no-conditional-empty-object-spread": 2,
     "anti-slop/no-known-value-widening": 48,
@@ -19,17 +18,17 @@
     "typescript/unbound-method": 1
   },
   "oversizeFiles": {
-    "src/core/module-manager.ts": 46457,
+    "src/core/module-manager.ts": 46324,
     "src/core/runtime/module-loading.ts": 21598,
     "test/core/cli/commands/project/modules.behavior.test.ts": 42671,
     "test/core/cli/commands/project/modules/install.behavior.test.ts": 30349,
     "test/core/downloaders/git.test.ts": 20741,
     "test/core/downloaders/package.test.ts": 22932,
     "test/core/module-lifecycle.test.ts": 17695,
-    "test/core/module-manager.test.ts": 47342,
+    "test/core/module-manager.test.ts": 46946,
     "test/core/runtime/module-loading.test.ts": 40434,
     "test/core/test/test-module.test.ts": 21126,
-    "test/integration/launch.test.ts": 20861,
+    "test/integration/launch.test.ts": 19800,
     "test/integration/provider-routing.test.ts": 35562
   }
 }

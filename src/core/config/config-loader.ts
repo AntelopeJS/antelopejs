@@ -6,10 +6,7 @@ import type {
   ConfigInput,
 } from "@antelopejs/interface-core/config";
 
-/* The namespace self-import is the seam the unit tests stub through: calls below
-   go via `self.` so `sinon.stub(module, "fn")` is honoured. Removing it silently
-   disables those stubs. */
-// oxlint-disable-next-line import/no-self-import, import/no-cycle -- see above
+// oxlint-disable-next-line import/no-self-import, import/no-cycle -- test seam: calls go through `self.` so `sinon.stub(module, "fn")` takes effect
 import * as self from "./config-loader";
 import type { IFileSystem } from "../../types";
 import { mergeDeep } from "../../utils/object";

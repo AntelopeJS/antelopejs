@@ -55,15 +55,13 @@ describe("CLI main guard", () => {
   });
 
   it("does not register its own SIGINT listener in module scope", () => {
-    // Pre-load transitive dependencies that register SIGINT handlers (e.g. proper-lockfile via signal-exit)
     delete require.cache[cliPath];
     require(cliPath);
-    const baselineCount = process.listenerCount("SIGINT");
+    const listenersFromDependencies = process.listenerCount("SIGINT");
 
-    // Re-require the CLI module — should not add any additional listeners
     delete require.cache[cliPath];
     require(cliPath);
-    expect(process.listenerCount("SIGINT")).to.equal(baselineCount);
+    expect(process.listenerCount("SIGINT")).to.equal(listenersFromDependencies);
   });
 
   it("reports a cancelled prompt and exits with the cancelled code", async () => {

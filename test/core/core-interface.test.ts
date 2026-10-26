@@ -117,7 +117,6 @@ describe("core/beta module interface", () => {
       true,
     );
     expect(loadedIds).to.deep.equal(["modA"]);
-    // modA is already loaded: its running generation goes down first.
     expect(entry.module.stop.calledOnce).to.equal(true);
     expect(entry.module.destroy.calledBefore(constructStub)).to.equal(true);
     expect(constructStub.calledOnce).to.equal(true);
