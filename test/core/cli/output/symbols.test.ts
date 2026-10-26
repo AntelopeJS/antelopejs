@@ -6,11 +6,18 @@ const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
 
 describe("output symbols", () => {
   it("draws every ASCII symbol with printable ASCII only", () => {
-    const { levels, ...marks } = SYMBOL_SETS.ascii;
-    const symbols = [...Object.values(marks), ...Object.values(levels)];
+    const { levels, spinner, ...marks } = SYMBOL_SETS.ascii;
+    const symbols = [
+      ...Object.values(marks),
+      ...spinner,
+      ...Object.values(levels),
+    ];
 
     expect(symbols).to.have.length.above(0);
-    symbols.forEach((symbol) => expect(symbol).to.match(PRINTABLE_ASCII));
+    symbols.forEach((symbol) => {
+      expect(symbol).to.be.a("string");
+      expect(symbol).to.match(PRINTABLE_ASCII);
+    });
   });
 
   it("gives both sets the same symbols", () => {
