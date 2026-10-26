@@ -28,9 +28,8 @@ export function mergeDeep(
   target: Record<string, any>,
   // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported merge sources deliberately allow arbitrary leaf values and undefined sources.
   ...sources: Array<Record<string, any> | undefined>
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported merge returns the same open value contract it accepts; a concrete schema would be false for existing callers.
-): Record<string, any> {
-  const result = { ...target };
+) {
+  const result: typeof target = { ...target };
 
   for (const source of sources) {
     if (!source) continue;
@@ -48,7 +47,6 @@ export function mergeDeep(
     }
   }
 
-  // oxlint-disable-next-line anti-slop/no-known-value-widening -- The exported merge return must retain its existing open dictionary declaration, not a narrower inferred shape.
   return result;
 }
 

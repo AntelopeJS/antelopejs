@@ -22,10 +22,7 @@ function requestedExitCode(): number {
  * left to do still exits on its own, with the same code, and the grace period
  * leaves room for whatever cleanup is still draining.
  */
-export function forceExitOnFailure(
-  graceMs: number = FORCED_EXIT_GRACE_MS,
-  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- oxlint misresolves NodeJS.Timeout (#229); the exported return must distinguish a scheduled timer from the no-failure undefined result.
-): NodeJS.Timeout | undefined {
+export function forceExitOnFailure(graceMs: number = FORCED_EXIT_GRACE_MS) {
   const code = requestedExitCode();
   if (code === SUCCESS_EXIT_CODE) {
     return undefined;

@@ -46,8 +46,7 @@ function validateSource(source: ModuleSourceGit): void {
   }
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- The downloader catches arbitrary executor rejections; converting non-ExecError values preserves its existing fallback output.
-function toCommandResult(err: unknown): CommandResult {
+function toCommandResult(err: PromiseRejectedResult["reason"]): CommandResult {
   if (err instanceof ExecError) {
     return { stdout: err.stdout, stderr: err.stderr, code: err.exitCode };
   }

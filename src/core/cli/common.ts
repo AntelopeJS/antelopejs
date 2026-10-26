@@ -57,8 +57,7 @@ export function displayNonDefaultGitWarning(gitUrl: string): void {
 
 async function writeJsonFile(
   filePath: string,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- JSON.stringify owns this serialization boundary and accepts arbitrary application values, including custom toJSON objects.
-  data: unknown,
+  data: ModulePackageJson,
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<void> {
   const indentation = await detectIndentation(filePath, fileSystem);

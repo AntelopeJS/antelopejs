@@ -17,8 +17,7 @@ function resetProxy<Args extends unknown[], Result>(
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- oxlint misresolves NodeJS.Timeout as an error type (#229); the timer is optional until scheduled.
-  let timer: NodeJS.Timeout | undefined;
+  let timer: Parameters<typeof clearTimeout>[0];
   const guard = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
   });

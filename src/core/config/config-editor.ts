@@ -99,13 +99,19 @@ function lineIndent(source: string, position: number): string {
 }
 
 /** `value` as source text, its continuation lines indented by `indent`. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- ModuleEntryChanges values may be arbitrary JavaScript values; this serializer must preserve existing output and errors.
-function serializeValue(value: unknown, unit: string, indent: string): string {
+function serializeValue(
+  value: ModuleEntryChanges[string],
+  unit: string,
+  indent: string,
+): string {
   return serializeAt(value, unit, 0).split(NEWLINE).join(`${NEWLINE}${indent}`);
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- The editor recursively serializes the exported arbitrary-value edit contract without adding input rejection.
-function serializeAt(value: unknown, unit: string, depth: number): string {
+function serializeAt(
+  value: ModuleEntryChanges[string],
+  unit: string,
+  depth: number,
+): string {
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported editor accepts arbitrary values; JSON handles primitives/functions while object fields retain the existing recursive formatting.
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value) ?? "undefined";
@@ -143,8 +149,7 @@ function insertProperty(
   source: string,
   object: TypeScript.ObjectLiteralExpression,
   key: string,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Inserted fields come from ModuleEntryChanges, whose exported contract permits arbitrary values.
-  value: unknown,
+  value: ModuleEntryChanges[string],
 ): TextEdit {
   const close = closingBrace(object);
   const closeIndent = lineIndent(source, close);
@@ -168,8 +173,7 @@ function replaceValue(
   context: EditContext,
   source: string,
   property: TypeScript.PropertyAssignment,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Replaced fields preserve ModuleEntryChanges' arbitrary values through the existing serializer.
-  value: unknown,
+  value: ModuleEntryChanges[string],
 ): TextEdit {
   const indent = lineIndent(source, property.getStart());
   return {
@@ -264,8 +268,7 @@ function setEntryField(
   source: string,
   key: string,
   field: string,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Field updates forward the exported open edit dictionary's values; validating them would change accepted edits.
-  value: unknown,
+  value: ModuleEntryChanges[string],
 ): string {
   const object = entryObject(context, source, key);
   const property = findProperty(context, object, field);

@@ -37,8 +37,7 @@ export class ConfigParser {
   }
 
   private flattenConfig(
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- processTemplates accepts open application config; flattening must inspect its existing arbitrary leaves.
-    obj: Record<string, any>,
+    obj: Parameters<ConfigParser["processTemplates"]>[0],
     prefix = "",
   ) {
     const result: Record<string, string> = {};
@@ -75,8 +74,7 @@ export class ConfigParser {
     }
 
     if (isPlainObject(obj)) {
-      // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Template replacement can produce any JSON value and must preserve arbitrary untouched config leaves (#226).
-      const result: Record<string, any> = {};
+      const result: Parameters<ConfigParser["processTemplates"]>[0] = {};
       for (const [key, value] of Object.entries(obj)) {
         result[key] = this.processObject(value, values);
       }
@@ -137,8 +135,7 @@ export class ConfigParser {
     }
 
     if (isPlainObject(value)) {
-      // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The generic clone preserves arbitrary enumerable application config values; a leaf schema would reject existing inputs.
-      const result: Record<string, any> = {};
+      const result: Parameters<ConfigParser["processTemplates"]>[0] = {};
       for (const [key, item] of Object.entries(value)) {
         result[key] = this.cloneValue(item);
       }
@@ -151,7 +148,7 @@ export class ConfigParser {
 
   expandModuleShorthand(
     modules: Record<string, string | AntelopeModuleConfig>,
-  ): Record<string, ExpandedModuleConfig> {
+  ) {
     const result: Record<string, ExpandedModuleConfig> = {};
 
     for (const [name, entry] of Object.entries(modules)) {
@@ -215,7 +212,6 @@ export class ConfigParser {
       }
     }
 
-    // oxlint-disable-next-line anti-slop/no-known-value-widening -- This public parser returns an open module dictionary; its exported declaration must remain Record<string, ExpandedModuleConfig>.
     return result;
   }
 }

@@ -30,8 +30,9 @@ function shutdownProcess(exitCode: number): void {
   process.exit(exitCode);
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Process rejection handlers receive arbitrary reasons; only recognized invalidated-work errors are tolerated.
-function isInvalidatedModuleWork(reason: unknown): boolean {
+function isInvalidatedModuleWork(
+  reason: Parameters<NodeJS.UnhandledRejectionListener>[0],
+): boolean {
   return (
     invalidatedWorkTolerance > 0 &&
     reason instanceof Error &&
@@ -44,8 +45,10 @@ function isInvalidatedModuleWork(reason: unknown): boolean {
  * Reports a failure of work left behind by a destroyed module generation
  * without shutting the process down, when that is tolerated.
  */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- The process boundary passes original rejection reasons to invalidated-work detection and logging.
-function reportInvalidatedModuleWork(kind: string, reason: unknown): boolean {
+function reportInvalidatedModuleWork(
+  kind: string,
+  reason: Parameters<NodeJS.UnhandledRejectionListener>[0],
+): boolean {
   if (!isInvalidatedModuleWork(reason)) {
     return false;
   }

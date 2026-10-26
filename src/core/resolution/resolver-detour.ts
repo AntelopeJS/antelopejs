@@ -10,8 +10,11 @@ type ModuleResolver = (
   options: any,
 ) => string;
 
-// oxlint-disable-next-line anti-slop/no-unknown-returns -- Node's CommonJS loader can return any module.exports value; the detour must preserve that value unchanged.
-type ModuleLoader = (request: string, parent: any, isMain: boolean) => unknown;
+type ModuleLoader = (
+  request: string,
+  parent: any,
+  isMain: boolean,
+) => ReturnType<NodeJS.Require>;
 
 // SAFETY: Node's CommonJS loader installs these hooks on Module before user modules execute; the lease coordinator restores the exact values it reads.
 // oxlint-disable-next-line typescript/no-redundant-type-constituents -- oxlint misresolves the Node Module import as any; TypeScript resolves the constructor (#229).
@@ -92,8 +95,11 @@ class ResolverDetourCoordinator {
     }
   }
 
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- This hook returns the original Node loader's arbitrary module.exports value without parsing or replacement.
-  private load(request: string, parent: any, isMain: boolean): unknown {
+  private load(
+    request: string,
+    parent: any,
+    isMain: boolean,
+  ): ReturnType<ModuleLoader> {
     const activeResolver = this.findResolver(request, parent);
     const instance = activeResolver?.instanceToLoad(request, parent);
     if (!activeResolver || !instance) {

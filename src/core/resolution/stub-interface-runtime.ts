@@ -46,8 +46,7 @@ function neutralizeRegisteringProxy(
 }
 
 function walk(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Dynamically loaded interface exports may be any JavaScript value; this traversal preserves its existing ignored primitive cases.
-  value: unknown,
+  value: Parameters<typeof neutralizeInterfaceAsyncProxies>[0],
   interfaceName: string,
   seen: WeakSet<object>,
   reason: string,
@@ -87,8 +86,12 @@ function walk(
 
   for (const key of Object.keys(value)) {
     // SAFETY: the null and primitive branches returned above; string-key access on the remaining object is exposed only as unknown, without claiming a property's contents.
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Dynamic package export properties have arbitrary values; each value is inspected by walk before proxy handling.
-    walk((value as Record<string, unknown>)[key], interfaceName, seen, reason);
+    walk(
+      (value as Record<string, Parameters<typeof walk>[0]>)[key],
+      interfaceName,
+      seen,
+      reason,
+    );
   }
 }
 

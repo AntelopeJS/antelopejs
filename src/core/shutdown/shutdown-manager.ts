@@ -88,8 +88,7 @@ function settleWithin(
   work: Promise<void>,
   timeoutMs: number,
 ): Promise<boolean> {
-  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- NodeJS.Timeout is a resolved Node timer object, not any (#229); the handle is genuinely absent until the timeout promise runs.
-  let timer: NodeJS.Timeout | undefined;
+  let timer: Parameters<typeof clearTimeout>[0];
   const timeout = new Promise<boolean>((resolve) => {
     timer = setTimeout(() => resolve(false), timeoutMs);
   });

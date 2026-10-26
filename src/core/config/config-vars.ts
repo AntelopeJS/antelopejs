@@ -71,8 +71,7 @@ export function substituteConfigVars(
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported substitution accepts arbitrary config values and preserves untouched branches by identity.
   config: unknown,
   lookup: ConfigVarLookup,
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Untouched application values are returned unchanged; narrowing the exported result would be false for accepted inputs.
-): unknown {
+) {
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Exported config substitution accepts arbitrary leaves and changes only string references, preserving untouched values by identity.
   if (typeof config === "string") {
     return substituteString(config, lookup);
@@ -99,11 +98,9 @@ function substituteArray(
 }
 
 function substituteObject(
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Plain-object config leaves remain application-defined; imposing a value schema would change substitution acceptance.
-  config: Record<string, unknown>,
+  config: Record<string, Parameters<typeof substituteConfigVars>[0]>,
   lookup: ConfigVarLookup,
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The rebuilt config retains arbitrary untouched leaf values from the exported substitution input.
-): Record<string, unknown> {
+): ReturnType<typeof Object.fromEntries<unknown>> {
   const entries = Object.entries(config).map(
     ([key, value]) => [key, substituteConfigVars(value, lookup)] as const,
   );
@@ -131,8 +128,10 @@ function matchReferences(value: string): ConfigVarReference[] {
   );
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Config scanning traverses arbitrary application values and must ignore non-string leaves without validation.
-function visitStrings(value: unknown, visit: (value: string) => void): void {
+function visitStrings(
+  value: Parameters<typeof scanConfigVars>[0],
+  visit: (value: string) => void,
+): void {
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Reference scanning traverses open application config and must visit strings while ignoring other primitive leaves without rejecting them.
   if (typeof value === "string") {
     visit(value);

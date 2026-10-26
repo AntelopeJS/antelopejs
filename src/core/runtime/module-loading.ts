@@ -349,8 +349,10 @@ async function loadModuleEntry(
  * Logs that optional module `id` could not be downloaded: the project starts
  * without it.
  */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Optional downloader failures may be any rejection value; the logger must receive the original reason.
-function skipOptionalModule(id: string, reason: unknown): void {
+function skipOptionalModule(
+  id: string,
+  reason: PromiseRejectedResult["reason"],
+): void {
   Logger.Error(
     `Optional module ${id} could not be loaded; starting without it`,
     reason,

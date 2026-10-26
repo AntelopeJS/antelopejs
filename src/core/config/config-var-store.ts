@@ -30,8 +30,8 @@ export class ConfigVarStore {
   }
 
   /** The consumer configuration with every reference replaced by its value. */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- Exported resolve preserves arbitrary application configuration, including values with no references, by identity.
-  resolve(consumerId: string, config: unknown): unknown {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported resolve preserves arbitrary application configuration, including values with no references, by identity.
+  resolve(consumerId: string, config: unknown) {
     return substituteConfigVars(config, (reference) =>
       this.lookup(consumerId, reference),
     );

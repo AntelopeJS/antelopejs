@@ -47,9 +47,10 @@ async function importConfigInput(
     options.fsCache = false;
   }
   const jiti = createJiti(configPath, options);
-  const loaded = await jiti.import(configPath);
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- jiti imports remain unvalidated to preserve configuration acceptance (#228).
-  return (loaded as any).default ?? loaded;
+  const loaded = await jiti.import<ConfigInput & { default?: ConfigInput }>(
+    configPath,
+  );
+  return loaded.default ?? loaded;
 }
 
 export async function loadTsConfigFile(
@@ -101,11 +102,14 @@ export class ConfigLoader {
       const moduleConfigPath = getModuleConfigPath(projectFolder, moduleName);
       if (await this.fs.exists(moduleConfigPath)) {
         const moduleConfig =
-          // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- JSON module settings are merged without validation; tightening the accepted dictionary would change configuration behavior (#228).
-          await this.loadJsonFile<Record<string, any>>(moduleConfigPath);
+          await this.loadJsonFile<Parameters<typeof mergeDeep>[0]>(
+            moduleConfigPath,
+          );
         expandedModules[moduleName].config = mergeDeep(
-          // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unsafe-dictionary-type -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
-          (expandedModules[moduleName].config as Record<string, any>) ?? {},
+          // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
+          (expandedModules[moduleName].config as Parameters<
+            typeof mergeDeep
+          >[0]) ?? {},
           moduleConfig,
         );
       }

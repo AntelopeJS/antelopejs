@@ -153,8 +153,10 @@ function packageSourceOf(info: ExpandedModuleConfig): ModuleSourcePackage {
   return info.source as ModuleSourcePackage;
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Promise.allSettled exposes arbitrary npm lookup rejections, which describeFailure formats without rejecting.
-function warnUncheckedPackage(packageName: string, reason: unknown): void {
+function warnUncheckedPackage(
+  packageName: string,
+  reason: Parameters<typeof describeFailure>[0],
+): void {
   const truncated = truncate(
     describeFailure(reason, false).title,
     MAX_REASON_LENGTH,

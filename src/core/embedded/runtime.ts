@@ -19,8 +19,7 @@ type InterfaceDeclaration = Parameters<typeof ImplementInterface>[0];
 
 type InterfaceAttacher = (
   declaration: InterfaceDeclaration,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The published provide method accepts arbitrary implementations and delegates validation to ImplementInterface.
-  implementation: unknown,
+  implementation: Parameters<AntelopeRuntime["provide"]>[1],
 ) => void;
 
 // SAFETY: ImplementInterface validates objects, cycles, and required handlers before attaching; widening its input delegates rejection to those existing checks, and this caller ignores its return value.

@@ -5,8 +5,7 @@ const STUB_NOT_IMPLEMENTED =
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The exported stub intentionally serves arbitrary property names through its proxy; a fixed schema would change its declaration.
 type StubProxyTarget = Record<string, unknown>;
 type StubCallable = ((...args: unknown[]) => never) & {
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Callable stub proxies must expose the same arbitrary-property contract as the module stub.
-  proxy: StubProxyTarget;
+  proxy: ReturnType<typeof createFunctionProxyTarget>;
 };
 
 function throwStub(): never {

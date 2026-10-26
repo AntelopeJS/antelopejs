@@ -4,8 +4,8 @@
     "eslint/max-params": 3
   },
   "oversizeFiles": {
-    "src/core/module-manager.ts": 46310,
-    "src/core/runtime/module-loading.ts": 21227,
+    "src/core/module-manager.ts": 46002,
+    "src/core/runtime/module-loading.ts": 21093,
     "test/core/cli/commands/project/modules.behavior.test.ts": 41528,
     "test/core/cli/commands/project/modules/install.behavior.test.ts": 29371
   }

@@ -29,8 +29,7 @@ function commandOutputTail(error: ExecError): string[] {
   return [OUTPUT_HEADING, ...lines.map((line) => `${OUTPUT_INDENT}${line}`)];
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- The failure boundary formats any thrown value, including primitives, without rejecting it.
-function genericProblem(error: unknown): CliProblem {
+function genericProblem(error: Parameters<typeof describeFailure>[0]): CliProblem {
   if (error instanceof Error) {
     const [headline] = stripAnsiCodes(error.message).split(LINE_BREAK_PATTERN);
     return { title: headline || error.name };
@@ -38,8 +37,7 @@ function genericProblem(error: unknown): CliProblem {
   return { title: String(error) };
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Error causes may be arbitrary values; the chain preserves them for the published translator callback.
-function causeChain(error: unknown): unknown[] {
+function causeChain(error: Error["cause"]): unknown[] {
   const chain: unknown[] = [];
   let current: unknown = error;
   while (current !== undefined && !chain.includes(current)) {
@@ -80,15 +78,13 @@ function untranslatedOutputTail(chain: unknown[]): string[] {
 }
 
 function explainFailure(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Published FailureTranslator callbacks receive the original arbitrary rejection, not a parsed replacement.
-  error: unknown,
+  error: Parameters<FailureTranslator>[0],
   translate?: FailureTranslator,
 ): CliProblem | undefined {
   return translate?.(error) ?? translateFailure(error);
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- This boundary distinguishes ExecError output from any other thrown value without narrowing accepted failures.
-function hasHiddenOutput(error: unknown): boolean {
+function hasHiddenOutput(error: Parameters<typeof describeFailure>[0]): boolean {
   if (!(error instanceof ExecError)) {
     return false;
   }

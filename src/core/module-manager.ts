@@ -643,8 +643,7 @@ export class ModuleManager {
 
   private async constructModule(
     module: Module,
-    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Module.construct accepts opaque application configuration; this forwarding method must not validate or narrow it.
-    config: unknown,
+    config: Parameters<Module["construct"]>[0],
   ): Promise<void> {
     try {
       await module.construct(config);
@@ -863,8 +862,7 @@ export class ModuleManager {
 
   private async provideModule(
     module: Module,
-    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Module.provide accepts opaque application configuration; this forwarding method must not validate or narrow it.
-    config: unknown,
+    config: Parameters<Module["provide"]>[0],
   ): Promise<ConfigVars | void> {
     try {
       return await module.provide(config);
