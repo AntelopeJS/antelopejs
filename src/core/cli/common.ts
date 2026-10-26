@@ -150,6 +150,7 @@ function serializeToJs(value: unknown, indent: string, depth: number): string {
   }
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Functions and non-string primitives retain String conversion; restricting the open config contract would change generated JavaScript.
   if (typeof value !== "object") {
+    // oxlint-disable-next-line typescript/no-base-to-string -- The preceding checks exclude null and objects; String deliberately serializes remaining primitives and callable values into config source.
     return String(value);
   }
   const currentIndent = indent.repeat(depth);

@@ -87,6 +87,7 @@ export class DownloaderRegistry {
     });
   }
 
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- The exported downloader API explicitly returns any | undefined; simplifying the redundant union would change its declaration.
   getLoaderIdentifier(source: ModuleSource): any | undefined {
     const type = this.knownTypes.get(source.type);
     if (type) {

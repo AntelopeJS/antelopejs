@@ -24,6 +24,7 @@ function requestedExitCode(): number {
  */
 export function forceExitOnFailure(
   graceMs: number = FORCED_EXIT_GRACE_MS,
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- oxlint misresolves NodeJS.Timeout (#229); the exported return must distinguish a scheduled timer from the no-failure undefined result.
 ): NodeJS.Timeout | undefined {
   const code = requestedExitCode();
   if (code === SUCCESS_EXIT_CODE) {
