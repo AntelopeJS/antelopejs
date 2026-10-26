@@ -119,7 +119,10 @@ function refreshModuleEntries(
       name,
       {
         ...entry,
-        ...serializeModuleConfig(toModuleConfig(modules[entry.source.id!])),
+        ...serializeModuleConfig(
+          // SAFETY: refreshBuildArtifact calls this only after findChangedModules rejects built entries with absent or unconfigured source IDs.
+          toModuleConfig(modules[entry.source.id as string]),
+        ),
       },
     ]),
   );

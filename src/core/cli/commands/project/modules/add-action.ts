@@ -138,7 +138,10 @@ async function downloadModule(
   if (typeof moduleConfig !== "object" || !("source" in moduleConfig)) {
     return;
   }
-  const source = moduleConfig.source!;
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- An explicit undefined source historically reaches the downloader's property-access error; validating this optional config field changes that behavior (#228).
+  const source = moduleConfig.source as NonNullable<
+    AntelopeModuleConfig["source"]
+  >;
   if (!context.registry.getLoaderIdentifier(source)) {
     return;
   }

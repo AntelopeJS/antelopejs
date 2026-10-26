@@ -31,7 +31,8 @@ function applyUpdates(
   outdated: OutdatedModule[],
   antelopeModules: Record<string, ExpandedModuleConfig>,
 ): void {
-  const envModules = env.modules!;
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Environment modules is optional in the exported config; missing values must retain the existing indexed-write error rather than a new validation error (#228).
+  const envModules = env.modules as NonNullable<AntelopeConfig["modules"]>;
   for (const entry of outdated) {
     envModules[entry.name] = {
       ...antelopeModules[entry.name],
