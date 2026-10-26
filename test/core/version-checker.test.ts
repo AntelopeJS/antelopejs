@@ -405,13 +405,16 @@ describe("version-checker", () => {
     });
 
     it("accepts an existing dist-tag", async () => {
-      sinon.stub(command, "ExecuteFile").resolves({
+      const execStub = sinon.stub(command, "ExecuteFile").resolves({
         code: 0,
         stdout: '{"latest":"1.0.0","beta":"2.0.0-beta.1"}',
         stderr: "",
       });
 
-      await validateVersionSpec("some-package", "beta");
+      expect(await validateVersionSpec("some-package", "beta")).to.equal(
+        undefined,
+      );
+      expect(execStub.calledOnce).to.equal(true);
     });
 
     it("rejects a spec that is neither range nor dist-tag", async () => {

@@ -1,7 +1,7 @@
 import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../src/core/cli/common";
@@ -17,7 +17,11 @@ import {
   FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
 } from "../../../../../src/core/cli/exit-codes";
-import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
+import {
+  readJson,
+  makeTempDir,
+  cleanupTempDir,
+} from "../../../../helpers/temp";
 import * as pkgManager from "../../../../../src/core/cli/package-manager";
 import cmdModuleInit from "../../../../../src/core/cli/commands/module/init";
 import { moduleInitCommand } from "../../../../../src/core/cli/commands/module/init-action";
@@ -130,8 +134,9 @@ async function rejectionOf(promise: Promise<unknown>): Promise<CliError> {
 }
 
 function readDependencies(moduleDir: string): Record<string, string> {
-  return JSON.parse(readFileSync(path.join(moduleDir, "package.json"), "utf8"))
-    .dependencies;
+  return readJson<{ dependencies: Record<string, string> }>(
+    path.join(moduleDir, "package.json"),
+  ).dependencies;
 }
 
 describe("module init behavior", () => {

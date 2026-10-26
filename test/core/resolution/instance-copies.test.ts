@@ -5,7 +5,6 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -18,6 +17,7 @@ import {
   pruneStaleInstanceCopies,
   removeInstanceCopy,
 } from "../../../src/core/resolution/instance-copies";
+import { readText } from "../../helpers/temp";
 
 interface StatefulModule {
   state: { id: number };
@@ -119,8 +119,8 @@ describe("instance copies", () => {
       throw Object.assign(new Error("cross-device link"), { code: "EXDEV" });
     });
 
-    expect(readFileSync(path.join(copy, "state.js"), "utf8")).to.equal(
-      readFileSync(path.join(original, "state.js"), "utf8"),
+    expect(readText(path.join(copy, "state.js"))).to.equal(
+      readText(path.join(original, "state.js")),
     );
     expect(statSync(path.join(copy, "state.js")).ino).to.not.equal(
       statSync(path.join(original, "state.js")).ino,

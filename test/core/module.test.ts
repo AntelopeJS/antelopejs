@@ -42,11 +42,6 @@ describe("Module", () => {
     expect(mod.state).to.equal(ModuleState.Loaded);
   });
 
-  it("exposes current state", () => {
-    const mod = new Module(manifest, sinon.stub().resolves({}));
-    expect(mod.state).to.equal(ModuleState.Loaded);
-  });
-
   it("publishes config variables and loads the module only once", async () => {
     const callbacks = {
       provide: sinon.stub().resolves({ API_PORT: 5010 }),

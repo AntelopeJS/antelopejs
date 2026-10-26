@@ -14,6 +14,7 @@ import {
   startUpdateCheck,
 } from "../../../src/core/cli/version-check";
 import { captureOutputAsync } from "../../helpers/capture-output";
+import { readJson } from "../../helpers/temp";
 import { useAsciiSymbols } from "../../helpers/ascii-symbols";
 import { stripAnsi } from "../../../src/core/cli/logging-utils";
 
@@ -59,7 +60,7 @@ function writeCache(content: unknown): void {
 }
 
 function readCache(): unknown {
-  return JSON.parse(fs.readFileSync(cachePath, "utf8"));
+  return readJson(cachePath);
 }
 
 function useTemporaryCache(): void {

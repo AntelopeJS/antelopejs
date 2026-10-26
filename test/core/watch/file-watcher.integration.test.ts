@@ -43,16 +43,14 @@ describe("FileWatcher Integration", () => {
     const watcher = new FileWatcher(new NodeFileSystem());
     await watcher.scanModule("test", tempDir);
 
-    const changePromise = new Promise<void>((resolve, reject) => {
+    const changePromise = new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(
         () => reject(new Error("Timed out waiting for change")),
         2000,
       );
       watcher.onModuleChanged((id) => {
-        if (id === "test") {
-          clearTimeout(timeout);
-          resolve();
-        }
+        clearTimeout(timeout);
+        resolve(id);
       });
     });
 
@@ -60,7 +58,7 @@ describe("FileWatcher Integration", () => {
 
     try {
       await writeFile(path.join(tempDir, "test.js"), "export const v = 2;");
-      await changePromise;
+      expect(await changePromise).to.equal("test");
     } finally {
       watcher.stopWatching();
     }
@@ -72,16 +70,14 @@ describe("FileWatcher Integration", () => {
     const watcher = new FileWatcher(new NodeFileSystem());
     await watcher.scanModule("test", tempDir);
 
-    const changePromise = new Promise<void>((resolve, reject) => {
+    const changePromise = new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(
         () => reject(new Error("Timed out waiting for change")),
         2000,
       );
       watcher.onModuleChanged((id) => {
-        if (id === "test") {
-          clearTimeout(timeout);
-          resolve();
-        }
+        clearTimeout(timeout);
+        resolve(id);
       });
     });
 
@@ -91,7 +87,7 @@ describe("FileWatcher Integration", () => {
       const pageDir = path.join(tempDir, "page");
       await mkdir(pageDir);
       await writeFile(path.join(pageDir, "page.js"), "export const p = 1;");
-      await changePromise;
+      expect(await changePromise).to.equal("test");
     } finally {
       watcher.stopWatching();
     }
@@ -131,8 +127,11 @@ describe("FileWatcher Integration", () => {
       const added = path.join(tempDir, "added.js");
       await writeFile(added, "export const a = 1;");
       await reaches(1);
+      const changesAfterCreate = count;
       await writeFile(added, "export const a = 2;");
-      await reaches(2);
+      await reaches(changesAfterCreate + 1);
+
+      expect(count).to.be.greaterThan(changesAfterCreate);
     } finally {
       watcher.stopWatching();
     }
