@@ -1,11 +1,11 @@
-import { manifestFixture } from "../../helpers/module-fixtures";
+import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import * as path from "node:path";
-import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
+import { manifestFixture } from "../../helpers/module-fixtures";
 
-import { ModuleCache } from "../../../src/core/module-cache";
+import { DownloaderRegistry } from "../../../src/core/downloaders";
+import { ModuleCache } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
-import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
 
 describe("DownloaderRegistry", () => {
   it("should register and load a downloader", async () => {

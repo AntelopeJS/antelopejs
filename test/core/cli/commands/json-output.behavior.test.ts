@@ -1,11 +1,10 @@
+import { expect } from "chai";
 import path from "node:path";
 import sinon from "sinon";
-import { expect } from "chai";
 
+import { runCLI, writeConfig } from "../../../../src/cli";
+import { runWithErrorBoundary } from "../../../../src/core/output";
 import * as logging from "../../../../src/logging";
-import { runCLI } from "../../../../src/core/cli/index";
-import { writeConfig } from "../../../../src/core/cli/common";
-import { runWithErrorBoundary } from "../../../../src/core/cli/output";
 import {
   captureOutputAsync,
   type CapturedOutput,

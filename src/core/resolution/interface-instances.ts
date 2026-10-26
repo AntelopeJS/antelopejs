@@ -1,14 +1,14 @@
-import path from "node:path";
 import { createHash } from "node:crypto";
+import path from "node:path";
 
+import { createPathWithinMatcher } from "../../utils";
+import type { BindingGraph, InstanceDescriptor } from "./binding-graph-types";
 import {
   createInstanceCopy,
   nextInstanceCopyPath,
   pruneStaleInstanceCopies,
   removeInstanceCopy,
 } from "./instance-copies";
-import { createPathWithinMatcher } from "./package-resolution";
-import type { BindingGraph, InstanceDescriptor } from "./binding-graph-types";
 
 const NODE_MODULES = "node_modules";
 const INSTANCES_FOLDER = ".ajs-instances";

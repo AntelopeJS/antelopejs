@@ -1,27 +1,30 @@
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
 import { existsSync } from "node:fs";
+import path from "node:path";
+import sinon from "sinon";
 
-import * as logging from "../../../src/logging";
-import { runCLI } from "../../../src/core/cli/index";
-import * as cliUi from "../../../src/core/cli/cli-ui";
-import * as gitOps from "../../../src/core/cli/git-operations";
-import { runWithErrorBoundary } from "../../../src/core/cli/output";
-import { readConfig, writeConfig } from "../../../src/core/cli/common";
-import * as versionCheck from "../../../src/core/cli/version-check";
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
-import { captureOutputAsync } from "../../helpers/capture-output";
-import { CANCEL, fakePrompts } from "../../helpers/fake-prompts";
-import * as projectLaunch from "../../../src/core/runtime/project-launch";
-import { BuildModuleSetChangedError } from "../../../src/core/runtime/build-refresh";
+import {
+  gitOperationsModule as gitOps,
+  readConfig,
+  runCLI,
+  versionCheckModule as versionCheck,
+  writeConfig,
+} from "../../../src/cli";
 import {
   BUILD_MODULE_SET_CHANGED_EXIT_CODE,
   CANCELLED_EXIT_CODE,
+  cliUiModule as cliUi,
   FAILURE_EXIT_CODE,
+  runWithErrorBoundary,
   SUCCESS_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../src/core/cli/exit-codes";
+} from "../../../src/core/output";
+import { projectLaunchModule as projectLaunch } from "../../../src/core/repl";
+import { BuildModuleSetChangedError } from "../../../src/core/runtime";
+import * as logging from "../../../src/logging";
+import { captureOutputAsync } from "../../helpers/capture-output";
+import { CANCEL, fakePrompts } from "../../helpers/fake-prompts";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 const INSTALLED_MODULE = "billing";
 

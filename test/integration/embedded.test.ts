@@ -1,11 +1,11 @@
-import path from "node:path";
+import { internal } from "@antelopejs/interface-core/internal";
 import { expect } from "chai";
 import fs from "node:fs/promises";
-import { internal } from "@antelopejs/interface-core/internal";
+import path from "node:path";
 
 import { type AntelopeRuntime, createRuntime } from "../../src";
-import { terminalDisplay } from "../../src/core/cli/output/tasks";
-import { HOST_MODULE_ID } from "../../src/core/embedded/prepare-embedded";
+import { HOST_MODULE_ID } from "../../src/core/embedded";
+import { terminalDisplay } from "../../src/core/output";
 import {
   createEmbeddedFixture,
   type EmbeddedFixture,

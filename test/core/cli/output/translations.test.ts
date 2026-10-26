@@ -1,7 +1,6 @@
 import { expect } from "chai";
 
-import { ExecError } from "../../../../src/core/cli/command";
-import { translateFailure } from "../../../../src/core/cli/output";
+import { ExecError,translateFailure } from "../../../../src/core/output";
 
 function execFailure(command: string, stderr: string, code = 1): ExecError {
   return new ExecError({ command, stdout: "", stderr, code });

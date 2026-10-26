@@ -1,8 +1,8 @@
-import os from "node:os";
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
 import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import sinon from "sinon";
 
 import { TestModule } from "../../src";
 

@@ -3,8 +3,8 @@ import {
   describeStartupDivergence,
   describeUnusedPin,
 } from "./binding-diagnostics";
-import type { ProviderTable } from "./binding-providers";
 import type { BindingGraph, InterfaceBinding } from "./binding-graph-types";
+import type { ProviderTable } from "./binding-providers";
 
 /** What the warnings read from a finished resolution. */
 export interface BindingWarningView {

@@ -1,18 +1,18 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import * as loggingUtils from "../../../src/core/cli/logging-utils";
 import {
   formatDate,
   formatLogMessageWithRightAlignedDate,
   getColoredText,
   getLevelInfo,
   isTerminalOutput,
+  loggingUtilsModule as loggingUtils,
   serializeLogValue,
   stringVisualWidth,
   stripAnsi,
   stripAnsiCodes,
-} from "../../../src/core/cli/logging-utils";
+} from "../../../src/core/output";
 
 function setTTY(stdout: boolean, stderr: boolean, columns?: number) {
   const stdoutIsTTY = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");

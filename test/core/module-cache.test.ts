@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as fsPromises from "node:fs/promises";
 
-import { ModuleCache } from "../../src/core/module-cache";
+import { ModuleCache } from "../../src/core/modules";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 describe("ModuleCache", () => {

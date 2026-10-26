@@ -2,11 +2,11 @@ import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
-import { CliError, getProcessTasks } from "../../../src/core/cli/output";
+import { CliError, getProcessTasks } from "../../../src/core/output";
 import {
   buildModuleConfigs,
   registerCoreModuleInterface,
-} from "../../../src/core/runtime/module-loading";
+} from "../../../src/core/runtime";
 import { ModuleState } from "../../../src/types";
 import {
   loadedConfigFixture,

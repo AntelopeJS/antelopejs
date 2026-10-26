@@ -1,29 +1,30 @@
-import sinon from "sinon";
-import path from "node:path";
-import { expect } from "chai";
-import { tmpdir } from "node:os";
-import { mkdir, rm, writeFile } from "node:fs/promises";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import { expect } from "chai";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import sinon from "sinon";
 
 import {
-  interfaceInfo,
-  moduleManifest,
-  rejectionOf,
-  stubLoadedConfig,
-} from "../../../fixtures";
-import * as cliUi from "../../../../../../src/core/cli/cli-ui";
-import * as common from "../../../../../../src/core/cli/common";
-import { ModuleCache } from "../../../../../../src/core/module-cache";
-import * as gitOps from "../../../../../../src/core/cli/git-operations";
-import { ModuleManifest } from "../../../../../../src/core/module-manifest";
-import { DownloaderRegistry } from "../../../../../../src/core/downloaders/registry";
-import * as projectModulesAddModule from "../../../../../../src/core/cli/commands/project/modules/add-action";
-import cmdInstall from "../../../../../../src/core/cli/commands/project/modules/install";
-import {
+  commandsProjectModulesInstallCommand as cmdInstall,
+  commonModule as common,
   describeUnresolvedImport,
+  gitOperationsModule as gitOps,
+  commandsProjectModulesAddActionModule as projectModulesAddModule,
   resolveInstallIdentifier,
   unresolvedImportWarning,
-} from "../../../../../../src/core/cli/commands/project/modules/install-action";
+} from "../../../../../../src/cli";
+import { DownloaderRegistry } from "../../../../../../src/core/downloaders";
+import {
+  ModuleCache,
+  ModuleManifest,
+} from "../../../../../../src/core/modules";
+import {
+  cliUiModule as cliUi,
+  getProcessUi,
+  NeedsInputError,
+  USAGE_EXIT_CODE,
+} from "../../../../../../src/core/output";
 import {
   captureCliError,
   expectProjectNotFound,
@@ -31,10 +32,11 @@ import {
 } from "../../../../../helpers/cli-error";
 import { fakePrompts } from "../../../../../helpers/fake-prompts";
 import {
-  getProcessUi,
-  NeedsInputError,
-} from "../../../../../../src/core/cli/output";
-import { USAGE_EXIT_CODE } from "../../../../../../src/core/cli/exit-codes";
+  interfaceInfo,
+  moduleManifest,
+  rejectionOf,
+  stubLoadedConfig,
+} from "../../../fixtures";
 
 const ADDED_MOD_A = { added: ["modA"], skipped: [], failed: [] };
 

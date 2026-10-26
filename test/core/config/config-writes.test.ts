@@ -3,7 +3,7 @@ import { expect } from "chai";
 import {
   consumeOwnConfigWrite,
   recordOwnConfigWrite,
-} from "../../../src/core/config/config-writes";
+} from "../../../src/core/config";
 
 describe("config writes", () => {
   it("recognizes the content the runtime wrote, once", () => {

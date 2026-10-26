@@ -6,7 +6,7 @@ import launch, { type ModuleManager } from "../../src";
 import {
   createLoaderContext,
   reloadWatchedModule,
-} from "../../src/core/runtime/module-loading";
+} from "../../src/core/runtime";
 import {
   createCircularSubpathProject,
   createStandaloneCircularProject,

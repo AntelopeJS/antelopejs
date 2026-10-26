@@ -1,19 +1,21 @@
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
 // @ts-expect-error inly ships no type declarations and there is no @types/inly
 import inly from "inly";
 import * as path from "node:path";
-import { Logging } from "@antelopejs/interface-core/logging";
 import { maxSatisfying, satisfies, valid, validRange } from "semver";
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
-import { ExecError, ExecuteCMD } from "../cli/command";
-import type { CommandRunner } from "./types";
-import { ModuleCache } from "../module-cache";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import { installFailure } from "./utils";
+import {
+  ModuleCache,
+  ModuleManifest,
+  type ModulePackageJson,
+} from "../modules";
+import { ExecError, ExecuteCMD, getModuleCacheInstallCommand } from "../output";
 import type { DownloaderRegistry } from "./registry";
-import { getModuleCacheInstallCommand } from "../cli/package-manager";
-import { ModuleManifest, type ModulePackageJson } from "../module-manifest";
+import type { CommandRunner } from "./types";
+import { installFailure } from "./utils";
 
 export interface PackageDownloaderDeps {
   fs?: IFileSystem;

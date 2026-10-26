@@ -1,9 +1,6 @@
 import sinon from "sinon";
 
-import {
-  promptEnvironment,
-  type PromptBackend,
-} from "../../src/core/cli/output";
+import { promptEnvironment, type PromptBackend } from "../../src/core/output";
 
 export const CANCEL = Symbol("cancel");
 

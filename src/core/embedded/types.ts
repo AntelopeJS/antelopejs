@@ -3,7 +3,7 @@ import type {
   ImportOverride,
 } from "@antelopejs/interface-core/config";
 
-import type { RuntimePolicy } from "../runtime/runtime-policy";
+import type { RuntimePolicy } from "../runtime";
 
 /** One module the embedded runtime should load, keyed by its package name. */
 export interface EmbeddedModuleConfig {

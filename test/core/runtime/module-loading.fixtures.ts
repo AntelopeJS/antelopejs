@@ -1,16 +1,13 @@
 import sinon from "sinon";
-import { Module } from "../../../src/core/module";
-import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
-import type {
-  ManagedModule,
-  ModuleManager,
-} from "../../../src/core/module-manager";
+import { DownloaderRegistry } from "../../../src/core/downloaders";
+import type { ManagedModule, ModuleManager } from "../../../src/core/modules";
+import { Module } from "../../../src/core/modules";
 import { ModuleState } from "../../../src/types";
 import {
+  loaderFixture,
+  managerFixture,
   manifestFixture,
   moduleFixture,
-  managerFixture,
-  loaderFixture,
 } from "../../helpers/module-fixtures";
 
 export function createReloadHarness() {
@@ -41,7 +38,7 @@ export function createReloadHarness() {
       .callsFake(
         (
           _id: string,
-          manifest: import("../../../src/core/module-manifest").ModuleManifest,
+          manifest: import("../../../src/core/modules").ModuleManifest,
         ) => manifest,
       ),
     discardPlacedModule: sinon.stub(),
@@ -82,9 +79,7 @@ export async function startManagedModules(
 
 export function addedModule(
   id: string,
-  manifest: Partial<
-    import("../../../src/core/module-manifest").ModulePackageJson
-  > = {},
+  manifest: Partial<import("../../../src/core/modules").ModulePackageJson> = {},
   module: Partial<Module> = {},
 ): ManagedModule {
   return {
@@ -119,7 +114,7 @@ export function createInterfaceOperationsFixture() {
       .callsFake(
         (
           _id: string,
-          manifest: import("../../../src/core/module-manifest").ModuleManifest,
+          manifest: import("../../../src/core/modules").ModuleManifest,
         ) => manifest,
       ),
     discardPlacedModule: sinon.stub(),

@@ -1,25 +1,25 @@
-import fs from "node:fs";
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
 import { Command } from "commander";
+import fs from "node:fs";
+import path from "node:path";
+import sinon from "sinon";
 const Module = require("node:module");
 
-import * as logging from "../../../src/logging";
-import * as fullCli from "../../../src/core/cli/full-cli";
-import * as versionCheck from "../../../src/core/cli/version-check";
 import {
-  CancelledError,
-  CliError,
-  getProcessUi,
-} from "../../../src/core/cli/output";
-import { CANCELLED_MESSAGE } from "../../../src/core/cli/cancellation";
+  FORCED_EXIT_GRACE_MS,
+  fullCliModule as fullCli,
+  versionCheckModule as versionCheck,
+} from "../../../src/cli";
 import {
   CANCELLED_EXIT_CODE,
+  CANCELLED_MESSAGE,
+  CancelledError,
+  CliError,
   FAILURE_EXIT_CODE,
+  getProcessUi,
   USAGE_EXIT_CODE,
-} from "../../../src/core/cli/exit-codes";
-import { FORCED_EXIT_GRACE_MS } from "../../../src/core/cli/failure-exit";
+} from "../../../src/core/output";
+import * as logging from "../../../src/logging";
 
 describe("CLI main guard", () => {
   const cliPath = require.resolve("../../../src/core/cli/index");

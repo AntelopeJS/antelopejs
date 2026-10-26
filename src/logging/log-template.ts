@@ -1,8 +1,11 @@
-import { inspect } from "node:util";
 import type { Log } from "@antelopejs/interface-core/logging/listener";
+import { inspect } from "node:util";
 
-import { hasProcessColorSupport } from "../core/cli/output/capabilities";
-import { formatDate, serializeLogValue } from "../core/cli/logging-utils";
+import {
+  formatDate,
+  hasProcessColorSupport,
+  serializeLogValue,
+} from "../core/output";
 
 const PLACEHOLDER_PATTERN = /{{([^{}]+)}}/g;
 const STYLE_PREFIX = "chalk.";

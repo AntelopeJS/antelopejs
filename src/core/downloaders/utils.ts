@@ -1,10 +1,7 @@
-import * as os from "node:os";
 import type { ModuleInstallCommand } from "@antelopejs/interface-core/config";
+import * as os from "node:os";
 
-import { ExecError } from "../cli/command";
-import { CliError } from "../cli/output/errors";
-import { runTask } from "../cli/output/tasks";
-import { FAILURE_EXIT_CODE } from "../cli/exit-codes";
+import { CliError, ExecError, FAILURE_EXIT_CODE, runTask } from "../output";
 import type { CommandRunner, DebugLogger } from "./types";
 
 function normalizeCommands(installCommand?: ModuleInstallCommand): string[] {

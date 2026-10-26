@@ -1,11 +1,11 @@
 import { manifestFixture } from "../../helpers/module-fixtures";
 
 import { expect } from "chai";
-import * as path from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
+import * as path from "node:path";
 
+import { PathMapper } from "../../../src/core/modules";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
-import { PathMapper } from "../../../src/core/resolution/path-mapper";
 
 const manifest = manifestFixture({
   srcAliases: [{ alias: "@src", replace: "/mod/src" }],

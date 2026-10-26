@@ -1,15 +1,15 @@
-import { readFile, writeFile } from "node:fs/promises";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import { readFile, writeFile } from "node:fs/promises";
+import { NodeFileSystem } from "../filesystem";
+import { removeModuleEntry, setModuleEntry } from "./config-editor";
+import { loadTsConfigFile } from "./config-loader";
+import { findConfigPath } from "./config-paths";
+import { recordOwnConfigWrite } from "./config-writes";
 import type {
   ModuleDeclaration,
   ModuleDeclarationChanges,
   ModuleEntryConfig,
 } from "./module-entry";
-import { NodeFileSystem } from "../filesystem";
-import { recordOwnConfigWrite } from "./config-writes";
-import { loadTsConfigFile } from "./config-loader";
-import { findConfigPath } from "./config-paths";
-import { removeModuleEntry, setModuleEntry } from "./config-editor";
 
 const FILE_ENCODING = "utf-8";
 const PACKAGE_SOURCE = "package";

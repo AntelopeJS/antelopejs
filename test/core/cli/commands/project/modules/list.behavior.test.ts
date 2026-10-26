@@ -1,15 +1,17 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import { loadedConfig } from "../../../fixtures";
-import * as common from "../../../../../../src/core/cli/common";
+import {
+  commandsProjectModulesListCommand as cmdList,
+  commonModule as common,
+} from "../../../../../../src/cli";
 import { ConfigLoader } from "../../../../../../src/core/config";
-import cmdList from "../../../../../../src/core/cli/commands/project/modules/list";
 import { expectProjectNotFound } from "../../../../../helpers/cli-error";
 import {
   createMemoryUi,
   type MemoryUi,
 } from "../../../../../helpers/memory-ui";
+import { loadedConfig } from "../../../fixtures";
 
 const PROJECT_ARGS = ["node", "test", "--project", "/tmp/project"];
 

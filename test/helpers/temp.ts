@@ -1,5 +1,3 @@
-import path from "node:path";
-import { tmpdir } from "node:os";
 import {
   mkdirSync,
   mkdtempSync,
@@ -8,6 +6,8 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 export function makeTempDir(prefix = "antelopejs-") {
   return mkdtempSync(path.join(tmpdir(), prefix));

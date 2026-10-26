@@ -1,13 +1,13 @@
-import path from "node:path";
 import { expect } from "chai";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import {
   findPackageFromEntry,
   isPathWithin,
   resolvePackage,
-} from "../../../src/core/resolution/package-resolution";
+} from "../../../src/utils";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 interface SymlinkPackageFixture {
   root: string;

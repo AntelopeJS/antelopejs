@@ -1,18 +1,14 @@
-import path from "node:path";
+import * as interfaceCore from "@antelopejs/interface-core";
+import * as interfaceModules from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
-import * as interfaceCore from "@antelopejs/interface-core";
-import * as interfaceModules from "@antelopejs/interface-core/modules";
+import path from "node:path";
 
-import { Resolver } from "../../../src/core/resolution/resolver";
-import { PathMapper } from "../../../src/core/resolution/path-mapper";
+import { PathMapper, Resolver } from "../../../src/core/modules";
+import type { BindingGraph, BindingModule } from "../../../src/core/resolution";
+import { buildBindingGraph } from "../../../src/core/resolution";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
-import { buildBindingGraph } from "../../../src/core/resolution/binding-graph";
-import type {
-  BindingGraph,
-  BindingModule,
-} from "../../../src/core/resolution/binding-graph-types";
 
 interface TestGlobals {
   [STATE_KEY]?: InstanceState;

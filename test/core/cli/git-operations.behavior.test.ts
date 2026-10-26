@@ -1,9 +1,9 @@
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
 import * as fsPromises from "node:fs/promises";
+import path from "node:path";
+import sinon from "sinon";
 
-import * as command from "../../../src/core/cli/command";
+import { commandModule as command } from "../../../src/core/output";
 import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 
 describe("Git operations behavior", () => {
@@ -13,11 +13,13 @@ describe("Git operations behavior", () => {
 
   async function loadGitOpsWithHome(homeDir: string) {
     process.env.HOME = homeDir;
-    const gitOpsPath = require.resolve("../../../src/core/cli/git-operations");
-    const lockPath = require.resolve("../../../src/utils/lock");
+    const gitOpsPath = require.resolve("../../../src/cli");
+    const lockPath = require.resolve("../../../src/utils");
     delete require.cache[gitOpsPath];
     delete require.cache[lockPath];
-    return import("../../../src/core/cli/git-operations");
+    return import("../../../src/cli").then(
+      (entry) => entry.gitOperationsModule,
+    );
   }
 
   it("loads manifest and interface info from git cache", async () => {

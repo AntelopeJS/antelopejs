@@ -1,16 +1,16 @@
-import assert from "node:assert/strict";
-import { expect } from "chai";
-import { internal } from "@antelopejs/interface-core/internal";
 import {
   AsyncProxy,
   EventProxy,
   InterfaceFunction,
   RegisteringProxy,
 } from "@antelopejs/interface-core";
+import { internal } from "@antelopejs/interface-core/internal";
+import { expect } from "chai";
+import assert from "node:assert/strict";
 
+import { ModuleLifecycle } from "../../../src/core/modules";
+import { neutralizeInterfaceAsyncProxies } from "../../../src/core/resolution";
 import { ModuleState } from "../../../src/types";
-import { ModuleLifecycle } from "../../../src/core/module-lifecycle";
-import { neutralizeInterfaceAsyncProxies } from "../../../src/core/resolution/stub-interface-runtime";
 
 describe("neutralizeInterfaceAsyncProxies", () => {
   it("makes AsyncProxy-backed calls reject instead of queuing forever", async () => {

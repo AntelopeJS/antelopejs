@@ -8,8 +8,8 @@ const EAGER_FORBIDDEN_MODULES = [
   /[\\/]node_modules[\\/]@antelopejs[\\/]interface-core[\\/]/,
   /[\\/]node_modules[\\/]commander[\\/]/,
   /[\\/]node_modules[\\/]@clack[\\/]/,
-  /[\\/]core[\\/]cli[\\/]output[\\/](failures|translations)\.js$/,
-  /[\\/]core[\\/]cli[\\/]command\.js$/,
+  /[\\/]core[\\/]output[\\/](failures|translations)\.js$/,
+  /[\\/]core[\\/]output[\\/]command\.js$/,
 ];
 const LOAD_TIME_PROBE = `
 const start = process.hrtime.bigint();

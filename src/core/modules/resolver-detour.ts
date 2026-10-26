@@ -1,0 +1,234 @@
+import Module from "node:module";
+import path from "node:path";
+
+import type { ResolveResult, Resolver } from "./resolver";
+
+type ModuleResolver = (
+  request: string,
+  parent: any,
+  isMain: boolean,
+  options: any,
+) => string;
+
+type ModuleLoader = (
+  request: string,
+  parent: any,
+  isMain: boolean,
+) => ReturnType<NodeJS.Require>;
+
+// SAFETY: Node's CommonJS loader installs these hooks on Module before user modules execute; the lease coordinator restores the exact values it reads.
+// oxlint-disable-next-line typescript/no-redundant-type-constituents -- oxlint misresolves the Node Module import as any; TypeScript resolves the constructor (#229).
+const moduleHooks = Module as typeof Module & {
+  _resolveFilename?: ModuleResolver;
+  _load?: ModuleLoader;
+  _nodeModulePaths(folder: string): string[];
+};
+
+interface ResolverLease {
+  owner: symbol;
+  resolver: Resolver;
+}
+
+class ResolverDetourCoordinator {
+  private readonly leases: ResolverLease[] = [];
+  private originalResolver?: ModuleResolver;
+  private installedResolver?: ModuleResolver;
+  private originalLoader?: ModuleLoader;
+  private installedLoader?: ModuleLoader;
+
+  attach(owner: symbol, resolver: Resolver): boolean {
+    if (this.leases.some((lease) => lease.owner === owner)) {
+      return false;
+    }
+    this.ensureInstalled();
+    this.leases.push({ owner, resolver });
+    return true;
+  }
+
+  detach(owner: symbol): void {
+    const leaseIndex = this.leases.findIndex((lease) => lease.owner === owner);
+    if (leaseIndex === -1) {
+      return;
+    }
+    this.leases[leaseIndex].resolver.clearCache();
+    this.leases.splice(leaseIndex, 1);
+    const ownsResolver =
+      moduleHooks._resolveFilename === this.installedResolver;
+    const ownsLoader = moduleHooks._load === this.installedLoader;
+    if (this.leases.length > 0 && (!ownsResolver || !ownsLoader)) {
+      this.throwHookReplacement(ownsResolver, ownsLoader);
+    }
+    if (this.leases.length > 0) {
+      return;
+    }
+    if (ownsResolver) {
+      moduleHooks._resolveFilename = this.originalResolver;
+    }
+    if (ownsLoader) {
+      moduleHooks._load = this.originalLoader;
+    }
+    this.releaseHooks();
+    this.throwHookReplacement(ownsResolver, ownsLoader);
+  }
+
+  private ensureInstalled(): void {
+    if (this.installedResolver) {
+      this.ensureHookOwnership();
+      return;
+    }
+    this.originalResolver = moduleHooks._resolveFilename;
+    this.originalLoader = moduleHooks._load;
+    this.installedResolver = (request, parent, isMain, options) =>
+      this.resolve(request, parent, isMain, options);
+    this.installedLoader = (request, parent, isMain) =>
+      this.load(request, parent, isMain);
+    moduleHooks._resolveFilename = this.installedResolver;
+    moduleHooks._load = this.installedLoader;
+  }
+
+  private ensureHookOwnership(): void {
+    if (moduleHooks._resolveFilename !== this.installedResolver) {
+      throw new Error("Node module resolver hook was replaced externally");
+    }
+    if (moduleHooks._load !== this.installedLoader) {
+      throw new Error("Node module loader hook was replaced externally");
+    }
+  }
+
+  private load(
+    request: string,
+    parent: any,
+    isMain: boolean,
+  ): ReturnType<ModuleLoader> {
+    const activeResolver = this.findResolver(request, parent);
+    const instance = activeResolver?.instanceToLoad(request, parent);
+    if (!activeResolver || !instance) {
+      return this.originalLoader?.(request, parent, isMain);
+    }
+    const resolvedPath = this.resolveWith(
+      activeResolver,
+      request,
+      parent,
+      isMain,
+      undefined,
+    );
+    const entry = activeResolver.entryToPrime(request, parent, resolvedPath);
+    activeResolver.recordInstanceFile(instance, resolvedPath);
+    if (entry) {
+      activeResolver.recordInstanceFile(instance, entry);
+    }
+    return activeResolver.runInInstance(instance, () => {
+      if (entry) {
+        this.originalLoader?.(entry, parent, isMain);
+      }
+      return this.originalLoader?.(resolvedPath, parent, isMain);
+    });
+  }
+
+  private resolve(
+    request: string,
+    parent: any,
+    isMain: boolean,
+    options: any,
+  ): string {
+    const activeResolver = this.findResolver(request, parent);
+    return this.resolveWith(activeResolver, request, parent, isMain, options);
+  }
+
+  private resolveWith(
+    activeResolver: Resolver | undefined,
+    request: string,
+    parent: any,
+    isMain: boolean,
+    options: any,
+  ): string {
+    const result = activeResolver?.resolve(request, parent);
+    if (!activeResolver || !result) {
+      // SAFETY: resolveWith is called only by the installed hooks, after ensureInstalled captured Node's resolver and before releaseHooks clears it.
+      return this.originalResolver?.(
+        request,
+        parent,
+        isMain,
+        options,
+      ) as string;
+    }
+    return this.resolveResult(activeResolver, result, parent, isMain, options);
+  }
+
+  private resolveResult(
+    activeResolver: Resolver,
+    result: ResolveResult,
+    parent: any,
+    isMain: boolean,
+    options: any,
+  ): string {
+    const contextParent = this.createResolutionParent(
+      parent,
+      result.resolveFrom,
+    );
+    // SAFETY: resolveResult runs inside an installed hook lease, while the original Node resolver is retained.
+    const resolvedPath = this.originalResolver?.(
+      result.resolvedPath,
+      contextParent,
+      isMain,
+      options,
+    ) as string;
+    return activeResolver.locate(result, resolvedPath);
+  }
+
+  private createResolutionParent(parent: any, resolveFrom?: string): any {
+    if (!resolveFrom) {
+      return parent;
+    }
+    return {
+      ...parent,
+      filename: path.join(resolveFrom, "_"),
+      paths: moduleHooks._nodeModulePaths(resolveFrom),
+    };
+  }
+
+  private findResolver(request: string, parent: any): Resolver | undefined {
+    for (let index = this.leases.length - 1; index >= 0; index -= 1) {
+      const resolver = this.leases[index].resolver;
+      if (resolver.ownsResolutionContext(request, parent)) {
+        return resolver;
+      }
+    }
+    return this.leases.at(-1)?.resolver;
+  }
+
+  private releaseHooks(): void {
+    this.originalResolver = undefined;
+    this.installedResolver = undefined;
+    this.originalLoader = undefined;
+    this.installedLoader = undefined;
+  }
+
+  private throwHookReplacement(
+    ownsResolver: boolean,
+    ownsLoader: boolean,
+  ): void {
+    if (!ownsResolver) {
+      throw new Error("Node module resolver hook was replaced externally");
+    }
+    if (!ownsLoader) {
+      throw new Error("Node module loader hook was replaced externally");
+    }
+  }
+}
+
+const coordinator = new ResolverDetourCoordinator();
+
+export class ResolverDetour {
+  private readonly owner = Symbol("resolver-detour");
+
+  constructor(private resolver: Resolver) {}
+
+  attach(): boolean {
+    return coordinator.attach(this.owner, this.resolver);
+  }
+
+  detach(): void {
+    coordinator.detach(this.owner);
+  }
+}

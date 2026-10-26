@@ -1,0 +1,149 @@
+import { Command, type AddHelpTextContext } from "commander";
+
+import {
+  applyHelpConventions,
+  formatExamples,
+  formatUsageErrors,
+  getProcessPalette,
+  helpTextWidth,
+  normalizeVerboseArguments,
+  unbreakable,
+  wrapText,
+  type HelpExample,
+} from "../core/output";
+import {
+  addChannelFilter,
+  defaultConfigLogging,
+  setLogAudience,
+  setupAntelopeProjectLogging,
+} from "../logging";
+import cmdConfig from "./commands/config/index";
+import cmdModule from "./commands/module/index";
+import cmdPlugins from "./commands/plugins";
+import cmdProject from "./commands/project/index";
+import cmdUpdate from "./commands/update";
+import { getCoreVersion } from "./core-version";
+import { Options } from "./options";
+import { formatOfficialPluginsHelp } from "./plugin-registry";
+import { reportAvailableUpdate, startUpdateCheck } from "./version-check";
+
+const HELP_COMMAND_NAME = "help";
+const BARE_INVOCATION_ARGUMENT_COUNT = 2;
+const USER_ARGUMENTS_START = 2;
+const DOCS_URL = "https://antelopejs.com/docs/cli/introduction";
+const CLI_DESCRIPTION =
+  "Build modular Node.js applications from explicit interfaces.";
+const PLUGIN_RESOLUTION_NOTE =
+  "Resolved from the nearest node_modules/.bin, then from PATH.";
+const NOTE_INDENT = "  ";
+
+const ROOT_EXAMPLES: HelpExample[] = [
+  { description: "Create a project", command: "ajs project init my-app" },
+  {
+    description: "Add a module from npm",
+    command: "ajs project modules add @antelopejs/api",
+  },
+  {
+    description: "Run the project and reload it on changes",
+    command: "ajs project dev --watch",
+  },
+];
+
+function describeVersion(version: string): string {
+  return `${getProcessPalette("result").bold(`AntelopeJS CLI v${version}`)}\n`;
+}
+
+function describeHelpFooter(context: AddHelpTextContext): string {
+  const width = helpTextWidth(context);
+  const resolutionNote = wrapText(
+    PLUGIN_RESOLUTION_NOTE,
+    width - NOTE_INDENT.length,
+  ).map((line) => `${NOTE_INDENT}${line}`);
+  const closing = wrapText(
+    `Run ${unbreakable("ajs <command> --help")} for details. ${unbreakable(`Docs: ${DOCS_URL}`)}`,
+    width,
+  );
+  return [
+    "",
+    "Plugins:",
+    formatOfficialPluginsHelp(width),
+    ...resolutionNote,
+    "",
+    formatExamples(ROOT_EXAMPLES, width),
+    "",
+    ...closing,
+  ].join("\n");
+}
+
+export function createCLI(version: string) {
+  const program = new Command()
+    .name("ajs")
+    .description(CLI_DESCRIPTION)
+    .version(version, "-v, --version", "Print the version")
+    .addOption(Options.verbose)
+    .addOption(Options.quiet)
+    .addOption(Options.noColor)
+    .addCommand(cmdProject())
+    .addCommand(cmdModule())
+    .addCommand(cmdConfig())
+    .addCommand(cmdUpdate())
+    .addCommand(cmdPlugins())
+    .addHelpText("before", describeVersion(version))
+    .addHelpText("after", describeHelpFooter);
+  applyHelpConventions(program);
+  return program;
+}
+
+export function coreCommandNames(
+  program: Command = createCLI(getCoreVersion()),
+): string[] {
+  return [
+    HELP_COMMAND_NAME,
+    ...program.commands.flatMap((command) => [
+      command.name(),
+      ...command.aliases(),
+    ]),
+  ];
+}
+
+function applyVerboseChannels(program: Command): void {
+  const verbose: string[] | undefined = program.getOptionValue("verbose");
+  if (verbose) {
+    for (const channel of verbose) {
+      addChannelFilter(channel, 0);
+    }
+  }
+}
+
+function isBareInvocation(): boolean {
+  return process.argv.length <= BARE_INVOCATION_ARGUMENT_COUNT;
+}
+
+async function runProgram(program: Command): Promise<void> {
+  if (isBareInvocation()) {
+    program.outputHelp();
+    return;
+  }
+  await program.parseAsync(
+    normalizeVerboseArguments(process.argv.slice(USER_ARGUMENTS_START)),
+    { from: "user" },
+  );
+  applyVerboseChannels(program);
+}
+
+export const runCLI = async () => {
+  const updateCheck = startUpdateCheck();
+  try {
+    const version = getCoreVersion();
+
+    setLogAudience("cli");
+    setupAntelopeProjectLogging(defaultConfigLogging);
+
+    const program = createCLI(version);
+    formatUsageErrors(program);
+    await runProgram(program);
+    await reportAvailableUpdate(version, updateCheck);
+  } finally {
+    updateCheck?.cancel();
+  }
+};

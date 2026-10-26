@@ -1,0 +1,255 @@
+import { Logging } from "@antelopejs/interface-core/logging";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { Writable } from "node:stream";
+
+import type { BuildLaunchOptions, LaunchOptions } from "../../types";
+import {
+  consumeOwnConfigWrite,
+  DEFAULT_ENV,
+  PROJECT_STATE_DIR,
+  tryFindConfigPath,
+} from "../config";
+import type { NodeFileSystem } from "../filesystem";
+import type { ModuleManager } from "../modules";
+import {
+  type FileWatcher,
+  type LoaderContext,
+  type ProjectPreparer,
+  type ShutdownManager,
+  type StartedProject,
+  DEFAULT_RUNTIME_POLICY,
+  getActiveShutdownManager,
+  type LaunchStep,
+  prepareFromArtifact,
+  prepareFromConfig,
+  prepareFromRefreshedArtifact,
+  runLaunchSequence,
+  runLaunchSteps,
+  type RuntimePolicy,
+  tolerateInvalidatedModuleWork,
+} from "../runtime";
+
+const Logger = new Logging.Channel("loader");
+
+const MAX_STREAM_LISTENERS = 20;
+const INTERACTIVE_PROMPT = "> ";
+const SHUTDOWN_PRIORITY_RESOURCES = 20;
+const SHUTDOWN_PRIORITY_CLEANUP = 10;
+const CONFIG_ENCODING = "utf-8";
+const UNSUPPORTED_ARTIFACT_OPTIONS_WARNING =
+  "Watch and interactive modes are only available when launching from configuration; ignoring them for this build artifact launch.";
+
+Writable.prototype.setMaxListeners(MAX_STREAM_LISTENERS);
+
+/**
+ * Lets a module fail to reload without taking the dev process down, until the
+ * project shuts down: work its destroyed generations left pending may still
+ * fail while the modules are torn down.
+ */
+function keepRunningThroughFailedReloads(
+  shutdownManager: ShutdownManager,
+): void {
+  const withdraw = tolerateInvalidatedModuleWork();
+  shutdownManager.register(async () => {
+    withdraw();
+  }, SHUTDOWN_PRIORITY_CLEANUP);
+}
+
+function excludeProjectState(
+  watcher: FileWatcher,
+  projectFolder: string,
+  loaderContext: LoaderContext,
+): void {
+  watcher.excludePath(path.resolve(projectFolder, PROJECT_STATE_DIR));
+  watcher.excludePath(path.resolve(projectFolder, loaderContext.cache.path));
+}
+
+async function setupWatching(
+  manager: ModuleManager,
+  fs: NodeFileSystem,
+  projectFolder: string,
+  env: string,
+  options: LaunchOptions,
+  shutdownManager: ShutdownManager,
+  loaderContext: LoaderContext,
+): Promise<void> {
+  const [{ FileWatcher }, { HotReload }, moduleLoading] = await Promise.all([
+    import("../runtime").then((entry) => entry.watchFileWatcherModule),
+    import("../runtime").then((entry) => entry.watchHotReloadModule),
+    import("../runtime").then((entry) => entry.moduleLoadingModule),
+  ]);
+  const watcher = new FileWatcher(fs);
+  excludeProjectState(watcher, projectFolder, loaderContext);
+  const loadedSignatures = new Map<string, string>();
+  const hotReload = new HotReload(async (moduleId) => {
+    const signature = watcher.getModuleSignature(moduleId);
+    if (loadedSignatures.get(moduleId) === signature) {
+      return;
+    }
+    await moduleLoading.reloadWatchedModule(manager, moduleId, loaderContext);
+    loadedSignatures.set(moduleId, signature);
+  });
+
+  shutdownManager.register(async () => {
+    hotReload.clear();
+    watcher.stopWatching();
+  }, SHUTDOWN_PRIORITY_RESOURCES);
+  keepRunningThroughFailedReloads(shutdownManager);
+
+  for (const { module } of manager.getLoadedModules()) {
+    if (module.manifest?.source?.type === "local") {
+      const watchDirs = moduleLoading.getWatchDirs(module.manifest.source);
+      await watcher.scanModule(module.id, module.manifest.folder, watchDirs);
+      loadedSignatures.set(module.id, watcher.getModuleSignature(module.id));
+    }
+  }
+
+  const configPath = await tryFindConfigPath(projectFolder, fs);
+  if (configPath) {
+    await watcher.watchFile(configPath, () => {
+      void restartUnlessOwnWrite(configPath, () =>
+        restartProject(projectFolder, env, options),
+      );
+    });
+  }
+
+  watcher.onModuleChanged((id) => hotReload.queue(id));
+  watcher.startWatching();
+}
+
+interface PostLaunch {
+  started: StartedProject;
+  projectFolder: string;
+  env: string;
+  options: LaunchOptions;
+}
+
+function warnAboutUnsupportedOptions({ started, options }: PostLaunch): void {
+  if (!started.dev && (options.watch || options.interactive)) {
+    Logger.Warn(UNSUPPORTED_ARTIFACT_OPTIONS_WARNING);
+  }
+}
+
+async function startWatching({
+  started,
+  projectFolder,
+  env,
+  options,
+}: PostLaunch): Promise<void> {
+  if (!started.dev || !options.watch) {
+    return;
+  }
+  await setupWatching(
+    started.manager,
+    started.fs,
+    projectFolder,
+    env,
+    options,
+    started.shutdownManager,
+    await started.loadContext(),
+  );
+}
+
+async function startInteractiveSession({
+  started,
+  options,
+}: PostLaunch): Promise<void> {
+  if (!started.dev || !options.interactive) {
+    return;
+  }
+  const { ReplSession } = await import("./repl-session");
+  const repl = new ReplSession({ moduleManager: started.manager });
+  started.shutdownManager.register(async () => {
+    repl.close();
+  }, SHUTDOWN_PRIORITY_RESOURCES);
+  repl.start(INTERACTIVE_PROMPT);
+}
+
+const POST_LAUNCH_STEPS: readonly LaunchStep<PostLaunch>[] = [
+  warnAboutUnsupportedOptions,
+  startWatching,
+  startInteractiveSession,
+];
+
+export async function startProject(
+  prepare: ProjectPreparer,
+  projectFolder: string,
+  env: string,
+  options: LaunchOptions,
+  policy: RuntimePolicy = DEFAULT_RUNTIME_POLICY,
+): Promise<StartedProject> {
+  const started = await runLaunchSequence(
+    prepare,
+    projectFolder,
+    env,
+    options,
+    policy,
+  );
+  const postLaunch: PostLaunch = { started, projectFolder, env, options };
+  try {
+    await runLaunchSteps(
+      POST_LAUNCH_STEPS,
+      postLaunch,
+      started.shutdownManager.stopping,
+    );
+    return started;
+  } catch (error) {
+    await started.shutdownManager.shutdown();
+    throw error;
+  }
+}
+
+let isRestarting = false;
+
+async function restartProject(
+  projectFolder: string,
+  env: string,
+  options: LaunchOptions,
+): Promise<void> {
+  if (isRestarting) return;
+  isRestarting = true;
+
+  try {
+    const activeShutdownManager = getActiveShutdownManager();
+    if (activeShutdownManager) {
+      await activeShutdownManager.shutdown();
+    }
+
+    await startProject(prepareFromConfig, projectFolder, env, options);
+  } finally {
+    isRestarting = false;
+  }
+}
+
+export async function launchFromBuild(
+  projectFolder: string = ".",
+  env: string = DEFAULT_ENV,
+  options: BuildLaunchOptions = {},
+): Promise<ModuleManager> {
+  const started = await startProject(
+    options.refreshConfig ? prepareFromRefreshedArtifact : prepareFromArtifact,
+    projectFolder,
+    env || DEFAULT_ENV,
+    options,
+  );
+  return started.manager;
+}
+
+/**
+ * Restarts the project for an edit of its configuration file, unless the
+ * edit is one the runtime made itself through the module declaration
+ * functions: the module it describes is already loaded, stopped or reloaded.
+ */
+async function restartUnlessOwnWrite(
+  configPath: string,
+  restart: () => Promise<void>,
+): Promise<void> {
+  const content = await readFile(configPath, CONFIG_ENCODING).catch(() => "");
+  if (consumeOwnConfigWrite(configPath, content)) {
+    Logger.Debug("Configuration file updated by the runtime, no restart");
+    return;
+  }
+  Logger.Info("Configuration file changed, restarting project...");
+  await restart();
+}

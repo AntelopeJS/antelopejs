@@ -1,20 +1,16 @@
-import path from "node:path";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
+import path from "node:path";
 
+import { resolvePackage } from "../../utils";
 import { NodeFileSystem } from "../filesystem";
-import { INSTANCES_FOLDER } from "../module-isolation";
-import { ModuleManifest } from "../module-manifest";
-import { resolvePackage } from "../resolution/package-resolution";
-import { memoizeLoaderContext } from "../runtime/launch-sequence";
-import type { EmbeddedModuleConfig, EmbeddedRuntimeOptions } from "./types";
-import type {
-  ModuleManifestEntry,
-  ProjectPreparer,
-} from "../runtime/runtime-types";
+import { INSTANCES_FOLDER, ModuleManifest } from "../modules";
+import type { ModuleManifestEntry, ProjectPreparer } from "../runtime";
 import {
   buildModuleOverrides,
   createLoaderContext,
-} from "../runtime/module-loading";
+  memoizeLoaderContext,
+} from "../runtime";
+import type { EmbeddedModuleConfig, EmbeddedRuntimeOptions } from "./types";
 
 export const HOST_MODULE_ID = "__antelope_host__";
 const HOST_MODULE_VERSION = "0.0.0";

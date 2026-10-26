@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { FileHasher } from "../../../src/core/watch/file-hasher";
+import { FileHasher } from "../../../src/core/runtime";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 describe("FileHasher", () => {

@@ -1,27 +1,13 @@
-import path from "node:path";
 import { Logging } from "@antelopejs/interface-core/logging";
+import path from "node:path";
 
-import type { ShutdownHandler, ShutdownManager } from "../shutdown";
-import { NodeFileSystem } from "../filesystem";
-import type { LaunchOptions } from "../../types";
-import { ModuleManager } from "../module-manager";
-import { unpackErrors } from "../module-errors";
-import { INSTANCES_FOLDER } from "../module-isolation";
-import { terminalDisplay } from "../cli/output/tasks";
 import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
+import type { LaunchOptions } from "../../types";
+import { NodeFileSystem } from "../filesystem";
+import type { BuildArtifact } from "../modules";
+import { INSTANCES_FOLDER, ModuleManager, unpackErrors } from "../modules";
+import { terminalDisplay } from "../output";
 import { readRefreshedBuildArtifact } from "./build-refresh";
-import type { BuildArtifact } from "../build/build-artifact";
-import { registerCoreRuntimeInterface } from "./dev-server-registry";
-import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
-import type {
-  LoaderConfig,
-  LoaderContext,
-  LoaderContextProvider,
-  ModuleManifestEntry,
-  PreparedProject,
-  ProjectPreparer,
-  StartedProject,
-} from "./runtime-types";
 import {
   ensureBuildModulesExist,
   logEnvironmentMismatch,
@@ -29,18 +15,7 @@ import {
   readBuildArtifactOrThrow,
   warnIfBuildIsStale,
 } from "./build-runtime";
-import {
-  applyVerboseChannels,
-  loadProjectConfig,
-  releaseProcessShutdownManager,
-  setupProcessHandlers,
-  withRaisedMaxListeners,
-} from "./runtime-bootstrap";
-import {
-  claimProcess,
-  createShutdownManager,
-  registerModuleShutdownHandler,
-} from "./process-claim";
+import { registerCoreRuntimeInterface } from "./dev-server-registry";
 import { type LaunchStep, runLaunchSteps } from "./launch-steps";
 import {
   activateLoadedModules,
@@ -51,6 +26,29 @@ import {
   registerCoreInterfaces,
   registerCoreModuleInterface,
 } from "./module-loading";
+import {
+  claimProcess,
+  createShutdownManager,
+  registerModuleShutdownHandler,
+} from "./process-claim";
+import {
+  applyVerboseChannels,
+  loadProjectConfig,
+  releaseProcessShutdownManager,
+  setupProcessHandlers,
+  withRaisedMaxListeners,
+} from "./runtime-bootstrap";
+import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
+import type {
+  LoaderConfig,
+  LoaderContext,
+  LoaderContextProvider,
+  ModuleManifestEntry,
+  PreparedProject,
+  ProjectPreparer,
+  StartedProject,
+} from "./runtime-types";
+import type { ShutdownHandler, ShutdownManager } from "./shutdown/index";
 
 export function memoizeLoaderContext(
   create: () => Promise<LoaderContext>,
@@ -126,7 +124,7 @@ export const prepareFromConfig: ProjectPreparer = async (
     loadContext,
     verify: async (stopping) => {
       const { checkOutdatedModules, warnOutdatedModules } =
-        await import("../version-checker");
+        await import("../modules").then((entry) => entry.versionCheckerModule);
       warnOutdatedModules(
         await checkOutdatedModules(normalizedConfig.modules, stopping),
       );

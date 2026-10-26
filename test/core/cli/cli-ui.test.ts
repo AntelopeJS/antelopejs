@@ -4,19 +4,17 @@ import * as sinon from "sinon";
 import {
   consoleOutput,
   error,
+  getProcessUi,
   header,
   info,
   Spinner,
+  stripAnsi,
   success,
-  warning,
-} from "../../../src/core/cli/cli-ui";
-import { stripAnsi } from "../../../src/core/cli/logging-utils";
-import {
-  getProcessUi,
   TaskList,
+  warning,
   type MessageLevel,
   type OutputCapabilities,
-} from "../../../src/core/cli/output";
+} from "../../../src/core/output";
 import {
   captureOutput,
   captureOutputAsync,

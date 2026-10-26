@@ -1,10 +1,9 @@
+import { expect } from "chai";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import sinon from "sinon";
-import { expect } from "chai";
 
-import * as cliUi from "../../../src/core/cli/cli-ui";
 import {
   UpdateCheck,
   UpdateCheckContext,
@@ -12,11 +11,11 @@ import {
   reportAvailableUpdate,
   shouldCheckForUpdates,
   startUpdateCheck,
-} from "../../../src/core/cli/version-check";
+} from "../../../src/cli";
+import { cliUiModule as cliUi, stripAnsi } from "../../../src/core/output";
+import { useAsciiSymbols } from "../../helpers/ascii-symbols";
 import { captureOutputAsync } from "../../helpers/capture-output";
 import { readJson } from "../../helpers/temp";
-import { useAsciiSymbols } from "../../helpers/ascii-symbols";
-import { stripAnsi } from "../../../src/core/cli/logging-utils";
 
 const NOW = Date.UTC(2026, 0, 2);
 const HOUR_MS = 60 * 60 * 1000;

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
-import { ModuleLifecycle } from "../../src/core/module-lifecycle";
+import { ModuleLifecycle } from "../../src/core/modules";
 import { ModuleState } from "../../src/types";
 
 const MODULE_ID = "mod";

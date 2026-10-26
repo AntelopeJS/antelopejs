@@ -1,33 +1,33 @@
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
+import { CommanderError } from "commander";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { CommanderError } from "commander";
+import path from "node:path";
+import sinon from "sinon";
 
-import { expectInstanceOf } from "../../fixtures";
-import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import * as common from "../../../../../src/core/cli/common";
-import * as command from "../../../../../src/core/cli/command";
-import * as packageManager from "../../../../../src/core/cli/package-manager";
+import {
+  commandsProjectInitCommand as cmdInit,
+  commonModule as common,
+  gitOperationsModule as gitOps,
+  commandsModuleInitActionModule as moduleInitModule,
+  commandsProjectModulesAddActionModule as projectModulesAddModule,
+} from "../../../../../src/cli";
 import {
   CancelledError,
   CliError,
+  cliUiModule as cliUi,
+  commandModule as command,
+  FAILURE_EXIT_CODE,
   getProcessUi,
   NeedsInputError,
+  packageManagerModule as packageManager,
   runWithErrorBoundary,
-} from "../../../../../src/core/cli/output";
-import {
-  FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../../../src/core/cli/exit-codes";
-import * as gitOps from "../../../../../src/core/cli/git-operations";
-import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
-import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
-import cmdInit from "../../../../../src/core/cli/commands/project/init";
-import * as moduleInitModule from "../../../../../src/core/cli/commands/module/init-action";
-import * as projectModulesAddModule from "../../../../../src/core/cli/commands/project/modules/add-action";
+} from "../../../../../src/core/output";
 import { collectStderr } from "../../../../helpers/capture-output";
+import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
+import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
+import { expectInstanceOf } from "../../fixtures";
 
 const { levels } = getProcessUi().symbols;
 

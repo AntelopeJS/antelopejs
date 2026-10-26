@@ -1,15 +1,8 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import * as cliUi from "../../../src/core/cli/cli-ui";
-import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
-  readJson,
-  writeJson,
-  makeTempDir,
-  cleanupTempDir,
-} from "../../helpers/temp";
-import {
+  cliUiModule as cliUi,
   getInstallCommand,
   getInstallPackagesCommand,
   getModuleCacheInstallCommand,
@@ -17,7 +10,14 @@ import {
   getPackageManagerWithVersion,
   parsePackageInfoOutput,
   savePackageManagerToPackageJson,
-} from "../../../src/core/cli/package-manager";
+} from "../../../src/core/output";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import {
+  cleanupTempDir,
+  makeTempDir,
+  readJson,
+  writeJson,
+} from "../../helpers/temp";
 
 describe("Package Manager Utils", () => {
   describe("getModulePackageManager", () => {

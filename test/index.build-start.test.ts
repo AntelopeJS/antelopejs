@@ -1,27 +1,27 @@
-import assert from "node:assert/strict";
-import { interfaceProxy } from "./helpers/interface-proxy";
-import fs from "node:fs";
-import sinon from "sinon";
-import path from "node:path";
-import { expect } from "chai";
 import { Logging } from "@antelopejs/interface-core/logging";
 import { ListModules } from "@antelopejs/interface-core/modules";
+import { expect } from "chai";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import sinon from "sinon";
+import { interfaceProxy } from "./helpers/interface-proxy";
 
+import { DownloaderRegistry } from "../src/core/downloaders";
+import type { BuildArtifact } from "../src/core/modules";
+import { ModuleCache } from "../src/core/modules";
+import { FileWatcher } from "../src/core/runtime";
 import {
   build,
   BuildModuleSetChangedError,
   launchFromBuild,
 } from "../src/index";
-import { ModuleCache } from "../src/core/module-cache";
-import { FileWatcher } from "../src/core/watch/file-watcher";
-import type { BuildArtifact } from "../src/core/build/build-artifact";
-import { DownloaderRegistry } from "../src/core/downloaders/registry";
 import {
+  cleanupTempDir,
+  makeTempDir,
   readJson,
   readText,
   writeJson,
-  makeTempDir,
-  cleanupTempDir,
 } from "./helpers/temp";
 
 interface TestGlobals {

@@ -1,18 +1,18 @@
-import os from "node:os";
-import sinon from "sinon";
-import path from "node:path";
+import { MODULE_CONTEXT_INVALIDATED_CODE } from "@antelopejs/interface-core";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
-import { MODULE_CONTEXT_INVALIDATED_CODE } from "@antelopejs/interface-core";
+import os from "node:os";
+import path from "node:path";
+import sinon from "sinon";
 
-import { ModuleState } from "../../src/types";
-import { ShutdownManager } from "../../src/core/shutdown";
 import launch, { type ModuleManager } from "../../src";
 import {
+  ShutdownManager,
   createLoaderContext,
   reloadWatchedModule,
-} from "../../src/core/runtime/module-loading";
+} from "../../src/core/runtime";
+import { ModuleState } from "../../src/types";
 
 interface TestGlobals {
   [STATE_KEY]?: FailedReloadState;

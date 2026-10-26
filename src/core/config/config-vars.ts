@@ -1,6 +1,6 @@
 import type { ConfigVarValue } from "@antelopejs/interface-core/config";
 
-import { isPlainObject } from "../../utils/object";
+import { isPlainObject } from "../../utils";
 
 const RESERVED_PREFIX = "@";
 const REFERENCE_PATTERN = /\$\{@([^{}]+)\.([A-Za-z_][A-Za-z0-9_]*)\}/g;

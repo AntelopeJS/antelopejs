@@ -1,22 +1,24 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import { expectInstanceOf } from "../fixtures";
-import * as common from "../../../../src/core/cli/common";
+import {
+  commandsConfigGetCommand as cmdGet,
+  commandsConfigResetCommand as cmdReset,
+  commandsConfigSetCommand as cmdSet,
+  commandsConfigShowCommand as cmdShow,
+  commonModule as common,
+} from "../../../../src/cli";
 import {
   FAILURE_EXIT_CODE,
+  getProcessUi,
   USAGE_EXIT_CODE,
-} from "../../../../src/core/cli/exit-codes";
-import cmdGet from "../../../../src/core/cli/commands/config/get";
-import cmdSet from "../../../../src/core/cli/commands/config/set";
-import cmdShow from "../../../../src/core/cli/commands/config/show";
-import cmdReset from "../../../../src/core/cli/commands/config/reset";
-import { captureCliError } from "../../../helpers/cli-error";
+} from "../../../../src/core/output";
+import { useAsciiSymbols } from "../../../helpers/ascii-symbols";
 import { collectStderr } from "../../../helpers/capture-output";
+import { captureCliError } from "../../../helpers/cli-error";
 import { CANCEL, fakePrompts } from "../../../helpers/fake-prompts";
 import { createMemoryUi, type MemoryUi } from "../../../helpers/memory-ui";
-import { getProcessUi } from "../../../../src/core/cli/output";
-import { useAsciiSymbols } from "../../../helpers/ascii-symbols";
+import { expectInstanceOf } from "../fixtures";
 
 const CUSTOM_REPOSITORY = "https://example.com/interfaces.git";
 const { levels } = getProcessUi().symbols;

@@ -1,16 +1,19 @@
-import sinon from "sinon";
 import { expect } from "chai";
 import type { Command } from "commander";
+import sinon from "sinon";
 
-import { expectInstanceOf, rejectionOf } from "./fixtures";
-import { coreCommandNames, createCLI } from "../../../src/core/cli/full-cli";
+import {
+  coreCommandNames,
+  createCLI,
+  formatOfficialPluginsHelp,
+} from "../../../src/cli";
 import {
   CliError,
+  formatUsageErrors,
   normalizeVerboseArguments,
-} from "../../../src/core/cli/output";
-import { formatUsageErrors } from "../../../src/core/cli/usage-errors";
-import { USAGE_EXIT_CODE } from "../../../src/core/cli/exit-codes";
-import { formatOfficialPluginsHelp } from "../../../src/core/cli/plugin-registry";
+  USAGE_EXIT_CODE,
+} from "../../../src/core/output";
+import { expectInstanceOf, rejectionOf } from "./fixtures";
 
 const MAX_SUMMARY_LENGTH = 50;
 

@@ -7,9 +7,10 @@ import {
   formatHelpItem,
   helpTextWidth,
   helpWidth,
+  unbreakable,
   withExamples,
-} from "../../../src/core/cli/help";
-import { unbreakable, wrapText } from "../../../src/core/cli/output/format";
+  wrapText,
+} from "../../../src/core/output";
 
 const EXAMPLES = [
   { description: "Create a project", command: "ajs project init my-app" },

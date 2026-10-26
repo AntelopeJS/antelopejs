@@ -1,17 +1,19 @@
-import assert from "node:assert/strict";
-import { expect } from "chai";
-import { ExecError } from "../../../src/core/cli/command";
-import { mkdirSync, writeFileSync } from "node:fs";
 import type {
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
 } from "@antelopejs/interface-core/config";
+import { expect } from "chai";
+import assert from "node:assert/strict";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { ExecError } from "../../../src/core/output";
 
-import { ModuleCache } from "../../../src/core/module-cache";
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import {
+  DownloaderRegistry,
+  registerLocalFolderDownloader,
+} from "../../../src/core/downloaders";
+import { ModuleCache } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
-import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
-import { registerLocalFolderDownloader } from "../../../src/core/downloaders/local-folder";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 function createExecSpy() {
   const calls: Array<{ command: string; cwd?: string }> = [];

@@ -1,4 +1,3 @@
-import path from "node:path";
 import {
   copyFileSync,
   existsSync,
@@ -9,8 +8,9 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
+import path from "node:path";
 
-import { clearPathResolutionCache } from "./package-resolution";
+import { clearPathResolutionCache } from "../../utils";
 
 /** Creates `destination` as a hard link to `source`; throws when the filesystem refuses. */
 export type FileLinker = (source: string, destination: string) => void;

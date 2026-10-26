@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { ConfigVarStore } from "../../../src/core/config/config-var-store";
+import { ConfigVarStore } from "../../../src/core/config";
 
 describe("ConfigVarStore", () => {
   let store: ConfigVarStore;

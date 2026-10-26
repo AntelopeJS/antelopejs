@@ -1,10 +1,10 @@
 import { expect } from "chai";
 
-import { clearPathResolutionCache } from "../../../src/core/resolution/package-resolution";
 import {
   PathOwnerIndex,
   type PathOwnerRoot,
-} from "../../../src/core/resolution/path-owner-index";
+} from "../../../src/core/resolution";
+import { clearPathResolutionCache } from "../../../src/utils";
 
 function createIndex(roots: PathOwnerRoot<string>[]) {
   let listCount = 0;

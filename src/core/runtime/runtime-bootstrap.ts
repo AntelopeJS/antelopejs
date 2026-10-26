@@ -1,18 +1,18 @@
-import path from "node:path";
-import EventEmitter from "node:events";
-import { Logging } from "@antelopejs/interface-core/logging";
 import { MODULE_CONTEXT_INVALIDATED_CODE } from "@antelopejs/interface-core";
+import { Logging } from "@antelopejs/interface-core/logging";
+import EventEmitter from "node:events";
+import path from "node:path";
 
-import { NodeFileSystem } from "../filesystem";
-import type { LaunchOptions } from "../../types";
-import type { ShutdownManager } from "../shutdown";
-import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
 import { addChannelFilter, setupAntelopeProjectLogging } from "../../logging";
+import type { LaunchOptions } from "../../types";
+import { ConfigLoader, type LoadedConfig } from "../config";
+import { NodeFileSystem } from "../filesystem";
 import type {
   BuildOptions,
   NormalizedLoadedConfig,
   ProjectRuntimeConfig,
 } from "./runtime-types";
+import type { ShutdownManager } from "./shutdown/index";
 
 const EXIT_CODE_ERROR = 1;
 const DEFAULT_MAX_EVENT_LISTENERS = 50;

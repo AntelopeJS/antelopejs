@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { ConfigParser } from "../../../src/core/config/config-parser";
+import { ConfigParser } from "../../../src/core/config";
 
 describe("ConfigParser", () => {
   let parser: ConfigParser;

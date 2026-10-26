@@ -1,15 +1,15 @@
-import assert from "node:assert/strict";
-import path from "node:path";
-import { expect } from "chai";
-import fs from "node:fs/promises";
-import { existsSync } from "node:fs";
 import { LoadModule } from "@antelopejs/interface-core/modules";
+import { expect } from "chai";
+import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 import launch, { type ModuleManager } from "../../src";
 import {
   createLoaderContext,
   reloadWatchedModule,
-} from "../../src/core/runtime/module-loading";
+} from "../../src/core/runtime";
 import {
   CORE_INTERFACE_NAME,
   createProject,

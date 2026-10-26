@@ -1,18 +1,18 @@
-import * as path from "node:path";
-import { Logging } from "@antelopejs/interface-core/logging";
 import type {
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
 } from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
+import * as path from "node:path";
 
-import { ExecuteCMD } from "../cli/command";
-import type { CommandRunner } from "./types";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import type { ModuleCache } from "../module-cache";
-import { ModuleManifest } from "../module-manifest";
-import { expandHome, runInstallCommands } from "./utils";
+import type { ModuleCache } from "../modules";
+import { ModuleManifest } from "../modules";
+import { ExecuteCMD } from "../output";
 import type { DownloaderRegistry, LoadOptions } from "./registry";
+import type { CommandRunner } from "./types";
+import { expandHome, runInstallCommands } from "./utils";
 
 const Logger = new Logging.Channel("loader.local-folder");
 

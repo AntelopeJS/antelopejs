@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
-import { isObject } from "../../../src/utils/object";
+import { isObject } from "../../../src/utils";
 
 import {
   declaredConfigVars,
   isConfigVarKey,
   scanConfigVars,
   substituteConfigVars,
-} from "../../../src/core/config/config-vars";
+} from "../../../src/core/config";
 
 const lookup = () => 5010;
 

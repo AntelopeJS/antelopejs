@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { delegateToPlugin } from "../../../src/core/cli/plugin";
+import { delegateToPlugin } from "../../../src/cli";
 import {
   createGlobalRootResolver,
   createOutput,

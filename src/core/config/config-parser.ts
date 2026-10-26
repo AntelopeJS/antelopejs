@@ -1,13 +1,13 @@
-import type { ModuleEntryConfig } from "./module-entry";
 import type {
   AntelopeModuleConfig,
   ImportOverride,
   ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+import type { ModuleEntryConfig } from "./module-entry";
 
+import { isObject, isPlainObject, set } from "../../utils";
 import { isConfigVarKey } from "./config-vars";
-import { isObject, isPlainObject, set } from "../../utils/object";
 
 export interface ExpandedModuleConfig {
   source: ModuleSource;

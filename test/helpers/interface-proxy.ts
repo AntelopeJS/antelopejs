@@ -1,5 +1,5 @@
-import assert from "node:assert/strict";
 import { AsyncProxy } from "@antelopejs/interface-core";
+import assert from "node:assert/strict";
 
 export function interfaceProxy<Args extends unknown[], Result>(
   fn: (...args: Args) => Result,

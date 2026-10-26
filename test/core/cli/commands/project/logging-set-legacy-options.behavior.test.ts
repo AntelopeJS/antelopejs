@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import cmdSet from "../../../../../src/core/cli/commands/project/logging/set";
+import { commandsProjectLoggingSetCommand as cmdSet } from "../../../../../src/cli";
 import {
   messagesOf,
   runSet,

@@ -1,19 +1,19 @@
 import { expect } from "chai";
 
 import {
-  detectCapabilities,
-  hasColorSupport,
-  hasLiveProgress,
-  hasProcessColorSupport,
-  hasUnicodeSupport,
-  isInteractiveSession,
-  processCapabilityContext,
-  selectSymbols,
-  SYMBOL_SETS,
-  type CapabilityContext,
-} from "../../../../src/core/cli/output";
-import { MemoryStream } from "../../../helpers/memory-ui";
+detectCapabilities,
+hasColorSupport,
+hasLiveProgress,
+hasProcessColorSupport,
+hasUnicodeSupport,
+isInteractiveSession,
+processCapabilityContext,
+selectSymbols,
+SYMBOL_SETS,
+type CapabilityContext,
+} from "../../../../src/core/output";
 import { useColorLevel } from "../../../helpers/color-environment";
+import { MemoryStream } from "../../../helpers/memory-ui";
 
 const TERMINAL = new MemoryStream(true);
 const PIPE = new MemoryStream(false);

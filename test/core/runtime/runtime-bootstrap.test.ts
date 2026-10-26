@@ -1,13 +1,15 @@
-import sinon from "sinon";
+import { ModuleContextInvalidatedError } from "@antelopejs/interface-core";
+import { Logging } from "@antelopejs/interface-core/logging";
 import { expect } from "chai";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import EventEmitter from "node:events";
-import { Logging } from "@antelopejs/interface-core/logging";
-import { ModuleContextInvalidatedError } from "@antelopejs/interface-core";
+import sinon from "sinon";
 
+import { ConfigLoader } from "../../../src/core/config";
+import * as bootstrap from "../../../src/core/runtime";
+import { ShutdownManager } from "../../../src/core/runtime";
 import * as logging from "../../../src/logging";
-import { ShutdownManager } from "../../../src/core/shutdown";
-import { ConfigLoader } from "../../../src/core/config/config-loader";
 
 type ProcessEventName = "uncaughtException" | "unhandledRejection" | "warning";
 
@@ -40,61 +42,68 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
   }
 }
 
-function loadBootstrapModule() {
-  const modulePath =
-    require.resolve("../../../src/core/runtime/runtime-bootstrap");
-  delete require.cache[modulePath];
-  const bootstrap: typeof import("../../../src/core/runtime/runtime-bootstrap") = require(
-    modulePath,
-  );
-  return bootstrap;
-}
-
 describe("runtime runtime-bootstrap", () => {
+  before(() => {
+    bootstrap.setupProcessHandlers();
+  });
+
   afterEach(() => {
     sinon.restore();
   });
 
   it("registers process handlers once and handles all branches", () => {
-    const originalListeners = snapshotProcessListeners();
-    const bootstrap = loadBootstrapModule();
-
-    const exitStub = sinon.stub(process, "exit");
-    const errorStub = sinon.stub(Logging, "Error");
-
-    try {
-      bootstrap.setupProcessHandlers();
-      bootstrap.setupProcessHandlers();
-
-      const current = snapshotProcessListeners();
-      expect(current.uncaughtException.length).to.equal(
-        originalListeners.uncaughtException.length + 1,
-      );
-      expect(current.unhandledRejection.length).to.equal(
-        originalListeners.unhandledRejection.length + 1,
-      );
-      expect(current.warning.length).to.equal(originalListeners.warning.length);
-
-      const uncaught =
-        current.uncaughtException[current.uncaughtException.length - 1];
-      uncaught({ message: "boom-no-stack" });
-      uncaught(new Error("boom-with-stack"));
-
-      const rejection =
-        current.unhandledRejection[current.unhandledRejection.length - 1];
-      rejection(new AggregateError([new Error("inner-a"), "inner-b"], "agg"));
-      rejection("plain rejection");
-
-      expect(errorStub.called).to.equal(true);
-      expect(exitStub.calledWith(1)).to.equal(true);
-    } finally {
-      restoreProcessListeners(originalListeners);
-    }
+    const result = spawnSync(
+      process.execPath,
+      [
+        "-r",
+        "ts-node/register",
+        "-e",
+        `
+          const { setupProcessHandlers } = require(process.argv[1]);
+          const { Logging } = require("@antelopejs/interface-core/logging");
+          const exits = [];
+          let logged = 0;
+          process.exit = code => exits.push(code);
+          Logging.Error = () => { logged += 1; };
+          const warnings = process.listenerCount("warning");
+          setupProcessHandlers();
+          const uncaughtOnce = process.listenerCount("uncaughtException");
+          const rejectionOnce = process.listenerCount("unhandledRejection");
+          setupProcessHandlers();
+          const uncaught = process.listeners("uncaughtException");
+          const rejection = process.listeners("unhandledRejection");
+          uncaught.at(-1)({ message: "boom-no-stack" });
+          uncaught.at(-1)(new Error("boom-with-stack"));
+          rejection.at(-1)(new AggregateError([new Error("inner-a"), "inner-b"], "agg"));
+          rejection.at(-1)("plain rejection");
+          console.log(JSON.stringify({
+            sameUncaught: uncaught.length === uncaughtOnce,
+            sameRejection: rejection.length === rejectionOnce,
+            warnings: process.listenerCount("warning") - warnings,
+            exits,
+            logged,
+          }));
+        `,
+        require.resolve("../../../src/core/runtime"),
+      ],
+      {
+        encoding: "utf8",
+        env: { ...process.env, TS_NODE_TRANSPILE_ONLY: "true" },
+        timeout: 20000,
+      },
+    );
+    expect(result.status, result.stderr).to.equal(0);
+    expect(JSON.parse(result.stdout)).to.deep.equal({
+      sameUncaught: true,
+      sameRejection: true,
+      warnings: 0,
+      exits: [1, 1, 1, 1],
+      logged: 4,
+    });
   });
 
   it("leaves process warnings to Node.js on stderr instead of logging them as output", () => {
     const originalListeners = snapshotProcessListeners();
-    const bootstrap = loadBootstrapModule();
 
     try {
       bootstrap.setupProcessHandlers();
@@ -109,7 +118,6 @@ describe("runtime runtime-bootstrap", () => {
 
   it("keeps the process running when work of a destroyed module generation fails during hot reload", () => {
     const originalListeners = snapshotProcessListeners();
-    const bootstrap = loadBootstrapModule();
     const shutdownManager = new ShutdownManager();
     const shutdownStub = sinon.stub(shutdownManager, "shutdown").resolves();
     sinon.stub(Logging, "Error");
@@ -142,7 +150,6 @@ describe("runtime runtime-bootstrap", () => {
 
   it("calls shutdown manager on uncaughtException instead of process.exit", () => {
     const originalListeners = snapshotProcessListeners();
-    const bootstrap = loadBootstrapModule();
     const shutdownManager = new ShutdownManager();
     const shutdownStub = sinon.stub(shutdownManager, "shutdown").resolves();
     const exitStub = sinon.stub(process, "exit");
@@ -165,7 +172,6 @@ describe("runtime runtime-bootstrap", () => {
 
   it("restores the previous process shutdown manager on release", () => {
     const originalListeners = snapshotProcessListeners();
-    const bootstrap = loadBootstrapModule();
     const first = new ShutdownManager();
     const second = new ShutdownManager();
     const firstShutdown = sinon.stub(first, "shutdown").resolves();
@@ -194,7 +200,6 @@ describe("runtime runtime-bootstrap", () => {
 
   it("allows late wiring of shutdown manager after handlers are registered", () => {
     const originalListeners = snapshotProcessListeners();
-    const bootstrap = loadBootstrapModule();
 
     const exitStub = sinon.stub(process, "exit");
     const shutdownManager = new ShutdownManager();
@@ -218,7 +223,6 @@ describe("runtime runtime-bootstrap", () => {
   });
 
   it("raises and restores max listeners on success and failure", async () => {
-    const bootstrap = loadBootstrapModule();
     const originalMax = EventEmitter.defaultMaxListeners;
 
     EventEmitter.defaultMaxListeners = 7;
@@ -247,7 +251,6 @@ describe("runtime runtime-bootstrap", () => {
 
   it("normalizes config and applies verbose channels when loading runtime config", async () => {
     const originalListeners = snapshotProcessListeners();
-    const bootstrap = loadBootstrapModule();
 
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       name: "sample",
@@ -284,8 +287,6 @@ describe("runtime runtime-bootstrap", () => {
   });
 
   it("normalizes absolute cache folders without modification", () => {
-    const bootstrap = loadBootstrapModule();
-
     const normalized = bootstrap.normalizeLoadedConfig(
       {
         name: "sample",
@@ -303,7 +304,6 @@ describe("runtime runtime-bootstrap", () => {
 
   it("logs an aggregate rejection once, its inner errors with it", () => {
     const originalListeners = snapshotProcessListeners();
-    const bootstrap = loadBootstrapModule();
     sinon.stub(process, "exit");
     const errorStub = sinon.stub(Logging, "Error");
     const aggregate = new AggregateError([new Error("inner-a")], "agg");

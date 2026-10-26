@@ -1,8 +1,7 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import { FileHasher } from "../../../src/core/watch/file-hasher";
-import { FileWatcher } from "../../../src/core/watch/file-watcher";
+import { FileHasher, FileWatcher } from "../../../src/core/runtime";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 describe("FileWatcher", () => {

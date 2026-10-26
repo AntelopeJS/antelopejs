@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { diffDeep, mergeDeep, set } from "../../src/utils/object";
+import { diffDeep, mergeDeep, set } from "../../src/utils";
 
 describe("Object Utilities", () => {
   describe("mergeDeep", () => {

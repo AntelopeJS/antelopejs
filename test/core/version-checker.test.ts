@@ -1,16 +1,12 @@
-import assert from "node:assert/strict";
-import sinon from "sinon";
-import { expect } from "chai";
 import type {
   ModuleSourceLocal,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+import { expect } from "chai";
+import assert from "node:assert/strict";
+import sinon from "sinon";
 
-import * as cliUi from "../../src/core/cli/cli-ui";
-import * as command from "../../src/core/cli/command";
-import { CliError } from "../../src/core/cli/output";
-import { useAsciiSymbols } from "../helpers/ascii-symbols";
-import type { ExpandedModuleConfig } from "../../src/core/config/config-parser";
+import type { ExpandedModuleConfig } from "../../src/core/config";
 import {
   bumpVersionSpec,
   checkOutdatedModules,
@@ -20,7 +16,13 @@ import {
   toFloatingSpec,
   validateVersionSpec,
   warnOutdatedModules,
-} from "../../src/core/version-checker";
+} from "../../src/core/modules";
+import {
+  CliError,
+  cliUiModule as cliUi,
+  commandModule as command,
+} from "../../src/core/output";
+import { useAsciiSymbols } from "../helpers/ascii-symbols";
 
 describe("version-checker", () => {
   afterEach(() => {

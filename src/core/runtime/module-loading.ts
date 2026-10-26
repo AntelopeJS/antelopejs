@@ -1,40 +1,31 @@
-import path from "node:path";
-import { Logging } from "@antelopejs/interface-core/logging";
 import * as coreInterfaceBeta from "@antelopejs/interface-core";
-import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import type {
   ModuleSource,
   ModuleSourceLocal,
 } from "@antelopejs/interface-core/config";
+import { Logging } from "@antelopejs/interface-core/logging";
+import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
+import path from "node:path";
 
-import { Module } from "../module";
-import { unpackErrors } from "../module-errors";
-import type { ModuleDeclarationChanges } from "../config/module-entry";
+import { ModuleState } from "../../types";
+import type { ExpandedModuleConfig, ModuleDeclarationChanges } from "../config";
 import {
   listModuleDeclarations,
   removeModuleDeclaration,
   saveModuleDeclaration,
-} from "../config/module-declarations";
-import { ModuleState } from "../../types";
-import { ModuleCache } from "../module-cache";
+} from "../config";
 import { NodeFileSystem } from "../filesystem";
-import { ModuleManifest } from "../module-manifest";
-import { pluralize } from "../cli/output/format";
-import { runTask } from "../cli/output/tasks";
-import { moduleLoadFailure } from "./module-load-failure";
-import type { ExpandedModuleConfig } from "../config/config-parser";
+import type { ManagedModule, ModuleConfig, ModuleManager } from "../modules";
+import { Module, ModuleCache, ModuleManifest, unpackErrors } from "../modules";
+import { pluralize, runTask } from "../output";
 import {
   findUnresolvedInterfaces,
   type InterfaceConsumer,
   type InterfaceProvider,
   type InterfaceResolutionResult,
   type UnresolvedInterface,
-} from "../resolution/interface-resolution";
-import type {
-  ManagedModule,
-  ModuleConfig,
-  ModuleManager,
-} from "../module-manager";
+} from "../resolution";
+import { moduleLoadFailure } from "./module-load-failure";
 import type {
   LoaderConfig,
   LoaderContext,
@@ -118,11 +109,11 @@ export async function createLoaderContext(
 ): Promise<LoaderContext> {
   const [{ DownloaderRegistry }, git, local, localFolder, packageDownloader] =
     await Promise.all([
-      import("../downloaders/registry"),
-      import("../downloaders/git"),
-      import("../downloaders/local"),
-      import("../downloaders/local-folder"),
-      import("../downloaders/package"),
+      import("../downloaders").then((entry) => entry.registryModule),
+      import("../downloaders").then((entry) => entry.gitModule),
+      import("../downloaders").then((entry) => entry.localModule),
+      import("../downloaders").then((entry) => entry.localFolderModule),
+      import("../downloaders").then((entry) => entry.packageModule),
     ]);
   const cache = new ModuleCache(config.cacheFolder, fs);
   await cache.load();

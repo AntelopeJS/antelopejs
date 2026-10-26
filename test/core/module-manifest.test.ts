@@ -1,14 +1,14 @@
-import { expect } from "chai";
-import * as path from "node:path";
-import { mkdirSync, writeFileSync } from "node:fs";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
+import { expect } from "chai";
+import { mkdirSync, writeFileSync } from "node:fs";
+import * as path from "node:path";
 
-import { cleanupTempDir, makeTempDir } from "../helpers/temp";
-import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import {
   ModuleManifest,
   resolveManifestEntryFile,
-} from "../../src/core/module-manifest";
+} from "../../src/core/modules";
+import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
+import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
 describe("ModuleManifest", () => {
   it("throws when package.json is missing", async () => {

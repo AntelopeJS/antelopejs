@@ -1,24 +1,26 @@
-import path from "node:path";
-import sinon from "sinon";
 import { expect } from "chai";
 import { writeFileSync } from "node:fs";
+import path from "node:path";
+import sinon from "sinon";
 
-import { expectInstanceOf } from "../../fixtures";
-import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import { getProcessUi } from "../../../../../src/core/cli/output";
-import * as common from "../../../../../src/core/cli/common";
 import {
+  commonModule as common,
   findProject,
   listKnownEnvironments,
   resolveProjectContext,
   validateProjectExists,
-} from "../../../../../src/core/cli/commands/shared/project-command";
-import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
+} from "../../../../../src/cli";
+import {
+  cliUiModule as cliUi,
+  getProcessUi,
+} from "../../../../../src/core/output";
 import {
   captureCliError,
   expectProjectNotFound,
   expectUnknownEnvironment,
 } from "../../../../helpers/cli-error";
+import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
+import { expectInstanceOf } from "../../fixtures";
 
 const CONFIG_FILE = "antelope.config.ts";
 

@@ -1,19 +1,18 @@
-import { Logging } from "@antelopejs/interface-core/logging";
 import { ImplementInterface } from "@antelopejs/interface-core";
+import { Logging } from "@antelopejs/interface-core/logging";
 
-import type { Module } from "../module";
-import { DEFAULT_ENV } from "../config/config-paths";
-import type { ModuleManager } from "../module-manager";
-import { captureOwnedProxies } from "./proxy-ownership";
-import { startProject } from "../runtime/project-launch";
-import type { StartedProject } from "../runtime/runtime-types";
-import { HOST_MODULE_ID, prepareEmbedded } from "./prepare-embedded";
-import type { EmbeddedRuntimeOptions, ProvideHandle } from "./types";
+import { DEFAULT_ENV } from "../config";
+import type { Module, ModuleManager } from "../modules";
+import { startProject } from "../repl";
 import {
   EMBEDDED_RUNTIME_POLICY,
   type RuntimePolicy,
+  type StartedProject,
   resolveRuntimePolicy,
-} from "../runtime/runtime-policy";
+} from "../runtime";
+import { HOST_MODULE_ID, prepareEmbedded } from "./prepare-embedded";
+import { captureOwnedProxies } from "./proxy-ownership";
+import type { EmbeddedRuntimeOptions, ProvideHandle } from "./types";
 
 type InterfaceDeclaration = Parameters<typeof ImplementInterface>[0];
 

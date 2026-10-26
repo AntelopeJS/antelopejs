@@ -1,20 +1,24 @@
-import sinon from "sinon";
 import { expect } from "chai";
+import sinon from "sinon";
 
-import { buildArtifact } from "../../fixtures";
-import type { BuildModuleEntry } from "../../../../../src/core/build/build-artifact";
-import * as indexModule from "../../../../../src/index";
-import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import { getProcessUi } from "../../../../../src/core/cli/output";
-import * as common from "../../../../../src/core/cli/common";
-import cmdBuild from "../../../../../src/core/cli/commands/project/build";
-import cmdStart from "../../../../../src/core/cli/commands/project/start";
-import * as projectLaunch from "../../../../../src/core/runtime/project-launch";
-import { BUILD_MODULE_SET_CHANGED_EXIT_CODE } from "../../../../../src/core/cli/exit-codes";
-import { BuildModuleSetChangedError } from "../../../../../src/core/runtime/build-refresh";
-import { expectProjectNotFound } from "../../../../helpers/cli-error";
-import * as buildArtifactModule from "../../../../../src/core/build/build-artifact";
+import {
+  commandsProjectBuildCommand as cmdBuild,
+  commandsProjectStartCommand as cmdStart,
+  commonModule as common,
+} from "../../../../../src/cli";
+import * as indexModule from "../../../../../src/core/build";
+import type { BuildModuleEntry } from "../../../../../src/core/modules";
+import { buildArtifactModule } from "../../../../../src/core/modules";
+import {
+  BUILD_MODULE_SET_CHANGED_EXIT_CODE,
+  cliUiModule as cliUi,
+  getProcessUi,
+} from "../../../../../src/core/output";
+import { projectLaunchModule as projectLaunch } from "../../../../../src/core/repl";
+import { BuildModuleSetChangedError } from "../../../../../src/core/runtime";
 import { collectStderr } from "../../../../helpers/capture-output";
+import { expectProjectNotFound } from "../../../../helpers/cli-error";
+import { buildArtifact } from "../../fixtures";
 
 const PROJECT_WITH_PRODUCTION: any = {
   name: "project",

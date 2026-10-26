@@ -3,7 +3,7 @@ import type {
   ConfigVarValue,
 } from "@antelopejs/interface-core/config";
 
-import { isObject } from "../../utils/object";
+import { isObject } from "../../utils";
 import { type ConfigVarReference, substituteConfigVars } from "./config-vars";
 
 /**

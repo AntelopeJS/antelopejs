@@ -1,0 +1,358 @@
+import type { ModuleSource } from "@antelopejs/interface-core/config";
+import { statSync } from "node:fs";
+import { createRequire } from "node:module";
+import * as path from "node:path";
+
+import type { IFileSystem } from "../../types";
+import { NodeFileSystem } from "../filesystem";
+import type {
+  BuildAliasEntry,
+  BuildModuleEntry,
+  BuildPathEntry,
+} from "./build-artifact";
+
+export interface ModulePackageJson {
+  name: string;
+  version: string;
+  description?: string;
+  author?: string | string[];
+
+  dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+
+  antelopeJs?: {
+    implements?: string[];
+
+    baseUrl?: string;
+    paths?: Record<string, string[]>;
+
+    moduleAliases?: Record<string, string>;
+
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported package manifests allow arbitrary application default configuration; narrowing changes the manifest contract.
+    defaultConfig?: Record<string, unknown>;
+
+    configVars?: string[];
+
+    /**
+     * A file exporting `configVars(config)`, the pure function computing the
+     * declared config variables from the module's configuration. Tools that
+     * read a project without running it resolve `${@<module>.<VAR>}` with it;
+     * the runtime still publishes through `provide`.
+     */
+    configVarsFile?: string;
+
+    test?: string;
+  };
+
+  _moduleAliases?: Record<string, string>;
+}
+
+export interface PathMapping {
+  key: string;
+  values: string[];
+}
+
+export interface ModuleAliasEntry {
+  alias: string;
+  replace: string;
+}
+
+interface ModuleManifestState {
+  main: string;
+  baseUrl: string;
+  paths: PathMapping[];
+  implements: string[];
+  srcAliases?: ModuleAliasEntry[];
+}
+
+function clonePathEntries(
+  entries: BuildPathEntry[] | PathMapping[],
+): PathMapping[] {
+  return entries.map((entry) => ({
+    key: entry.key,
+    values: [...entry.values],
+  }));
+}
+
+function cloneAliasEntries(
+  entries?: BuildAliasEntry[] | ModuleAliasEntry[],
+): ModuleAliasEntry[] | undefined {
+  if (!entries) {
+    return undefined;
+  }
+  return entries.map((entry) => ({
+    alias: entry.alias,
+    replace: entry.replace,
+  }));
+}
+
+/**
+ * The file `manifest.main` names, as it lands in `require.cache`.
+ *
+ * `main` holds the module folder itself when the source declares no entry —
+ * Node resolves the package from there just fine, but the cache is keyed by
+ * files, so comparing a cached path against a folder never matches. Resolving
+ * the directory to the entry file it stands for gives callers something they
+ * can compare. Deliberately lazy: a watched module is rebuilt between
+ * reloads, and its entry may not exist when the manifest is first read.
+ */
+export function resolveManifestEntryFile(manifest: {
+  main?: string;
+}): string | undefined {
+  if (!manifest.main) {
+    return undefined;
+  }
+  const main = path.resolve(manifest.main);
+  try {
+    if (!statSync(main).isDirectory()) {
+      return main;
+    }
+    return path.resolve(
+      createRequire(path.join(main, "__antelope_entry__.js")).resolve(main),
+    );
+  } catch {
+    return main;
+  }
+}
+
+function resolveMainPath(folder: string, source: ModuleSource): string {
+  const extensibleSource: ModuleSource & { main?: unknown } = source;
+  const mainCandidate = extensibleSource.main;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Downloader sources may carry arbitrary extra fields; non-string main values historically fall back to the module folder.
+  return typeof mainCandidate === "string"
+    ? path.join(folder, mainCandidate)
+    : folder;
+}
+
+function resolvePathMappings(
+  baseUrl: string,
+  manifest: ModulePackageJson,
+): PathMapping[] {
+  if (!manifest.antelopeJs?.paths) {
+    return [];
+  }
+
+  return Object.entries(manifest.antelopeJs.paths).map(([key, values]) => ({
+    key: key.replace(/\*$/, ""),
+    values: values.map((value) => path.join(baseUrl, value.replace(/\*$/, ""))),
+  }));
+}
+
+function resolveAliasEntries(
+  folder: string,
+  manifest: ModulePackageJson,
+): ModuleAliasEntry[] | undefined {
+  const rootAliases = manifest._moduleAliases
+    ? Object.entries(manifest._moduleAliases).map(([alias, replace]) => ({
+        alias,
+        replace: path.join(folder, replace),
+      }))
+    : [];
+
+  const antelopeAliases = manifest.antelopeJs?.moduleAliases
+    ? Object.entries(manifest.antelopeJs.moduleAliases).map(
+        ([alias, replace]) => ({
+          alias,
+          replace: path.join(folder, replace),
+        }),
+      )
+    : [];
+
+  const aliases = [...rootAliases, ...antelopeAliases];
+  return aliases.length > 0 ? aliases : undefined;
+}
+
+function relocatePath(target: string, from: string, to: string): string {
+  const relative = path.relative(from, target);
+  const isInside =
+    relative === "" ||
+    (!relative.startsWith(`..${path.sep}`) &&
+      relative !== ".." &&
+      !path.isAbsolute(relative));
+  if (!isInside) {
+    return target;
+  }
+  const moved = path.join(to, relative);
+  return target.endsWith(path.sep) && !moved.endsWith(path.sep)
+    ? `${moved}${path.sep}`
+    : moved;
+}
+
+function createManifestState(
+  folder: string,
+  source: ModuleSource,
+  manifest: ModulePackageJson,
+): ModuleManifestState {
+  const implementedInterfaces = manifest.antelopeJs?.implements ?? [];
+  const baseUrl = path.join(folder, manifest.antelopeJs?.baseUrl ?? "");
+
+  return {
+    main: resolveMainPath(folder, source),
+    baseUrl,
+    paths: resolvePathMappings(baseUrl, manifest),
+    implements: [...implementedInterfaces],
+    srcAliases: resolveAliasEntries(folder, manifest),
+  };
+}
+
+export class ModuleManifest {
+  public version: string;
+  public readonly folder: string;
+  public readonly source: ModuleSource;
+  public readonly name: string;
+
+  public main: string;
+  public baseUrl: string;
+  public paths: PathMapping[] = [];
+
+  public manifest: ModulePackageJson;
+
+  public implements: string[] = [];
+
+  public srcAliases?: ModuleAliasEntry[];
+
+  private constructor(
+    folder: string,
+    source: ModuleSource,
+    name: string,
+    manifest: ModulePackageJson,
+    private fs: IFileSystem,
+    state?: ModuleManifestState,
+  ) {
+    this.folder = path.resolve(folder);
+    this.source = source;
+    this.name = name;
+    this.manifest = manifest;
+    this.version = this.manifest.version;
+
+    const manifestState =
+      state ?? createManifestState(this.folder, source, this.manifest);
+    this.main = manifestState.main;
+    this.baseUrl = manifestState.baseUrl;
+    this.paths = clonePathEntries(manifestState.paths);
+    this.implements = [...manifestState.implements];
+    this.srcAliases = cloneAliasEntries(manifestState.srcAliases);
+  }
+
+  static async create(
+    folder: string,
+    source: ModuleSource,
+    name: string,
+    fs: IFileSystem = new NodeFileSystem(),
+  ): Promise<ModuleManifest> {
+    const manifest = await ModuleManifest.readManifest(folder, fs);
+    return new ModuleManifest(folder, source, name, manifest, fs);
+  }
+
+  static fromBuildEntry(
+    entry: BuildModuleEntry,
+    fs: IFileSystem = new NodeFileSystem(),
+  ): ModuleManifest {
+    const state: ModuleManifestState = {
+      main: entry.main,
+      baseUrl: entry.baseUrl,
+      paths: clonePathEntries(entry.paths),
+      implements: [...(entry.implements ?? [])],
+      srcAliases: cloneAliasEntries(entry.srcAliases),
+    };
+
+    const manifest = new ModuleManifest(
+      entry.folder,
+      entry.source,
+      entry.name,
+      entry.manifest,
+      fs,
+      state,
+    );
+    manifest.version = entry.version;
+    return manifest;
+  }
+
+  static async readManifest(
+    folder: string,
+    fs: IFileSystem = new NodeFileSystem(),
+  ): Promise<ModulePackageJson> {
+    const packageJsonPath = path.join(folder, "package.json");
+    const dedicatedJsonPath = path.join(folder, "antelope.module.json");
+
+    if (!(await fs.exists(packageJsonPath))) {
+      throw new Error(`Missing package.json in '${folder}'`);
+    }
+
+    const packageJson: ModulePackageJson = JSON.parse(
+      await fs.readFileString(packageJsonPath),
+    );
+
+    if (await fs.exists(dedicatedJsonPath)) {
+      const dedicatedJson: ModulePackageJson["antelopeJs"] = JSON.parse(
+        await fs.readFileString(dedicatedJsonPath),
+      );
+      return {
+        ...packageJson,
+        antelopeJs: dedicatedJson,
+      };
+    }
+
+    return packageJson;
+  }
+
+  serialize(): BuildModuleEntry {
+    return {
+      folder: this.folder,
+      source: this.source,
+      name: this.name,
+      version: this.version,
+      main: this.main,
+      manifest: this.manifest,
+      implements: [...this.implements],
+      baseUrl: this.baseUrl,
+      paths: clonePathEntries(this.paths),
+      srcAliases: cloneAliasEntries(this.srcAliases),
+    };
+  }
+
+  /**
+   * The same module read from `folder`, an instance copy of this manifest's
+   * folder: every path inside the original folder is moved to the copy.
+   */
+  relocate(folder: string): ModuleManifest {
+    const target = path.resolve(folder);
+    const move = (filePath: string) =>
+      relocatePath(filePath, this.folder, target);
+    const state: ModuleManifestState = {
+      main: move(this.main),
+      baseUrl: move(this.baseUrl),
+      paths: this.paths.map(({ key, values }) => ({
+        key,
+        values: values.map(move),
+      })),
+      implements: [...this.implements],
+      srcAliases: this.srcAliases?.map(({ alias, replace }) => ({
+        alias,
+        replace: move(replace),
+      })),
+    };
+    const relocated = new ModuleManifest(
+      target,
+      this.source,
+      this.name,
+      this.manifest,
+      this.fs,
+      state,
+    );
+    relocated.version = this.version;
+    return relocated;
+  }
+
+  async reload(): Promise<void> {
+    this.manifest = await ModuleManifest.readManifest(this.folder, this.fs);
+    this.version = this.manifest.version;
+
+    const state = createManifestState(this.folder, this.source, this.manifest);
+    this.main = state.main;
+    this.baseUrl = state.baseUrl;
+    this.paths = clonePathEntries(state.paths);
+    this.implements = [...state.implements];
+    this.srcAliases = cloneAliasEntries(state.srcAliases);
+  }
+}

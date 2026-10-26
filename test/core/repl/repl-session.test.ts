@@ -1,8 +1,8 @@
-import sinon from "sinon";
-import { REPLServer } from "node:repl";
 import { expect } from "chai";
+import { REPLServer } from "node:repl";
+import sinon from "sinon";
 
-import { ReplSession } from "../../../src/core/repl/repl-session";
+import { ReplSession } from "../../../src/core/repl";
 
 describe("ReplSession", () => {
   it("should start and close a repl session with context", () => {

@@ -1,5 +1,3 @@
-import { interfaceProxy } from "../helpers/interface-proxy";
-import { expect } from "chai";
 import {
   DEV_REGISTRY_PATH,
   type DevServerEndpoint,
@@ -7,13 +5,15 @@ import {
   GetRuntimeInfo,
   RegisterDevServer,
 } from "@antelopejs/interface-core/runtime";
+import { expect } from "chai";
+import { interfaceProxy } from "../helpers/interface-proxy";
 
-import { ShutdownManager } from "../../src/core/shutdown";
-import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import {
   DevRegistryStore,
   registerCoreRuntimeInterface,
-} from "../../src/core/runtime/dev-server-registry";
+  ShutdownManager,
+} from "../../src/core/runtime";
+import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 function resetProxy<Args extends unknown[], Result>(
   interfaceFunction: (...args: Args) => Result,

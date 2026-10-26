@@ -1,16 +1,15 @@
 import { manifestFixture, moduleFixture } from "../../helpers/module-fixtures";
 
-import sinon from "sinon";
-import path from "node:path";
 import { expect } from "chai";
 import fs, { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import sinon from "sinon";
 
-import { Resolver } from "../../../src/core/resolution/resolver";
+import { PathMapper, Resolver } from "../../../src/core/modules";
+import type { BindingModule } from "../../../src/core/resolution";
+import { buildBindingGraph } from "../../../src/core/resolution";
+import { clearPathResolutionCache } from "../../../src/utils";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
-import { PathMapper } from "../../../src/core/resolution/path-mapper";
-import { buildBindingGraph } from "../../../src/core/resolution/binding-graph";
-import { clearPathResolutionCache } from "../../../src/core/resolution/package-resolution";
-import type { BindingModule } from "../../../src/core/resolution/binding-graph-types";
 
 const CORE_PKG = "@antelopejs/interface-core";
 const CORE_CANONICAL_ENTRY = require.resolve(CORE_PKG);

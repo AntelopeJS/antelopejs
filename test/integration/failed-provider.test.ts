@@ -1,9 +1,9 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
+import { expect } from "chai";
+import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { expect } from "chai";
-import fs from "node:fs/promises";
-import { spawn } from "node:child_process";
-import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import launch from "../../src";
 

@@ -1,10 +1,10 @@
 import { expect } from "chai";
 
 import {
-  isQuietRun,
-  isVerboseRun,
-  normalizeVerboseArguments,
-} from "../../../../src/core/cli/output";
+isQuietRun,
+isVerboseRun,
+normalizeVerboseArguments,
+} from "../../../../src/core/output";
 
 const BASE_ARGV = ["node", "ajs", "project", "build"];
 

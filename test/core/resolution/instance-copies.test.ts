@@ -1,6 +1,4 @@
-import path from "node:path";
 import { expect } from "chai";
-import { tmpdir } from "node:os";
 import {
   existsSync,
   mkdirSync,
@@ -10,13 +8,15 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import {
   createInstanceCopy,
   nextInstanceCopyPath,
   pruneStaleInstanceCopies,
   removeInstanceCopy,
-} from "../../../src/core/resolution/instance-copies";
+} from "../../../src/core/resolution";
 import { readText } from "../../helpers/temp";
 
 interface StatefulModule {

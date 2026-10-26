@@ -6,11 +6,13 @@ import { rm } from "node:fs/promises";
 import Module from "node:module";
 import path from "node:path";
 import sinon from "sinon";
-import { ModuleManager } from "../../src/core/module-manager";
-import { ModuleManifest } from "../../src/core/module-manifest";
-import { InterfaceResolutionError } from "../../src/core/resolution/interface-resolution-error";
-import { PathMapper } from "../../src/core/resolution/path-mapper";
-import { Resolver } from "../../src/core/resolution/resolver";
+import {
+  ModuleManager,
+  ModuleManifest,
+  PathMapper,
+  Resolver,
+} from "../../src/core/modules";
+import { InterfaceResolutionError } from "../../src/core/output";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import { manifestFixture, moduleFixture } from "../helpers/module-fixtures";
 import {

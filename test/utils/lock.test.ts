@@ -1,8 +1,8 @@
-import sinon from "sinon";
 import { expect } from "chai";
 import lockfile from "proper-lockfile";
+import sinon from "sinon";
 
-import { acquireLock } from "../../src/utils/lock";
+import { acquireLock } from "../../src/cli";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
 describe("Lock Utilities", () => {
