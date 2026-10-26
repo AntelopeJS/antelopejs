@@ -6,27 +6,27 @@ import { Logging } from "@antelopejs/interface-core/logging";
 
 import type { ExpandedModuleConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
-import type { ModuleConfig, ModuleManager } from "../modules";
+import type { ManagedModule, ModuleConfig, ModuleManager } from "../modules";
 import { ModuleCache, ModuleManifest, unpackErrors } from "../modules";
 import { pluralize, runTask } from "../output";
 import {
-  registerCoreInterfaces,
-  registerCoreModuleInterface,
+  registerCoreInterfaces as registerInterfaces,
+  registerCoreModuleInterface as registerModuleInterface,
 } from "./core-module-interface";
+import {
+  activateLoadedModules as activateModules,
+  ensureGraphIsValid as validateGraph,
+} from "./module-interfaces";
 import { moduleLoadFailure } from "./module-load-failure";
+import { reloadWatchedModule as reloadModule } from "./module-reloading";
 import type {
   LoaderConfig,
   LoaderContext,
+  LoaderContextProvider,
   ModuleManifestEntry,
   ModuleOverrideMap,
   NormalizedLoadedConfig,
 } from "./runtime-types";
-export {
-  registerCoreInterfaces,
-  registerCoreModuleInterface,
-} from "./core-module-interface";
-export { activateLoadedModules, ensureGraphIsValid } from "./module-interfaces";
-export { reloadWatchedModule } from "./module-reloading";
 
 const Logger = new Logging.Channel("loader");
 
@@ -57,6 +57,27 @@ export async function createLoaderContext(
     registry,
     projectFolder: config.projectFolder,
   };
+}
+
+export async function activateLoadedModules(
+  manager: ModuleManager,
+  created: ManagedModule[],
+  autostart: boolean,
+): Promise<void> {
+  return activateModules(manager, created, autostart);
+}
+
+export function registerCoreModuleInterface(
+  manager: ModuleManager,
+  loadContext: LoaderContextProvider,
+): void {
+  return registerModuleInterface(manager, loadContext);
+}
+
+export async function registerCoreInterfaces(
+  manager: ModuleManager,
+): Promise<ModuleManifest> {
+  return registerInterfaces(manager);
 }
 
 export function buildModuleOverrides(
@@ -197,6 +218,14 @@ export function getWatchDirs(source: ModuleSource): string[] {
   return localSource.watchDir ? [localSource.watchDir] : [""];
 }
 
+export async function reloadWatchedModule(
+  manager: ModuleManager,
+  moduleId: string,
+  loaderContext: LoaderContext,
+): Promise<void> {
+  return reloadModule(manager, moduleId, loaderContext);
+}
+
 export async function loadModuleEntriesForManager(
   manager: ModuleManager,
   config: NormalizedLoadedConfig,
@@ -248,4 +277,8 @@ export async function destroyModulesAfterFailure(
     );
   }
   throw error;
+}
+
+export function ensureGraphIsValid(manager: ModuleManager): void {
+  return validateGraph(manager);
 }
