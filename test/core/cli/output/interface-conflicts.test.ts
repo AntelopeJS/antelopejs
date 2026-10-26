@@ -1,11 +1,13 @@
 import { expect } from "chai";
 
 import {
-describeFailure,
-FAILURE_EXIT_CODE,InterfaceResolutionError,
-reportFailure,
-translateFailure,
-type InterfaceRangeConflict,type PreloadedInterfaceCopy
+  describeFailure,
+  FAILURE_EXIT_CODE,
+  InterfaceResolutionError,
+  reportFailure,
+  translateFailure,
+  type InterfaceRangeConflict,
+  type PreloadedInterfaceCopy,
 } from "../../../../src/core/output";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 

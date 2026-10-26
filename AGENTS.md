@@ -37,6 +37,10 @@ The tools enforce most rules, listed in the table at the end. The sections below
 
 Say it in code. A constraint belongs in a type, a lint rule, or a test. A public item's contract belongs in TSDoc (`/** */`) on that item. The only other comments are lint directives that name their rules, `@ts-expect-error <reason>`, `SAFETY: <reason>` above a type assertion, `/*!` license headers, and bundler or formatter directives.
 
+Before suppressing a type rule, try inference or a type derived from its owner with `Parameters`, `ReturnType`, or indexed access. A private alias can still appear in a published declaration. Keep a suppression only after checking the published contract and the unchecked boundary it protects.
+
+Check each directive reason against the current line and its callers. Returning a value is not the same as awaiting and discarding it. A reason must describe what the code does now.
+
 ### Tests
 
 Hold every test you write or keep to this checklist:
@@ -47,26 +51,37 @@ Hold every test you write or keep to this checklist:
 
 ### Cleanup proof
 
-A behaviour-preserving cleanup PR shows `antelopejs-api-diff <base-ref>` passing. Published declarations stay unchanged. A comment-only PR shows `antelopejs-comment-proof <base-ref>` passing instead of a verifier. Both compare committed HEAD.
+A behaviour-preserving cleanup PR shows `antelopejs-api-diff <base-ref>` passing. Published declarations and built runtime exports stay unchanged. A comment-only PR shows `antelopejs-comment-proof <base-ref>` passing instead of a verifier. Both compare committed HEAD.
+
+Copy counts from the proof's base and HEAD table. Never type counts by hand. Keep the command and the committed head beside the copied output. Directive lines are not individual suppressed rules.
+
+Pass `--probe <file.cjs>` to api-diff when changing receivers, positional calls, or modules that no published entry reaches. The same captured script runs against both worktree roots, supplied as `argv[2]`, and prints JSON observations. Matching metadata alone does not prove those behaviours.
+
+An entry-only rule exempts only its own module. Add a second module entry rather than exempting another importer. A no-upward rule must reject peers in the same tier as well as higher tiers. Probe the rank decision with an import, not just a reading of the configuration.
 
 ### What enforces what
 
-| Rule                                                                           | Enforced by                               |
-| ------------------------------------------------------------------------------ | ----------------------------------------- |
-| Formatting                                                                     | oxfmt                                     |
-| Lint findings are errors; no rule warns                                        | oxlint preset                             |
-| Comments are TSDoc, directives, or `SAFETY:` only                              | `antelopejs/no-comments`                  |
-| Every test asserts                                                             | `antelopejs/require-assertion`            |
-| Tests read no files outside fixtures, helpers, locales                         | `antelopejs/no-fs-read-in-tests`          |
-| No assertion that restates a constant                                          | `antelopejs/no-constant-value-assertion`  |
-| No test whose only check is "is a function"                                    | `antelopejs/no-typeof-function-only-test` |
-| Params ≤ 5, function ≤ 120 lines, file ≤ 500 lines, depth ≤ 4, complexity ≤ 20 | `eslint/max-*`, `eslint/complexity`       |
-| Cleanup preserves published declarations                                       | `antelopejs-api-diff <base-ref>`          |
-| Comment-only changes preserve JavaScript emit                                  | `antelopejs-comment-proof <base-ref>`     |
-| Files ≤ 20,000 bytes, tests included                                           | `antelopejs-check-size` (pre-commit)      |
-| Types check                                                                    | `tsc` (pre-push)                          |
-| No dead files, exports, or dependencies                                        | knip                                      |
-| Managed files match the pack                                                   | `antelopejs-sync --check`                 |
-| A test names the wrong implementation it catches                               | review; no tool                           |
+| Rule                                                                           | Enforced by                                         |
+| ------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Formatting                                                                     | oxfmt                                               |
+| Lint findings are errors; no rule warns                                        | oxlint preset                                       |
+| Comments are TSDoc, directives, or `SAFETY:` only                              | `antelopejs/no-comments`                            |
+| Every test asserts                                                             | `antelopejs/require-assertion`                      |
+| Tests read no files outside fixtures, helpers, locales                         | `antelopejs/no-fs-read-in-tests`                    |
+| No assertion that restates a constant                                          | `antelopejs/no-constant-value-assertion`            |
+| No test whose only check is "is a function"                                    | `antelopejs/no-typeof-function-only-test`           |
+| Params ≤ 5, function ≤ 120 lines, file ≤ 500 lines, depth ≤ 4, complexity ≤ 20 | `eslint/max-*`, `eslint/complexity`                 |
+| Cleanup preserves declarations and built runtime export metadata               | `antelopejs-api-diff <base-ref>`                    |
+| Comment-only changes preserve JavaScript emit                                  | `antelopejs-comment-proof <base-ref>`               |
+| PR-body counts come from tracked code files                                    | api-diff and comment-proof tables                   |
+| Receiver, positional and unpublished-module behaviour                          | `antelopejs-api-diff <base-ref> --probe <file.cjs>` |
+| Type suppressions and directive reasons are justified                          | review; no tool                                     |
+| No-upward rules reject same-tier peers                                         | review and import probes                            |
+| Files ≤ 20,000 bytes, tests included                                           | `antelopejs-check-size` (pre-commit)                |
+| Types check                                                                    | `tsc` (pre-push)                                    |
+| No dead files, exports, or dependencies                                        | knip                                                |
+| Managed files match the pack                                                   | `antelopejs-sync --check`                           |
+| Entry-only rules exempt no tracked outsider                                    | `antelopejs-sync --check`                           |
+| A test names the wrong implementation it catches                               | review; no tool                                     |
 
 <!-- antelopejs-guardrails:end -->

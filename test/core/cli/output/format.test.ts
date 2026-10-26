@@ -2,14 +2,14 @@ import { expect } from "chai";
 import path from "node:path";
 
 import {
-createPalette,
-displayPath,
-formatDuration,
-padVisible,
-pluralize,
-SYMBOL_SETS,
-truncate,
-visibleWidth,
+  createPalette,
+  displayPath,
+  formatDuration,
+  padVisible,
+  pluralize,
+  SYMBOL_SETS,
+  truncate,
+  visibleWidth,
 } from "../../../../src/core/output";
 
 describe("output format", () => {

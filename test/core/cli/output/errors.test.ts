@@ -1,13 +1,13 @@
 import { expect } from "chai";
 
 import {
-CancelledError,
-CliError,
-describeMissingInput,
-FAILURE_EXIT_CODE,
-NeedsInputError,
-reportCliError,
-USAGE_EXIT_CODE
+  CancelledError,
+  CliError,
+  describeMissingInput,
+  FAILURE_EXIT_CODE,
+  NeedsInputError,
+  reportCliError,
+  USAGE_EXIT_CODE,
 } from "../../../../src/core/output";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 

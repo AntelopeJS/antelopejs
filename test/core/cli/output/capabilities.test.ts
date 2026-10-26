@@ -1,16 +1,16 @@
 import { expect } from "chai";
 
 import {
-detectCapabilities,
-hasColorSupport,
-hasLiveProgress,
-hasProcessColorSupport,
-hasUnicodeSupport,
-isInteractiveSession,
-processCapabilityContext,
-selectSymbols,
-SYMBOL_SETS,
-type CapabilityContext,
+  detectCapabilities,
+  hasColorSupport,
+  hasLiveProgress,
+  hasProcessColorSupport,
+  hasUnicodeSupport,
+  isInteractiveSession,
+  processCapabilityContext,
+  selectSymbols,
+  SYMBOL_SETS,
+  type CapabilityContext,
 } from "../../../../src/core/output";
 import { useColorLevel } from "../../../helpers/color-environment";
 import { MemoryStream } from "../../../helpers/memory-ui";
@@ -90,9 +90,9 @@ describe("output capabilities", () => {
       expect(hasUnicodeSupport({ LANG: "en_US.UTF-8" }, "darwin")).to.equal(
         true,
       );
-      expect(hasUnicodeSupport({ LC_ALL: "C.utf8", LANG: "C" }, "linux")).to.equal(
-        true,
-      );
+      expect(
+        hasUnicodeSupport({ LC_ALL: "C.utf8", LANG: "C" }, "linux"),
+      ).to.equal(true);
     });
 
     it("falls back to ASCII on a dumb terminal", () => {
@@ -104,9 +104,9 @@ describe("output capabilities", () => {
 
     it("falls back to ASCII with a non UTF-8 locale or the Linux console", () => {
       expect(hasUnicodeSupport({ LANG: "C" }, "linux")).to.equal(false);
-      expect(hasUnicodeSupport({ LC_CTYPE: "en_US.ISO-8859-1" }, "linux")).to.equal(
-        false,
-      );
+      expect(
+        hasUnicodeSupport({ LC_CTYPE: "en_US.ISO-8859-1" }, "linux"),
+      ).to.equal(false);
       expect(hasUnicodeSupport({ TERM: "linux" }, "linux")).to.equal(false);
     });
 

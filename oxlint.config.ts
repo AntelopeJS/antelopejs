@@ -3,7 +3,6 @@ import { antelopePreset } from "@antelopejs/tooling-configs/oxc/lint";
 
 export default defineConfig({
   extends: [antelopePreset()],
-  ignorePatterns: ["!src/core/build/**", "!src/core/output/**"],
   options: { typeAware: true },
   overrides: [
     {

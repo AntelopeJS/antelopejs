@@ -2,15 +2,15 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import {
-createPalette,
-createUi,
-getProcessUi,
-writeData,
-type MessageLevel,
-type Ui,
+  createPalette,
+  createUi,
+  getProcessUi,
+  writeData,
+  type MessageLevel,
+  type Ui,
 } from "../../../../src/core/output";
 import { captureOutput } from "../../../helpers/capture-output";
-import { createMemoryUi,MemoryStream } from "../../../helpers/memory-ui";
+import { createMemoryUi, MemoryStream } from "../../../helpers/memory-ui";
 
 const LEVELS: MessageLevel[] = [
   "success",
@@ -161,9 +161,7 @@ describe("output ui blocks", () => {
 
     ui.heading("Tips");
 
-    expect(result.text).to.equal(
-      "\x1b[1mTips\x1b[22m\n\x1b[2m----\x1b[22m\n",
-    );
+    expect(result.text).to.equal("\x1b[1mTips\x1b[22m\n\x1b[2m----\x1b[22m\n");
   });
 
   it("aligns details on the longest label", () => {
@@ -194,9 +192,7 @@ describe("output ui blocks", () => {
     ui.details([{ label: "Environment", value: "default" }], "feedback");
 
     expect(result.text).to.equal("");
-    expect(feedback.text).to.equal(
-      "✔ Found project\n\nEnvironment  default\n",
-    );
+    expect(feedback.text).to.equal("✔ Found project\n\nEnvironment  default\n");
   });
 
   it("exposes the colors of each channel", () => {
@@ -361,9 +357,7 @@ describe("output ui quiet", () => {
     ui.details([{ label: "key", value: "result" }]);
     ui.problem({ title: "failed", fixes: ["fix it"] });
 
-    expect(result.text).to.equal(
-      "value\n✔ result message\n\nkey  result\n",
-    );
+    expect(result.text).to.equal("value\n✔ result message\n\nkey  result\n");
     expect(feedback.text).to.equal("✖ failed\n  → fix it\n");
   });
 
@@ -547,7 +541,10 @@ describe("output ui wrapping", () => {
   it("keeps a word longer than the terminal whole", () => {
     const { ui, feedback } = narrowTerminal();
 
-    ui.message("skip", `Skipped ${"/very/long/path".repeat(4)} (not a workspace)`);
+    ui.message(
+      "skip",
+      `Skipped ${"/very/long/path".repeat(4)} (not a workspace)`,
+    );
 
     expect(feedback.text).to.equal(
       [
@@ -563,7 +560,10 @@ describe("output ui wrapping", () => {
     const { ui, feedback } = createMemoryUi({ columns: NARROW_COLUMNS });
     const title = "A problem title that is longer than forty columns";
 
-    ui.problem({ title, fixes: ["A fix that is also longer than forty columns"] });
+    ui.problem({
+      title,
+      fixes: ["A fix that is also longer than forty columns"],
+    });
 
     expect(feedback.text).to.equal(
       `✖ ${title}\n  → A fix that is also longer than forty columns\n`,

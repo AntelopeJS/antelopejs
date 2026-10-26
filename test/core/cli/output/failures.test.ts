@@ -1,12 +1,12 @@
 import { expect } from "chai";
 
 import {
-CliError,
-describeFailure,
-ExecError,
-FAILURE_EXIT_CODE,
-reportFailure,
-USAGE_EXIT_CODE
+  CliError,
+  describeFailure,
+  ExecError,
+  FAILURE_EXIT_CODE,
+  reportFailure,
+  USAGE_EXIT_CODE,
 } from "../../../../src/core/output";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 
@@ -41,246 +41,237 @@ function installFailure(): CliError {
 }
 
 {
-let registerDescribeFailure: (this: Mocha.Suite) => void;
+  let registerDescribeFailure: (this: Mocha.Suite) => void;
 
+  const checkKeepsTheProblemOfA: (this: Mocha.Suite) => void = function () {
+    it("keeps the problem of a command error that has no cause", () => {
+      const problem = describeFailure(
+        new CliError({ title: "Unknown environment 'staging'" }),
+        false,
+      );
 
-const checkKeepsTheProblemOfA: (this: Mocha.Suite) => void = function () {
-
-  it("keeps the problem of a command error that has no cause", () => {
-    const problem = describeFailure(
-      new CliError({ title: "Unknown environment 'staging'" }),
-      false,
-    );
-
-    expect(problem).to.deep.equal({
-      title: "Unknown environment 'staging'",
-      details: [],
+      expect(problem).to.deep.equal({
+        title: "Unknown environment 'staging'",
+        details: [],
+      });
     });
-  });
 
+    it("shows the last lines of an untranslated command failure without its colors", () => {
+      const problem = describeFailure(installFailure(), false);
 
-  it("shows the last lines of an untranslated command failure without its colors", () => {
-    const problem = describeFailure(installFailure(), false);
+      expect(problem.details).to.deep.equal([
+        "Command output:",
+        "  To get access to the TypeScript compiler, tsc, from the command line either:",
+        "  - Use npm install typescript to first add TypeScript to your project",
+        "  - Use yarn to avoid accidentally running code from un-installed packages",
+        COMMAND_OUTPUT_HINT,
+      ]);
+    });
 
-    expect(problem.details).to.deep.equal([
-      "Command output:",
-      "  To get access to the TypeScript compiler, tsc, from the command line either:",
-      "  - Use npm install typescript to first add TypeScript to your project",
-      "  - Use yarn to avoid accidentally running code from un-installed packages",
-      COMMAND_OUTPUT_HINT,
-    ]);
-  });
+    it("shows the whole command output with --verbose", () => {
+      const problem = describeFailure(installFailure(), true);
 
+      expect(problem.details).to.deep.equal([
+        "Output of 'npx tsc':",
+        "    This is not the tsc command you are looking for",
+        "  To get access to the TypeScript compiler, tsc, from the command line either:",
+        "  - Use npm install typescript to first add TypeScript to your project",
+        "  - Use yarn to avoid accidentally running code from un-installed packages",
+      ]);
+    });
 
-  it("shows the whole command output with --verbose", () => {
-    const problem = describeFailure(installFailure(), true);
+    it("reports a command failure on its own with its exit code", () => {
+      const problem = describeFailure(tscFailure(), false);
 
-    expect(problem.details).to.deep.equal([
-      "Output of 'npx tsc':",
-      "    This is not the tsc command you are looking for",
-      "  To get access to the TypeScript compiler, tsc, from the command line either:",
-      "  - Use npm install typescript to first add TypeScript to your project",
-      "  - Use yarn to avoid accidentally running code from un-installed packages",
-    ]);
-  });
+      expect(problem.title).to.equal(
+        "Command 'npx tsc' failed with exit code 1",
+      );
+      expect(problem.details?.at(-1)).to.equal(COMMAND_OUTPUT_HINT);
+    });
 
+    it("omits the output of a translated command failure", () => {
+      const problem = describeFailure(
+        new ExecError({
+          command: "npm view @acme/missing version",
+          stdout: "",
+          stderr: "npm error code E404",
+          code: 1,
+        }),
+        false,
+      );
 
-  it("reports a command failure on its own with its exit code", () => {
-    const problem = describeFailure(tscFailure(), false);
+      expect(problem.title).to.equal(
+        "Package '@acme/missing' not found on the npm registry",
+      );
+      expect(problem.details).to.deep.equal([COMMAND_OUTPUT_HINT]);
+    });
 
-    expect(problem.title).to.equal(
-      "Command 'npx tsc' failed with exit code 1",
-    );
-    expect(problem.details?.at(-1)).to.equal(COMMAND_OUTPUT_HINT);
-  });
-
-
-  it("omits the output of a translated command failure", () => {
-    const problem = describeFailure(
-      new ExecError({
-        command: "npm view @acme/missing version",
+    it("prints neither an output heading nor a hint when the command said nothing", () => {
+      const silent = new ExecError({
+        command: "false",
         stdout: "",
-        stderr: "npm error code E404",
+        stderr: "",
         code: 1,
-      }),
-      false,
-    );
+      });
 
-    expect(problem.title).to.equal(
-      "Package '@acme/missing' not found on the npm registry",
-    );
-    expect(problem.details).to.deep.equal([COMMAND_OUTPUT_HINT]);
-  });
-
-
-  it("prints neither an output heading nor a hint when the command said nothing", () => {
-    const silent = new ExecError({
-      command: "false",
-      stdout: "",
-      stderr: "",
-      code: 1,
+      expect(describeFailure(silent, false).details).to.deep.equal([]);
     });
 
-    expect(describeFailure(silent, false).details).to.deep.equal([]);
-  });
+    it("reduces an unexpected error to the first line of its message", () => {
+      const problem = describeFailure(
+        new Error("\u001b[31mboom\u001b[39m\nsecond line"),
+        false,
+      );
 
-
-  it("reduces an unexpected error to the first line of its message", () => {
-    const problem = describeFailure(
-      new Error("\u001b[31mboom\u001b[39m\nsecond line"),
-      false,
-    );
-
-    expect(problem).to.deep.equal({
-      title: "boom",
-      details: [STACK_TRACE_HINT],
-    });
-  });
-
-
-  it("shows the stack of an unexpected error with --verbose", () => {
-    const error = new Error("boom");
-    const details = describeFailure(error, true).details ?? [];
-
-    expect(details[0]).to.equal("Error: boom");
-    expect(details.slice(1).every((line) => line.includes("at "))).to.equal(
-      true,
-    );
-  });
-
-
-  it("names an error that has no message", () => {
-    expect(describeFailure(new TypeError(""), false).title).to.equal(
-      "TypeError",
-    );
-  });
-
-
-  it("does not offer a trace for a translated system error", () => {
-    const missing = Object.assign(new Error("ENOENT: stat '/nope'"), {
-      code: "ENOENT",
-      path: "/nope",
+      expect(problem).to.deep.equal({
+        title: "boom",
+        details: [STACK_TRACE_HINT],
+      });
     });
 
-    expect(describeFailure(missing, false).details).to.deep.equal([]);
-  });
+    it("shows the stack of an unexpected error with --verbose", () => {
+      const error = new Error("boom");
+      const details = describeFailure(error, true).details ?? [];
 
-
-  it("reports a thrown value that is not an error", () => {
-    expect(describeFailure("boom", false)).to.deep.equal({
-      title: "boom",
-      details: [],
-    });
-    expect(describeFailure(undefined, false).title).to.equal("undefined");
-  });
-};
-
-const checkExplainsAFailureWithThe: (this: Mocha.Suite) => void = function () {
-
-
-  it("explains a failure with the translate hook before the built-in translations", () => {
-    const missing = Object.assign(new Error("ENOENT: stat '/nope'"), {
-      code: "ENOENT",
-      path: "/nope",
+      expect(details[0]).to.equal("Error: boom");
+      expect(details.slice(1).every((line) => line.includes("at "))).to.equal(
+        true,
+      );
     });
 
-    const problem = describeFailure(missing, false, () => ({
-      title: "Manifest not found",
-      fixes: ["Run ajs dms prepare first"],
-    }));
-
-    expect(problem).to.deep.equal({
-      title: "Manifest not found",
-      fixes: ["Run ajs dms prepare first"],
-      details: [],
-    });
-  });
-
-
-  it("falls back to the built-in description when the translate hook declines", () => {
-    const problem = describeFailure(new Error("boom"), false, () => undefined);
-
-    expect(problem).to.deep.equal({
-      title: "boom",
-      details: [STACK_TRACE_HINT],
-    });
-  });
-
-
-  it("keeps the problem of a command error whatever the translate hook says", () => {
-    const problem = describeFailure(
-      new CliError({ title: "Unknown environment 'staging'" }),
-      false,
-      () => ({ title: "Translated" }),
-    );
-
-    expect(problem.title).to.equal("Unknown environment 'staging'");
-  });
-
-
-  it("does not offer a trace for a cause the translate hook explains", () => {
-    const refused = new Error("connect ECONNREFUSED 127.0.0.1:5000");
-    const failure = new CliError(
-      { title: "Cannot reach the backend" },
-      { cause: refused },
-    );
-
-    const problem = describeFailure(failure, false, (error) =>
-      error === refused ? { title: "Backend refused the connection" } : undefined,
-    );
-
-    expect(problem.details).to.deep.equal([]);
-  });
-
-
-  it("offers a trace for the unexplained cause of a command error", () => {
-    const failure = new CliError(
-      { title: "Cannot reach the backend" },
-      { cause: new Error("socket hang up") },
-    );
-
-    expect(describeFailure(failure, false).details).to.deep.equal([
-      STACK_TRACE_HINT,
-    ]);
-  });
-
-
-  it("does not offer the command output when all of it is already shown", () => {
-    const short = new ExecError({
-      command: "npx tsc",
-      stdout: "",
-      stderr: "src/index.ts(1,1): error TS1005\nFound 1 error.\n",
-      code: 2,
+    it("names an error that has no message", () => {
+      expect(describeFailure(new TypeError(""), false).title).to.equal(
+        "TypeError",
+      );
     });
 
-    expect(describeFailure(short, false).details).to.deep.equal([
-      "Command output:",
-      "  src/index.ts(1,1): error TS1005",
-      "  Found 1 error.",
-    ]);
+    it("does not offer a trace for a translated system error", () => {
+      const missing = Object.assign(new Error("ENOENT: stat '/nope'"), {
+        code: "ENOENT",
+        path: "/nope",
+      });
+
+      expect(describeFailure(missing, false).details).to.deep.equal([]);
+    });
+
+    it("reports a thrown value that is not an error", () => {
+      expect(describeFailure("boom", false)).to.deep.equal({
+        title: "boom",
+        details: [],
+      });
+      expect(describeFailure(undefined, false).title).to.equal("undefined");
+    });
+  };
+
+  const checkExplainsAFailureWithThe: (this: Mocha.Suite) => void =
+    function () {
+      it("explains a failure with the translate hook before the built-in translations", () => {
+        const missing = Object.assign(new Error("ENOENT: stat '/nope'"), {
+          code: "ENOENT",
+          path: "/nope",
+        });
+
+        const problem = describeFailure(missing, false, () => ({
+          title: "Manifest not found",
+          fixes: ["Run ajs dms prepare first"],
+        }));
+
+        expect(problem).to.deep.equal({
+          title: "Manifest not found",
+          fixes: ["Run ajs dms prepare first"],
+          details: [],
+        });
+      });
+
+      it("falls back to the built-in description when the translate hook declines", () => {
+        const problem = describeFailure(
+          new Error("boom"),
+          false,
+          () => undefined,
+        );
+
+        expect(problem).to.deep.equal({
+          title: "boom",
+          details: [STACK_TRACE_HINT],
+        });
+      });
+
+      it("keeps the problem of a command error whatever the translate hook says", () => {
+        const problem = describeFailure(
+          new CliError({ title: "Unknown environment 'staging'" }),
+          false,
+          () => ({ title: "Translated" }),
+        );
+
+        expect(problem.title).to.equal("Unknown environment 'staging'");
+      });
+
+      it("does not offer a trace for a cause the translate hook explains", () => {
+        const refused = new Error("connect ECONNREFUSED 127.0.0.1:5000");
+        const failure = new CliError(
+          { title: "Cannot reach the backend" },
+          { cause: refused },
+        );
+
+        const problem = describeFailure(failure, false, (error) =>
+          error === refused
+            ? { title: "Backend refused the connection" }
+            : undefined,
+        );
+
+        expect(problem.details).to.deep.equal([]);
+      });
+
+      it("offers a trace for the unexplained cause of a command error", () => {
+        const failure = new CliError(
+          { title: "Cannot reach the backend" },
+          { cause: new Error("socket hang up") },
+        );
+
+        expect(describeFailure(failure, false).details).to.deep.equal([
+          STACK_TRACE_HINT,
+        ]);
+      });
+
+      it("does not offer the command output when all of it is already shown", () => {
+        const short = new ExecError({
+          command: "npx tsc",
+          stdout: "",
+          stderr: "src/index.ts(1,1): error TS1005\nFound 1 error.\n",
+          code: 2,
+        });
+
+        expect(describeFailure(short, false).details).to.deep.equal([
+          "Command output:",
+          "  src/index.ts(1,1): error TS1005",
+          "  Found 1 error.",
+        ]);
+      });
+
+      it("follows a cyclic cause chain once", () => {
+        const first = new Error("first");
+        const second = new Error("second", { cause: first });
+        first.cause = second;
+
+        expect(describeFailure(first, false).details).to.deep.equal([
+          STACK_TRACE_HINT,
+        ]);
+      });
+    };
+
+  registerDescribeFailure = () => {
+    describe("keeps the problem of a command error that has no cause", function () {
+      checkKeepsTheProblemOfA.call(this);
+    });
+
+    describe("explains a failure with the translate hook before the built-in translations", function () {
+      checkExplainsAFailureWithThe.call(this);
+    });
+  };
+
+  describe("describeFailure", function () {
+    registerDescribeFailure.call(this);
   });
-
-
-  it("follows a cyclic cause chain once", () => {
-    const first = new Error("first");
-    const second = new Error("second", { cause: first });
-    first.cause = second;
-
-    expect(describeFailure(first, false).details).to.deep.equal([
-      STACK_TRACE_HINT,
-    ]);
-  });
-};
-
-registerDescribeFailure = () => {
-
-describe("keeps the problem of a command error that has no cause",function(){checkKeepsTheProblemOfA.call(this);});
-
-describe("explains a failure with the translate hook before the built-in translations",function(){checkExplainsAFailureWithThe.call(this);});
-
-};
-
-describe("describeFailure", function(){registerDescribeFailure.call(this);});
 }
 
 describe("reportFailure", () => {
@@ -329,10 +320,15 @@ describe("reportFailure", () => {
   it("reports a failure explained by the translate hook with its exit code", () => {
     const { ui, feedback } = createMemoryUi();
 
-    const exitCode = reportFailure(new Error("fetch failed"), ui, false, () => ({
-      title: "Cannot reach http://localhost:5000",
-      exitCode: USAGE_EXIT_CODE,
-    }));
+    const exitCode = reportFailure(
+      new Error("fetch failed"),
+      ui,
+      false,
+      () => ({
+        title: "Cannot reach http://localhost:5000",
+        exitCode: USAGE_EXIT_CODE,
+      }),
+    );
 
     expect(feedback.text).to.equal("✖ Cannot reach http://localhost:5000\n");
     expect(exitCode).to.equal(USAGE_EXIT_CODE);

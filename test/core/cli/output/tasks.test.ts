@@ -2,11 +2,11 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import {
-getProcessTasks,
-getProcessUi,
-runTask,
-TaskList,
-type OutputCapabilities,
+  getProcessTasks,
+  getProcessUi,
+  runTask,
+  TaskList,
+  type OutputCapabilities,
 } from "../../../../src/core/output";
 import { MemoryStream } from "../../../helpers/memory-ui";
 import { rejectionOf } from "../fixtures";
@@ -153,11 +153,12 @@ describe("output task list run", () => {
     const { tasks, feedback } = createTasks();
     const failure = new Error("boom");
 
-    const error = await rejectionOf(tasks
-      .run("Loading", () => Promise.reject(failure), {
+    const error = await rejectionOf(
+      tasks.run("Loading", () => Promise.reject(failure), {
         done: "Loaded",
         failed: "Could not load",
-      }));
+      }),
+    );
 
     expect(error).to.equal(failure);
     expect(feedback.text).to.equal("✖ Could not load\n");
@@ -166,10 +167,11 @@ describe("output task list run", () => {
   it("leaves a failure without failed label to whoever catches it", async () => {
     const { tasks, feedback } = createTasks();
 
-    const error = await rejectionOf(tasks
-      .run("Loading", () => Promise.reject(new Error("boom")), {
+    const error = await rejectionOf(
+      tasks.run("Loading", () => Promise.reject(new Error("boom")), {
         done: "Loaded",
-      }));
+      }),
+    );
 
     expect(error).to.be.instanceOf(Error);
     expect(feedback.text).to.equal("");
@@ -191,208 +193,196 @@ describe("output task list run", () => {
 });
 
 {
-let registerOutputTaskListLive: (this: Mocha.Suite) => void;
+  let registerOutputTaskListLive: (this: Mocha.Suite) => void;
 
+  const checkDrawsOneLinePerRunning: (this: Mocha.Suite) => void = function () {
+    it("draws one line per running task, in start order", () => {
+      const { tasks, feedback } = createTasks(true);
 
-const checkDrawsOneLinePerRunning: (this: Mocha.Suite) => void = function () {
+      const first = tasks.start("Installing module-a");
+      tasks.start("Installing module-b");
+      first.succeed("Installed module-a");
 
-
-  it("draws one line per running task, in start order", () => {
-    const { tasks, feedback } = createTasks(true);
-
-    const first = tasks.start("Installing module-a");
-    tasks.start("Installing module-b");
-    first.succeed("Installed module-a");
-
-    expect(feedback.text).to.equal(
-      [
-        "⠋ Installing module-a\n",
-        ERASE_ONE_LINE,
-        "⠋ Installing module-a\n⠋ Installing module-b\n",
-        ERASE_TWO_LINES,
-        "✔ Installed module-a\n",
-        "⠋ Installing module-b\n",
-      ].join(""),
-    );
-  });
-
-
-  it("erases the list once the last task is finished", () => {
-    const { tasks, feedback } = createTasks(true);
-
-    tasks.start("Working").dismiss();
-
-    expect(feedback.text).to.equal(`⠋ Working\n${ERASE_ONE_LINE}`);
-    expect(tasks.hasRunningTasks()).to.equal(false);
-  });
-
-
-  it("writes log lines above the list", () => {
-    const { tasks, result, feedback } = createTasks(true);
-
-    tasks.start("Working");
-    tasks.write(result, "log line\n");
-
-    expect(result.text).to.equal("log line\n");
-    expect(feedback.text).to.equal(
-      `⠋ Working\n${ERASE_ONE_LINE}⠋ Working\n`,
-    );
-  });
-
-
-  it("waits for the end of an open line before drawing again", () => {
-    const { tasks, feedback } = createTasks(true);
-
-    tasks.start("Working");
-    tasks.write(feedback, "partial");
-    tasks.write(feedback, " line\n");
-
-    expect(feedback.text).to.equal(
-      `⠋ Working\n${ERASE_ONE_LINE}partial line\n⠋ Working\n`,
-    );
-  });
-
-
-  it("routes direct writes to the streams above the list while it is drawn", () => {
-    const { tasks, result, feedback } = createTasks(true);
-
-    const task = tasks.start("Working");
-    result.write("console line\n");
-    task.succeed("Done");
-    result.write("after\n");
-
-    expect(result.text).to.equal("console line\nafter\n");
-    expect(feedback.text).to.equal(
-      `⠋ Working\n${ERASE_ONE_LINE}⠋ Working\n${ERASE_ONE_LINE}✔ Done\n`,
-    );
-    expect(Object.hasOwn(result, "write")).to.equal(false);
-  });
-
-
-  it("puts back a write function the stream owned itself", () => {
-    const chunks: string[] = [];
-    const write = (chunk: string): boolean => chunks.push(chunk) > 0;
-    const result = { write };
-    const tasks = new TaskList({
-      streams: { result, feedback: new MemoryStream(true) },
-      capabilities: CAPABILITIES,
-      isLive: true,
+      expect(feedback.text).to.equal(
+        [
+          "⠋ Installing module-a\n",
+          ERASE_ONE_LINE,
+          "⠋ Installing module-a\n⠋ Installing module-b\n",
+          ERASE_TWO_LINES,
+          "✔ Installed module-a\n",
+          "⠋ Installing module-b\n",
+        ].join(""),
+      );
     });
 
-    const task = tasks.start("Working");
-    result.write("line\n");
-    task.dismiss();
+    it("erases the list once the last task is finished", () => {
+      const { tasks, feedback } = createTasks(true);
 
-    expect(result.write).to.equal(write);
-    expect(chunks).to.deep.equal(["line\n"]);
-  });
+      tasks.start("Working").dismiss();
 
-
-  it("captures a stream used for both channels once", () => {
-    const stream = new MemoryStream(true);
-    const tasks = new TaskList({
-      streams: { result: stream, feedback: stream },
-      capabilities: CAPABILITIES,
-      isLive: true,
+      expect(feedback.text).to.equal(`⠋ Working\n${ERASE_ONE_LINE}`);
+      expect(tasks.hasRunningTasks()).to.equal(false);
     });
 
-    const task = tasks.start("Working");
-    stream.write("line\n");
-    task.dismiss();
+    it("writes log lines above the list", () => {
+      const { tasks, result, feedback } = createTasks(true);
 
-    expect(stream.text).to.equal(
-      `⠋ Working\n${ERASE_ONE_LINE}line\n⠋ Working\n${ERASE_ONE_LINE}`,
-    );
-  });
+      tasks.start("Working");
+      tasks.write(result, "log line\n");
 
-
-  it("animates the running tasks and relabels them", () => {
-    const clock = sinon.useFakeTimers();
-    const { tasks, feedback } = createTasks(true);
-
-    const task = tasks.start("Working");
-    clock.tick(FRAME_INTERVAL_MS);
-    task.update("Still working");
-    task.dismiss();
-    clock.tick(FRAME_INTERVAL_MS);
-
-    expect(feedback.text).to.equal(
-      [
-        "⠋ Working\n",
-        ERASE_ONE_LINE,
-        "⠙ Working\n",
-        ERASE_ONE_LINE,
-        "⠙ Still working\n",
-        ERASE_ONE_LINE,
-      ].join(""),
-    );
-  });
-};
-
-const checkTruncatesLabelsToTheTerminal: (this: Mocha.Suite) => void = function () {
-
-
-  it("truncates labels to the terminal width", () => {
-    const { tasks, feedback } = createTasks(true);
-    feedback.columns = 12;
-
-    tasks.start("Installing dependencies");
-
-    expect(feedback.text).to.equal("⠋ Installi…\n");
-  });
-
-
-  it("truncates labels with the ASCII ellipsis", () => {
-    const feedback = new MemoryStream(true);
-    feedback.columns = 12;
-    const tasks = new TaskList({
-      streams: { result: new MemoryStream(true), feedback },
-      capabilities: { ...CAPABILITIES, hasUnicode: false },
-      isLive: true,
+      expect(result.text).to.equal("log line\n");
+      expect(feedback.text).to.equal(`⠋ Working\n${ERASE_ONE_LINE}⠋ Working\n`);
     });
 
-    tasks.start("Installing dependencies");
+    it("waits for the end of an open line before drawing again", () => {
+      const { tasks, feedback } = createTasks(true);
 
-    expect(feedback.text).to.equal("- Instal...\n");
+      tasks.start("Working");
+      tasks.write(feedback, "partial");
+      tasks.write(feedback, " line\n");
+
+      expect(feedback.text).to.equal(
+        `⠋ Working\n${ERASE_ONE_LINE}partial line\n⠋ Working\n`,
+      );
+    });
+
+    it("routes direct writes to the streams above the list while it is drawn", () => {
+      const { tasks, result, feedback } = createTasks(true);
+
+      const task = tasks.start("Working");
+      result.write("console line\n");
+      task.succeed("Done");
+      result.write("after\n");
+
+      expect(result.text).to.equal("console line\nafter\n");
+      expect(feedback.text).to.equal(
+        `⠋ Working\n${ERASE_ONE_LINE}⠋ Working\n${ERASE_ONE_LINE}✔ Done\n`,
+      );
+      expect(Object.hasOwn(result, "write")).to.equal(false);
+    });
+
+    it("puts back a write function the stream owned itself", () => {
+      const chunks: string[] = [];
+      const write = (chunk: string): boolean => chunks.push(chunk) > 0;
+      const result = { write };
+      const tasks = new TaskList({
+        streams: { result, feedback: new MemoryStream(true) },
+        capabilities: CAPABILITIES,
+        isLive: true,
+      });
+
+      const task = tasks.start("Working");
+      result.write("line\n");
+      task.dismiss();
+
+      expect(result.write).to.equal(write);
+      expect(chunks).to.deep.equal(["line\n"]);
+    });
+
+    it("captures a stream used for both channels once", () => {
+      const stream = new MemoryStream(true);
+      const tasks = new TaskList({
+        streams: { result: stream, feedback: stream },
+        capabilities: CAPABILITIES,
+        isLive: true,
+      });
+
+      const task = tasks.start("Working");
+      stream.write("line\n");
+      task.dismiss();
+
+      expect(stream.text).to.equal(
+        `⠋ Working\n${ERASE_ONE_LINE}line\n⠋ Working\n${ERASE_ONE_LINE}`,
+      );
+    });
+
+    it("animates the running tasks and relabels them", () => {
+      const clock = sinon.useFakeTimers();
+      const { tasks, feedback } = createTasks(true);
+
+      const task = tasks.start("Working");
+      clock.tick(FRAME_INTERVAL_MS);
+      task.update("Still working");
+      task.dismiss();
+      clock.tick(FRAME_INTERVAL_MS);
+
+      expect(feedback.text).to.equal(
+        [
+          "⠋ Working\n",
+          ERASE_ONE_LINE,
+          "⠙ Working\n",
+          ERASE_ONE_LINE,
+          "⠙ Still working\n",
+          ERASE_ONE_LINE,
+        ].join(""),
+      );
+    });
+  };
+
+  const checkTruncatesLabelsToTheTerminal: (this: Mocha.Suite) => void =
+    function () {
+      it("truncates labels to the terminal width", () => {
+        const { tasks, feedback } = createTasks(true);
+        feedback.columns = 12;
+
+        tasks.start("Installing dependencies");
+
+        expect(feedback.text).to.equal("⠋ Installi…\n");
+      });
+
+      it("truncates labels with the ASCII ellipsis", () => {
+        const feedback = new MemoryStream(true);
+        feedback.columns = 12;
+        const tasks = new TaskList({
+          streams: { result: new MemoryStream(true), feedback },
+          capabilities: { ...CAPABILITIES, hasUnicode: false },
+          isLive: true,
+        });
+
+        tasks.start("Installing dependencies");
+
+        expect(feedback.text).to.equal("- Instal...\n");
+      });
+
+      it("erases the list on demand until the next frame", () => {
+        const { tasks, feedback } = createTasks(true);
+
+        tasks.start("Working");
+        tasks.clearLiveLines();
+        tasks.clearLiveLines();
+
+        expect(feedback.text).to.equal(`⠋ Working\n${ERASE_ONE_LINE}`);
+      });
+
+      it("writes ui messages above the list", () => {
+        const { tasks, feedback } = createTasks(true);
+
+        tasks.start("Working");
+        tasks.ui.message("warn", "Careful");
+
+        expect(feedback.text).to.equal(
+          `⠋ Working\n${ERASE_ONE_LINE}▲ Careful\n⠋ Working\n`,
+        );
+      });
+    };
+
+  registerOutputTaskListLive = () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    describe("draws one line per running task, in start order", function () {
+      checkDrawsOneLinePerRunning.call(this);
+    });
+
+    describe("truncates labels to the terminal width", function () {
+      checkTruncatesLabelsToTheTerminal.call(this);
+    });
+  };
+
+  describe("output task list (live)", function () {
+    registerOutputTaskListLive.call(this);
   });
-
-
-  it("erases the list on demand until the next frame", () => {
-    const { tasks, feedback } = createTasks(true);
-
-    tasks.start("Working");
-    tasks.clearLiveLines();
-    tasks.clearLiveLines();
-
-    expect(feedback.text).to.equal(`⠋ Working\n${ERASE_ONE_LINE}`);
-  });
-
-
-  it("writes ui messages above the list", () => {
-    const { tasks, feedback } = createTasks(true);
-
-    tasks.start("Working");
-    tasks.ui.message("warn", "Careful");
-
-    expect(feedback.text).to.equal(
-      `⠋ Working\n${ERASE_ONE_LINE}▲ Careful\n⠋ Working\n`,
-    );
-  });
-};
-
-registerOutputTaskListLive = () => {
-
-  afterEach(() => {
-    sinon.restore();
-  });
-
-describe("draws one line per running task, in start order",function(){checkDrawsOneLinePerRunning.call(this);});
-
-describe("truncates labels to the terminal width",function(){checkTruncatesLabelsToTheTerminal.call(this);});
-
-};
-
-describe("output task list (live)", function(){registerOutputTaskListLive.call(this);});
 }
 
 describe("output process task list", () => {

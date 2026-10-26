@@ -3,14 +3,15 @@ import { CommanderError } from "commander";
 import sinon from "sinon";
 
 import {
-CANCELLED_EXIT_CODE,
-CANCELLED_MESSAGE,
-CancelledError,
-CliError,
-FAILURE_EXIT_CODE,
-getProcessUi,
-runWithErrorBoundary,
-SUCCESS_EXIT_CODE,USAGE_EXIT_CODE
+  CANCELLED_EXIT_CODE,
+  CANCELLED_MESSAGE,
+  CancelledError,
+  CliError,
+  FAILURE_EXIT_CODE,
+  getProcessUi,
+  runWithErrorBoundary,
+  SUCCESS_EXIT_CODE,
+  USAGE_EXIT_CODE,
 } from "../../../../src/core/output";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 
@@ -25,9 +26,12 @@ describe("runWithErrorBoundary", () => {
   it("leaves the exit code of a successful run alone", async () => {
     const { ui, feedback } = createMemoryUi();
 
-    await runWithErrorBoundary(async () => {
-      process.exitCode = BUILD_EXIT_CODE;
-    }, { ui });
+    await runWithErrorBoundary(
+      async () => {
+        process.exitCode = BUILD_EXIT_CODE;
+      },
+      { ui },
+    );
 
     expect(process.exitCode).to.equal(BUILD_EXIT_CODE);
     expect(feedback.text).to.equal("");
@@ -73,10 +77,9 @@ describe("runWithErrorBoundary", () => {
     const errorStub = sinon.stub(console, "error");
     const { ui, feedback } = createMemoryUi();
 
-    await runWithErrorBoundary(
-      () => Promise.reject(new CancelledError()),
-      { ui },
-    );
+    await runWithErrorBoundary(() => Promise.reject(new CancelledError()), {
+      ui,
+    });
 
     expect(errorStub.calledOnceWith(CANCELLED_MESSAGE)).to.equal(true);
     expect(feedback.text).to.equal("");
@@ -86,14 +89,17 @@ describe("runWithErrorBoundary", () => {
   it("explains failures with the translate hook", async () => {
     const { ui, feedback } = createMemoryUi();
 
-    await runWithErrorBoundary(() => Promise.reject(new Error("fetch failed")), {
-      ui,
-      verbose: false,
-      translate: () => ({
-        title: "Cannot reach http://localhost:5000",
-        fixes: ["Start the backend, then try again"],
-      }),
-    });
+    await runWithErrorBoundary(
+      () => Promise.reject(new Error("fetch failed")),
+      {
+        ui,
+        verbose: false,
+        translate: () => ({
+          title: "Cannot reach http://localhost:5000",
+          fixes: ["Start the backend, then try again"],
+        }),
+      },
+    );
 
     expect(feedback.text).to.equal(
       "✖ Cannot reach http://localhost:5000\n  → Start the backend, then try again\n",
@@ -145,10 +151,7 @@ describe("runWithErrorBoundary", () => {
     const { ui, feedback } = createMemoryUi();
 
     await runWithErrorBoundary(
-      () =>
-        Promise.reject(
-          new CommanderError(0, "commander.version", "1.0.0"),
-        ),
+      () => Promise.reject(new CommanderError(0, "commander.version", "1.0.0")),
       { ui },
     );
     expect(process.exitCode).to.equal(SUCCESS_EXIT_CODE);

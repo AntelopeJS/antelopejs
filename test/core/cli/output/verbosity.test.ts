@@ -1,18 +1,18 @@
 import { expect } from "chai";
 
 import {
-isQuietRun,
-isVerboseRun,
-normalizeVerboseArguments,
+  isQuietRun,
+  isVerboseRun,
+  normalizeVerboseArguments,
 } from "../../../../src/core/output";
 
 const BASE_ARGV = ["node", "ajs", "project", "build"];
 
 describe("isVerboseRun", () => {
   it("is verbose with --verbose anywhere on the command line", () => {
-    expect(isVerboseRun({ argv: [...BASE_ARGV, "--verbose"], env: {} })).to.equal(
-      true,
-    );
+    expect(
+      isVerboseRun({ argv: [...BASE_ARGV, "--verbose"], env: {} }),
+    ).to.equal(true);
     expect(
       isVerboseRun({ argv: [...BASE_ARGV, "--verbose=loader"], env: {} }),
     ).to.equal(true);
