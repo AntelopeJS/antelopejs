@@ -5,11 +5,11 @@ import { expect } from "chai";
 import { mkdtemp, rm } from "node:fs/promises";
 
 import { expectInstanceOf, rejectionOf } from "../../fixtures";
-import { CliError, getProcessUi } from "../../../../../src/core/cli/output";
-import * as common from "../../../../../src/core/cli/common";
+import { CliError, getProcessUi } from "../../../../../src/core/output/index";
+import * as common from "../../../../../src/cli/common";
 import * as testModuleModule from "../../../../../src/core/test/test-module";
-import cmdTest from "../../../../../src/core/cli/commands/module/test";
-import { moduleTestCommand } from "../../../../../src/core/cli/commands/module/test-action";
+import cmdTest from "../../../../../src/cli/commands/module/test";
+import { moduleTestCommand } from "../../../../../src/cli/commands/module/test-action";
 
 const MODULE_WITH_TESTS = {
   name: "modA",

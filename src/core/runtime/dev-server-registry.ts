@@ -10,7 +10,7 @@ import type {
 } from "@antelopejs/interface-core/runtime";
 
 import type { IFileSystem } from "../../types";
-import type { ShutdownManager } from "../shutdown";
+import type { ShutdownManager } from "./shutdown/index";
 
 const TEMP_FILE_SUFFIX = ".tmp";
 const JSON_INDENT = 2;

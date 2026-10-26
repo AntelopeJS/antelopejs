@@ -1,0 +1,176 @@
+import path from "node:path";
+import crypto from "node:crypto";
+import type {
+  AntelopeLogging,
+  ModuleSource,
+} from "@antelopejs/interface-core/config";
+
+import type { IFileSystem } from "../../types/index";
+import { NodeFileSystem } from "../filesystem/index";
+import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
+import type { ModulePackageJson } from "./module-manifest";
+
+const BUILD_ARTIFACT_VERSION = "1";
+const BUILD_FOLDER = ".antelope/build";
+const BUILD_FILE = "build.json";
+const HASH_SEPARATOR = "\n--antelope-build-hash--\n";
+const JSON_INDENT = 2;
+
+export interface BuildPathEntry {
+  key: string;
+  values: string[];
+}
+
+export interface BuildAliasEntry {
+  alias: string;
+  replace: string;
+}
+
+export interface BuildImportOverride {
+  interface: string;
+  source?: string;
+  id?: string;
+}
+
+export interface BuildArtifactConfig {
+  name: string;
+  cacheFolder: string;
+  projectFolder: string;
+  logging?: AntelopeLogging;
+  envOverrides: Record<string, string | string[]>;
+}
+
+export interface BuildModuleEntry {
+  folder: string;
+  source: ModuleSource;
+  name: string;
+  version: string;
+  main: string;
+  manifest: ModulePackageJson;
+  implements?: string[];
+  baseUrl: string;
+  paths: BuildPathEntry[];
+  srcAliases?: BuildAliasEntry[];
+  config?: unknown;
+  importOverrides?: BuildImportOverride[];
+  disabledExports?: string[];
+  exportPriority?: Record<string, number>;
+  optional?: boolean;
+}
+
+export interface BuildArtifact {
+  version: string;
+  buildTime: string;
+  configHash: string;
+  env: string;
+  config: BuildArtifactConfig;
+  modules: Record<string, BuildModuleEntry>;
+}
+
+export interface BuildArtifactInput {
+  configHash: string;
+  env: string;
+  config: BuildArtifactConfig;
+  modules: Record<string, BuildModuleEntry>;
+  buildTime?: string;
+}
+
+interface RawProjectConfig {
+  [key: string]: Parameters<typeof toStableJson>[0];
+}
+
+function isRawProjectConfig(value: Parameters<typeof toStableJson>[0]): value is RawProjectConfig {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Stable hashing accepts all non-null objects, including arrays and class instances; a narrower config schema changes serialization.
+  return typeof value === "object" && value !== null;
+}
+
+function toStableHashValue(value: Parameters<typeof toStableJson>[0]): Parameters<typeof toStableJson>[0] {
+  if (Array.isArray(value)) {
+    return value.map((item) => toStableHashValue(item));
+  }
+  if (!isRawProjectConfig(value)) {
+    return value;
+  }
+  const keys = Object.keys(value).sort((a, b) => a.localeCompare(b));
+  return Object.fromEntries(
+    keys.map((key) => [key, toStableHashValue(value[key])]),
+  );
+}
+
+/**
+ * Serialise a value with object keys sorted, so equal values always produce
+ * the same string whatever their key insertion order.
+ */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported stable JSON serialization accepts arbitrary JavaScript values; narrowing changes its declaration and stringify behavior.
+export function toStableJson(value: unknown): string {
+  return JSON.stringify(toStableHashValue(value));
+}
+
+export function getBuildFolderPath(projectFolder: string): string {
+  return path.join(path.resolve(projectFolder), BUILD_FOLDER);
+}
+
+export function getBuildArtifactPath(projectFolder: string): string {
+  return path.join(getBuildFolderPath(projectFolder), BUILD_FILE);
+}
+
+export async function computeConfigHash(
+  projectFolder: string,
+  env: string,
+  fs: IFileSystem = new NodeFileSystem(),
+): Promise<string> {
+  const loader = new ConfigLoader(fs);
+  const resolvedConfig = await loader.load(projectFolder, env);
+  return hashResolvedConfig(resolvedConfig, env);
+}
+
+/**
+ * Hash a configuration already resolved by the {@link ConfigLoader} the way
+ * {@link computeConfigHash} does, for callers that loaded it themselves.
+ */
+export function hashResolvedConfig(
+  resolvedConfig: LoadedConfig,
+  env: string,
+): string {
+  const hashParts: string[] = [toStableJson(resolvedConfig), env];
+
+  return crypto
+    .createHash("sha256")
+    .update(hashParts.join(HASH_SEPARATOR))
+    .digest("hex");
+}
+
+export function createBuildArtifact(params: BuildArtifactInput): BuildArtifact {
+  return {
+    version: BUILD_ARTIFACT_VERSION,
+    buildTime: params.buildTime ?? new Date().toISOString(),
+    configHash: params.configHash,
+    env: params.env,
+    config: params.config,
+    modules: params.modules,
+  };
+}
+
+export async function writeBuildArtifact(
+  projectFolder: string,
+  artifact: BuildArtifact,
+  fs: IFileSystem = new NodeFileSystem(),
+): Promise<void> {
+  const buildFolder = getBuildFolderPath(projectFolder);
+  const artifactPath = getBuildArtifactPath(projectFolder);
+  await fs.rm(buildFolder, { recursive: true, force: true });
+  await fs.mkdir(buildFolder, { recursive: true });
+  await fs.writeFile(
+    artifactPath,
+    `${JSON.stringify(artifact, null, JSON_INDENT)}\n`,
+  );
+}
+
+export async function readBuildArtifact(
+  projectFolder: string,
+  fs: IFileSystem = new NodeFileSystem(),
+): Promise<BuildArtifact> {
+  const artifactPath = getBuildArtifactPath(projectFolder);
+  const content = await fs.readFileString(artifactPath, "utf-8");
+  return JSON.parse(content);
+}

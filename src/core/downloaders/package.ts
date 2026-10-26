@@ -5,15 +5,18 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import { maxSatisfying, satisfies, valid, validRange } from "semver";
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
-import { ExecError, ExecuteCMD } from "../cli/command";
+import { ExecError, ExecuteCMD } from "../output/command";
 import type { CommandRunner } from "./types";
-import { ModuleCache } from "../module-cache";
+import { ModuleCache } from "../modules/module-cache";
 import type { IFileSystem } from "../../types";
-import { NodeFileSystem } from "../filesystem";
+import { NodeFileSystem } from "../filesystem/index";
 import { installFailure } from "./utils";
 import type { DownloaderRegistry } from "./registry";
-import { getModuleCacheInstallCommand } from "../cli/package-manager";
-import { ModuleManifest, type ModulePackageJson } from "../module-manifest";
+import { getModuleCacheInstallCommand } from "../output/package-manager";
+import {
+  ModuleManifest,
+  type ModulePackageJson,
+} from "../modules/module-manifest";
 
 export interface PackageDownloaderDeps {
   fs?: IFileSystem;

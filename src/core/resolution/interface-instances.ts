@@ -7,7 +7,7 @@ import {
   pruneStaleInstanceCopies,
   removeInstanceCopy,
 } from "./instance-copies";
-import { createPathWithinMatcher } from "./package-resolution";
+import { createPathWithinMatcher } from "../../utils/package-resolution";
 import type { BindingGraph, InstanceDescriptor } from "./binding-graph-types";
 
 const NODE_MODULES = "node_modules";

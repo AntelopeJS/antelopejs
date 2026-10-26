@@ -9,15 +9,15 @@ import fs from "node:fs/promises";
 import * as runtimeInterface from "@antelopejs/interface-core/runtime";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
-import { ShutdownManager } from "../../../src/core/shutdown";
+import { ShutdownManager } from "../../../src/core/runtime/shutdown/index";
 import * as processClaim from "../../../src/core/runtime/process-claim";
 import {
   LaunchInterruptedError,
   type LaunchStep,
   runLaunchSteps,
 } from "../../../src/core/runtime/launch-steps";
-import { NodeFileSystem } from "../../../src/core/filesystem";
-import { ModuleManifest } from "../../../src/core/module-manifest";
+import { NodeFileSystem } from "../../../src/core/filesystem/index";
+import { ModuleManifest } from "../../../src/core/modules/module-manifest";
 import * as logging from "../../../src/logging";
 import { runLaunchSequence } from "../../../src/core/runtime/launch-sequence";
 import { EMBEDDED_RUNTIME_POLICY } from "../../../src/core/runtime/runtime-policy";

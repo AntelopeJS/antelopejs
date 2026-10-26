@@ -2,7 +2,7 @@ import { expect } from "chai";
 import assert from "node:assert/strict";
 import path from "node:path";
 import sinon from "sinon";
-import { ModuleManager } from "../../../src/core/module-manager";
+import { ModuleManager } from "../../../src/core/modules/module-manager";
 import * as testModule from "../../../src/core/test/test-module";
 import { interfaceProxy } from "../../helpers/interface-proxy";
 

@@ -1,7 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
-import { getProcessUi } from "../../../src/core/cli/output";
+import { getProcessUi } from "../../../src/core/output/index";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import * as configLoader from "../../../src/core/config/config-loader";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
@@ -15,7 +15,7 @@ import {
   writeConfig,
   writeModuleManifest,
   writeUserConfig,
-} from "../../../src/core/cli/common";
+} from "../../../src/cli/common";
 
 describe("CLI Common", () => {
   afterEach(() => {

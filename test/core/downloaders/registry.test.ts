@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as path from "node:path";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
-import { ModuleCache } from "../../../src/core/module-cache";
+import { ModuleCache } from "../../../src/core/modules/module-cache";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
 

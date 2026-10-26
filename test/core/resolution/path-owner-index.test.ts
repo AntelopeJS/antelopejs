@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { clearPathResolutionCache } from "../../../src/core/resolution/package-resolution";
+import { clearPathResolutionCache } from "../../../src/utils/package-resolution";
 import {
   PathOwnerIndex,
   type PathOwnerRoot,

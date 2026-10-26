@@ -7,7 +7,7 @@ import fs from "node:fs/promises";
 import { MODULE_CONTEXT_INVALIDATED_CODE } from "@antelopejs/interface-core";
 
 import { ModuleState } from "../../src/types";
-import { ShutdownManager } from "../../src/core/shutdown";
+import { ShutdownManager } from "../../src/core/runtime/shutdown/index";
 import launch, { type ModuleManager } from "../../src";
 import {
   createLoaderContext,

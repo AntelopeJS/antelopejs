@@ -11,7 +11,7 @@ import {
   ExecuteCMD,
   ExecuteFile,
   nonInteractiveOptions,
-} from "../../../src/core/cli/command";
+} from "../../../src/core/output/command";
 
 describe("Command Execution", () => {
   afterEach(() => {

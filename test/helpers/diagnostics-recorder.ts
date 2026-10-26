@@ -4,7 +4,7 @@ import {
   ModuleDiagnostics,
   type ModuleDiagnosticsChannels,
   type ModuleDiagnosticsContext,
-} from "../../src/core/diagnostics";
+} from "../../src/core/modules/diagnostics";
 
 type ModuleOperation = keyof ModuleDiagnosticsChannels;
 

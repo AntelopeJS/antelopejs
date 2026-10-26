@@ -9,8 +9,8 @@ import type {
 import * as self from "./test-module";
 import type { IFileSystem } from "../../types";
 import { mergeDeep } from "../../utils/object";
-import { NodeFileSystem } from "../filesystem";
-import { ModuleManager } from "../module-manager";
+import { NodeFileSystem } from "../filesystem/index";
+import { ModuleManager } from "../modules/module-manager";
 import { DEFAULT_ENV } from "../config/config-paths";
 import { setupAntelopeProjectLogging } from "../../logging";
 import { ConfigLoader, type LoadedConfig } from "../config/config-loader";

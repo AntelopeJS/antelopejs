@@ -5,12 +5,12 @@ import type {
   ModuleSourceLocalFolder,
 } from "@antelopejs/interface-core/config";
 
-import { ExecuteCMD } from "../cli/command";
+import { ExecuteCMD } from "../output/command";
 import type { CommandRunner } from "./types";
 import type { IFileSystem } from "../../types";
-import { NodeFileSystem } from "../filesystem";
-import type { ModuleCache } from "../module-cache";
-import { ModuleManifest } from "../module-manifest";
+import { NodeFileSystem } from "../filesystem/index";
+import type { ModuleCache } from "../modules/module-cache";
+import { ModuleManifest } from "../modules/module-manifest";
 import { expandHome, runInstallCommands } from "./utils";
 import type { DownloaderRegistry, LoadOptions } from "./registry";
 

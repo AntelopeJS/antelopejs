@@ -5,11 +5,11 @@ import path from "node:path";
 import { expect } from "chai";
 import fs, { existsSync, mkdirSync, writeFileSync } from "node:fs";
 
-import { Resolver } from "../../../src/core/resolution/resolver";
+import { Resolver } from "../../../src/core/modules/resolver";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
-import { PathMapper } from "../../../src/core/resolution/path-mapper";
+import { PathMapper } from "../../../src/core/modules/path-mapper";
 import { buildBindingGraph } from "../../../src/core/resolution/binding-graph";
-import { clearPathResolutionCache } from "../../../src/core/resolution/package-resolution";
+import { clearPathResolutionCache } from "../../../src/utils/package-resolution";
 import type { BindingModule } from "../../../src/core/resolution/binding-graph-types";
 
 const CORE_PKG = "@antelopejs/interface-core";

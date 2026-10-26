@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
-import { ModuleManager } from "../../src/core/module-manager";
-import { ModuleManifest } from "../../src/core/module-manifest";
-import type { InterfaceConnectionRef } from "../../src/core/interface-registry";
+import { ModuleManager } from "../../src/core/modules/module-manager";
+import { ModuleManifest } from "../../src/core/modules/module-manifest";
+import type { InterfaceConnectionRef } from "../../src/core/modules/interface-registry";
 import { InterfaceBindingError } from "../../src/core/resolution/binding-diagnostics";
 
 const DATABASE = "@bindings/interface-database";

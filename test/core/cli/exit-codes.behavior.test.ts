@@ -5,15 +5,15 @@ import { existsSync } from "node:fs";
 
 import * as logging from "../../../src/logging";
 import { runCLI } from "../../../src/core/cli/index";
-import * as cliUi from "../../../src/core/cli/cli-ui";
-import * as gitOps from "../../../src/core/cli/git-operations";
-import { runWithErrorBoundary } from "../../../src/core/cli/output";
-import { readConfig, writeConfig } from "../../../src/core/cli/common";
-import * as versionCheck from "../../../src/core/cli/version-check";
+import * as cliUi from "../../../src/core/output/cli-ui";
+import * as gitOps from "../../../src/cli/git-operations";
+import { runWithErrorBoundary } from "../../../src/core/output/index";
+import { readConfig, writeConfig } from "../../../src/cli/common";
+import * as versionCheck from "../../../src/cli/version-check";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { captureOutputAsync } from "../../helpers/capture-output";
 import { CANCEL, fakePrompts } from "../../helpers/fake-prompts";
-import * as projectLaunch from "../../../src/core/runtime/project-launch";
+import * as projectLaunch from "../../../src/core/repl/project-launch";
 import { BuildModuleSetChangedError } from "../../../src/core/runtime/build-refresh";
 import {
   BUILD_MODULE_SET_CHANGED_EXIT_CODE,
@@ -21,7 +21,7 @@ import {
   FAILURE_EXIT_CODE,
   SUCCESS_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../src/core/cli/exit-codes";
+} from "../../../src/core/output/exit-codes";
 
 const INSTALLED_MODULE = "billing";
 

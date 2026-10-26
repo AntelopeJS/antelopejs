@@ -2,7 +2,7 @@ import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import { registerGitDownloader } from "../../../src/core/downloaders/git";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
-import { ModuleCache } from "../../../src/core/module-cache";
+import { ModuleCache } from "../../../src/core/modules/module-cache";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 function sanitize(remote: string): string {

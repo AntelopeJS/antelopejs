@@ -8,7 +8,7 @@ import {
   runTask,
   TaskList,
   type OutputCapabilities,
-} from "../../../../src/core/cli/output";
+} from "../../../../src/core/output/index";
 import { MemoryStream } from "../../../helpers/memory-ui";
 
 const ERASE_ONE_LINE = "\x1b[1A\r\x1b[J";

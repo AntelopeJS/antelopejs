@@ -11,7 +11,7 @@ import {
   selectSymbols,
   SYMBOL_SETS,
   type CapabilityContext,
-} from "../../../../src/core/cli/output";
+} from "../../../../src/core/output/index";
 import { MemoryStream } from "../../../helpers/memory-ui";
 import { useColorLevel } from "../../../helpers/color-environment";
 

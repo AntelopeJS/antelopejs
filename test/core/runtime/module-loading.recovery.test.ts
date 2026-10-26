@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
-import { Module } from "../../../src/core/module";
+import { Module } from "../../../src/core/modules/module";
 import { reloadWatchedModule } from "../../../src/core/runtime/module-loading";
 import { ModuleState } from "../../../src/types";
 import {
@@ -108,7 +108,7 @@ describe("runtime module-loading", () => {
         .callsFake(
           (
             _id: string,
-            manifest: import("../../../src/core/module-manifest").ModuleManifest,
+            manifest: import("../../../src/core/modules/module-manifest").ModuleManifest,
           ) => manifest,
         ),
       discardPlacedModule: sinon.stub(),

@@ -7,7 +7,7 @@ import { isObject } from "../../src/utils/object";
 import type { ConfigVars } from "@antelopejs/interface-core/config";
 
 import { ModuleState } from "../../src/types";
-import { ModuleManager } from "../../src/core/module-manager";
+import { ModuleManager } from "../../src/core/modules/module-manager";
 
 interface FakeModuleOptions {
   id: string;
@@ -15,10 +15,10 @@ interface FakeModuleOptions {
   implements?: string[];
   config?: unknown;
   provide?: (
-    config: import("../../src/core/module-manager").ModuleConfig["config"],
+    config: import("../../src/core/modules/module-manager").ModuleConfig["config"],
   ) => Promise<ConfigVars | void>;
   construct?: (
-    config: import("../../src/core/module-manager").ModuleConfig["config"],
+    config: import("../../src/core/modules/module-manager").ModuleConfig["config"],
   ) => Promise<void>;
 }
 
@@ -67,13 +67,13 @@ function addModule(
       },
     }),
     provide: async (
-      config: import("../../src/core/module-manager").ModuleConfig["config"],
+      config: import("../../src/core/modules/module-manager").ModuleConfig["config"],
     ) => {
       module.providedWith = config;
       return options.provide?.(config);
     },
     construct: async (
-      config: import("../../src/core/module-manager").ModuleConfig["config"],
+      config: import("../../src/core/modules/module-manager").ModuleConfig["config"],
     ) => {
       module.received = config;
       module.constructed = true;

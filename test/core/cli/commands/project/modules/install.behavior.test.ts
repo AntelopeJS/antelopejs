@@ -11,19 +11,19 @@ import {
   rejectionOf,
   stubLoadedConfig,
 } from "../../../fixtures";
-import * as cliUi from "../../../../../../src/core/cli/cli-ui";
-import * as common from "../../../../../../src/core/cli/common";
-import { ModuleCache } from "../../../../../../src/core/module-cache";
-import * as gitOps from "../../../../../../src/core/cli/git-operations";
-import { ModuleManifest } from "../../../../../../src/core/module-manifest";
+import * as cliUi from "../../../../../../src/core/output/cli-ui";
+import * as common from "../../../../../../src/cli/common";
+import { ModuleCache } from "../../../../../../src/core/modules/module-cache";
+import * as gitOps from "../../../../../../src/cli/git-operations";
+import { ModuleManifest } from "../../../../../../src/core/modules/module-manifest";
 import { DownloaderRegistry } from "../../../../../../src/core/downloaders/registry";
-import * as projectModulesAddModule from "../../../../../../src/core/cli/commands/project/modules/add-action";
-import cmdInstall from "../../../../../../src/core/cli/commands/project/modules/install";
+import * as projectModulesAddModule from "../../../../../../src/cli/commands/project/modules/add-action";
+import cmdInstall from "../../../../../../src/cli/commands/project/modules/install";
 import {
   describeUnresolvedImport,
   resolveInstallIdentifier,
   unresolvedImportWarning,
-} from "../../../../../../src/core/cli/commands/project/modules/install-action";
+} from "../../../../../../src/cli/commands/project/modules/install-action";
 import {
   captureCliError,
   expectProjectNotFound,
@@ -33,8 +33,8 @@ import { fakePrompts } from "../../../../../helpers/fake-prompts";
 import {
   getProcessUi,
   NeedsInputError,
-} from "../../../../../../src/core/cli/output";
-import { USAGE_EXIT_CODE } from "../../../../../../src/core/cli/exit-codes";
+} from "../../../../../../src/core/output/index";
+import { USAGE_EXIT_CODE } from "../../../../../../src/core/output/exit-codes";
 
 const ADDED_MOD_A = { added: ["modA"], skipped: [], failed: [] };
 

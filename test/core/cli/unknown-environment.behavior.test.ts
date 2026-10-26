@@ -5,21 +5,21 @@ import { buildArtifact } from "./fixtures";
 import * as indexModule from "../../../src/index";
 import * as logging from "../../../src/logging";
 import { runCLI } from "../../../src/core/cli/index";
-import * as cliUi from "../../../src/core/cli/cli-ui";
-import { writeConfig } from "../../../src/core/cli/common";
+import * as cliUi from "../../../src/core/output/cli-ui";
+import { writeConfig } from "../../../src/cli/common";
 import { ConfigLoader } from "../../../src/core/config";
-import * as gitOps from "../../../src/core/cli/git-operations";
-import { stripAnsi } from "../../../src/core/cli/logging-utils";
-import * as versionCheck from "../../../src/core/cli/version-check";
+import * as gitOps from "../../../src/cli/git-operations";
+import { stripAnsi } from "../../../src/core/output/logging-utils";
+import * as versionCheck from "../../../src/cli/version-check";
 import { readText, makeTempDir, cleanupTempDir } from "../../helpers/temp";
 import { findConfigPath } from "../../../src/core/config/config-paths";
-import * as buildArtifactModule from "../../../src/core/build/build-artifact";
-import { NodeFileSystem } from "../../../src/core/filesystem";
-import { USAGE_EXIT_CODE } from "../../../src/core/cli/exit-codes";
+import * as buildArtifactModule from "../../../src/core/modules/build-artifact";
+import { NodeFileSystem } from "../../../src/core/filesystem/index";
+import { USAGE_EXIT_CODE } from "../../../src/core/output/exit-codes";
 import {
   getProcessUi,
   runWithErrorBoundary,
-} from "../../../src/core/cli/output";
+} from "../../../src/core/output/index";
 
 const UNKNOWN_ENVIRONMENT = "staging";
 const ACCEPTED_ENVIRONMENT = "PRODUCTION";

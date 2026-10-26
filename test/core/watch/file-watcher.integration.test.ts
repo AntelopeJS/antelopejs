@@ -4,8 +4,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 
 import { expect } from "chai";
 
-import { NodeFileSystem } from "../../../src/core/filesystem";
-import { FileWatcher } from "../../../src/core/watch/file-watcher";
+import { NodeFileSystem } from "../../../src/core/filesystem/index";
+import { FileWatcher } from "../../../src/core/runtime/watch/file-watcher";
 
 const EVENT_SETTLE_MS = 300;
 

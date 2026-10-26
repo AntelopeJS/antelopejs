@@ -8,7 +8,7 @@ import {
   clearPathResolutionCache,
   getPathResolutionCacheGeneration,
   isPathWithin,
-} from "../../../src/core/resolution/package-resolution";
+} from "../../../src/utils/package-resolution";
 
 const FILE_COUNT = 40;
 const ROOT_COUNT = 8;

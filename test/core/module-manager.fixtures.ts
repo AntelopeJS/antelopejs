@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import sinon from "sinon";
-import { ModuleManager } from "../../src/core/module-manager";
-import { ModuleManifest } from "../../src/core/module-manifest";
+import { ModuleManager } from "../../src/core/modules/module-manager";
+import { ModuleManifest } from "../../src/core/modules/module-manifest";
 import { buildBindingGraph } from "../../src/core/resolution/binding-graph";
 
 export function trackInstanceFiles(

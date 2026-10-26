@@ -6,7 +6,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import { ModuleContextInvalidatedError } from "@antelopejs/interface-core";
 
 import * as logging from "../../../src/logging";
-import { ShutdownManager } from "../../../src/core/shutdown";
+import { ShutdownManager } from "../../../src/core/runtime/shutdown/index";
 import { ConfigLoader } from "../../../src/core/config/config-loader";
 
 type ProcessEventName = "uncaughtException" | "unhandledRejection" | "warning";

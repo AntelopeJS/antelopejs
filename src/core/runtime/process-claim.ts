@@ -1,8 +1,8 @@
 import { Logging } from "@antelopejs/interface-core/logging";
 
-import type { ModuleManager } from "../module-manager";
-import type { TaskHandle } from "../cli/output/types";
-import { getProcessTasks } from "../cli/output/tasks";
+import type { ModuleManager } from "../modules/module-manager";
+import type { TaskHandle } from "../output/types";
+import { getProcessTasks } from "../output/tasks";
 import type { RuntimePolicy } from "./runtime-policy";
 import { releaseProcessShutdownManager } from "./runtime-bootstrap";
 import {
@@ -13,7 +13,7 @@ import {
   ShutdownManager,
   type SignalShutdownListener,
   terminateProcessTree,
-} from "../shutdown";
+} from "./shutdown/index";
 
 const Logger = new Logging.Channel("loader");
 

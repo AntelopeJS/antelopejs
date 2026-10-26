@@ -1,10 +1,10 @@
 import sinon from "sinon";
-import { Module } from "../../../src/core/module";
+import { Module } from "../../../src/core/modules/module";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
 import type {
   ManagedModule,
   ModuleManager,
-} from "../../../src/core/module-manager";
+} from "../../../src/core/modules/module-manager";
 import { ModuleState } from "../../../src/types";
 import {
   manifestFixture,
@@ -41,7 +41,7 @@ export function createReloadHarness() {
       .callsFake(
         (
           _id: string,
-          manifest: import("../../../src/core/module-manifest").ModuleManifest,
+          manifest: import("../../../src/core/modules/module-manifest").ModuleManifest,
         ) => manifest,
       ),
     discardPlacedModule: sinon.stub(),
@@ -83,7 +83,7 @@ export async function startManagedModules(
 export function addedModule(
   id: string,
   manifest: Partial<
-    import("../../../src/core/module-manifest").ModulePackageJson
+    import("../../../src/core/modules/module-manifest").ModulePackageJson
   > = {},
   module: Partial<Module> = {},
 ): ManagedModule {
@@ -119,7 +119,7 @@ export function createInterfaceOperationsFixture() {
       .callsFake(
         (
           _id: string,
-          manifest: import("../../../src/core/module-manifest").ModuleManifest,
+          manifest: import("../../../src/core/modules/module-manifest").ModuleManifest,
         ) => manifest,
       ),
     discardPlacedModule: sinon.stub(),

@@ -3,11 +3,11 @@ import path, { delimiter } from "node:path";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
-import { requiresShell } from "../../../src/core/cli/windows-command-line";
+import { requiresShell } from "../../../src/core/output/windows-command-line";
 import {
   findExecutable,
   resolveExecutable,
-} from "../../../src/core/cli/executable-lookup";
+} from "../../../src/cli/executable-lookup";
 
 const FIRST_DIRECTORY = path.join("/opt", "first");
 const SECOND_DIRECTORY = path.join("/opt", "second");

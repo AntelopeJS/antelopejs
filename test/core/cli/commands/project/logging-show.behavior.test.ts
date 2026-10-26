@@ -3,10 +3,10 @@ import { expect } from "chai";
 
 import { loadedConfig } from "../../fixtures";
 import type { LoadedConfig } from "../../../../../src/core/config/config-loader";
-import * as common from "../../../../../src/core/cli/common";
+import * as common from "../../../../../src/cli/common";
 import { ConfigLoader } from "../../../../../src/core/config";
 import { defaultConfigLogging } from "../../../../../src/logging";
-import cmdShow from "../../../../../src/core/cli/commands/project/logging/show";
+import cmdShow from "../../../../../src/cli/commands/project/logging/show";
 import {
   expectProjectNotFound,
   expectUnknownEnvironment,

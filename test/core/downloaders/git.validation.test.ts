@@ -2,11 +2,11 @@ import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
-import { ExecError } from "../../../src/core/cli/command";
-import { getProcessTasks } from "../../../src/core/cli/output";
+import { ExecError } from "../../../src/core/output/command";
+import { getProcessTasks } from "../../../src/core/output/index";
 import { registerGitDownloader } from "../../../src/core/downloaders/git";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
-import { ModuleCache } from "../../../src/core/module-cache";
+import { ModuleCache } from "../../../src/core/modules/module-cache";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 function sanitize(remote: string): string {

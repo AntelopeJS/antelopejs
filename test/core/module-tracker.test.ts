@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { internal } from "@antelopejs/interface-core/internal";
 
-import { ModuleTracker } from "../../src/core/module-tracker";
+import { ModuleTracker } from "../../src/core/modules/module-tracker";
 
 describe("ModuleTracker", () => {
   beforeEach(() => {

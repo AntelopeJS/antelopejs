@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import { expectInstanceOf } from "./fixtures";
-import { runInheritedProcess } from "../../../src/core/cli/process-runner";
+import { runInheritedProcess } from "../../../src/cli/process-runner";
 import {
   createControllableProcessRunner,
   createSignalTarget,

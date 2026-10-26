@@ -1,16 +1,16 @@
 import { manifestFixture } from "../../helpers/module-fixtures";
 import assert from "node:assert/strict";
 import sinon from "sinon";
-import { NodeFileSystem } from "../../../src/core/filesystem";
+import { NodeFileSystem } from "../../../src/core/filesystem/index";
 import { expect } from "chai";
 import { Logging } from "@antelopejs/interface-core/logging";
 
-import * as buildArtifact from "../../../src/core/build/build-artifact";
+import * as buildArtifact from "../../../src/core/modules/build-artifact";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import type {
   BuildArtifact,
   BuildModuleEntry,
-} from "../../../src/core/build/build-artifact";
+} from "../../../src/core/modules/build-artifact";
 import type {
   ModuleManifestEntry,
   NormalizedLoadedConfig,

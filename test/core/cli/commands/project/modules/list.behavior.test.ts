@@ -2,9 +2,9 @@ import sinon from "sinon";
 import { expect } from "chai";
 
 import { loadedConfig } from "../../../fixtures";
-import * as common from "../../../../../../src/core/cli/common";
+import * as common from "../../../../../../src/cli/common";
 import { ConfigLoader } from "../../../../../../src/core/config";
-import cmdList from "../../../../../../src/core/cli/commands/project/modules/list";
+import cmdList from "../../../../../../src/cli/commands/project/modules/list";
 import { expectProjectNotFound } from "../../../../../helpers/cli-error";
 import {
   createMemoryUi,

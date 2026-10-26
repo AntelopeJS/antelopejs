@@ -7,21 +7,21 @@ import { captureOutputAsync } from "../../helpers/capture-output";
 
 import { expectInstanceOf } from "./fixtures";
 import * as logging from "../../../src/logging";
-import * as common from "../../../src/core/cli/common";
-import { runCLI } from "../../../src/core/cli/full-cli";
-import * as versionCheck from "../../../src/core/cli/version-check";
+import * as common from "../../../src/cli/common";
+import { runCLI } from "../../../src/cli/full-cli";
+import * as versionCheck from "../../../src/cli/version-check";
 import {
   CancelledError,
   CliError,
   runWithErrorBoundary,
-} from "../../../src/core/cli/output";
-import { CANCELLED_MESSAGE } from "../../../src/core/cli/cancellation";
+} from "../../../src/core/output/index";
+import { CANCELLED_MESSAGE } from "../../../src/core/output/cancellation";
 import {
   CANCELLED_EXIT_CODE,
   FAILURE_EXIT_CODE,
   SUCCESS_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../src/core/cli/exit-codes";
+} from "../../../src/core/output/exit-codes";
 
 describe("runCLI behavior", () => {
   const originalArgv = process.argv.slice();

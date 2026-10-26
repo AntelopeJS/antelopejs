@@ -1,16 +1,16 @@
 import path from "node:path";
 import { expect } from "chai";
 
-import type { GlobalInstallation } from "../../../src/core/cli/global-package-manager";
-import type { ExecutableSource } from "../../../src/core/cli/executable-lookup";
+import type { GlobalInstallation } from "../../../src/cli/global-package-manager";
+import type { ExecutableSource } from "../../../src/cli/executable-lookup";
 import {
   describePluginStatus,
   getPluginStatuses,
   renderPluginReports,
   runUpdate,
   type PluginReport,
-} from "../../../src/core/cli/plugin-management";
-import { findOfficialPlugin } from "../../../src/core/cli/plugin-registry";
+} from "../../../src/cli/plugin-management";
+import { findOfficialPlugin } from "../../../src/cli/plugin-registry";
 import { createMemoryUi } from "../../helpers/memory-ui";
 import {
   createGlobalRootResolver,

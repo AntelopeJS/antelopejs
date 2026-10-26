@@ -1,0 +1,147 @@
+import { ExecError } from "./command";
+import { stripAnsiCodes } from "./logging-utils";
+import { CliError } from "./errors";
+import { FAILURE_EXIT_CODE } from "./exit-codes";
+import type { CliProblem, FailureTranslator, Ui } from "./types";
+import { translateExecError, translateFailure } from "./translations";
+import { getProcessUi } from "./tasks";
+import { isVerboseRun } from "./verbosity";
+
+const OUTPUT_TAIL_LINE_COUNT = 3;
+const OUTPUT_INDENT = "  ";
+const OUTPUT_HEADING = "Command output:";
+const LINE_BREAK_PATTERN = /\r?\n/;
+const COMMAND_OUTPUT_HINT = "Run with --verbose to see the command output.";
+const STACK_TRACE_HINT = "Run with --verbose for the full trace.";
+
+function outputLines(error: ExecError): string[] {
+  return stripAnsiCodes(error.output)
+    .split(LINE_BREAK_PATTERN)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() !== "");
+}
+
+function commandOutputTail(error: ExecError): string[] {
+  const lines = outputLines(error).slice(-OUTPUT_TAIL_LINE_COUNT);
+  if (lines.length === 0) {
+    return [];
+  }
+  return [OUTPUT_HEADING, ...lines.map((line) => `${OUTPUT_INDENT}${line}`)];
+}
+
+function genericProblem(error: Parameters<typeof describeFailure>[0]): CliProblem {
+  if (error instanceof Error) {
+    const [headline] = stripAnsiCodes(error.message).split(LINE_BREAK_PATTERN);
+    return { title: headline || error.name };
+  }
+  return { title: String(error) };
+}
+
+function causeChain(error: Error["cause"]): unknown[] {
+  const chain: unknown[] = [];
+  let current: unknown = error;
+  while (current !== undefined && !chain.includes(current)) {
+    chain.push(current);
+    current = current instanceof Error ? current.cause : undefined;
+  }
+  return chain;
+}
+
+function isTraceable(error: unknown): error is Error {
+  return (
+    error instanceof Error &&
+    !(error instanceof CliError) &&
+    !(error instanceof ExecError) &&
+    Boolean(error.stack)
+  );
+}
+
+function verboseDetails(chain: unknown[]): string[] {
+  return chain.flatMap((error) => {
+    if (error instanceof ExecError) {
+      return [
+        `Output of '${error.command}':`,
+        ...outputLines(error).map((line) => `${OUTPUT_INDENT}${line}`),
+      ];
+    }
+    return isTraceable(error)
+      ? stripAnsiCodes(error.stack ?? "").split(LINE_BREAK_PATTERN)
+      : [];
+  });
+}
+
+function untranslatedOutputTail(chain: unknown[]): string[] {
+  return chain
+    .filter((error): error is ExecError => error instanceof ExecError)
+    .filter((error) => translateExecError(error) === undefined)
+    .flatMap(commandOutputTail);
+}
+
+function explainFailure(
+  error: Parameters<FailureTranslator>[0],
+  translate?: FailureTranslator,
+): CliProblem | undefined {
+  return translate?.(error) ?? translateFailure(error);
+}
+
+function hasHiddenOutput(error: Parameters<typeof describeFailure>[0]): boolean {
+  if (!(error instanceof ExecError)) {
+    return false;
+  }
+  const shownLineCount =
+    translateExecError(error) === undefined ? OUTPUT_TAIL_LINE_COUNT : 0;
+  return outputLines(error).length > shownLineCount;
+}
+
+function verboseHint(chain: unknown[], translate?: FailureTranslator): string[] {
+  if (chain.some(hasHiddenOutput)) {
+    return [COMMAND_OUTPUT_HINT];
+  }
+  const hasUnexplainedTrace = chain.some(
+    (error) =>
+      isTraceable(error) && explainFailure(error, translate) === undefined,
+  );
+  return hasUnexplainedTrace ? [STACK_TRACE_HINT] : [];
+}
+
+/**
+ * Describes any failure with the what / why / fix template: a
+ * {@link CliError} keeps its own problem, other failures are explained by
+ * `translate` first, then by the known low-level translations, and anything
+ * else is reduced to its message. Verbose runs add the stack traces and the
+ * full command output; other runs show the last lines of an untranslated
+ * command failure and say how to get the rest, only when `--verbose` would
+ * show more than what is printed.
+ */
+export function describeFailure(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported describeFailure must describe arbitrary JavaScript throws; narrowing changes its declaration.
+  error: unknown,
+  verbose: boolean = isVerboseRun(),
+  translate?: FailureTranslator,
+): CliProblem {
+  const problem =
+    error instanceof CliError
+      ? error.problem
+      : (explainFailure(error, translate) ?? genericProblem(error));
+  const chain = causeChain(error);
+  const diagnostics = verbose
+    ? verboseDetails(chain)
+    : [...untranslatedOutputTail(chain), ...verboseHint(chain, translate)];
+  return { ...problem, details: [...(problem.details ?? []), ...diagnostics] };
+}
+
+/**
+ * Prints a failure once with {@link describeFailure} and returns the exit
+ * code it calls for.
+ */
+export function reportFailure(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported reportFailure accepts every thrown value and preserves translator input identity.
+  error: unknown,
+  ui: Ui = getProcessUi(),
+  verbose: boolean = isVerboseRun(),
+  translate?: FailureTranslator,
+): number {
+  const problem = describeFailure(error, verbose, translate);
+  ui.problem(problem);
+  return problem.exitCode ?? FAILURE_EXIT_CODE;
+}

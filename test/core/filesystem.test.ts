@@ -2,7 +2,7 @@ import * as os from "node:os";
 import { expect } from "chai";
 import * as path from "node:path";
 
-import { NodeFileSystem } from "../../src/core/filesystem";
+import { NodeFileSystem } from "../../src/core/filesystem/index";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 describe("FileSystem", () => {

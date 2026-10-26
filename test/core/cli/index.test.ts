@@ -3,14 +3,14 @@ import { expect } from "chai";
 import type { Command } from "commander";
 
 import { expectInstanceOf, rejectionOf } from "./fixtures";
-import { coreCommandNames, createCLI } from "../../../src/core/cli/full-cli";
+import { coreCommandNames, createCLI } from "../../../src/cli/full-cli";
 import {
   CliError,
   normalizeVerboseArguments,
-} from "../../../src/core/cli/output";
-import { formatUsageErrors } from "../../../src/core/cli/usage-errors";
-import { USAGE_EXIT_CODE } from "../../../src/core/cli/exit-codes";
-import { formatOfficialPluginsHelp } from "../../../src/core/cli/plugin-registry";
+} from "../../../src/core/output/index";
+import { formatUsageErrors } from "../../../src/core/output/usage-errors";
+import { USAGE_EXIT_CODE } from "../../../src/core/output/exit-codes";
+import { formatOfficialPluginsHelp } from "../../../src/cli/plugin-registry";
 
 const MAX_SUMMARY_LENGTH = 50;
 

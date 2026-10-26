@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import sinon from "sinon";
-import { ModuleLifecycle } from "../../src/core/module-lifecycle";
+import { ModuleLifecycle } from "../../src/core/modules/module-lifecycle";
 import { ModuleState } from "../../src/types";
 import {
   type DiagnosticsRecorder,

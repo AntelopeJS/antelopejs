@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { expect } from "chai";
-import { ExecError } from "../../../src/core/cli/command";
+import { ExecError } from "../../../src/core/output/command";
 import { writeFileSync } from "node:fs";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
-import { ModuleCache } from "../../../src/core/module-cache";
+import { ModuleCache } from "../../../src/core/modules/module-cache";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";

@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { SYMBOL_SETS, selectSymbols } from "../../../../src/core/cli/output";
+import { SYMBOL_SETS, selectSymbols } from "../../../../src/core/output/index";
 
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
 

@@ -3,12 +3,12 @@ import { expect } from "chai";
 import { Command } from "commander";
 
 import * as indexModule from "../../../../../src/index";
-import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import { getProcessUi } from "../../../../../src/core/cli/output";
-import * as common from "../../../../../src/core/cli/common";
-import { Options } from "../../../../../src/core/cli/options";
-import { ModuleCache } from "../../../../../src/core/module-cache";
-import cmdRun from "../../../../../src/core/cli/commands/project/run";
+import * as cliUi from "../../../../../src/core/output/cli-ui";
+import { getProcessUi } from "../../../../../src/core/output/index";
+import * as common from "../../../../../src/cli/common";
+import { Options } from "../../../../../src/cli/options";
+import { ModuleCache } from "../../../../../src/core/modules/module-cache";
+import cmdRun from "../../../../../src/cli/commands/project/run";
 import { collectStderr } from "../../../../helpers/capture-output";
 
 const fsPromises = require("node:fs").promises;

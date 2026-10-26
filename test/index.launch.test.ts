@@ -6,11 +6,11 @@ import sinon from "sinon";
 import { expect } from "chai";
 
 import { launch } from "../src/index";
-import { ModuleCache } from "../src/core/module-cache";
-import { HotReload } from "../src/core/watch/hot-reload";
-import { ModuleManager } from "../src/core/module-manager";
+import { ModuleCache } from "../src/core/modules/module-cache";
+import { HotReload } from "../src/core/runtime/watch/hot-reload";
+import { ModuleManager } from "../src/core/modules/module-manager";
 import { ReplSession } from "../src/core/repl/repl-session";
-import { FileWatcher } from "../src/core/watch/file-watcher";
+import { FileWatcher } from "../src/core/runtime/watch/file-watcher";
 import { ConfigLoader } from "../src/core/config/config-loader";
 import { DownloaderRegistry } from "../src/core/downloaders/registry";
 

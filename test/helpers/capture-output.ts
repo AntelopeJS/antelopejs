@@ -1,5 +1,5 @@
 import * as sinon from "sinon";
-import { stripAnsi } from "../../src/core/cli/logging-utils";
+import { stripAnsi } from "../../src/core/output/logging-utils";
 
 export interface CapturedOutput {
   stdout: string;

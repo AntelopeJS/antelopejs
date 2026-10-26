@@ -2,7 +2,7 @@ import {
   areVariantsWithin,
   getPathResolutionCacheGeneration,
   getPathVariants,
-} from "./package-resolution";
+} from "../../utils/package-resolution";
 
 export interface PathOwnerRoot<T> {
   root: string;

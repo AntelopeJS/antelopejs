@@ -1,10 +1,10 @@
 import path from "node:path";
 import type { ModuleSource } from "@antelopejs/interface-core/config";
 
-import { NodeFileSystem } from "../filesystem";
-import { INSTANCES_FOLDER } from "../module-isolation";
-import { ModuleManifest } from "../module-manifest";
-import { resolvePackage } from "../resolution/package-resolution";
+import { NodeFileSystem } from "../filesystem/index";
+import { INSTANCES_FOLDER } from "../modules/module-isolation";
+import { ModuleManifest } from "../modules/module-manifest";
+import { resolvePackage } from "../../utils/package-resolution";
 import { memoizeLoaderContext } from "../runtime/launch-sequence";
 import type { EmbeddedModuleConfig, EmbeddedRuntimeOptions } from "./types";
 import type {

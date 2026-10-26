@@ -6,9 +6,9 @@ import type {
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 
-import * as cliUi from "../../src/core/cli/cli-ui";
-import * as command from "../../src/core/cli/command";
-import { CliError } from "../../src/core/cli/output";
+import * as cliUi from "../../src/core/output/cli-ui";
+import * as command from "../../src/core/output/command";
+import { CliError } from "../../src/core/output/index";
 import { useAsciiSymbols } from "../helpers/ascii-symbols";
 import type { ExpandedModuleConfig } from "../../src/core/config/config-parser";
 import {
@@ -20,7 +20,7 @@ import {
   toFloatingSpec,
   validateVersionSpec,
   warnOutdatedModules,
-} from "../../src/core/version-checker";
+} from "../../src/core/modules/version-checker";
 
 describe("version-checker", () => {
   afterEach(() => {

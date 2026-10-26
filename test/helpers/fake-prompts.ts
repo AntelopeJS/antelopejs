@@ -3,7 +3,7 @@ import sinon from "sinon";
 import {
   promptEnvironment,
   type PromptBackend,
-} from "../../src/core/cli/output";
+} from "../../src/core/output/index";
 
 export const CANCEL = Symbol("cancel");
 

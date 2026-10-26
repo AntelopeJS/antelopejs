@@ -10,7 +10,7 @@ import {
   statSync,
 } from "node:fs";
 
-import { clearPathResolutionCache } from "./package-resolution";
+import { clearPathResolutionCache } from "../../utils/package-resolution";
 
 /** Creates `destination` as a hard link to `source`; throws when the filesystem refuses. */
 export type FileLinker = (source: string, destination: string) => void;

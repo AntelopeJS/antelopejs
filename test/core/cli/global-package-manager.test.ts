@@ -7,7 +7,7 @@ import {
   getGlobalInstallCommand,
   getGlobalRootCommand,
   getLatestPackageSpec,
-} from "../../../src/core/cli/global-package-manager";
+} from "../../../src/cli/global-package-manager";
 
 const identity = (target: string) => target;
 

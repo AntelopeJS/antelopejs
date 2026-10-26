@@ -3,9 +3,9 @@ import EventEmitter from "node:events";
 import { Logging } from "@antelopejs/interface-core/logging";
 import { MODULE_CONTEXT_INVALIDATED_CODE } from "@antelopejs/interface-core";
 
-import { NodeFileSystem } from "../filesystem";
+import { NodeFileSystem } from "../filesystem/index";
 import type { LaunchOptions } from "../../types";
-import type { ShutdownManager } from "../shutdown";
+import type { ShutdownManager } from "./shutdown/index";
 import { ConfigLoader, type LoadedConfig } from "../config/config-loader";
 import { addChannelFilter, setupAntelopeProjectLogging } from "../../logging";
 import type {

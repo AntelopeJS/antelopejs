@@ -9,7 +9,7 @@ import {
 } from "@antelopejs/interface-core";
 
 import { ModuleState } from "../../../src/types";
-import { ModuleLifecycle } from "../../../src/core/module-lifecycle";
+import { ModuleLifecycle } from "../../../src/core/modules/module-lifecycle";
 import { neutralizeInterfaceAsyncProxies } from "../../../src/core/resolution/stub-interface-runtime";
 
 describe("neutralizeInterfaceAsyncProxies", () => {

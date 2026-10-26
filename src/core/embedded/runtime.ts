@@ -1,11 +1,11 @@
 import { Logging } from "@antelopejs/interface-core/logging";
 import { ImplementInterface } from "@antelopejs/interface-core";
 
-import type { Module } from "../module";
+import type { Module } from "../modules/module";
 import { DEFAULT_ENV } from "../config/config-paths";
-import type { ModuleManager } from "../module-manager";
+import type { ModuleManager } from "../modules/module-manager";
 import { captureOwnedProxies } from "./proxy-ownership";
-import { startProject } from "../runtime/project-launch";
+import { startProject } from "../repl/project-launch";
 import type { StartedProject } from "../runtime/runtime-types";
 import { HOST_MODULE_ID, prepareEmbedded } from "./prepare-embedded";
 import type { EmbeddedRuntimeOptions, ProvideHandle } from "./types";

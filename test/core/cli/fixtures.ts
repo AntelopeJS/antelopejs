@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import sinon from "sinon";
 
-import type { BuildArtifact } from "../../../src/core/build/build-artifact";
+import type { BuildArtifact } from "../../../src/core/modules/build-artifact";
 import {
   ConfigLoader,
   type LoadedConfig,
@@ -10,11 +10,11 @@ import type { ExpandedModuleConfig } from "../../../src/core/config/config-parse
 import type {
   InterfaceInfo,
   InterfaceManifest,
-} from "../../../src/core/cli/git-operations";
+} from "../../../src/cli/git-operations";
 import {
   ModuleManifest,
   type ModulePackageJson,
-} from "../../../src/core/module-manifest";
+} from "../../../src/core/modules/module-manifest";
 
 export function expectInstanceOf<T, E extends object>(
   value: T,

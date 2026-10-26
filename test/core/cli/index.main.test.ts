@@ -6,20 +6,20 @@ import { Command } from "commander";
 const Module = require("node:module");
 
 import * as logging from "../../../src/logging";
-import * as fullCli from "../../../src/core/cli/full-cli";
-import * as versionCheck from "../../../src/core/cli/version-check";
+import * as fullCli from "../../../src/cli/full-cli";
+import * as versionCheck from "../../../src/cli/version-check";
 import {
   CancelledError,
   CliError,
   getProcessUi,
-} from "../../../src/core/cli/output";
-import { CANCELLED_MESSAGE } from "../../../src/core/cli/cancellation";
+} from "../../../src/core/output/index";
+import { CANCELLED_MESSAGE } from "../../../src/core/output/cancellation";
 import {
   CANCELLED_EXIT_CODE,
   FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../src/core/cli/exit-codes";
-import { FORCED_EXIT_GRACE_MS } from "../../../src/core/cli/failure-exit";
+} from "../../../src/core/output/exit-codes";
+import { FORCED_EXIT_GRACE_MS } from "../../../src/cli/failure-exit";
 
 describe("CLI main guard", () => {
   const cliPath = require.resolve("../../../src/core/cli/index");

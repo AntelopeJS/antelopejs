@@ -1,9 +1,9 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
-import * as common from "../../../../../src/core/cli/common";
-import { NeedsInputError } from "../../../../../src/core/cli/output";
-import { USAGE_EXIT_CODE } from "../../../../../src/core/cli/exit-codes";
+import * as common from "../../../../../src/cli/common";
+import { NeedsInputError } from "../../../../../src/core/output/index";
+import { USAGE_EXIT_CODE } from "../../../../../src/core/output/exit-codes";
 import {
   captureCliError,
   expectProjectNotFound,

@@ -103,7 +103,7 @@ describe("runtime module-loading", () => {
         .callsFake(
           (
             _id: string,
-            manifest: import("../../../src/core/module-manifest").ModuleManifest,
+            manifest: import("../../../src/core/modules/module-manifest").ModuleManifest,
           ) => manifest,
         ),
       discardPlacedModule: sinon.stub(),
@@ -151,7 +151,7 @@ describe("runtime module-loading", () => {
         .callsFake(
           (
             _id: string,
-            manifest: import("../../../src/core/module-manifest").ModuleManifest,
+            manifest: import("../../../src/core/modules/module-manifest").ModuleManifest,
           ) => manifest,
         ),
       discardPlacedModule: sinon.stub(),
@@ -244,7 +244,7 @@ describe("runtime module-loading", () => {
         .callsFake(
           (
             _id: string,
-            manifest: import("../../../src/core/module-manifest").ModuleManifest,
+            manifest: import("../../../src/core/modules/module-manifest").ModuleManifest,
           ) => manifest,
         ),
       discardPlacedModule: sinon.stub(),
@@ -313,7 +313,7 @@ describe("runtime module-loading", () => {
         .callsFake(
           (
             _id: string,
-            manifest: import("../../../src/core/module-manifest").ModuleManifest,
+            manifest: import("../../../src/core/modules/module-manifest").ModuleManifest,
           ) => manifest,
         ),
       discardPlacedModule: sinon.stub(),
@@ -371,7 +371,7 @@ describe("runtime module-loading", () => {
         .callsFake(
           (
             _id: string,
-            manifest: import("../../../src/core/module-manifest").ModuleManifest,
+            manifest: import("../../../src/core/modules/module-manifest").ModuleManifest,
           ) => manifest,
         ),
       discardPlacedModule: sinon.stub(),

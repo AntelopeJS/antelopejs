@@ -12,9 +12,9 @@ import {
   BuildModuleSetChangedError,
   launchFromBuild,
 } from "../src/index";
-import { ModuleCache } from "../src/core/module-cache";
-import { FileWatcher } from "../src/core/watch/file-watcher";
-import type { BuildArtifact } from "../src/core/build/build-artifact";
+import { ModuleCache } from "../src/core/modules/module-cache";
+import { FileWatcher } from "../src/core/runtime/watch/file-watcher";
+import type { BuildArtifact } from "../src/core/modules/build-artifact";
 import { DownloaderRegistry } from "../src/core/downloaders/registry";
 import {
   readJson,

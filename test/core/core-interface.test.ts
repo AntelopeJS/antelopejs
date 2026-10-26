@@ -11,9 +11,9 @@ import { internal } from "@antelopejs/interface-core/internal";
 import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 
 import { launch } from "../../src/index";
-import { Module } from "../../src/core/module";
-import { ModuleCache } from "../../src/core/module-cache";
-import { ModuleManager } from "../../src/core/module-manager";
+import { Module } from "../../src/core/modules/module";
+import { ModuleCache } from "../../src/core/modules/module-cache";
+import { ModuleManager } from "../../src/core/modules/module-manager";
 import { ConfigLoader } from "../../src/core/config/config-loader";
 import { DownloaderRegistry } from "../../src/core/downloaders/registry";
 

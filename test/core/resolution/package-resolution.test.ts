@@ -7,7 +7,7 @@ import {
   findPackageFromEntry,
   isPathWithin,
   resolvePackage,
-} from "../../../src/core/resolution/package-resolution";
+} from "../../../src/utils/package-resolution";
 
 interface SymlinkPackageFixture {
   root: string;

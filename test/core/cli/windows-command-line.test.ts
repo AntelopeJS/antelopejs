@@ -3,7 +3,7 @@ import { expect } from "chai";
 import {
   buildProcessInvocation,
   requiresShell,
-} from "../../../src/core/cli/windows-command-line";
+} from "../../../src/core/output/windows-command-line";
 
 const LOCAL_SHIM = "C:\\proj\\node_modules\\.bin\\ajs-dms.cmd";
 

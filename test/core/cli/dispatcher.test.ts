@@ -3,9 +3,9 @@ import path from "node:path";
 import { expect } from "chai";
 import { chmodSync, writeFileSync } from "node:fs";
 
-import * as fullCLI from "../../../src/core/cli/full-cli";
+import * as fullCLI from "../../../src/cli/full-cli";
 import { readText, makeTempDir, cleanupTempDir } from "../../helpers/temp";
-import * as projectLaunch from "../../../src/core/runtime/project-launch";
+import * as projectLaunch from "../../../src/core/repl/project-launch";
 import { isProductionStartInvocation, runCLI } from "../../../src/core/cli";
 
 describe("CLI dispatcher", () => {

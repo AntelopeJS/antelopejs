@@ -3,8 +3,8 @@ import os from "node:os";
 import sinon from "sinon";
 import { expect } from "chai";
 
-import { ExecError, ExecuteCMD } from "../../../src/core/cli/command";
-import { CliError, getProcessTasks } from "../../../src/core/cli/output";
+import { ExecError, ExecuteCMD } from "../../../src/core/output/command";
+import { CliError, getProcessTasks } from "../../../src/core/output/index";
 import type { CommandResult } from "../../../src/core/downloaders/types";
 import {
   expandHome,

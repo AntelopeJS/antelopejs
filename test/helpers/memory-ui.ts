@@ -2,7 +2,7 @@ import {
   createUi,
   type OutputStream,
   type Ui,
-} from "../../src/core/cli/output";
+} from "../../src/core/output/index";
 
 export class MemoryStream implements OutputStream {
   private readonly chunks: string[] = [];

@@ -5,8 +5,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import * as interfaceCore from "@antelopejs/interface-core";
 import * as interfaceModules from "@antelopejs/interface-core/modules";
 
-import { Resolver } from "../../../src/core/resolution/resolver";
-import { PathMapper } from "../../../src/core/resolution/path-mapper";
+import { Resolver } from "../../../src/core/modules/resolver";
+import { PathMapper } from "../../../src/core/modules/path-mapper";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { buildBindingGraph } from "../../../src/core/resolution/binding-graph";
 import type {

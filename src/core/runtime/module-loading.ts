@@ -7,8 +7,8 @@ import type {
   ModuleSourceLocal,
 } from "@antelopejs/interface-core/config";
 
-import { Module } from "../module";
-import { unpackErrors } from "../module-errors";
+import { Module } from "../modules/module";
+import { unpackErrors } from "../modules/module-errors";
 import type { ModuleDeclarationChanges } from "../config/module-entry";
 import {
   listModuleDeclarations,
@@ -16,11 +16,11 @@ import {
   saveModuleDeclaration,
 } from "../config/module-declarations";
 import { ModuleState } from "../../types";
-import { ModuleCache } from "../module-cache";
-import { NodeFileSystem } from "../filesystem";
-import { ModuleManifest } from "../module-manifest";
-import { pluralize } from "../cli/output/format";
-import { runTask } from "../cli/output/tasks";
+import { ModuleCache } from "../modules/module-cache";
+import { NodeFileSystem } from "../filesystem/index";
+import { ModuleManifest } from "../modules/module-manifest";
+import { pluralize } from "../output/format";
+import { runTask } from "../output/tasks";
 import { moduleLoadFailure } from "./module-load-failure";
 import type { ExpandedModuleConfig } from "../config/config-parser";
 import {
@@ -34,7 +34,7 @@ import type {
   ManagedModule,
   ModuleConfig,
   ModuleManager,
-} from "../module-manager";
+} from "../modules/module-manager";
 import type {
   LoaderConfig,
   LoaderContext,

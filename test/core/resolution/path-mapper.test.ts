@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
-import { PathMapper } from "../../../src/core/resolution/path-mapper";
+import { PathMapper } from "../../../src/core/modules/path-mapper";
 
 const manifest = manifestFixture({
   srcAliases: [{ alias: "@src", replace: "/mod/src" }],

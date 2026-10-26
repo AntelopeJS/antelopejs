@@ -10,8 +10,8 @@ import {
 } from "node:fs";
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
-import { ModuleIsolation } from "../../src/core/module-isolation";
-import { ModuleManifest } from "../../src/core/module-manifest";
+import { ModuleIsolation } from "../../src/core/modules/module-isolation";
+import { ModuleManifest } from "../../src/core/modules/module-manifest";
 
 describe("ModuleIsolation", () => {
   let root: string;

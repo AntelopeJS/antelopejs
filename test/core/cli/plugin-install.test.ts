@@ -2,7 +2,7 @@ import sinon from "sinon";
 import { expect } from "chai";
 
 import { rejectionOf } from "./fixtures";
-import { delegateToPlugin } from "../../../src/core/cli/plugin";
+import { delegateToPlugin } from "../../../src/cli/plugin";
 import {
   createGlobalRootResolver,
   createOutput,
@@ -21,7 +21,7 @@ import {
   localExecutable,
 } from "../../helpers/official-plugin";
 import { CANCEL, fakePrompts } from "../../helpers/fake-prompts";
-import { CancelledError } from "../../../src/core/cli/output";
+import { CancelledError } from "../../../src/core/output/index";
 
 function missingPluginProblem(installCommand: string) {
   return {

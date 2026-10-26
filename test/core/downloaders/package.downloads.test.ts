@@ -3,7 +3,7 @@ import { expect } from "chai";
 import Module from "node:module";
 import { registerPackageDownloader } from "../../../src/core/downloaders/package";
 import { DownloaderRegistry } from "../../../src/core/downloaders/registry";
-import { ModuleCache } from "../../../src/core/module-cache";
+import { ModuleCache } from "../../../src/core/modules/module-cache";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 describe("PackageDownloader", () => {
   it("resolves dist-tags to exact versions and caches them", async () => {

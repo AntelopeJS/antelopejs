@@ -8,7 +8,7 @@ import {
   writeData,
   type MessageLevel,
   type Ui,
-} from "../../../../src/core/cli/output";
+} from "../../../../src/core/output/index";
 import { captureOutput } from "../../../helpers/capture-output";
 import { createMemoryUi, MemoryStream } from "../../../helpers/memory-ui";
 

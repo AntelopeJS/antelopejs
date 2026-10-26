@@ -8,7 +8,7 @@ import {
   RegisterDevServer,
 } from "@antelopejs/interface-core/runtime";
 
-import { ShutdownManager } from "../../src/core/shutdown";
+import { ShutdownManager } from "../../src/core/runtime/shutdown/index";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import {
   DevRegistryStore,

@@ -4,28 +4,28 @@ import { expect } from "chai";
 import { writeFileSync } from "node:fs";
 
 import { expectInstanceOf } from "../../fixtures";
-import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import * as common from "../../../../../src/core/cli/common";
-import * as command from "../../../../../src/core/cli/command";
-import * as gitOps from "../../../../../src/core/cli/git-operations";
+import * as cliUi from "../../../../../src/core/output/cli-ui";
+import * as common from "../../../../../src/cli/common";
+import * as command from "../../../../../src/core/output/command";
+import * as gitOps from "../../../../../src/cli/git-operations";
 import {
   CliError,
   getProcessUi,
   NeedsInputError,
   runWithErrorBoundary,
-} from "../../../../../src/core/cli/output";
+} from "../../../../../src/core/output/index";
 import {
   FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../../../src/core/cli/exit-codes";
+} from "../../../../../src/core/output/exit-codes";
 import {
   readJson,
   makeTempDir,
   cleanupTempDir,
 } from "../../../../helpers/temp";
-import * as pkgManager from "../../../../../src/core/cli/package-manager";
-import cmdModuleInit from "../../../../../src/core/cli/commands/module/init";
-import { moduleInitCommand } from "../../../../../src/core/cli/commands/module/init-action";
+import * as pkgManager from "../../../../../src/core/output/package-manager";
+import cmdModuleInit from "../../../../../src/cli/commands/module/init";
+import { moduleInitCommand } from "../../../../../src/cli/commands/module/init-action";
 import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
 import { collectStderr } from "../../../../helpers/capture-output";
 

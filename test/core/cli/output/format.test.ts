@@ -10,7 +10,7 @@ import {
   SYMBOL_SETS,
   truncate,
   visibleWidth,
-} from "../../../../src/core/cli/output";
+} from "../../../../src/core/output/index";
 
 describe("output format", () => {
   it("pluralizes regular and irregular nouns", () => {

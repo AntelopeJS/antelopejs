@@ -4,8 +4,8 @@ import { expect } from "chai";
 
 import * as logging from "../../../../src/logging";
 import { runCLI } from "../../../../src/core/cli/index";
-import { writeConfig } from "../../../../src/core/cli/common";
-import { runWithErrorBoundary } from "../../../../src/core/cli/output";
+import { writeConfig } from "../../../../src/cli/common";
+import { runWithErrorBoundary } from "../../../../src/core/output/index";
 import {
   captureOutputAsync,
   type CapturedOutput,

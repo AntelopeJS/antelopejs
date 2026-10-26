@@ -1,7 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
-import { forceExitOnFailure } from "../../../src/core/cli/failure-exit";
+import { forceExitOnFailure } from "../../../src/cli/failure-exit";
 
 describe("forceExitOnFailure", () => {
   let exitStub: sinon.SinonStub;

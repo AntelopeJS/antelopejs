@@ -4,7 +4,7 @@ import {
   isQuietRun,
   isVerboseRun,
   normalizeVerboseArguments,
-} from "../../../../src/core/cli/output";
+} from "../../../../src/core/output/index";
 
 const BASE_ARGV = ["node", "ajs", "project", "build"];
 

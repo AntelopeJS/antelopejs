@@ -4,15 +4,15 @@ import { expect } from "chai";
 import { writeFileSync } from "node:fs";
 
 import { expectInstanceOf } from "../../fixtures";
-import * as cliUi from "../../../../../src/core/cli/cli-ui";
-import { getProcessUi } from "../../../../../src/core/cli/output";
-import * as common from "../../../../../src/core/cli/common";
+import * as cliUi from "../../../../../src/core/output/cli-ui";
+import { getProcessUi } from "../../../../../src/core/output/index";
+import * as common from "../../../../../src/cli/common";
 import {
   findProject,
   listKnownEnvironments,
   resolveProjectContext,
   validateProjectExists,
-} from "../../../../../src/core/cli/commands/shared/project-command";
+} from "../../../../../src/cli/commands/shared/project-command";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
 import {
   captureCliError,

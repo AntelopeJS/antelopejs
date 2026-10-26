@@ -2,8 +2,8 @@ import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
-import { getProcessTasks } from "../../../src/core/cli/output";
-import type { ManagedModule } from "../../../src/core/module-manager";
+import { getProcessTasks } from "../../../src/core/output/index";
+import type { ManagedModule } from "../../../src/core/modules/module-manager";
 import {
   constructAndStartModules,
   destroyModulesAfterFailure,

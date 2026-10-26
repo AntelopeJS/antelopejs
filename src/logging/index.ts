@@ -5,10 +5,10 @@ import eventLog, {
 } from "@antelopejs/interface-core/logging/listener";
 
 import { mergeDeep } from "../utils/object";
-import { getProcessTasks } from "../core/cli/output/tasks";
-import { processStreams } from "../core/cli/output/capabilities";
-import type { OutputChannel } from "../core/cli/output/types";
-import { formatLogMessageWithRightAlignedDate } from "../core/cli/logging-utils";
+import { getProcessTasks } from "../core/output/tasks";
+import { processStreams } from "../core/output/capabilities";
+import type { OutputChannel } from "../core/output/types";
+import { formatLogMessageWithRightAlignedDate } from "../core/output/logging-utils";
 import { renderLogTemplate } from "./log-template";
 
 const DEFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";

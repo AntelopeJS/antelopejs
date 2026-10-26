@@ -1,7 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
-import * as cliUi from "../../../src/core/cli/cli-ui";
+import * as cliUi from "../../../src/core/output/cli-ui";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   readJson,
@@ -17,7 +17,7 @@ import {
   getPackageManagerWithVersion,
   parsePackageInfoOutput,
   savePackageManagerToPackageJson,
-} from "../../../src/core/cli/package-manager";
+} from "../../../src/core/output/package-manager";
 
 describe("Package Manager Utils", () => {
   describe("getModulePackageManager", () => {

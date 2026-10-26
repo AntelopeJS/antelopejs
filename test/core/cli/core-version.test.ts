@@ -2,7 +2,7 @@ import fs from "node:fs";
 import sinon from "sinon";
 import { expect } from "chai";
 
-import { getCoreVersion } from "../../../src/core/cli/core-version";
+import { getCoreVersion } from "../../../src/cli/core-version";
 
 describe("Core version", () => {
   afterEach(() => {

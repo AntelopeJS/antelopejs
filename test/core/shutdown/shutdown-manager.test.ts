@@ -6,11 +6,11 @@ import {
   SHUTDOWN_CLEANUP_TIMEOUT_MS,
   ShutdownManager,
   type SignalShutdownListener,
-} from "../../../src/core/shutdown/shutdown-manager";
+} from "../../../src/core/runtime/shutdown/shutdown-manager";
 import {
   CANCELLED_EXIT_CODE,
   FAILURE_EXIT_CODE,
-} from "../../../src/core/cli/exit-codes";
+} from "../../../src/core/output/exit-codes";
 
 const WAIT_FOR_SIGNAL_MS = 10;
 const NEGATIVE_TIMEOUT_WARNING = "TimeoutNegativeWarning";

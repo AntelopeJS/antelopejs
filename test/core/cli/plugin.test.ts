@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { chmodSync, writeFileSync } from "node:fs";
 
 import { runCLI } from "../../../src/core/cli";
-import { delegateToPlugin } from "../../../src/core/cli/plugin";
+import { delegateToPlugin } from "../../../src/cli/plugin";
 import { readText, makeTempDir, cleanupTempDir } from "../../helpers/temp";
 import {
   DMS_EXECUTABLE,

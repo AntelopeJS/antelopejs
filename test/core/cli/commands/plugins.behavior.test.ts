@@ -1,11 +1,11 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
-import cmdUpdate from "../../../../src/core/cli/commands/update";
-import cmdPlugins from "../../../../src/core/cli/commands/plugins";
-import * as pluginManagement from "../../../../src/core/cli/plugin-management";
+import cmdUpdate from "../../../../src/cli/commands/update";
+import cmdPlugins from "../../../../src/cli/commands/plugins";
+import * as pluginManagement from "../../../../src/cli/plugin-management";
 import { createMemoryUi } from "../../../helpers/memory-ui";
-import { applyHelpConventions } from "../../../../src/core/cli/help";
+import { applyHelpConventions } from "../../../../src/core/output/help";
 
 const INCOMPATIBLE_DMS: pluginManagement.PluginStatus = {
   plugin: {

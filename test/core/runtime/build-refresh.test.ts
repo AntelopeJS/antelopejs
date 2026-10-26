@@ -15,7 +15,7 @@ import {
   computeConfigHash,
   getBuildArtifactPath,
   writeBuildArtifact,
-} from "../../../src/core/build/build-artifact";
+} from "../../../src/core/modules/build-artifact";
 import {
   BuildModuleSetChangedError,
   findBuildModuleSetChange,

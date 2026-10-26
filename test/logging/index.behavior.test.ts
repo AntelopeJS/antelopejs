@@ -9,7 +9,7 @@ import {
   setLogAudience,
   setupAntelopeProjectLogging,
 } from "../../src/logging";
-import { getProcessTasks } from "../../src/core/cli/output/tasks";
+import { getProcessTasks } from "../../src/core/output/tasks";
 import { CapturedOutput, captureOutput } from "../helpers/capture-output";
 
 const ASYNC_CONTEXT_WARNING =

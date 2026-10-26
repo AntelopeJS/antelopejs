@@ -3,7 +3,7 @@ import path from "node:path";
 import { expect } from "chai";
 import * as fsPromises from "node:fs/promises";
 
-import * as command from "../../../src/core/cli/command";
+import * as command from "../../../src/core/output/command";
 import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 
 describe("Git operations behavior", () => {
@@ -13,11 +13,11 @@ describe("Git operations behavior", () => {
 
   async function loadGitOpsWithHome(homeDir: string) {
     process.env.HOME = homeDir;
-    const gitOpsPath = require.resolve("../../../src/core/cli/git-operations");
+    const gitOpsPath = require.resolve("../../../src/cli/git-operations");
     const lockPath = require.resolve("../../../src/utils/lock");
     delete require.cache[gitOpsPath];
     delete require.cache[lockPath];
-    return import("../../../src/core/cli/git-operations");
+    return import("../../../src/cli/git-operations");
   }
 
   it("loads manifest and interface info from git cache", async () => {

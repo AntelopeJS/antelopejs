@@ -1,7 +1,7 @@
 import path from "node:path";
 import { expect } from "chai";
 
-import { resolvePluginPackage } from "../../../src/core/cli/plugin-package";
+import { resolvePluginPackage } from "../../../src/cli/plugin-package";
 import {
   createGlobalRootResolver,
   createPackageReader,

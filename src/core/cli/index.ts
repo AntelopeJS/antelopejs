@@ -3,7 +3,7 @@
 import {
   helpAsPluginArguments,
   parsePluginInvocation,
-} from "./plugin-arguments";
+} from "../../cli/plugin-arguments";
 
 const START_COMMAND = "start";
 const PROJECT_COMMAND = "project";
@@ -24,7 +24,7 @@ export function isProductionStartInvocation(args: string[]): boolean {
 }
 
 async function isCoreCommand(command: string): Promise<boolean> {
-  const { coreCommandNames } = await import("./full-cli");
+  const { coreCommandNames } = await import("../../cli/full-cli");
   return coreCommandNames().includes(command);
 }
 
@@ -38,11 +38,11 @@ async function delegateToPluginCommand(args: string[]): Promise<boolean> {
   if (!command || command.startsWith(OPTION_PREFIX)) {
     return false;
   }
-  const { findOfficialPlugin } = await import("./plugin-registry");
+  const { findOfficialPlugin } = await import("../../cli/plugin-registry");
   if (!findOfficialPlugin(command) && (await isCoreCommand(command))) {
     return false;
   }
-  const { delegateToPlugin } = await import("./plugin");
+  const { delegateToPlugin } = await import("../../cli/plugin");
   const result = await delegateToPlugin(pluginArgs);
   if (!result.isDelegated) {
     return false;
@@ -55,21 +55,21 @@ export async function runCLI(
   args: string[] = process.argv.slice(2),
 ): Promise<void> {
   if (isProductionStartInvocation(args)) {
-    const { runProductionStart } = await import("./production-start");
+    const { runProductionStart } = await import("../../cli/production-start");
     await runProductionStart(args.slice(2));
     return;
   }
   if (await delegateToPluginCommand(args)) {
     return;
   }
-  const fullCLI = await import("./full-cli");
+  const fullCLI = await import("../../cli/full-cli");
   await fullCLI.runCLI();
 }
 
 async function runCLIAsMain(): Promise<void> {
-  const { runWithErrorBoundary } = await import("./output/boundary");
+  const { runWithErrorBoundary } = await import("../output/boundary");
   await runWithErrorBoundary(() => runCLI());
-  const { forceExitOnFailure } = await import("./failure-exit");
+  const { forceExitOnFailure } = await import("../../cli/failure-exit");
   forceExitOnFailure();
 }
 

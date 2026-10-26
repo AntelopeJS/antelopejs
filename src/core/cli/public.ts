@@ -37,37 +37,41 @@ export type {
   TaskListOptions,
   Ui,
   UiOptions,
-} from "./output/types";
-export { SYMBOL_SETS, selectSymbols } from "./output/symbols";
+} from "../output/types";
+export { SYMBOL_SETS, selectSymbols } from "../output/symbols";
 export {
   detectCapabilities,
   processCapabilityContext,
-} from "./output/capabilities";
+} from "../output/capabilities";
 export {
   displayPath,
   formatDuration,
   pluralize,
   unbreakable,
   wrapText,
-} from "./output/format";
-export { createUi } from "./output/ui";
+} from "../output/format";
+export { createUi } from "../output/ui";
 export {
   TaskList,
   getProcessPalette,
   getProcessTasks,
   getProcessUi,
   runTask,
-} from "./output/tasks";
-export { writeData, type DataOutput } from "./output/data";
-export { CancelledError, CliError, NeedsInputError } from "./output/errors";
+} from "../output/tasks";
+export { writeData, type DataOutput } from "../output/data";
+export { CancelledError, CliError, NeedsInputError } from "../output/errors";
 export {
   isQuietRun,
   isVerboseRun,
   type VerbosityContext,
-} from "./output/verbosity";
-export { runWithErrorBoundary, type BoundaryOptions } from "./output/boundary";
-export { createPrompter, missingFlags, type AnswerFlag } from "./output/prompt";
-export { formatUsageErrors } from "./usage-errors";
+} from "../output/verbosity";
+export { runWithErrorBoundary, type BoundaryOptions } from "../output/boundary";
+export {
+  createPrompter,
+  missingFlags,
+  type AnswerFlag,
+} from "../output/prompt";
+export { formatUsageErrors } from "../output/usage-errors";
 export {
   applyHelpConventions,
   formatExamples,
@@ -77,10 +81,10 @@ export {
   withExamples,
   type HelpExample,
   type HelpStream,
-} from "./help";
+} from "../output/help";
 export {
   CANCELLED_EXIT_CODE,
   FAILURE_EXIT_CODE,
   SUCCESS_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "./exit-codes";
+} from "../output/exit-codes";

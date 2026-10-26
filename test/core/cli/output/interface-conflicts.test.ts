@@ -4,13 +4,13 @@ import {
   describeFailure,
   reportFailure,
   translateFailure,
-} from "../../../../src/core/cli/output";
-import { FAILURE_EXIT_CODE } from "../../../../src/core/cli/exit-codes";
+} from "../../../../src/core/output/index";
+import { FAILURE_EXIT_CODE } from "../../../../src/core/output/exit-codes";
 import {
   InterfaceResolutionError,
   type InterfaceRangeConflict,
   type PreloadedInterfaceCopy,
-} from "../../../../src/core/resolution/interface-resolution-error";
+} from "../../../../src/core/output/interface-resolution-error";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 
 const PACKAGE_NAME = "@antelopejs/interface-core";

@@ -14,7 +14,7 @@ import {
   type BuildModuleEntry,
   hashResolvedConfig,
   toStableJson,
-} from "../build/build-artifact";
+} from "../modules/build-artifact";
 
 const REBUILD_HINT = "Run 'ajs project build' to rebuild.";
 

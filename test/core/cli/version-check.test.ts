@@ -4,7 +4,7 @@ import path from "node:path";
 import sinon from "sinon";
 import { expect } from "chai";
 
-import * as cliUi from "../../../src/core/cli/cli-ui";
+import * as cliUi from "../../../src/core/output/cli-ui";
 import {
   UpdateCheck,
   UpdateCheckContext,
@@ -12,11 +12,11 @@ import {
   reportAvailableUpdate,
   shouldCheckForUpdates,
   startUpdateCheck,
-} from "../../../src/core/cli/version-check";
+} from "../../../src/cli/version-check";
 import { captureOutputAsync } from "../../helpers/capture-output";
 import { readJson } from "../../helpers/temp";
 import { useAsciiSymbols } from "../../helpers/ascii-symbols";
-import { stripAnsi } from "../../../src/core/cli/logging-utils";
+import { stripAnsi } from "../../../src/core/output/logging-utils";
 
 const NOW = Date.UTC(2026, 0, 2);
 const HOUR_MS = 60 * 60 * 1000;

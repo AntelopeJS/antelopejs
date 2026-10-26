@@ -3,7 +3,7 @@ import { expect } from "chai";
 import assert from "node:assert/strict";
 import path from "node:path";
 import sinon from "sinon";
-import { ModuleManager } from "../../src/core/module-manager";
+import { ModuleManager } from "../../src/core/modules/module-manager";
 import { ModuleState } from "../../src/types";
 import { manifestFixture, moduleFixture } from "../helpers/module-fixtures";
 

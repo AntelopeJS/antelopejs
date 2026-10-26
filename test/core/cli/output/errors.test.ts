@@ -6,11 +6,11 @@ import {
   describeMissingInput,
   NeedsInputError,
   reportCliError,
-} from "../../../../src/core/cli/output";
+} from "../../../../src/core/output/index";
 import {
   FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../../src/core/cli/exit-codes";
+} from "../../../../src/core/output/exit-codes";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 
 describe("CliError", () => {

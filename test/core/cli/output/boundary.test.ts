@@ -7,14 +7,14 @@ import {
   CliError,
   getProcessUi,
   runWithErrorBoundary,
-} from "../../../../src/core/cli/output";
-import { CANCELLED_MESSAGE } from "../../../../src/core/cli/cancellation";
+} from "../../../../src/core/output/index";
+import { CANCELLED_MESSAGE } from "../../../../src/core/output/cancellation";
 import {
   CANCELLED_EXIT_CODE,
   FAILURE_EXIT_CODE,
   SUCCESS_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../../../../src/core/cli/exit-codes";
+} from "../../../../src/core/output/exit-codes";
 import { createMemoryUi } from "../../../helpers/memory-ui";
 
 const BUILD_EXIT_CODE = 3;

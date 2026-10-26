@@ -7,15 +7,15 @@ import type {
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 
-import { Module } from "../../src/core/module";
+import { Module } from "../../src/core/modules/module";
 import {
   ModuleManifest,
   type ModulePackageJson,
-} from "../../src/core/module-manifest";
-import { ModuleManager } from "../../src/core/module-manager";
-import { ModuleCache } from "../../src/core/module-cache";
+} from "../../src/core/modules/module-manifest";
+import { ModuleManager } from "../../src/core/modules/module-manager";
+import { ModuleCache } from "../../src/core/modules/module-cache";
 import { DownloaderRegistry } from "../../src/core/downloaders/registry";
-import { NodeFileSystem } from "../../src/core/filesystem";
+import { NodeFileSystem } from "../../src/core/filesystem/index";
 import type {
   LoaderContext,
   NormalizedLoadedConfig,

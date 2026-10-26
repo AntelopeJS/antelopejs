@@ -5,7 +5,7 @@ import type {
   ModuleDeclarationChanges,
   ModuleEntryConfig,
 } from "./module-entry";
-import { NodeFileSystem } from "../filesystem";
+import { NodeFileSystem } from "../filesystem/index";
 import { recordOwnConfigWrite } from "./config-writes";
 import { loadTsConfigFile } from "./config-loader";
 import { findConfigPath } from "./config-paths";

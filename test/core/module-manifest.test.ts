@@ -8,7 +8,7 @@ import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import {
   ModuleManifest,
   resolveManifestEntryFile,
-} from "../../src/core/module-manifest";
+} from "../../src/core/modules/module-manifest";
 
 describe("ModuleManifest", () => {
   it("throws when package.json is missing", async () => {

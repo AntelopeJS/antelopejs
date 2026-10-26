@@ -1,10 +1,10 @@
 import sinon from "sinon";
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
-import * as cliUi from "../../src/core/cli/cli-ui";
-import * as common from "../../src/core/cli/common";
-import { stripAnsi } from "../../src/core/cli/logging-utils";
-import cmdSet from "../../src/core/cli/commands/project/logging/set";
+import * as cliUi from "../../src/core/output/cli-ui";
+import * as common from "../../src/cli/common";
+import { stripAnsi } from "../../src/core/output/logging-utils";
+import cmdSet from "../../src/cli/commands/project/logging/set";
 import { collectStderr } from "./capture-output";
 import { fakePrompts, type FakePrompts } from "./fake-prompts";
 import { useColorLevel } from "./color-environment";

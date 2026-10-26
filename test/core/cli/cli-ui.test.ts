@@ -9,14 +9,14 @@ import {
   Spinner,
   success,
   warning,
-} from "../../../src/core/cli/cli-ui";
-import { stripAnsi } from "../../../src/core/cli/logging-utils";
+} from "../../../src/core/output/cli-ui";
+import { stripAnsi } from "../../../src/core/output/logging-utils";
 import {
   getProcessUi,
   TaskList,
   type MessageLevel,
   type OutputCapabilities,
-} from "../../../src/core/cli/output";
+} from "../../../src/core/output/index";
 import {
   captureOutput,
   captureOutputAsync,

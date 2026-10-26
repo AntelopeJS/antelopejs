@@ -3,13 +3,13 @@ import sinon from "sinon";
 import { expect } from "chai";
 
 import { managerFixture } from "../../helpers/module-fixtures";
-import type { ShutdownManager } from "../../../src/core/shutdown";
-import * as processTree from "../../../src/core/shutdown/process-tree";
+import type { ShutdownManager } from "../../../src/core/runtime/shutdown/index";
+import * as processTree from "../../../src/core/runtime/shutdown/process-tree";
 import { captureOutputAsync } from "../../helpers/capture-output";
 import {
   CANCELLED_EXIT_CODE,
   SUCCESS_EXIT_CODE,
-} from "../../../src/core/cli/exit-codes";
+} from "../../../src/core/output/exit-codes";
 import {
   DEFAULT_RUNTIME_POLICY,
   EMBEDDED_RUNTIME_POLICY,

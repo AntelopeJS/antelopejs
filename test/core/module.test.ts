@@ -9,7 +9,7 @@ import {
 
 import { internal } from "@antelopejs/interface-core/internal";
 import { ModuleState } from "../../src/types";
-import { Module } from "../../src/core/module";
+import { Module } from "../../src/core/modules/module";
 import {
   type DiagnosticsRecorder,
   recordModuleDiagnostics,

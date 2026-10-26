@@ -1,16 +1,16 @@
 import path from "node:path";
 import { Logging } from "@antelopejs/interface-core/logging";
 
-import type { ShutdownHandler, ShutdownManager } from "../shutdown";
-import { NodeFileSystem } from "../filesystem";
+import type { ShutdownHandler, ShutdownManager } from "./shutdown/index";
+import { NodeFileSystem } from "../filesystem/index";
 import type { LaunchOptions } from "../../types";
-import { ModuleManager } from "../module-manager";
-import { unpackErrors } from "../module-errors";
-import { INSTANCES_FOLDER } from "../module-isolation";
-import { terminalDisplay } from "../cli/output/tasks";
+import { ModuleManager } from "../modules/module-manager";
+import { unpackErrors } from "../modules/module-errors";
+import { INSTANCES_FOLDER } from "../modules/module-isolation";
+import { terminalDisplay } from "../output/tasks";
 import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
 import { readRefreshedBuildArtifact } from "./build-refresh";
-import type { BuildArtifact } from "../build/build-artifact";
+import type { BuildArtifact } from "../modules/build-artifact";
 import { registerCoreRuntimeInterface } from "./dev-server-registry";
 import { DEFAULT_RUNTIME_POLICY, type RuntimePolicy } from "./runtime-policy";
 import type {
@@ -126,7 +126,7 @@ export const prepareFromConfig: ProjectPreparer = async (
     loadContext,
     verify: async (stopping) => {
       const { checkOutdatedModules, warnOutdatedModules } =
-        await import("../version-checker");
+        await import("../modules/version-checker");
       warnOutdatedModules(
         await checkOutdatedModules(normalizedConfig.modules, stopping),
       );

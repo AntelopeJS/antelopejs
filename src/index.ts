@@ -1,14 +1,14 @@
 import type { LaunchOptions } from "./types";
-import { ModuleManager } from "./core/module-manager";
+import { ModuleManager } from "./core/modules/module-manager";
 import { DEFAULT_ENV } from "./core/config/config-paths";
-import { startProject } from "./core/runtime/project-launch";
+import { startProject } from "./core/repl/project-launch";
 import type { BuildOptions } from "./core/runtime/runtime-types";
 import { prepareFromConfig } from "./core/runtime/launch-sequence";
 import { writeProjectBuildArtifact } from "./core/runtime/build-runtime";
 import {
   checkOutdatedModules,
   warnOutdatedModules,
-} from "./core/version-checker";
+} from "./core/modules/version-checker";
 import {
   ensureGraphIsValid,
   loadModuleEntriesForManager,
@@ -27,11 +27,11 @@ export type {
   EmbeddedRuntimeOptions,
   ProvideHandle,
 } from "./core/embedded/types";
-export { Module } from "./core/module";
-export { ModuleCache } from "./core/module-cache";
-export { ModuleManager } from "./core/module-manager";
-export { ModuleManifest } from "./core/module-manifest";
-export { launchFromBuild } from "./core/runtime/project-launch";
+export { Module } from "./core/modules/module";
+export { ModuleCache } from "./core/modules/module-cache";
+export { ModuleManager } from "./core/modules/module-manager";
+export { ModuleManifest } from "./core/modules/module-manifest";
+export { launchFromBuild } from "./core/repl/project-launch";
 export { BuildModuleSetChangedError } from "./core/runtime/build-refresh";
 export type { RuntimePolicy } from "./core/runtime/runtime-policy";
 export type { BuildOptions } from "./core/runtime/runtime-types";

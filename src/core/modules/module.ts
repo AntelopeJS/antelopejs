@@ -1,0 +1,156 @@
+import { Logging } from "@antelopejs/interface-core/logging";
+import type { ConfigVars } from "@antelopejs/interface-core/config";
+import {
+  Events,
+  type ModuleExecutionContext,
+  RunWithModuleContext,
+} from "@antelopejs/interface-core/modules";
+
+import { ModuleLifecycle } from "./module-lifecycle";
+import type { ModuleManifest } from "./module-manifest";
+import { type ModuleCallbacks, ModuleState } from "../../types/index";
+import {
+  ModuleDiagnostics,
+  type ModuleDiagnosticsContext,
+  moduleDiagnosticsContext,
+} from "./diagnostics";
+
+export type ModuleLoader = (mainPath: string) => Promise<ModuleCallbacks>;
+
+const Logger = new Logging.Channel("loader.module");
+const MODULE_OWNER_SEPARATOR = "#";
+let nextModuleOwner = 1;
+
+async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
+  const mod = await import(mainPath);
+  return mod;
+}
+
+export class Module {
+  public readonly id: string;
+  public version: string;
+
+  private callbacks?: ModuleCallbacks;
+  private lifecycle: ModuleLifecycle;
+  private readonly executionContext: ModuleExecutionContext;
+
+  constructor(
+    public readonly manifest: ModuleManifest,
+    private loader: ModuleLoader = defaultLoader,
+  ) {
+    this.id = this.manifest.name;
+    this.version = this.manifest.version;
+    this.lifecycle = new ModuleLifecycle(this.id, this.version);
+    this.executionContext = {
+      module: this.id,
+      owner: `${this.id}${MODULE_OWNER_SEPARATOR}${nextModuleOwner++}`,
+    };
+  }
+
+  get state(): ModuleLifecycle["state"] {
+    return this.lifecycle.state;
+  }
+
+  private diagnosticsContext(): ModuleDiagnosticsContext {
+    return moduleDiagnosticsContext(this.id, this.version);
+  }
+
+  /** Runs a callback under this module's execution context. */
+  runInContext<T>(callback: () => T): T {
+    return RunWithModuleContext(this.executionContext, callback);
+  }
+
+  async reload(): Promise<void> {
+    await RunWithModuleContext(this.executionContext, async () => {
+      await this.destroy();
+      try {
+        await this.manifest.reload();
+        this.version = this.manifest.version;
+        this.lifecycle.setVersion(this.version);
+      } catch (err) {
+        Logger.Error(err);
+        throw err;
+      }
+    });
+  }
+
+  /**
+   * Publishes this module's config variables, before any module constructs.
+   *
+   * The module code is loaded here rather than in `construct`, because the
+   * callback lives in it; `construct` then reuses the very same instance.
+   */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported Module.provide forwards application-defined config to its provider; validation would change accepted inputs.
+  async provide(config: unknown): Promise<ConfigVars | void> {
+    if (this.lifecycle.state !== ModuleState.Loaded) {
+      return;
+    }
+
+    return RunWithModuleContext(this.executionContext, async () => {
+      await this.ensureLoaded();
+      return this.lifecycle.provide(config);
+    });
+  }
+
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported Module.construct forwards application-defined config to its callback; narrowing changes declarations.
+  async construct(config: unknown): Promise<void> {
+    if (this.lifecycle.state !== ModuleState.Loaded) {
+      Logger.Info(`Module ${this.id} already constructed`);
+      return;
+    }
+
+    await RunWithModuleContext(this.executionContext, async () => {
+      await this.ensureLoaded();
+      await this.lifecycle.construct(config);
+    });
+  }
+
+  private async ensureLoaded(): Promise<void> {
+    if (this.callbacks) {
+      return;
+    }
+
+    try {
+      this.callbacks = await ModuleDiagnostics.load.tracePromise(
+        async () => this.loader(this.manifest.main),
+        this.diagnosticsContext(),
+      );
+      Logger.Debug(`Successfully loaded module ${this.id}`);
+    } catch (err) {
+      Logger.Error(`Failed to load module ${this.id}`, err);
+      Events.ModuleDestroyed.emit(this.id);
+      throw err;
+    }
+    this.lifecycle.setCallbacks(this.callbacks);
+  }
+
+  start(): Promise<void> {
+    return RunWithModuleContext(this.executionContext, () =>
+      this.lifecycle.start(),
+    );
+  }
+
+  async stop(): Promise<void> {
+    await RunWithModuleContext(this.executionContext, () =>
+      this.lifecycle.stop(),
+    );
+  }
+
+  /**
+   * Destroys the module's running generation. A module still in the `Loaded`
+   * state is left untouched: it holds no context token, and entering its
+   * context would create one for a generation with nothing to destroy.
+   */
+  async destroy(): Promise<void> {
+    if (this.lifecycle.state === ModuleState.Loaded) return;
+    await RunWithModuleContext(this.executionContext, async () => {
+      try {
+        await this.lifecycle.destroy();
+      } catch (err) {
+        Logger.Error(err);
+        throw err;
+      }
+      this.callbacks = undefined;
+    });
+  }
+}

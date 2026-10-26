@@ -6,7 +6,7 @@ import {
   listOfficialPlugins,
   officialPluginLabel,
   officialPluginNames,
-} from "../../../src/core/cli/plugin-registry";
+} from "../../../src/cli/plugin-registry";
 
 describe("Official plugin registry", () => {
   it("describes the DMS plugin", () => {
