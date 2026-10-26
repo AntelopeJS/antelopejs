@@ -61,8 +61,7 @@ const NOT_AN_INTERFACE: InterfacePackageInfo = {
  */
 function isInterfacePackageManifest(
   packageName: string,
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- ResolvedPackage metadata is an exported open dictionary; this detector checks implements without rejecting other fields.
-  antelopeJs: Record<string, unknown>,
+  antelopeJs: { implements?: unknown },
 ): boolean {
   const implemented = antelopeJs.implements;
   if (!Array.isArray(implemented) || implemented.length === 0) {
