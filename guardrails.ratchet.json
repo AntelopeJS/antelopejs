@@ -1,10 +1,9 @@
 {
   "rules": {
-    "eslint/max-lines-per-function": 51
+    "eslint/max-lines-per-function": 50
   },
   "oversizeFiles": {
     "src/core/modules/module-manager.ts": 45587,
-    "test/core/cli/commands/project/modules.behavior.test.ts": 41075,
     "test/core/cli/commands/project/modules/install.behavior.test.ts": 28996
   }
 }
