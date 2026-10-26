@@ -8,9 +8,8 @@ const EAGER_FORBIDDEN_MODULES = [
   /[\\/]node_modules[\\/]@antelopejs[\\/]interface-core[\\/]/,
   /[\\/]node_modules[\\/]commander[\\/]/,
   /[\\/]node_modules[\\/]@clack[\\/]/,
-  /[\\/]core[\\/]output[\\/](failures|translations)\.js$/,
-  /[\\/]core[\\/]output[\\/]command\.js$/,
 ];
+const EAGER_FORBIDDEN_BUILTINS = ["NativeModule child_process"];
 const LOAD_TIME_PROBE = `
 const start = process.hrtime.bigint();
 require(${JSON.stringify(PUBLIC_ENTRY)});
@@ -18,7 +17,10 @@ process.stdout.write(String(Number(process.hrtime.bigint() - start) / 1e6));
 `;
 const LOADED_MODULES_PROBE = `
 require(${JSON.stringify(PUBLIC_ENTRY)});
-process.stdout.write(JSON.stringify(Object.keys(require.cache)));
+process.stdout.write(JSON.stringify({
+  files: Object.keys(require.cache),
+  builtins: process.moduleLoadList,
+}));
 `;
 
 function runProbe(source) {
@@ -150,9 +152,14 @@ function verifyHelp(cli) {
 
 function verifyStaysLight() {
   const loaded = JSON.parse(runProbe(LOADED_MODULES_PROBE));
-  const eager = loaded.filter((file) =>
-    EAGER_FORBIDDEN_MODULES.some((pattern) => pattern.test(file)),
-  );
+  const eager = [
+    ...loaded.files.filter((file) =>
+      EAGER_FORBIDDEN_MODULES.some((pattern) => pattern.test(file)),
+    ),
+    ...loaded.builtins.filter((name) =>
+      EAGER_FORBIDDEN_BUILTINS.includes(name),
+    ),
+  ];
   if (eager.length > 0) {
     throw new Error(`${PUBLIC_ENTRY} loaded eagerly:\n${eager.join("\n")}`);
   }

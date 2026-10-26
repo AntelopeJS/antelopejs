@@ -1,10 +1,10 @@
-import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import { info, warning } from "./cli-ui";
+import { loadChildProcess } from "./child-process";
 import {
   DEFAULT_PACKAGE_MANAGER,
   PACKAGE_MANAGER_NAMES,
@@ -123,7 +123,7 @@ function normalizePackageManager(packageManager?: string): PackageManagerName {
 
 function hasCorepack(): boolean {
   try {
-    execSync("corepack --version", { stdio: "ignore" });
+    loadChildProcess().execSync("corepack --version", { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -178,9 +178,11 @@ export async function getModulePackageManager(
 
 export function getPackageManagerWithVersion(packageManager: string): string {
   try {
-    const versionOutput = execSync(`${packageManager} --version`, {
-      encoding: "utf8",
-    }).trim();
+    const versionOutput = loadChildProcess()
+      .execSync(`${packageManager} --version`, {
+        encoding: "utf8",
+      })
+      .trim();
     return `${packageManager}@${versionOutput}`;
   } catch {
     const fallbackVersion =

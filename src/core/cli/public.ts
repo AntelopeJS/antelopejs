@@ -6,26 +6,23 @@
  *
  * @packageDocumentation
  */
-export { runWithErrorBoundary, type BoundaryOptions } from "../output/boundary";
-export {
-  detectCapabilities,
-  processCapabilityContext,
-} from "../output/capabilities";
-export { writeData, type DataOutput } from "../output/data";
-export { CancelledError, CliError, NeedsInputError } from "../output/errors";
+export { runWithErrorBoundary, type BoundaryOptions } from "../output";
+export { detectCapabilities, processCapabilityContext } from "../output";
+export { writeData, type DataOutput } from "../output";
+export { CancelledError, CliError, NeedsInputError } from "../output";
 export {
   CANCELLED_EXIT_CODE,
   FAILURE_EXIT_CODE,
   SUCCESS_EXIT_CODE,
   USAGE_EXIT_CODE,
-} from "../output/exit-codes";
+} from "../output";
 export {
   displayPath,
   formatDuration,
   pluralize,
   unbreakable,
   wrapText,
-} from "../output/format";
+} from "../output";
 export {
   applyHelpConventions,
   formatExamples,
@@ -35,20 +32,16 @@ export {
   withExamples,
   type HelpExample,
   type HelpStream,
-} from "../output/help";
-export {
-  createPrompter,
-  missingFlags,
-  type AnswerFlag,
-} from "../output/prompt";
-export { SYMBOL_SETS, selectSymbols } from "../output/symbols";
+} from "../output";
+export { createPrompter, missingFlags, type AnswerFlag } from "../output";
+export { SYMBOL_SETS, selectSymbols } from "../output";
 export {
   TaskList,
   getProcessPalette,
   getProcessTasks,
   getProcessUi,
   runTask,
-} from "../output/tasks";
+} from "../output";
 export type {
   CapabilityContext,
   ChannelFlags,
@@ -80,11 +73,7 @@ export type {
   TaskListOptions,
   Ui,
   UiOptions,
-} from "../output/types";
-export { createUi } from "../output/ui";
-export { formatUsageErrors } from "../output/usage-errors";
-export {
-  isQuietRun,
-  isVerboseRun,
-  type VerbosityContext,
-} from "../output/verbosity";
+} from "../output";
+export { createUi } from "../output";
+export { formatUsageErrors } from "../output";
+export { isQuietRun, isVerboseRun, type VerbosityContext } from "../output";
