@@ -68,7 +68,7 @@ function packCore(): string {
 
 function inspectManifest(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
-  const manifest = JSON.parse(content) as PackedManifest;
+  const manifest: PackedManifest = JSON.parse(content);
   if (
     manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.2.6 <0.3.0"
   ) {
@@ -85,7 +85,7 @@ function inspectManifest(tarball: string): void {
 
 function inspectSkills(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
-  const manifest = JSON.parse(content) as PackedManifest;
+  const manifest: PackedManifest = JSON.parse(content);
   if (!manifest.antelopeJs?.skills?.includes(`./${skillsFolder}`)) {
     throw new Error("Packed core does not declare its agent skills.");
   }

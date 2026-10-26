@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect } from "chai";
 import fs from "node:fs/promises";
 import { spawn } from "node:child_process";
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import launch from "../../src";
 
@@ -115,7 +116,7 @@ exports.construct = async () => {
     );
   }
 
-  const modules: Record<string, unknown> = {
+  const modules: NonNullable<AntelopeConfig["modules"]> = {
     api: { source: { type: "local", path: "./api", main: "index.js" } },
     dms: {
       source: { type: "local", path: "./dms", main: "index.js" },
@@ -154,11 +155,11 @@ exports.construct = () =>
   return projectFolder;
 }
 
-function flattenErrors(error: unknown): unknown[] {
+function flattenErrors<T>(error: T): string[] {
   if (error instanceof AggregateError) {
     return error.errors.flatMap((nested) => flattenErrors(nested));
   }
-  return [error];
+  return [String(error)];
 }
 
 function runCli(projectFolder: string): Promise<ProcessResult> {

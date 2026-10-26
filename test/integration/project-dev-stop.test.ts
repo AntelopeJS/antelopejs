@@ -80,9 +80,7 @@ exports.start = async () => {
   return projectFolder;
 }
 
-async function createProjectFolder(
-  config: Record<string, unknown>,
-): Promise<string> {
+async function createProjectFolder<Tconfig>(config: Tconfig): Promise<string> {
   const projectFolder = await fs.mkdtemp(
     path.join(os.tmpdir(), "ajs-dev-stop-"),
   );

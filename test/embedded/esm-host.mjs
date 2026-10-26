@@ -21,8 +21,8 @@ const sigtermBefore = process.listenerCount("SIGTERM");
 const { createRuntime } = await import(pathToFileURL(corePath).href);
 check(
   "named import of createRuntime from an ESM host",
-  typeof createRuntime,
-  "function",
+  createRuntime instanceof Function,
+  true,
 );
 
 const runtime = createRuntime({
@@ -38,8 +38,8 @@ await runtime.start();
 const greeter = runtime.use("iface-pkg");
 check(
   "use() returns the interface object",
-  typeof greeter.Greeter.greet,
-  "function",
+  greeter.Greeter.greet instanceof Function,
+  true,
 );
 
 const greeting = await Promise.race([

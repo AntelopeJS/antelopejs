@@ -1,9 +1,16 @@
+import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import { expect } from "chai";
 import fs from "node:fs/promises";
 
 import launch, { type ModuleManager } from "../../src";
+
+interface TestGlobals {
+  [REGISTRATIONS_KEY]?: Array<[string, string]>;
+  [ROUTING_FAILURE_KEY]?: string;
+}
+const testGlobals: typeof globalThis & TestGlobals = globalThis;
 
 const REGISTRATIONS_KEY = "__antelopeSelfHostedRegistrations";
 const ROUTING_FAILURE_KEY = "__antelopeSelfHostedRoutingFailure";
@@ -119,9 +126,9 @@ async function writeFixtureModule(
   );
 }
 
-async function writeProjectConfig(
+async function writeProjectConfig<Tconfig>(
   folder: string,
-  config: Record<string, unknown>,
+  config: Tconfig,
 ): Promise<void> {
   await fs.writeFile(
     path.join(folder, "antelope.config.ts"),
@@ -245,22 +252,22 @@ async function destroyProject(
     await manager.stopAll();
     await manager.destroyAll();
   }
-  delete (global as Record<string, unknown>)[REGISTRATIONS_KEY];
-  delete (global as Record<string, unknown>)[ROUTING_FAILURE_KEY];
+  delete testGlobals[REGISTRATIONS_KEY];
+  delete testGlobals[ROUTING_FAILURE_KEY];
   await fs.rm(folder, { recursive: true, force: true });
 }
 
 function registrations(): Array<[string, string]> {
-  return (global as Record<string, unknown>)[REGISTRATIONS_KEY] as Array<
-    [string, string]
-  >;
+  const value = testGlobals[REGISTRATIONS_KEY];
+  assert.ok(value);
+  return value;
 }
 
 describe("self-hosted interface packages", () => {
   it("routes registrations when the consumer imports the interface first", async function () {
     this.timeout(20000);
     const folder = await createSelfHostedProject(false);
-    (global as Record<string, unknown>)[REGISTRATIONS_KEY] = [];
+    testGlobals[REGISTRATIONS_KEY] = [];
     let manager: ModuleManager | undefined;
     try {
       manager = await launch(folder);
@@ -275,7 +282,7 @@ describe("self-hosted interface packages", () => {
   it("routes registrations when the provider imports the interface first", async function () {
     this.timeout(20000);
     const folder = await createSelfHostedProject(true);
-    (global as Record<string, unknown>)[REGISTRATIONS_KEY] = [];
+    testGlobals[REGISTRATIONS_KEY] = [];
     let manager: ModuleManager | undefined;
     try {
       manager = await launch(folder);
@@ -290,13 +297,11 @@ describe("self-hosted interface packages", () => {
   it("holds a registration for the provider it is bound to, never handing it to another provider", async function () {
     this.timeout(20000);
     const folder = await createMisroutedProject();
-    (global as Record<string, unknown>)[REGISTRATIONS_KEY] = [];
+    testGlobals[REGISTRATIONS_KEY] = [];
     let manager: ModuleManager | undefined;
     try {
       manager = await launch(folder);
-      expect((global as Record<string, unknown>)[ROUTING_FAILURE_KEY]).to.equal(
-        undefined,
-      );
+      expect(testGlobals[ROUTING_FAILURE_KEY]).to.equal(undefined);
       expect(registrations()).to.deep.equal([]);
     } finally {
       await destroyProject(manager, folder);

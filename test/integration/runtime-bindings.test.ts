@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import path from "node:path";
 import { expect } from "chai";
 import fs from "node:fs/promises";
@@ -21,14 +22,25 @@ import {
   sharedInterface,
 } from "../helpers/interface-project";
 
+interface TestGlobals {
+  [RESULTS_KEY]?: Results;
+}
+const testGlobals: typeof globalThis & TestGlobals = globalThis;
+
 const DMS = "@instances/interface-dms";
 const REGISTRY = "@instances/interface-registry";
 const RESULTS_KEY = "__antelopeRuntimeBindingsResults";
 
-type Results = Record<string, unknown>;
+interface Results {
+  [module: string]: string | string[] | undefined;
+  registered?: string[];
+  unregistered?: string[];
+}
 
 function results(): Results {
-  return (global as Record<string, unknown>)[RESULTS_KEY] as Results;
+  const value = testGlobals[RESULTS_KEY];
+  assert.ok(value);
+  return value;
 }
 
 function recorder(name: string, uses: string[], body: string): FixturePackage {
@@ -120,7 +132,7 @@ async function loadModule(
   projectFolder: string,
   id: string,
   importOverrides?: Record<string, string[]>,
-): Promise<unknown> {
+): Promise<string[] | Error> {
   try {
     return await LoadModule(
       id,
@@ -135,6 +147,7 @@ async function loadModule(
       true,
     );
   } catch (error) {
+    assert.ok(error instanceof Error);
     return error;
   }
 }
@@ -144,14 +157,14 @@ let projectFolder = "";
 
 function useProject(): void {
   beforeEach(() => {
-    (global as Record<string, unknown>)[RESULTS_KEY] = {};
+    testGlobals[RESULTS_KEY] = {};
   });
 
   afterEach(async () => {
     await manager?.stopAll();
     await manager?.destroyAll();
     manager = undefined;
-    delete (global as Record<string, unknown>)[RESULTS_KEY];
+    delete testGlobals[RESULTS_KEY];
     await fs.rm(projectFolder, { recursive: true, force: true });
   });
 }
@@ -259,7 +272,8 @@ describe("interface bindings when modules arrive at runtime", () => {
       [DATABASE]: ["a-pg"],
     });
 
-    expect((failure as Error).message).to.include(
+    assert.ok(failure instanceof Error);
+    expect(failure.message).to.include(
       `Loading would re-bind running module dms: client-tables -> dms carries a pin of 'a-pg' for ${DATABASE}, and dms runs on 'mongodb'.`,
     );
     expect(started.listModules()).to.not.include("client-tables");
@@ -284,7 +298,8 @@ describe("interface instances across reloads", () => {
     this.timeout(20000);
     const started = await launchListers();
     const copyKey = `${DATA_API}{${DATABASE}@pg,${REGISTRY}@registry}`;
-    const copyRoot = started.resolver.instances.rootOf(copyKey) as string;
+    const copyRoot = started.resolver.instances.rootOf(copyKey);
+    assert.ok(copyRoot);
     expect(existsSync(copyRoot)).to.equal(true);
     expect(results()["user-b"]).to.equal("pg:user-b");
 
@@ -329,18 +344,21 @@ describe("interface instances across reloads", () => {
     await detach(started, "user-b");
 
     expect(results().unregistered).to.have.length(1);
-    expect(results().registered).to.include(
-      (results().unregistered as string[])[0],
-    );
+    expect(results().registered).to.include(results().unregistered?.[0]);
   });
 
   it("refuses a reload that takes a provider away from running modules, and keeps the running provider up", async function () {
     this.timeout(20000);
     const started = await launchListers();
     const mongodb = path.join(projectFolder, "mongodb");
-    const manifest = JSON.parse(
+    const manifest: {
+      name: string;
+      version: string;
+      main: string;
+      antelopeJs?: object;
+    } = JSON.parse(
       await fs.readFile(path.join(mongodb, "package.json"), "utf8"),
-    ) as Record<string, unknown>;
+    );
     await fs.writeFile(
       path.join(mongodb, "package.json"),
       JSON.stringify({ ...manifest, antelopeJs: {} }),
