@@ -64,8 +64,7 @@ const FAILURE_HANDLERS: FailureHandler[] = [
 ];
 
 async function handleFailure(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The CLI boundary must handle primitive and object throws without inserting a rejecting schema.
-  error: unknown,
+  error: Parameters<FailureTranslator>[0],
   options: BoundaryOptions,
 ): Promise<number> {
   const handler = FAILURE_HANDLERS.find((candidate) =>

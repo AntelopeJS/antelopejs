@@ -3,7 +3,10 @@ import type * as TypeScript from "typescript";
 import { homedir } from "node:os";
 import { mkdirSync } from "node:fs";
 import { stat, writeFile as writeFileNode } from "node:fs/promises";
-import type { AntelopeConfig } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  AntelopeModuleConfig,
+} from "@antelopejs/interface-core/config";
 
 import { CliError, getProcessUi } from "./output";
 import type { IFileSystem } from "../../types";
@@ -138,8 +141,11 @@ async function getTsConfigWriteMeta(
 
 const SAFE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Config serialization preserves arbitrary application values and its existing fallback output; a JSON-only schema would reject accepted inputs.
-function serializeToJs(value: unknown, indent: string, depth: number): string {
+function serializeToJs(
+  value: AntelopeModuleConfig["config"],
+  indent: string,
+  depth: number,
+): string {
   if (value === null || value === undefined) {
     return String(value);
   }

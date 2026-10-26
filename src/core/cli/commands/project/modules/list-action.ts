@@ -1,4 +1,5 @@
 import type {
+  ModuleSource,
   ModuleSourceGit,
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
@@ -24,7 +25,7 @@ interface ListOptions {
 
 interface ModuleListing {
   name: string;
-  source: unknown;
+  source: ModuleSource;
 }
 
 interface SourceSummary {
@@ -36,13 +37,8 @@ interface ModuleRow extends SourceSummary {
   name: string;
 }
 
-type KnownModuleSource =
-  | ModuleSourcePackage
-  | ModuleSourceGit
-  | ModuleSourceLocal
-  | ModuleSourceLocalFolder;
 type SourceSummarizer = (
-  source: KnownModuleSource,
+  source: ModuleSource,
   moduleName: string,
 ) => SourceSummary;
 
@@ -92,8 +88,7 @@ const SOURCE_SUMMARIZERS = {
 } satisfies Record<string, SourceSummarizer>;
 
 function summarizeSource(listing: ModuleListing): SourceSummary {
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- ConfigLoader accepts unchecked source values; validating them here would change malformed-config output (#228).
-  const sourceType = (listing.source as KnownModuleSource | undefined)?.type;
+  const sourceType = listing.source?.type;
   const summarize = sourceType ? SOURCE_SUMMARIZERS[sourceType] : undefined;
   if (!summarize) {
     return {
@@ -101,8 +96,7 @@ function summarizeSource(listing: ModuleListing): SourceSummary {
       reference: JSON.stringify(listing.source) ?? MISSING_REFERENCE,
     };
   }
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Dispatch historically accepts any source with a recognized type, including malformed sources (#228).
-  return summarize(listing.source as KnownModuleSource, listing.name);
+  return summarize(listing.source, listing.name);
 }
 
 const MODULE_COLUMNS: TableColumn<ModuleRow>[] = [
