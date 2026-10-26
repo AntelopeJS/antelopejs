@@ -59,6 +59,7 @@ export async function loadTsConfigFile(
 ): Promise<AntelopeConfig> {
   const configInput = await importConfigInput(configPath, fresh);
 
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The published ConfigInput union accepts either a config object or factory; adding a discriminator would change accepted config exports.
   if (typeof configInput === "function") {
     return await configInput({ env: environment ?? DEFAULT_ENV });
   }

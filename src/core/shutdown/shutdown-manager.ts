@@ -206,11 +206,12 @@ export class ShutdownManager {
   }
 
   private updateRequestedExitCode(exitCode?: number): void {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Public shutdown calls may supply unchecked values; existing behavior ignores nonnumeric exit requests rather than coercing or throwing.
     if (typeof exitCode !== "number") {
       return;
     }
 
-    if (typeof this.requestedExitCode !== "number") {
+    if (this.requestedExitCode === undefined) {
       this.requestedExitCode = exitCode;
       return;
     }
@@ -229,7 +230,7 @@ export class ShutdownManager {
     if (this.seenSignals.size > 0) {
       this.signalListener.onStopped(hasTimedOut);
     }
-    if (typeof this.requestedExitCode === "number") {
+    if (this.requestedExitCode !== undefined) {
       process.exit(this.requestedExitCode);
     }
   }

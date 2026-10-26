@@ -106,6 +106,7 @@ function serializeValue(value: unknown, unit: string, indent: string): string {
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The editor recursively serializes the exported arbitrary-value edit contract without adding input rejection.
 function serializeAt(value: unknown, unit: string, depth: number): string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported editor accepts arbitrary values; JSON handles primitives/functions while object fields retain the existing recursive formatting.
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value) ?? "undefined";
   }

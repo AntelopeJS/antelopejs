@@ -84,6 +84,7 @@ interface SourceReference {
 }
 
 function sourceReference(moduleConfig: AntelopeModuleConfig | string): string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Module declarations publicly accept string shorthand and source objects; their representation selects the existing reference format.
   if (typeof moduleConfig === "string") {
     return moduleConfig;
   }
@@ -133,6 +134,7 @@ async function downloadModule(
   moduleName: string,
   moduleConfig: AntelopeModuleConfig | string,
 ): Promise<void> {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- ConfigLoader leaves declarations unchecked; this exact object test preserves shorthand skipping and null-source errors (#228).
   if (typeof moduleConfig !== "object" || !("source" in moduleConfig)) {
     return;
   }

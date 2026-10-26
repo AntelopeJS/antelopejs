@@ -46,8 +46,10 @@ function isCommanderExit(error: unknown): error is CommanderExit {
   const candidate: Error & Partial<CommanderExit> = error;
   const { code, exitCode } = candidate;
   return (
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Commander recognition must inspect arbitrary Error subclasses without changing the exported unknown-error boundary.
     typeof code === "string" &&
     code.startsWith(COMMANDER_CODE_PREFIX) &&
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Only numeric exitCode fields belong to the existing Commander error contract; string fields remain ordinary failures.
     typeof exitCode === "number"
   );
 }

@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported object detection promises no property schema; its open-dictionary predicate must stay unchanged.
 export function isObject(item: unknown): item is Record<string, unknown> {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported object predicate must distinguish non-array objects from functions and primitives; narrowing its accepted boundary changes its contract.
   return item !== null && typeof item === "object" && !Array.isArray(item);
 }
 

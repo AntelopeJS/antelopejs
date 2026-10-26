@@ -65,6 +65,7 @@ export class DownloaderRegistry {
       if (type.loaderIdentifier === "path") {
         const pathSource: ModuleSource & { path?: unknown } = source;
         const pathValue = pathSource[type.loaderIdentifier];
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Custom downloader sources are open; only string paths are resolved, while other existing identifier values pass through unchanged.
         if (typeof pathValue === "string" && !path.isAbsolute(pathValue)) {
           pathSource[type.loaderIdentifier] = path.resolve(
             projectFolder,

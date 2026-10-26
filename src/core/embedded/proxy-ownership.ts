@@ -20,6 +20,7 @@ function getOwnedProxies(owner: string): Set<OwnedProxy>[] {
 
 function releaseProxy(proxy: OwnedProxy): void {
   const cleanup = proxy.cleanup;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Interface-core exposes callable cleanup and legacy detach proxies; this boundary must select the existing protocol without requiring new tags.
   if (typeof cleanup === "function") {
     cleanup.call(proxy);
     return;

@@ -80,6 +80,7 @@ export function closeStdin(child: ChildProcess): void {
 
 function exitCodeOf(err: Error): number {
   const code = "code" in err ? err.code : undefined;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Child-process errors can carry numeric exit statuses or string errno codes; only nonzero numeric statuses are propagated.
   return typeof code === "number" && code !== 0 ? code : FAILURE_EXIT_CODE;
 }
 

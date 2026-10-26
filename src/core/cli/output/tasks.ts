@@ -150,6 +150,7 @@ export class TaskList {
     try {
       const result = await work(task);
       const { done } = labels;
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported task API accepts either a literal completion label or a result callback; its untagged union must remain unchanged.
       task.succeed(typeof done === "function" ? done(result) : done);
       return result;
     } catch (error) {

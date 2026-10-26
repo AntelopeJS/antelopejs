@@ -22,6 +22,7 @@ function toDeclaration(
   key: string,
   entry: string | ModuleEntryConfig,
 ): ModuleDeclaration {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The published config format accepts string versions or module objects; this boundary preserves both without adding validation.
   if (typeof entry === "string") {
     const source: ModuleSourcePackage = {
       type: PACKAGE_SOURCE,

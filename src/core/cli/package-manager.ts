@@ -209,6 +209,7 @@ export function savePackageManagerToPackageJson(
     );
     const currentPackageManager = packageJsonContent.packageManager;
     if (
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Package JSON is external and unchecked; only string packageManager values can match the existing manager pattern.
       typeof currentPackageManager === "string" &&
       currentPackageManager.match(PACKAGE_MANAGER_PATTERN)?.[1] ===
         packageManager

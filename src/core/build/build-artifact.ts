@@ -81,6 +81,7 @@ interface RawProjectConfig {
 }
 
 function isRawProjectConfig(value: unknown): value is RawProjectConfig {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Stable hashing accepts all non-null objects, including arrays and class instances; a narrower config schema changes serialization.
   return typeof value === "object" && value !== null;
 }
 

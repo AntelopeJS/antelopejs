@@ -82,6 +82,7 @@ export class DevRegistryStore {
 
   private isOwnerAlive(registry: DevServerRegistry): boolean {
     const probe = this.options.isPidAlive ?? isProcessAlive;
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Registry files are unchecked JSON; only numeric PIDs are probed, without coercing strings or changing stale-owner handling.
     return typeof registry.pid === "number" && probe(registry.pid);
   }
 

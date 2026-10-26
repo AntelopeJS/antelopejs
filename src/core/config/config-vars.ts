@@ -73,6 +73,7 @@ export function substituteConfigVars(
   lookup: ConfigVarLookup,
   // oxlint-disable-next-line anti-slop/no-unknown-returns -- Untouched application values are returned unchanged; narrowing the exported result would be false for accepted inputs.
 ): unknown {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Exported config substitution accepts arbitrary leaves and changes only string references, preserving untouched values by identity.
   if (typeof config === "string") {
     return substituteString(config, lookup);
   }
@@ -132,6 +133,7 @@ function matchReferences(value: string): ConfigVarReference[] {
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Config scanning traverses arbitrary application values and must ignore non-string leaves without validation.
 function visitStrings(value: unknown, visit: (value: string) => void): void {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Reference scanning traverses open application config and must visit strings while ignoring other primitive leaves without rejecting them.
   if (typeof value === "string") {
     visit(value);
     return;

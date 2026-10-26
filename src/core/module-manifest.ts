@@ -118,6 +118,7 @@ export function resolveManifestEntryFile(manifest: {
 function resolveMainPath(folder: string, source: ModuleSource): string {
   const extensibleSource: ModuleSource & { main?: unknown } = source;
   const mainCandidate = extensibleSource.main;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Downloader sources may carry arbitrary extra fields; non-string main values historically fall back to the module folder.
   return typeof mainCandidate === "string"
     ? path.join(folder, mainCandidate)
     : folder;

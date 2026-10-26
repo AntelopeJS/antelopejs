@@ -30,6 +30,7 @@ function createStubFunction(): StubCallable {
 
 const propertyHandler: ProxyHandler<StubProxyTarget> = {
   get: (_target, property) => {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported stub's Proxy protocol ignores symbol keys but synthesizes handlers for every string key, including inherited names.
     if (typeof property === "symbol") {
       return undefined;
     }
@@ -42,6 +43,7 @@ const propertyHandler: ProxyHandler<StubProxyTarget> = {
 
 const moduleHandler: ProxyHandler<StubProxyTarget> = {
   get: (_target, property) => {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported module Proxy must preserve symbol omission separately from arbitrary string namespace lookups.
     if (typeof property === "symbol") {
       return undefined;
     }

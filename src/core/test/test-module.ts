@@ -84,6 +84,7 @@ export async function loadTestConfig(
   }
 
   const testConfigPath = pack.antelopeJs?.test;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Package JSON is unchecked; non-string test paths must keep the existing diagnostic and undefined return rather than reaching path resolution.
   if (!testConfigPath || typeof testConfigPath !== "string") {
     console.error(
       "Missing or invalid antelopeJs.test config path in package.json",

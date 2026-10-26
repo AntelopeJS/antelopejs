@@ -214,7 +214,9 @@ function serializeError(error: Error, ancestors: Set<Error>): string {
 export function serializeLogValue(value: any): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported logger accepts any value and emits strings without JSON quoting; parsing would change its output contract.
   if (typeof value === "string") return value;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Numeric and boolean log leaves use String, preserving NaN and infinities instead of JSON's null conversion.
   if (typeof value === "number" || typeof value === "boolean")
     return String(value);
   if (value instanceof Error) return serializeError(value, new Set());

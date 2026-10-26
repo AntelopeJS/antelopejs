@@ -144,9 +144,11 @@ function serializeToJs(value: unknown, indent: string, depth: number): string {
   if (value === null || value === undefined) {
     return String(value);
   }
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Exported config writing serializes arbitrary values; strings require quoting while other primitive representations do not.
   if (typeof value === "string") {
     return JSON.stringify(value);
   }
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Functions and non-string primitives retain String conversion; restricting the open config contract would change generated JavaScript.
   if (typeof value !== "object") {
     return String(value);
   }

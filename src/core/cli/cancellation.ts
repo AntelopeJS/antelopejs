@@ -7,6 +7,7 @@ export const CANCELLED_MESSAGE = "Cancelled";
 export function isPromptCancellation(error: unknown): boolean {
   return (
     error !== null &&
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported cancellation predicate accepts cross-package objects by name but deliberately excludes callable objects.
     typeof error === "object" &&
     "name" in error &&
     error.name === CANCELLED_ERROR_NAME
