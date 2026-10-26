@@ -186,8 +186,7 @@ async function cloneOrFetchRepo(
   source: ModuleSourceGit,
   exec: CommandRunner,
   fs: IFileSystem,
-  name: string,
-  folder: string,
+  { name, folder }: { name: string; folder: string },
 ): Promise<RepoUpdateResult> {
   const cacheVersion = cache.getVersion(name);
   const repoPresent = await fs.exists(path.join(folder, GIT_DIR));
@@ -213,14 +212,10 @@ export function registerGitDownloader(
       const name = urlToFile(source.remote);
       Logger.Trace(`Starting Git module load for ${name}`);
       const folder = await cache.getFolder(name, true, true);
-      const updateResult = await cloneOrFetchRepo(
-        cache,
-        source,
-        exec,
-        fs,
+      const updateResult = await cloneOrFetchRepo(cache, source, exec, fs, {
         name,
         folder,
-      );
+      });
 
       if (updateResult.shouldInstallDependencies) {
         Logger.Debug(`Running install commands for ${name}`);

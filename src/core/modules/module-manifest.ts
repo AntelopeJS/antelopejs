@@ -195,7 +195,10 @@ function createManifestState(
   };
 }
 
+const PUBLISHED_CONSTRUCTOR_LENGTH = 6;
+
 export class ModuleManifest {
+  private fs: IFileSystem;
   public version: string;
   public readonly folder: string;
   public readonly source: ModuleSource;
@@ -211,14 +214,20 @@ export class ModuleManifest {
 
   public srcAliases?: ModuleAliasEntry[];
 
+  static {
+    Object.defineProperty(this, "length", {
+      value: PUBLISHED_CONSTRUCTOR_LENGTH,
+    });
+  }
+
   private constructor(
     folder: string,
     source: ModuleSource,
     name: string,
     manifest: ModulePackageJson,
-    private fs: IFileSystem,
-    state?: ModuleManifestState,
+    ...[fs, state]: [IFileSystem, ModuleManifestState?]
   ) {
+    this.fs = fs;
     this.folder = path.resolve(folder);
     this.source = source;
     this.name = name;

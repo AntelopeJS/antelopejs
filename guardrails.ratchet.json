@@ -1,7 +1,6 @@
 {
   "rules": {
-    "eslint/max-lines-per-function": 51,
-    "eslint/max-params": 3
+    "eslint/max-lines-per-function": 51
   },
   "oversizeFiles": {
     "src/core/modules/module-manager.ts": 45587,
