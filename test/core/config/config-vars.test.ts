@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import assert from "node:assert/strict";
+import { isObject } from "../../../src/utils/object";
 
 import {
   declaredConfigVars,
@@ -99,14 +101,15 @@ describe("config vars", () => {
         port: "${@api.API_PORT}",
       };
 
-      const result = substituteConfigVars(config, lookup) as typeof config;
-
+      const result = substituteConfigVars(config, lookup);
+      assert.ok(isObject(result));
+      assert.ok(isObject(result.cors));
+      assert.ok(Array.isArray(result.cors.allowedOrigins));
       expect(result.cors.allowedOrigins[0]).to.equal(allowedOrigin);
       expect(result.cors.allowedOrigins[0]).to.be.instanceOf(RegExp);
+      assert.ok(result.cors.allowedOrigins[0] instanceof RegExp);
       expect(
-        (result.cors.allowedOrigins[0] as RegExp).test(
-          "https://app.example.dev",
-        ),
+        result.cors.allowedOrigins[0].test("https://app.example.dev"),
       ).to.equal(true);
       expect(result.port).to.equal(5010);
     });
@@ -131,8 +134,8 @@ describe("config vars", () => {
         url: "http://127.0.0.1:${@api.API_PORT}",
       };
 
-      const result = substituteConfigVars(config, lookup) as typeof config;
-
+      const result = substituteConfigVars(config, lookup);
+      assert.ok(isObject(result));
       expect(result.date).to.equal(date);
       expect(result.map).to.equal(map);
       expect(result.set).to.equal(set);
@@ -149,7 +152,8 @@ describe("config vars", () => {
       const result = substituteConfigVars(config, lookup);
 
       expect(result).to.equal(config);
-      expect((result as typeof config).nested).to.equal(nested);
+      assert.ok(isObject(result));
+      expect(result.nested).to.equal(nested);
     });
 
     it("rebuilds only the branch that holds a reference", () => {
@@ -159,8 +163,8 @@ describe("config vars", () => {
         touched: { port: "${@api.API_PORT}" },
       };
 
-      const result = substituteConfigVars(config, lookup) as typeof config;
-
+      const result = substituteConfigVars(config, lookup);
+      assert.ok(isObject(result));
       expect(result).to.not.equal(config);
       expect(result.untouched).to.equal(untouched);
       expect(result.touched).to.not.equal(config.touched);

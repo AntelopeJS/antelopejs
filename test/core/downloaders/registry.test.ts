@@ -1,5 +1,7 @@
+import { manifestFixture } from "../../helpers/module-fixtures";
 import { expect } from "chai";
 import * as path from "node:path";
+import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 
 import { ModuleCache } from "../../../src/core/module-cache";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
@@ -11,13 +13,14 @@ describe("DownloaderRegistry", () => {
     const cache = new ModuleCache("/cache", new InMemoryFileSystem());
     await cache.load();
 
-    const manifest = { name: "mod" } as any;
+    const manifest = manifestFixture({ name: "mod" });
     registry.register("test", "id", async () => [manifest]);
 
     const result = await registry.load("/project", cache, {
+      // @ts-expect-error Custom downloader names are accepted by the registry but excluded by ModuleSource.
       type: "test",
       id: "mod",
-    } as any);
+    });
 
     expect(result).to.deep.equal([manifest]);
   });
@@ -28,9 +31,10 @@ describe("DownloaderRegistry", () => {
     await cache.load();
 
     const promise = registry.load("/project", cache, {
+      // @ts-expect-error Custom downloader names are accepted by the registry but excluded by ModuleSource.
       type: "delayed",
       id: "mod",
-    } as any);
+    });
     let resolved = false;
     void promise.then(() => {
       resolved = true;
@@ -39,7 +43,7 @@ describe("DownloaderRegistry", () => {
     await new Promise((r) => setTimeout(r, 10));
     expect(resolved).to.equal(false);
 
-    const manifest = { name: "mod" } as any;
+    const manifest = manifestFixture({ name: "mod" });
     registry.register("delayed", "id", async () => [manifest]);
 
     const result = await promise;
@@ -55,23 +59,25 @@ describe("DownloaderRegistry", () => {
     registry.register(
       "local",
       "path",
-      async (_cache: ModuleCache, source: any) => {
+      async (_cache: ModuleCache, source: ModuleSourceLocal) => {
         capturedPath = source.path;
         return [];
       },
     );
 
-    await registry.load("/project", cache, {
+    const source: ModuleSourceLocal = {
       type: "local",
       path: "modules/mod",
-    } as any);
+    };
+    await registry.load("/project", cache, source);
 
     expect(capturedPath).to.equal(path.resolve("/project", "modules/mod"));
   });
 
   it("returns undefined when loader is not registered", () => {
     const registry = new DownloaderRegistry();
-    expect(registry.getLoaderIdentifier({ type: "missing" } as any)).to.equal(
+    // @ts-expect-error Exercise an unregistered downloader name outside the built-in ModuleSource discriminant.
+    expect(registry.getLoaderIdentifier({ type: "missing" })).to.equal(
       undefined,
     );
   });

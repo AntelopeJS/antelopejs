@@ -3,7 +3,10 @@ import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
 import { promises as nodeFs } from "node:fs";
-import type { AntelopeConfig } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 
 import { ConfigLoader } from "../../../src/core/config/config-loader";
 import * as configLoader from "../../../src/core/config/config-loader";
@@ -153,7 +156,8 @@ describe("ConfigLoader", () => {
     it("defaults cacheFolder when null", async () => {
       await mockTsConfig({
         name: "my-app",
-        cacheFolder: null as unknown as string,
+        // @ts-expect-error A null cache folder exercises the existing defaulting behavior.
+        cacheFolder: null,
         modules: {},
       });
 
@@ -236,9 +240,14 @@ describe("ConfigLoader", () => {
         }),
       );
 
-      sinon.stub((loader as any).parser, "expandModuleShorthand").returns({
+      const source: ModuleSourcePackage = {
+        type: "package",
+        package: "database",
+        version: "1.0.0",
+      };
+      sinon.stub(loader["parser"], "expandModuleShorthand").returns({
         database: {
-          source: { type: "package", package: "database", version: "1.0.0" },
+          source,
           config: undefined,
           importOverrides: [],
           disabledExports: [],
@@ -260,7 +269,7 @@ describe("ConfigLoader", () => {
       });
 
       sinon
-        .stub((loader as any).parser, "applyEnvOverrides")
+        .stub(loader["parser"], "applyEnvOverrides")
         .callsFake((config: any) => ({
           ...config,
           cacheFolder: undefined,

@@ -1,5 +1,7 @@
 import sinon from "sinon";
 import { expect } from "chai";
+import assert from "node:assert/strict";
+import { isObject } from "../../../src/utils/object";
 
 import { ConfigLoader } from "../../../src/core/config/config-loader";
 import * as configLoader from "../../../src/core/config/config-loader";
@@ -12,10 +14,14 @@ import {
   writeBuildArtifact,
 } from "../../../src/core/build/build-artifact";
 
-function resolveWith(config: unknown, port: number): unknown {
+function resolveWith<T>(config: T, port: number) {
   const store = new ConfigVarStore();
   store.record("api", ["API_PORT"], { API_PORT: port });
-  return store.resolve("dms", config);
+  const result = store.resolve("dms", config);
+assert.ok(isObject(result));
+assert.ok("apiBaseUrl" in result);
+assert.equal(String(result.apiBaseUrl), result.apiBaseUrl);
+return result;
 }
 
 describe("build artifact", () => {
