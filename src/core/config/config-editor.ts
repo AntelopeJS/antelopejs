@@ -6,6 +6,7 @@ type TS = typeof TypeScript;
  * The fields of a module entry to write. A field set to `undefined` or `null`
  * is removed from the entry.
  */
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported edits intentionally accept arbitrary module-specific fields; a concrete value schema would change the declaration.
 export type ModuleEntryChanges = Record<string, unknown>;
 
 interface EditContext {
@@ -98,11 +99,20 @@ function lineIndent(source: string, position: number): string {
 }
 
 /** `value` as source text, its continuation lines indented by `indent`. */
-function serializeValue(value: unknown, unit: string, indent: string): string {
+function serializeValue(
+  value: ModuleEntryChanges[string],
+  unit: string,
+  indent: string,
+): string {
   return serializeAt(value, unit, 0).split(NEWLINE).join(`${NEWLINE}${indent}`);
 }
 
-function serializeAt(value: unknown, unit: string, depth: number): string {
+function serializeAt(
+  value: ModuleEntryChanges[string],
+  unit: string,
+  depth: number,
+): string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported editor accepts arbitrary values; JSON handles primitives/functions while object fields retain the existing recursive formatting.
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value) ?? "undefined";
   }
@@ -139,7 +149,7 @@ function insertProperty(
   source: string,
   object: TypeScript.ObjectLiteralExpression,
   key: string,
-  value: unknown,
+  value: ModuleEntryChanges[string],
 ): TextEdit {
   const close = closingBrace(object);
   const closeIndent = lineIndent(source, close);
@@ -163,7 +173,7 @@ function replaceValue(
   context: EditContext,
   source: string,
   property: TypeScript.PropertyAssignment,
-  value: unknown,
+  value: ModuleEntryChanges[string],
 ): TextEdit {
   const indent = lineIndent(source, property.getStart());
   return {
@@ -220,9 +230,9 @@ function modulesObject(
 }
 
 function assertParses(context: EditContext, source: string): void {
-  const file = parse(context, source) as TypeScript.SourceFile & {
+  const file: TypeScript.SourceFile & {
     parseDiagnostics?: readonly TypeScript.Diagnostic[];
-  };
+  } = parse(context, source);
   if ((file.parseDiagnostics ?? []).length > 0) {
     throw new ConfigEditError("The edited configuration would not parse");
   }
@@ -258,7 +268,7 @@ function setEntryField(
   source: string,
   key: string,
   field: string,
-  value: unknown,
+  value: ModuleEntryChanges[string],
 ): string {
   const object = entryObject(context, source, key);
   const property = findProperty(context, object, field);

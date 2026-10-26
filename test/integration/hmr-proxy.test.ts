@@ -38,10 +38,8 @@ async function expectRegistryAdd(
     const data = await readMarker(markerPath);
     if (!data) return false;
     try {
-      const parsed = JSON.parse(data) as Record<
-        string,
-        { add?: boolean } | undefined
-      >;
+      const parsed: Record<string, { add?: boolean } | undefined> =
+        JSON.parse(data);
       return parsed.skins?.add === expected;
     } catch {
       return false;
@@ -201,9 +199,11 @@ describe("HMR propagates RegisteringProxy changes across module reloads", () => 
       await fs.writeFile(consumerIndex, consumerSource(true));
       await expectRegistryAdd(markerPath, true);
 
-      const final = JSON.parse((await readMarker(markerPath)) as string) as {
+      const marker = await readMarker(markerPath);
+      expect(marker).to.not.equal(undefined);
+      const final: {
         skins?: { add?: boolean };
-      };
+      } = JSON.parse(marker ?? "null");
       expect(final.skins?.add).to.equal(true);
     } finally {
       if (manager) {

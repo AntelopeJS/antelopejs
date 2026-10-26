@@ -15,7 +15,7 @@ import {
 
 const CANCELLED_CHECK_BUDGET_MS = 1000;
 
-function packageModules(): Record<string, ExpandedModuleConfig> {
+function packageModules() {
   const source: ModuleSourcePackage = {
     type: "package",
     package: "mod-a",
@@ -23,7 +23,7 @@ function packageModules(): Record<string, ExpandedModuleConfig> {
   };
   return {
     "mod-a": { source, config: {}, importOverrides: [], disabledExports: [] },
-  };
+  } satisfies Record<string, ExpandedModuleConfig>;
 }
 
 describe("version-checker cancellation", () => {

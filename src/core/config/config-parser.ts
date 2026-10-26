@@ -19,10 +19,7 @@ export interface ExpandedModuleConfig {
   optional?: boolean;
 }
 
-function readExportPriority(
-  name: string,
-  priorities: Record<string, number>,
-): Record<string, number> {
+function readExportPriority(name: string, priorities: Record<string, number>) {
   for (const [interfaceName, priority] of Object.entries(priorities)) {
     if (!Number.isInteger(priority)) {
       throw new Error(
@@ -36,21 +33,24 @@ function readExportPriority(
 export class ConfigParser {
   processTemplates<T extends Record<string, any>>(config: T): T {
     const flatValues = this.flattenConfig(config);
-    return this.processObject(config, flatValues) as T;
+    return this.processObject(config, flatValues);
   }
 
   private flattenConfig(
-    obj: Record<string, any>,
+    obj: Parameters<ConfigParser["processTemplates"]>[0],
     prefix = "",
-  ): Record<string, string> {
+  ) {
     const result: Record<string, string> = {};
 
     for (const [key, value] of Object.entries(obj)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
 
       if (
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported template parser flattens string leaves but deliberately ignores symbols, functions and bigints (#226).
         typeof value === "string" ||
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Numeric template leaves retain String conversion, including NaN and infinities, rather than JSON coercion (#226).
         typeof value === "number" ||
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Boolean template leaves join strings and numbers; validating arbitrary application config would change accepted inputs (#226).
         typeof value === "boolean"
       ) {
         result[key] = String(value);
@@ -64,6 +64,7 @@ export class ConfigParser {
   }
 
   private processObject(obj: any, values: Record<string, string>): any {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Template substitution applies only to strings in the exported open config contract; all other leaf values retain identity (#226).
     if (typeof obj === "string") {
       return this.processString(obj, values);
     }
@@ -73,7 +74,7 @@ export class ConfigParser {
     }
 
     if (isPlainObject(obj)) {
-      const result: Record<string, any> = {};
+      const result: Parameters<ConfigParser["processTemplates"]>[0] = {};
       for (const [key, value] of Object.entries(obj)) {
         result[key] = this.processObject(value, values);
       }
@@ -83,10 +84,7 @@ export class ConfigParser {
     return obj;
   }
 
-  private processString(
-    str: string,
-    values: Record<string, string>,
-  ): string | any {
+  private processString(str: string, values: Record<string, string>): any {
     const pureMatch = str.match(/^\$\{([^}]+)\}$/);
     if (pureMatch) {
       const key = pureMatch[1];
@@ -132,14 +130,16 @@ export class ConfigParser {
 
   private cloneValue<T>(value: T): T {
     if (Array.isArray(value)) {
+      // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Cloning discards array subclass properties; preserving the existing generic promise requires the same unchecked conversion as processTemplates (#226).
       return value.map((item) => this.cloneValue(item)) as T;
     }
 
     if (isPlainObject(value)) {
-      const result: Record<string, any> = {};
+      const result: Parameters<ConfigParser["processTemplates"]>[0] = {};
       for (const [key, item] of Object.entries(value)) {
         result[key] = this.cloneValue(item);
       }
+      // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Only enumerable string keys are cloned; T may also require symbols or nonenumerable members (#226).
       return result as T;
     }
 
@@ -148,21 +148,24 @@ export class ConfigParser {
 
   expandModuleShorthand(
     modules: Record<string, string | AntelopeModuleConfig>,
-  ): Record<string, ExpandedModuleConfig> {
+  ) {
     const result: Record<string, ExpandedModuleConfig> = {};
 
     for (const [name, entry] of Object.entries(modules)) {
       const config: string | ModuleEntryConfig = entry;
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The public parser accepts object declarations and shorthand; this exact test preserves unchecked null-config errors (#228).
       if (typeof config === "object" && config.disabled) {
         continue;
       }
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- String versions are the existing shorthand alternative to module objects; changing to a tagged representation changes the public contract.
       if (typeof config === "string") {
+        const source = {
+          type: "package",
+          package: name,
+          version: config,
+        } satisfies ModuleSourcePackage;
         result[name] = {
-          source: {
-            type: "package",
-            package: name,
-            version: config,
-          } as ModuleSourcePackage,
+          source,
           config: {},
           importOverrides: [],
           disabledExports: [],
@@ -174,7 +177,7 @@ export class ConfigParser {
             type: "package",
             package: name,
             version: config.version,
-          } as ModuleSourcePackage;
+          } satisfies ModuleSourcePackage;
         }
 
         let importOverrides: ImportOverride[] = [];

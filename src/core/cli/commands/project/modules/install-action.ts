@@ -2,6 +2,7 @@ import path from "node:path";
 import type {
   AntelopeConfig,
   ModuleSource,
+  ModuleSourceLocal,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 
@@ -112,7 +113,9 @@ export function resolveInstallIdentifier(
   if (source.type !== PACKAGE_SOURCE_TYPE) {
     return identifier;
   }
-  const version = (source as ModuleSourcePackage).version;
+  const packageSource: ModuleSource &
+    Partial<Pick<ModuleSourcePackage, "version">> = source;
+  const version = packageSource.version;
   return version ? `${identifier}@${version}` : identifier;
 }
 
@@ -137,23 +140,26 @@ async function analyzeConfig(
         registry.load(projectFolder, cache, {
           ...module.source,
           id: name,
-        } as any),
+        }),
       ),
     )
   ).flat();
 
-  // oxfmt-ignore
   try {
     const coreRoot = path.resolve(__dirname, "../../../../../..");
+    const coreSource = {
+      type: "local",
+      path: coreRoot,
+      id: "antelopejs",
+    } satisfies ModuleSourceLocal;
     const coreManifest = await ModuleManifest.create(
       coreRoot,
-      { type: "local", path: coreRoot, id: "antelopejs" } as any,
+      coreSource,
       "antelopejs",
       fs,
     );
     manifests.push(coreManifest);
-  } catch {
-  }
+  } catch {}
 
   const providers = manifests.map((m) => ({
     name: m.manifest.name,
@@ -321,9 +327,7 @@ async function selectImplementation(
     interfaceName,
     candidates,
   );
-  const loaderIdentifier = context.registry.getLoaderIdentifier(
-    chosen.source as any,
-  );
+  const loaderIdentifier = context.registry.getLoaderIdentifier(chosen.source);
   if (!loaderIdentifier) {
     return;
   }

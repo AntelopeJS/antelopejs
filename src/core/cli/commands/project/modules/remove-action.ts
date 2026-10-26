@@ -1,4 +1,5 @@
 import { ConfigLoader } from "../../../../config";
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { NodeFileSystem } from "../../../../filesystem";
 import { error, info } from "../../../cli-ui";
 import { writeConfig } from "../../../common";
@@ -19,7 +20,7 @@ const INSTALL_DESCRIPTION = "check that every interface is still implemented";
 const FOLDER_MODULE_PREFIX = ":";
 
 function removeModule(
-  envModules: Record<string, unknown>,
+  envModules: NonNullable<AntelopeConfig["modules"]>,
   module: string,
 ): string {
   const key = envModules[module] ? module : `${FOLDER_MODULE_PREFIX}${module}`;
@@ -55,7 +56,7 @@ interface RemoveOptions {
 function rejectMissingModules(
   missingModules: string[],
   modules: string[],
-  envModules: Record<string, unknown>,
+  envModules: NonNullable<AntelopeConfig["modules"]>,
   options: RemoveOptions,
 ): boolean {
   if (missingModules.length === modules.length) {
@@ -75,7 +76,7 @@ function rejectMissingModules(
 function removeModules(
   modules: string[],
   missingModules: string[],
-  envModules: Record<string, unknown>,
+  envModules: NonNullable<AntelopeConfig["modules"]>,
 ): string[] {
   return modules.flatMap((module) => {
     if (missingModules.includes(module)) {

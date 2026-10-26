@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
+import { rejectionOf } from "../fixtures";
 import {
   getProcessTasks,
   getProcessUi,
@@ -152,12 +153,11 @@ describe("output task list run", () => {
     const { tasks, feedback } = createTasks();
     const failure = new Error("boom");
 
-    const error = await tasks
+    const error = await rejectionOf(tasks
       .run("Loading", () => Promise.reject(failure), {
         done: "Loaded",
         failed: "Could not load",
-      })
-      .catch((err: unknown) => err);
+      }));
 
     expect(error).to.equal(failure);
     expect(feedback.text).to.equal("✖ Could not load\n");
@@ -166,11 +166,10 @@ describe("output task list run", () => {
   it("leaves a failure without failed label to whoever catches it", async () => {
     const { tasks, feedback } = createTasks();
 
-    const error = await tasks
+    const error = await rejectionOf(tasks
       .run("Loading", () => Promise.reject(new Error("boom")), {
         done: "Loaded",
-      })
-      .catch((err: unknown) => err);
+      }));
 
     expect(error).to.be.instanceOf(Error);
     expect(feedback.text).to.equal("");

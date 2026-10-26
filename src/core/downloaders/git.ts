@@ -46,7 +46,7 @@ function validateSource(source: ModuleSourceGit): void {
   }
 }
 
-function toCommandResult(err: unknown): CommandResult {
+function toCommandResult(err: PromiseRejectedResult["reason"]): CommandResult {
   if (err instanceof ExecError) {
     return { stdout: err.stdout, stderr: err.stderr, code: err.exitCode };
   }

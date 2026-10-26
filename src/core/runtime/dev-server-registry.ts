@@ -25,6 +25,7 @@ function isProcessAlive(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (error) {
+    // SAFETY: Node process.kill reports system-call failures with Error objects carrying an errno code; this catch contains only that native call.
     return (error as NodeJS.ErrnoException).code === PERMISSION_DENIED_CODE;
   }
 }
@@ -81,6 +82,7 @@ export class DevRegistryStore {
 
   private isOwnerAlive(registry: DevServerRegistry): boolean {
     const probe = this.options.isPidAlive ?? isProcessAlive;
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Registry files are unchecked JSON; only numeric PIDs are probed, without coercing strings or changing stale-owner handling.
     return typeof registry.pid === "number" && probe(registry.pid);
   }
 
@@ -89,7 +91,7 @@ export class DevRegistryStore {
       const content = await this.options.fs.readFileString(
         this.registryFilePath,
       );
-      return JSON.parse(content) as DevServerRegistry;
+      return JSON.parse(content);
     } catch {
       return undefined;
     }

@@ -49,6 +49,7 @@ function createSubscribers(
 }
 
 function operations(): ModuleOperation[] {
+  // SAFETY: ModuleDiagnostics is the fixed channel object imported above, with no additional runtime keys.
   return Object.keys(ModuleDiagnostics) as ModuleOperation[];
 }
 

@@ -38,7 +38,7 @@ function fakeTable(processes: FakeProcess[]): FakeTable {
       getParentPid: (pid) => byPid.get(pid)?.parentPid,
       kill: (pid, signal) => {
         if (!alive.has(pid)) {
-          const error = new Error("ESRCH") as NodeJS.ErrnoException;
+          const error: NodeJS.ErrnoException = new Error("ESRCH");
           error.code = "ESRCH";
           throw error;
         }
@@ -169,7 +169,7 @@ describe("Process tree", () => {
       const exited = new Promise<void>((resolve) =>
         child.once("exit", () => resolve()),
       );
-      const terminated = await terminateProcessTree(child.pid as number);
+      const terminated = await terminateProcessTree(child.pid);
       child.kill("SIGTERM");
       await exited;
 

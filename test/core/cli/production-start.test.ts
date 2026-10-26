@@ -2,6 +2,7 @@ import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
 
+import { expectInstanceOf } from "./fixtures";
 import * as projectLaunch from "../../../src/core/runtime/project-launch";
 import { BuildModuleSetChangedError } from "../../../src/core/runtime/build-refresh";
 import {
@@ -57,9 +58,7 @@ describe("production start", () => {
   });
 
   it("launches directly from the build artifact", async () => {
-    const launch = sinon
-      .stub(projectLaunch, "launchFromBuild")
-      .resolves({} as any);
+    const launch = sinon.stub(projectLaunch, "launchFromBuild").resolves();
 
     await runProductionStart(["--project", "fixture", "--env", "production"]);
 
@@ -147,9 +146,7 @@ describe("production start", () => {
   });
 
   it("launches the build artifact with the refreshed configuration", async () => {
-    const launch = sinon
-      .stub(projectLaunch, "launchFromBuild")
-      .resolves({} as any);
+    const launch = sinon.stub(projectLaunch, "launchFromBuild").resolves();
 
     await runProductionStart(["--project", "fixture", "--refresh-config"]);
 
@@ -187,7 +184,8 @@ describe("production start", () => {
       thrown = error;
     }
 
-    expect((thrown as Error).message).to.equal("boom");
+    expectInstanceOf(thrown, Error);
+    expect(thrown.message).to.equal("boom");
     expect(process.exitCode).to.equal(undefined);
   });
 

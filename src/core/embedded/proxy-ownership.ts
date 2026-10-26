@@ -4,7 +4,7 @@ import {
   type RuntimeCleanup,
 } from "@antelopejs/interface-core/internal";
 
-type OwnedProxy = RuntimeCleanup | { detach(): void };
+type OwnedProxy = RuntimeCleanup | { detach(): void; cleanup?: unknown };
 type OwnedProxyMap = Map<string, Set<OwnedProxy>>;
 
 const OWNERSHIP_MAPS: Array<(runtime: typeof internal) => OwnedProxyMap> = [
@@ -19,11 +19,13 @@ function getOwnedProxies(owner: string): Set<OwnedProxy>[] {
 }
 
 function releaseProxy(proxy: OwnedProxy): void {
-  const cleanup = (proxy as RuntimeCleanup).cleanup;
+  const cleanup = proxy.cleanup;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Interface-core exposes callable cleanup and legacy detach proxies; this boundary must select the existing protocol without requiring new tags.
   if (typeof cleanup === "function") {
     cleanup.call(proxy);
     return;
   }
+  // SAFETY: interface-core stores either a callable cleanup or its legacy detach proxy; the callable-cleanup branch returned above.
   (proxy as { detach(): void }).detach();
 }
 

@@ -28,6 +28,7 @@ export interface ModulePackageJson {
 
     moduleAliases?: Record<string, string>;
 
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported package manifests allow arbitrary application default configuration; narrowing changes the manifest contract.
     defaultConfig?: Record<string, unknown>;
 
     configVars?: string[];
@@ -62,10 +63,6 @@ interface ModuleManifestState {
   paths: PathMapping[];
   implements: string[];
   srcAliases?: ModuleAliasEntry[];
-}
-
-interface ModuleSourceWithMain extends ModuleSource {
-  main?: string;
 }
 
 function clonePathEntries(
@@ -119,7 +116,9 @@ export function resolveManifestEntryFile(manifest: {
 }
 
 function resolveMainPath(folder: string, source: ModuleSource): string {
-  const mainCandidate = (source as ModuleSourceWithMain).main;
+  const extensibleSource: ModuleSource & { main?: unknown } = source;
+  const mainCandidate = extensibleSource.main;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Downloader sources may carry arbitrary extra fields; non-string main values historically fall back to the module folder.
   return typeof mainCandidate === "string"
     ? path.join(folder, mainCandidate)
     : folder;
@@ -280,14 +279,14 @@ export class ModuleManifest {
       throw new Error(`Missing package.json in '${folder}'`);
     }
 
-    const packageJson = JSON.parse(
+    const packageJson: ModulePackageJson = JSON.parse(
       await fs.readFileString(packageJsonPath),
-    ) as ModulePackageJson;
+    );
 
     if (await fs.exists(dedicatedJsonPath)) {
-      const dedicatedJson = JSON.parse(
+      const dedicatedJson: ModulePackageJson["antelopeJs"] = JSON.parse(
         await fs.readFileString(dedicatedJsonPath),
-      ) as ModulePackageJson["antelopeJs"];
+      );
       return {
         ...packageJson,
         antelopeJs: dedicatedJson,

@@ -6,7 +6,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import { ExecuteCMD } from "../../../command";
-import { ConfigLoader } from "../../../../config";
+import { ConfigLoader, type LoadedConfig } from "../../../../config";
 import { ModuleCache } from "../../../../module-cache";
 import { NodeFileSystem } from "../../../../filesystem";
 import { writeConfig } from "../../../common";
@@ -74,7 +74,7 @@ interface AddContext {
   options: AddOptions;
   registry: DownloaderRegistry;
   cache: ModuleCache;
-  existingModules: Record<string, unknown>;
+  existingModules: LoadedConfig["modules"];
 }
 
 interface SourceReference {
@@ -84,9 +84,11 @@ interface SourceReference {
 }
 
 function sourceReference(moduleConfig: AntelopeModuleConfig | string): string {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Module declarations publicly accept string shorthand and source objects; their representation selects the existing reference format.
   if (typeof moduleConfig === "string") {
     return moduleConfig;
   }
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Config source is optional; preserving the direct read also preserves the existing missing-source error (#228).
   const source = moduleConfig.source as SourceReference;
   return source.version ?? source.remote ?? source.path ?? "";
 }
@@ -132,10 +134,14 @@ async function downloadModule(
   moduleName: string,
   moduleConfig: AntelopeModuleConfig | string,
 ): Promise<void> {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- ConfigLoader leaves declarations unchecked; this exact object test preserves shorthand skipping and null-source errors (#228).
   if (typeof moduleConfig !== "object" || !("source" in moduleConfig)) {
     return;
   }
-  const source = moduleConfig.source as any;
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- An explicit undefined source historically reaches the downloader's property-access error; validating this optional config field changes that behavior (#228).
+  const source = moduleConfig.source as NonNullable<
+    AntelopeModuleConfig["source"]
+  >;
   if (!context.registry.getLoaderIdentifier(source)) {
     return;
   }
@@ -334,9 +340,9 @@ handlers.set("local", async (module, options) => {
     `No package.json found in '${module}'`,
   );
 
-  const info = JSON.parse(
+  const info: ModulePackageJson = JSON.parse(
     (await readFile(packagePath)).toString(),
-  ) as ModulePackageJson;
+  );
 
   return [
     info.name,

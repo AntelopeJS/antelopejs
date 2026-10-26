@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import os from "node:os";
 import sinon from "sinon";
 import { expect } from "chai";
@@ -17,7 +18,8 @@ async function captureRejection(promise: Promise<unknown>): Promise<CliError> {
     await promise;
   } catch (err) {
     expect(err).to.be.instanceOf(CliError);
-    return err as CliError;
+    assert.ok(err instanceof CliError);
+    return err;
   }
   throw new Error("Expected the promise to reject");
 }
@@ -78,7 +80,8 @@ describe("Install command execution", () => {
       "'pnpm install' exited with code 1.",
     );
     expect(failure.cause).to.be.instanceOf(ExecError);
-    expect((failure.cause as ExecError).stderr).to.equal("nope");
+    assert.ok(failure.cause instanceof ExecError);
+    expect(failure.cause.stderr).to.equal("nope");
     expect(exec.callCount).to.equal(1);
   });
 
@@ -108,8 +111,10 @@ describe("Install command execution", () => {
       runInstallCommands(exec, silentLogger, "demo", "/tmp", "pnpm install"),
     );
 
-    expect((failure.cause as ExecError).stderr).to.equal("spawn failed");
-    expect((failure.cause as ExecError).exitCode).to.equal(1);
+    assert.ok(failure.cause instanceof ExecError);
+    expect(failure.cause.stderr).to.equal("spawn failed");
+    assert.ok(failure.cause instanceof ExecError);
+    expect(failure.cause.exitCode).to.equal(1);
   });
 
   it("runs the commands as one task that leaves its failure to the caller", async () => {
@@ -168,8 +173,7 @@ describe("Install command execution", () => {
     );
 
     expect(failure.problem.title).to.equal("Install failed for demo");
-    expect((failure.cause as ExecError).command).to.equal(
-      "sh -c 'read answer'",
-    );
+    assert.ok(failure.cause instanceof ExecError);
+    expect(failure.cause.command).to.equal("sh -c 'read answer'");
   });
 });

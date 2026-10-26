@@ -79,7 +79,7 @@ export async function fetchDistTags(
   packageName: string,
 ): Promise<Record<string, string>> {
   const result = await viewPackage(packageName, DIST_TAGS_ARGUMENTS);
-  return JSON.parse(result.stdout) as Record<string, string>;
+  return JSON.parse(result.stdout);
 }
 
 export async function validateVersionSpec(
@@ -149,10 +149,14 @@ async function fetchLatestVersions(
 type ModuleEntry = [string, ExpandedModuleConfig];
 
 function packageSourceOf(info: ExpandedModuleConfig): ModuleSourcePackage {
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Package dispatch checks only type; validating the unchecked package/version fields would change existing config handling (#228).
   return info.source as ModuleSourcePackage;
 }
 
-function warnUncheckedPackage(packageName: string, reason: unknown): void {
+function warnUncheckedPackage(
+  packageName: string,
+  reason: Parameters<typeof describeFailure>[0],
+): void {
   const truncated = truncate(
     describeFailure(reason, false).title,
     MAX_REASON_LENGTH,

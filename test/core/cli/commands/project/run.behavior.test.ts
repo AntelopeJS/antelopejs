@@ -36,7 +36,7 @@ describe("project run behavior", () => {
   });
 
   it("runs project using startAntelope", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "test-project" });
     const startStub = sinon.stub(indexModule, "default").resolves();
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
@@ -52,7 +52,7 @@ describe("project run behavior", () => {
   });
 
   it("warns when watch mode is enabled", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "test-project" });
     const startStub = sinon.stub(indexModule, "default").resolves();
     sinon.stub(cliUi.Spinner.prototype, "start").resolves();
     sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
@@ -75,7 +75,7 @@ describe("project run behavior", () => {
   });
 
   it("sets exit code when startAntelope throws", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "test-project" });
     const startStub = sinon
       .stub(indexModule, "default")
       .rejects(new Error("boom"));
@@ -95,10 +95,10 @@ describe("project run behavior", () => {
   });
 
   it("runs in inspect mode with forked process", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "test-project" });
     const forkStub = sinon.stub(childProcess, "fork").returns({
       on: sinon.stub().returnsThis(),
-    } as any);
+    });
 
     sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
     sinon.stub(fsPromises, "rm").resolves();
@@ -133,10 +133,15 @@ describe("project run behavior", () => {
   });
 
   it("uses string inspect options and verbose channels in forked run", async () => {
-    sinon.stub(common, "readConfig").resolves({} as any);
+    // SAFETY: The inspect path reads only optional name/cacheFolder/modules; their absence exercises its fallback values.
+    sinon
+      .stub(common, "readConfig")
+      .resolves(
+        {} as NonNullable<Awaited<ReturnType<typeof common.readConfig>>>,
+      );
     const forkStub = sinon.stub(childProcess, "fork").returns({
       on: sinon.stub().returnsThis(),
-    } as any);
+    });
 
     sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
     sinon.stub(fsPromises, "rm").resolves();
@@ -186,14 +191,14 @@ describe("project run behavior", () => {
   });
 
   it("handles fork exit events", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "test-project" });
     const callbacks: Record<string, (...args: any[]) => void> = {};
     const child = {
       on(event: string, cb: (...args: any[]) => void) {
         callbacks[event] = cb;
         return child;
       },
-    } as any;
+    };
     sinon.stub(childProcess, "fork").returns(child);
 
     sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
@@ -223,7 +228,7 @@ describe("project run behavior", () => {
     await waitForAsyncWork();
     callbacks.exit?.(1);
     await waitForAsyncWork();
-    callbacks.exit?.(undefined as any);
+    callbacks.exit?.(undefined);
     await waitForAsyncWork();
     callbacks.exit?.(0);
     await waitForAsyncWork();
@@ -232,7 +237,7 @@ describe("project run behavior", () => {
   });
 
   it("handles non-error failures from startAntelope", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "test-project" });
     const startStub = sinon.stub(indexModule, "default").callsFake(async () => {
       throw 123;
     });
@@ -252,14 +257,14 @@ describe("project run behavior", () => {
   });
 
   it("ignores cleanup errors after inspect run", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "test-project" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "test-project" });
     const callbacks: Record<string, (...args: any[]) => void> = {};
     const child = {
       on(event: string, cb: (...args: any[]) => void) {
         callbacks[event] = cb;
         return child;
       },
-    } as any;
+    };
     sinon.stub(childProcess, "fork").returns(child);
 
     sinon.stub(ModuleCache, "getTemp").resolves("/tmp");

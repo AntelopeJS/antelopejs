@@ -67,10 +67,12 @@ export function shouldCheckForUpdates(context: UpdateCheckContext): boolean {
 }
 
 function isValidCache(value: unknown): value is UpdateCheckCache {
-  const cache = value as UpdateCheckCache | null;
+  const cache: { checkedAt?: unknown; latestVersion?: unknown } = Object(value);
   return (
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The cache parser must accept numeric timestamps and reject other JSON values without coercing them.
     typeof cache?.checkedAt === "number" &&
     (cache.latestVersion === undefined ||
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Cached versions are accepted only as valid semver strings; the optional-field contract also preserves missing versions.
       (typeof cache.latestVersion === "string" &&
         semver.valid(cache.latestVersion) !== null))
   );
@@ -121,7 +123,9 @@ async function fetchLatestVersion(
   if (!response.ok) {
     return undefined;
   }
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Registry JSON is deliberately accessed before shape validation; rejecting null here would change the caught property-access error.
   const manifest = (await response.json()) as PackageManifest;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The npm JSON boundary ignores non-string versions before semver parsing, preserving the update check's existing fallback.
   return typeof manifest.version === "string"
     ? (semver.valid(manifest.version) ?? undefined)
     : undefined;

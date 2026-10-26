@@ -46,7 +46,7 @@ function neutralizeRegisteringProxy(
 }
 
 function walk(
-  value: unknown,
+  value: Parameters<typeof neutralizeInterfaceAsyncProxies>[0],
   interfaceName: string,
   seen: WeakSet<object>,
   reason: string,
@@ -54,20 +54,23 @@ function walk(
   if (value === null || value === undefined) {
     return;
   }
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Package exports may be callable proxies or arbitrary values; only functions are inspected for the existing proxy property.
   if (typeof value === "function") {
-    const maybeProxy = (value as { proxy?: unknown }).proxy;
+    const callable: Function & { proxy?: unknown } = value;
+    const maybeProxy = callable.proxy;
     if (maybeProxy instanceof AsyncProxy) {
-      neutralizeAsyncProxy(maybeProxy as AsyncProxy, interfaceName, reason);
+      neutralizeAsyncProxy(maybeProxy, interfaceName, reason);
     }
     return;
   }
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Export traversal must skip primitive leaves and inspect every object without constraining arbitrary package export schemas.
   if (typeof value !== "object") {
     return;
   }
-  if (seen.has(value as object)) {
+  if (seen.has(value)) {
     return;
   }
-  seen.add(value as object);
+  seen.add(value);
 
   if (value instanceof AsyncProxy) {
     neutralizeAsyncProxy(value, interfaceName, reason);
@@ -81,12 +84,19 @@ function walk(
     return;
   }
 
-  for (const key of Object.keys(value as Record<string, unknown>)) {
-    walk((value as Record<string, unknown>)[key], interfaceName, seen, reason);
+  for (const key of Object.keys(value)) {
+    // SAFETY: the null and primitive branches returned above; string-key access on the remaining object is exposed only as unknown, without claiming a property's contents.
+    walk(
+      (value as Record<string, Parameters<typeof walk>[0]>)[key],
+      interfaceName,
+      seen,
+      reason,
+    );
   }
 }
 
 export function neutralizeInterfaceAsyncProxies(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported neutralization accepts arbitrary package exports, ignoring primitive leaves; narrowing changes the declaration.
   exports: unknown,
   interfaceName: string,
   reason: string = NO_PROVIDER_REASON,
@@ -115,8 +125,10 @@ export function neutralizeInterfacePackage(
   interfaceName: string,
   reason: string = NO_PROVIDER_REASON,
 ): void {
-  const cache = (Module as unknown as { _cache: Record<string, NodeModule> })
-    ._cache;
+  // SAFETY: Node's CommonJS Module constructor owns _cache, whose filename keys contain the loaded NodeModule records walked below.
+  const cache =
+    // oxlint-disable-next-line typescript/no-redundant-type-constituents -- oxlint misresolves the Node Module import as any; TypeScript resolves the constructor (#229).
+    (Module as typeof Module & { _cache: Record<string, NodeModule> })._cache;
   const seen = new WeakSet<object>();
   for (const filename of Object.keys(cache)) {
     if (!isWithin(filename, packageRoot)) {

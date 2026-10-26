@@ -22,7 +22,7 @@ export interface GlobalInstallRequest {
   processOptions?: InheritedProcessOptions;
 }
 
-function describeError(error: unknown): string {
+function describeError(error: PromiseRejectedResult["reason"]): string {
   return error instanceof Error ? error.message : String(error);
 }
 

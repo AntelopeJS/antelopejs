@@ -22,8 +22,8 @@ interface CommanderExit {
 }
 
 interface FailureHandler {
-  matches(error: unknown): boolean;
-  handle(error: unknown): number;
+  matches(error: Parameters<typeof handleFailure>[0]): boolean;
+  handle(error: Parameters<typeof handleFailure>[0]): number;
 }
 
 const COMMANDER_CODE_PREFIX = "commander.";
@@ -41,16 +41,19 @@ function isCommanderExit(error: unknown): error is CommanderExit {
   if (!(error instanceof Error)) {
     return false;
   }
-  const { code, exitCode } = error as Partial<CommanderExit>;
+  const candidate: Error & Partial<CommanderExit> = error;
+  const { code, exitCode } = candidate;
   return (
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Commander recognition must inspect arbitrary Error subclasses without changing the exported unknown-error boundary.
     typeof code === "string" &&
     code.startsWith(COMMANDER_CODE_PREFIX) &&
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Only numeric exitCode fields belong to the existing Commander error contract; string fields remain ordinary failures.
     typeof exitCode === "number"
   );
 }
 
-function commanderExitCode(error: unknown): number {
-  return (error as CommanderExit).exitCode === SUCCESS_EXIT_CODE
+function commanderExitCode(error: CommanderExit): number {
+  return error.exitCode === SUCCESS_EXIT_CODE
     ? SUCCESS_EXIT_CODE
     : USAGE_EXIT_CODE;
 }
@@ -61,7 +64,7 @@ const FAILURE_HANDLERS: FailureHandler[] = [
 ];
 
 async function handleFailure(
-  error: unknown,
+  error: Parameters<FailureTranslator>[0],
   options: BoundaryOptions,
 ): Promise<number> {
   const handler = FAILURE_HANDLERS.find((candidate) =>

@@ -115,9 +115,10 @@ function normalizePackageManager(packageManager?: string): PackageManagerName {
   if (!packageManager) {
     return DEFAULT_PACKAGE_MANAGER;
   }
-  return PACKAGE_MANAGER_NAMES.includes(packageManager as PackageManagerName)
-    ? (packageManager as PackageManagerName)
-    : DEFAULT_PACKAGE_MANAGER;
+  return (
+    PACKAGE_MANAGER_NAMES.find((name) => name === packageManager) ??
+    DEFAULT_PACKAGE_MANAGER
+  );
 }
 
 function hasCorepack(): boolean {
@@ -208,6 +209,7 @@ export function savePackageManagerToPackageJson(
     );
     const currentPackageManager = packageJsonContent.packageManager;
     if (
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Package JSON is external and unchecked; only string packageManager values can match the existing manager pattern.
       typeof currentPackageManager === "string" &&
       currentPackageManager.match(PACKAGE_MANAGER_PATTERN)?.[1] ===
         packageManager

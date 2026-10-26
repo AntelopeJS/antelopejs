@@ -15,12 +15,15 @@ import {
   resolveRuntimePolicy,
 } from "../runtime/runtime-policy";
 
-type InterfaceAttacher = (
-  declaration: Record<string, unknown>,
-  implementation: unknown,
-) => unknown;
+type InterfaceDeclaration = Parameters<typeof ImplementInterface>[0];
 
-const attachImplementation = ImplementInterface as unknown as InterfaceAttacher;
+type InterfaceAttacher = (
+  declaration: InterfaceDeclaration,
+  implementation: Parameters<AntelopeRuntime["provide"]>[1],
+) => void;
+
+// SAFETY: ImplementInterface validates objects, cycles, and required handlers before attaching; widening its input delegates rejection to those existing checks, and this caller ignores its return value.
+const attachImplementation = ImplementInterface as InterfaceAttacher;
 
 const Logger = new Logging.Channel("loader.embedded");
 
@@ -48,8 +51,12 @@ export class AntelopeRuntime {
   constructor(private readonly options: EmbeddedRuntimeOptions = {}) {
     this.projectFolder = options.projectFolder ?? process.cwd();
     this.env = options.env ?? DEFAULT_ENV;
+    const policy: Partial<RuntimePolicy> = {};
+    if (options.logging) {
+      policy.logging = true;
+    }
     this.policy = resolveRuntimePolicy(
-      { ...(options.logging ? { logging: true } : {}), ...options.policy },
+      { ...policy, ...options.policy },
       EMBEDDED_RUNTIME_POLICY,
     );
   }
@@ -149,17 +156,18 @@ export class AntelopeRuntime {
         `Interface '${request}' is not provided by any loaded module. Declare it in 'uses' and load a module that implements it.`,
       );
     }
-    return this.hostModule().runInContext(() => require(request) as T);
+    return this.hostModule().runInContext(() => require(request));
   }
 
   /** Implements an interface from host code, released through the returned handle. */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Published provide accepts arbitrary implementation objects; narrowing changes its declaration and bypasses existing runtime validation.
   provide(packageName: string, implementation: unknown): ProvideHandle {
     if (!this.options.provides?.includes(packageName)) {
       throw new Error(
         `Interface '${packageName}' is not declared in 'provides', so nothing routes to a host implementation of it. Add it to 'provides' before calling provide().`,
       );
     }
-    const declaration = this.use<Record<string, unknown>>(packageName);
+    const declaration = this.use<InterfaceDeclaration>(packageName);
     const release = this.hostModule().runInContext(() =>
       captureOwnedProxies(() => {
         attachImplementation(declaration, implementation);

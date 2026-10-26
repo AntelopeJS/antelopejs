@@ -4,19 +4,20 @@ import { SYMBOL_SETS, selectSymbols } from "../../../../src/core/cli/output";
 
 const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
 
-function symbolValues(value: unknown): string[] {
-  if (typeof value === "string") {
-    return [value];
-  }
-  return Object.values(value as object).flatMap(symbolValues);
-}
-
 describe("output symbols", () => {
   it("draws every ASCII symbol with printable ASCII only", () => {
-    const symbols = symbolValues(SYMBOL_SETS.ascii);
+    const { levels, spinner, ...marks } = SYMBOL_SETS.ascii;
+    const symbols = [
+      ...Object.values(marks),
+      ...spinner,
+      ...Object.values(levels),
+    ];
 
     expect(symbols).to.have.length.above(0);
-    symbols.forEach((symbol) => expect(symbol).to.match(PRINTABLE_ASCII));
+    symbols.forEach((symbol) => {
+      expect(symbol).to.be.a("string");
+      expect(symbol).to.match(PRINTABLE_ASCII);
+    });
   });
 
   it("gives both sets the same symbols", () => {

@@ -1,6 +1,8 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
+import { loadedConfig } from "../../fixtures";
+import type { LoadedConfig } from "../../../../../src/core/config/config-loader";
 import * as common from "../../../../../src/core/cli/common";
 import { ConfigLoader } from "../../../../../src/core/config";
 import { defaultConfigLogging } from "../../../../../src/logging";
@@ -13,15 +15,14 @@ import { createMemoryUi, type MemoryUi } from "../../../../helpers/memory-ui";
 
 const PROJECT_ARGS = ["node", "test", "--project", "/tmp/project"];
 
-function stubLogging(logging: unknown): void {
+function stubLogging(logging: LoadedConfig["logging"]): void {
   sinon.stub(common, "readConfig").resolves({
     name: "test-project",
     environments: { staging: {} },
-  } as any);
-  sinon.stub(ConfigLoader.prototype, "load").resolves({
-    modules: {},
-    logging,
-  } as any);
+  });
+  sinon
+    .stub(ConfigLoader.prototype, "load")
+    .resolves(loadedConfig({ logging }));
 }
 
 async function runShow(args: string[] = []): Promise<MemoryUi> {
@@ -54,7 +55,7 @@ describe("project logging show behavior", () => {
   it("show rejects an unknown environment", async () => {
     sinon
       .stub(common, "readConfig")
-      .resolves({ name: "test-project", environments: {} } as any);
+      .resolves({ name: "test-project", environments: {} });
     const loadStub = sinon.stub(ConfigLoader.prototype, "load");
     const { ui, result } = createMemoryUi();
 
@@ -130,9 +131,10 @@ describe("project logging show behavior", () => {
   });
 
   it("tracks every module when no include or exclude list is set", async () => {
-    stubLogging({
-      moduleTracking: { enabled: true, includes: null, excludes: null },
-    });
+    const moduleTracking = { enabled: true, includes: [], excludes: [] };
+    sinon.stub(moduleTracking, "includes").value(null);
+    sinon.stub(moduleTracking, "excludes").value(null);
+    stubLogging({ moduleTracking });
 
     const { result } = await runShow();
 

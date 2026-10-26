@@ -1,3 +1,4 @@
+import { manifestFixture } from "../helpers/module-fixtures";
 import sinon from "sinon";
 import { expect } from "chai";
 import {
@@ -8,23 +9,24 @@ import {
 
 import { internal } from "@antelopejs/interface-core/internal";
 import { ModuleState } from "../../src/types";
-import { Module, type ModuleLoader } from "../../src/core/module";
+import { Module } from "../../src/core/module";
 import {
   type DiagnosticsRecorder,
   recordModuleDiagnostics,
   SPAN_EVENT_COUNT,
 } from "../helpers/diagnostics-recorder";
 
-const manifest = {
+const manifestFields = {
   name: "mod",
   version: "1.0.0",
   main: "/mod/index.js",
-} as any;
+};
+const manifest = manifestFixture(manifestFields);
 
 describe("Module", () => {
   it("leaves no active owner token when a destroyed module is destroyed again", async () => {
     const mod = new Module(
-      { ...manifest, name: "twice-destroyed" },
+      manifestFixture({ ...manifestFields, name: "twice-destroyed" }),
       sinon.stub().resolves({ construct() {}, destroy() {} }),
     );
     const ownerTokens = () =>
@@ -114,7 +116,7 @@ describe("Module", () => {
       }
     };
     const mod = new Module(
-      { ...manifest, name: "context-module" },
+      manifestFixture({ ...manifestFields, name: "context-module" }),
       async () => {
         capture();
         return {
@@ -141,11 +143,14 @@ describe("Module", () => {
   it("uses distinct owners for replacement generations", async () => {
     const owners: Array<string | undefined> = [];
     const createModule = () =>
-      new Module({ ...manifest, name: "replacement" }, async () => ({
-        construct: () => {
-          owners.push(GetModuleContext()?.owner);
-        },
-      }));
+      new Module(
+        manifestFixture({ ...manifestFields, name: "replacement" }),
+        async () => ({
+          construct: () => {
+            owners.push(GetModuleContext()?.owner);
+          },
+        }),
+      );
     const oldModule = createModule();
     const replacement = createModule();
 
@@ -195,11 +200,11 @@ describe("Module", () => {
   });
 
   it("should reload manifest and update version", async () => {
-    const reloadManifest = {
-      ...manifest,
+    const reloadManifest = manifestFixture({
+      ...manifestFields,
       version: "1.0.0",
       reload: sinon.stub(),
-    } as any;
+    });
     reloadManifest.reload.callsFake(async () => {
       reloadManifest.version = "1.0.1";
     });
@@ -226,10 +231,10 @@ describe("Module", () => {
   });
 
   it("should throw and log when manifest reload fails", async () => {
-    const reloadManifest = {
-      ...manifest,
+    const reloadManifest = manifestFixture({
+      ...manifestFields,
       reload: sinon.stub().rejects(new Error("reload failed")),
-    } as any;
+    });
 
     const loader = sinon.stub().resolves({});
     const mod = new Module(reloadManifest, loader);
@@ -285,10 +290,10 @@ describe("Module", () => {
 
 const SPANS_PER_CONSTRUCT = 2;
 
-const diagnosticsManifest = {
-  ...manifest,
+const diagnosticsManifest = manifestFixture({
+  ...manifestFields,
   name: "diagnostics-module",
-} as any;
+});
 
 describe("Module diagnostics", () => {
   let recorder: DiagnosticsRecorder;
@@ -358,10 +363,7 @@ describe("Module diagnostics", () => {
     const loader = () => {
       throw new Error("sync load failed");
     };
-    const mod = new Module(
-      diagnosticsManifest,
-      loader as unknown as ModuleLoader,
-    );
+    const mod = new Module(diagnosticsManifest, loader);
 
     await mod.construct({}).catch(() => undefined);
 
@@ -375,10 +377,11 @@ describe("Module diagnostics", () => {
   });
 
   it("publishes an undefined version when the manifest declares none", async () => {
-    const versionlessManifest = {
-      ...diagnosticsManifest,
+    const versionlessManifest = manifestFixture({
+      ...manifestFields,
+      name: diagnosticsManifest.name,
       version: undefined,
-    } as any;
+    });
     const mod = new Module(versionlessManifest, sinon.stub().resolves({}));
 
     await mod.construct({});
@@ -403,11 +406,12 @@ describe("Module diagnostics", () => {
   });
 
   it("publishes the pre-reload version on a destroy span raised by reload", async () => {
-    const reloadManifest = {
-      ...diagnosticsManifest,
+    const reloadManifest = manifestFixture({
+      ...manifestFields,
+      name: diagnosticsManifest.name,
       version: "1.0.0",
       reload: sinon.stub(),
-    } as any;
+    });
     reloadManifest.reload.callsFake(async () => {
       reloadManifest.version = "1.0.1";
     });

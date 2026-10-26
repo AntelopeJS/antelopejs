@@ -4,6 +4,11 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { ConfigVars } from "@antelopejs/interface-core/config";
 
 import { Module } from "./module";
+import {
+  aggregateErrors,
+  collectRejectedErrors,
+  unpackErrors,
+} from "./module-errors";
 import { ModuleIsolation } from "./module-isolation";
 import {
   announceModulesStarted,
@@ -638,7 +643,7 @@ export class ModuleManager {
 
   private async constructModule(
     module: Module,
-    config: unknown,
+    config: Parameters<Module["construct"]>[0],
   ): Promise<void> {
     try {
       await module.construct(config);
@@ -857,7 +862,7 @@ export class ModuleManager {
 
   private async provideModule(
     module: Module,
-    config: unknown,
+    config: Parameters<Module["provide"]>[0],
   ): Promise<ConfigVars | void> {
     try {
       return await module.provide(config);
@@ -1428,22 +1433,6 @@ function startWithinDeadline(module: Module): Promise<void> {
   return Promise.race([module.start(), deadline]).finally(() => {
     timers.forEach(clearTimeout);
   });
-}
-
-function collectRejectedErrors(
-  results: PromiseSettledResult<unknown>[],
-): unknown[] {
-  return results.flatMap((result) =>
-    result.status === "rejected" ? [result.reason] : [],
-  );
-}
-
-function unpackErrors(error: unknown): unknown[] {
-  return error instanceof AggregateError ? error.errors : [error];
-}
-
-function aggregateErrors(errors: unknown[], message: string): unknown {
-  return errors.length === 1 ? errors[0] : new AggregateError(errors, message);
 }
 
 async function runModuleOperations(

@@ -9,6 +9,7 @@ export interface ResolvedPackage {
   realRoot: string;
   entry: string;
   resolveFrom: string;
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported resolved-package metadata preserves arbitrary antelopeJs manifest fields; narrowing changes declarations.
   antelopeJs?: Record<string, unknown>;
 }
 
@@ -17,7 +18,7 @@ export type PathMatcher = (filePath: string) => boolean;
 interface PackageJson {
   name?: string;
   version?: string;
-  antelopeJs?: Record<string, unknown>;
+  antelopeJs?: ResolvedPackage["antelopeJs"];
 }
 
 const realPathCache = new Map<string, string>();
@@ -106,7 +107,7 @@ function readPackageJson(packageRoot: string): PackageJson | undefined {
   try {
     return JSON.parse(
       readFileSync(path.join(packageRoot, "package.json"), "utf8"),
-    ) as PackageJson;
+    );
   } catch {
     return undefined;
   }

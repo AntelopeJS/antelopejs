@@ -74,7 +74,7 @@ async function fetchRegistryVersion(
     return undefined;
   }
   try {
-    const parsed = JSON.parse(output) as string | string[];
+    const parsed: string | string[] = JSON.parse(output);
     const versions = Array.isArray(parsed) ? parsed : [parsed];
     return pickBestVersion(versions, spec);
   } catch {

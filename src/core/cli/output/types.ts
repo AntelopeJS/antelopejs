@@ -30,6 +30,7 @@ export type Palette = Record<ColorName, Paint>;
 export type ChannelFlags = Record<OutputChannel, boolean>;
 
 export interface OutputStream {
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Published streams permit custom write implementations with arbitrary return values; callers ignore that value.
   write(chunk: string, ...rest: unknown[]): unknown;
   isTTY?: boolean;
   columns?: number;
@@ -75,6 +76,7 @@ export interface CliProblem {
  * Explains a failure that was not thrown as a `CliError`: returns the problem
  * to report, or `undefined` to fall back to the built-in description.
  */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Published translators must accept any JavaScript rejection, not only Error instances.
 export type FailureTranslator = (error: unknown) => CliProblem | undefined;
 
 export interface DetailEntry {
@@ -134,6 +136,7 @@ export interface Ui {
   list(items: string[]): void;
   table<Row>(rows: Row[], columns: TableColumn<Row>[]): void;
   value(text: string): void;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Published Ui.json accepts every value supported by JSON.stringify; a domain schema would narrow that contract.
   json(data: unknown): void;
 }
 

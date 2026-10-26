@@ -1,3 +1,7 @@
+import {
+  loadedConfigFixture,
+  manifestFixture,
+} from "./helpers/module-fixtures";
 import sinon from "sinon";
 import { expect } from "chai";
 
@@ -16,23 +20,25 @@ describe("launch", () => {
   });
 
   it("starts watch and interactive flows when enabled", async () => {
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      cacheFolder: ".antelope/cache",
-      modules: {
-        modA: {
-          source: { type: "local", path: "/mods/modA" },
-          config: { flag: true },
-          disabledExports: ["foo"],
-          importOverrides: [
-            { interface: "core@beta", source: "provider", id: "v1" },
-          ],
+    sinon.stub(ConfigLoader.prototype, "load").resolves(
+      loadedConfigFixture({
+        cacheFolder: ".antelope/cache",
+        modules: {
+          modA: {
+            source: { type: "local", path: "/mods/modA" },
+            config: { flag: true },
+            disabledExports: ["foo"],
+            importOverrides: [
+              { interface: "core@beta", source: "provider", id: "v1" },
+            ],
+          },
+          modB: {
+            source: { type: "local", path: "/mods/modB" },
+          },
         },
-        modB: {
-          source: { type: "local", path: "/mods/modB" },
-        },
-      },
-      projectFolder: "/project",
-    } as any);
+        projectFolder: "/project",
+      }),
+    );
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon
@@ -41,7 +47,7 @@ describe("launch", () => {
         const id = source.id;
         const watchDir = id === "modA" ? ["src", "lib"] : "src2";
         return [
-          {
+          manifestFixture({
             name: id,
             version: "1.0.0",
             main: __filename,
@@ -49,7 +55,7 @@ describe("launch", () => {
             manifest: { name: id, version: "1.0.0" },
             source: { type: "local", path: `/mods/${id}`, watchDir },
             reload: async () => {},
-          } as any,
+          }),
         ];
       });
 
@@ -65,7 +71,7 @@ describe("launch", () => {
       construct: sinon.stub().resolves(),
       start: sinon.stub(),
       setProviderRoutes: sinon.stub(),
-    } as any;
+    };
     const localModuleB = {
       id: "modB",
       manifest: {
@@ -78,7 +84,7 @@ describe("launch", () => {
       construct: sinon.stub().resolves(),
       start: sinon.stub(),
       setProviderRoutes: sinon.stub(),
-    } as any;
+    };
 
     const loaded = new Map<string, any>([
       ["modA", { module: localModule, config: { config: { flag: true } } }],
@@ -92,7 +98,7 @@ describe("launch", () => {
     ) {
       addedModules = modules;
       this.loaded = loaded;
-      return [] as any;
+      return [];
     });
 
     sinon.stub(ModuleManager.prototype, "constructAll").resolves();
@@ -112,11 +118,15 @@ describe("launch", () => {
       "startWatching",
     );
 
-    const queueStub = sinon
-      .stub(HotReload.prototype, "queue")
-      .callsFake(function (this: any, moduleId: string) {
-        return Promise.resolve(this.reload(moduleId));
-      });
+    const pendingReloads: Promise<void>[] = [];
+    sinon.stub(HotReload.prototype, "queue").callsFake(function (
+      this: any,
+      moduleId: string,
+    ) {
+      const pending = Promise.resolve(this.reload(moduleId));
+      pendingReloads.push(pending);
+      return pending;
+    });
 
     const replStub = sinon.stub(ReplSession.prototype, "start");
 
@@ -124,12 +134,7 @@ describe("launch", () => {
       watch: true,
       interactive: true,
     });
-    await Promise.all(
-      queueStub
-        .getCalls()
-        .map((call) => call.returnValue)
-        .filter((value: any) => value && typeof value.then === "function"),
-    );
+    await Promise.all(pendingReloads);
 
     expect(manager).to.be.instanceOf(ModuleManager);
     expect(scanStub.calledWith("modA", "/mods/modA", ["src", "lib"])).to.equal(
@@ -154,18 +159,20 @@ describe("launch", () => {
   });
 
   it("handles empty loaded modules in watch mode", async () => {
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      cacheFolder: "/abs/cache",
-      projectFolder: "/project",
-      modules: {},
-    } as any);
+    sinon.stub(ConfigLoader.prototype, "load").resolves(
+      loadedConfigFixture({
+        cacheFolder: "/abs/cache",
+        projectFolder: "/project",
+        modules: {},
+      }),
+    );
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
     sinon
       .stub(ModuleManager.prototype, "addModules")
       .callsFake(function (this: any) {
         this.loaded = undefined;
-        return [] as any;
+        return [];
       });
     sinon.stub(ModuleManager.prototype, "getAllManagedModules").returns([]);
     sinon.stub(ModuleManager.prototype, "constructAll").resolves();
@@ -188,23 +195,25 @@ describe("launch", () => {
 
   it("cleans up once when post-launch watch setup fails", async () => {
     const setupFailure = new Error("scan failed");
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      cacheFolder: "/abs/cache",
-      projectFolder: "/project",
-      modules: {
-        modA: { source: { type: "local", path: "/mods/modA" } },
-      },
-    } as any);
+    sinon.stub(ConfigLoader.prototype, "load").resolves(
+      loadedConfigFixture({
+        cacheFolder: "/abs/cache",
+        projectFolder: "/project",
+        modules: {
+          modA: { source: { type: "local", path: "/mods/modA" } },
+        },
+      }),
+    );
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(DownloaderRegistry.prototype, "load").resolves([
-      {
+      manifestFixture({
         name: "modA",
         version: "1.0.0",
         main: __filename,
         folder: "/mods/modA",
         manifest: { name: "modA", version: "1.0.0" },
         source: { type: "local", path: "/mods/modA" },
-      } as any,
+      }),
     ]);
     sinon.stub(ModuleManager.prototype, "constructAll").resolves();
     sinon.stub(ModuleManager.prototype, "startAll").resolves();
@@ -230,11 +239,13 @@ describe("launch", () => {
 
   it("closes the REPL and cleans up once when interactive setup fails", async () => {
     const setupFailure = new Error("repl failed");
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
-      cacheFolder: "/abs/cache",
-      projectFolder: "/project",
-      modules: {},
-    } as any);
+    sinon.stub(ConfigLoader.prototype, "load").resolves(
+      loadedConfigFixture({
+        cacheFolder: "/abs/cache",
+        projectFolder: "/project",
+        modules: {},
+      }),
+    );
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(ModuleManager.prototype, "constructAll").resolves();
     sinon.stub(ModuleManager.prototype, "startAll").resolves();

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect } from "chai";
+import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import * as interfaceCore from "@antelopejs/interface-core";
 import * as interfaceModules from "@antelopejs/interface-core/modules";
@@ -12,6 +13,11 @@ import type {
   BindingGraph,
   BindingModule,
 } from "../../../src/core/resolution/binding-graph-types";
+
+interface TestGlobals {
+  [STATE_KEY]?: InstanceState;
+}
+const testGlobals: typeof globalThis & TestGlobals = globalThis;
 
 const STATE_KEY = "__resolverInterfaceContextState";
 const INTERFACE = "@resolver/interface-context";
@@ -38,7 +44,7 @@ interface InstanceState {
   modules: typeof interfaceModules;
   loads: LoadRecord[];
   exports: InstanceExports[];
-  probes: Array<() => Promise<unknown>>;
+  probes: Array<() => Promise<string | undefined>>;
   own: interfaceCore.RegisteringProxy<Register>;
   forwardTarget: interfaceCore.RegisteringProxy<Register>;
 }
@@ -154,7 +160,7 @@ function createFixture(): ContextFixture {
   resolver.interfacePackageResolveFrom.set(INTERFACE, root);
   resolver.setBindings(graphFor([PROVIDER_A, PROVIDER_B]));
   const state = createState();
-  (globalThis as Record<string, unknown>)[STATE_KEY] = state;
+  testGlobals[STATE_KEY] = state;
   return {
     root,
     resolver,
@@ -164,10 +170,13 @@ function createFixture(): ContextFixture {
   };
 }
 
-function outcomeOf(promise: Promise<unknown>): Promise<unknown> {
+function outcomeOf<T>(promise: Promise<T>): Promise<T | Error> {
   return promise.then(
     (value) => value,
-    (error: unknown) => error,
+    (error) => {
+      assert.ok(error instanceof Error);
+      return error;
+    },
   );
 }
 
@@ -180,7 +189,7 @@ describe("Resolver interface contexts", () => {
 
   afterEach(() => {
     fixture.resolver.releaseInstances();
-    delete (globalThis as Record<string, unknown>)[STATE_KEY];
+    delete testGlobals[STATE_KEY];
     cleanupTempDir(fixture.root);
   });
 

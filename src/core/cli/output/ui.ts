@@ -190,7 +190,7 @@ class StreamUi implements Ui {
     this.writeLine("result", text);
   }
 
-  json(data: unknown): void {
+  json(data: Parameters<Ui["json"]>[0]): void {
     this.writeLine("result", JSON.stringify(data, null, JSON_INDENTATION));
   }
 

@@ -10,7 +10,7 @@ const baseline = new Map<SignalName, Set<SignalListener>>();
 let runFinished = false;
 
 function listenersOf(signal: SignalName): SignalListener[] {
-  return process.listeners(signal) as SignalListener[];
+  return process.listeners(signal);
 }
 
 function snapshotSignalListeners(): void {
@@ -52,18 +52,18 @@ function releaseLeakedSignalListeners(): void {
  */
 function installPrematureExitGuard(): void {
   const exitProcess = process.exit.bind(process);
-  process.exit = ((code?: number) => {
+  process.exit = (code?: number) => {
     if (runFinished) {
       return exitProcess(code);
     }
     const failingCode =
-      typeof code === "number" && code !== 0 ? code : FAILING_EXIT_CODE;
+      code !== undefined && code !== 0 ? code : FAILING_EXIT_CODE;
     process.stderr.write(
       `\n[test harness] process.exit(${String(code)}) was called before the test run finished; ` +
         `exiting with ${failingCode} so a truncated run cannot report success.\n`,
     );
     return exitProcess(failingCode);
-  }) as typeof process.exit;
+  };
 }
 
 installPrematureExitGuard();

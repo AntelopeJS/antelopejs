@@ -4,6 +4,7 @@ import path from "node:path";
 import { expect } from "chai";
 import { mkdtemp, rm } from "node:fs/promises";
 
+import { expectInstanceOf, rejectionOf } from "../../fixtures";
 import { CliError, getProcessUi } from "../../../../../src/core/cli/output";
 import * as common from "../../../../../src/core/cli/common";
 import * as testModuleModule from "../../../../../src/core/test/test-module";
@@ -25,12 +26,10 @@ describe("module test behavior", () => {
     const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);
     const missing = path.join(os.tmpdir(), "ajs-missing-module-directory");
 
-    const failure = await moduleTestCommand(missing, { file: [] }).catch(
-      (err: unknown) => err,
-    );
+    const failure = await rejectionOf(moduleTestCommand(missing, { file: [] }));
 
-    expect(failure).to.be.instanceOf(CliError);
-    expect((failure as CliError).problem.title).to.equal(
+    expectInstanceOf(failure, CliError);
+    expect(failure.problem.title).to.equal(
       `Directory ${missing} does not exist`,
     );
     expect(testStub.called).to.equal(false);
@@ -41,11 +40,12 @@ describe("module test behavior", () => {
     sinon.stub(testModuleModule, "TestModule").resolves(0);
 
     try {
-      const failure = await moduleTestCommand(directory, { file: [] }).catch(
-        (err: unknown) => err,
+      const failure = await rejectionOf(
+        moduleTestCommand(directory, { file: [] }),
       );
 
-      expect((failure as CliError).problem).to.include({
+      expectInstanceOf(failure, CliError);
+      expect(failure.problem).to.include({
         title: `No AntelopeJS module in ${directory}`,
         reason: "The directory has no readable package.json.",
       });
@@ -55,14 +55,17 @@ describe("module test behavior", () => {
   });
 
   it("explains how to add a missing test configuration", async () => {
-    sinon.stub(common, "readModuleManifest").resolves({ name: "modA" } as any);
+    sinon
+      .stub(common, "readModuleManifest")
+      .resolves({ name: "modA", version: "1.0.0" });
     const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);
 
-    const failure = await moduleTestCommand("/tmp/module", { file: [] }).catch(
-      (err: unknown) => err,
+    const failure = await rejectionOf(
+      moduleTestCommand("/tmp/module", { file: [] }),
     );
 
-    expect((failure as CliError).problem).to.deep.equal({
+    expectInstanceOf(failure, CliError);
+    expect(failure.problem).to.deep.equal({
       title: "Module modA has no test configuration",
       reason:
         "The antelopeJs.test field of its package.json does not name a test configuration file.",
@@ -76,7 +79,9 @@ describe("module test behavior", () => {
   });
 
   it("runs TestModule when module is valid", async () => {
-    sinon.stub(common, "readModuleManifest").resolves(MODULE_WITH_TESTS as any);
+    sinon
+      .stub(common, "readModuleManifest")
+      .resolves({ version: "1.0.0", ...MODULE_WITH_TESTS });
     sinon.stub(getProcessUi(), "message");
 
     const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);
@@ -89,7 +94,9 @@ describe("module test behavior", () => {
   });
 
   it("sets exitCode=1 when TestModule reports failures", async () => {
-    sinon.stub(common, "readModuleManifest").resolves(MODULE_WITH_TESTS as any);
+    sinon
+      .stub(common, "readModuleManifest")
+      .resolves({ version: "1.0.0", ...MODULE_WITH_TESTS });
     sinon.stub(getProcessUi(), "message");
     sinon.stub(testModuleModule, "TestModule").resolves(3);
 
@@ -99,7 +106,9 @@ describe("module test behavior", () => {
   });
 
   it("leaves exitCode unset when TestModule reports zero failures", async () => {
-    sinon.stub(common, "readModuleManifest").resolves(MODULE_WITH_TESTS as any);
+    sinon
+      .stub(common, "readModuleManifest")
+      .resolves({ version: "1.0.0", ...MODULE_WITH_TESTS });
     sinon.stub(getProcessUi(), "message");
     sinon.stub(testModuleModule, "TestModule").resolves(0);
 
@@ -109,7 +118,9 @@ describe("module test behavior", () => {
   });
 
   it("parses file options and forwards them", async () => {
-    sinon.stub(common, "readModuleManifest").resolves(MODULE_WITH_TESTS as any);
+    sinon
+      .stub(common, "readModuleManifest")
+      .resolves({ version: "1.0.0", ...MODULE_WITH_TESTS });
     sinon.stub(getProcessUi(), "message");
 
     const testStub = sinon.stub(testModuleModule, "TestModule").resolves(0);

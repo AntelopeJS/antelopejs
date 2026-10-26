@@ -36,7 +36,7 @@ function logColors(): LogPalette {
 }
 
 function isLogColor(color: string): color is LogColor {
-  return (LOG_COLORS as readonly string[]).includes(color);
+  return LOG_COLORS.some((candidate) => candidate === color);
 }
 
 export const getLevelInfo = (() => {
@@ -108,7 +108,7 @@ const WIDE_WIDTH = 2;
 export function stringVisualWidth(str: string): number {
   const ansiFree = stripAnsiCodes(str);
 
-  return [...ansiFree].reduce((acc, c) => {
+  return Array.from(ansiFree).reduce((acc, c) => {
     const cp = c.codePointAt(0)!;
 
     const isWide =
@@ -162,7 +162,10 @@ function indentCause(text: string): string {
     .join("\n");
 }
 
-function serializeInnerError(value: unknown, ancestors: Set<Error>): string {
+function serializeInnerError(
+  value: Error["cause"],
+  ancestors: Set<Error>,
+): string {
   if (!(value instanceof Error)) {
     return serializeLogValue(value);
   }
@@ -213,7 +216,9 @@ function serializeError(error: Error, ancestors: Set<Error>): string {
 export function serializeLogValue(value: any): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported logger accepts any value and emits strings without JSON quoting; parsing would change its output contract.
   if (typeof value === "string") return value;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Numeric and boolean log leaves use String, preserving NaN and infinities instead of JSON's null conversion.
   if (typeof value === "number" || typeof value === "boolean")
     return String(value);
   if (value instanceof Error) return serializeError(value, new Set());
@@ -242,7 +247,7 @@ export function formatDate(date: Date, format = "yyyy-MM-dd HH:mm:ss"): string {
   const padZero = (num: number, length = 2) =>
     String(num).padStart(length, "0");
 
-  const replacements: Record<string, string> = {
+  const replacements = {
     yyyy: String(date.getFullYear()),
     MM: padZero(date.getMonth() + 1),
     dd: padZero(date.getDate()),

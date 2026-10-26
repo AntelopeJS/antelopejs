@@ -88,7 +88,7 @@ function permissionDenied(error: NodeJS.ErrnoException): CliProblem {
   };
 }
 
-const SYSTEM_ERROR_TRANSLATIONS: Record<string, SystemErrorTranslation> = {
+const SYSTEM_ERROR_TRANSLATIONS = {
   ENOENT: (error) => ({
     title: `Path not found: ${subjectOf(error)}`,
     fixes: ["Check the path, then try again"],
@@ -99,13 +99,15 @@ const SYSTEM_ERROR_TRANSLATIONS: Record<string, SystemErrorTranslation> = {
   }),
   EACCES: permissionDenied,
   EPERM: permissionDenied,
-};
+} satisfies Record<string, SystemErrorTranslation>;
 
 function isSystemError(error: unknown): error is NodeJS.ErrnoException {
-  return (
-    error instanceof Error &&
-    typeof (error as NodeJS.ErrnoException).code === "string"
-  );
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const candidate: NodeJS.ErrnoException = error;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This boundary recognizes string errno codes across Error subclasses without rejecting arbitrary thrown values.
+  return typeof candidate.code === "string";
 }
 
 function applyExecTranslation(
@@ -133,6 +135,7 @@ export function translateExecError(error: ExecError): CliProblem | undefined {
  * an unreachable registry, a git clone that was refused, incompatible
  * interface packages) into a problem that names the cause and the fix. Returns `undefined` for anything else.
  */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported translation accepts arbitrary throws and returns undefined for unrecognized failures; narrowing changes its declaration.
 export function translateFailure(error: unknown): CliProblem | undefined {
   if (error instanceof ExecError) {
     return translateExecError(error);
@@ -141,8 +144,8 @@ export function translateFailure(error: unknown): CliProblem | undefined {
     return describeInterfaceConflicts(error);
   }
   if (isSystemError(error)) {
-    return SYSTEM_ERROR_TRANSLATIONS[error.code ?? ""]?.(error);
+    const translations: typeof SYSTEM_ERROR_TRANSLATIONS & Record<string, SystemErrorTranslation> = SYSTEM_ERROR_TRANSLATIONS;
+    return translations[error.code ?? ""]?.(error);
   }
   return undefined;
 }
-

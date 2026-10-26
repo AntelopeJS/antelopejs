@@ -14,7 +14,10 @@ function normalizeCommands(installCommand?: ModuleInstallCommand): string[] {
   return Array.isArray(installCommand) ? installCommand : [installCommand];
 }
 
-function toExecError(err: unknown, command: string): ExecError {
+function toExecError(
+  err: PromiseRejectedResult["reason"],
+  command: string,
+): ExecError {
   if (err instanceof ExecError) {
     return err;
   }

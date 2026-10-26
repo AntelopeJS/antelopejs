@@ -1,4 +1,5 @@
 import type {
+  ModuleSource,
   ModuleSourceGit,
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
@@ -22,13 +23,9 @@ interface ListOptions {
   json?: boolean;
 }
 
-interface ModuleEntry {
-  source?: unknown;
-}
-
 interface ModuleListing {
   name: string;
-  source: unknown;
+  source: ModuleSource;
 }
 
 interface SourceSummary {
@@ -40,13 +37,8 @@ interface ModuleRow extends SourceSummary {
   name: string;
 }
 
-type KnownModuleSource =
-  | ModuleSourcePackage
-  | ModuleSourceGit
-  | ModuleSourceLocal
-  | ModuleSourceLocalFolder;
 type SourceSummarizer = (
-  source: KnownModuleSource,
+  source: ModuleSource,
   moduleName: string,
 ) => SourceSummary;
 
@@ -72,27 +64,31 @@ function gitReference(source: ModuleSourceGit): string {
   return [source.remote, branch, commit].filter(Boolean).join(" ");
 }
 
-const SOURCE_SUMMARIZERS: Record<string, SourceSummarizer> = {
+const SOURCE_SUMMARIZERS = {
+  // SAFETY: summarizeSource dispatches this callback only for the package discriminator.
   package: (source, moduleName) => ({
     kind: "npm",
     reference: packageReference(source as ModuleSourcePackage, moduleName),
   }),
+  // SAFETY: summarizeSource dispatches this callback only for the git discriminator.
   git: (source) => ({
     kind: "git",
     reference: gitReference(source as ModuleSourceGit),
   }),
+  // SAFETY: summarizeSource dispatches this callback only for the local discriminator.
   local: (source) => ({
     kind: "local",
     reference: (source as ModuleSourceLocal).path,
   }),
+  // SAFETY: summarizeSource dispatches this callback only for the local-folder discriminator.
   "local-folder": (source) => ({
     kind: "folder",
     reference: (source as ModuleSourceLocalFolder).path,
   }),
-};
+} satisfies Record<string, SourceSummarizer>;
 
 function summarizeSource(listing: ModuleListing): SourceSummary {
-  const sourceType = (listing.source as KnownModuleSource | undefined)?.type;
+  const sourceType = listing.source?.type;
   const summarize = sourceType ? SOURCE_SUMMARIZERS[sourceType] : undefined;
   if (!summarize) {
     return {
@@ -100,7 +96,7 @@ function summarizeSource(listing: ModuleListing): SourceSummary {
       reference: JSON.stringify(listing.source) ?? MISSING_REFERENCE,
     };
   }
-  return summarize(listing.source as KnownModuleSource, listing.name);
+  return summarize(listing.source, listing.name);
 }
 
 const MODULE_COLUMNS: TableColumn<ModuleRow>[] = [
@@ -134,9 +130,12 @@ async function listModules(options: ListOptions, ui: Ui): Promise<void> {
   );
   const loader = new ConfigLoader(new NodeFileSystem());
   const antelopeConfig = await loader.load(options.project, environment);
-  const modules = Object.entries(
-    antelopeConfig.modules as Record<string, ModuleEntry>,
-  ).map(([name, entry]) => ({ name, source: entry.source }));
+  const modules = Object.entries(antelopeConfig.modules).map(
+    ([name, entry]) => ({
+      name,
+      source: entry.source,
+    }),
+  );
   writeData(ui, {
     data: modules,
     isJson: options.json,

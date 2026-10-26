@@ -3,7 +3,9 @@ import path from "node:path";
 import { expect } from "chai";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { CommanderError } from "commander";
 
+import { expectInstanceOf } from "../../fixtures";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../src/core/cli/common";
 import * as command from "../../../../../src/core/cli/command";
@@ -38,6 +40,7 @@ const DASHBOARD_TEMPLATE: gitOps.Template = {
 };
 
 interface InitStubs {
+  readConfig: sinon.SinonStub;
   writeConfig: sinon.SinonStub;
   moduleInit: sinon.SinonStub;
   add: sinon.SinonStub;
@@ -46,7 +49,7 @@ interface InitStubs {
 }
 
 function stubInit(): InitStubs {
-  sinon.stub(common, "readConfig").resolves(undefined);
+  const readConfig = sinon.stub(common, "readConfig").resolves(undefined);
   const writeConfig = sinon.stub(common, "writeConfig").resolves();
   const moduleInit = sinon
     .stub(moduleInitModule, "moduleInitCommand")
@@ -61,7 +64,7 @@ function stubInit(): InitStubs {
   sinon.stub(cliUi, "warning");
   const error = sinon.stub(cliUi, "error");
   sinon.stub(console, "log");
-  return { writeConfig, moduleInit, add, feedback, error };
+  return { readConfig, writeConfig, moduleInit, add, feedback, error };
 }
 
 function stubProjectTemplate(config: string): void {
@@ -88,10 +91,11 @@ function stubProjectTemplate(config: string): void {
     .resolves({ code: 0, stdout: "", stderr: "" });
 }
 
-async function failureOf(run: () => Promise<unknown>): Promise<unknown> {
+async function failureOf<T>(run: () => Promise<T>): Promise<Error> {
   try {
     await run();
   } catch (error) {
+    expectInstanceOf(error, Error);
     return error;
   }
   throw new Error("Expected project init to fail");
@@ -129,8 +133,8 @@ describe("project init behavior", () => {
   });
 
   it("creates antelope.config.ts with defineConfig and minimal config", async () => {
-    stubInit();
-    (common.writeConfig as sinon.SinonStub).restore();
+    const stubs = stubInit();
+    stubs.writeConfig.restore();
     fakePrompts({ answers: ["my-project", false] });
 
     await cmdInit().parseAsync(["node", "test", projectDir]);
@@ -152,7 +156,7 @@ describe("project init behavior", () => {
     stubs.moduleInit.restore();
     stubs.writeConfig.restore();
     stubs.add.restore();
-    (common.readConfig as sinon.SinonStub).restore();
+    stubs.readConfig.restore();
     const config = `const database = process.env.MONGODB_DATABASE ?? "demo";
 export default () => ({ name: "dashboard", modules: { mongodb: { config: { database } } } });
 `;
@@ -182,7 +186,7 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
   });
 
   it("reports an existing project once, before any missing flag", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "existing" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "existing" });
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     const moduleInit = sinon.stub(moduleInitModule, "moduleInitCommand");
     sinon.stub(console, "log");
@@ -195,14 +199,15 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
 
     expect(failure).to.be.instanceOf(CliError);
     expect(failure).to.not.be.instanceOf(NeedsInputError);
-    expect((failure as CliError).problem).to.deep.equal({
+    expectInstanceOf(failure, CliError);
+    expect(failure.problem).to.deep.equal({
       title: `Project already exists at ${existing}`,
       fixes: [
         "Pass another directory: ajs project init <project>",
         "Or delete the existing project",
       ],
     });
-    expect((failure as CliError).exitCode).to.equal(FAILURE_EXIT_CODE);
+    expect(failure.exitCode).to.equal(FAILURE_EXIT_CODE);
     expect(writeStub.called).to.equal(false);
     expect(moduleInit.called).to.equal(false);
   });
@@ -277,9 +282,8 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
       thrown = error;
     }
 
-    expect((thrown as { code?: string }).code).to.equal(
-      "commander.unknownOption",
-    );
+    expectInstanceOf(thrown, CommanderError);
+    expect(thrown.code).to.equal("commander.unknownOption");
   });
 
   it("takes the defaults with --yes", async () => {
@@ -353,7 +357,8 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
     );
 
     expect(failure).to.be.instanceOf(NeedsInputError);
-    const needsInput = failure as NeedsInputError;
+    expectInstanceOf(failure, NeedsInputError);
+    const needsInput = failure;
     expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
     expect(needsInput.problem.fixes).to.deep.equal([
       "Pass them as flags: ajs project init demo --template <name> --[no-]git-init",
@@ -417,9 +422,12 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
     stubs.moduleInit.callsFake(() => Promise.reject("boom"));
     fakePrompts({ answers: ["my-project", false] });
 
-    const failure = await failureOf(() =>
-      cmdInit().parseAsync(["node", "test", projectDir]),
-    );
+    let failure: unknown;
+    try {
+      await cmdInit().parseAsync(["node", "test", projectDir]);
+    } catch (error) {
+      failure = error;
+    }
 
     expect(failure).to.equal("boom");
     expect(stubs.add.called).to.equal(false);

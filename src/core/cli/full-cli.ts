@@ -109,9 +109,9 @@ export function coreCommandNames(
 }
 
 function applyVerboseChannels(program: Command): void {
-  const verbose = program.getOptionValue("verbose");
+  const verbose: string[] | undefined = program.getOptionValue("verbose");
   if (verbose) {
-    for (const channel of verbose as string[]) {
+    for (const channel of verbose) {
       addChannelFilter(channel, 0);
     }
   }

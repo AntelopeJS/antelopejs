@@ -9,10 +9,16 @@ export const CANCEL = Symbol("cancel");
 
 type PromptKind = "text" | "confirm" | "select" | "multiselect";
 
+interface AskedOptions {
+  message: string;
+  options?: Parameters<PromptBackend["select"]>[0]["options"];
+  initialValue?: Parameters<PromptBackend["select"]>[0]["initialValue"];
+}
+
 interface AskedPrompt {
   kind: PromptKind;
   message: string;
-  options: Record<string, unknown>;
+  options: AskedOptions;
 }
 
 export interface FakePrompts {
@@ -27,20 +33,22 @@ export interface FakePromptsOptions {
 }
 
 function createBackend(queue: unknown[], asked: AskedPrompt[]): PromptBackend {
-  const answer = (kind: PromptKind) => async (options: any) => {
+  const answer = (kind: PromptKind) => async (options: AskedOptions) => {
     asked.push({ kind, message: options.message, options });
     if (queue.length === 0) {
       throw new Error(`Unexpected ${kind} prompt: ${options.message}`);
     }
     return queue.shift();
   };
+  // SAFETY: This fake only reads each prompt's message; tests enqueue its matching answer in prompt order, including CANCEL.
   return {
     text: answer("text"),
     confirm: answer("confirm"),
     select: answer("select"),
     multiselect: answer("multiselect"),
-    isCancel: (value: unknown) => value === CANCEL,
-  } as unknown as PromptBackend;
+    isCancel: (value: Parameters<PromptBackend["isCancel"]>[0]): boolean =>
+      value === CANCEL,
+  } as PromptBackend;
 }
 
 /**

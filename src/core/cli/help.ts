@@ -92,7 +92,7 @@ function formatCommanderItem(
   const isWideEnough =
     width - termWidth - ITEM_MARGIN_WIDTH >= MIN_DESCRIPTION_WIDTH;
   if (!description || isWideEnough) {
-    const commanderHelp = Object.getPrototypeOf(this) as Help;
+    const commanderHelp: Help = Object.getPrototypeOf(this);
     return commanderHelp.formatItem.call(
       this,
       term,

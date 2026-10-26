@@ -3,6 +3,7 @@ import { SUCCESS_EXIT_CODE } from "./exit-codes";
 export const FORCED_EXIT_GRACE_MS = 2000;
 
 function requestedExitCode(): number {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Node permits string or numeric process.exitCode; this failure boundary intentionally propagates numeric values only.
   return typeof process.exitCode === "number"
     ? process.exitCode
     : SUCCESS_EXIT_CODE;
@@ -21,9 +22,7 @@ function requestedExitCode(): number {
  * left to do still exits on its own, with the same code, and the grace period
  * leaves room for whatever cleanup is still draining.
  */
-export function forceExitOnFailure(
-  graceMs: number = FORCED_EXIT_GRACE_MS,
-): NodeJS.Timeout | undefined {
+export function forceExitOnFailure(graceMs: number = FORCED_EXIT_GRACE_MS) {
   const code = requestedExitCode();
   if (code === SUCCESS_EXIT_CODE) {
     return undefined;

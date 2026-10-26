@@ -76,14 +76,15 @@ export interface BuildArtifactInput {
 }
 
 interface RawProjectConfig {
-  [key: string]: unknown;
+  [key: string]: Parameters<typeof toStableJson>[0];
 }
 
-function isRawProjectConfig(value: unknown): value is RawProjectConfig {
+function isRawProjectConfig(value: Parameters<typeof toStableJson>[0]): value is RawProjectConfig {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Stable hashing accepts all non-null objects, including arrays and class instances; a narrower config schema changes serialization.
   return typeof value === "object" && value !== null;
 }
 
-function toStableHashValue(value: unknown): unknown {
+function toStableHashValue(value: Parameters<typeof toStableJson>[0]): Parameters<typeof toStableJson>[0] {
   if (Array.isArray(value)) {
     return value.map((item) => toStableHashValue(item));
   }
@@ -100,6 +101,7 @@ function toStableHashValue(value: unknown): unknown {
  * Serialise a value with object keys sorted, so equal values always produce
  * the same string whatever their key insertion order.
  */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported stable JSON serialization accepts arbitrary JavaScript values; narrowing changes its declaration and stringify behavior.
 export function toStableJson(value: unknown): string {
   return JSON.stringify(toStableHashValue(value));
 }
@@ -170,5 +172,5 @@ export async function readBuildArtifact(
 ): Promise<BuildArtifact> {
   const artifactPath = getBuildArtifactPath(projectFolder);
   const content = await fs.readFileString(artifactPath, "utf-8");
-  return JSON.parse(content) as BuildArtifact;
+  return JSON.parse(content);
 }

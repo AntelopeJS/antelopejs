@@ -84,6 +84,7 @@ export async function loadTestConfig(
   }
 
   const testConfigPath = pack.antelopeJs?.test;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Package JSON is unchecked; non-string test paths must keep the existing diagnostic and undefined return rather than reaching path resolution.
   if (!testConfigPath || typeof testConfigPath !== "string") {
     console.error(
       "Missing or invalid antelopeJs.test config path in package.json",
@@ -154,7 +155,6 @@ export async function collectInterfaceTestFiles(
   const files: string[] = [];
 
   for (const ifacePkg of implementsList) {
-    // oxfmt-ignore
     try {
       const ifaceEntry = require.resolve(ifacePkg, {
         paths: [moduleRoot],
@@ -171,8 +171,7 @@ export async function collectInterfaceTestFiles(
         registerTestDir(testDir, manager);
       }
       files.push(...testFiles);
-    } catch {
-    }
+    } catch {}
   }
 
   return files;
@@ -261,10 +260,8 @@ function applySetupOverrides(
   config: LoadedConfig,
   overrides: Partial<AntelopeConfig>,
 ): LoadedConfig {
-  return mergeDeep(
-    config as Record<string, any>,
-    overrides as Record<string, any>,
-  ) as unknown as LoadedConfig;
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Setup overrides can overwrite required fields; validating the historic merge would change accepted configuration (#228).
+  return mergeDeep(config, overrides) as LoadedConfig;
 }
 
 function clearStubModulePath(manager: ModuleManager | null): void {

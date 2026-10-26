@@ -13,7 +13,7 @@ export interface ConfigVarPlan {
 
 type ConfigVarDeclarations = Map<string, Set<string>>;
 
-const REFERENCE_SHAPE = "${@<module>.<VAR_NAME>}";
+const REFERENCE_SYNTAX = "${@<module>.<VAR_NAME>}";
 
 /**
  * The staged order in which providers publish their config variables.
@@ -55,7 +55,7 @@ function assertWellFormed(consumerId: string, malformed: string[]): void {
     return;
   }
   throw new Error(
-    `Module '${consumerId}' references '${token}', which is not a valid config variable reference (expected '${REFERENCE_SHAPE}').`,
+    `Module '${consumerId}' references '${token}', which is not a valid config variable reference (expected '${REFERENCE_SYNTAX}').`,
   );
 }
 

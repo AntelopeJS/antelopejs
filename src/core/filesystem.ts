@@ -15,6 +15,7 @@ export class NodeFileSystem implements IFileSystem {
     return fs.readFile(filePath, encoding);
   }
 
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- Buffer is a real Node object type, not any; oxlint misresolves it (#229), and the exported write contract must still accept buffers and strings.
   async writeFile(filePath: string, data: Buffer | string): Promise<void> {
     await fs.writeFile(filePath, data);
   }

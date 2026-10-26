@@ -12,10 +12,10 @@ import { buildProcessInvocation } from "./windows-command-line";
 
 const Logger = new Logging.Channel("cli.command");
 
-const NON_INTERACTIVE_ENV: Record<string, string> = {
+const NON_INTERACTIVE_ENV = {
   CI: "1",
   GIT_TERMINAL_PROMPT: "0",
-};
+} satisfies Record<string, string>;
 
 const EXEC_ERROR_NAME = "ExecError";
 
@@ -80,6 +80,7 @@ export function closeStdin(child: ChildProcess): void {
 
 function exitCodeOf(err: Error): number {
   const code = "code" in err ? err.code : undefined;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Child-process errors can carry numeric exit statuses or string errno codes; only nonzero numeric statuses are propagated.
   return typeof code === "number" && code !== 0 ? code : FAILURE_EXIT_CODE;
 }
 

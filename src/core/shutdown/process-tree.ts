@@ -64,16 +64,15 @@ function isAlive(pid: number, kill: ProcessKill): boolean {
     kill(pid, 0);
     return true;
   } catch (error) {
+    // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- ProcessTreeOptions accepts a custom kill callback; preserving its thrown-value behavior rules out validating or replacing arbitrary throws here.
     return (error as NodeJS.ErrnoException).code === PERMISSION_DENIED_CODE;
   }
 }
 
 function signal(pid: number, name: string, kill: ProcessKill): void {
-  // oxfmt-ignore
   try {
     kill(pid, name);
-  } catch {
-  }
+  } catch {}
 }
 
 /**
@@ -106,8 +105,7 @@ export function collectDescendants(
   const descendants: number[] = [];
   const visited = new Set<number>([rootPid]);
   const queue = [rootPid];
-  while (queue.length > 0) {
-    const pid = queue.shift() as number;
+  for (const pid of queue) {
     for (const child of children.get(pid) ?? []) {
       if (visited.has(child)) {
         continue;

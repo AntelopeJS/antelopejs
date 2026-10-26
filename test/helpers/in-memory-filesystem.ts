@@ -69,7 +69,10 @@ export class InMemoryFileSystem implements IFileSystem {
     return buffer.toString(encoding);
   }
 
-  async writeFile(filePath: string, data: Buffer | string): Promise<void> {
+  async writeFile(
+    filePath: string,
+    data: Parameters<IFileSystem["writeFile"]>[1],
+  ): Promise<void> {
     const parts = filePath.split("/").filter(Boolean);
     const fileName = parts.pop();
     if (!fileName) {
@@ -113,6 +116,7 @@ export class InMemoryFileSystem implements IFileSystem {
       throw new Error(`ENOENT: no such file or directory: ${filePath}`);
     }
 
+    // SAFETY: Filesystem consumers in these fixtures read only isFile, isDirectory and size.
     return {
       isFile: () => node.type === "file",
       isDirectory: () => node.type === "directory",

@@ -107,7 +107,7 @@ describe("Git operations behavior", () => {
           description: "tpl",
           repository: "https://example.com/repo.git",
           branch: "main",
-        } as any,
+        },
         moduleDir,
       );
 

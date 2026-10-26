@@ -1,6 +1,8 @@
 import sinon from "sinon";
 import { expect } from "chai";
 
+import { buildArtifact } from "../../fixtures";
+import type { BuildModuleEntry } from "../../../../../src/core/build/build-artifact";
 import * as indexModule from "../../../../../src/index";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import { getProcessUi } from "../../../../../src/core/cli/output";
@@ -43,12 +45,19 @@ describe("project build/start behavior", () => {
   it("runs build command and reports summary", async () => {
     sinon.stub(common, "readConfig").resolves(PROJECT_WITH_PRODUCTION);
     const buildStub = sinon.stub(indexModule, "build").resolves();
-    sinon.stub(buildArtifactModule, "readBuildArtifact").resolves({
-      modules: {
-        alpha: {} as any,
-        beta: {} as any,
-      },
-    } as any);
+    const entry: BuildModuleEntry = {
+      folder: "/tmp/module",
+      source: { type: "package" },
+      name: "module",
+      version: "1.0.0",
+      main: "index.js",
+      manifest: { name: "module", version: "1.0.0" },
+      baseUrl: "/tmp/module",
+      paths: [],
+    };
+    sinon
+      .stub(buildArtifactModule, "readBuildArtifact")
+      .resolves(buildArtifact({ modules: { alpha: entry, beta: entry } }));
 
     stubProjectSpinners();
     collectStderr();
@@ -84,10 +93,8 @@ describe("project build/start behavior", () => {
   });
 
   it("runs start command from build artifact", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "project" } as any);
-    const startStub = sinon
-      .stub(projectLaunch, "launchFromBuild")
-      .resolves({} as any);
+    sinon.stub(common, "readConfig").resolves({ name: "project" });
+    const startStub = sinon.stub(projectLaunch, "launchFromBuild").resolves();
 
     stubProjectSpinners();
     collectStderr();
@@ -117,7 +124,7 @@ describe("project build/start behavior", () => {
   });
 
   it("sets exit code when start command fails", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "project" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "project" });
     sinon.stub(projectLaunch, "launchFromBuild").rejects(new Error("boom"));
 
     stubProjectSpinners();
@@ -133,10 +140,8 @@ describe("project build/start behavior", () => {
   });
 
   it("passes --refresh-config to the build artifact launch", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "project" } as any);
-    const startStub = sinon
-      .stub(projectLaunch, "launchFromBuild")
-      .resolves({} as any);
+    sinon.stub(common, "readConfig").resolves({ name: "project" });
+    const startStub = sinon.stub(projectLaunch, "launchFromBuild").resolves();
 
     stubProjectSpinners();
     collectStderr();
@@ -156,7 +161,7 @@ describe("project build/start behavior", () => {
   });
 
   it("exits with the module set changed code when the build no longer matches", async () => {
-    sinon.stub(common, "readConfig").resolves({ name: "project" } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "project" });
     sinon
       .stub(projectLaunch, "launchFromBuild")
       .rejects(new BuildModuleSetChangedError(["api"]));

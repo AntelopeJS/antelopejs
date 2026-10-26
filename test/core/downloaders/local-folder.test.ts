@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { expect } from "chai";
 import { ExecError } from "../../../src/core/cli/command";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -146,6 +147,7 @@ describe("LocalFolderDownloader", () => {
       `${a.cwd}:${a.command}`.localeCompare(`${b.cwd}:${b.command}`),
     );
     expect(sortedCalls).to.deep.equal(expectedCalls);
+    // SAFETY: registerLocalFolderDownloader creates local sources with each folder's path and preserves installCommand and watchDir.
     const localSource = result[0].source as ModuleSourceLocal;
     expect(localSource.type).to.equal("local");
     expect(localSource.installCommand).to.deep.equal([
@@ -183,7 +185,9 @@ describe("LocalFolderDownloader", () => {
       await registry.load("/project", cache, source);
       expect.fail("Expected failure");
     } catch (error) {
-      const failure = (error as Error).cause as ExecError;
+      assert.ok(error instanceof Error);
+      assert.ok(error.cause instanceof ExecError);
+      const failure = error.cause;
       expect(failure.stderr).to.equal("failed install");
     }
   });

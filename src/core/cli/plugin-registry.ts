@@ -12,16 +12,18 @@ export interface OfficialPlugin extends OfficialPluginDefinition {
   name: string;
 }
 
-const OFFICIAL_PLUGIN_DEFINITIONS: Record<string, OfficialPluginDefinition> = {
+const OFFICIAL_PLUGIN_DEFINITIONS = {
   dms: {
     package: "@antelopejs/dms-frontend",
     bin: "ajs-dms",
     description: "DMS frontend commands",
   },
-};
+} satisfies Record<string, OfficialPluginDefinition>;
 
 export function findOfficialPlugin(name: string): OfficialPlugin | undefined {
-  const definition = OFFICIAL_PLUGIN_DEFINITIONS[name];
+  const definitions: typeof OFFICIAL_PLUGIN_DEFINITIONS &
+    Record<string, OfficialPluginDefinition> = OFFICIAL_PLUGIN_DEFINITIONS;
+  const definition = definitions[name];
   return definition ? { name, ...definition } : undefined;
 }
 

@@ -29,7 +29,7 @@ function commandOutputTail(error: ExecError): string[] {
   return [OUTPUT_HEADING, ...lines.map((line) => `${OUTPUT_INDENT}${line}`)];
 }
 
-function genericProblem(error: unknown): CliProblem {
+function genericProblem(error: Parameters<typeof describeFailure>[0]): CliProblem {
   if (error instanceof Error) {
     const [headline] = stripAnsiCodes(error.message).split(LINE_BREAK_PATTERN);
     return { title: headline || error.name };
@@ -37,7 +37,7 @@ function genericProblem(error: unknown): CliProblem {
   return { title: String(error) };
 }
 
-function causeChain(error: unknown): unknown[] {
+function causeChain(error: Error["cause"]): unknown[] {
   const chain: unknown[] = [];
   let current: unknown = error;
   while (current !== undefined && !chain.includes(current)) {
@@ -78,13 +78,13 @@ function untranslatedOutputTail(chain: unknown[]): string[] {
 }
 
 function explainFailure(
-  error: unknown,
+  error: Parameters<FailureTranslator>[0],
   translate?: FailureTranslator,
 ): CliProblem | undefined {
   return translate?.(error) ?? translateFailure(error);
 }
 
-function hasHiddenOutput(error: unknown): boolean {
+function hasHiddenOutput(error: Parameters<typeof describeFailure>[0]): boolean {
   if (!(error instanceof ExecError)) {
     return false;
   }
@@ -114,6 +114,7 @@ function verboseHint(chain: unknown[], translate?: FailureTranslator): string[] 
  * show more than what is printed.
  */
 export function describeFailure(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported describeFailure must describe arbitrary JavaScript throws; narrowing changes its declaration.
   error: unknown,
   verbose: boolean = isVerboseRun(),
   translate?: FailureTranslator,
@@ -134,6 +135,7 @@ export function describeFailure(
  * code it calls for.
  */
 export function reportFailure(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported reportFailure accepts every thrown value and preserves translator input identity.
   error: unknown,
   ui: Ui = getProcessUi(),
   verbose: boolean = isVerboseRun(),

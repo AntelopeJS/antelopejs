@@ -3,10 +3,16 @@ import path from "node:path";
 import { expect } from "chai";
 import { tmpdir } from "node:os";
 import { mkdir, rm, writeFile } from "node:fs/promises";
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 
+import {
+  interfaceInfo,
+  moduleManifest,
+  rejectionOf,
+  stubLoadedConfig,
+} from "../../../fixtures";
 import * as cliUi from "../../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../../src/core/cli/common";
-import { ConfigLoader } from "../../../../../../src/core/config";
 import { ModuleCache } from "../../../../../../src/core/module-cache";
 import * as gitOps from "../../../../../../src/core/cli/git-operations";
 import { ModuleManifest } from "../../../../../../src/core/module-manifest";
@@ -156,7 +162,7 @@ describe("project modules install behavior", () => {
     sinon.stub(common, "readConfig").resolves({
       name: "proj",
       environments: { production: {} },
-    } as any);
+    });
     const userConfigStub = sinon.stub(common, "readUserConfig");
     const manifestStub = sinon.stub(gitOps, "loadManifestFromGit");
     sinon.stub(cliUi, "info");
@@ -195,7 +201,7 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
 
     let capturedPath = "";
     sinon
@@ -237,9 +243,7 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    const loadStub = sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: {} } as any);
+    const loadStub = stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
@@ -275,9 +279,7 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    const loadStub = sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: {} } as any);
+    const loadStub = stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
@@ -321,11 +323,11 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon
@@ -370,43 +372,35 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const fakeManifest = {
+    const fakeManifest = moduleManifest({
       manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
       implements: [],
       folder: tempModuleDir,
-    };
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([fakeManifest as any]);
+    });
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([fakeManifest]);
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
       .returns("pkg:module");
 
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
-    sinon.stub(gitOps, "loadInterfaceFromGit").resolves({
-      name: "@antelopejs/interface-core",
-      manifest: {
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
+      interfaceInfo("@antelopejs/interface-core", {
         description: "core interface",
         versions: ["0.0.2"],
         files: {},
         dependencies: {},
-        modules: [
-          {
-            name: "modA",
-            source: { type: "package", package: "modA", version: "1.0.0" },
-          },
-        ],
-      },
-    } as any);
+        modules: [MOD_A],
+      }),
+    );
 
     const addStub = sinon
       .stub(projectModulesAddModule, "addModules")
@@ -447,42 +441,34 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const fakeManifest = {
+    const fakeManifest = moduleManifest({
       manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
       implements: [],
       folder: tempModuleDir,
-    };
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([fakeManifest as any]);
+    });
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([fakeManifest]);
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
       .returns("pkg:module");
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
-    sinon.stub(gitOps, "loadInterfaceFromGit").resolves({
-      name: "@antelopejs/interface-core",
-      manifest: {
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
+      interfaceInfo("@antelopejs/interface-core", {
         description: "core",
         versions: ["0.0.2"],
         files: {},
         dependencies: {},
-        modules: [
-          {
-            name: "modA",
-            source: { type: "package", package: "modA", version: "1.0.0" },
-          },
-        ],
-      },
-    } as any);
+        modules: [MOD_A],
+      }),
+    );
 
     const addStub = sinon
       .stub(projectModulesAddModule, "addModules")
@@ -518,14 +504,22 @@ describe("project modules install behavior", () => {
 
   const MOD_A = {
     name: "modA",
-    source: { type: "package", package: "modA", version: "1.0.0" },
+    source: {
+      type: "package",
+      package: "modA",
+      version: "1.0.0",
+    } satisfies ModuleSourcePackage,
   };
   const MOD_B = {
     name: "modB",
-    source: { type: "package", package: "modB", version: "2.0.0" },
+    source: {
+      type: "package",
+      package: "modB",
+      version: "2.0.0",
+    } satisfies ModuleSourcePackage,
   };
 
-  function stubUnresolvedImport(modules: object[]): sinon.SinonStub {
+  function stubUnresolvedImport(modules: gitOps.ModuleInterfaceInfo[]) {
     const config: any = {
       name: "proj",
       modules: {
@@ -542,35 +536,40 @@ describe("project modules install behavior", () => {
       starredInterfaces: [],
       templates: [],
     });
-    sinon.stub(ConfigLoader.prototype, "load").resolves(config);
+    stubLoadedConfig({ modules: config.modules });
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(DownloaderRegistry.prototype, "load").resolves([
-      {
+      moduleManifest({
         manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
         implements: [],
         folder: tempModuleDir,
-      } as any,
+      }),
     ]);
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
       .callsFake((source: any) => `pkg:${source.package}`);
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
-    sinon.stub(gitOps, "loadInterfaceFromGit").resolves({
-      name: ifaceName,
-      manifest: { description: "", files: {}, dependencies: {}, modules },
-    } as any);
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
+      interfaceInfo(ifaceName, {
+        description: "",
+        files: {},
+        dependencies: {},
+        modules,
+      }),
+    );
     stubTaskOutput();
-    sinon.stub(cliUi, "info");
+    const infoStub = sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "error");
-    return sinon
+    const addStub = sinon
       .stub(projectModulesAddModule, "addModules")
       .resolves(ADDED_MOD_A);
+    return { addStub, infoStub };
   }
 
   it("selects the only implementation without asking, even without a terminal", async () => {
-    const addStub = stubUnresolvedImport([MOD_A]);
+    const { addStub, infoStub } = stubUnresolvedImport([MOD_A]);
     const prompts = fakePrompts({ isInteractive: false });
 
     await cmdInstall().parseAsync([
@@ -583,14 +582,12 @@ describe("project modules install behavior", () => {
     expect(prompts.asked).to.deep.equal([]);
     expect(addStub.firstCall.args[0]).to.deep.equal(["pkg:modA@1.0.0"]);
     expect(
-      (cliUi.info as sinon.SinonStub).calledWithMatch(
-        "is the only module implementing test-iface",
-      ),
+      infoStub.calledWithMatch("is the only module implementing test-iface"),
     ).to.equal(true);
   });
 
   it("asks which module to add when several implement the interface", async () => {
-    const addStub = stubUnresolvedImport([MOD_A, MOD_B]);
+    const { addStub } = stubUnresolvedImport([MOD_A, MOD_B]);
     const prompts = fakePrompts({ answers: [MOD_B] });
 
     await cmdInstall().parseAsync([
@@ -601,16 +598,15 @@ describe("project modules install behavior", () => {
     ]);
 
     expect(prompts.asked).to.have.length(1);
-    expect(
-      (prompts.asked[0].options.options as { label: string }[]).map(
-        (option) => option.label,
-      ),
-    ).to.deep.equal(["modA", "modB"]);
+    const options = prompts.asked[0].options.options;
+    expect(options).to.be.an("array").with.length(2);
+    expect(options).to.have.nested.property("0.label", "modA");
+    expect(options).to.have.nested.property("1.label", "modB");
     expect(addStub.firstCall.args[0]).to.deep.equal(["pkg:modB@2.0.0"]);
   });
 
   it("adds the first module listed with --yes", async () => {
-    const addStub = stubUnresolvedImport([MOD_A, MOD_B]);
+    const { addStub } = stubUnresolvedImport([MOD_A, MOD_B]);
     const prompts = fakePrompts({ isInteractive: false });
 
     await cmdInstall().parseAsync([
@@ -626,7 +622,7 @@ describe("project modules install behavior", () => {
   });
 
   it("asks for --yes instead of prompting without a terminal", async () => {
-    const addStub = stubUnresolvedImport([MOD_A, MOD_B]);
+    const { addStub } = stubUnresolvedImport([MOD_A, MOD_B]);
     fakePrompts({ isInteractive: false });
 
     const cliError = await captureCliError(() =>
@@ -660,45 +656,37 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const fakeManifest = {
+    const fakeManifest = moduleManifest({
       manifest: {
         dependencies: { [ifaceName]: "^1.0.0", [ifaceName2]: "^1.0.0" },
       },
       implements: [],
       folder: tempModuleDir,
-    };
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([fakeManifest as any]);
+    });
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([fakeManifest]);
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
       .returns("pkg:module");
 
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
-    sinon.stub(gitOps, "loadInterfaceFromGit").resolves({
-      name: "iface",
-      manifest: {
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
+      interfaceInfo("iface", {
         description: "iface",
         versions: ["1.0.0"],
         files: {},
         dependencies: {},
-        modules: [
-          {
-            name: "modA",
-            source: { type: "package", package: "modA", version: "1.0.0" },
-          },
-        ],
-      },
-    } as any);
+        modules: [MOD_A],
+      }),
+    );
 
     const addStub = sinon
       .stub(projectModulesAddModule, "addModules")
@@ -739,22 +727,20 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const fakeManifest = {
+    const fakeManifest = moduleManifest({
       manifest: { dependencies: {} },
       implements: [],
       folder: tempModuleDir,
-    };
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([fakeManifest as any]);
+    });
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([fakeManifest]);
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
       .returns("pkg:module");
@@ -763,7 +749,7 @@ describe("project modules install behavior", () => {
 
     const loadStub = sinon
       .stub(gitOps, "loadInterfaceFromGit")
-      .resolves(undefined as any);
+      .resolves(undefined);
     const prompts = fakePrompts();
 
     stubTaskOutput();
@@ -799,25 +785,23 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const fakeManifest = {
+    const fakeManifest = moduleManifest({
       manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
       implements: [],
       folder: tempModuleDir,
-    };
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([fakeManifest as any]);
+    });
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([fakeManifest]);
 
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
-    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(undefined as any);
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(undefined);
 
     const warnStub = sinon.stub(cliUi, "warning");
     sinon.stub(cliUi, "info");
@@ -851,43 +835,35 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const fakeManifest = {
+    const fakeManifest = moduleManifest({
       manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
       implements: [],
       folder: tempModuleDir,
-    };
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([fakeManifest as any]);
+    });
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([fakeManifest]);
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
       .returns("pkg:module");
 
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
-    sinon.stub(gitOps, "loadInterfaceFromGit").resolves({
-      name: "iface",
-      manifest: {
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
+      interfaceInfo("iface", {
         description: "iface",
         versions: ["1.0.0"],
         files: {},
         dependencies: {},
-        modules: [
-          {
-            name: "modA",
-            source: { type: "package", package: "modA", version: "1.0.0" },
-          },
-        ],
-      },
-    } as any);
+        modules: [MOD_A],
+      }),
+    );
 
     fakePrompts();
 
@@ -899,9 +875,9 @@ describe("project modules install behavior", () => {
 
     const output = stubTaskOutput();
 
-    const failure = await cmdInstall()
-      .parseAsync(["node", "test", "--project", "/tmp/project"])
-      .catch((err: unknown) => err);
+    const failure = await rejectionOf(
+      cmdInstall().parseAsync(["node", "test", "--project", "/tmp/project"]),
+    );
 
     expect(String(failure)).to.include("install failed");
     expect(output.summary.called).to.equal(false);
@@ -926,43 +902,35 @@ describe("project modules install behavior", () => {
       templates: [],
     });
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
-    const fakeManifest = {
+    const fakeManifest = moduleManifest({
       manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
       implements: [],
       folder: tempModuleDir,
-    };
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([fakeManifest as any]);
+    });
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([fakeManifest]);
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
       .returns("pkg:module");
 
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 
-    sinon.stub(gitOps, "loadInterfaceFromGit").resolves({
-      name: "iface",
-      manifest: {
+    sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
+      interfaceInfo("iface", {
         description: "iface",
         versions: ["1.0.0"],
         files: {},
         dependencies: {},
-        modules: [
-          {
-            name: "modA",
-            source: { type: "package", package: "modA", version: "1.0.0" },
-          },
-        ],
-      },
-    } as any);
+        modules: [MOD_A],
+      }),
+    );
 
     fakePrompts();
 

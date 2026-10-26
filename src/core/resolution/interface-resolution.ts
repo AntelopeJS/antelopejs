@@ -61,7 +61,7 @@ const NOT_AN_INTERFACE: InterfacePackageInfo = {
  */
 function isInterfacePackageManifest(
   packageName: string,
-  antelopeJs: Record<string, unknown>,
+  antelopeJs: { implements?: unknown },
 ): boolean {
   const implemented = antelopeJs.implements;
   if (!Array.isArray(implemented) || implemented.length === 0) {

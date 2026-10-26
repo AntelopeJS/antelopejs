@@ -41,17 +41,17 @@ function setTTY(stdout: boolean, stderr: boolean, columns?: number) {
     if (stdoutIsTTY) {
       Object.defineProperty(process.stdout, "isTTY", stdoutIsTTY);
     } else {
-      delete (process.stdout as any).isTTY;
+      Reflect.deleteProperty(process.stdout, "isTTY");
     }
     if (stderrIsTTY) {
       Object.defineProperty(process.stderr, "isTTY", stderrIsTTY);
     } else {
-      delete (process.stderr as any).isTTY;
+      Reflect.deleteProperty(process.stderr, "isTTY");
     }
     if (stdoutColumns) {
       Object.defineProperty(process.stdout, "columns", stdoutColumns);
     } else if (columns !== undefined) {
-      delete (process.stdout as any).columns;
+      Reflect.deleteProperty(process.stdout, "columns");
     }
   };
 }
@@ -294,7 +294,7 @@ describe("Logging Utils", () => {
           {
             dateFormat: "yyyy-MM-dd",
             moduleTracking: { enabled: true },
-          } as any,
+          },
           { levelId: 20, args: ["hello"], time: date.getTime() },
           "modA",
         );
@@ -314,7 +314,7 @@ describe("Logging Utils", () => {
       try {
         const date = new Date(2024, 0, 15, 10, 30, 0);
         const output = formatLogMessageWithRightAlignedDate(
-          { moduleTracking: { enabled: true } } as any,
+          { moduleTracking: { enabled: true } },
           { levelId: -1, args: ["first\\nsecond"], time: date.getTime() },
           "modA",
         );
@@ -336,7 +336,7 @@ describe("Logging Utils", () => {
       try {
         const date = new Date(2024, 0, 15, 10, 30, 0);
         const output = formatLogMessageWithRightAlignedDate(
-          { moduleTracking: { enabled: false } } as any,
+          { moduleTracking: { enabled: false } },
           {
             levelId: 20,
             args: ["first\\nmiddle\\nlast"],
@@ -363,7 +363,7 @@ describe("Logging Utils", () => {
       try {
         const date = new Date(2024, 0, 15, 10, 30, 0);
         const output = loggingUtils.formatLogMessageWithRightAlignedDate(
-          { moduleTracking: { enabled: false } } as any,
+          { moduleTracking: { enabled: false } },
           { levelId: 20, args: ["alpha\\nbeta\\ngamma"], time: date.getTime() },
         );
 

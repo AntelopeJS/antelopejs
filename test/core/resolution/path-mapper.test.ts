@@ -1,3 +1,5 @@
+import { manifestFixture } from "../../helpers/module-fixtures";
+
 import { expect } from "chai";
 import * as path from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -5,7 +7,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { PathMapper } from "../../../src/core/resolution/path-mapper";
 
-const manifest = {
+const manifest = manifestFixture({
   srcAliases: [{ alias: "@src", replace: "/mod/src" }],
   paths: [
     {
@@ -13,7 +15,7 @@ const manifest = {
       values: ["/mod/src/lib"],
     },
   ],
-} as any;
+});
 
 describe("PathMapper", () => {
   it("should resolve aliases", () => {
@@ -58,9 +60,9 @@ describe("PathMapper", () => {
 
   it("should use the first matching value", () => {
     const mapper = new PathMapper((p) => p === "/second/util.js");
-    const custom = {
+    const custom = manifestFixture({
       paths: [{ key: "@lib/", values: ["/first", "/second"] }],
-    } as any;
+    });
 
     const result = mapper.resolve("@lib/util", custom);
 
@@ -82,9 +84,12 @@ describe("PathMapper", () => {
       writeFileSync(path.join(libDir, "util.js"), "// util");
 
       const mapper = new PathMapper();
-      const result = mapper.resolve("@lib/util", {
-        paths: [{ key: "@lib/", values: [libDir] }],
-      } as any);
+      const result = mapper.resolve(
+        "@lib/util",
+        manifestFixture({
+          paths: [{ key: "@lib/", values: [libDir] }],
+        }),
+      );
 
       expect(result).to.equal(path.join(libDir, "util"));
     } finally {
@@ -94,18 +99,24 @@ describe("PathMapper", () => {
 
   it("returns undefined when mapping matches but files are missing", () => {
     const mapper = new PathMapper(() => false);
-    const result = mapper.resolve("@lib/missing", {
-      paths: [{ key: "@lib/", values: ["/missing"] }],
-    } as any);
+    const result = mapper.resolve(
+      "@lib/missing",
+      manifestFixture({
+        paths: [{ key: "@lib/", values: ["/missing"] }],
+      }),
+    );
 
     expect(result).to.equal(undefined);
   });
 
   it("falls back when default exists check fails", () => {
     const mapper = new PathMapper();
-    const result = mapper.resolve("@lib/missing", {
-      paths: [{ key: "@lib/", values: ["/nope"] }],
-    } as any);
+    const result = mapper.resolve(
+      "@lib/missing",
+      manifestFixture({
+        paths: [{ key: "@lib/", values: ["/nope"] }],
+      }),
+    );
 
     expect(result).to.equal(undefined);
   });

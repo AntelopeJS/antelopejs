@@ -46,9 +46,7 @@ describe("CLI dispatcher", () => {
   });
 
   it("routes project start directly to the build artifact runtime", async () => {
-    const launch = sinon
-      .stub(projectLaunch, "launchFromBuild")
-      .resolves({} as any);
+    const launch = sinon.stub(projectLaunch, "launchFromBuild").resolves();
     const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
 
     await runCLI([

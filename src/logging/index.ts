@@ -17,6 +17,7 @@ const DEFAULT_FORMATTER_KEY = "default";
 const DEFAULT_LEVEL_NAME = "LOG";
 const LOG_SUFFIX = "{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}";
 
+// oxlint-disable-next-line anti-slop/no-known-value-widening -- The exported Record<number, string> is a mutable open lookup; inferring fixed keys changes its published declaration.
 export const levelNames: Record<number, string> = {
   0: "TRACE",
   10: "DEBUG",
@@ -25,6 +26,7 @@ export const levelNames: Record<number, string> = {
   40: "ERROR",
 };
 
+// oxlint-disable-next-line anti-slop/no-known-value-widening -- The exported Record<string, number> accepts custom level names; inferring fixed keys changes its published declaration.
 export const levelMap: Record<string, number> = {
   trace: 0,
   debug: 10,
@@ -73,6 +75,7 @@ const channelCache: Record<string, number> = {};
 const channelFilters: Record<string, number | string> = {};
 
 function resolveLevelValue(level: number | string): number {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The published logging config accepts numeric levels and named/numeric strings; the untagged alternatives use different existing resolution paths.
   if (typeof level === "string") {
     const normalized = level.toLowerCase();
     if (normalized in levelMap) {

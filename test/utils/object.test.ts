@@ -57,9 +57,12 @@ describe("Object Utilities", () => {
 
   describe("set", () => {
     it("should set nested value by path", () => {
-      const obj: Record<string, any> = { a: { b: 1 } };
+      interface NestedConfig {
+        a: { b: number; c?: { d: number } };
+      }
+      const obj: NestedConfig = { a: { b: 1 } };
       set(obj, "a.c.d", 42);
-      expect(obj.a.c.d).to.equal(42);
+      expect(obj.a.c?.d).to.equal(42);
     });
   });
 });

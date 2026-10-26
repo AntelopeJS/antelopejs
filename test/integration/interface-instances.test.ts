@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { expect } from "chai";
 import fs from "node:fs/promises";
 
@@ -13,15 +14,35 @@ import {
   type FixturePackage,
   sharedInterface,
 } from "../helpers/interface-project";
+
+interface TestGlobals {
+  [RESULTS_KEY]?: Results;
+}
+const testGlobals: typeof globalThis & TestGlobals = globalThis;
+
 const INTERFACE_1 = "@instances/interface-one";
 const INTERFACE_2 = "@instances/interface-two";
 const RUNNER = "@instances/interface-runner";
 const RESULTS_KEY = "__antelopeInterfaceInstancesResults";
 
-type Results = Record<string, unknown>;
+interface Results {
+  tree?: string[];
+  plain?: string;
+  selectedIsPlain?: boolean;
+  client?: string;
+  clientSubpath?: string;
+  runByAnotherModule?: string;
+  plainApi?: string;
+  clientApi?: string;
+  runnerQuery?: object;
+  plainQuery?: object;
+  clientQuery?: object;
+}
 
 function results(): Results {
-  return (global as Record<string, unknown>)[RESULTS_KEY] as Results;
+  const value = testGlobals[RESULTS_KEY];
+  assert.ok(value);
+  return value;
 }
 
 function implementer(
@@ -155,14 +176,14 @@ describe("interface instances", () => {
   let projectFolder = "";
 
   beforeEach(() => {
-    (global as Record<string, unknown>)[RESULTS_KEY] = {};
+    testGlobals[RESULTS_KEY] = {};
   });
 
   afterEach(async () => {
     await manager?.stopAll();
     await manager?.destroyAll();
     manager = undefined;
-    delete (global as Record<string, unknown>)[RESULTS_KEY];
+    delete testGlobals[RESULTS_KEY];
     await fs.rm(projectFolder, { recursive: true, force: true });
   });
 

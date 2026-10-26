@@ -42,6 +42,7 @@ export class BuildModuleSetChangedError extends Error {
  * the errors a failed launch aggregates.
  */
 export function findBuildModuleSetChange(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported failure inspection accepts arbitrary throws and searches nested AggregateErrors; narrowing changes declarations.
   error: unknown,
 ): BuildModuleSetChangedError | undefined {
   if (error instanceof BuildModuleSetChangedError) {
@@ -59,6 +60,7 @@ function resolveSourcePath(
   source: PathModuleSource,
   projectFolder: string,
 ): PathModuleSource {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Loaded config is unchecked; non-string paths remain untouched instead of being rejected or coerced during refresh (#228).
   if (typeof source.path !== "string" || path.isAbsolute(source.path)) {
     return source;
   }
@@ -118,6 +120,7 @@ function refreshModuleEntries(
       {
         ...entry,
         ...serializeModuleConfig(
+          // SAFETY: refreshBuildArtifact calls this only after findChangedModules rejects built entries with absent or unconfigured source IDs.
           toModuleConfig(modules[entry.source.id as string]),
         ),
       },

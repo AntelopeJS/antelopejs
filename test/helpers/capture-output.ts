@@ -15,10 +15,10 @@ interface StreamCapture {
 }
 
 function collectInto(sink: string[]): StreamWrite {
-  return ((chunk: unknown): boolean => {
+  return (chunk: Parameters<StreamWrite>[0]): boolean => {
     sink.push(String(chunk));
     return true;
-  }) as unknown as StreamWrite;
+  };
 }
 
 function startCapture(): StreamCapture {
@@ -54,8 +54,8 @@ export function captureOutput(emit: () => void): CapturedOutput {
   return collected(capture);
 }
 
-export async function captureOutputAsync(
-  emit: () => Promise<unknown>,
+export async function captureOutputAsync<T>(
+  emit: () => Promise<T>,
 ): Promise<CapturedOutput> {
   const capture = startCapture();
   try {

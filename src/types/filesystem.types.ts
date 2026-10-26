@@ -3,6 +3,7 @@ import type { Stats } from "node:fs";
 export interface IFileSystem {
   readFile(path: string): Promise<Buffer>;
   readFileString(path: string, encoding?: BufferEncoding): Promise<string>;
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- Buffer is misresolved by oxlint (#229); this published filesystem interface must keep both buffer and string writes.
   writeFile(path: string, data: Buffer | string): Promise<void>;
   readdir(path: string): Promise<string[]>;
   stat(path: string): Promise<Stats>;

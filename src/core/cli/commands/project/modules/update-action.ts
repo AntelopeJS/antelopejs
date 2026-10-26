@@ -1,4 +1,7 @@
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 
 import { ConfigLoader } from "../../../../config";
 import { FAILURE_EXIT_CODE } from "../../../exit-codes";
@@ -24,18 +27,20 @@ interface UpdateOptions {
 }
 
 function applyUpdates(
-  env: Record<string, unknown>,
+  env: Partial<AntelopeConfig>,
   outdated: OutdatedModule[],
-  antelopeModules: Record<string, { source?: { type: string } }>,
+  antelopeModules: Record<string, ExpandedModuleConfig>,
 ): void {
-  const envModules = (env as { modules: Record<string, unknown> }).modules;
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Environment modules is optional in the exported config; missing values must retain the existing indexed-write error rather than a new validation error (#228).
+  const envModules = env.modules as NonNullable<AntelopeConfig["modules"]>;
   for (const entry of outdated) {
     envModules[entry.name] = {
       ...antelopeModules[entry.name],
       source: {
+        // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- ConfigLoader leaves package fields unchecked; validating them before this existing spread would change accepted configs (#228).
         ...(antelopeModules[entry.name].source as ModuleSourcePackage),
         version: bumpVersionSpec(entry.current, entry.latest),
-      } as ModuleSourcePackage,
+      },
     };
   }
 }
@@ -163,11 +168,7 @@ export async function updateModules(
 
   const outdated = await checkOutdatedModules(selectedModules);
   if (outdated.length > 0 && !options.dryRun) {
-    applyUpdates(
-      env as unknown as Record<string, unknown>,
-      outdated,
-      antelopeConfig.modules,
-    );
+    applyUpdates(env, outdated, antelopeConfig.modules);
     await writeConfig(options.project, config);
   }
   displayResults({

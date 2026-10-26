@@ -30,7 +30,9 @@ function shutdownProcess(exitCode: number): void {
   process.exit(exitCode);
 }
 
-function isInvalidatedModuleWork(reason: unknown): boolean {
+function isInvalidatedModuleWork(
+  reason: Parameters<NodeJS.UnhandledRejectionListener>[0],
+): boolean {
   return (
     invalidatedWorkTolerance > 0 &&
     reason instanceof Error &&
@@ -43,7 +45,10 @@ function isInvalidatedModuleWork(reason: unknown): boolean {
  * Reports a failure of work left behind by a destroyed module generation
  * without shutting the process down, when that is tolerated.
  */
-function reportInvalidatedModuleWork(kind: string, reason: unknown): boolean {
+function reportInvalidatedModuleWork(
+  kind: string,
+  reason: Parameters<NodeJS.UnhandledRejectionListener>[0],
+): boolean {
   if (!isInvalidatedModuleWork(reason)) {
     return false;
   }

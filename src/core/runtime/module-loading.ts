@@ -8,6 +8,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import { Module } from "../module";
+import { unpackErrors } from "../module-errors";
 import type { ModuleDeclarationChanges } from "../config/module-entry";
 import {
   listModuleDeclarations,
@@ -19,9 +20,8 @@ import { ModuleCache } from "../module-cache";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManifest } from "../module-manifest";
 import { pluralize } from "../cli/output/format";
-import { CliError } from "../cli/output/errors";
-import { describeFailure } from "../cli/output/failures";
-import { getProcessTasks, runTask } from "../cli/output/tasks";
+import { runTask } from "../cli/output/tasks";
+import { moduleLoadFailure } from "./module-load-failure";
 import type { ExpandedModuleConfig } from "../config/config-parser";
 import {
   findUnresolvedInterfaces,
@@ -48,14 +48,11 @@ import type {
 const Logger = new Logging.Channel("loader");
 const CORE_MODULE_ID = "antelopejs";
 
-const MODULE_STATUS_MAP: Record<
-  string,
-  moduleInterfaceBeta.ModuleInfo["status"]
-> = {
+const MODULE_STATUS_MAP = {
   loaded: "loaded",
   constructed: "constructed",
   active: "active",
-};
+} satisfies Record<string, moduleInterfaceBeta.ModuleInfo["status"]>;
 
 function mapImportOverrides(
   overrides?: Record<string, string[]>,
@@ -75,9 +72,7 @@ function mapImportOverrides(
   return mapped;
 }
 
-function exportImportOverrides(
-  overrides?: ModuleOverrideMap,
-): Record<string, string[]> {
+function exportImportOverrides(overrides?: ModuleOverrideMap) {
   const result: Record<string, string[]> = {};
   if (!overrides) {
     return result;
@@ -95,7 +90,10 @@ function exportImportOverrides(
 function getModuleStatus(module: {
   state: string;
 }): moduleInterfaceBeta.ModuleInfo["status"] {
-  return MODULE_STATUS_MAP[module.state] ?? "unknown";
+  const statuses: typeof MODULE_STATUS_MAP &
+    Record<string, moduleInterfaceBeta.ModuleInfo["status"]> =
+    MODULE_STATUS_MAP;
+  return statuses[module.state] ?? "unknown";
 }
 
 function toModuleSource(
@@ -110,6 +108,7 @@ function toModuleSource(
   ) {
     throw new Error(`Unsupported module source type: ${String(type)}`);
   }
+  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Beta source declarations allow arbitrary id/ignoreCache values; validating more than type would change the accepted definition contract (#228).
   return source as ModuleSource;
 }
 
@@ -346,41 +345,14 @@ async function loadModuleEntry(
   return buildManifestEntries(manifests, moduleConfig);
 }
 
-function uniqueFixes(failures: unknown[]): string[] {
-  const fixes = failures.flatMap(
-    (failure) => describeFailure(failure, false).fixes ?? [],
-  );
-  return [...new Set(fixes)];
-}
-
-/**
- * One error for every module that failed to load. A single failure is
- * thrown as is; several are each listed once, by title and reason, and
- * summed up by one error carrying their fixes and the first one as cause.
- */
-function moduleLoadFailure(failures: unknown[], total: number): unknown {
-  if (failures.length === 1) {
-    return failures[0];
-  }
-  const tasks = getProcessTasks();
-  failures.forEach((failure) => {
-    const problem = describeFailure(failure, false);
-    tasks.message("error", problem.title, { detail: problem.reason });
-  });
-  return new CliError(
-    {
-      title: `Could not load ${failures.length} of ${pluralize(total, "module")}`,
-      fixes: uniqueFixes(failures),
-    },
-    { cause: failures[0] },
-  );
-}
-
 /**
  * Logs that optional module `id` could not be downloaded: the project starts
  * without it.
  */
-function skipOptionalModule(id: string, reason: unknown): void {
+function skipOptionalModule(
+  id: string,
+  reason: PromiseRejectedResult["reason"],
+): void {
   Logger.Error(
     `Optional module ${id} could not be loaded; starting without it`,
     reason,
@@ -447,7 +419,8 @@ export function getWatchDirs(source: ModuleSource): string[] {
     return [""];
   }
 
-  const localSource = source as ModuleSourceLocal;
+  const localSource: ModuleSource & Pick<ModuleSourceLocal, "watchDir"> =
+    source;
   if (Array.isArray(localSource.watchDir)) {
     return localSource.watchDir;
   }
@@ -587,10 +560,6 @@ async function cleanupReplacement(replacement: Module): Promise<unknown[]> {
   }
 }
 
-function unpackErrors(error: unknown): unknown[] {
-  return error instanceof AggregateError ? error.errors : [error];
-}
-
 export async function reloadWatchedModule(
   manager: ModuleManager,
   moduleId: string,
@@ -634,6 +603,7 @@ export async function constructAndStartModules(
 
 export async function destroyModulesAfterFailure(
   manager: ModuleManager,
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported cleanup rethrows the original arbitrary startup failure by identity, or includes it in an AggregateError.
   error: unknown,
 ): Promise<never> {
   try {

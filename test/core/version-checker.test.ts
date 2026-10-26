@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import sinon from "sinon";
 import { expect } from "chai";
 import type {
@@ -80,7 +81,7 @@ describe("version-checker", () => {
         type: "local",
         path: "/some/path",
       };
-      const modules: Record<string, ExpandedModuleConfig> = {
+      const modules = {
         "config-key-a": {
           source: packageSourceA,
           config: {},
@@ -99,7 +100,7 @@ describe("version-checker", () => {
           importOverrides: [],
           disabledExports: [],
         },
-      };
+      } satisfies Record<string, ExpandedModuleConfig>;
 
       const result = await checkOutdatedModules(modules);
 
@@ -123,14 +124,14 @@ describe("version-checker", () => {
         package: "mod-a",
         version: "^1.0.0",
       };
-      const modules: Record<string, ExpandedModuleConfig> = {
+      const modules = {
         "mod-a": {
           source: packageSource,
           config: {},
           importOverrides: [],
           disabledExports: [],
         },
-      };
+      } satisfies Record<string, ExpandedModuleConfig>;
 
       const result = await checkOutdatedModules(modules);
 
@@ -149,14 +150,14 @@ describe("version-checker", () => {
         package: "mod-a",
         version: "^1.0.0",
       };
-      const modules: Record<string, ExpandedModuleConfig> = {
+      const modules = {
         "mod-a": {
           source: packageSource,
           config: {},
           importOverrides: [],
           disabledExports: [],
         },
-      };
+      } satisfies Record<string, ExpandedModuleConfig>;
 
       const result = await checkOutdatedModules(modules);
 
@@ -177,14 +178,14 @@ describe("version-checker", () => {
         package: "mod-a",
         version: "1.0.0",
       };
-      const modules: Record<string, ExpandedModuleConfig> = {
+      const modules = {
         "mod-a": {
           source: packageSource,
           config: {},
           importOverrides: [],
           disabledExports: [],
         },
-      };
+      } satisfies Record<string, ExpandedModuleConfig>;
 
       const result = await checkOutdatedModules(modules);
 
@@ -209,7 +210,7 @@ describe("version-checker", () => {
         package: "mod-b",
         version: "1.0.0",
       };
-      const modules: Record<string, ExpandedModuleConfig> = {
+      const modules = {
         "mod-a": {
           source: packageSourceA,
           config: {},
@@ -222,7 +223,7 @@ describe("version-checker", () => {
           importOverrides: [],
           disabledExports: [],
         },
-      };
+      } satisfies Record<string, ExpandedModuleConfig>;
 
       const result = await checkOutdatedModules(modules);
 
@@ -276,14 +277,14 @@ describe("version-checker", () => {
         package: "mod-a",
         version: "1.0.0",
       };
-      const modules: Record<string, ExpandedModuleConfig> = {
+      const modules = {
         "mod-a": {
           source: packageSource,
           config: {},
           importOverrides: [],
           disabledExports: [],
         },
-      };
+      } satisfies Record<string, ExpandedModuleConfig>;
 
       const pending = checkOutdatedModules(modules);
 
@@ -317,14 +318,14 @@ describe("version-checker", () => {
         package: "mod-a",
         version: "1.0.0",
       };
-      const modules: Record<string, ExpandedModuleConfig> = {
+      const modules = {
         "mod-a": {
           source: packageSource,
           config: {},
           importOverrides: [],
           disabledExports: [],
         },
-      };
+      } satisfies Record<string, ExpandedModuleConfig>;
 
       const pending = checkOutdatedModules(modules);
       await clock.runAllAsync();
@@ -387,10 +388,10 @@ describe("version-checker", () => {
         expect.fail("expected fetchDistTags to throw");
       } catch (err) {
         expect(err).to.be.instanceOf(command.ExecError);
-        expect((err as command.ExecError).command).to.equal(
-          "npm view some-package dist-tags --json",
-        );
-        expect((err as command.ExecError).stderr).to.equal("not found");
+        assert.ok(err instanceof command.ExecError);
+        expect(err.command).to.equal("npm view some-package dist-tags --json");
+        assert.ok(err instanceof command.ExecError);
+        expect(err.stderr).to.equal("not found");
       }
     });
   });

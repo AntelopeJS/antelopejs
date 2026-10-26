@@ -22,7 +22,7 @@ type WaitingType = {
   source: ModuleSource;
   options?: LoadOptions;
   resolve: (info: ModuleManifest[]) => void;
-  reject: (error?: unknown) => void;
+  reject: (error?: PromiseRejectedResult["reason"]) => void;
 };
 
 export class DownloaderRegistry {
@@ -41,6 +41,7 @@ export class DownloaderRegistry {
     const waitingList = this.waiting.get(type);
     if (waitingList) {
       for (const waiter of waitingList) {
+        // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- register<T> permits arbitrary custom source extensions and dispatches by a string; validating T would change the exported registration contract.
         void loader(waiter.cache, waiter.source as T, waiter.options).then(
           waiter.resolve,
           waiter.reject,
@@ -61,15 +62,17 @@ export class DownloaderRegistry {
     if (type) {
       Logger.Trace(`Found loader for type ${source.type}`);
       if (type.loaderIdentifier === "path") {
-        const pathValue = (source as any)[type.loaderIdentifier];
+        const pathSource: ModuleSource & { path?: unknown } = source;
+        const pathValue = pathSource[type.loaderIdentifier];
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Custom downloader sources are open; only string paths are resolved, while other existing identifier values pass through unchanged.
         if (typeof pathValue === "string" && !path.isAbsolute(pathValue)) {
-          (source as any)[type.loaderIdentifier] = path.resolve(
+          pathSource[type.loaderIdentifier] = path.resolve(
             projectFolder,
             pathValue,
           );
         }
       }
-      return type.loader(cache, source as any, options);
+      return type.loader(cache, source, options);
     }
 
     Logger.Info(`No loader found for type ${source.type}, adding to waitlist`);
@@ -83,9 +86,11 @@ export class DownloaderRegistry {
     });
   }
 
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- The exported downloader API explicitly returns any | undefined; simplifying the redundant union would change its declaration.
   getLoaderIdentifier(source: ModuleSource): any | undefined {
     const type = this.knownTypes.get(source.type);
     if (type) {
+      // SAFETY: the generic registry key is read without claiming a value type; the published return already permits any custom downloader identifier.
       return (source as any)[type.loaderIdentifier];
     }
     return undefined;

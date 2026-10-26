@@ -3,6 +3,7 @@ import sinon from "sinon";
 import { expect } from "chai";
 import { writeFileSync } from "node:fs";
 
+import { expectInstanceOf } from "../../fixtures";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import { getProcessUi } from "../../../../../src/core/cli/output";
 import * as common from "../../../../../src/core/cli/common";
@@ -205,6 +206,7 @@ describe("project command context", () => {
       caught = err;
     }
 
-    expect((caught as Error).message).to.equal("syntax error");
+    expectInstanceOf(caught, Error);
+    expect(caught.message).to.equal("syntax error");
   });
 });

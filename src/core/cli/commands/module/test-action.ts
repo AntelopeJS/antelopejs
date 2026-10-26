@@ -48,6 +48,7 @@ async function invalidModuleError(modulePath: string): Promise<CliError> {
 
 function hasTestConfig(manifest: ModulePackageJson): boolean {
   const testConfig = manifest.antelopeJs?.test;
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Package JSON is unchecked; only a nonempty string selects test config, while other values keep the existing missing-config error.
   return typeof testConfig === "string" && testConfig !== "";
 }
 

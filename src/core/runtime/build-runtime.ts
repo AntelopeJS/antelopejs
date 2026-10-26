@@ -93,9 +93,7 @@ export function serializeModuleConfig(
   };
 }
 
-function serializeBuildModuleEntries(
-  entries: ModuleManifestEntry[],
-): Record<string, BuildModuleEntry> {
+function serializeBuildModuleEntries(entries: ModuleManifestEntry[]) {
   const modules: Record<string, BuildModuleEntry> = {};
 
   entries.forEach((entry) => {

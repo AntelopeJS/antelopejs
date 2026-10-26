@@ -19,7 +19,9 @@ export type ProcessSignal = "SIGINT" | "SIGTERM";
  * from a genuine shutdown of the whole runner.
  */
 export interface ProcessSignalSource {
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Exported signal sources permit arbitrary emitter return values; consumers ignore them.
   on(signal: ProcessSignal, listener: () => void): unknown;
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Exported signal sources permit arbitrary emitter return values; narrowing would change structural compatibility.
   removeListener(signal: ProcessSignal, listener: () => void): unknown;
 }
 
@@ -86,7 +88,7 @@ function settleWithin(
   work: Promise<void>,
   timeoutMs: number,
 ): Promise<boolean> {
-  let timer: NodeJS.Timeout | undefined;
+  let timer: Parameters<typeof clearTimeout>[0];
   const timeout = new Promise<boolean>((resolve) => {
     timer = setTimeout(() => resolve(false), timeoutMs);
   });
@@ -204,11 +206,12 @@ export class ShutdownManager {
   }
 
   private updateRequestedExitCode(exitCode?: number): void {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Public shutdown calls may supply unchecked values; existing behavior ignores nonnumeric exit requests rather than coercing or throwing.
     if (typeof exitCode !== "number") {
       return;
     }
 
-    if (typeof this.requestedExitCode !== "number") {
+    if (this.requestedExitCode === undefined) {
       this.requestedExitCode = exitCode;
       return;
     }
@@ -227,7 +230,7 @@ export class ShutdownManager {
     if (this.seenSignals.size > 0) {
       this.signalListener.onStopped(hasTimedOut);
     }
-    if (typeof this.requestedExitCode === "number") {
+    if (this.requestedExitCode !== undefined) {
       process.exit(this.requestedExitCode);
     }
   }

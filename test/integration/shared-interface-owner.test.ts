@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import { expect } from "chai";
@@ -8,6 +9,11 @@ import {
   createLoaderContext,
   reloadWatchedModule,
 } from "../../src/core/runtime/module-loading";
+
+interface TestGlobals {
+  [STATE_KEY]?: SharedOwnerState;
+}
+const testGlobals: typeof globalThis & TestGlobals = globalThis;
 
 const STATE_KEY = "__antelopeSharedInterfaceOwner";
 const CORE_INTERFACE_NAME = "@antelopejs/interface-core";
@@ -195,7 +201,9 @@ async function createProject(moduleOrder: string[]): Promise<string> {
 }
 
 function sharedOwnerState(): SharedOwnerState {
-  return (global as Record<string, unknown>)[STATE_KEY] as SharedOwnerState;
+  const value = testGlobals[STATE_KEY];
+  assert.ok(value);
+  return value;
 }
 
 function latestProviderEntries(): ProviderEntries {
@@ -215,10 +223,13 @@ async function reloadModule(
   await reloadWatchedModule(manager, moduleId, loaderContext);
 }
 
-async function readDependencyWithoutContext(): Promise<unknown> {
+async function readDependencyWithoutContext(): Promise<
+  string | Error | undefined
+> {
   try {
     return await sharedOwnerState().readDependency?.();
   } catch (error) {
+    assert.ok(error instanceof Error);
     return error;
   }
 }
@@ -231,7 +242,7 @@ async function destroyProject(
     await manager.stopAll();
     await manager.destroyAll();
   }
-  delete (global as Record<string, unknown>)[STATE_KEY];
+  delete testGlobals[STATE_KEY];
   if (projectFolder) {
     await fs.rm(projectFolder, { recursive: true, force: true });
   }
@@ -243,7 +254,7 @@ describe("registrations made while an interface package is evaluated", () => {
 
   async function launchProject(moduleOrder: string[]): Promise<void> {
     const state: SharedOwnerState = { generations: [] };
-    (global as Record<string, unknown>)[STATE_KEY] = state;
+    testGlobals[STATE_KEY] = state;
     projectFolder = await createProject(moduleOrder);
     manager = await launch(projectFolder);
     expect(state.evaluatedBy).to.equal(INTERFACE_NAME);
@@ -261,7 +272,8 @@ describe("registrations made while an interface package is evaluated", () => {
     this.timeout(TEST_TIMEOUT_MS);
     await launchProject([IMPORTER_ID, PROVIDER_ID]);
 
-    await reloadModule(manager as ModuleManager, projectFolder, IMPORTER_ID);
+    assert.ok(manager);
+    await reloadModule(manager, projectFolder, IMPORTER_ID);
 
     expect(latestProviderEntries()).to.deep.equal({
       [BUILT_IN_ENTRY]: BUILT_IN_VALUE,
@@ -272,8 +284,10 @@ describe("registrations made while an interface package is evaluated", () => {
     this.timeout(TEST_TIMEOUT_MS);
     await launchProject([IMPORTER_ID, PROVIDER_ID]);
 
-    await reloadModule(manager as ModuleManager, projectFolder, IMPORTER_ID);
-    await reloadModule(manager as ModuleManager, projectFolder, PROVIDER_ID);
+    assert.ok(manager);
+    await reloadModule(manager, projectFolder, IMPORTER_ID);
+    assert.ok(manager);
+    await reloadModule(manager, projectFolder, PROVIDER_ID);
 
     expect(sharedOwnerState().generations).to.have.length(2);
     expect(latestProviderEntries()).to.deep.equal({
@@ -285,8 +299,10 @@ describe("registrations made while an interface package is evaluated", () => {
     this.timeout(TEST_TIMEOUT_MS);
     await launchProject([PROVIDER_ID, IMPORTER_ID]);
 
-    await reloadModule(manager as ModuleManager, projectFolder, PROVIDER_ID);
-    await reloadModule(manager as ModuleManager, projectFolder, PROVIDER_ID);
+    assert.ok(manager);
+    await reloadModule(manager, projectFolder, PROVIDER_ID);
+    assert.ok(manager);
+    await reloadModule(manager, projectFolder, PROVIDER_ID);
 
     expect(sharedOwnerState().generations).to.have.length(3);
     expect(latestProviderEntries()).to.deep.equal({
@@ -299,7 +315,8 @@ describe("registrations made while an interface package is evaluated", () => {
     await launchProject([IMPORTER_ID, PROVIDER_ID]);
     expect(await readDependencyWithoutContext()).to.equal(DEPENDENCY_VALUE);
 
-    await reloadModule(manager as ModuleManager, projectFolder, IMPORTER_ID);
+    assert.ok(manager);
+    await reloadModule(manager, projectFolder, IMPORTER_ID);
 
     expect(await readDependencyWithoutContext()).to.equal(DEPENDENCY_VALUE);
   });

@@ -131,6 +131,7 @@ function isRunning(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (error) {
+    // SAFETY: Node process.kill reports system-call failures with Error objects carrying an errno code; this catch contains only that native call.
     return (error as NodeJS.ErrnoException).code === "EPERM";
   }
 }

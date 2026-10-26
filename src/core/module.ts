@@ -23,7 +23,7 @@ let nextModuleOwner = 1;
 
 async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
   const mod = await import(mainPath);
-  return mod as ModuleCallbacks;
+  return mod;
 }
 
 export class Module {
@@ -80,6 +80,7 @@ export class Module {
    * The module code is loaded here rather than in `construct`, because the
    * callback lives in it; `construct` then reuses the very same instance.
    */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported Module.provide forwards application-defined config to its provider; validation would change accepted inputs.
   async provide(config: unknown): Promise<ConfigVars | void> {
     if (this.lifecycle.state !== ModuleState.Loaded) {
       return;
@@ -91,6 +92,7 @@ export class Module {
     });
   }
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported Module.construct forwards application-defined config to its callback; narrowing changes declarations.
   async construct(config: unknown): Promise<void> {
     if (this.lifecycle.state !== ModuleState.Loaded) {
       Logger.Info(`Module ${this.id} already constructed`);

@@ -1,4 +1,5 @@
 import sinon from "sinon";
+import { REPLServer } from "node:repl";
 import { expect } from "chai";
 
 import { ReplSession } from "../../../src/core/repl/repl-session";
@@ -6,15 +7,15 @@ import { ReplSession } from "../../../src/core/repl/repl-session";
 describe("ReplSession", () => {
   it("should start and close a repl session with context", () => {
     const closeSpy = sinon.spy();
-    const context: Record<string, unknown> = {};
+    const context: REPLServer["context"] = {};
     let capturedPrompt = "";
 
     const replFactory = (prompt?: string) => {
       capturedPrompt = prompt ?? "";
-      return {
+      return Object.assign(sinon.createStubInstance(REPLServer), {
         context,
         close: closeSpy,
-      } as any;
+      });
     };
 
     const session = new ReplSession({ moduleManager: "mm" }, replFactory);

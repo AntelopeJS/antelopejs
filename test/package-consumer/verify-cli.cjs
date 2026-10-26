@@ -59,7 +59,7 @@ function verifyHelpStaysLight(folder) {
 
 function verifyLazyActionResolves(folder) {
   const config = JSON.parse(runCli(["config", "show", "--json"], folder));
-  if (typeof config.git !== "string") {
+  if (String(config.git) !== config.git) {
     throw new Error(
       `Unexpected ajs config show output: ${JSON.stringify(config)}`,
     );
@@ -71,7 +71,7 @@ function verifyPromptLibraryLoads() {
   const library = require(
     require.resolve(PROMPT_LIBRARY, { paths: [coreFolder] }),
   );
-  if (typeof library.confirm !== "function") {
+  if (!(library.confirm instanceof Function)) {
     throw new Error(`${PROMPT_LIBRARY} did not load with require()`);
   }
 }

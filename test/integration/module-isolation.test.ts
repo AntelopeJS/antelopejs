@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import { expect } from "chai";
@@ -5,6 +6,11 @@ import fs from "node:fs/promises";
 import { ReloadModule } from "@antelopejs/interface-core/modules";
 
 import launch, { type ModuleManager } from "../../src";
+
+interface TestGlobals {
+  [SEEN_KEY]?: SeenInstances;
+}
+const testGlobals: typeof globalThis & TestGlobals = globalThis;
 
 const SEEN_KEY = "__antelopeModuleIsolationSeen";
 
@@ -17,7 +23,9 @@ interface InstanceView {
 type SeenInstances = Record<string, InstanceView>;
 
 function seen(): SeenInstances {
-  return (globalThis as Record<string, unknown>)[SEEN_KEY] as SeenInstances;
+  const value = testGlobals[SEEN_KEY];
+  assert.ok(value);
+  return value;
 }
 
 async function writeFile(file: string, content: string): Promise<void> {
@@ -87,7 +95,7 @@ describe("Module isolation", () => {
 
   beforeEach(async () => {
     projectFolder = await fs.mkdtemp(path.join(os.tmpdir(), "ajs-isolation-"));
-    (globalThis as Record<string, unknown>)[SEEN_KEY] = {};
+    testGlobals[SEEN_KEY] = {};
     await createSharedModule(path.join(projectFolder, "shared"));
     await writeProject(projectFolder);
     manager = await launch(projectFolder);
@@ -97,7 +105,7 @@ describe("Module isolation", () => {
     await manager?.stopAll();
     await manager?.destroyAll();
     manager = undefined;
-    delete (globalThis as Record<string, unknown>)[SEEN_KEY];
+    delete testGlobals[SEEN_KEY];
     await fs.rm(projectFolder, { recursive: true, force: true });
   });
 

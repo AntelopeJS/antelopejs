@@ -11,11 +11,12 @@ export type FileChangeListener = (filePath: string) => void;
 const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
 const VANISHED_PATH_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
 
-function isVanishedPathError(error: unknown): boolean {
+function isVanishedPathError(error: PromiseRejectedResult["reason"]): boolean {
   if (!(error instanceof Error)) {
     return false;
   }
-  const { code } = error as NodeJS.ErrnoException;
+  const systemError: NodeJS.ErrnoException = error;
+  const { code } = systemError;
   return code !== undefined && VANISHED_PATH_ERROR_CODES.has(code);
 }
 

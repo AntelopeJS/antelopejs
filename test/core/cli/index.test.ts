@@ -2,6 +2,7 @@ import sinon from "sinon";
 import { expect } from "chai";
 import type { Command } from "commander";
 
+import { expectInstanceOf, rejectionOf } from "./fixtures";
 import { coreCommandNames, createCLI } from "../../../src/core/cli/full-cli";
 import {
   CliError,
@@ -195,13 +196,13 @@ describe("CLI --verbose parsing", () => {
   );
 
   it("never reads the argument after a bare --verbose as channels", async () => {
-    const failure = await parseDev(["project", "dev", "--verbose", "loader"])
-      .then(() => undefined)
-      .catch((error: unknown) => error);
+    const failure = await rejectionOf(
+      parseDev(["project", "dev", "--verbose", "loader"]),
+    );
 
-    expect(failure).to.be.instanceOf(CliError);
-    expect((failure as CliError).exitCode).to.equal(USAGE_EXIT_CODE);
-    expect((failure as CliError).message).to.match(/too many arguments/i);
+    expectInstanceOf(failure, CliError);
+    expect(failure.exitCode).to.equal(USAGE_EXIT_CODE);
+    expect(failure.message).to.match(/too many arguments/i);
   });
 });
 

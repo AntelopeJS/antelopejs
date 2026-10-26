@@ -1,3 +1,5 @@
+import assert from "node:assert/strict";
+import { interfaceProxy } from "./helpers/interface-proxy";
 import fs from "node:fs";
 import sinon from "sinon";
 import path from "node:path";
@@ -22,6 +24,16 @@ import {
   cleanupTempDir,
 } from "./helpers/temp";
 
+interface TestGlobals {
+  [RECORDED_CONFIG_KEY]?: {
+    token?: string;
+    nested?: { token?: string };
+    value?: string;
+    port?: number;
+  };
+}
+const testGlobals: typeof globalThis & TestGlobals = globalThis;
+
 interface ArtifactModuleInput {
   id: string;
   folder: string;
@@ -40,14 +52,13 @@ function settlesOrPending<T>(
   return Promise.race([call, timeout]);
 }
 
-function detachProxy(fn: unknown): void {
-  (fn as { proxy?: { detach(): void } }).proxy?.detach();
+function detachProxy<Args extends unknown[], Result>(
+  fn: (...args: Args) => Result,
+): void {
+  interfaceProxy(fn).detach();
 }
 
-function writeTsConfig(
-  projectFolder: string,
-  config: Record<string, unknown>,
-): void {
+function writeTsConfig<Tconfig>(projectFolder: string, config: Tconfig): void {
   const configPath = path.join(projectFolder, "antelope.config.ts");
   const configContent = `export default ${JSON.stringify(config, null, 2)};\n`;
   fs.writeFileSync(configPath, configContent, "utf-8");
@@ -109,10 +120,10 @@ function writeRecordingModule(projectFolder: string): void {
   );
 }
 
-function recorderConfig(
-  config: Record<string, unknown>,
-  extra: Record<string, unknown> = {},
-): Record<string, unknown> {
+function recorderConfig<Tconfig>(
+  config: Tconfig,
+  extra: { envOverrides?: Record<string, string> } = {},
+) {
   return {
     name: "sample",
     modules: {
@@ -125,8 +136,8 @@ function recorderConfig(
   };
 }
 
-function readRecordedConfig(): unknown {
-  return (globalThis as Record<string, unknown>)[RECORDED_CONFIG_KEY];
+function readRecordedConfig() {
+  return testGlobals[RECORDED_CONFIG_KEY];
 }
 
 describe("build and launchFromBuild", () => {
@@ -135,7 +146,7 @@ describe("build and launchFromBuild", () => {
   afterEach(() => {
     sinon.restore();
     detachProxy(ListModules);
-    delete (globalThis as Record<string, unknown>)[RECORDED_CONFIG_KEY];
+    delete testGlobals[RECORDED_CONFIG_KEY];
     delete process.env[TOKEN_VARIABLE];
     for (const dir of tempDirs.splice(0)) {
       cleanupTempDir(dir);
@@ -179,7 +190,8 @@ describe("build and launchFromBuild", () => {
     }
 
     expect(thrown).to.be.instanceOf(Error);
-    expect((thrown as Error).message).to.include(
+    assert.ok(thrown instanceof Error);
+    expect(thrown.message).to.include(
       "No build found at .antelope/build/build.json",
     );
   });
@@ -277,10 +289,10 @@ describe("build and launchFromBuild", () => {
     }
 
     expect(thrown).to.be.instanceOf(Error);
-    expect((thrown as Error).message).to.include("Module 'alpha' not found");
-    expect((thrown as Error).message).to.include(
-      "Run 'ajs project build' to rebuild.",
-    );
+    assert.ok(thrown instanceof Error);
+    expect(thrown.message).to.include("Module 'alpha' not found");
+    assert.ok(thrown instanceof Error);
+    expect(thrown.message).to.include("Run 'ajs project build' to rebuild.");
   });
 
   it("launchFromBuild starts with the refreshed configuration", async () => {
@@ -348,9 +360,8 @@ describe("build and launchFromBuild", () => {
     }
 
     expect(thrown).to.be.instanceOf(BuildModuleSetChangedError);
-    expect((thrown as BuildModuleSetChangedError).changedModules).to.deep.equal(
-      ["recorder"],
-    );
+    assert.ok(thrown instanceof BuildModuleSetChangedError);
+    expect(thrown.changedModules).to.deep.equal(["recorder"]);
     expect(readRecordedConfig()).to.equal(undefined);
   });
 });

@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect } from "chai";
 import { writeFileSync } from "node:fs";
 
+import { expectInstanceOf } from "../../fixtures";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import * as common from "../../../../../src/core/cli/common";
 import * as command from "../../../../../src/core/cli/command";
@@ -54,13 +55,14 @@ const INTERFACE_CATALOG = {
   api: {
     name: "api",
     folderPath: "",
+    gitPath: "",
     manifest: {
       description: "HTTP API",
       package: "@antelopejs/interface-api",
       modules: [],
     },
   },
-} as unknown as Record<string, gitOps.InterfaceInfo>;
+} satisfies Record<string, gitOps.InterfaceInfo>;
 
 interface ModuleInitStubs {
   manifest: sinon.SinonStub;
@@ -70,6 +72,7 @@ interface ModuleInitStubs {
   exec: sinon.SinonStub;
   gitInit: sinon.SinonStub;
   spinnerFail: sinon.SinonStub;
+  warning: sinon.SinonStub;
   output(): string;
 }
 
@@ -108,7 +111,7 @@ function stubModuleInit(
   const output = collectStderr();
   sinon.stub(cliUi, "info");
   sinon.stub(cliUi, "success");
-  sinon.stub(cliUi, "warning");
+  const warning = sinon.stub(cliUi, "warning");
   sinon.stub(cliUi, "error");
   sinon.stub(console, "log");
   return {
@@ -119,6 +122,7 @@ function stubModuleInit(
     exec,
     gitInit,
     spinnerFail,
+    warning,
     output,
   };
 }
@@ -127,8 +131,8 @@ async function rejectionOf(promise: Promise<unknown>): Promise<CliError> {
   try {
     await promise;
   } catch (err) {
-    expect(err).to.be.instanceOf(CliError);
-    return err as CliError;
+    expectInstanceOf(err, CliError);
+    return err;
   }
   throw new Error("Expected the module init to fail");
 }
@@ -202,7 +206,8 @@ describe("module init behavior", () => {
       caught = error;
     }
 
-    expect((caught as Error).name).to.equal("CancelledError");
+    expectInstanceOf(caught, Error);
+    expect(caught.name).to.equal("CancelledError");
     expect(stubs.copy.called).to.equal(false);
     expect(stubs.exec.called).to.equal(false);
     expect(stubs.spinnerFail.called).to.equal(false);
@@ -407,14 +412,12 @@ describe("module init behavior", () => {
 
     expect(stubs.spinnerFail.called).to.equal(true);
     expect(
-      (cliUi.warning as sinon.SinonStub).calledWithMatch(
-        "Could not initialize git repository",
-      ),
+      stubs.warning.calledWithMatch("Could not initialize git repository"),
     ).to.equal(true);
   });
 
   function stubTemplateRepository(
-    failure: unknown,
+    failure: Error | string,
     isInteractive = true,
   ): void {
     sinon

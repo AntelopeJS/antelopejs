@@ -7,6 +7,7 @@ export enum ModuleState {
 }
 
 export interface ModuleCallbacks {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Published lifecycle callbacks accept application-defined configuration; narrowing this parameter changes the callback contract.
   construct?(config: unknown): Promise<void> | void;
   destroy?(): Promise<void> | void;
   provide?: ConfigVarProvider;

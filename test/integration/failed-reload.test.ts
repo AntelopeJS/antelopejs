@@ -2,6 +2,7 @@ import os from "node:os";
 import sinon from "sinon";
 import path from "node:path";
 import { expect } from "chai";
+import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { MODULE_CONTEXT_INVALIDATED_CODE } from "@antelopejs/interface-core";
 
@@ -12,6 +13,11 @@ import {
   createLoaderContext,
   reloadWatchedModule,
 } from "../../src/core/runtime/module-loading";
+
+interface TestGlobals {
+  [STATE_KEY]?: FailedReloadState;
+}
+const testGlobals: typeof globalThis & TestGlobals = globalThis;
 
 const STATE_KEY = "__antelopeFailedReload";
 const CORE_INTERFACE_NAME = "@antelopejs/interface-core";
@@ -96,7 +102,7 @@ async function reloadModule(
   await reloadWatchedModule(manager, MODULE_ID, loaderContext);
 }
 
-function isInvalidatedModuleError(reason: unknown): boolean {
+function isInvalidatedModuleError<T>(reason: T): boolean {
   return (
     reason instanceof Error &&
     "code" in reason &&
@@ -111,7 +117,7 @@ function waitForOrphanedFailure(): Promise<void> {
       process.off("unhandledRejection", onRejection);
       reject(new Error("The destroyed generation's work never failed"));
     }, ORPHAN_TIMEOUT_MS);
-    const onRejection = (reason: unknown) => {
+    const onRejection: NodeJS.UnhandledRejectionListener = (reason) => {
       if (!isInvalidatedModuleError(reason)) {
         return;
       }
@@ -134,7 +140,7 @@ describe("a module that fails to reload in watch mode", () => {
       await manager.destroyAll();
       manager = undefined;
     }
-    delete (global as Record<string, unknown>)[STATE_KEY];
+    delete testGlobals[STATE_KEY];
     if (projectFolder) {
       await fs.rm(projectFolder, { recursive: true, force: true });
     }
@@ -146,7 +152,7 @@ describe("a module that fails to reload in watch mode", () => {
       constructed: 0,
       failNextConstruct: false,
     };
-    (global as Record<string, unknown>)[STATE_KEY] = state;
+    testGlobals[STATE_KEY] = state;
     projectFolder = await createProject();
     manager = await launch(projectFolder, "default", { watch: true });
     const shutdown = sinon.spy(ShutdownManager.prototype, "shutdown");
@@ -155,7 +161,10 @@ describe("a module that fails to reload in watch mode", () => {
     state.failNextConstruct = true;
     const orphanedFailure = waitForOrphanedFailure();
     const reloadFailure = await reloadModule(manager, projectFolder).catch(
-      (error: unknown) => error,
+      (error) => {
+        assert.ok(error instanceof Error);
+        return error;
+      },
     );
     await orphanedFailure;
 

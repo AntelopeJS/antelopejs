@@ -11,7 +11,7 @@ export interface FixturePackage {
   files: Record<string, string>;
   dependencies?: string[];
   implementedInterfaces?: string[];
-  antelopeJs?: Record<string, unknown>;
+  antelopeJs?: object;
 }
 
 export const DATABASE_FILES = {
@@ -104,9 +104,9 @@ async function writePackage(
   }
 }
 
-export async function createProject(
+export async function createProject<T extends object>(
   packages: FixturePackage[],
-  modules: Record<string, Record<string, unknown>>,
+  modules: Record<string, T>,
 ): Promise<string> {
   const projectFolder = await fs.mkdtemp(
     path.join(os.tmpdir(), "ajs-instances-"),

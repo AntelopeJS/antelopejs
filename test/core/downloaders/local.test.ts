@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { expect } from "chai";
 import { ExecError } from "../../../src/core/cli/command";
 import { writeFileSync } from "node:fs";
@@ -154,7 +155,9 @@ describe("LocalDownloader", () => {
       await registry.load("/project", cache, source);
       expect.fail("Expected failure");
     } catch (err) {
-      const failure = (err as Error).cause as ExecError;
+      assert.ok(err instanceof Error);
+      assert.ok(err.cause instanceof ExecError);
+      const failure = err.cause;
       expect(failure).to.be.instanceOf(ExecError);
       expect(failure.stdout).to.equal("stdout fail");
       expect(failure.output).to.equal("stdout fail");

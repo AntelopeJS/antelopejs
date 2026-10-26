@@ -1,5 +1,9 @@
+import { moduleFixture, manifestFixture } from "../helpers/module-fixtures";
+
 import sinon from "sinon";
 import { expect } from "chai";
+import assert from "node:assert/strict";
+import { isObject } from "../../src/utils/object";
 import type { ConfigVars } from "@antelopejs/interface-core/config";
 
 import { ModuleState } from "../../src/types";
@@ -10,8 +14,12 @@ interface FakeModuleOptions {
   declared?: string[];
   implements?: string[];
   config?: unknown;
-  provide?: (config: unknown) => Promise<ConfigVars | void>;
-  construct?: (config: unknown) => Promise<void>;
+  provide?: (
+    config: import("../../src/core/module-manager").ModuleConfig["config"],
+  ) => Promise<ConfigVars | void>;
+  construct?: (
+    config: import("../../src/core/module-manager").ModuleConfig["config"],
+  ) => Promise<void>;
 }
 
 interface FakeModule {
@@ -25,8 +33,10 @@ interface FakeModule {
 
 function createManager(): ModuleManager {
   const manager = new ModuleManager();
-  sinon.stub(manager as any, "applyInterfaceStubs");
-  const detour = (manager as any).resolverDetour;
+  Object.defineProperty(manager, "applyInterfaceStubs", {
+    value: sinon.stub(),
+  });
+  const detour = manager["resolverDetour"];
   sinon.stub(detour, "attach").returns(true);
   sinon.stub(detour, "detach");
   return manager;
@@ -36,14 +46,17 @@ function addModule(
   manager: ModuleManager,
   options: FakeModuleOptions,
 ): FakeModule {
-  const module = {
+  const recorded: Pick<FakeModule, "received" | "providedWith"> = {
+    received: undefined,
+    providedWith: undefined,
+  };
+  const module = moduleFixture({
     id: options.id,
     version: "1.0.0",
     state: ModuleState.Loaded,
-    received: undefined as unknown,
-    providedWith: undefined as unknown,
+    ...recorded,
     constructed: false,
-    manifest: {
+    manifest: manifestFixture({
       folder: `/modules/${options.id}`,
       main: `/modules/${options.id}/index.js`,
       implements: options.implements ?? [],
@@ -52,12 +65,16 @@ function addModule(
         version: "1.0.0",
         antelopeJs: { configVars: options.declared ?? [] },
       },
-    },
-    provide: async (config: unknown) => {
+    }),
+    provide: async (
+      config: import("../../src/core/module-manager").ModuleConfig["config"],
+    ) => {
       module.providedWith = config;
       return options.provide?.(config);
     },
-    construct: async (config: unknown) => {
+    construct: async (
+      config: import("../../src/core/module-manager").ModuleConfig["config"],
+    ) => {
       module.received = config;
       module.constructed = true;
       module.state = ModuleState.Constructed;
@@ -66,12 +83,12 @@ function addModule(
     destroy: async () => {
       module.state = ModuleState.Loaded;
     },
-  };
-  (manager as any).loaded.set(options.id, {
+  });
+  manager["loaded"].set(options.id, {
     module,
     config: { config: options.config },
   });
-  return module as unknown as FakeModule;
+  return module;
 }
 
 async function constructAllErrors(manager: ModuleManager): Promise<unknown[]> {
@@ -180,7 +197,11 @@ describe("ModuleManager config variables", () => {
       config: { upstream: "http://127.0.0.1:${@api.API_PORT}" },
       provide: async (config) => {
         order.push("gateway");
-        return { GATEWAY_URL: (config as { upstream: string }).upstream };
+        assert.ok(isObject(config));
+        assert.ok("upstream" in config);
+        const upstream = String(config.upstream);
+        assert.equal(upstream, config.upstream);
+        return { GATEWAY_URL: upstream };
       },
     });
     const dms = addModule(manager, {
@@ -274,7 +295,8 @@ describe("ModuleManager config variables", () => {
     addModule(manager, {
       id: "api",
       declared: ["API_PORT"],
-      construct: async () => ({ API_PORT: 5010 }) as unknown as void,
+      // @ts-expect-error A legacy construct hook returns a value; this test verifies it is not published.
+      construct: async () => ({ API_PORT: 5010 }),
     });
     const dms = addModule(manager, {
       id: "dms",
@@ -384,9 +406,9 @@ describe("ModuleManager config variables", () => {
       id: "late",
       config: { url: "http://127.0.0.1:${@api.API_PORT}" },
     });
-    await manager.constructModules([
-      (manager as any).loaded.get("late") as never,
-    ]);
+    const lateEntry = manager["loaded"].get("late");
+    assert.ok(lateEntry);
+    await manager.constructModules([lateEntry]);
 
     expect(late.received).to.deep.equal({ url: "http://127.0.0.1:5010" });
   });

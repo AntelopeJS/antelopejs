@@ -28,7 +28,7 @@ interface ClockInterface {
 
 function startEmbedded(
   fixture: EmbeddedFixture,
-  overrides: Record<string, unknown> = {},
+  overrides: Partial<Parameters<typeof createRuntime>[0]> = {},
 ): AntelopeRuntime {
   return createRuntime({
     projectFolder: fixture.projectFolder,

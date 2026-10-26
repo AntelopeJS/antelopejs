@@ -1,5 +1,6 @@
 import sinon from "sinon";
 import { expect } from "chai";
+import assert from "node:assert/strict";
 import EventEmitter from "node:events";
 import { Logging } from "@antelopejs/interface-core/logging";
 import { ModuleContextInvalidatedError } from "@antelopejs/interface-core";
@@ -29,13 +30,13 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
   process.removeAllListeners("warning");
 
   for (const listener of snapshot.uncaughtException) {
-    process.on("uncaughtException", listener as any);
+    process.on("uncaughtException", listener);
   }
   for (const listener of snapshot.unhandledRejection) {
-    process.on("unhandledRejection", listener as any);
+    process.on("unhandledRejection", listener);
   }
   for (const listener of snapshot.warning) {
-    process.on("warning", listener as any);
+    process.on("warning", listener);
   }
 }
 
@@ -43,9 +44,10 @@ function loadBootstrapModule() {
   const modulePath =
     require.resolve("../../../src/core/runtime/runtime-bootstrap");
   delete require.cache[modulePath];
-  return require(
+  const bootstrap: typeof import("../../../src/core/runtime/runtime-bootstrap") = require(
     modulePath,
-  ) as typeof import("../../../src/core/runtime/runtime-bootstrap");
+  );
+  return bootstrap;
 }
 
 describe("runtime runtime-bootstrap", () => {
@@ -73,15 +75,13 @@ describe("runtime runtime-bootstrap", () => {
       );
       expect(current.warning.length).to.equal(originalListeners.warning.length);
 
-      const uncaught = current.uncaughtException[
-        current.uncaughtException.length - 1
-      ] as (error: Error) => void;
-      uncaught({ message: "boom-no-stack" } as Error);
+      const uncaught =
+        current.uncaughtException[current.uncaughtException.length - 1];
+      uncaught({ message: "boom-no-stack" });
       uncaught(new Error("boom-with-stack"));
 
-      const rejection = current.unhandledRejection[
-        current.unhandledRejection.length - 1
-      ] as (reason: unknown) => void;
+      const rejection =
+        current.unhandledRejection[current.unhandledRejection.length - 1];
       rejection(new AggregateError([new Error("inner-a"), "inner-b"], "agg"));
       rejection("plain rejection");
 
@@ -119,12 +119,10 @@ describe("runtime runtime-bootstrap", () => {
       bootstrap.setupProcessHandlers(shutdownManager);
       const withdraw = bootstrap.tolerateInvalidatedModuleWork();
       const current = snapshotProcessListeners();
-      const uncaught = current.uncaughtException.at(-1) as (
-        error: Error,
-      ) => void;
-      const rejection = current.unhandledRejection.at(-1) as (
-        reason: unknown,
-      ) => void;
+      const uncaught = current.uncaughtException.at(-1);
+      const rejection = current.unhandledRejection.at(-1);
+      assert.ok(uncaught);
+      assert.ok(rejection);
 
       uncaught(orphaned);
       rejection(orphaned);
@@ -153,9 +151,8 @@ describe("runtime runtime-bootstrap", () => {
       bootstrap.setupProcessHandlers(shutdownManager);
 
       const current = snapshotProcessListeners();
-      const uncaught = current.uncaughtException[
-        current.uncaughtException.length - 1
-      ] as (error: Error) => void;
+      const uncaught =
+        current.uncaughtException[current.uncaughtException.length - 1];
       uncaught(new Error("boom"));
 
       expect(shutdownStub.calledOnceWith(1)).to.equal(true);
@@ -181,9 +178,8 @@ describe("runtime runtime-bootstrap", () => {
       bootstrap.releaseProcessShutdownManager(second);
 
       const current = snapshotProcessListeners();
-      const uncaught = current.uncaughtException[
-        current.uncaughtException.length - 1
-      ] as (error: Error) => void;
+      const uncaught =
+        current.uncaughtException[current.uncaughtException.length - 1];
       uncaught(new Error("boom"));
 
       expect(firstShutdown.calledOnceWith(1)).to.equal(true);
@@ -209,9 +205,8 @@ describe("runtime runtime-bootstrap", () => {
       bootstrap.setupProcessHandlers(shutdownManager);
 
       const current = snapshotProcessListeners();
-      const uncaught = current.uncaughtException[
-        current.uncaughtException.length - 1
-      ] as (error: Error) => void;
+      const uncaught =
+        current.uncaughtException[current.uncaughtException.length - 1];
       uncaught(new Error("boom"));
 
       expect(shutdownStub.calledOnceWith(1)).to.equal(true);
@@ -257,10 +252,11 @@ describe("runtime runtime-bootstrap", () => {
     sinon.stub(ConfigLoader.prototype, "load").resolves({
       name: "sample",
       cacheFolder: ".cache",
+      // @ts-expect-error Missing modules exercises runtime normalization of partially loaded input (#228).
       modules: undefined,
       envOverrides: {},
       logging: { enabled: true },
-    } as any);
+    });
 
     const setupLoggingStub = sinon.stub(logging, "setupAntelopeProjectLogging");
     const addFilterStub = sinon.stub(logging, "addChannelFilter");
@@ -294,9 +290,10 @@ describe("runtime runtime-bootstrap", () => {
       {
         name: "sample",
         cacheFolder: "/var/cache",
+        // @ts-expect-error Missing modules exercises runtime normalization of partially loaded input (#228).
         modules: undefined,
         envOverrides: {},
-      } as any,
+      },
       "/project",
     );
 
@@ -314,10 +311,9 @@ describe("runtime runtime-bootstrap", () => {
     try {
       bootstrap.setupProcessHandlers();
       const listeners = process.listeners("unhandledRejection");
-      const rejection = listeners[listeners.length - 1] as (
-        reason: unknown,
-      ) => void;
-      rejection(aggregate);
+      const rejection = listeners[listeners.length - 1];
+      assert.ok(rejection);
+      rejection(aggregate, Promise.resolve());
 
       expect(errorStub.args).to.deep.equal([
         ["Unhandled rejection:", aggregate],

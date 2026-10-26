@@ -39,12 +39,18 @@ async function importConfigInput(
   configPath: string,
   fresh = false,
 ): Promise<ConfigInput> {
-  const jiti = createJiti(configPath, {
+  const options: NonNullable<Parameters<typeof createJiti>[1]> = {
     alias: { [CORE_CONFIG_PACKAGE]: CORE_CONFIG_ENTRY },
-    ...(fresh ? { moduleCache: false, fsCache: false } : {}),
-  });
-  const loaded = await jiti.import(configPath);
-  return (loaded as any).default ?? loaded;
+  };
+  if (fresh) {
+    options.moduleCache = false;
+    options.fsCache = false;
+  }
+  const jiti = createJiti(configPath, options);
+  const loaded = await jiti.import<ConfigInput & { default?: ConfigInput }>(
+    configPath,
+  );
+  return loaded.default ?? loaded;
 }
 
 export async function loadTsConfigFile(
@@ -54,6 +60,7 @@ export async function loadTsConfigFile(
 ): Promise<AntelopeConfig> {
   const configInput = await importConfigInput(configPath, fresh);
 
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The published ConfigInput union accepts either a config object or factory; adding a discriminator would change accepted config exports.
   if (typeof configInput === "function") {
     return await configInput({ env: environment ?? DEFAULT_ENV });
   }
@@ -79,6 +86,7 @@ export class ConfigLoader {
 
     let config = { ...rawConfig };
     if (environment && rawConfig.environments?.[environment]) {
+      // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Environment overrides are not validated today; checking required fields would change acceptance (#228).
       config = mergeDeep(
         config,
         rawConfig.environments[environment],
@@ -93,10 +101,16 @@ export class ConfigLoader {
     for (const moduleName of Object.keys(expandedModules)) {
       const moduleConfigPath = getModuleConfigPath(projectFolder, moduleName);
       if (await this.fs.exists(moduleConfigPath)) {
-        const moduleConfig = await this.loadJsonFile(moduleConfigPath);
+        const moduleConfig =
+          await this.loadJsonFile<Parameters<typeof mergeDeep>[0]>(
+            moduleConfigPath,
+          );
         expandedModules[moduleName].config = mergeDeep(
-          (expandedModules[moduleName].config as Record<string, any>) ?? {},
-          moduleConfig as Record<string, any>,
+          // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
+          (expandedModules[moduleName].config as Parameters<
+            typeof mergeDeep
+          >[0]) ?? {},
+          moduleConfig,
         );
       }
     }
@@ -116,7 +130,7 @@ export class ConfigLoader {
     });
 
     return {
-      ...(processed as LoadedConfig),
+      ...processed,
       test: configWithOverrides.test,
     };
   }

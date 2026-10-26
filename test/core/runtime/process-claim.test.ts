@@ -1,7 +1,8 @@
+import assert from "node:assert/strict";
 import sinon from "sinon";
 import { expect } from "chai";
 
-import type { ModuleManager } from "../../../src/core/module-manager";
+import { managerFixture } from "../../helpers/module-fixtures";
 import type { ShutdownManager } from "../../../src/core/shutdown";
 import * as processTree from "../../../src/core/shutdown/process-tree";
 import { captureOutputAsync } from "../../helpers/capture-output";
@@ -26,7 +27,7 @@ const SHUTDOWN_TIMEOUT_MS = 10000;
 type ProcessSignal = "SIGINT" | "SIGTERM";
 
 function sendSignal(manager: ShutdownManager, signal: ProcessSignal): void {
-  (manager as any).handleSignal(signal);
+  manager["handleSignal"](signal);
 }
 
 function hang(): Promise<void> {
@@ -35,10 +36,13 @@ function hang(): Promise<void> {
 
 describe("runtime process claim", () => {
   let exit: sinon.SinonStub;
+  let terminate: sinon.SinonStubbedFunction<
+    typeof processTree.terminateProcessTree
+  >;
 
   beforeEach(() => {
     exit = sinon.stub(process, "exit");
-    sinon.stub(processTree, "terminateProcessTree").resolves([]);
+    terminate = sinon.stub(processTree, "terminateProcessTree").resolves([]);
   });
 
   afterEach(() => {
@@ -71,9 +75,7 @@ describe("runtime process claim", () => {
     await manager.shutdown();
 
     expect(process.listenerCount("SIGINT")).to.equal(sigintCount);
-    expect(
-      (processTree.terminateProcessTree as sinon.SinonStub).called,
-    ).to.equal(false);
+    expect(terminate.called).to.equal(false);
   });
 
   it("says the project is stopping, then that it stopped, and exits with 130", async () => {
@@ -87,9 +89,7 @@ describe("runtime process claim", () => {
 
     expect(output.stderr).to.contain("Stopped the project");
     expect(exit.calledOnceWith(CANCELLED_EXIT_CODE)).to.equal(true);
-    expect(
-      (processTree.terminateProcessTree as sinon.SinonStub).calledOnce,
-    ).to.equal(true);
+    expect(terminate.calledOnce).to.equal(true);
   });
 
   it("exits with 0 after a graceful stop on SIGTERM", async () => {
@@ -163,7 +163,7 @@ describe("runtime process claim", () => {
 
     const handler = registerModuleShutdownHandler(
       manager,
-      modules as unknown as ModuleManager,
+      managerFixture(modules),
     );
 
     let thrown: unknown;
@@ -173,7 +173,8 @@ describe("runtime process claim", () => {
       thrown = error;
     }
     expect(thrown).to.be.instanceOf(AggregateError);
-    expect((thrown as AggregateError).errors).to.have.length(2);
+    assert.ok(thrown instanceof AggregateError);
+    expect(thrown.errors).to.have.length(2);
     expect(modules.destroyAll.calledAfter(modules.stopAll)).to.equal(true);
   });
 });

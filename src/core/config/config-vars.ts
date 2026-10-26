@@ -40,6 +40,7 @@ export function declaredConfigVars(source?: {
 }
 
 /** Every config variable reference a configuration holds, at any depth. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported scanning accepts any application config and ignores non-string leaves without rejecting them.
 export function scanConfigVars(config: unknown): ConfigVarScan {
   const references = new Map<string, ConfigVarReference>();
   const malformed = new Set<string>();
@@ -67,9 +68,11 @@ export function scanConfigVars(config: unknown): ConfigVarScan {
  * came in.
  */
 export function substituteConfigVars(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported substitution accepts arbitrary config values and preserves untouched branches by identity.
   config: unknown,
   lookup: ConfigVarLookup,
-): unknown {
+) {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Exported config substitution accepts arbitrary leaves and changes only string references, preserving untouched values by identity.
   if (typeof config === "string") {
     return substituteString(config, lookup);
   }
@@ -95,9 +98,9 @@ function substituteArray(
 }
 
 function substituteObject(
-  config: Record<string, unknown>,
+  config: Record<string, Parameters<typeof substituteConfigVars>[0]>,
   lookup: ConfigVarLookup,
-): Record<string, unknown> {
+): ReturnType<typeof Object.fromEntries<unknown>> {
   const entries = Object.entries(config).map(
     ([key, value]) => [key, substituteConfigVars(value, lookup)] as const,
   );
@@ -105,7 +108,10 @@ function substituteObject(
   return changed ? Object.fromEntries(entries) : config;
 }
 
-function substituteString(value: string, lookup: ConfigVarLookup): unknown {
+function substituteString(
+  value: string,
+  lookup: ConfigVarLookup,
+): ConfigVarValue {
   const pure = value.match(PURE_REFERENCE_PATTERN);
   if (pure) {
     return lookup({ token: value, module: pure[1], variable: pure[2] });
@@ -122,7 +128,11 @@ function matchReferences(value: string): ConfigVarReference[] {
   );
 }
 
-function visitStrings(value: unknown, visit: (value: string) => void): void {
+function visitStrings(
+  value: Parameters<typeof scanConfigVars>[0],
+  visit: (value: string) => void,
+): void {
+  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Reference scanning traverses open application config and must visit strings while ignoring other primitive leaves without rejecting them.
   if (typeof value === "string") {
     visit(value);
     return;

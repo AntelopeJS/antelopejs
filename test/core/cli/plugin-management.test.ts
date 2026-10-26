@@ -10,10 +10,7 @@ import {
   runUpdate,
   type PluginReport,
 } from "../../../src/core/cli/plugin-management";
-import {
-  findOfficialPlugin,
-  type OfficialPlugin,
-} from "../../../src/core/cli/plugin-registry";
+import { findOfficialPlugin } from "../../../src/core/cli/plugin-registry";
 import { createMemoryUi } from "../../helpers/memory-ui";
 import {
   createGlobalRootResolver,
@@ -138,20 +135,25 @@ describe("Official plugin statuses", () => {
 });
 
 describe("Official plugin table", () => {
+  const plugin =
+    findOfficialPlugin("dms") ??
+    (() => {
+      throw new Error("The official dms plugin must be registered");
+    })();
   const compatible = describePluginStatus({
-    plugin: findOfficialPlugin("dms") as OfficialPlugin,
+    plugin,
     executablePath: DMS_EXECUTABLE,
     source: "path",
     version: "1.0.0",
     compatibility: { status: "compatible" },
   });
   const notInstalled = describePluginStatus({
-    plugin: findOfficialPlugin("dms") as OfficialPlugin,
+    plugin,
   });
 
   function incompatible(source: ExecutableSource): PluginReport {
     return describePluginStatus({
-      plugin: findOfficialPlugin("dms") as OfficialPlugin,
+      plugin,
       executablePath: path.join(process.cwd(), "node_modules/.bin/ajs-dms"),
       source,
       version: "0.9.0",

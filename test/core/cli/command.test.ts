@@ -1,6 +1,9 @@
 import sinon from "sinon";
 import { expect } from "chai";
-import type { ChildProcess } from "node:child_process";
+import { ChildProcess } from "node:child_process";
+import { PassThrough } from "node:stream";
+
+import { expectInstanceOf, rejectionOf } from "./fixtures";
 
 import {
   closeStdin,
@@ -36,14 +39,16 @@ describe("Command Execution", () => {
     });
 
     it("closes the child stdin", () => {
-      const end = sinon.spy();
-      closeStdin({ stdin: { end } } as unknown as ChildProcess);
+      const child = new ChildProcess();
+      child.stdin = new PassThrough();
+      const end = sinon.spy(child.stdin, "end");
+      closeStdin(child);
 
       expect(end.calledOnce).to.equal(true);
     });
 
     it("tolerates a child without stdin", () => {
-      expect(() => closeStdin({} as ChildProcess)).to.not.throw();
+      expect(() => closeStdin(new ChildProcess())).to.not.throw();
     });
   });
 
@@ -76,9 +81,8 @@ describe("Command Execution", () => {
       try {
         await ExecuteCMD("sh -c 'echo partial; echo oops 1>&2; exit 3'", {});
         expect.fail("Should have rejected");
-      } catch (err) {
-        expect(err).to.be.instanceOf(ExecError);
-        const failure = err as ExecError;
+      } catch (failure) {
+        expectInstanceOf(failure, ExecError);
         expect(failure.name).to.equal("ExecError");
         expect(failure.command).to.equal(
           "sh -c 'echo partial; echo oops 1>&2; exit 3'",
@@ -109,7 +113,8 @@ describe("Command Execution", () => {
         await ExecuteCMD("kill -TERM $$", {});
         expect.fail("Should have rejected");
       } catch (err) {
-        expect((err as ExecError).exitCode).to.equal(1);
+        expectInstanceOf(err, ExecError);
+        expect(err.exitCode).to.equal(1);
       }
     });
   });
@@ -130,9 +135,9 @@ describe("Command Execution", () => {
         await ExecuteFile("sh", ["-c", "exit 4"], {});
         expect.fail("Should have rejected");
       } catch (err) {
-        expect(err).to.be.instanceOf(ExecError);
-        expect((err as ExecError).command).to.equal("sh -c exit 4");
-        expect((err as ExecError).exitCode).to.equal(4);
+        expectInstanceOf(err, ExecError);
+        expect(err.command).to.equal("sh -c exit 4");
+        expect(err.exitCode).to.equal(4);
       }
     });
 
@@ -143,7 +148,7 @@ describe("Command Execution", () => {
       });
       controller.abort();
 
-      const thrown = await pending.catch((error: unknown) => error);
+      const thrown = await rejectionOf(pending);
       expect(thrown).to.be.instanceOf(ExecError);
     });
   });

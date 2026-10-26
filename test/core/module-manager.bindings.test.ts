@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import path from "node:path";
 import { expect } from "chai";
 import { tmpdir } from "node:os";
@@ -21,7 +22,7 @@ interface ModuleSpec {
   importOverrides?: Map<string, InterfaceConnectionRef[]>;
 }
 
-async function writeJson(file: string, value: unknown): Promise<void> {
+async function writeJson<T>(file: string, value: T): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, JSON.stringify(value));
 }
@@ -114,7 +115,8 @@ describe("ModuleManager interface bindings", () => {
     }
 
     expect(thrown).to.be.instanceOf(InterfaceBindingError);
-    expect((thrown as Error).message).to.include(
+    assert.ok(thrown instanceof Error);
+    expect(thrown.message).to.include(
       `m is reached with two bindings for ${DATABASE}: top2 -> m uses the default 'a', top1 -> m pins 'b'. Pin ${DATABASE} on m to choose.`,
     );
   });
@@ -148,7 +150,8 @@ describe("ModuleManager interface bindings", () => {
       thrown = error;
     }
 
-    expect((thrown as Error).message).to.equal(
+    assert.ok(thrown instanceof Error);
+    expect(thrown.message).to.equal(
       `Module 'consumer' declares a '${DATABASE}' connection without a source, but loaded modules provide that interface; name the provider.`,
     );
   });

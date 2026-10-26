@@ -32,6 +32,7 @@ function describeResetValues(
   const ui = getProcessUi();
   const palette = ui.palette();
   return Object.entries(defaultConfig).map(([key, defaultValue]) => {
+    // SAFETY: getDefaultUserConfig constructs an object literal containing only the UserConfig git key.
     const currentValue = currentConfig[key as keyof UserConfig];
     return {
       label: key,
@@ -46,6 +47,7 @@ export async function resetConfig(options: ResetOptions): Promise<void> {
   const defaultConfig = getDefaultUserConfig();
 
   const hasChanges = Object.entries(defaultConfig).some(
+    // SAFETY: getDefaultUserConfig constructs an object literal containing only the UserConfig git key.
     ([key, value]) => currentConfig[key as keyof UserConfig] !== value,
   );
 

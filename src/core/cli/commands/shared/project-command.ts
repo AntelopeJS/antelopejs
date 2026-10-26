@@ -33,9 +33,7 @@ export function resolveInheritedVerbose(
   if (verbose) {
     return verbose;
   }
-  return command.parent?.parent?.getOptionValue("verbose") as
-    | string[]
-    | undefined;
+  return command.parent?.parent?.getOptionValue("verbose");
 }
 
 export function listKnownEnvironments(config: AntelopeConfig): string[] {

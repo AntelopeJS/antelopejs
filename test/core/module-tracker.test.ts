@@ -64,11 +64,7 @@ describe("ModuleTracker", () => {
     tracker.add({ id: "consumer", dir: "/consumer" });
     tracker.add({ id: "provider", dir: "/provider", isImplementor: true });
 
-    const entries = internal.moduleByFolder as Array<{
-      id: string;
-      dir: string;
-      isImplementor?: boolean;
-    }>;
+    const entries = internal.moduleByFolder;
     const consumer = entries.find((e) => e.id === "consumer");
     const provider = entries.find((e) => e.id === "provider");
     expect(consumer?.isImplementor).to.equal(undefined);

@@ -1,6 +1,11 @@
 import sinon from "sinon";
 import { expect } from "chai";
+import type {
+  AntelopeConfig,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 
+import { stubLoadedConfig, moduleManifest } from "../../fixtures";
 import * as cliUi from "../../../../../src/core/cli/cli-ui";
 import { getProcessUi } from "../../../../../src/core/cli/output";
 import * as common from "../../../../../src/core/cli/common";
@@ -61,7 +66,7 @@ describe("project modules behavior", () => {
     sinon.stub(common, "readConfig").resolves({
       name: "proj",
       environments: { production: {} },
-    } as any);
+    });
     const loadStub = sinon.stub(ConfigLoader.prototype, "load");
     const handlerStub = sinon.stub();
     sinon.stub(handlers, "get").returns(handlerStub);
@@ -88,23 +93,27 @@ describe("project modules behavior", () => {
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         existing: {
           source: { type: "package", package: "existing", version: "1.0.0" },
         },
       },
-    } as any);
+    });
 
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
       .returns("pkg");
-    sinon
-      .stub(DownloaderRegistry.prototype, "load")
-      .resolves([
-        { manifest: { antelopeJs: { defaultConfig: { foo: "bar" } } } } as any,
-      ]);
+    sinon.stub(DownloaderRegistry.prototype, "load").resolves([
+      moduleManifest({
+        manifest: {
+          name: "newmod",
+          version: "1.0.0",
+          antelopeJs: { defaultConfig: { foo: "bar" } },
+        },
+      }),
+    ]);
 
     sinon
       .stub(command, "ExecuteFile")
@@ -128,7 +137,7 @@ describe("project modules behavior", () => {
   it("reports each added module with its source, then one summary", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(common, "writeConfig").resolves();
 
@@ -136,7 +145,7 @@ describe("project modules behavior", () => {
     const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     const originalHandler = handlers.get("local");
-    handlers.set("local", async () => ["absMod", "local-src"] as any);
+    handlers.set("local", async () => ["absMod", "local-src"]);
     const absPath = "/tmp/abs-module";
 
     try {
@@ -172,7 +181,7 @@ describe("project modules behavior", () => {
       cacheFolder: "/tmp/abs-cache",
     };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     const loadStub = sinon
       .stub(ModuleCache.prototype, "load")
       .callsFake(function (this: ModuleCache) {
@@ -197,9 +206,7 @@ describe("project modules behavior", () => {
   it("skips modules and shows yellow summary when all skipped", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: { existing: {} } } as any);
+    stubLoadedConfig({ modules: { existing: {} } });
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(common, "writeConfig").resolves();
 
@@ -223,7 +230,7 @@ describe("project modules behavior", () => {
   it("reports a module of an unknown source as failed", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     const problemStub = sinon.stub(getProcessUi(), "problem");
@@ -248,7 +255,7 @@ describe("project modules behavior", () => {
   it("joins the summary of a failed add with the ASCII separator", async () => {
     useAsciiSymbols();
     sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(getProcessUi(), "problem");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
@@ -265,7 +272,7 @@ describe("project modules behavior", () => {
 
   it("reports an invalid git URL without offering a trace", async () => {
     sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(getProcessUi(), "summary");
     const problemStub = sinon.stub(getProcessUi(), "problem");
@@ -284,7 +291,7 @@ describe("project modules behavior", () => {
 
   it("reports a version that is neither a range nor a dist-tag without offering a trace", async () => {
     sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(command, "ExecuteFile").resolves({
       code: 0,
@@ -309,7 +316,7 @@ describe("project modules behavior", () => {
   it("logs download success when registry returns no manifests", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
@@ -332,7 +339,7 @@ describe("project modules behavior", () => {
   it("errors and skips module when download fails with non-error", async () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon
       .stub(DownloaderRegistry.prototype, "getLoaderIdentifier")
@@ -363,7 +370,7 @@ describe("project modules behavior", () => {
     const config: any = { name: "proj" };
     sinon.stub(common, "readConfig").resolves(config);
     sinon.stub(common, "writeConfig").resolves();
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
     const errorStub = sinon.stub(getProcessUi(), "problem");
@@ -373,7 +380,7 @@ describe("project modules behavior", () => {
     collectStderr();
 
     const originalHandler = handlers.get("local");
-    handlers.set("local", () => Promise.reject("boom") as any);
+    handlers.set("local", () => Promise.reject("boom"));
     try {
       await projectModulesAddCommand(["modA"], {
         mode: "local",
@@ -394,14 +401,18 @@ describe("project modules behavior", () => {
     const config: any = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     sinon.stub(common, "writeConfig").resolves();
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon
       .stub(packageDownloader, "registerPackageDownloader")
       .callsFake((registry) => {
-        (registry as any).register("package", "package", async () => {
-          throw new Error("down");
-        });
+        registry.register<ModuleSourcePackage>(
+          "package",
+          "package",
+          async () => {
+            throw new Error("down");
+          },
+        );
       });
 
     const errorStub = sinon.stub(getProcessUi(), "problem");
@@ -411,16 +422,12 @@ describe("project modules behavior", () => {
     collectStderr();
 
     const originalHandler = handlers.get("local");
-    handlers.set(
-      "local",
-      async () =>
-        [
-          "localmod",
-          {
-            source: { type: "package", package: "localmod", version: "1.0.0" },
-          },
-        ] as any,
-    );
+    handlers.set("local", async () => [
+      "localmod",
+      {
+        source: { type: "package", package: "localmod", version: "1.0.0" },
+      },
+    ]);
     try {
       await projectModulesAddCommand(["localmod"], {
         mode: "local",
@@ -441,7 +448,7 @@ describe("project modules behavior", () => {
     const config: any = { name: "proj" };
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
     const errorStub = sinon.stub(getProcessUi(), "problem");
@@ -475,7 +482,7 @@ describe("project modules behavior", () => {
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
 
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules: {} } as any);
+    stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
 
     sinon
@@ -514,11 +521,11 @@ describe("project modules behavior", () => {
     const [name, config] = await handler("pkg", {
       mode: "package",
       project: "/tmp/project",
-    } as any);
+    });
 
     expect(execStub.called).to.equal(true);
     expect(name).to.equal("pkg");
-    expect((config as any).source.version).to.equal("^1.2.3");
+    expect(config).to.have.nested.property("source.version", "^1.2.3");
   });
 
   it("package handler keeps an explicit semver range without registry lookup", async () => {
@@ -527,11 +534,11 @@ describe("project modules behavior", () => {
     const [name, config] = await handler("pkg@^2.0.0", {
       mode: "package",
       project: "/tmp/project",
-    } as any);
+    });
 
     expect(execStub.called).to.equal(false);
     expect(name).to.equal("pkg");
-    expect((config as any).source.version).to.equal("^2.0.0");
+    expect(config).to.have.nested.property("source.version", "^2.0.0");
   });
 
   it("package handler accepts a registry dist-tag", async () => {
@@ -544,11 +551,11 @@ describe("project modules behavior", () => {
     const [name, config] = await handler("pkg@beta", {
       mode: "package",
       project: "/tmp/project",
-    } as any);
+    });
 
     expect(execStub.firstCall.args[1]).to.include("dist-tags");
     expect(name).to.equal("pkg");
-    expect((config as any).source.version).to.equal("beta");
+    expect(config).to.have.nested.property("source.version", "beta");
   });
 
   it("package handler rejects a spec that is neither range nor dist-tag", async () => {
@@ -563,7 +570,7 @@ describe("project modules behavior", () => {
       await handler("pkg@lastest", {
         mode: "package",
         project: "/tmp/project",
-      } as any);
+      });
     } catch (err) {
       caught = err;
     }
@@ -579,7 +586,7 @@ describe("project modules behavior", () => {
     const handler = handlers.get("package")!;
     let caught: unknown;
     try {
-      await handler("pkg", { mode: "package", project: "/tmp/project" } as any);
+      await handler("pkg", { mode: "package", project: "/tmp/project" });
     } catch (err) {
       caught = err;
     }
@@ -593,7 +600,7 @@ describe("project modules behavior", () => {
       await handler("not-a-url", {
         mode: "git",
         project: "/tmp/project",
-      } as any);
+      });
     } catch (err) {
       caught = err;
     }
@@ -602,9 +609,10 @@ describe("project modules behavior", () => {
     const [name, config] = await handler("https://example.com/repo.git", {
       mode: "git",
       project: "/tmp/project",
-    } as any);
+    });
     expect(name).to.equal("repo");
-    expect((config as any).source.remote).to.equal(
+    expect(config).to.have.nested.property(
+      "source.remote",
       "https://example.com/repo.git",
     );
   });
@@ -617,23 +625,29 @@ describe("project modules behavior", () => {
 
       const localHandler = handlers.get("local")!;
       const [localName, localConfig] = await localHandler(pkgDir, {
+        mode: "local",
         project: tempDir,
-      } as any);
+      });
       expect(localName).to.equal("moduleA");
-      expect((localConfig as any).source.type).to.equal("local");
-      expect((localConfig as any).source.watchDir).to.deep.equal(["src"]);
-      expect((localConfig as any).source.reloadCommand).to.deep.equal([
+      expect(localConfig).to.have.nested.property("source.type", "local");
+      expect(localConfig).to.have.deep.nested.property("source.watchDir", [
+        "src",
+      ]);
+      expect(localConfig).to.have.deep.nested.property("source.reloadCommand", [
         "npx tsc",
       ]);
 
       const dirHandler = handlers.get("dir")!;
       const [dirName, dirConfig] = await dirHandler(pkgDir, {
+        mode: "dir",
         project: tempDir,
-      } as any);
+      });
       expect(dirName.startsWith(":")).to.equal(true);
-      expect((dirConfig as any).source.type).to.equal("local-folder");
-      expect((dirConfig as any).source.watchDir).to.deep.equal(["src"]);
-      expect((dirConfig as any).source.reloadCommand).to.deep.equal([
+      expect(dirConfig).to.have.nested.property("source.type", "local-folder");
+      expect(dirConfig).to.have.deep.nested.property("source.watchDir", [
+        "src",
+      ]);
+      expect(dirConfig).to.have.deep.nested.property("source.reloadCommand", [
         "npx tsc",
       ]);
     } finally {
@@ -650,29 +664,33 @@ describe("project modules behavior", () => {
 
       const localHandler = handlers.get("local")!;
       const [localName, localConfig] = await localHandler("moduleA", {
+        mode: "local",
         project: tempDir,
-      } as any);
+      });
       expect(localName).to.equal("moduleA");
-      expect((localConfig as any).source.path).to.equal("moduleA");
+      expect(localConfig).to.have.nested.property("source.path", "moduleA");
 
       const [rootName, rootConfig] = await localHandler(".", {
+        mode: "local",
         project: tempDir,
-      } as any);
+      });
       expect(rootName).to.equal("root-module");
-      expect((rootConfig as any).source.path).to.equal(".");
+      expect(rootConfig).to.have.nested.property("source.path", ".");
 
       const dirHandler = handlers.get("dir")!;
       const [dirName, dirConfig] = await dirHandler("moduleA", {
+        mode: "dir",
         project: tempDir,
-      } as any);
+      });
       expect(dirName.startsWith(":")).to.equal(true);
-      expect((dirConfig as any).source.path).to.equal("moduleA");
+      expect(dirConfig).to.have.nested.property("source.path", "moduleA");
 
       const [rootDirName, rootDirConfig] = await dirHandler(".", {
+        mode: "dir",
         project: tempDir,
-      } as any);
+      });
       expect(rootDirName.startsWith(":")).to.equal(true);
-      expect((rootDirConfig as any).source.path).to.equal(".");
+      expect(rootDirConfig).to.have.nested.property("source.path", ".");
     } finally {
       cleanupTempDir(tempDir);
     }
@@ -681,7 +699,7 @@ describe("project modules behavior", () => {
   it("errors when environment is missing for removal", async () => {
     sinon
       .stub(common, "readConfig")
-      .resolves({ name: "proj", environments: {} } as any);
+      .resolves({ name: "proj", environments: {} });
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     const infoStub = sinon.stub(cliUi, "info");
 
@@ -706,9 +724,7 @@ describe("project modules behavior", () => {
       environments: { production: {} },
     };
     sinon.stub(common, "readConfig").resolves(config);
-    const loadStub = sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: { foo: {} } } as any);
+    const loadStub = stubLoadedConfig({ modules: { foo: {} } });
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
@@ -737,9 +753,7 @@ describe("project modules behavior", () => {
   });
 
   it("errors when no modules are installed", async () => {
-    sinon
-      .stub(common, "readConfig")
-      .resolves({ name: "proj", modules: {} } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
     const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
 
@@ -755,10 +769,8 @@ describe("project modules behavior", () => {
   it("errors when none of the specified modules are installed", async () => {
     sinon
       .stub(common, "readConfig")
-      .resolves({ name: "proj", modules: { foo: {} } } as any);
-    sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: { foo: {} } } as any);
+      .resolves({ name: "proj", modules: { foo: {} } });
+    stubLoadedConfig({ modules: { foo: {} } });
     const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
 
@@ -779,9 +791,7 @@ describe("project modules behavior", () => {
       },
     };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: { foo: {}, bar: {} } } as any);
+    stubLoadedConfig({ modules: { foo: {}, bar: {} } });
     const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
@@ -807,9 +817,7 @@ describe("project modules behavior", () => {
       },
     };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: { ":foo": {}, bar: {} } } as any);
+    stubLoadedConfig({ modules: { ":foo": {}, bar: {} } });
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     const messageStub = sinon.stub(getProcessUi(), "message");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
@@ -841,9 +849,7 @@ describe("project modules behavior", () => {
       },
     };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: { foo: {} } } as any);
+    stubLoadedConfig({ modules: { foo: {} } });
     const messageStub = sinon.stub(getProcessUi(), "message");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
     sinon.stub(common, "writeConfig").resolves();
@@ -867,9 +873,7 @@ describe("project modules behavior", () => {
       },
     };
     sinon.stub(common, "readConfig").resolves(config);
-    sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: { foo: {} } } as any);
+    stubLoadedConfig({ modules: { foo: {} } });
     const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
@@ -891,9 +895,7 @@ describe("project modules behavior", () => {
     };
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
-    sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: { foo: {} } } as any);
+    stubLoadedConfig({ modules: { foo: {} } });
     const messageStub = sinon.stub(getProcessUi(), "message");
     sinon.stub(getProcessUi(), "summary");
 
@@ -918,9 +920,7 @@ describe("project modules behavior", () => {
     };
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
-    sinon
-      .stub(ConfigLoader.prototype, "load")
-      .resolves({ modules: { foo: {} } } as any);
+    stubLoadedConfig({ modules: { foo: {} } });
     const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "warning");
@@ -947,7 +947,7 @@ describe("project modules behavior", () => {
   it("errors when environment is missing for update", async () => {
     sinon
       .stub(common, "readConfig")
-      .resolves({ name: "proj", environments: {} } as any);
+      .resolves({ name: "proj", environments: {} });
     const infoStub = sinon.stub(cliUi, "info");
 
     await expectUnknownEnvironment(
@@ -967,9 +967,7 @@ describe("project modules behavior", () => {
   });
 
   it("errors when no modules are installed for update", async () => {
-    sinon
-      .stub(common, "readConfig")
-      .resolves({ name: "proj", modules: {} } as any);
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules: {} });
     const errorStub = sinon.stub(cliUi, "error");
     sinon.stub(cliUi, "info");
 
@@ -988,14 +986,14 @@ describe("project modules behavior", () => {
           source: { type: "git", remote: "https://example.com/repo.git" },
         },
       },
-    } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    });
+    stubLoadedConfig({
       modules: {
         git: {
           source: { type: "git", remote: "https://example.com/repo.git" },
         },
       },
-    } as any);
+    });
     const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     const cmd = cmdUpdate();
@@ -1015,14 +1013,14 @@ describe("project modules behavior", () => {
           source: { type: "git", remote: "https://example.com/repo.git" },
         },
       },
-    } as any);
-    const loadStub = sinon.stub(ConfigLoader.prototype, "load").resolves({
+    });
+    const loadStub = stubLoadedConfig({
       modules: {
         git: {
           source: { type: "git", remote: "https://example.com/repo.git" },
         },
       },
-    } as any);
+    });
     const summaryStub = sinon.stub(getProcessUi(), "summary");
 
     await cmdUpdate().parseAsync([
@@ -1044,12 +1042,12 @@ describe("project modules behavior", () => {
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    });
+    stubLoadedConfig({
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
+    });
     sinon
       .stub(command, "ExecuteFile")
       .resolves({ code: 1, stdout: "", stderr: "oops" });
@@ -1070,12 +1068,12 @@ describe("project modules behavior", () => {
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    });
+    stubLoadedConfig({
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
+    });
     sinon.stub(command, "ExecuteFile").callsFake(() => Promise.reject("boom"));
     sinon.stub(cliUi, "warning");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
@@ -1094,12 +1092,12 @@ describe("project modules behavior", () => {
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    });
+    stubLoadedConfig({
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
+    });
     sinon
       .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "1.0.0", stderr: "" });
@@ -1123,11 +1121,11 @@ describe("project modules behavior", () => {
     };
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
-    sinon.stub(ConfigLoader.prototype, "load").resolves({
+    stubLoadedConfig({
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },
-    } as any);
+    });
 
     sinon
       .stub(command, "ExecuteFile")
@@ -1157,10 +1155,10 @@ describe("project modules behavior", () => {
   it("fails without checking or writing when a requested module is not in the project", async () => {
     const modules = {
       pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
-    };
-    sinon.stub(common, "readConfig").resolves({ modules } as any);
+    } satisfies AntelopeConfig["modules"];
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules });
     const writeStub = sinon.stub(common, "writeConfig").resolves();
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
+    stubLoadedConfig({ modules });
     const execStub = sinon.stub(command, "ExecuteFile");
     const errorStub = sinon.stub(cliUi, "error");
     const summaryStub = sinon.stub(getProcessUi(), "summary");
@@ -1200,10 +1198,10 @@ describe("project modules behavior", () => {
       gitMod: {
         source: { type: "git", remote: "https://example.com/repo.git" },
       },
-    };
-    sinon.stub(common, "readConfig").resolves({ modules } as any);
+    } satisfies AntelopeConfig["modules"];
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules });
     const writeStub = sinon.stub(common, "writeConfig").resolves();
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
+    stubLoadedConfig({ modules });
 
     const execStub = sinon.stub(command, "ExecuteFile");
     execStub.onFirstCall().resolves({ code: 0, stdout: "2.0.0", stderr: "" });
@@ -1251,9 +1249,9 @@ describe("project modules behavior", () => {
     useAsciiSymbols();
     const modules = {
       pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
-    };
-    sinon.stub(common, "readConfig").resolves({ modules } as any);
-    sinon.stub(ConfigLoader.prototype, "load").resolves({ modules } as any);
+    } satisfies AntelopeConfig["modules"];
+    sinon.stub(common, "readConfig").resolves({ name: "proj", modules });
+    stubLoadedConfig({ modules });
     sinon
       .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "2.0.0", stderr: "" });

@@ -56,7 +56,8 @@ function writeDependency(folder: string): void {
 }
 
 function load(folder: string): StatefulModule {
-  return require(path.join(folder, "index.js")) as StatefulModule;
+  const loaded: StatefulModule = require(path.join(folder, "index.js"));
+  return loaded;
 }
 
 describe("instance copies", () => {

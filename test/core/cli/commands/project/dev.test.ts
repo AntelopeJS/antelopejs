@@ -1,38 +1,26 @@
 import sinon from "sinon";
 import { expect } from "chai";
+import { ChildProcess } from "node:child_process";
 
 import { terminateChildProcess } from "../../../../../src/core/cli/commands/project/dev-action";
 
 describe("dev command child process", () => {
   it("should send SIGTERM and resolve when child exits", async () => {
-    const child = {
-      kill: sinon.stub().returns(true),
-      on: sinon.stub(),
-      removeListener: sinon.stub(),
-      pid: 1234,
-    };
+    const child = new ChildProcess();
+    const kill = sinon.stub(child, "kill").returns(true);
+    const termination = terminateChildProcess(child);
+    setTimeout(() => child.emit("exit", 0, null), 5);
+    await termination;
 
-    child.on
-      .withArgs("exit")
-      .callsFake((_event: string, callback: () => void) => {
-        setTimeout(callback, 5);
-      });
-
-    await terminateChildProcess(child as any);
-
-    expect(child.kill.calledWith("SIGTERM")).to.equal(true);
+    expect(kill.calledWith("SIGTERM")).to.equal(true);
   });
 
   it("should send SIGKILL after timeout when child does not exit", async () => {
     const clock = sinon.useFakeTimers();
-    const child = {
-      kill: sinon.stub().returns(true),
-      on: sinon.stub(),
-      removeListener: sinon.stub(),
-      pid: 1234,
-    };
+    const child = sinon.createStubInstance(ChildProcess);
+    child.kill.returns(true);
 
-    const terminatePromise = terminateChildProcess(child as any, 100);
+    const terminatePromise = terminateChildProcess(child, 100);
     clock.tick(100);
 
     await terminatePromise;
