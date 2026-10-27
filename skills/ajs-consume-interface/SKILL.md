@@ -95,7 +95,7 @@ Modules are declared in `antelope.config.ts` (authored with `defineConfig` from 
 
 When several loaded modules implement the same interface, each consumer is bound to one of them: its own `importOverrides` pin, a pin carried down from a module above it, or the **default provider** (highest `exportPriority` for that interface on the provider's module entry, alphabetical on a tie, with a startup warning naming where one pin would settle it). Two paths that carry different bindings to the same module stop startup with an error naming that module: pin the interface there. Several `importOverrides` entries with an `id` give one module several connections; `GetInterfaceInstance(interfaceID, id).path` is what to `require()` for the copy bound to that connection.
 
-Config values can reference what another module publishes with `${@<module>.<VAR_NAME>}` (the provider lists the names under `antelopeJs.configVars`), e.g. `apiBaseUrl: "${@api.API_PUBLIC_BASE_URL}"`. `envOverrides` maps environment variables onto config paths, and `environments` holds per-`--env` overrides.
+Config values can reference what another module publishes with `${@<module>.<VAR_NAME>}` (the provider lists the names under `antelopeJs.configVars`), e.g. `apiBaseUrl: "${@api.API_PUBLIC_BASE_URL}"`. `envOverrides` maps environment variables onto config paths, and `environments` holds per-`--env` overrides. The core loads the `.env` beside `antelope.config.ts` before it evaluates the configuration (a variable already set in the shell wins), so a module needs no dotenv of its own.
 
 ## Pinning interface versions
 
