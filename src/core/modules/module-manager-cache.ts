@@ -5,7 +5,11 @@ import {
   createPathWithinMatcher,
   type PathMatcher,
 } from "../../utils";
-import { type ManagerContext } from "./module-manager-context";
+import { INTERFACE_CORE_PACKAGE } from "./module-manager-bindings";
+import {
+  type InterfacePackagePlan,
+  type ManagerContext,
+} from "./module-manager-context";
 import { resolveManifestEntryFile } from "./module-manifest";
 
 export function unrequireModuleFiles(
@@ -80,4 +84,30 @@ export function belongsToInterfacePackageTree(
     return false;
   }
   return isInModule(path.resolve(root));
+}
+
+/**
+ * Drops every copy of the planned interface packages from the require cache,
+ * the canonical one and each consumer's, so the next generation can choose its
+ * canonical copy afresh. `@antelopejs/interface-core` stays: the core itself
+ * implements it.
+ */
+export function evictInterfacePackageCopies(
+  plans: ReadonlyMap<string, InterfacePackagePlan>,
+): void {
+  const matchers = [...plans]
+    .filter(([packageName]) => packageName !== INTERFACE_CORE_PACKAGE)
+    .flatMap(([, plan]) => [
+      plan.canonicalPackage,
+      ...plan.consumers.flatMap(({ resolvedPackage }) =>
+        resolvedPackage ? [resolvedPackage] : [],
+      ),
+    ])
+    .flatMap(({ root, realRoot }) => [root, realRoot])
+    .map((root) => createPathWithinMatcher(path.resolve(root)));
+  for (const filePath of Object.keys(require.cache)) {
+    if (matchers.some((isInCopy) => isInCopy(filePath))) {
+      delete require.cache[filePath];
+    }
+  }
 }

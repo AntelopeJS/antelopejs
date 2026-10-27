@@ -19,7 +19,7 @@ import {
 } from "./module-manager-context";
 import { Logger } from "./module-manager-logger";
 
-const INTERFACE_CORE_PACKAGE = "@antelopejs/interface-core";
+export const INTERFACE_CORE_PACKAGE = "@antelopejs/interface-core";
 
 function toBindingConnections(
   connections: Map<string, InterfaceConnectionRef[]> | undefined,

@@ -88,7 +88,7 @@ interface ResolutionFixtureVersions {
   range: string;
 }
 
-async function writeInterfacePackage(
+export async function writeInterfacePackage(
   packageRoot: string,
   packageName: string,
   version: string,
