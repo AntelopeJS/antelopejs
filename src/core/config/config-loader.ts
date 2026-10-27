@@ -5,6 +5,7 @@ import type {
   ConfigInput,
 } from "@antelopejs/interface-core/config";
 import { createJiti } from "jiti";
+import path from "node:path";
 
 import type { IFileSystem } from "../../types";
 import { mergeDeep } from "../../utils";
@@ -17,6 +18,7 @@ import {
   findConfigPath,
   getModuleConfigPath,
 } from "./config-paths";
+import { loadProjectEnv } from "./project-env";
 
 const CORE_CONFIG_PACKAGE = "@antelopejs/interface-core/config";
 const CORE_CONFIG_ENTRY = require.resolve(CORE_CONFIG_PACKAGE);
@@ -58,6 +60,7 @@ export async function loadTsConfigFile(
   environment?: string,
   fresh = false,
 ): Promise<AntelopeConfig> {
+  loadProjectEnv(path.dirname(configPath));
   const configInput = await importConfigInput(configPath, fresh);
 
   // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The published ConfigInput union accepts either a config object or factory; adding a discriminator would change accepted config exports.

@@ -9,3 +9,4 @@ export * from "./config-vars";
 export * from "./config-writes";
 export * from "./module-declarations";
 export * from "./module-entry";
+export * from "./project-env";
