@@ -7,6 +7,7 @@ import type { BuildLaunchOptions, LaunchOptions } from "../../types";
 import {
   consumeOwnConfigWrite,
   DEFAULT_ENV,
+  getProjectEnvPath,
   PROJECT_STATE_DIR,
   tryFindConfigPath,
 } from "../config";
@@ -110,6 +111,14 @@ async function setupWatching(
         restartProject(projectFolder, env, options),
       );
     });
+    await watcher.watchFile(
+      getProjectEnvPath(projectFolder),
+      () => {
+        Logger.Info("Project .env changed, restarting project...");
+        void restartProject(projectFolder, env, options);
+      },
+      { optional: true },
+    );
   }
 
   watcher.onModuleChanged((id) => hotReload.queue(id));
