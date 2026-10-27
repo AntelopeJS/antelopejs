@@ -142,7 +142,7 @@ export class ConfigLoader {
   ): Promise<AntelopeConfig> {
     const resolvedPath =
       configPath ?? (await findConfigPath(projectFolder, this.fs));
-    return self.loadTsConfigFile(resolvedPath, environment);
+    return self.loadTsConfigFile(resolvedPath, environment, true);
   }
 
   private async loadJsonFile<T>(filePath: string): Promise<T> {
