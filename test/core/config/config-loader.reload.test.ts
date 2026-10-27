@@ -96,4 +96,23 @@ describe("ConfigLoader across reloads", () => {
     expect(reloaded.modules.db.config).to.deep.equal({ token: "rotated" });
     expect(process.env[URL_VARIABLE]).to.equal(undefined);
   });
+
+  it("keeps the variables of another project's .env", async () => {
+    const other = await mkdtemp(path.join(os.tmpdir(), "config-reload-other-"));
+    try {
+      await writeFile(configPath, ENV_CONFIG);
+      await writeFile(
+        path.join(project, ".env"),
+        `${URL_VARIABLE}=postgres://db\n`,
+      );
+      await loader.load(project);
+
+      await writeFile(path.join(other, "antelope.config.ts"), configWith([]));
+      await loader.load(other);
+
+      expect(process.env[URL_VARIABLE]).to.equal("postgres://db");
+    } finally {
+      await rm(other, { recursive: true, force: true });
+    }
+  });
 });

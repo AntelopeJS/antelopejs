@@ -8,7 +8,7 @@ const ENV_ENCODING = "utf-8";
 
 const MISSING_FILE_ERROR_CODE = "ENOENT";
 
-const loadedFromEnvFile = new Map<string, string>();
+const loadedFromEnvFiles = new Map<string, Map<string, string>>();
 
 function isMissingFileError(error: PromiseRejectedResult["reason"]): boolean {
   if (!(error instanceof Error)) {
@@ -29,13 +29,15 @@ function readEnvFile(filePath: string): string | undefined {
   }
 }
 
-function forgetPreviousLoad(): void {
-  for (const [name, value] of loadedFromEnvFile) {
+function forgetPreviousLoad(envPath: string): Map<string, string> {
+  for (const [name, value] of loadedFromEnvFiles.get(envPath) ?? []) {
     if (process.env[name] === value) {
       delete process.env[name];
     }
   }
-  loadedFromEnvFile.clear();
+  const loaded = new Map<string, string>();
+  loadedFromEnvFiles.set(envPath, loaded);
+  return loaded;
 }
 
 export function getProjectEnvPath(projectFolder: string): string {
@@ -44,15 +46,16 @@ export function getProjectEnvPath(projectFolder: string): string {
 
 /**
  * Loads the `.env` of the project into `process.env`, in place of what the
- * previous load took from it: a variable the file no longer declares is
+ * previous load of the same file took from it: a variable it no longer declares is
  * removed, unless something else has changed it since. A variable the
  * process environment already holds otherwise is never overwritten.
  *
  * @param projectFolder The folder that holds `antelope.config.ts`
  */
 export function loadProjectEnv(projectFolder: string): void {
-  forgetPreviousLoad();
-  const content = readEnvFile(getProjectEnvPath(projectFolder));
+  const envPath = getProjectEnvPath(projectFolder);
+  const loaded = forgetPreviousLoad(envPath);
+  const content = readEnvFile(envPath);
   if (content === undefined) {
     return;
   }
@@ -61,6 +64,6 @@ export function loadProjectEnv(projectFolder: string): void {
       continue;
     }
     process.env[name] = value;
-    loadedFromEnvFile.set(name, value);
+    loaded.set(name, value);
   }
 }
