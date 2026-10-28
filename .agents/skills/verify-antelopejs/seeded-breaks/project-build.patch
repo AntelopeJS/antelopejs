@@ -1,0 +1,16 @@
+diff --git a/src/cli/commands/shared/project-command.ts b/src/cli/commands/shared/project-command.ts
+index 233b33c..5ca2645 100644
+--- a/src/cli/commands/shared/project-command.ts
++++ b/src/cli/commands/shared/project-command.ts
+@@ -91,10 +91,7 @@ function resolveEnvironmentConfig(
+   if (environmentConfig) {
+     return environmentConfig;
+   }
+-  if (!config.environments) {
+-    return config;
+-  }
+-  throw unknownEnvironmentError(config, environment);
++  return config;
+ }
+ 
+ /**

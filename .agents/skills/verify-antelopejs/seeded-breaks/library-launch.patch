@@ -1,0 +1,10 @@
+diff --git a/src/index.ts b/src/index.ts
+index f650ce6..df2898e 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -41,4 +41,4 @@ export async function build(
+   return buildProject(projectFolder, env, options);
+ }
+ 
+-export default launch;
++export default build;

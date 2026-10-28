@@ -1,0 +1,9 @@
+{
+  "name": "greeter-host",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "verify-greeter": "file:../verify-greeter"
+  },
+  "packageManager": "pnpm@10.6.5"
+}

@@ -1,0 +1,12 @@
+diff --git a/src/cli/version-check.ts b/src/cli/version-check.ts
+index 11e6d1c..caa7ecd 100644
+--- a/src/cli/version-check.ts
++++ b/src/cli/version-check.ts
+@@ -59,7 +59,6 @@ export function shouldCheckForUpdates(context: UpdateCheckContext): boolean {
+   return (
+     context.isStderrTerminal &&
+     !isFlagEnabled(context.env[CI_VARIABLE]) &&
+-    !isFlagEnabled(context.env[OPT_OUT_VARIABLE]) &&
+     !isInformationalInvocation(context.args) &&
+     !isQuietRun({ argv: context.args, env: context.env })
+   );

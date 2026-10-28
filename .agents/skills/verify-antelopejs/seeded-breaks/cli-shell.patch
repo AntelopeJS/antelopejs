@@ -1,0 +1,13 @@
+diff --git a/src/core/output/verbosity.ts b/src/core/output/verbosity.ts
+index 9da6acd..eacb2b8 100644
+--- a/src/core/output/verbosity.ts
++++ b/src/core/output/verbosity.ts
+@@ -67,7 +67,7 @@ export function isQuietRun(
+   context: VerbosityContext = processVerbosityContext(),
+ ): boolean {
+   return (
+-    context.argv.some(isQuietArgument) ||
++    context.argv.some(isQuietArgument) &&
+     isEnabledFlag(context.env[QUIET_ENVIRONMENT_VARIABLE])
+   );
+ }

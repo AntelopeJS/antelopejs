@@ -1,0 +1,13 @@
+diff --git a/src/cli/commands/project/init-action.ts b/src/cli/commands/project/init-action.ts
+index db931e5..911b4fc 100644
+--- a/src/cli/commands/project/init-action.ts
++++ b/src/cli/commands/project/init-action.ts
+@@ -237,7 +237,7 @@ function askProjectName(
+   return prompter.text({
+     message: "What would you like to name your project?",
+     flag: NAME_FLAG,
+-    answer: options.name,
++    answer: undefined,
+     defaultAnswer: path.basename(projectPath),
+     isOptional: true,
+   });

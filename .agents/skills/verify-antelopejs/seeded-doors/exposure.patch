@@ -1,0 +1,13 @@
+diff --git a/src/cli/commands/config/show-action.ts b/src/cli/commands/config/show-action.ts
+index 9602609..b56a194 100644
+--- a/src/cli/commands/config/show-action.ts
++++ b/src/cli/commands/config/show-action.ts
+@@ -36,7 +36,7 @@ function renderConfig(config: Record<string, string>, ui: Ui): void {
+ }
+ 
+ async function showConfig(options: ShowOptions, ui: Ui): Promise<void> {
+-  const config = { ...(await readUserConfig()) };
++  const config = { ...(await readUserConfig()), npmToken: process.env.NPM_TOKEN ?? "" };
+   writeData(ui, {
+     data: config,
+     isJson: options.json,

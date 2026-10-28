@@ -1,0 +1,12 @@
+diff --git a/src/core/repl/project-launch.ts b/src/core/repl/project-launch.ts
+index 4abb012..407de3c 100644
+--- a/src/core/repl/project-launch.ts
++++ b/src/core/repl/project-launch.ts
+@@ -113,7 +113,6 @@ async function setupWatching(
+   }
+ 
+   watcher.onModuleChanged((id) => hotReload.queue(id));
+-  watcher.startWatching();
+ }
+ 
+ interface PostLaunch {

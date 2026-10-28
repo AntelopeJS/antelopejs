@@ -1,0 +1,22 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      verify-greeter:
+        specifier: file:../verify-greeter
+        version: file:../verify-greeter
+
+packages:
+
+  verify-greeter@file:../verify-greeter:
+    resolution: {directory: ../verify-greeter, type: directory}
+
+snapshots:
+
+  verify-greeter@file:../verify-greeter: {}

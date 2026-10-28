@@ -1,0 +1,13 @@
+diff --git a/src/cli/commands/module/test-action.ts b/src/cli/commands/module/test-action.ts
+index 2b76b98..1708b04 100644
+--- a/src/cli/commands/module/test-action.ts
++++ b/src/cli/commands/module/test-action.ts
+@@ -83,7 +83,7 @@ export async function moduleTestCommand(
+   );
+ 
+   const failures = await TestModule(resolvedPath, options.file);
+-  if (failures > 0) {
++  if (failures > 1) {
+     process.exitCode = 1;
+   }
+ }

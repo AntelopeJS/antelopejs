@@ -1,0 +1,13 @@
+diff --git a/src/core/modules/build-artifact.ts b/src/core/modules/build-artifact.ts
+index 3c56122..226f3c7 100644
+--- a/src/core/modules/build-artifact.ts
++++ b/src/core/modules/build-artifact.ts
+@@ -12,7 +12,7 @@ import type { ModulePackageJson } from "./module-manifest";
+ 
+ const BUILD_ARTIFACT_VERSION = "1";
+ const BUILD_FOLDER = ".antelope/build";
+-const BUILD_FILE = "build.json";
++const BUILD_FILE = "artifact.json";
+ const HASH_SEPARATOR = "\n--antelope-build-hash--\n";
+ const JSON_INDENT = 2;
+ 

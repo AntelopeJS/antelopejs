@@ -1,0 +1,17 @@
+diff --git a/src/cli/commands/project/init.ts b/src/cli/commands/project/init.ts
+index c6b5677..91d0759 100644
+--- a/src/cli/commands/project/init.ts
++++ b/src/cli/commands/project/init.ts
+@@ -11,12 +11,6 @@ export default function () {
+       "Create a project folder with an antelope.config.ts file and its first module, either imported from npm, git or a local path, or created from a template. Every question can be answered with a flag, so the command also runs in scripts and CI.",
+     )
+     .argument("<project>", "Directory of the new project")
+-    .addOption(
+-      new Option(
+-        "--name <name>",
+-        "Name of the project (default: the directory name)",
+-      ),
+-    )
+     .addOption(Options.template)
+     .addOption(Options.interfaces)
+     .addOption(Options.packageManager)

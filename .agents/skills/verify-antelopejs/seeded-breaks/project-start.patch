@@ -1,0 +1,12 @@
+diff --git a/src/cli/production-start.ts b/src/cli/production-start.ts
+index b7d0a26..0660fd2 100644
+--- a/src/cli/production-start.ts
++++ b/src/cli/production-start.ts
+@@ -108,6 +108,6 @@ export async function runProductionStart(args: string[]): Promise<void> {
+       throw error;
+     }
+     process.stderr.write(`${moduleSetChange.message}\n`);
+-    process.exitCode = BUILD_MODULE_SET_CHANGED_EXIT_CODE;
++    process.exitCode = 1;
+   }
+ }

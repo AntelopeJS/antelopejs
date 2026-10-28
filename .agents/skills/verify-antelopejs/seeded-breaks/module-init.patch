@@ -1,0 +1,13 @@
+diff --git a/src/cli/commands/module/init-action.ts b/src/cli/commands/module/init-action.ts
+index ef3645a..da02e40 100644
+--- a/src/cli/commands/module/init-action.ts
++++ b/src/cli/commands/module/init-action.ts
+@@ -126,7 +126,7 @@ function isDirectoryOccupied(modulePath: string): boolean {
+   return (
+     existsSync(modulePath) &&
+     modulePath !== CURRENT_DIRECTORY &&
+-    readdirSync(modulePath).length > 0
++    readdirSync(modulePath).length > 1
+   );
+ }
+ 

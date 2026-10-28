@@ -1,0 +1,13 @@
+diff --git a/src/cli/commands/project/modules/remove-action.ts b/src/cli/commands/project/modules/remove-action.ts
+index 3c9189d..1d7fbb7 100644
+--- a/src/cli/commands/project/modules/remove-action.ts
++++ b/src/cli/commands/project/modules/remove-action.ts
+@@ -64,7 +64,7 @@ function rejectMissingModules(
+     info(`Available modules: ${formatNames(Object.keys(envModules))}`);
+     return true;
+   }
+-  if (missingModules.length > 0 && !options.force) {
++  if (missingModules.length > 0 && options.force) {
+     error(
+       `The following modules are not present in the project: ${formatNames(missingModules)}`,
+     );
