@@ -19,6 +19,7 @@ import {
 } from "./build-runtime";
 import { toModuleConfig } from "./module-loading";
 import { isString } from "../../utils";
+import type { FailureTranslator } from "../output";
 
 const REBUILD_HINT = "Run 'ajs project build' to rebuild.";
 
@@ -46,8 +47,7 @@ export class BuildModuleSetChangedError extends Error {
  * the errors a failed launch aggregates.
  */
 export function findBuildModuleSetChange(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported failure inspection accepts arbitrary throws and searches nested AggregateErrors; narrowing changes declarations.
-  error: unknown,
+  error: Parameters<FailureTranslator>[0],
 ): BuildModuleSetChangedError | undefined {
   if (error instanceof BuildModuleSetChangedError) {
     return error;

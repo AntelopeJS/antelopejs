@@ -7,7 +7,7 @@ type TS = typeof TypeScript;
  * The fields of a module entry to write. A field set to `undefined` or `null`
  * is removed from the entry.
  */
-// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported edits intentionally accept arbitrary module-specific fields; a concrete value schema would change the declaration.
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Callers write module fields the runtime does not declare, such as module-specific settings, so the changes cannot be limited to ModuleDeclaration keys.
 export type ModuleEntryChanges = Record<string, unknown>;
 
 interface EditContext {

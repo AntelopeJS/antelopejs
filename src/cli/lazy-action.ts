@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 
-// oxlint-disable-next-line anti-slop/no-unknown-returns -- Commander action callbacks may return arbitrary values or promises; the lazy wrapper awaits and discards them, and lazyAction's published constraint must stay identical.
+// oxlint-disable-next-line anti-slop/no-unknown-returns -- Commander actions return different values (a template, a command result, nothing) that the wrapper awaits and discards, so the constraint cannot name one result type.
 type CommandAction = (this: Command, ...args: any[]) => unknown;
 
 /**

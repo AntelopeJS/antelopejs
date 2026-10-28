@@ -1,13 +1,14 @@
 import repl, { type REPLServer } from "node:repl";
 
+import type { UnknownDictionary } from "../../utils";
+
 export type ReplFactory = (prompt?: string) => REPLServer;
 
 export class ReplSession {
   private server?: REPLServer;
 
   constructor(
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported REPL sessions accept arbitrary host bindings; narrowing this context changes their constructor contract.
-    private context: Record<string, unknown> = {},
+    private context: UnknownDictionary = {},
     private createRepl: ReplFactory = repl.start,
   ) {}
 

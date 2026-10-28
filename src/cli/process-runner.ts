@@ -20,12 +20,9 @@ export type ProcessCloseListener = (
 export type ProcessErrorListener = (error: Error) => void;
 
 export interface SpawnedProcess {
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Exported process handles allow custom emitter return values; the runner ignores these results.
-  once(event: "error", listener: ProcessErrorListener): unknown;
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Exported process handles allow custom emitter return values; narrowing changes structural compatibility.
-  once(event: "close", listener: ProcessCloseListener): unknown;
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Exported process handles permit custom kill results, which are intentionally ignored by the runner.
-  kill(signal: ForwardedSignal): unknown;
+  once(event: "error", listener: ProcessErrorListener): void;
+  once(event: "close", listener: ProcessCloseListener): void;
+  kill(signal: ForwardedSignal): void;
 }
 
 export interface InheritedSpawnOptions {
@@ -43,10 +40,8 @@ export interface ProcessRunner {
 }
 
 export interface SignalTarget {
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Exported signal targets allow arbitrary subscription results for custom emitters.
-  on(signal: ForwardedSignal, listener: () => void): unknown;
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Exported signal targets allow arbitrary unsubscription results for custom emitters.
-  off(signal: ForwardedSignal, listener: () => void): unknown;
+  on(signal: ForwardedSignal, listener: () => void): void;
+  off(signal: ForwardedSignal, listener: () => void): void;
 }
 
 export interface InheritedProcessOptions {

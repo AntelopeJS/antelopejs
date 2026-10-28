@@ -1,11 +1,13 @@
+import type { FailureTranslator } from "./types";
 import { CANCELLED_EXIT_CODE } from "./exit-codes";
 import { isObjectOrNull } from "../../utils";
 
 export const CANCELLED_ERROR_NAME = "CancelledError";
 export const CANCELLED_MESSAGE = "Cancelled";
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported cancellation detection accepts arbitrary throws, including cancellation objects from other package copies.
-export function isPromptCancellation(error: unknown): boolean {
+export function isPromptCancellation(
+  error: Parameters<FailureTranslator>[0],
+): boolean {
   return (
     error !== null &&
     isObjectOrNull(error) &&

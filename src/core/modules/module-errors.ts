@@ -1,3 +1,5 @@
+import type { FailureTranslator } from "../output";
+
 export function collectRejectedErrors(
   results: PromiseSettledResult<unknown>[],
 ): unknown[] {
@@ -6,8 +8,9 @@ export function collectRejectedErrors(
   );
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Lifecycle callbacks may throw any JavaScript value; flattening must preserve those values without validation.
-export function unpackErrors(error: unknown): unknown[] {
+export function unpackErrors(
+  error: Parameters<FailureTranslator>[0],
+): unknown[] {
   return error instanceof AggregateError ? error.errors : [error];
 }
 

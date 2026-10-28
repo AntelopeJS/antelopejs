@@ -121,8 +121,7 @@ function verboseHint(
  * show more than what is printed.
  */
 export function describeFailure(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported describeFailure must describe arbitrary JavaScript throws; narrowing changes its declaration.
-  error: unknown,
+  error: Parameters<FailureTranslator>[0],
   verbose: boolean = isVerboseRun(),
   translate?: FailureTranslator,
 ): CliProblem {
@@ -142,8 +141,7 @@ export function describeFailure(
  * code it calls for.
  */
 export function reportFailure(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported reportFailure accepts every thrown value and preserves translator input identity.
-  error: unknown,
+  error: Parameters<FailureTranslator>[0],
   ui: Ui = getProcessUi(),
   verbose: boolean = isVerboseRun(),
   translate?: FailureTranslator,

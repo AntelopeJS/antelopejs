@@ -20,10 +20,8 @@ export type ProcessSignal = "SIGINT" | "SIGTERM";
  * from a genuine shutdown of the whole runner.
  */
 export interface ProcessSignalSource {
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Exported signal sources permit arbitrary emitter return values; consumers ignore them.
-  on(signal: ProcessSignal, listener: () => void): unknown;
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- Exported signal sources permit arbitrary emitter return values; narrowing would change structural compatibility.
-  removeListener(signal: ProcessSignal, listener: () => void): unknown;
+  on(signal: ProcessSignal, listener: () => void): void;
+  removeListener(signal: ProcessSignal, listener: () => void): void;
 }
 
 /**
