@@ -68,7 +68,7 @@
           "ajs-author-interface",
           "core-interface"
         ],
-        "mustMention": ["ImplementInterface", "InterfaceFunction"]
+        "mustMention": ["ImplementInterface"]
       }
     }
   ]
