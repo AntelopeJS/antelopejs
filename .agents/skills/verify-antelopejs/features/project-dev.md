@@ -30,6 +30,8 @@ docs:
 - `dev-call-stop`: the module serves; SIGINT exits 130 with `Stopped the project`; the port is refused afterwards.
 - `dev-hmr`: with `--watch`, two edits of `src/message.ts` each reach the HTTP answer.
 - `dev-failed-reload`: error path: a syntax error logs `Failed to reload module`, the old answer keeps serving, the next good edit recovers.
+- `dev-modules-add-while-running`: persistence path: `ajs project modules add --mode local` and then `remove` while `dev --watch` runs each restart the project, with two modules and then one loaded, and the fixture keeps answering.
+- `dev-watch-module-without-src`: error path: a local module with no `src/` folder, added while `dev --watch` runs, must not crash dev. A known finding: it fails on `main`.
 - `dev-run-alias`: `ajs project run` behaves as `dev`.
 - `dev-project-flag`: `--project ./app` from the parent folder.
 - `dev-cancel-during-start`: cancel path: SIGINT before the module answers exits 130 and nothing binds the port afterwards.
@@ -54,4 +56,5 @@ Each journey's steps, checks and evidence are in `bin/journeys/` and under `$RUN
 
 - The watcher arms after the modules start and prints nothing when armed; HMR journeys wait 3 s after the first answer (`settle`) or the first edit is absorbed into the baseline hash.
 - `--interactive` (REPL) is not driven: it needs a terminal. Report it under Not verified when the diff touches `src/core/repl/repl-session.ts`.
-- Module add or remove while dev runs goes through the configuration watcher, which restarts the project; the formal model `formal-module-lifecycle` covers its orderings.
+- Module add or remove while dev runs goes through the configuration watcher, which restarts the project. `dev-modules-add-while-running` drives it. The formal model `formal-module-lifecycle` covers the orderings a journey cannot time.
+- `ajs project modules add --mode local` always writes `watchDir: ["src"]` (`add-action.ts`). For a module without `src/`, the watcher's `scandir` rejects unhandled and dev exits 1, which `dev-watch-module-without-src` keeps as a finding.

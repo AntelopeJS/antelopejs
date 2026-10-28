@@ -2,7 +2,10 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import config, { type DoorKind } from "../../verify.config.ts";
+import { FEATURE_JOURNEYS } from "../journeys/index.mts";
 import { flaggedDoors } from "./doors.mts";
+import { readFormalResult, touchedFormalChecks } from "./formal.mts";
 import type { JourneyResult } from "./journey.mts";
 import { planFor, type Plan, SMOKE_FEATURE } from "./map.mts";
 import { REPO_DIR, type RunState, SKILL_DIR } from "./run.mts";
@@ -12,7 +15,7 @@ export type VerdictResult = "PASS" | "PASS+NOTES" | "FAIL";
 
 /** One row of the One-way doors section. */
 export interface DoorRow {
-  kind: string;
+  kind: DoorKind;
   location: string;
   irreversible: string;
   containment: string;
@@ -33,7 +36,15 @@ export interface Judgement {
   docs: DocsJudgement[];
   doorsNone: string | null;
   doors: DoorRow[];
+  falsePositives: FalsePositive[];
   verifier: string;
+}
+
+/** A file the door path rules flag that the verifier judged is not a door, with why. */
+export interface FalsePositive {
+  kind: DoorKind;
+  location: string;
+  reason: string;
 }
 
 /** A rendered verdict and the facts it was computed from. */
@@ -46,14 +57,47 @@ export interface Verdict {
   reasons: string[];
 }
 
-const CONTAINED_KINDS = new Set(["data", "format"]);
+const CONTAINED_KINDS = new Set<DoorKind>(["data", "format"]);
+
+function isDoorKind(value: string): value is DoorKind {
+  return Object.hasOwn(config.doors, value);
+}
+
+function doorKind(value: string, label: string): DoorKind {
+  if (!isDoorKind(value)) {
+    throw new Error(`judgement.json: ${label} is "${value}", not one of ${Object.keys(config.doors).join(", ")}`);
+  }
+  return value;
+}
+
+function parseFalsePositives(raw: JudgementFile): FalsePositive[] {
+  return (raw.doors?.falsePositives ?? []).map((entry, index) => {
+    if (!entry.location || !entry.reason?.trim()) {
+      throw new Error(`judgement.json: doors.falsePositives[${index}] needs location and reason`);
+    }
+    return { ...entry, kind: doorKind(entry.kind, `doors.falsePositives[${index}].kind`) };
+  });
+}
+
+function parseRows(raw: JudgementFile): DoorRow[] {
+  return (raw.doors?.rows ?? []).map((row, index) => {
+    if (!row.kind || !row.location || !row.irreversible || !row.containment) {
+      throw new Error(`judgement.json: doors.rows[${index}] needs kind, location, irreversible and containment`);
+    }
+    return { ...row, kind: doorKind(row.kind, `doors.rows[${index}].kind`), containmentJourney: row.containmentJourney ?? "" };
+  });
+}
 
 interface JudgementFile {
   notVerified?: string[];
   attention?: string[];
   verifier?: string;
   docs?: { page: string; matches: boolean; note?: string }[];
-  doors?: { none?: string; rows?: (Omit<DoorRow, "containmentJourney"> & { containmentJourney?: string })[] };
+  doors?: {
+    none?: string;
+    rows?: (Omit<DoorRow, "kind" | "containmentJourney"> & { kind: string; containmentJourney?: string })[];
+    falsePositives?: (Omit<FalsePositive, "kind"> & { kind: string })[];
+  };
 }
 
 /** Parses evidence/judgement.json. A verdict without a One-way doors section is void, so a missing one throws. */
@@ -62,23 +106,24 @@ export function readJudgement(file: string): Judgement {
     throw new Error(`${file} is missing: write the verifier's judgement before rendering the verdict`);
   }
   const raw: JudgementFile = JSON.parse(readFileSync(file, "utf8"));
-  const rows = raw.doors?.rows ?? [];
+  const rows = parseRows(raw);
   const none = raw.doors?.none?.trim() || null;
   if (!none && rows.length === 0) {
     throw new Error("judgement.json: doors needs `none` with a reason or at least one row; a verdict without it is void");
   }
-  for (const [index, row] of rows.entries()) {
-    if (!row.kind || !row.location || !row.irreversible || !row.containment) {
-      throw new Error(`judgement.json: doors.rows[${index}] needs kind, location, irreversible and containment`);
-    }
+  const verifier = raw.verifier?.trim();
+  if (!verifier) {
+    throw new Error("judgement.json: verifier must say who judged this run, for example the verifier thread's URL");
   }
+
   return {
     notVerified: raw.notVerified ?? [],
     attention: raw.attention ?? [],
     docs: (raw.docs ?? []).map((entry) => ({ page: entry.page, matches: entry.matches === true, note: entry.note ?? "" })),
     doorsNone: none,
-    verifier: raw.verifier?.trim() || "fresh Amp thread, not the author",
-    doors: rows.map((row) => ({ ...row, containmentJourney: row.containmentJourney ?? "" })),
+    verifier,
+    doors: rows,
+    falsePositives: parseFalsePositives(raw),
   };
 }
 
@@ -117,24 +162,33 @@ function doorReasons(judgement: Judgement, results: Map<string, JourneyResult>, 
   const reasons: string[] = [];
   const attention: string[] = [];
   for (const row of judgement.doors.filter((door) => CONTAINED_KINDS.has(door.kind))) {
+    const allowed = config.doors[row.kind]?.containments ?? [];
     const journey = results.get(row.containmentJourney);
-    if (!journey || journey.status !== "PASS") {
-      reasons.push(`${row.kind} door at ${row.location} has no passing containment journey (${row.containmentJourney || "none named"})`);
+    if (!allowed.includes(row.containmentJourney)) {
+      reasons.push(`${row.kind} door at ${row.location} names ${row.containmentJourney || "no journey"}; its containment must be one of ${allowed.join(", ")}`);
+    } else if (!journey || journey.status !== "PASS") {
+      reasons.push(`${row.kind} door at ${row.location}: containment journey ${row.containmentJourney} did not pass in this run`);
     }
   }
   for (const door of flaggedDoors(plan.changed)) {
-    if (!judgement.doors.some((row) => row.kind === door.kind)) {
-      attention.push(`Path rules flag a ${door.kind} door (${door.files.join(", ")}) that the One-way doors section does not list.`);
+    for (const file of door.files) {
+      const listed = judgement.doors.some((row) => row.kind === door.kind && row.location.includes(file));
+      const dismissed = judgement.falsePositives.some((entry) => entry.kind === door.kind && entry.location === file);
+      if (!listed && !dismissed) {
+        reasons.push(`path rules flag a ${door.kind} door at ${file} that the One-way doors section neither lists nor dismisses`);
+      }
     }
   }
   return { reasons, attention };
 }
 
 function doorsSection(judgement: Judgement): string[] {
+  const dismissed = judgement.falsePositives.map((entry) => `- Not a door: \`${entry.location}\` matches the ${entry.kind} path rules. ${entry.reason}`);
   if (judgement.doors.length === 0) {
-    return [`None: ${judgement.doorsNone}`];
+    return [`None: ${judgement.doorsNone}`, ...dismissed];
   }
   return [
+    ...dismissed,
     "| Kind | Location | What cannot be undone | Containment |",
     "|---|---|---|---|",
     ...judgement.doors.map((door) => `| ${door.kind} | \`${door.location}\` | ${door.irreversible} | ${door.containment}${door.containmentJourney ? ` (journey \`${door.containmentJourney}\`)` : ""} |`),
@@ -150,12 +204,16 @@ function journeyRows(state: RunState, plan: Plan, pr: number) {
   const reasons: string[] = [];
   const byJourney = new Map<string, JourneyResult>();
   for (const feature of plan.run) {
-    const results = readResults(state, feature);
-    if (!results) {
-      reasons.push(`touched feature ${feature} was not run`);
+    const results = readResults(state, feature) ?? [];
+    const registered = (FEATURE_JOURNEYS.get(feature) ?? []).map((journey) => journey.id);
+    for (const id of registered.filter((journey) => !results.some((result) => result.journey === journey))) {
+      reasons.push(`${feature}/${id} was not run`);
     }
-    for (const result of results ?? []) {
-      byJourney.set(result.journey, result);
+    for (const result of results) {
+      if (!registered.includes(result.journey)) {
+        reasons.push(`${feature}/${result.journey} is not a registered journey`);
+      }
+      byJourney.set(`${feature}/${result.journey}`, result);
       if (result.status === "FAIL") {
         reasons.push(`${feature}/${result.journey} failed`);
       }
@@ -163,6 +221,29 @@ function journeyRows(state: RunState, plan: Plan, pr: number) {
     }
   }
   return { rows, reasons, byJourney };
+}
+
+function formalSection(state: RunState, plan: Plan, pr: number) {
+  const reasons: string[] = [];
+  const lines: string[] = [];
+  const touched = touchedFormalChecks(plan.changed).map((check) => check.name);
+  for (const check of config.formal) {
+    const result = readFormalResult(state, check.name);
+    if (!result) {
+      if (touched.includes(check.name)) {
+        reasons.push(`formal check ${check.name} covers the diff but was not run`);
+      }
+      continue;
+    }
+    const gate = touched.includes(check.name);
+    const broken = result.violated.length > 0 || (result.exitCode !== 0 && result.exitCode !== 1);
+    if (gate && broken) {
+      reasons.push(`formal check ${check.name}: ${result.violated.length > 0 ? `violated ${result.violated.join(", ")}` : `tool error, exit ${result.exitCode}`}`);
+    }
+    const summary = result.violated.length > 0 ? `violated: ${result.violated.join(", ")}` : `exit ${result.exitCode}, no violated rule`;
+    lines.push(`\`${check.name}\` (${gate ? "covers the diff, gates the verdict" : "does not cover the diff, informational"}): ${summary}. [evidence](${evidenceUrl(pr, plan.headSha, result.folder)})`);
+  }
+  return { reasons, lines };
 }
 
 function docsReasons(judgement: Judgement, plan: Plan): string[] {
@@ -190,7 +271,8 @@ export function renderVerdict(state: RunState, pr: number, judgement: Judgement)
   const journeys = journeyRows(state, plan, pr);
   reasons.push(...journeys.reasons, ...plan.unmapped.map((file) => `unmapped surface ${file}`), ...docsReasons(judgement, plan));
   const doors = doorReasons(judgement, journeys.byJourney, plan);
-  reasons.push(...doors.reasons);
+  const formal = formalSection(state, plan, pr);
+  reasons.push(...doors.reasons, ...formal.reasons);
   const attention = [...judgement.attention, ...doors.attention];
   const result: VerdictResult = reasons.length > 0 ? "FAIL" : judgement.notVerified.length + attention.length > 0 ? "PASS+NOTES" : "PASS";
   const touched = plan.touched.map((entry) => `\`${entry.feature}\` (diff: ${entry.files.map((file) => `\`${file}\``).join(", ")})`);
@@ -212,6 +294,9 @@ export function renderVerdict(state: RunState, pr: number, judgement: Judgement)
     "| Feature | Entry point | Result | Evidence |",
     "|---|---|---|---|",
     ...journeys.rows,
+    "",
+    "### Formal checks",
+    ...bullets(formal.lines, "None ran."),
     "",
     "### Docs",
     ...bullets(judgement.docs.map((docs) => `\`${docs.page}\`: ${docs.matches ? "matches" : "**stale**"}${docs.note ? `. ${docs.note}` : ""}`), "No touched feature links a page."),

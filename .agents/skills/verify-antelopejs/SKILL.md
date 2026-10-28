@@ -72,24 +72,29 @@ node "$VERIFY" clean "$RUN"
 
 1. **Run every feature whose `covers:` globs the diff touches, plus the smoke journey** (`init -> dev -> fixture call -> stop`). `plan` prints that list as `run`.
 2. **Unmapped surface fails the verdict.** User-facing code is `src/**`. A changed file there that no feature glob covers is an unmapped surface. The PR adds the feature file, its journeys and its seeded break. `map` checks the whole tree.
-3. **Any failing journey of a feature in `run` fails the verdict.** Known findings stay as failing journeys. They fail a verdict only when the diff touches their feature.
+3. **Every registered journey of a feature in `run` must have run and passed.** A missing journey fails the verdict as "not run", so run whole features, not a hand-picked subset. Known findings stay as failing journeys. They fail a verdict only when the diff touches their feature.
 4. **Docs.** Each touched feature lists its `docs:` pages. Judge every page against what the journeys showed. A stale page fails the verdict.
-5. **One-way doors.** The section comes right after the result line and is mandatory; a verdict without it is void. It holds either `None` with a reason, or one row per door: kind, location, what cannot be undone, and containment. `verify.config.ts` holds the path rules per kind (`data`, `format`, `contract`, `outbound`, `exposure`, `publish`). `node "$VERIFY" doors` prints the `One-way-door:` line for the diff. A Data or Format door is contained only by a journey that passes, for example reading an old `build.json` or config with the new code. Name that journey in the row.
-6. **Result.** FAIL if any of rules 1 to 5 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
+5. **Formal checks.** `verify.config.ts` lists each formal check with the source files it covers. Run `node "$VERIFY" formal "$RUN"` before the verdict: it runs every check that covers the diff and records it under `evidence/formal/<name>/`. A covered check that did not run, reports a violated rule (recorded findings included), or exits with a tool error fails the verdict. `--all` also runs the others, which the verdict shows without gating on them.
+6. **One-way doors.** The section comes right after the result line and is mandatory; a verdict without it is void. It holds either `None` with a reason, or one row per door: kind, location, what cannot be undone, and containment. `verify.config.ts` holds the path rules per kind (`data`, `format`, `contract`, `outbound`, `exposure`, `publish`). `node "$VERIFY" doors` prints the `One-way-door:` line for the diff. Every file the path rules flag needs a row, or a `falsePositives` entry that says why it is not a door; an unadjudicated flag fails the verdict. A Data or Format door is contained only by one of that kind's `containments` journeys in `verify.config.ts` (an old `build.json` or config read by the new code), passing in this run. Name it as `feature/journey` in the row.
+7. **Result.** FAIL if any of rules 1 to 6 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
 
 Write your judgement to `$RUN/evidence/judgement.json`:
 
 ```json
 {
-  "doors": { "none": "the diff changes only the verification skill and tests", "rows": [] },
+  "doors": {
+    "none": "the diff changes only the verification skill and tests",
+    "rows": [],
+    "falsePositives": [{ "kind": "contract", "location": "package.json", "reason": "only devDependencies changed" }]
+  },
   "docs": [{ "page": "docs/1.get-started/3.quick-start.md", "matches": true, "note": "" }],
   "notVerified": ["What no journey reached, and why"],
   "attention": ["Behaviour the owner should look at that is not a bug the skill can judge"],
-  "verifier": "fresh Amp thread, not the author"
+  "verifier": "https://ampcode.com/threads/T-…, a fresh thread that did not write the change"
 }
 ```
 
-A door row is `{ "kind", "location", "irreversible", "containment", "containmentJourney" }`.
+A door row is `{ "kind", "location", "irreversible", "containment", "containmentJourney" }`, where `kind` is one of the `doors` keys of `verify.config.ts`. `verifier` is required.
 
 Then render and publish:
 
@@ -102,7 +107,11 @@ node "$VERIFY" publish "$RUN" --pr <n>
 - `publish` commits `evidence/` to the orphan branch `verify-evidence` under `pr-<n>/<sha>/`. It works from a temporary worktree and never touches the checkout under review. It then posts the verdict with `gh pr comment` and sets commit status `verify` on the head SHA: `success` for PASS and PASS+NOTES, `failure` for FAIL. Finally it reads the status back from GitHub.
 - A new push invalidates the status, so verify again on the new head.
 
-Post a verdict only from a thread that did not write the change. `verifier` names who judged; when that is not true, say who did.
+Post a verdict only from a thread that did not write the change, and name that thread in `verifier`.
+
+## Trust
+
+The skill is not Trusted yet. It becomes Trusted when it catches every seeded break, passes a shadow run of 10 consecutive agent PRs, and its last maintain pass (`maintain-verification-skill`, run by the gardener) is newer than the last change to the repo or its `@antelopejs` dependencies and at most 30 days old. The gardener enforces freshness; the verdict header says `not trusted yet` until then.
 
 ## Seeded breaks
 
@@ -110,7 +119,7 @@ Post a verdict only from a thread that did not write the change. `verifier` name
 node "$VERIFY" seeded smoke project-init
 ```
 
-`seeded-breaks/<feature>.patch` is one minimal product-code bug per feature that the feature's journeys must catch. `seeded` applies each patch in a scratch worktree, builds it, runs the feature's journeys there, and prints `CAUGHT` or `MISSED`. It exits 0 only when every break is caught. `seeded-doors/<kind>.patch` holds one change per door kind; `node "$VERIFY" doors <patch>` must flag its kind.
+`seeded-breaks/<feature>.patch` is one minimal product-code bug per feature that the feature's journeys must catch. `seeded` builds an unpatched control worktree and a patched one, runs the feature's journeys in both, and prints `CAUGHT` with the journeys that caught it, or `MISSED`. A break is caught only when a journey that passes in the control fails one of its checks with the patch. Journeys that already fail without the patch, and failures with no failing check (harness errors), do not count. It exits 0 only when every break is caught. `seeded-doors/<kind>.patch` holds one change per door kind; `node "$VERIFY" doors <patch>` must flag its kind.
 
 ## Gotchas
 

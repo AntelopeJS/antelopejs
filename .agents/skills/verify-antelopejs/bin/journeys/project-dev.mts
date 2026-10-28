@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { answers, exitIs, has, refused } from "../lib/checks.mts";
+import { answers, exitIs, has, lacks, refused } from "../lib/checks.mts";
 import { freePort } from "../lib/evidence.mts";
 import type { HttpResult } from "../lib/evidence.mts";
 import { field } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { initProject } from "../lib/project.mts";
+import { copyGreeter, initProject, installFixture } from "../lib/project.mts";
 import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
 const WATCH_SETTLE_MS = 3000;
@@ -61,6 +61,46 @@ export const journeys: Journey[] = [
       context.edit("edit message again", message, messageSource("edited twice"));
       const second = await context.httpUntil("fixture after second edit", dev, messageIs("edited twice"));
       context.expect(second.folder, [answers(second, "message", "edited twice")]);
+      const stop = await context.stop("stop with SIGINT", dev);
+      context.expect(stop.folder, [exitIs(stop, 130)]);
+    },
+  },
+  {
+    id: "dev-modules-add-while-running",
+    title: "modules add and remove while dev --watch runs restart the project with the new module set",
+    entryPoint: "ajs project dev --watch, then ajs project modules add <path> --mode local, then remove",
+    async run(context) {
+      const { project, dev } = await watchedProject(context);
+      const provider = path.join(copyGreeter(context), "provider");
+      context.edit("give the provider a src folder, as a template module has", path.join(provider, "src", "README.md"), "Sources of the provider.\n");
+      await installFixture(context, provider);
+      const add = await context.ajs("modules add provider while running", ["project", "modules", "add", provider, "--mode", "local"], { cwd: project });
+      context.expect(add.folder, [exitIs(add, 0)], { critical: true });
+      const added = await context.httpUntil("fixture after the add restart", dev, (result) => messageIs(FIXTURE_MESSAGE)(result) && /Loaded 2 modules/.test(readStderr(dev.folder)));
+      context.expect(added.folder, [has("stderr", readStderr(dev.folder), /Loaded 2 modules/), answers(added, "message", FIXTURE_MESSAGE)]);
+      const remove = await context.ajs("modules remove provider while running", ["project", "modules", "remove", "greeter-provider"], { cwd: project });
+      context.expect(remove.folder, [exitIs(remove, 0)], { critical: true });
+      const removed = await context.httpUntil("fixture after the remove restart", dev, (result) => messageIs(FIXTURE_MESSAGE)(result) && (readStderr(dev.folder).match(/Loaded 1 module\b/g) ?? []).length >= 2);
+      context.expect(removed.folder, [has("stderr", readStderr(dev.folder), /Loaded 2 modules[\s\S]*Loaded 1 module\b/), answers(removed, "message", FIXTURE_MESSAGE)]);
+      const stop = await context.stop("stop with SIGINT", dev);
+      context.expect(stop.folder, [exitIs(stop, 130)]);
+    },
+  },
+  {
+    id: "dev-watch-module-without-src",
+    title: "a local module without a src folder, added while dev --watch runs, does not crash dev",
+    entryPoint: "ajs project dev --watch, then ajs project modules add <path without src/> --mode local",
+    async run(context) {
+      const { project, dev } = await watchedProject(context);
+      const provider = path.join(copyGreeter(context), "provider");
+      await installFixture(context, provider);
+      const add = await context.ajs("modules add provider while running", ["project", "modules", "add", provider, "--mode", "local"], { cwd: project });
+      context.expect(add.folder, [exitIs(add, 0)], { critical: true });
+      const after = await context.httpUntil("fixture after the restart", dev, () => /Loaded 2 modules|Unhandled rejection/.test(readStderr(dev.folder)));
+      await context.settle("let the restart finish", WATCH_SETTLE_MS, "the watcher scans the added module after its start");
+      const still = await context.http("fixture once the watcher scanned the module", dev);
+      context.expect(still.folder, [lacks("stderr", readStderr(dev.folder), /Unhandled rejection/), answers(still, "message", FIXTURE_MESSAGE)]);
+      context.expect(after.folder, [has("stderr", readStderr(dev.folder), /Loaded 2 modules/)]);
       const stop = await context.stop("stop with SIGINT", dev);
       context.expect(stop.folder, [exitIs(stop, 130)]);
     },
