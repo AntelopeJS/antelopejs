@@ -5,7 +5,7 @@ import semver from "semver";
 
 import { getProcessUi, info, isQuietRun } from "../core/output";
 import { CORE_PACKAGE_NAME } from "./core-version";
-import { isNumber, isObjectOrNull, isString } from "../utils";
+import { isFunction, isNumber, isObjectOrNull, isString } from "../utils";
 
 const UPDATE_COMMAND = "ajs update";
 const REGISTRY_URL = "https://registry.npmjs.org";
@@ -42,7 +42,7 @@ interface PackageManifest {
 }
 
 function isPackageManifest(body: unknown): body is PackageManifest {
-  return isObjectOrNull(body) && body !== null;
+  return (isObjectOrNull(body) && body !== null) || isFunction(body);
 }
 
 function isFlagEnabled(value: string | undefined): boolean {
