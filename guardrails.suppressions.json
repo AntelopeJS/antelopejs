@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "anti-slop/no-known-value-widening": 2,
+    "anti-slop/no-runtime-typeof": 45,
+    "anti-slop/no-unknown-parameters": 25,
+    "anti-slop/no-unknown-returns": 9,
+    "anti-slop/no-unsafe-dictionary-type": 13,
+    "anti-slop/require-safety-comment-for-type-assertion": 18,
+    "eslint/no-control-regex": 1,
+    "import/no-cycle": 2,
+    "import/no-self-import": 2,
+    "typescript/no-base-to-string": 1,
+    "typescript/no-redundant-type-constituents": 6
+  },
+  "tsExpectError": 9,
+  "tsIgnore": 0,
+  "safety": 32
+}

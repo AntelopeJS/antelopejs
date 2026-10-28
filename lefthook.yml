@@ -8,6 +8,9 @@ pre-commit:
       run: pnpm exec oxlint --no-error-on-unmatched-pattern {staged_files}
     antelopejs-size:
       run: pnpm exec antelopejs-check-size --staged {staged_files}
+    antelopejs-suppressions:
+      glob: "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,vue}"
+      run: pnpm exec antelopejs-suppressions --staged
 pre-push:
   commands:
     antelopejs-typecheck:
