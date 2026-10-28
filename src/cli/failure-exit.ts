@@ -1,12 +1,10 @@
 import { SUCCESS_EXIT_CODE } from "../core/output";
+import { isNumber } from "../utils";
 
 export const FORCED_EXIT_GRACE_MS = 2000;
 
 function requestedExitCode(): number {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Node permits string or numeric process.exitCode; this failure boundary intentionally propagates numeric values only.
-  return typeof process.exitCode === "number"
-    ? process.exitCode
-    : SUCCESS_EXIT_CODE;
+  return isNumber(process.exitCode) ? process.exitCode : SUCCESS_EXIT_CODE;
 }
 
 /**

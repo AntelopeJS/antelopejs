@@ -22,6 +22,7 @@ import {
   resolveInheritedVerbose,
   validateProjectExists,
 } from "../shared/project-command";
+import { isFunction } from "../../../utils";
 
 interface RunnerEnv extends NodeJS.ProcessEnv {
   ANTELOPE_PROJECT_PATH: string;
@@ -125,15 +126,13 @@ export function terminateChildProcess(
   timeoutMs: number = CHILD_TERMINATE_TIMEOUT_MS,
 ): Promise<void> {
   return new Promise((resolve) => {
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Child termination supports injected process adapters with missing hooks; rejecting them earlier changes its no-op behavior.
-    if (typeof child.kill !== "function" || typeof child.on !== "function") {
+    if (!isFunction(child.kill) || !isFunction(child.on)) {
       resolve();
       return;
     }
 
     const detachExitListener = () => {
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Injected process adapters may omit listener removal; cleanup intentionally skips that optional hook.
-      if (typeof child.removeListener !== "function") {
+      if (!isFunction(child.removeListener)) {
         return;
       }
       child.removeListener("exit", onExit);

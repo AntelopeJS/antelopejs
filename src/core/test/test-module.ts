@@ -7,7 +7,7 @@ import path from "node:path";
 
 import { setupAntelopeProjectLogging } from "../../logging";
 import type { IFileSystem } from "../../types";
-import { mergeDeep } from "../../utils";
+import { mergeDeep, isString } from "../../utils";
 import { ConfigLoader, DEFAULT_ENV, type LoadedConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../modules";
@@ -81,8 +81,7 @@ export async function loadTestConfig(
   }
 
   const testConfigPath = pack.antelopeJs?.test;
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Package JSON is unchecked; non-string test paths must keep the existing diagnostic and undefined return rather than reaching path resolution.
-  if (!testConfigPath || typeof testConfigPath !== "string") {
+  if (!testConfigPath || !isString(testConfigPath)) {
     console.error(
       "Missing or invalid antelopeJs.test config path in package.json",
     );

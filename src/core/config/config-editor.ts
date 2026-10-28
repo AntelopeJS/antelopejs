@@ -1,4 +1,5 @@
 import type * as TypeScript from "typescript";
+import { isObjectOrNull } from "../../utils";
 
 type TS = typeof TypeScript;
 
@@ -112,8 +113,7 @@ function serializeAt(
   unit: string,
   depth: number,
 ): string {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported editor accepts arbitrary values; JSON handles primitives/functions while object fields retain the existing recursive formatting.
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isObjectOrNull(value)) {
     return JSON.stringify(value) ?? "undefined";
   }
   const inner = unit.repeat(depth + 1);

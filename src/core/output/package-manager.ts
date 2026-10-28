@@ -11,6 +11,7 @@ import {
   type PackageManagerName,
 } from "./package-manager-name";
 import { getProcessPalette } from "./tasks";
+import { isString } from "../../utils";
 const PACKAGE_MANAGER_PATTERN = /^(npm|yarn|pnpm)@([0-9A-Za-z._+-]+)$/;
 const LOCKFILES: Record<PackageManagerName, string[]> = {
   npm: ["npm-shrinkwrap.json", "package-lock.json"],
@@ -211,8 +212,7 @@ export function savePackageManagerToPackageJson(
     );
     const currentPackageManager = packageJsonContent.packageManager;
     if (
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Package JSON is external and unchecked; only string packageManager values can match the existing manager pattern.
-      typeof currentPackageManager === "string" &&
+      isString(currentPackageManager) &&
       currentPackageManager.match(PACKAGE_MANAGER_PATTERN)?.[1] ===
         packageManager
     ) {

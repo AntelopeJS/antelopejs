@@ -19,6 +19,7 @@ import type {
   Ui,
 } from "./types";
 import { createUi } from "./ui";
+import { isFunction } from "../../utils";
 
 type TaskOutcome = Extract<MessageLevel, "success" | "warn" | "skip" | "error">;
 
@@ -150,8 +151,7 @@ export class TaskList {
     try {
       const result = await work(task);
       const { done } = labels;
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported task API accepts either a literal completion label or a result callback; its untagged union must remain unchanged.
-      task.succeed(typeof done === "function" ? done(result) : done);
+      task.succeed(isFunction(done) ? done(result) : done);
       return result;
     } catch (error) {
       if (labels.failed) {

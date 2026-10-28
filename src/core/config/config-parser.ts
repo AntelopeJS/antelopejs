@@ -6,7 +6,15 @@ import type {
 } from "@antelopejs/interface-core/config";
 import type { ModuleEntryConfig } from "./module-entry";
 
-import { isObject, isPlainObject, set } from "../../utils";
+import {
+  isObject,
+  isPlainObject,
+  set,
+  isBoolean,
+  isNumber,
+  isObjectOrNull,
+  isString,
+} from "../../utils";
 import { isConfigVarKey } from "./config-vars";
 
 export interface ExpandedModuleConfig {
@@ -45,14 +53,7 @@ export class ConfigParser {
     for (const [key, value] of Object.entries(obj)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
 
-      if (
-        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported template parser flattens string leaves but deliberately ignores symbols, functions and bigints (#226).
-        typeof value === "string" ||
-        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Numeric template leaves retain String conversion, including NaN and infinities, rather than JSON coercion (#226).
-        typeof value === "number" ||
-        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Boolean template leaves join strings and numbers; validating arbitrary application config would change accepted inputs (#226).
-        typeof value === "boolean"
-      ) {
+      if (isString(value) || isNumber(value) || isBoolean(value)) {
         result[key] = String(value);
         result[fullKey] = String(value);
       } else if (isObject(value)) {
@@ -64,8 +65,7 @@ export class ConfigParser {
   }
 
   private processObject(obj: any, values: Record<string, string>): any {
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Template substitution applies only to strings in the exported open config contract; all other leaf values retain identity (#226).
-    if (typeof obj === "string") {
+    if (isString(obj)) {
       return this.processString(obj, values);
     }
 
@@ -153,12 +153,10 @@ export class ConfigParser {
 
     for (const [name, entry] of Object.entries(modules)) {
       const config: string | ModuleEntryConfig = entry;
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The public parser accepts object declarations and shorthand; this exact test preserves unchecked null-config errors (#228).
-      if (typeof config === "object" && config.disabled) {
+      if (isObjectOrNull(config) && config.disabled) {
         continue;
       }
-      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- String versions are the existing shorthand alternative to module objects; changing to a tagged representation changes the public contract.
-      if (typeof config === "string") {
+      if (isString(config)) {
         const source = {
           type: "package",
           package: name,

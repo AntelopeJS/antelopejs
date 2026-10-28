@@ -40,6 +40,7 @@ import {
 import { writeConfig } from "../../../common";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
+import { isObjectOrNull, isString } from "../../../../utils";
 
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
 const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];
@@ -89,8 +90,7 @@ interface SourceReference {
 }
 
 function sourceReference(moduleConfig: AntelopeModuleConfig | string): string {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Module declarations publicly accept string shorthand and source objects; their representation selects the existing reference format.
-  if (typeof moduleConfig === "string") {
+  if (isString(moduleConfig)) {
     return moduleConfig;
   }
   // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Config source is optional; preserving the direct read also preserves the existing missing-source error (#228).
@@ -139,8 +139,7 @@ async function downloadModule(
   moduleName: string,
   moduleConfig: AntelopeModuleConfig | string,
 ): Promise<void> {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- ConfigLoader leaves declarations unchecked; this exact object test preserves shorthand skipping and null-source errors (#228).
-  if (typeof moduleConfig !== "object" || !("source" in moduleConfig)) {
+  if (!isObjectOrNull(moduleConfig) || !("source" in moduleConfig)) {
     return;
   }
   // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- An explicit undefined source historically reaches the downloader's property-access error; validating this optional config field changes that behavior (#228).

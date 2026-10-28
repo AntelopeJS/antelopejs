@@ -6,6 +6,7 @@ import {
 import { Logging } from "@antelopejs/interface-core/logging";
 import Module from "node:module";
 import path from "node:path";
+import { isFunction, isObjectOrNull } from "../../utils";
 
 const Logger = new Logging.Channel("loader");
 const warned = new Set<string>();
@@ -54,8 +55,7 @@ function walk(
   if (value === null || value === undefined) {
     return;
   }
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Package exports may be callable proxies or arbitrary values; only functions are inspected for the existing proxy property.
-  if (typeof value === "function") {
+  if (isFunction(value)) {
     const callable: Function & { proxy?: unknown } = value;
     const maybeProxy = callable.proxy;
     if (maybeProxy instanceof AsyncProxy) {
@@ -63,8 +63,7 @@ function walk(
     }
     return;
   }
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Export traversal must skip primitive leaves and inspect every object without constraining arbitrary package export schemas.
-  if (typeof value !== "object") {
+  if (!isObjectOrNull(value)) {
     return;
   }
   if (seen.has(value)) {

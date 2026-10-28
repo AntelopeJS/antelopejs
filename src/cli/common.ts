@@ -17,6 +17,7 @@ import { NodeFileSystem } from "../core/filesystem";
 import type { ModulePackageJson } from "../core/modules";
 import { CliError, getProcessUi } from "../core/output";
 import type { IFileSystem } from "../types";
+import { isObjectOrNull, isString } from "../utils";
 
 const DEFAULT_INDENTATION = "  ";
 const DEFINE_CONFIG_IMPORT_LINE =
@@ -152,12 +153,10 @@ function serializeToJs(
   if (value === null || value === undefined) {
     return String(value);
   }
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Exported config writing serializes arbitrary values; strings require quoting while other primitive representations do not.
-  if (typeof value === "string") {
+  if (isString(value)) {
     return JSON.stringify(value);
   }
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Functions and non-string primitives retain String conversion; restricting the open config contract would change generated JavaScript.
-  if (typeof value !== "object") {
+  if (!isObjectOrNull(value)) {
     // oxlint-disable-next-line typescript/no-base-to-string -- The preceding checks exclude null and objects; String deliberately serializes remaining primitives and callable values into config source.
     return String(value);
   }
