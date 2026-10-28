@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T032419-72959c/work/project-dev/dev-inspect/app
+ajs project dev --inspect 127.0.0.1:43041

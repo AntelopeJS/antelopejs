@@ -1,0 +1,12 @@
+{
+  "doors": { "none": "the diff adds skills, tests, CI jobs and a devDependency; package.json changes only devDependencies and the typecheck script, so no published contract, file format or registry name changes", "rows": [] },
+  "docs": [],
+  "notVerified": [
+    "The two known findings (project-start/start-without-build, module-test/module-test-file-docs-form) did not run: the diff touches neither feature.",
+    "The four TLA+ findings in formal-module-lifecycle have no journey; they are recorded in its SKILL.md and checked by check.mjs in CI."
+  ],
+  "attention": [
+    "project-dev also ran as an extra feature, outside the plan: 8 of 8 journeys passed; its evidence is under project-dev/ beside smoke/."
+  ],
+  "verifier": "the author thread (Amp T-01a18037), not an independent verifier: this is the bootstrap verdict of the skill itself"
+}

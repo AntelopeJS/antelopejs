@@ -1,0 +1,17 @@
+✔ Project path /tmp/verify-antelopejs/20261028T032419-72959c/work/project-dev/dev-call-stop/app is available
+✔ Directory is valid
+▲ Using a non-default git repository
+  Its interfaces are not official and may not adhere to community quality standards or best practices.
+✔ Found 1 templates
+✔ Found 1 available interfaces
+✔ Module created successfully at /tmp/verify-antelopejs/20261028T032419-72959c/work/project-dev/dev-call-stop/app
+✔ Dependencies installed
+✔ Project configuration created successfully
+✔ Installed dependencies for verify-http-fixture 2.8s
+✔ Added verify-http-fixture . 2.8s
+Created project app → ./app
+
+Next steps
+  cd ./app
+  ajs project modules install  add modules for the interfaces no module implements
+  ajs project dev --watch      run the project and reload it on changes

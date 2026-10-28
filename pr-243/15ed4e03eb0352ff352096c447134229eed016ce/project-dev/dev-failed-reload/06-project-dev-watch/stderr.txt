@@ -1,0 +1,30 @@
+✔ Found project: app
+
+Environment  default
+Watch mode   enabled
+Inspector    disabled
+▲ Watch mode enabled - project will automatically restart when files change
+ℹ Starting AntelopeJS project
+✔ Installed dependencies for verify-http-fixture 2.9s
+✔ Loaded 1 module 2.9s
+✔ Constructed modules
+[2026-10-28 03:25:08] [ERROR] Failed to reload module verify-http-fixture: CliError: Install failed for verify-http-fixture
+    at installFailure (/home/user/workspace/antelopejs/dist/core/downloaders/utils.js:71:12)
+    at runCommandsInOrder (/home/user/workspace/antelopejs/dist/core/downloaders/utils.js:84:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async TaskList.run (/home/user/workspace/antelopejs/dist/core/output/tasks.js:102:28)
+    at async runInstallCommands (/home/user/workspace/antelopejs/dist/core/downloaders/utils.js:93:5)
+    at async Object.loader (/home/user/workspace/antelopejs/dist/core/downloaders/local.js:56:9)
+    at async loadModuleManifestFromSource (/home/user/workspace/antelopejs/dist/core/runtime/module-reloading.js:8:23)
+    at async reloadLoadedModuleFromSource (/home/user/workspace/antelopejs/dist/core/runtime/module-reloading.js:29:52)
+    at async reloadWatchedModule (/home/user/workspace/antelopejs/dist/core/runtime/module-reloading.js:92:5)
+    at async HotReload.reload (/home/user/workspace/antelopejs/dist/core/repl/project-launch.js:79:9)
+  Caused by: ExecError: Command 'npx tsc' failed with exit code 2
+        at /home/user/workspace/antelopejs/dist/core/output/command.js:64:27
+        at ChildProcess.exithandler (node:child_process:424:5)
+        at ChildProcess.emit (node:events:514:28)
+        at ChildProcess.emit (node:domain:489:12)
+        at maybeClose (node:internal/child_process:1172:16)
+        at ChildProcess._handle.onexit (node:internal/child_process:335:5)
+✔ Installed dependencies for verify-http-fixture 2.6s
+✔ Stopped the project

@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T032419-72959c/evidence/project-dev/dev-hmr/10-fixture-after-first-edit",
+  "url": "http://127.0.0.1:42571/",
+  "status": 200,
+  "body": "{\"module\":\"verify-http-fixture\",\"message\":\"edited once\"}",
+  "json": {
+    "module": "verify-http-fixture",
+    "message": "edited once"
+  },
+  "error": null
+}

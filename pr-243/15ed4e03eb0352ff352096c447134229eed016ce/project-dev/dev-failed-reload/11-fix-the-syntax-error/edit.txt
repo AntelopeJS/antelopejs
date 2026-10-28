@@ -1,0 +1,3 @@
+/tmp/verify-antelopejs/20261028T032419-72959c/work/project-dev/dev-failed-reload/app/src/message.ts
+---
+export const message = "recovered";

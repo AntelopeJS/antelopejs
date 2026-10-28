@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T032419-72959c/work/project-dev/dev-cancel-during-start
+ajs config set git file:///tmp/verify-antelopejs/20261028T032419-72959c/sources/interfaces.git

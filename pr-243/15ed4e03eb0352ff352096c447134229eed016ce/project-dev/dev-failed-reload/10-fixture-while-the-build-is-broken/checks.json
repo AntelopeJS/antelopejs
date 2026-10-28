@@ -1,0 +1,12 @@
+[
+  {
+    "name": "stderr matches /Failed to reload module verify-http-fixture/",
+    "pass": true,
+    "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 2.9s ✔ Loaded 1 module 2.9s ✔ Constructed modules [2026-10-28 03:2…"
+  },
+  {
+    "name": "GET http://127.0.0.1:39535/ answers 200 with message \"hello from the fixture\"",
+    "pass": true,
+    "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+  }
+]

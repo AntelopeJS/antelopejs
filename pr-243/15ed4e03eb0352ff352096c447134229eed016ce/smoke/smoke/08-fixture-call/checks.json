@@ -1,0 +1,7 @@
+[
+  {
+    "name": "GET http://127.0.0.1:45539/ answers 200 with module \"verify-http-fixture\"",
+    "pass": true,
+    "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+  }
+]

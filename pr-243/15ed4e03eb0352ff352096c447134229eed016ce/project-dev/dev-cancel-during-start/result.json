@@ -1,0 +1,102 @@
+{
+  "feature": "project-dev",
+  "journey": "dev-cancel-during-start",
+  "title": "SIGINT while dev still installs and loads its modules stops it with exit code 130 and leaves nothing listening",
+  "entryPoint": "ajs project dev, SIGINT before the module answers",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-dev/dev-cancel-during-start/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-dev/dev-cancel-during-start/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T032419-72959c/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T032419-72959c/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-dev/dev-cancel-during-start/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T032419-72959c/work/project-dev/dev-cancel-during-start/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ …"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T032419-72959c/work/project-dev/dev-cancel-during-start/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T032419-72959c/work/project-dev/dev-cancel-during-start/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-dev/dev-cancel-during-start/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "08-stop-with-sigint-during-start",
+      "folder": "project-dev/dev-cancel-during-start/08-stop-with-sigint-during-start",
+      "checks": [
+        {
+          "name": "exit code 130",
+          "pass": true,
+          "detail": "exit code 130"
+        }
+      ]
+    },
+    {
+      "name": "10-fixture-after-cancel",
+      "folder": "project-dev/dev-cancel-during-start/10-fixture-after-cancel",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:45251/ is refused",
+          "pass": true,
+          "detail": "connect ECONNREFUSED 127.0.0.1:45251"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-dev/dev-cancel-during-start"
+}

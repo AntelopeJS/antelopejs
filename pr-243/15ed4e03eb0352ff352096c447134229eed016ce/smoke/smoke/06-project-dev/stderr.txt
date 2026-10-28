@@ -1,0 +1,10 @@
+✔ Found project: app
+
+Environment  default
+Watch mode   disabled
+Inspector    disabled
+ℹ Starting AntelopeJS project
+✔ Installed dependencies for verify-http-fixture 2.3s
+✔ Loaded 1 module 2.3s
+✔ Constructed modules
+✔ Stopped the project
