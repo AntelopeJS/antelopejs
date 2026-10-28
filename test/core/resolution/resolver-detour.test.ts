@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { nodeModule } from "../../helpers/node-module";
+import nodeModule from "node:module";
 
 import {
   PathMapper,

@@ -13,7 +13,7 @@ import {
 } from "../../src/core/modules";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 import { manifestFixture } from "../helpers/module-fixtures";
-import { nodeModule } from "../helpers/node-module";
+import nodeModule from "node:module";
 
 describe("ModuleManager", () => {
   beforeEach(() => {
