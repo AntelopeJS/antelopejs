@@ -96,14 +96,17 @@ export function step(action) {
 
 export function cause(v, facts, invariant) {
   if (invariant === "ConfigEditsReachProject") {
-    return v.launch > 1 && v.jitiCache.length !== v.declared.length
+    return v.staleRead
       ? "the restart re-read the config jiti had cached, not the edited file"
       : "the edit landed after the launch read the config and before the watcher started";
   }
   if (invariant === "LaunchReadsCurrentConfig") {
-    return v.sigint
-      ? "a restart began a launch while Ctrl+C was stopping the project, and it read the cached config"
-      : "the restart for the edit read the config jiti had cached, not the edited file";
+    if (v.sigint) {
+      return "a restart began a launch while Ctrl+C was stopping the project, and it read the cached config";
+    }
+    return v.configOwner === "none"
+      ? "the modules live in subfolders, so no destroy evicted the config jiti cached"
+      : "the root module was not loaded, so no destroy evicted the config jiti cached";
   }
   if (invariant !== "NoOrphanGeneration") return null;
   const fromReload = orphans(v).some((g) =>

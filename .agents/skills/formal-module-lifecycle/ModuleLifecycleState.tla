@@ -35,6 +35,7 @@ VARIABLES
   edits,         \* config edits so far (bound)
   jitiCache,     \* the config jiti first imported in this process, or {"none"}
   staleRead,     \* a launch read a config that differs from the file
+  configOwner,   \* the module whose folder holds antelope.config.ts, or "none"
   changes,       \* module source edits so far (bound)
   state,         \* ModuleLifecycle._state of each generation
   gmod,          \* the module id of each generation
@@ -70,7 +71,7 @@ VARIABLES
   crashed,       \* stale work shut the process down without Ctrl+C
   crashedWhileWatching \* ... while a watcher was up
 
-vars == <<declared, edits, jitiCache, staleRead, changes, state, gmod, nextGen, startPending,
+vars == <<declared, edits, jitiCache, staleRead, configOwner, changes, state, gmod, nextGen, startPending,
           launch, lpc, cfgSeen, awaiting, loaded, lateStart,
           sd, sdLeft, exitReq, armed,
           watching, watched, cfgHash, cfgEvent, restartReq,
@@ -85,16 +86,24 @@ watchVars == <<watching, watched, cfgHash, cfgEvent, restartReq>>
 restartVars == <<isRestarting, restartPc, restartFrom>>
 hrVars == <<pending, rePending, flushing, batch, rl>>
 procVars == <<tolerance, staleWork, sigint, exited, crashed, crashedWhileWatching>>
-editVars == <<declared, edits, jitiCache, staleRead, changes>>
+editVars == <<declared, edits, jitiCache, staleRead, configOwner, changes>>
 
 Held(L) == {m \in Modules : loaded[L][m] /= None}
 HeldGens(L) == {loaded[L][m] : m \in Held(L)}
+
+(* evictModuleFiles deletes the require.cache entries under a module's    *)
+(* folder. jiti answers from require.cache only while the config's entry  *)
+(* is there, so evicting the module whose folder holds antelope.config.ts *)
+(* (a module at the project root) makes the next launch read the file.   *)
+EvictConfig(mods) ==
+  jitiCache' = IF configOwner \in mods THEN {"none"} ELSE jitiCache \* module-manager-cache.ts:39-51
 
 Init ==
   /\ declared = InitialModules
   /\ edits = 0
   /\ jitiCache = {"none"}
   /\ staleRead = FALSE
+  /\ configOwner \in {"none", "a"}
   /\ changes = 0
   /\ state = [g \in Gens |-> "Loaded"]
   /\ gmod = [g \in Gens |-> "a"]

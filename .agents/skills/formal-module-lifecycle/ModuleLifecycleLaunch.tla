@@ -16,7 +16,7 @@ LaunchPrepare(L) ==
         /\ jitiCache' = read
         /\ staleRead' = (staleRead \/ read /= declared)
   /\ lpc' = [lpc EXCEPT ![L] = "addModules"]
-  /\ UNCHANGED <<declared, edits, changes, genVars, launch, awaiting, loaded, lateStart,
+  /\ UNCHANGED <<declared, edits, configOwner, changes, genVars, launch, awaiting, loaded, lateStart,
                  sdVars, watchVars, restartVars, hrVars, procVars>>
 
 Interrupt(L) ==
@@ -143,7 +143,7 @@ ConfigEdit(m) ==
   /\ ~exited /\ edits < MaxEdits
   /\ declared' = IF m \in declared THEN declared \ {m} ELSE declared \cup {m}
   /\ edits' = edits + 1
-  /\ UNCHANGED <<jitiCache, staleRead>>
+  /\ UNCHANGED <<jitiCache, staleRead, configOwner>>
   /\ cfgEvent' = [L \in Launches |-> cfgEvent[L] \/ watching[L] = "yes"]
   /\ UNCHANGED <<changes, genVars, launchVars, sdVars, watching, watched, cfgHash,
                  restartReq, restartVars, hrVars, procVars>>
@@ -235,12 +235,15 @@ SdDestroy(L, m) ==
                  watchVars, restartVars, hrVars, tolerance, sigint, exited, crashed,
                  crashedWhileWatching>>
 
-(* destroyAll's clearManagedState empties ModuleManager.loaded. *)
+(* destroyAll evicts each loaded module's files from require.cache, which *)
+(* drops jiti's cached config when it sits in a module folder, then       *)
+(* clearManagedState empties ModuleManager.loaded.                        *)
 SdClear(L) ==
   /\ ~exited /\ sd[L] = "destroyAll" /\ sdLeft[L] = {}
+  /\ EvictConfig(Held(L))                                 \* module-manager-lifecycle.ts:135-136
   /\ loaded' = [loaded EXCEPT ![L] = [m \in Modules |-> None]] \* module-manager-lifecycle.ts:140, :168
   /\ sd' = [sd EXCEPT ![L] = "watcher"]
-  /\ UNCHANGED <<editVars, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdLeft,
+  /\ UNCHANGED <<declared, edits, staleRead, configOwner, changes, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdLeft,
                  exitReq, armed, watchVars, restartVars, hrVars, procVars>>
 
 (* Priority 20: hotReload.clear() and watcher.stopWatching(). *)

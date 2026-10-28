@@ -6,7 +6,7 @@ import { freePort } from "../lib/evidence.mts";
 import type { HttpResult } from "../lib/evidence.mts";
 import { field } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, initProject, installFixture } from "../lib/project.mts";
+import { copyGreeter, FIXTURE_MODULE, initProject, installFixture } from "../lib/project.mts";
 import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
 const WATCH_SETTLE_MS = 3000;
@@ -82,6 +82,31 @@ export const journeys: Journey[] = [
       context.expect(remove.folder, [exitIs(remove, 0)], { critical: true });
       const removed = await context.httpUntil("fixture after the remove restart", dev, (result) => messageIs(FIXTURE_MESSAGE)(result) && (readStderr(dev.folder).match(/Loaded 1 module\b/g) ?? []).length >= 2);
       context.expect(removed.folder, [has("stderr", readStderr(dev.folder), /Loaded 2 modules[\s\S]*Loaded 1 module\b/), answers(removed, "message", FIXTURE_MESSAGE)]);
+      const stop = await context.stop("stop with SIGINT", dev);
+      context.expect(stop.folder, [exitIs(stop, 130)]);
+    },
+  },
+  {
+    id: "dev-readd-root-module",
+    title: "after removing the root module while dev --watch runs, adding it back restarts with it loaded",
+    entryPoint: "ajs project dev --watch; modules add <provider>; modules remove <root module>; modules add . --mode local",
+    async run(context) {
+      const { project, dev } = await watchedProject(context);
+      const provider = path.join(copyGreeter(context), "provider");
+      context.edit("give the provider a src folder, as a template module has", path.join(provider, "src", "README.md"), "Sources of the provider.\n");
+      await installFixture(context, provider);
+      const add = await context.ajs("modules add provider", ["project", "modules", "add", provider, "--mode", "local"], { cwd: project });
+      context.expect(add.folder, [exitIs(add, 0)], { critical: true });
+      await context.httpUntil("fixture after adding the provider", dev, (result) => messageIs(FIXTURE_MESSAGE)(result) && /Loaded 2 modules/.test(readStderr(dev.folder)));
+      const remove = await context.ajs("modules remove the root module", ["project", "modules", "remove", FIXTURE_MODULE], { cwd: project });
+      context.expect(remove.folder, [exitIs(remove, 0)], { critical: true });
+      await context.httpUntil("fixture gone after the remove restart", dev, (result) => result.status === null && (readStderr(dev.folder).match(/Loaded 1 module\b/g) ?? []).length >= 2);
+      const readd = await context.ajs("modules add the root module back", ["project", "modules", "add", ".", "--mode", "local"], { cwd: project });
+      context.expect(readd.folder, [exitIs(readd, 0)], { critical: true });
+      const listed = await context.ajs("modules list after re-adding", ["project", "modules", "list", "--json"], { cwd: project });
+      context.expect(listed.folder, [has("stdout", listed.stdout, new RegExp(FIXTURE_MODULE))]);
+      const back = await context.httpUntil("fixture after re-adding the root module", dev, messageIs(FIXTURE_MESSAGE));
+      context.expect(back.folder, [answers(back, "message", FIXTURE_MESSAGE), has("stderr", readStderr(dev.folder), /Loaded 2 modules[\s\S]*Loaded 1 module[\s\S]*Loaded 2 modules/)]);
       const stop = await context.stop("stop with SIGINT", dev);
       context.expect(stop.folder, [exitIs(stop, 130)]);
     },

@@ -12,7 +12,7 @@ EXTENDS ModuleLifecycleLaunch
 SourceEdit(m) ==
   /\ ~exited /\ changes < MaxChanges
   /\ changes' = changes + 1
-  /\ UNCHANGED <<jitiCache, staleRead>>
+  /\ UNCHANGED <<jitiCache, staleRead, configOwner>>
   /\ LET W == {L \in Launches : watching[L] = "yes" /\ m \in watched[L]} \* file-watcher.ts:353
          InFlight(L) == rl[L].pc /= "idle" /\ rl[L].mod = m
      IN /\ rePending' = [L \in Launches |->               \* hot-reload.ts:21-22
@@ -93,12 +93,13 @@ RlDestroyPrevious(L) ==
 (* manager no longer holds the module.                                    *)
 RlInstall(L) ==
   /\ ~exited /\ rl[L].pc = "install"
+  /\ EvictConfig(IF loaded[L][rl[L].mod] = None THEN {} ELSE {rl[L].mod}) \* module-reloading.ts:83, module-manager-cache.ts:25-28
   /\ IF loaded[L][rl[L].mod] = None                       \* module-reloading.ts:113
      THEN /\ rl' = [rl EXCEPT ![L] = IdleReload]          \* hot-reload.ts:76
           /\ UNCHANGED loaded
      ELSE /\ loaded' = [loaded EXCEPT ![L][rl[L].mod] = rl[L].repl] \* module-reloading.ts:111
           /\ rl' = [rl EXCEPT ![L].pc = "construct"]      \* module-reloading.ts:118
-  /\ UNCHANGED <<editVars, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdVars,
+  /\ UNCHANGED <<declared, edits, staleRead, configOwner, changes, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdVars,
                  watchVars, restartVars, pending, rePending, flushing, batch, procVars>>
 
 (* ModuleLifecycle.construct on the replacement. Its construct callback   *)
@@ -204,6 +205,7 @@ ReloadPcs == {"idle", "manifest", "destroy", "install", "construct", "callStart"
 TypeOK ==
   /\ declared \subseteq Modules
   /\ jitiCache \subseteq Modules \/ jitiCache = {"none"}
+  /\ configOwner \in {"none", "a"}
   /\ state \in [Gens -> States]
   /\ nextGen \in 1..(MaxGen + 1)
   /\ startPending \subseteq Gens

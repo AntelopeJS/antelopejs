@@ -31,6 +31,7 @@ docs:
 - `dev-hmr`: with `--watch`, two edits of `src/message.ts` each reach the HTTP answer.
 - `dev-failed-reload`: error path: a syntax error logs `Failed to reload module`, the old answer keeps serving, the next good edit recovers.
 - `dev-modules-add-while-running`: persistence path: `ajs project modules add --mode local` and then `remove` while `dev --watch` runs each restart the project, with two modules and then one loaded, and the fixture keeps answering.
+- `dev-readd-root-module`: persistence path: after `modules remove` of the project's root module (path `.`) while `dev --watch` runs, `modules add . --mode local` must restart with it loaded again. A known finding (F2 of `formal-module-lifecycle`): it fails on `main`, because only destroying a module evicts files under its folder from `require.cache`, and with the root module gone nothing evicts the cached `antelope.config.ts`.
 - `dev-watch-module-without-src`: error path: a local module with no `src/` folder, added while `dev --watch` runs, must not crash dev. A known finding: it fails on `main`.
 - `dev-run-alias`: `ajs project run` behaves as `dev`.
 - `dev-project-flag`: `--project ./app` from the parent folder.
