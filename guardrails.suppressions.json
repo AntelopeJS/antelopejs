@@ -10,9 +10,9 @@
     "import/no-cycle": 0,
     "import/no-self-import": 0,
     "typescript/no-base-to-string": 1,
-    "typescript/no-redundant-type-constituents": 6
+    "typescript/no-redundant-type-constituents": 3
   },
   "tsExpectError": 8,
   "tsIgnore": 0,
-  "safety": 13
+  "safety": 10
 }

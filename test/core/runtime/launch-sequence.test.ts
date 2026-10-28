@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import sinon from "sinon";
 import { loaderFixture } from "../../helpers/module-fixtures";
-import { nodeModule } from "../../helpers/node-module";
+import nodeModule from "node:module";
 
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { ModuleManifest } from "../../../src/core/modules";
