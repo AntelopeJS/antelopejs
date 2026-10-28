@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "new-module",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "How do I create a new module from scratch?",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs", "ajs-consume-interface"]
+      }
+    },
+    {
+      "id": "new-module-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "wanna start a new module, where do i begin",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs", "ajs-consume-interface"]
+      }
+    },
+    {
+      "id": "run-tests",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "How do I run the tests?",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"]
+      }
+    },
+    {
+      "id": "run-tests-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "how do i run my tests",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"]
+      }
+    },
+    {
+      "id": "add-module",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "How do I add a module to my project?",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"]
+      }
+    },
+    {
+      "id": "add-module-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "i wanna add a module to my project",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"]
+      }
+    },
+    {
+      "id": "embed-runtime-host",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "How do I start AntelopeJS inside my existing Express or AdonisJS server?",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs", "ajs-consume-interface", "dms-project"],
+        "mustMention": ["createRuntime"]
+      }
+    },
+    {
+      "id": "ajs-cli-dms-dev-neighbour",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "How do I run the DMS frontend dev server with ajs dms dev and set the session secret for it?",
+      "expect": {
+        "skills": ["dms-frontend"],
+        "acceptable": ["antelopejs", "dms"],
+        "avoid": ["ajs-cli"]
+      }
+    },
+    {
+      "id": "ajs-cli-build-start-prod",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "What is the difference between ajs project dev and ajs project build followed by ajs project start, and which one should I use in CI?",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"],
+        "mustMention": ["ajs project build", "ajs project start"]
+      }
+    }
+  ]
+}

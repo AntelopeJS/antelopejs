@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "publish-interface",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "How do I publish an interface to the registry?",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-author-interface"],
+        "acceptable": ["antelopejs", "ajs-cli"]
+      }
+    },
+    {
+      "id": "publish-interface-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "how do i put my interface in the registry",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-author-interface"],
+        "acceptable": ["antelopejs", "ajs-cli"]
+      }
+    },
+    {
+      "id": "embedded-vs-standalone",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "What is the difference between an embedded and a standalone interface?",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-author-interface"],
+        "acceptable": ["antelopejs", "ajs-consume-interface"]
+      }
+    },
+    {
+      "id": "embedded-vs-standalone-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "embedded or standalone, which one do i pick",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["ajs-author-interface"],
+        "acceptable": ["antelopejs", "ajs-consume-interface"]
+      }
+    },
+    {
+      "id": "ajs-author-interface-unresolved-neighbour",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "my module imports interface-database and startup says unresolved interface dependencies, how do i fix it",
+      "expect": {
+        "skills": ["ajs-consume-interface"],
+        "acceptable": ["antelopejs", "ajs-cli"],
+        "avoid": ["ajs-author-interface"]
+      }
+    },
+    {
+      "id": "ajs-author-interface-breaking-change",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "I want to rename a method on our interface package and drop an optional parameter. Is that a breaking change, and how do I ship it without breaking consumers?",
+      "expect": {
+        "skills": ["ajs-author-interface"],
+        "acceptable": ["antelopejs", "core-interface"],
+        "mustMention": ["@deprecated"]
+      }
+    }
+  ]
+}
