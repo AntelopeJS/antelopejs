@@ -21,3 +21,5 @@ ts	phase	decision	why	evidence	result
 2026-10-28T04:09:46Z	C	seeded with unpatched control	review P1: any nonzero exit counted as CAUGHT	seeded.mts judge(): pass in control, fail a check with patch	suite rerunning
 2026-10-28T04:09:47Z	C	F2 replay disagreed; asked the model owner to recheck	dev-modules-add-while-running PASS and a hand edit loaded 2 modules	sub-orb: stale config only when no root module is evicted; model gains configOwner	dev-readd-root-module FAIL on main reproduces F2; fe87cc8
 2026-10-28T04:09:47Z	C	F5 new finding	modules add writes watchDir src; a module without src crashes dev --watch	unhandled scandir ENOENT, exit 1	dev-watch-module-without-src kept failing
+2026-10-28T04:30:48Z	E	independent verdict on #243	spec decision 6: a fresh thread that did not write the change posts the verdict	T-01a180be comment issuecomment-6460691114, evidence 6de8bed	PASS+NOTES at fe87cc8; status 403
+2026-10-28T04:30:48Z	E	keep verdict gating on recorded findings	spec decision 10: a covered formal failure makes the verdict FAIL; CI still catches drift	verifier flag (1)	owner decision offered
