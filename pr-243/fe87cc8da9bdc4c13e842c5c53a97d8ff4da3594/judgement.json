@@ -1,0 +1,24 @@
+{
+  "doors": {
+    "none": "the diff adds the verification and formal skills, a CI job pair, a property test and a dev dependency; no product source, exports, bin, config format or release setting changes",
+    "rows": [],
+    "falsePositives": [
+      { "kind": "contract", "location": "package.json", "reason": "only the typecheck script (adds tsc -p .agents/skills/verify-antelopejs) and the devDependency fast-check 4.10.2 change; exports, bin, dependencies and peerDependencies are untouched, so nothing a consumer imports or runs changes" },
+      { "kind": "publish", "location": "package.json", "reason": "name, version, files and publishConfig are untouched; a devDependency and a script do not claim any registry name or change the published tarball" }
+    ]
+  },
+  "docs": [],
+  "notVerified": [
+    "Seeded breaks (node verify-ajs.mts seeded ...) were not run in this verification, so this run does not show that each feature's journeys catch its seeded break. For a PR whose main payload is the verifier itself, that is the strongest evidence the skill works, and the Trust section requires it.",
+    "Only the smoke journey ran, because the plan maps no src/** change. The other 14 features and their journeys added by this PR were not driven here.",
+    "docs/1.get-started/3.quick-start.md (the smoke feature's docs page) was not judged against behaviour: the smoke journey uses the offline 'Verify HTTP' template, while the page uses 'Blank Typescript' and --watch, which no journey in this run exercised.",
+    "The new CI jobs (verify-map, formal-module-lifecycle) were not run in GitHub Actions here; map and the formal check were run locally with Node 24.22.1 and Temurin 21.0.13."
+  ],
+  "attention": [
+    "formal-module-lifecycle (run with --all, informational because no covered src file changed) reports four violated rules on main: NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork. check.mjs exits 0 because each matches its recorded finding (F1 to F4) and counterexample length. These are documented real bugs in ajs project dev (orphan generation after Ctrl+C during async provide, restart reading a cached config, an edit lost during startup, and a restart crashing dev with exit 1). They are not introduced by this PR, but once merged, any PR touching the covered files will FAIL its verdict until they are fixed, because the verdict gates on any violated rule, recorded findings included.",
+    "This PR adds the verifier that is judging it. The verdict therefore cannot vouch for the skill's own correctness beyond smoke, map, doors and the two formal checks running cleanly.",
+    "CI: verify-map pins node-version 24 while formal-module-lifecycle reads .nvmrc; harmless today, but they can drift. formal-module-lifecycle downloads tla2tools 1.7.4 from GitHub on a cold cache and is now required by the checks job.",
+    "test/core/module-manager.interface-ranges.test.ts is matched by the unit test glob, so the property test (about 15 s) now runs inside pnpm test as well as in the formal-interface-ranges check."
+  ],
+  "verifier": "https://ampcode.com/threads/T-01a180be-9c8e-7585-ad6b-69ba2ef0b536"
+}

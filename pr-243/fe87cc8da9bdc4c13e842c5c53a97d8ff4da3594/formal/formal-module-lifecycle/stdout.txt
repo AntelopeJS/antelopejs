@@ -1,0 +1,8 @@
+Downloading https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
+TLC 1.7.4 on ModuleLifecycle.tla with MaxEdits = 2, MaxChanges = 1
+holds  TypeOK, ReloadNeverOverlaps, NoHalfBuiltModule, LaunchNeverStartsWhileStopping, DevSurvivesFailedReload (3071060 states)
+finding NoOrphanGeneration: 10 states (recorded 10): Initial -> LaunchPrepare -> LaunchAddModules -> LaunchConstruct -> Sigint -> SdStop -> SdStopDone -> SdDestroy -> ConstructApply -> SdClear
+finding LaunchReadsCurrentConfig: 21 states (recorded 21): Initial -> ConfigEdit -> LaunchPrepare -> LaunchAddModules -> LaunchConstruct -> LaunchConstructed -> LaunchStart -> LaunchStarted -> LaunchWatch -> Sigint -> LaunchHashConfig -> LaunchWatching -> ConfigEdit -> SdStopDone -> SdClear -> ConfigNoticed -> SdWatcher -> SdRelease -> RestartRequested -> RestartLaunches -> LaunchPrepare
+finding ConfigEditsReachProject: 12 states (recorded 12): Initial -> ConfigEdit -> LaunchPrepare -> ConfigEdit -> LaunchAddModules -> LaunchConstruct -> LaunchConstructed -> LaunchStart -> LaunchStarted -> LaunchWatch -> LaunchHashConfig -> LaunchWatching
+finding NoCrashFromStaleWork: 23 states (recorded 23): Initial -> LaunchPrepare -> LaunchAddModules -> LaunchConstruct -> ConstructApply -> LaunchConstructed -> LaunchStart -> StartApply -> LaunchStarted -> LaunchWatch -> LaunchHashConfig -> LaunchWatching -> ConfigEdit -> ConfigNoticed -> RestartRequested -> SdStop -> SdStopDone -> SdDestroy -> SdClear -> SdWatcher -> SdRelease -> SdTolerance -> StaleWorkFails
+Every rule matches the record in SKILL.md.

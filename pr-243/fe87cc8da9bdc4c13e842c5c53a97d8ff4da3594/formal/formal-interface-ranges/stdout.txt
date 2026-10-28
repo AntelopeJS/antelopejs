@@ -1,0 +1,11 @@
+
+
+  ModuleManager interface range properties
+    ✔ matches semver without admitting prereleases or rejecting invalid declarations (6615ms)
+
+  ModuleManager interface range properties
+    ✔ rejects exactly the conflicting or preloaded consumers without dropping or inventing entries (8013ms)
+
+
+  2 passing (15s)
+

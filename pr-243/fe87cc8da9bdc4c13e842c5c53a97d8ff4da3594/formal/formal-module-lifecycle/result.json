@@ -1,0 +1,11 @@
+{
+  "name": "formal-module-lifecycle",
+  "exitCode": 0,
+  "violated": [
+    "NoOrphanGeneration",
+    "LaunchReadsCurrentConfig",
+    "ConfigEditsReachProject",
+    "NoCrashFromStaleWork"
+  ],
+  "folder": "formal/formal-module-lifecycle"
+}

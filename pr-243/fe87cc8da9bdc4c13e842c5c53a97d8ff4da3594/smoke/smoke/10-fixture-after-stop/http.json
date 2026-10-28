@@ -1,0 +1,7 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T042558-330471/evidence/smoke/smoke/10-fixture-after-stop",
+  "url": "http://127.0.0.1:42891/",
+  "status": null,
+  "body": "",
+  "error": "connect ECONNREFUSED 127.0.0.1:42891"
+}

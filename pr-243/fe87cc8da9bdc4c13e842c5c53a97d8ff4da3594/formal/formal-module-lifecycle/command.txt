@@ -1,0 +1,1 @@
+node .agents/skills/formal-module-lifecycle/check.mjs

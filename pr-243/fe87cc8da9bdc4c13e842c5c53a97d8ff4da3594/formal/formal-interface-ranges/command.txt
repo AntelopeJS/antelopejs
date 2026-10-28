@@ -1,0 +1,1 @@
+pnpm exec mocha --no-config --require ts-node/register --require test/setup.ts test/core/module-manager.interface-ranges.test.ts --exit
