@@ -2,7 +2,7 @@ import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { readFile, writeFile } from "node:fs/promises";
 import { NodeFileSystem } from "../filesystem";
 import { removeModuleEntry, setModuleEntry } from "./config-editor";
-import { loadTsConfigFile } from "./config-loader";
+import { loadTsConfigFile } from "./ts-config-file";
 import { findConfigPath } from "./config-paths";
 import { recordOwnConfigWrite } from "./config-writes";
 import type {

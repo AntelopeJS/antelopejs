@@ -43,20 +43,20 @@ describe("test-module", () => {
         test: { setup: setupFn },
       });
 
-      sinon.stub(testModule, "loadTestConfig").resolves({
+      sinon.stub(testModule.testSteps, "loadTestConfig").resolves({
         config: mockConfig,
         test: mockConfig.test,
       });
 
       const setupEnvStub = sinon
-        .stub(testModule, "setupTestEnvironment")
+        .stub(testModule.testSteps, "setupTestEnvironment")
         .resolves(
           managerFixture({
             destroyAll: destroyAllStub,
           }),
         );
 
-      sinon.stub(testModule, "executeTests").resolves(0);
+      sinon.stub(testModule.testSteps, "executeTests").resolves(0);
 
       await testModule.TestModule("/module");
 
@@ -87,20 +87,20 @@ describe("test-module", () => {
         test: { setup: setupFn },
       });
 
-      sinon.stub(testModule, "loadTestConfig").resolves({
+      sinon.stub(testModule.testSteps, "loadTestConfig").resolves({
         config: originalConfig,
         test: originalConfig.test,
       });
 
       const setupEnvStub = sinon
-        .stub(testModule, "setupTestEnvironment")
+        .stub(testModule.testSteps, "setupTestEnvironment")
         .resolves(
           managerFixture({
             destroyAll: destroyAllStub,
           }),
         );
 
-      sinon.stub(testModule, "executeTests").resolves(0);
+      sinon.stub(testModule.testSteps, "executeTests").resolves(0);
 
       await testModule.TestModule("/module");
 
@@ -120,16 +120,18 @@ describe("test-module", () => {
         test: {},
       });
 
-      sinon.stub(testModule, "loadTestConfig").resolves({
+      sinon.stub(testModule.testSteps, "loadTestConfig").resolves({
         config: mockConfig,
         test: mockConfig.test,
       });
 
       const setupEnvStub = sinon
-        .stub(testModule, "setupTestEnvironment")
+        .stub(testModule.testSteps, "setupTestEnvironment")
         .resolves(managerFixture({ destroyAll: destroyAllStub }));
 
-      const executeStub = sinon.stub(testModule, "executeTests").resolves(0);
+      const executeStub = sinon
+        .stub(testModule.testSteps, "executeTests")
+        .resolves(0);
 
       const files = ["/module/test/only-this.test.js"];
       const result = await testModule.TestModule("/module", files);
@@ -158,18 +160,18 @@ describe("test-module", () => {
         test: {},
       });
 
-      sinon.stub(testModule, "loadTestConfig").resolves({
+      sinon.stub(testModule.testSteps, "loadTestConfig").resolves({
         config: mockConfig,
         test: mockConfig.test,
       });
 
-      sinon.stub(testModule, "setupTestEnvironment").resolves(
+      sinon.stub(testModule.testSteps, "setupTestEnvironment").resolves(
         managerFixture({
           destroyAll: destroyAllStub,
         }),
       );
 
-      sinon.stub(testModule, "executeTests").resolves(0);
+      sinon.stub(testModule.testSteps, "executeTests").resolves(0);
 
       const result = await testModule.TestModule("/module");
 

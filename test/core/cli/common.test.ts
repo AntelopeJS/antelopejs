@@ -12,7 +12,7 @@ import {
   writeModuleManifest,
   writeUserConfig,
 } from "../../../src/cli";
-import { configLoaderModule as configLoader } from "../../../src/core/config";
+import { tsConfigFileModule as tsConfigFile } from "../../../src/core/config";
 import { getProcessUi } from "../../../src/core/output";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
@@ -122,7 +122,7 @@ import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
         const fs = new InMemoryFileSystem();
         await fs.writeFile("/project/antelope.config.ts", "export default {}");
         sinon
-          .stub(configLoader, "loadTsConfigFile")
+          .stub(tsConfigFile, "loadTsConfigFile")
           .resolves({ name: "ts-project" });
         const config = await readConfig("/project", fs);
         expect(config?.name).to.equal("ts-project");

@@ -10,3 +10,5 @@ export * from "./config-writes";
 export * from "./module-declarations";
 export * from "./module-entry";
 export * from "./project-env";
+export * from "./ts-config-file";
+export * as tsConfigFileModule from "./ts-config-file";

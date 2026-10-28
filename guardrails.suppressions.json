@@ -7,12 +7,12 @@
     "anti-slop/no-unsafe-dictionary-type": 13,
     "anti-slop/require-safety-comment-for-type-assertion": 18,
     "eslint/no-control-regex": 1,
-    "import/no-cycle": 2,
-    "import/no-self-import": 2,
+    "import/no-cycle": 0,
+    "import/no-self-import": 0,
     "typescript/no-base-to-string": 1,
     "typescript/no-redundant-type-constituents": 6
   },
-  "tsExpectError": 9,
+  "tsExpectError": 8,
   "tsIgnore": 0,
   "safety": 32
 }

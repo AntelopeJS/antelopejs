@@ -20,8 +20,6 @@ import {
   registerCoreRuntimeInterface,
   withRaisedMaxListeners,
 } from "../runtime";
-// oxlint-disable-next-line import/no-self-import, import/no-cycle -- test seam: calls go through `self.` so `sinon.stub(module, "fn")` takes effect
-import * as self from "./test-module";
 
 const EXIT_CODE_ERROR = 1;
 const DEFAULT_TEST_FOLDER = "test";
@@ -199,7 +197,7 @@ export function runInTestModuleContext<T>(
   return testModule ? testModule.runInContext(callback) : callback();
 }
 
-export async function executeTests(
+async function executeTests(
   moduleRoot: string,
   test: AntelopeTestConfig,
   manager: ModuleManager | null,
@@ -244,7 +242,7 @@ async function discoverTestFiles(
     TEST_FILE_PATTERN,
     fs,
   );
-  const interfaceTestFiles = await self.collectInterfaceTestFiles(
+  const interfaceTestFiles = await testSteps.collectInterfaceTestFiles(
     moduleRoot,
     manager,
     fs,
@@ -267,13 +265,24 @@ function clearStubModulePath(manager: ModuleManager | null): void {
   manager.resolver.stubModulePath = undefined;
 }
 
+/**
+ * The steps `TestModule` runs, reached through this object so that a test can
+ * replace one step without running the others.
+ */
+export const testSteps = {
+  collectInterfaceTestFiles,
+  executeTests,
+  loadTestConfig,
+  setupTestEnvironment,
+};
+
 export async function TestModule(
   moduleFolder: string = ".",
   files: string[] = [],
 ): Promise<number> {
   const moduleRoot = path.resolve(moduleFolder);
   const fs = new NodeFileSystem();
-  const loadedConfig = await self.loadTestConfig(moduleRoot, fs);
+  const loadedConfig = await testSteps.loadTestConfig(moduleRoot, fs);
   if (!loadedConfig) {
     return EXIT_CODE_ERROR;
   }
@@ -292,14 +301,14 @@ export async function TestModule(
       }
     }
 
-    manager = await self.setupTestEnvironment(
+    manager = await testSteps.setupTestEnvironment(
       moduleRoot,
       loadedConfig.config,
       fs,
     );
     managerActive = true;
 
-    const failures = await self.executeTests(
+    const failures = await testSteps.executeTests(
       moduleRoot,
       loadedConfig.test,
       manager,

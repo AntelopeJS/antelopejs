@@ -7,7 +7,10 @@ import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
 
-import { configLoaderModule as configLoader } from "../../../src/core/config";
+import {
+  configLoaderModule as configLoader,
+  tsConfigFileModule as tsConfigFile,
+} from "../../../src/core/config";
 import {
   type BuildArtifact,
   type BuildModuleEntry,
@@ -101,7 +104,7 @@ async function createProject(
 ): Promise<InMemoryFileSystem> {
   const fs = new InMemoryFileSystem();
   await fs.writeFile(`${PROJECT}/antelope.config.ts`, "");
-  sinon.stub(configLoader, "loadTsConfigFile").resolves(config);
+  sinon.stub(tsConfigFile, "loadTsConfigFile").resolves(config);
   return fs;
 }
 
