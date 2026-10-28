@@ -70,7 +70,7 @@ export function setStatus(verdict: Verdict, targetUrl: string): void {
       "-f",
       `target_url=${targetUrl}`,
     ],
-    { cwd: REPO_DIR, stdio: "ignore" },
+    { cwd: REPO_DIR, stdio: ["ignore", "ignore", "pipe"] },
   );
 }
 

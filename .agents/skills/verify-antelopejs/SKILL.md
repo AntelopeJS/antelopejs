@@ -116,6 +116,7 @@ node "$VERIFY" seeded smoke project-init
 
 - The build is the one in `dist/`. Doctor fails when `src/` is newer, so rebuild with `new` instead of trusting an old `dist/`.
 - Templates come only from the offline manifest. A journey that reaches the network is a harness bug.
+- `publish` needs a `gh` token that can push to the repository and write commit statuses (`statuses: write`). A GitHub App token without it gets HTTP 403 on the status after the evidence and the comment are already posted. Rerun `publish` with a token that has it.
 - Each background process gets a free port from the kernel, so two runs never share an instance.
 - `project dev` exits 130 on SIGINT; journeys assert it and that the port refuses connections afterwards.
 
