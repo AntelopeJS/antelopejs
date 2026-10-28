@@ -1,0 +1,7 @@
+[
+  {
+    "name": "modules read back after remove",
+    "pass": true,
+    "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+  }
+]

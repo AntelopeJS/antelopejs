@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T031319-e957b7/work/embedded-runtime/embedded-start-use-stop/app
+ajs project modules list --json

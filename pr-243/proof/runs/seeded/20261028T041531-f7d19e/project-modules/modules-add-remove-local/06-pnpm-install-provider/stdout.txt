@@ -1,0 +1,13 @@
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +2
+++
+Progress: resolved 2, reused 2, downloaded 0, added 2, done
+
+dependencies:
++ verify-greeter
+
+devDependencies:
++ typescript 5.9.3
+
+Done in 539ms using pnpm v10.6.5

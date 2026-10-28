@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-bad-git
+ajs module init mod --git file:///tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-bad-git/missing.git --template 'Verify HTTP' --pm pnpm --no-git-init

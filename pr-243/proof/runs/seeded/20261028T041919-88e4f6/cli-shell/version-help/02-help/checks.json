@@ -1,0 +1,32 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stdout matches /^  project\\b/m",
+    "pass": true,
+    "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+  },
+  {
+    "name": "stdout matches /^  module\\b/m",
+    "pass": true,
+    "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+  },
+  {
+    "name": "stdout matches /^  config\\b/m",
+    "pass": true,
+    "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+  },
+  {
+    "name": "stdout matches /^  update\\b/m",
+    "pass": true,
+    "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+  },
+  {
+    "name": "stdout matches /^  plugins\\b/m",
+    "pass": true,
+    "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+  }
+]

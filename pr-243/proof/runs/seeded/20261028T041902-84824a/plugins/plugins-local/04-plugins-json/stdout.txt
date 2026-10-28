@@ -1,0 +1,12 @@
+[
+  {
+    "name": "dms",
+    "package": "@antelopejs/dms-frontend",
+    "description": "DMS frontend commands",
+    "state": "compatible",
+    "source": "global",
+    "path": "/tmp/verify-antelopejs/20261028T041902-84824a/work/plugins/plugins-local/project/node_modules/.bin/ajs-dms",
+    "version": "9.9.9",
+    "requiredCoreRange": null
+  }
+]

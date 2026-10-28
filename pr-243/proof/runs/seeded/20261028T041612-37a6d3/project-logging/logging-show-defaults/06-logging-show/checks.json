@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stdout matches /^Enabled\\s+yes$/m",
+    "pass": true,
+    "detail": "Enabled yes Module tracking off Date format yyyy-MM-dd HH:mm:ss Level formats default, see --json for the templates"
+  },
+  {
+    "name": "stdout matches /^Module tracking\\s+off$/m",
+    "pass": true,
+    "detail": "Enabled yes Module tracking off Date format yyyy-MM-dd HH:mm:ss Level formats default, see --json for the templates"
+  }
+]

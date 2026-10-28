@@ -1,0 +1,3 @@
+✖ Project already exists at /tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-existing/app
+  → Pass another directory: ajs project init <project>
+  → Or delete the existing project

@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-yes/app/antelope.config.ts exists",
+    "pass": true,
+    "detail": "present"
+  }
+]

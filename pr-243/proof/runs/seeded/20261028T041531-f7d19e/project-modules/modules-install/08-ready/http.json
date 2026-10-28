@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T041531-f7d19e/evidence/project-modules/modules-install/08-ready",
+  "url": "http://127.0.0.1:32859/",
+  "status": 200,
+  "body": "{\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}",
+  "json": {
+    "module": "greeter-consumer",
+    "greeting": "Hello, verifier"
+  },
+  "error": null
+}

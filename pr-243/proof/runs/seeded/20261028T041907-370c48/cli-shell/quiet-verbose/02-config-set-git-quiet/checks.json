@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stderr does not match /✔/",
+    "pass": true,
+    "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices."
+  },
+  {
+    "name": "stderr matches /▲ Using a non-default git repository/",
+    "pass": true,
+    "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices."
+  }
+]

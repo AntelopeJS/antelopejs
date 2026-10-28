@@ -1,0 +1,11 @@
+✔ Directory is valid
+▲ Using a non-default git repository
+  Its interfaces are not official and may not adhere to community quality standards or best practices.
+✖ Could not fetch templates from file:///tmp/verify-antelopejs/20261028T041726-675825/work/module-init/module-init-bad-git/missing.git
+  Command output:
+    fatal: Could not read from remote repository.
+    Please make sure you have the correct access rights
+    and the repository exists.
+  Run with --verbose to see the command output.
+  → Check the URL passed with --git or saved with ajs config set git
+  → Or go back to the default repository: ajs config reset

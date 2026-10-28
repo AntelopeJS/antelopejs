@@ -1,0 +1,148 @@
+[
+  {
+    "feature": "interface-resolution",
+    "journey": "resolution-provider-consumer",
+    "title": "a consumer module calls the interface a provider module implements",
+    "entryPoint": "ajs project dev on a provider and a consumer of verify-greeter",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "02-ready",
+        "folder": "interface-resolution/resolution-provider-consumer/02-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:46437/ answers 200 with greeting \"Hello, verifier\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}"
+          }
+        ]
+      },
+      {
+        "name": "03-stop-with-sigint",
+        "folder": "interface-resolution/resolution-provider-consumer/03-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      },
+      {
+        "name": "04-fixture-after-stop",
+        "folder": "interface-resolution/resolution-provider-consumer/04-fixture-after-stop",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:46437/ is refused",
+            "pass": true,
+            "detail": "connect ECONNREFUSED 127.0.0.1:46437"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "interface-resolution/resolution-provider-consumer"
+  },
+  {
+    "feature": "interface-resolution",
+    "journey": "resolution-range-conflict",
+    "title": "a consumer whose range rejects the shared copy stops the start with the conflict and its fixes",
+    "entryPoint": "ajs project dev, consumer requires verify-greeter ^2.0.0, shared copy 1.0.0",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-project-dev",
+        "folder": "interface-resolution/resolution-range-conflict/01-project-dev",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /Incompatible interface package resolution/",
+            "pass": true,
+            "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✖ Failed to construct modules ✖ Incompatible interface package resolution Modules share one copy of each interface packag…"
+          },
+          {
+            "name": "stderr matches /greeter-consumer requires verify-greeter@\\^2\\.0\\.0, but the shared copy is 1\\.0\\.0/",
+            "pass": true,
+            "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✖ Failed to construct modules ✖ Incompatible interface package resolution Modules share one copy of each interface packag…"
+          },
+          {
+            "name": "stderr matches /depend on \"verify-greeter\": \"\\^1\\.0\\.0\"/",
+            "pass": true,
+            "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✖ Failed to construct modules ✖ Incompatible interface package resolution Modules share one copy of each interface packag…"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "interface-resolution/resolution-range-conflict"
+  },
+  {
+    "feature": "interface-resolution",
+    "journey": "resolution-range-union",
+    "title": "a consumer range that admits the shared copy through a union starts normally",
+    "entryPoint": "ajs project dev, consumer requires verify-greeter ^0.9.0 || ^1.0.0",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "02-ready",
+        "folder": "interface-resolution/resolution-range-union/02-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:35317/ answers 200 with greeting \"Hello, verifier\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "interface-resolution/resolution-range-union"
+  },
+  {
+    "feature": "interface-resolution",
+    "journey": "resolution-missing-provider",
+    "title": "a consumer of an interface no module implements fails the start and names the interface",
+    "entryPoint": "ajs project dev without the provider module",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-modules-remove-provider",
+        "folder": "interface-resolution/resolution-missing-provider/01-modules-remove-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "03-ready-or-exit",
+        "folder": "interface-resolution/resolution-missing-provider/03-ready-or-exit",
+        "checks": [
+          {
+            "name": "no greeting is served",
+            "pass": true,
+            "detail": "status null, body "
+          },
+          {
+            "name": "dev exits non-zero",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /verify-greeter/",
+            "pass": true,
+            "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Loaded 1 module [2026-10-28 04:20:59] [ERROR] Failed to load module greeter-consumer Error: Cannot find module 'verify-greeter' Require stack: - /tmp/verify-antelopejs/20261028T042051-…"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "interface-resolution/resolution-missing-provider"
+  }
+]

@@ -1,0 +1,9 @@
+✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is available
+✔ Directory is valid
+▲ Using a non-default git repository
+  Its interfaces are not official and may not adhere to community quality standards or best practices.
+✔ Found 1 templates
+✖ Cannot prompt: this is not an interactive terminal
+  ajs project init app needs answers it cannot ask for when stdin is not a terminal or CI is set.
+  → Pass them as flags: ajs project init app --template <name> --pm <npm|yarn|pnpm> --[no-]git-init
+  → Or accept the defaults: ajs project init app --yes

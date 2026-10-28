@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T042010-58c68c/work/library-launch/launch-build-from-build
+ajs config get git

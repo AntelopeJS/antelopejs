@@ -1,0 +1,53 @@
+{
+  "feature": "plugins",
+  "journey": "plugins-local",
+  "title": "a plugin in node_modules/.bin is reported local and compatible, and ajs <plugin> runs it with the arguments",
+  "entryPoint": "ajs plugins --json; ajs dms hello --flag",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "04-plugins-json",
+      "folder": "plugins/plugins-local/04-plugins-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "dms state",
+          "pass": true,
+          "detail": "expected \"compatible\", got \"compatible\""
+        },
+        {
+          "name": "dms source",
+          "pass": true,
+          "detail": "expected \"local\", got \"local\""
+        },
+        {
+          "name": "dms version",
+          "pass": true,
+          "detail": "expected \"9.9.9\", got \"9.9.9\""
+        }
+      ]
+    },
+    {
+      "name": "05-ajs-dms-hello-flag",
+      "folder": "plugins/plugins-local/05-ajs-dms-hello-flag",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stdout matches /plugin ran with \\[\"hello\",\"--flag\"\\]/",
+          "pass": true,
+          "detail": "plugin ran with [\"hello\",\"--flag\"]"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "plugins/plugins-local"
+}

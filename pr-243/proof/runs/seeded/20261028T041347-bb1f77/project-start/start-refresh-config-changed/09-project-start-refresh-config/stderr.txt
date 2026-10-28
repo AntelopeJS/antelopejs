@@ -1,0 +1,2 @@
+The configuration does not load the modules the build was created with: greeter-provider
+Run 'ajs project build' to rebuild.

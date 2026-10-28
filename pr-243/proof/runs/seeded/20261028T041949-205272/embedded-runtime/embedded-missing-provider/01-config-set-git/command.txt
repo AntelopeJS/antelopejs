@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041949-205272/work/embedded-runtime/embedded-missing-provider
+ajs config set git file:///tmp/verify-antelopejs/20261028T041949-205272/sources/interfaces.git

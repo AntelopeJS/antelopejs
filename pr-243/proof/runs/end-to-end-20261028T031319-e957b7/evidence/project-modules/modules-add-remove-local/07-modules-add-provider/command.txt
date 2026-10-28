@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-remove-local/app
+ajs project modules add /tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-remove-local/greeter/provider --mode local

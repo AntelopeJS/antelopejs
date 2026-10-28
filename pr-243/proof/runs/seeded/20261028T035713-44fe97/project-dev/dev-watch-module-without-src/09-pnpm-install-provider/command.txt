@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T035713-44fe97/work/project-dev/dev-watch-module-without-src/greeter/provider
+pnpm install --offline

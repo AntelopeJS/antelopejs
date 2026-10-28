@@ -1,0 +1,75 @@
+RUN /tmp/verify-antelopejs/20261028T025537-f18d69
+PASS smoke/smoke
+PASS project-init/init-flags
+PASS project-init/init-name-git
+PASS project-init/init-yes
+PASS project-init/init-needs-input
+PASS project-init/init-unknown-template
+PASS project-init/init-existing
+PASS project-init/init-cancel
+PASS project-init/init-unreachable-source
+PASS project-dev/dev-call-stop
+PASS project-dev/dev-hmr
+PASS project-dev/dev-failed-reload
+PASS project-dev/dev-run-alias
+PASS project-dev/dev-project-flag
+PASS project-dev/dev-cancel-during-start
+PASS project-dev/dev-inspect
+PASS project-dev/dev-no-project
+PASS project-build/build-artifact
+PASS project-build/build-env
+PASS project-build/build-no-project
+PASS project-start/start-from-build
+FAIL project-start/start-without-build
+    06-project-start-without-a-build: stderr matches /ajs project build/ (✖ No build found at .antelope/build/build.json Run with --verbose for the full trace.)
+PASS project-start/start-refresh-config
+PASS project-start/start-refresh-config-changed
+FAIL project-start/start-base-build
+    start-base-build: base CLI built by verify-ajs new (run verify-ajs new without --no-base)
+    critical step start-base-build failed
+PASS project-modules/modules-list-empty
+PASS project-modules/modules-add-remove-local
+PASS project-modules/modules-add-keeps-config
+PASS project-modules/modules-remove-unknown
+PASS project-modules/modules-add-unreachable-package
+PASS project-modules/modules-install
+PASS project-modules/modules-update-dry-run
+PASS project-logging/logging-show-defaults
+PASS project-logging/logging-set-roundtrip
+PASS project-logging/logging-set-usage-error
+PASS project-logging/logging-set-needs-input
+PASS module-init/module-init-flags
+PASS module-init/module-init-env-git
+PASS module-init/module-init-needs-input
+PASS module-init/module-init-occupied
+PASS module-init/module-init-unknown-template
+PASS module-init/module-init-bad-git
+PASS module-test/module-test-pass
+PASS module-test/module-test-fail
+PASS module-test/module-test-file
+FAIL module-test/module-test-file-docs-form
+    03-module-test-mod-file: exit code 0 (exit code 1)
+    03-module-test-mod-file: stdout matches /1 passing/ ()
+PASS module-test/module-test-no-config
+PASS config/config-defaults
+PASS config/config-set-get
+PASS config/config-set-invalid
+PASS config/config-unknown-key
+PASS config/config-reset
+FAIL config/config-base-file
+    config-base-file: base CLI built by verify-ajs new (run verify-ajs new without --no-base)
+    critical step config-base-file failed
+PASS plugins/plugins-not-installed
+PASS plugins/plugins-local
+PASS plugins/update-not-global
+PASS cli-shell/version-help
+PASS cli-shell/unknown-command
+PASS cli-shell/quiet-verbose
+PASS embedded-runtime/embedded-start-use-stop
+PASS embedded-runtime/embedded-missing-provider
+PASS library-launch/launch-build-from-build
+PASS interface-resolution/resolution-provider-consumer
+PASS interface-resolution/resolution-range-conflict
+PASS interface-resolution/resolution-range-union
+PASS interface-resolution/resolution-missing-provider
+FULLDONE

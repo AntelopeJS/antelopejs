@@ -1,0 +1,16 @@
+/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts
+---
+import { defineConfig } from "@antelopejs/interface-core/config";
+
+export default defineConfig({
+  name: "kept",
+  modules: {
+    "verify-http-fixture": {
+      source: { type: "local", path: ".", installCommand: ["npx tsc"] },
+      config: { greeting: "kept value" },
+    },
+  },
+  environments: {
+    staging: { modules: {} },
+  },
+});

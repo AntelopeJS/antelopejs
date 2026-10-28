@@ -1,0 +1,32 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "default export is launch",
+    "pass": true,
+    "detail": "expected true, got true"
+  },
+  {
+    "name": "served after launch",
+    "pass": true,
+    "detail": "expected \"hello from the fixture\", got \"hello from the fixture\""
+  },
+  {
+    "name": "refused after launch stop",
+    "pass": true,
+    "detail": "expected null, got null"
+  },
+  {
+    "name": "served after launchFromBuild",
+    "pass": true,
+    "detail": "expected \"hello from the fixture\", got \"hello from the fixture\""
+  },
+  {
+    "name": "refused after build stop",
+    "pass": true,
+    "detail": "expected null, got null"
+  }
+]

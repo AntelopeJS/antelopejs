@@ -1,0 +1,7 @@
+[
+  {
+    "name": "git kept",
+    "pass": true,
+    "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\""
+  }
+]

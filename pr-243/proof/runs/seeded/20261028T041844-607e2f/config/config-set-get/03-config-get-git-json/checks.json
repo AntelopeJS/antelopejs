@@ -1,0 +1,7 @@
+[
+  {
+    "name": "git read back as JSON",
+    "pass": true,
+    "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041844-607e2f/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041844-607e2f/sources/interfaces.git\""
+  }
+]

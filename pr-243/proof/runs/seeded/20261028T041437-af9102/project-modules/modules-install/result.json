@@ -1,0 +1,87 @@
+{
+  "feature": "project-modules",
+  "journey": "modules-install",
+  "title": "install adds the module that implements an interface no module of the project implements",
+  "entryPoint": "ajs project modules install --git <offline manifest> --yes",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-modules/modules-install/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-modules/modules-install/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041437-af9102/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041437-af9102/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-pnpm-install-consumer",
+      "folder": "project-modules/modules-install/03-pnpm-install-consumer",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-install",
+      "folder": "project-modules/modules-install/05-modules-install",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /greeter-provider/",
+          "pass": true,
+          "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Analyzed environment default ▲ 1 unresolved import in default: verify-greeter@file:../verify-greeter (required by greeter-consumer) ℹ greeter-provider is the on…"
+        }
+      ]
+    },
+    {
+      "name": "06-modules-list-after-install",
+      "folder": "project-modules/modules-install/06-modules-list-after-install",
+      "checks": [
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"greeter-consumer\",\"greeter-provider\"], got [\"greeter-consumer\",\"greeter-provider\"]"
+        }
+      ]
+    },
+    {
+      "name": "08-ready",
+      "folder": "project-modules/modules-install/08-ready",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:39003/ answers 200 with greeting \"Hello, verifier\"",
+          "pass": true,
+          "detail": "status 200, body {\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-modules/modules-install"
+}

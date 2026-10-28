@@ -1,0 +1,7 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T035605-ff4119/evidence/smoke/smoke/07-ready",
+  "url": "http://127.0.0.1:36361/",
+  "status": null,
+  "body": "",
+  "error": "connect ECONNREFUSED 127.0.0.1:36361"
+}

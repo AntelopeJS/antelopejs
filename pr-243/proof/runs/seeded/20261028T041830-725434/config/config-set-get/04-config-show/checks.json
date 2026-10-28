@@ -1,0 +1,7 @@
+[
+  {
+    "name": "stdout matches /\\(custom\\)/",
+    "pass": true,
+    "detail": "git file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git (custom)"
+  }
+]

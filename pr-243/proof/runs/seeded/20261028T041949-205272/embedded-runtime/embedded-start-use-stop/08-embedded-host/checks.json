@@ -1,0 +1,37 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "running after start",
+    "pass": true,
+    "detail": "expected true, got true"
+  },
+  {
+    "name": "interface call through use()",
+    "pass": true,
+    "detail": "expected \"Hello, host\", got \"Hello, host\""
+  },
+  {
+    "name": "fixture module served while running",
+    "pass": true,
+    "detail": "expected \"hello from the fixture\", got \"hello from the fixture\""
+  },
+  {
+    "name": "host kept its SIGINT listeners",
+    "pass": true,
+    "detail": "expected true, got true"
+  },
+  {
+    "name": "stopped after stop",
+    "pass": false,
+    "detail": "expected false, got true"
+  },
+  {
+    "name": "fixture refused after stop",
+    "pass": true,
+    "detail": "expected null, got null"
+  }
+]

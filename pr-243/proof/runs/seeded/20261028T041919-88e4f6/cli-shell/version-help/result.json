@@ -1,0 +1,109 @@
+{
+  "feature": "cli-shell",
+  "journey": "version-help",
+  "title": "--version prints the package version, --help lists every command group",
+  "entryPoint": "ajs --version; ajs --help; ajs help project",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-version",
+      "folder": "cli-shell/version-help/01-version",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "version",
+          "pass": true,
+          "detail": "expected \"1.17.1\", got \"1.17.1\""
+        }
+      ]
+    },
+    {
+      "name": "02-help",
+      "folder": "cli-shell/version-help/02-help",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stdout matches /^  project\\b/m",
+          "pass": true,
+          "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+        },
+        {
+          "name": "stdout matches /^  module\\b/m",
+          "pass": true,
+          "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+        },
+        {
+          "name": "stdout matches /^  config\\b/m",
+          "pass": true,
+          "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+        },
+        {
+          "name": "stdout matches /^  update\\b/m",
+          "pass": true,
+          "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+        },
+        {
+          "name": "stdout matches /^  plugins\\b/m",
+          "pass": true,
+          "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+        }
+      ]
+    },
+    {
+      "name": "03-help-project",
+      "folder": "cli-shell/version-help/03-help-project",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stdout matches /^  init\\b/m",
+          "pass": true,
+          "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+        },
+        {
+          "name": "stdout matches /^  modules\\b/m",
+          "pass": true,
+          "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+        },
+        {
+          "name": "stdout matches /^  logging\\b/m",
+          "pass": true,
+          "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+        },
+        {
+          "name": "stdout matches /^  dev\\b/m",
+          "pass": true,
+          "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+        },
+        {
+          "name": "stdout matches /^  build\\b/m",
+          "pass": true,
+          "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+        },
+        {
+          "name": "stdout matches /^  start\\b/m",
+          "pass": true,
+          "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+        },
+        {
+          "name": "stdout matches /^  run\\b/m",
+          "pass": true,
+          "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "cli-shell/version-help"
+}

@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T042051-4e8a17/evidence/interface-resolution/resolution-range-union/02-ready",
+  "url": "http://127.0.0.1:35317/",
+  "status": 200,
+  "body": "{\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}",
+  "json": {
+    "module": "greeter-consumer",
+    "greeting": "Hello, verifier"
+  },
+  "error": null
+}

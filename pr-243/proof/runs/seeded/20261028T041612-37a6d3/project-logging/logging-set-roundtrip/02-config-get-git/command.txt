@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-set-roundtrip
+ajs config get git

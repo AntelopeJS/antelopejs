@@ -1,0 +1,38 @@
+{
+  "feature": "module-init",
+  "journey": "module-init-occupied",
+  "title": "module init into a non-empty folder refuses and leaves it as it was",
+  "entryPoint": "ajs module init mod (mod has files)",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "03-module-init-into-occupied-folder",
+      "folder": "module-init/module-init-occupied/03-module-init-into-occupied-folder",
+      "checks": [
+        {
+          "name": "non-zero exit code",
+          "pass": true,
+          "detail": "exit code 1"
+        },
+        {
+          "name": "stderr matches /mod/",
+          "pass": true,
+          "detail": "✖ Directory mod is not empty → Pass an empty or new directory: ajs module init <path>"
+        }
+      ]
+    },
+    {
+      "name": "04-tree-after-init",
+      "folder": "module-init/module-init-occupied/04-tree-after-init",
+      "checks": [
+        {
+          "name": "file tree unchanged",
+          "pass": true,
+          "detail": "identical"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "module-init/module-init-occupied"
+}

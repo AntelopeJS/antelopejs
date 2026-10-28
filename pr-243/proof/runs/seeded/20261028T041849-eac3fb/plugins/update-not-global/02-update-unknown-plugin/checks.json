@@ -1,0 +1,7 @@
+[
+  {
+    "name": "non-zero exit code",
+    "pass": true,
+    "detail": "exit code 2"
+  }
+]

@@ -1,0 +1,127 @@
+CAUGHT smoke (evidence /tmp/verify-antelopejs/20261028T023903-4f25ba/evidence/smoke)
+    FAIL smoke/smoke
+        07-ready: GET http://127.0.0.1:42337/ answers 200 with message "hello from the fixture" (connect ECONNREFUSED 127.0.0.1:42337)
+        critical step 07-ready failed
+    
+CAUGHT project-init (evidence /tmp/verify-antelopejs/20261028T023917-04e358/evidence/project-init)
+    PASS project-init/init-flags
+    FAIL project-init/init-name-git
+        03-project-init: /tmp/verify-antelopejs/20261028T023917-04e358/work/project-init/init-name-git/app/antelope.config.ts matches /name: "verified"/ (import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: "app", modules: { "verify-http-fixture": { source: { type: "local", path: ".", watchDir: [ "src" ], installCommand: [ "npx tsc" ], reloadCommand: [ "npx tsc" ] } } } });)
+        critical step 03-project-init failed
+    PASS project-init/init-yes
+    PASS project-init/init-needs-input
+    PASS project-init/init-unknown-template
+    PASS project-init/init-existing
+    PASS project-init/init-cancel
+    PASS project-init/init-unreachable-source
+    
+CAUGHT project-dev (evidence /tmp/verify-antelopejs/20261028T023948-1476c0/evidence/project-dev)
+    PASS project-dev/dev-call-stop
+    FAIL project-dev/dev-hmr
+        10-fixture-after-first-edit: GET http://127.0.0.1:46393/ answers 200 with message "edited once" (status 200, body {"module":"verify-http-fixture","message":"hello from the fixture"})
+        12-fixture-after-second-edit: GET http://127.0.0.1:46393/ answers 200 with message "edited twice" (status 200, body {"module":"verify-http-fixture","message":"hello from the fixture"})
+    FAIL project-dev/dev-failed-reload
+        10-fixture-while-the-build-is-broken: stderr matches /Failed to reload module verify-http-fixture/ (✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.8s ✔ Loaded 1 module 3.8s ✔ Constructed modules)
+        12-fixture-after-the-fix: GET http://127.0.0.1:44143/ answers 200 with message "recovered" (status 200, body {"module":"verify-http-fixture","message":"hello from the fixture"})
+    PASS project-dev/dev-run-alias
+    PASS project-dev/dev-project-flag
+    PASS project-dev/dev-cancel-during-start
+    PASS project-dev/dev-inspect
+    PASS project-dev/dev-no-project
+    
+CAUGHT project-build (evidence /tmp/verify-antelopejs/20261028T024501-e57fbc/evidence/project-build)
+    PASS project-build/build-artifact
+    FAIL project-build/build-env
+        08-project-build-env-nope: exit code 2 (exit code 0)
+        08-project-build-env-nope: /tmp/verify-antelopejs/20261028T024501-e57fbc/work/project-build/build-env/app/.antelope/build/build.json is absent (present)
+    PASS project-build/build-no-project
+    
+CAUGHT project-start (evidence /tmp/verify-antelopejs/20261028T024529-9b6cfa/evidence/project-start)
+    PASS project-start/start-from-build
+    FAIL project-start/start-without-build
+        06-project-start-without-a-build: stderr matches /ajs project build/ (✖ No build found at .antelope/build/build.json Run with --verbose for the full trace.)
+    PASS project-start/start-refresh-config
+    FAIL project-start/start-refresh-config-changed
+        09-project-start-refresh-config: exit code 3 (exit code 1)
+    PASS project-start/start-base-build
+    
+CAUGHT project-modules (evidence /tmp/verify-antelopejs/20261028T024617-c11efa/evidence/project-modules)
+    PASS project-modules/modules-list-empty
+    PASS project-modules/modules-add-remove-local
+    PASS project-modules/modules-add-keeps-config
+    FAIL project-modules/modules-remove-unknown
+        06-modules-remove-unknown: exit code 1 (exit code 0)
+        06-modules-remove-unknown: configuration unchanged (expected "import { defineConfig } from '@antelopejs/interface-core/config';\n\nexport default defineConfig({\n  name: \"app\",\n  modules: {\n    \"verify-http-fixture\": {\n      source: {\n        type: \"local\",\n        path: \".\",\n        watchDir: [\n          \"src\"\n        ],\n        installCommand: [\n          \"npx tsc\"\n        ],\n        reloadCommand: [\n          \"npx tsc\"\n        ]\n      }\n    }\n  }\n});\n", got "import { defineConfig } from '@antelopejs/interface-core/config';\n\nexport default defineConfig({\n  name: \"app\",\n  modules: {}\n});\n")
+        07-modules-remove-unknown-force: exit code 0 (exit code 1)
+    PASS project-modules/modules-add-unreachable-package
+    PASS project-modules/modules-install
+    PASS project-modules/modules-update-dry-run
+    
+CAUGHT project-logging (evidence /tmp/verify-antelopejs/20261028T024700-a3c4d0/evidence/project-logging)
+    PASS project-logging/logging-show-defaults
+    FAIL project-logging/logging-set-roundtrip
+        09-logging-show-json-after-remove: include list emptied (expected [], got ["verify-http-fixture"])
+    PASS project-logging/logging-set-usage-error
+    PASS project-logging/logging-set-needs-input
+    
+CAUGHT module-init (evidence /tmp/verify-antelopejs/20261028T024728-0c096c/evidence/module-init)
+    PASS module-init/module-init-flags
+    PASS module-init/module-init-env-git
+    PASS module-init/module-init-needs-input
+    FAIL module-init/module-init-occupied
+        03-module-init-into-occupied-folder: non-zero exit code (exit code 0)
+        04-tree-after-init: file tree unchanged (added .gitignore 18, antelope.test.ts 292, package.json 345, pnpm-lock.yaml 1449, src/, src/index.ts 561, src/message.ts 49, test/, test/http.test.js 331, tsconfig.json 197; removed )
+    PASS module-init/module-init-unknown-template
+    PASS module-init/module-init-bad-git
+    
+CAUGHT module-test (evidence /tmp/verify-antelopejs/20261028T024739-d330d2/evidence/module-test)
+    PASS module-test/module-test-pass
+    FAIL module-test/module-test-fail
+        03-module-test: non-zero exit code (exit code 0)
+    PASS module-test/module-test-file
+    FAIL module-test/module-test-file-docs-form
+        03-module-test-mod-file: exit code 0 (exit code 1)
+        03-module-test-mod-file: stdout matches /1 passing/ ()
+    PASS module-test/module-test-no-config
+    
+CAUGHT config (evidence /tmp/verify-antelopejs/20261028T024803-ba6987/evidence/config)
+    PASS config/config-defaults
+    PASS config/config-set-get
+    FAIL config/config-set-invalid
+        01-config-set-git-invalid: exit code 2 (exit code 0)
+        01-config-set-git-invalid: stderr matches /Invalid git repository URL 'notaurl'/ (▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to notaurl Previous value: https://github.com/AntelopeJS/interfaces.git)
+        02-config-get-git: git unchanged (expected "https://github.com/AntelopeJS/interfaces.git", got "notaurl")
+    PASS config/config-unknown-key
+    PASS config/config-reset
+    PASS config/config-base-file
+    
+CAUGHT plugins (evidence /tmp/verify-antelopejs/20261028T024813-ff975a/evidence/plugins)
+    PASS plugins/plugins-not-installed
+    FAIL plugins/plugins-local
+        04-plugins-json: dms source (expected "local", got "global")
+    PASS plugins/update-not-global
+    
+MISSED cli-shell (evidence /tmp/verify-antelopejs/20261028T024823-c21c0b/evidence/cli-shell)
+    PASS cli-shell/version-help
+    PASS cli-shell/unknown-command
+    PASS cli-shell/quiet-verbose
+    
+CAUGHT embedded-runtime (evidence /tmp/verify-antelopejs/20261028T024832-39c5e7/evidence/embedded-runtime)
+    FAIL embedded-runtime/embedded-start-use-stop
+        08-embedded-host: stopped after stop (expected false, got true)
+    PASS embedded-runtime/embedded-missing-provider
+    
+CAUGHT library-launch (evidence /tmp/verify-antelopejs/20261028T024854-25c216/evidence/library-launch)
+    FAIL library-launch/launch-build-from-build
+        06-launch-host: default export is launch (expected true, got false)
+    
+CAUGHT interface-resolution (evidence /tmp/verify-antelopejs/20261028T024911-7157b0/evidence/interface-resolution)
+    PASS interface-resolution/resolution-provider-consumer
+    FAIL interface-resolution/resolution-range-conflict
+        01-project-dev: stderr matches /Incompatible interface package resolution/ (✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✔ Constructed modules ✖ Failed to start modules Run with --verbose for the full trace.)
+        01-project-dev: stderr matches /greeter-consumer requires verify-greeter@\^2\.0\.0, but the shared copy is 1\.0\.0/ (✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✔ Constructed modules ✖ Failed to start modules Run with --verbose for the full trace.)
+        01-project-dev: stderr matches /depend on "verify-greeter": "\^1\.0\.0"/ (✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✔ Constructed modules ✖ Failed to start modules Run with --verbose for the full trace.)
+    PASS interface-resolution/resolution-range-union
+    PASS interface-resolution/resolution-missing-provider
+    
+DONE

@@ -1,0 +1,7 @@
+[
+  {
+    "name": "GET http://127.0.0.1:41717/ is refused",
+    "pass": true,
+    "detail": "connect ECONNREFUSED 127.0.0.1:41717"
+  }
+]

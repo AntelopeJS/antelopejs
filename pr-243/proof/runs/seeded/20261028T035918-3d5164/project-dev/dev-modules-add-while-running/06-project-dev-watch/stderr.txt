@@ -1,0 +1,11 @@
+✔ Found project: app
+
+Environment  default
+Watch mode   enabled
+Inspector    disabled
+▲ Watch mode enabled - project will automatically restart when files change
+ℹ Starting AntelopeJS project
+✔ Installed dependencies for verify-http-fixture 3.3s
+✔ Loaded 1 module 3.3s
+✔ Constructed modules
+✔ Stopped the project

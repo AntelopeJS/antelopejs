@@ -1,0 +1,32 @@
+{
+  "feature": "module-init",
+  "journey": "module-init-unknown-template",
+  "title": "an unknown template is a usage error that lists the available ones",
+  "entryPoint": "ajs module init mod --template Nope",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-module-init-unknown-template",
+      "folder": "module-init/module-init-unknown-template/01-module-init-unknown-template",
+      "checks": [
+        {
+          "name": "exit code 2",
+          "pass": true,
+          "detail": "exit code 2"
+        },
+        {
+          "name": "stderr matches /Unknown template 'Nope'/",
+          "pass": true,
+          "detail": "✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Unknown template 'Nope' Available: Verify HTTP → Pass one of them, e.g. --template 'Verify HTTP'"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-unknown-template/mod is absent",
+          "pass": true,
+          "detail": "missing"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "module-init/module-init-unknown-template"
+}

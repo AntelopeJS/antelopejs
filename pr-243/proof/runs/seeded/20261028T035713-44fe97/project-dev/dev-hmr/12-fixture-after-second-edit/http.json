@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T035713-44fe97/evidence/project-dev/dev-hmr/12-fixture-after-second-edit",
+  "url": "http://127.0.0.1:39333/",
+  "status": 200,
+  "body": "{\"module\":\"verify-http-fixture\",\"message\":\"edited twice\"}",
+  "json": {
+    "module": "verify-http-fixture",
+    "message": "edited twice"
+  },
+  "error": null
+}

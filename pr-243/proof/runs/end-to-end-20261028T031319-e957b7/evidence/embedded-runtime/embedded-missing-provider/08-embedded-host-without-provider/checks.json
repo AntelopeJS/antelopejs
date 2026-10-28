@@ -1,0 +1,12 @@
+[
+  {
+    "name": "non-zero exit code",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /missing-provider|verify-greeter/",
+    "pass": true,
+    "detail": "/home/user/workspace/antelopejs/dist/core/modules/module-manifest.js:181 throw new Error(`Missing package.json in '${folder}'`); ^ Error: Missing package.json in '/tmp/verify-antelopejs/20261028T031319-e957b7/work/embedded-runtime/embedded-missing-provider/greeter/missing-provider' at ModuleManifest…"
+  }
+]

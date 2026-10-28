@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041734-c193f6/work/module-test/module-test-file/mod/package.json exists",
+    "pass": true,
+    "detail": "present"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041734-c193f6/work/module-test/module-test-file/mod/node_modules/typescript exists",
+    "pass": true,
+    "detail": "present"
+  }
+]

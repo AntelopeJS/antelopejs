@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T042035-e03a76/work/library-launch/launch-build-from-build
+node /tmp/verify-antelopejs-seeded-library-launch-lpjnnE/dist/index.js /tmp/verify-antelopejs/20261028T042035-e03a76/work/library-launch/launch-build-from-build/app

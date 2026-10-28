@@ -1,0 +1,22 @@
+[
+  {
+    "name": "enabled read back",
+    "pass": true,
+    "detail": "expected false, got false"
+  },
+  {
+    "name": "module tracking read back",
+    "pass": true,
+    "detail": "expected true, got true"
+  },
+  {
+    "name": "include list read back",
+    "pass": true,
+    "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+  },
+  {
+    "name": "debug template read back",
+    "pass": true,
+    "detail": "expected \"[{{DATE}}] {{ARGS}}\", got \"[{{DATE}}] {{ARGS}}\""
+  }
+]

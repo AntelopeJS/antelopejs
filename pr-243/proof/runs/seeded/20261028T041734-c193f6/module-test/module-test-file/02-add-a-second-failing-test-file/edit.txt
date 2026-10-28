@@ -1,0 +1,3 @@
+/tmp/verify-antelopejs/20261028T041734-c193f6/work/module-test/module-test-file/mod/test/other.test.js
+---
+it("fails", () => { throw new Error("must not run"); });

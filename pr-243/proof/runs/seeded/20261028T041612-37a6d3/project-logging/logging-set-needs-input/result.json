@@ -1,0 +1,101 @@
+{
+  "feature": "project-logging",
+  "journey": "logging-set-needs-input",
+  "title": "set without a setting flag and without a terminal asks for flags and writes nothing",
+  "entryPoint": "ajs project logging set (CI=1, no flags)",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-logging/logging-set-needs-input/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-logging/logging-set-needs-input/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041612-37a6d3/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041612-37a6d3/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-logging/logging-set-needs-input/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-set-needs-input/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 template…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-set-needs-input/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-set-needs-input/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-logging/logging-set-needs-input/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-logging-set-without-flags",
+      "folder": "project-logging/logging-set-needs-input/06-logging-set-without-flags",
+      "checks": [
+        {
+          "name": "exit code 2",
+          "pass": true,
+          "detail": "exit code 2"
+        },
+        {
+          "name": "stderr matches /Cannot prompt/",
+          "pass": true,
+          "detail": "✖ Cannot prompt: this is not an interactive terminal ajs project logging set needs an answer it cannot ask for when stdin is not a terminal or CI is set. → Pass the settings to change as flags, e.g. ajs project logging set --enable → Run ajs project logging set --help to list them"
+        },
+        {
+          "name": "configuration unchanged",
+          "pass": true,
+          "detail": "expected \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\", got \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\""
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-logging/logging-set-needs-input"
+}

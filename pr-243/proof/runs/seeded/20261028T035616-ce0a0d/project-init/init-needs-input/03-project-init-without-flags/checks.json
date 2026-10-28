@@ -1,0 +1,22 @@
+[
+  {
+    "name": "exit code 2",
+    "pass": true,
+    "detail": "exit code 2"
+  },
+  {
+    "name": "stderr matches /Cannot prompt/",
+    "pass": true,
+    "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Cannot…"
+  },
+  {
+    "name": "stderr matches /--template <name>/",
+    "pass": true,
+    "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Cannot…"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is absent",
+    "pass": true,
+    "detail": "missing"
+  }
+]

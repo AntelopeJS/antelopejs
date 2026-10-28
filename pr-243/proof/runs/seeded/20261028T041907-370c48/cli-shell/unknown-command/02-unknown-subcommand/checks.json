@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 2",
+    "pass": true,
+    "detail": "exit code 2"
+  },
+  {
+    "name": "stderr matches /nope/",
+    "pass": true,
+    "detail": "✖ Unknown command 'nope' Usage: ajs project [options] [command] → Run ajs project --help for usage"
+  }
+]

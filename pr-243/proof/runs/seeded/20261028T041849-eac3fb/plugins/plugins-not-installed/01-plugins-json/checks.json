@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "dms state",
+    "pass": true,
+    "detail": "expected \"not-installed\", got \"not-installed\""
+  }
+]

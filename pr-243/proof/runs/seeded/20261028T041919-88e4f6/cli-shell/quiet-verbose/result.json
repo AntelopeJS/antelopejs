@@ -1,0 +1,96 @@
+{
+  "feature": "cli-shell",
+  "journey": "quiet-verbose",
+  "title": "--quiet and ANTELOPEJS_QUIET drop the success line and keep the warning; the write still lands",
+  "entryPoint": "ajs config set git <url>; ajs -q config set git <url>; ANTELOPEJS_QUIET=1 ajs config set git <url>",
+  "status": "FAIL",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "cli-shell/quiet-verbose/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /✔ Set git/",
+          "pass": true,
+          "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/normal Previous value: https://github.com/AntelopeJS/interfaces.git"
+        },
+        {
+          "name": "stderr matches /▲ Using a non-default git repository/",
+          "pass": true,
+          "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/normal Previous value: https://github.com/AntelopeJS/interfaces.git"
+        }
+      ]
+    },
+    {
+      "name": "02-config-set-git-quiet",
+      "folder": "cli-shell/quiet-verbose/02-config-set-git-quiet",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr does not match /✔/",
+          "pass": false,
+          "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/quiet Previous value: file:///verify/normal"
+        },
+        {
+          "name": "stderr matches /▲ Using a non-default git repository/",
+          "pass": true,
+          "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/quiet Previous value: file:///verify/normal"
+        }
+      ]
+    },
+    {
+      "name": "03-config-get-git-after-quiet",
+      "folder": "cli-shell/quiet-verbose/03-config-get-git-after-quiet",
+      "checks": [
+        {
+          "name": "git after --quiet",
+          "pass": true,
+          "detail": "expected \"file:///verify/quiet\", got \"file:///verify/quiet\""
+        }
+      ]
+    },
+    {
+      "name": "04-config-set-git-with-antelopejs-quiet",
+      "folder": "cli-shell/quiet-verbose/04-config-set-git-with-antelopejs-quiet",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr does not match /✔/",
+          "pass": false,
+          "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/env Previous value: file:///verify/quiet"
+        },
+        {
+          "name": "stderr matches /▲ Using a non-default git repository/",
+          "pass": true,
+          "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/env Previous value: file:///verify/quiet"
+        }
+      ]
+    },
+    {
+      "name": "05-config-get-git-after-antelopejs-quiet",
+      "folder": "cli-shell/quiet-verbose/05-config-get-git-after-antelopejs-quiet",
+      "checks": [
+        {
+          "name": "git after ANTELOPEJS_QUIET",
+          "pass": true,
+          "detail": "expected \"file:///verify/env\", got \"file:///verify/env\""
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "cli-shell/quiet-verbose"
+}

@@ -1,0 +1,2 @@
+verify-http-fixture	local	.
+greeter-provider	local	../greeter/provider

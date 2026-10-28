@@ -1,0 +1,1 @@
+file:///tmp/verify-antelopejs/20261028T041531-f7d19e/sources/interfaces.git

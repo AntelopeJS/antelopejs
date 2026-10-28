@@ -1,0 +1,3 @@
+✖ Unknown command 'nope'
+  Usage: ajs project [options] [command]
+  → Run ajs project --help for usage

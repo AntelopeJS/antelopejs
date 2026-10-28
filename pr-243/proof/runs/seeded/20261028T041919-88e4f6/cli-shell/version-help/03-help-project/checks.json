@@ -1,0 +1,42 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stdout matches /^  init\\b/m",
+    "pass": true,
+    "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+  },
+  {
+    "name": "stdout matches /^  modules\\b/m",
+    "pass": true,
+    "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+  },
+  {
+    "name": "stdout matches /^  logging\\b/m",
+    "pass": true,
+    "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+  },
+  {
+    "name": "stdout matches /^  dev\\b/m",
+    "pass": true,
+    "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+  },
+  {
+    "name": "stdout matches /^  build\\b/m",
+    "pass": true,
+    "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+  },
+  {
+    "name": "stdout matches /^  start\\b/m",
+    "pass": true,
+    "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+  },
+  {
+    "name": "stdout matches /^  run\\b/m",
+    "pass": true,
+    "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+  }
+]

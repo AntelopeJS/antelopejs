@@ -1,0 +1,7 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/interface-resolution/resolution-provider-consumer/04-fixture-after-stop",
+  "url": "http://127.0.0.1:33103/",
+  "status": null,
+  "body": "",
+  "error": "connect ECONNREFUSED 127.0.0.1:33103"
+}

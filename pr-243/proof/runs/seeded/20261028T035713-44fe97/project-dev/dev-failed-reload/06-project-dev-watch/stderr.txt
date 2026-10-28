@@ -1,0 +1,30 @@
+✔ Found project: app
+
+Environment  default
+Watch mode   enabled
+Inspector    disabled
+▲ Watch mode enabled - project will automatically restart when files change
+ℹ Starting AntelopeJS project
+✔ Installed dependencies for verify-http-fixture 3.0s
+✔ Loaded 1 module 3.0s
+✔ Constructed modules
+[2026-10-28 03:58:30] [ERROR] Failed to reload module verify-http-fixture: CliError: Install failed for verify-http-fixture
+    at installFailure (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/downloaders/utils.js:71:12)
+    at runCommandsInOrder (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/downloaders/utils.js:84:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async TaskList.run (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/output/tasks.js:102:28)
+    at async runInstallCommands (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/downloaders/utils.js:93:5)
+    at async Object.loader (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/downloaders/local.js:56:9)
+    at async loadModuleManifestFromSource (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/module-reloading.js:8:23)
+    at async reloadLoadedModuleFromSource (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/module-reloading.js:29:52)
+    at async reloadWatchedModule (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/module-reloading.js:92:5)
+    at async HotReload.reload (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/repl/project-launch.js:79:9)
+  Caused by: ExecError: Command 'npx tsc' failed with exit code 2
+        at /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/output/command.js:64:27
+        at ChildProcess.exithandler (node:child_process:424:5)
+        at ChildProcess.emit (node:events:514:28)
+        at ChildProcess.emit (node:domain:489:12)
+        at maybeClose (node:internal/child_process:1172:16)
+        at ChildProcess._handle.onexit (node:internal/child_process:335:5)
+✔ Installed dependencies for verify-http-fixture 2.8s
+✔ Stopped the project

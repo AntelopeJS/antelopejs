@@ -1,0 +1,1 @@
+waited 3000 ms: the watcher scans the added module after its start

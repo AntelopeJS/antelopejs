@@ -1,0 +1,7 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T042108-19e691/evidence/interface-resolution/resolution-missing-provider/03-ready-or-exit",
+  "url": "http://127.0.0.1:44007/",
+  "status": null,
+  "body": "",
+  "error": "connect ECONNREFUSED 127.0.0.1:44007"
+}

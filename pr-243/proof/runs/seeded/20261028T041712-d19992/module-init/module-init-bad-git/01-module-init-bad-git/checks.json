@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /Could not fetch templates/",
+    "pass": true,
+    "detail": "✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✖ Could not fetch templates from file:///tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-bad-git/missing.git Comman…"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-bad-git/mod is absent",
+    "pass": true,
+    "detail": "missing"
+  }
+]

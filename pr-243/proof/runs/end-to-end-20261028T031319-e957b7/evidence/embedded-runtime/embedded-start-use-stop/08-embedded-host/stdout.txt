@@ -1,0 +1,1 @@
+{"runningAfterStart":true,"greeting":"Hello, host","fixtureWhileRunning":"hello from the fixture","hostKeptSigint":true,"runningAfterStop":false,"fixtureAfterStop":null}

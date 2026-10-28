@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-update-dry-run
+ajs project init app --template 'Verify HTTP' --pm pnpm --no-git-init

@@ -1,0 +1,3 @@
+✖ Cannot prompt: this is not an interactive terminal
+  ajs config reset needs an answer it cannot ask for when stdin is not a terminal or CI is set.
+  → Pass it as a flag: ajs config reset --yes

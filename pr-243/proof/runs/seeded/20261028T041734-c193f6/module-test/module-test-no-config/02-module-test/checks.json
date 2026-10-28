@@ -1,0 +1,12 @@
+[
+  {
+    "name": "non-zero exit code",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /antelopeJs\\.test|test/",
+    "pass": true,
+    "detail": "✖ Module plain has no test configuration The antelopeJs.test field of its package.json does not name a test configuration file. → Create antelope.test.ts, exporting defineConfig({ name, modules, test: { folder: \"test\" } }) from @antelopejs/interface-core/config → Point package.json to it: \"antelopeJ…"
+  }
+]

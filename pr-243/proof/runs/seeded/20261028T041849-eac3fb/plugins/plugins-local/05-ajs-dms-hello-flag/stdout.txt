@@ -1,0 +1,1 @@
+plugin ran with ["hello","--flag"]

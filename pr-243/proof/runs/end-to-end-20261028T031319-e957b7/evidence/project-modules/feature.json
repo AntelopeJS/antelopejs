@@ -1,0 +1,747 @@
+[
+  {
+    "feature": "project-modules",
+    "journey": "modules-list-empty",
+    "title": "a project without modules lists none, as JSON and as text",
+    "entryPoint": "ajs project modules list [--json]",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "02-modules-list-json",
+        "folder": "project-modules/modules-list-empty/02-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "no modules",
+            "pass": true,
+            "detail": "expected [], got []"
+          }
+        ]
+      },
+      {
+        "name": "03-modules-list",
+        "folder": "project-modules/modules-list-empty/03-modules-list",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "no module lines on stdout",
+            "pass": true,
+            "detail": "expected \"\", got \"\""
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-modules/modules-list-empty"
+  },
+  {
+    "feature": "project-modules",
+    "journey": "modules-add-remove-local",
+    "title": "add --mode local writes the module into the configuration, remove takes it out, both read back with list",
+    "entryPoint": "ajs project modules add <path> --mode local; ajs project modules remove <name>",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-modules/modules-add-remove-local/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-modules/modules-add-remove-local/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-modules/modules-add-remove-local/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-remove-local/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templat…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-remove-local/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-remove-local/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-modules/modules-add-remove-local/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-pnpm-install-provider",
+        "folder": "project-modules/modules-add-remove-local/06-pnpm-install-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "07-modules-add-provider",
+        "folder": "project-modules/modules-add-remove-local/07-modules-add-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "08-modules-list-after-add",
+        "folder": "project-modules/modules-add-remove-local/08-modules-list-after-add",
+        "checks": [
+          {
+            "name": "modules read back after add",
+            "pass": true,
+            "detail": "expected [\"greeter-provider\",\"verify-http-fixture\"], got [\"greeter-provider\",\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "09-modules-list-as-text",
+        "folder": "project-modules/modules-add-remove-local/09-modules-list-as-text",
+        "checks": [
+          {
+            "name": "stdout matches /^greeter-provider\\tlocal\\t/m",
+            "pass": true,
+            "detail": "verify-http-fixture local . greeter-provider local ../greeter/provider"
+          }
+        ]
+      },
+      {
+        "name": "10-modules-remove-provider",
+        "folder": "project-modules/modules-add-remove-local/10-modules-remove-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "11-modules-list-after-remove",
+        "folder": "project-modules/modules-add-remove-local/11-modules-list-after-remove",
+        "checks": [
+          {
+            "name": "modules read back after remove",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-modules/modules-add-remove-local"
+  },
+  {
+    "feature": "project-modules",
+    "journey": "modules-add-keeps-config",
+    "title": "add rewrites antelope.config.ts without losing module config or environments (Data containment)",
+    "entryPoint": "ajs project modules add <path> --mode local on a hand-written configuration",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-modules/modules-add-keeps-config/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-modules/modules-add-keeps-config/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-modules/modules-add-keeps-config/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templat…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-modules/modules-add-keeps-config/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-pnpm-install-provider",
+        "folder": "project-modules/modules-add-keeps-config/07-pnpm-install-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "08-modules-add-provider",
+        "folder": "project-modules/modules-add-keeps-config/08-modules-add-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /name: \"kept\"/",
+            "pass": true,
+            "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /greeting: \"kept value\"/",
+            "pass": true,
+            "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /staging/",
+            "pass": true,
+            "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /\"greeter-provider\"/",
+            "pass": true,
+            "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+          }
+        ]
+      },
+      {
+        "name": "09-modules-list-of-the-base-configuration",
+        "folder": "project-modules/modules-add-keeps-config/09-modules-list-of-the-base-configuration",
+        "checks": [
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"greeter-provider\",\"verify-http-fixture\"], got [\"greeter-provider\",\"verify-http-fixture\"]"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-modules/modules-add-keeps-config"
+  },
+  {
+    "feature": "project-modules",
+    "journey": "modules-remove-unknown",
+    "title": "remove with an unknown name removes nothing; --force removes the known ones",
+    "entryPoint": "ajs project modules remove nope [--force]",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-modules/modules-remove-unknown/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-modules/modules-remove-unknown/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-modules/modules-remove-unknown/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-remove-unknown/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-remove-unknown/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-remove-unknown/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-modules/modules-remove-unknown/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-modules-remove-unknown",
+        "folder": "project-modules/modules-remove-unknown/06-modules-remove-unknown",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /nope/",
+            "pass": true,
+            "detail": "✖ The following modules are not present in the project: nope"
+          },
+          {
+            "name": "configuration unchanged",
+            "pass": true,
+            "detail": "expected \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\", got \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\""
+          }
+        ]
+      },
+      {
+        "name": "07-modules-remove-unknown-force",
+        "folder": "project-modules/modules-remove-unknown/07-modules-remove-unknown-force",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "08-modules-list-after-force",
+        "folder": "project-modules/modules-remove-unknown/08-modules-list-after-force",
+        "checks": [
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [], got []"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-modules/modules-remove-unknown"
+  },
+  {
+    "feature": "project-modules",
+    "journey": "modules-add-unreachable-package",
+    "title": "adding an npm package the offline registry cannot serve fails and leaves the configuration as it was",
+    "entryPoint": "ajs project modules add verify-antelopejs-missing-package",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-modules/modules-add-unreachable-package/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-modules/modules-add-unreachable-package/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-modules/modules-add-unreachable-package/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-unreachable-package/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 …"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-unreachable-package/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-unreachable-package/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-modules/modules-add-unreachable-package/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-modules-add-missing-package",
+        "folder": "project-modules/modules-add-unreachable-package/07-modules-add-missing-package",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /verify-antelopejs-missing-package/",
+            "pass": true,
+            "detail": "✖ Command 'npm view verify-antelopejs-missing-package version' failed with exit code 1 Command output: npm error code ENOTCACHED npm error request to https://registry.npmjs.org/verify-antelopejs-missing-package failed: cache mode is 'only-if-cached' but no cached response is available. npm error A c…"
+          }
+        ]
+      },
+      {
+        "name": "08-tree-after-add",
+        "folder": "project-modules/modules-add-unreachable-package/08-tree-after-add",
+        "checks": [
+          {
+            "name": "file tree unchanged",
+            "pass": true,
+            "detail": "identical"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-modules/modules-add-unreachable-package"
+  },
+  {
+    "feature": "project-modules",
+    "journey": "modules-install",
+    "title": "install adds the module that implements an interface no module of the project implements",
+    "entryPoint": "ajs project modules install --git <offline manifest> --yes",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-modules/modules-install/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-modules/modules-install/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-pnpm-install-consumer",
+        "folder": "project-modules/modules-install/03-pnpm-install-consumer",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-install",
+        "folder": "project-modules/modules-install/05-modules-install",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /greeter-provider/",
+            "pass": true,
+            "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Analyzed environment default ▲ 1 unresolved import in default: verify-greeter@file:../verify-greeter (required by greeter-consumer) ℹ greeter-provider is the on…"
+          }
+        ]
+      },
+      {
+        "name": "06-modules-list-after-install",
+        "folder": "project-modules/modules-install/06-modules-list-after-install",
+        "checks": [
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"greeter-consumer\",\"greeter-provider\"], got [\"greeter-consumer\",\"greeter-provider\"]"
+          }
+        ]
+      },
+      {
+        "name": "08-ready",
+        "folder": "project-modules/modules-install/08-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:42731/ answers 200 with greeting \"Hello, verifier\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-modules/modules-install"
+  },
+  {
+    "feature": "project-modules",
+    "journey": "modules-update-dry-run",
+    "title": "update --dry-run with no npm module reports nothing to update and writes nothing",
+    "entryPoint": "ajs project modules update --dry-run",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-modules/modules-update-dry-run/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-modules/modules-update-dry-run/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-modules/modules-update-dry-run/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-update-dry-run/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-update-dry-run/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-update-dry-run/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-modules/modules-update-dry-run/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-modules-update-dry-run",
+        "folder": "project-modules/modules-update-dry-run/06-modules-update-dry-run",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Nothing to update/",
+            "pass": true,
+            "detail": "Nothing to update: no module comes from npm · 8ms"
+          },
+          {
+            "name": "stdout does not match /\\S/",
+            "pass": true,
+            "detail": ""
+          },
+          {
+            "name": "configuration unchanged",
+            "pass": true,
+            "detail": "expected \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\", got \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\""
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-modules/modules-update-dry-run"
+  }
+]

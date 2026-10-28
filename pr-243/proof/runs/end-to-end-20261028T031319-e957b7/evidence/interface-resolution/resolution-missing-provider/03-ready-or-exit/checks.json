@@ -1,0 +1,17 @@
+[
+  {
+    "name": "no greeting is served",
+    "pass": true,
+    "detail": "status null, body "
+  },
+  {
+    "name": "dev exits non-zero",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /verify-greeter/",
+    "pass": true,
+    "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Loaded 1 module [2026-10-28 03:13:33] [ERROR] Failed to load module greeter-consumer Error: Cannot find module 'verify-greeter' Require stack: - /tmp/verify-antelopejs/20261028T031319-…"
+  }
+]

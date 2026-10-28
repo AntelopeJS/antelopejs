@@ -1,0 +1,12 @@
+[
+  {
+    "name": "stderr does not match /Unhandled rejection/",
+    "pass": true,
+    "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 5.5s ✔ Loaded 1 module 5.5s ✔ Constructed modules"
+  },
+  {
+    "name": "GET http://127.0.0.1:45809/ answers 200 with message \"hello from the fixture\"",
+    "pass": true,
+    "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+  }
+]

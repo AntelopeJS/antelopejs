@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T035713-44fe97/evidence/project-dev/dev-modules-add-while-running/14-fixture-after-the-remove-restart",
+  "url": "http://127.0.0.1:39637/",
+  "status": 200,
+  "body": "{\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}",
+  "json": {
+    "module": "verify-http-fixture",
+    "message": "hello from the fixture"
+  },
+  "error": null
+}

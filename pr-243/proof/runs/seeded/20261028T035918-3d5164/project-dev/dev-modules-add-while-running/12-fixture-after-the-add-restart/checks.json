@@ -1,0 +1,12 @@
+[
+  {
+    "name": "stderr matches /Loaded 2 modules/",
+    "pass": false,
+    "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.3s ✔ Loaded 1 module 3.3s ✔ Constructed modules"
+  },
+  {
+    "name": "GET http://127.0.0.1:42061/ answers 200 with message \"hello from the fixture\"",
+    "pass": true,
+    "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+  }
+]

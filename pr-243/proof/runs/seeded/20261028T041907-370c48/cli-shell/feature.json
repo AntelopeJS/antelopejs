@@ -1,0 +1,250 @@
+[
+  {
+    "feature": "cli-shell",
+    "journey": "version-help",
+    "title": "--version prints the package version, --help lists every command group",
+    "entryPoint": "ajs --version; ajs --help; ajs help project",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-version",
+        "folder": "cli-shell/version-help/01-version",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "version",
+            "pass": true,
+            "detail": "expected \"1.17.1\", got \"1.17.1\""
+          }
+        ]
+      },
+      {
+        "name": "02-help",
+        "folder": "cli-shell/version-help/02-help",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stdout matches /^  project\\b/m",
+            "pass": true,
+            "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+          },
+          {
+            "name": "stdout matches /^  module\\b/m",
+            "pass": true,
+            "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+          },
+          {
+            "name": "stdout matches /^  config\\b/m",
+            "pass": true,
+            "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+          },
+          {
+            "name": "stdout matches /^  update\\b/m",
+            "pass": true,
+            "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+          },
+          {
+            "name": "stdout matches /^  plugins\\b/m",
+            "pass": true,
+            "detail": "AntelopeJS CLI v1.17.1 Usage: ajs [options] [command] Build modular Node.js applications from explicit interfaces. Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for some log channels only (comma-separated) (preset: \"*\", env: ANTELO…"
+          }
+        ]
+      },
+      {
+        "name": "03-help-project",
+        "folder": "cli-shell/version-help/03-help-project",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stdout matches /^  init\\b/m",
+            "pass": true,
+            "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+          },
+          {
+            "name": "stdout matches /^  modules\\b/m",
+            "pass": true,
+            "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+          },
+          {
+            "name": "stdout matches /^  logging\\b/m",
+            "pass": true,
+            "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+          },
+          {
+            "name": "stdout matches /^  dev\\b/m",
+            "pass": true,
+            "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+          },
+          {
+            "name": "stdout matches /^  build\\b/m",
+            "pass": true,
+            "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+          },
+          {
+            "name": "stdout matches /^  start\\b/m",
+            "pass": true,
+            "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+          },
+          {
+            "name": "stdout matches /^  run\\b/m",
+            "pass": true,
+            "detail": "Usage: ajs project [options] [command] Create, run and build AntelopeJS projects, and manage their modules and logging settings. Options: -h, --help Show help for a command Global Options: -v, --version Print the version --verbose [=channels] Print TRACE logs and full error details, optionally for s…"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "cli-shell/version-help"
+  },
+  {
+    "feature": "cli-shell",
+    "journey": "unknown-command",
+    "title": "an unknown command is a usage error that points to --help",
+    "entryPoint": "ajs nope; ajs project nope",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-unknown-command",
+        "folder": "cli-shell/unknown-command/01-unknown-command",
+        "checks": [
+          {
+            "name": "exit code 2",
+            "pass": true,
+            "detail": "exit code 2"
+          },
+          {
+            "name": "stderr matches /Unknown command 'nope'/",
+            "pass": true,
+            "detail": "✖ Unknown command 'nope' Usage: ajs [options] [command] → Run ajs --help for usage"
+          }
+        ]
+      },
+      {
+        "name": "02-unknown-subcommand",
+        "folder": "cli-shell/unknown-command/02-unknown-subcommand",
+        "checks": [
+          {
+            "name": "exit code 2",
+            "pass": true,
+            "detail": "exit code 2"
+          },
+          {
+            "name": "stderr matches /nope/",
+            "pass": true,
+            "detail": "✖ Unknown command 'nope' Usage: ajs project [options] [command] → Run ajs project --help for usage"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "cli-shell/unknown-command"
+  },
+  {
+    "feature": "cli-shell",
+    "journey": "quiet-verbose",
+    "title": "--quiet and ANTELOPEJS_QUIET drop the success line and keep the warning; the write still lands",
+    "entryPoint": "ajs config set git <url>; ajs -q config set git <url>; ANTELOPEJS_QUIET=1 ajs config set git <url>",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "cli-shell/quiet-verbose/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /✔ Set git/",
+            "pass": true,
+            "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/normal Previous value: https://github.com/AntelopeJS/interfaces.git"
+          },
+          {
+            "name": "stderr matches /▲ Using a non-default git repository/",
+            "pass": true,
+            "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/normal Previous value: https://github.com/AntelopeJS/interfaces.git"
+          }
+        ]
+      },
+      {
+        "name": "02-config-set-git-quiet",
+        "folder": "cli-shell/quiet-verbose/02-config-set-git-quiet",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr does not match /✔/",
+            "pass": true,
+            "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices."
+          },
+          {
+            "name": "stderr matches /▲ Using a non-default git repository/",
+            "pass": true,
+            "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices."
+          }
+        ]
+      },
+      {
+        "name": "03-config-get-git-after-quiet",
+        "folder": "cli-shell/quiet-verbose/03-config-get-git-after-quiet",
+        "checks": [
+          {
+            "name": "git after --quiet",
+            "pass": true,
+            "detail": "expected \"file:///verify/quiet\", got \"file:///verify/quiet\""
+          }
+        ]
+      },
+      {
+        "name": "04-config-set-git-with-antelopejs-quiet",
+        "folder": "cli-shell/quiet-verbose/04-config-set-git-with-antelopejs-quiet",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr does not match /✔/",
+            "pass": true,
+            "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices."
+          },
+          {
+            "name": "stderr matches /▲ Using a non-default git repository/",
+            "pass": true,
+            "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices."
+          }
+        ]
+      },
+      {
+        "name": "05-config-get-git-after-antelopejs-quiet",
+        "folder": "cli-shell/quiet-verbose/05-config-get-git-after-antelopejs-quiet",
+        "checks": [
+          {
+            "name": "git after ANTELOPEJS_QUIET",
+            "pass": true,
+            "detail": "expected \"file:///verify/env\", got \"file:///verify/env\""
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "cli-shell/quiet-verbose"
+  }
+]

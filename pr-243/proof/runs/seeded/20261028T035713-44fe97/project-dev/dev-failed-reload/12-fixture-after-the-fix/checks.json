@@ -1,0 +1,7 @@
+[
+  {
+    "name": "GET http://127.0.0.1:43389/ answers 200 with message \"recovered\"",
+    "pass": true,
+    "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"recovered\"}"
+  }
+]

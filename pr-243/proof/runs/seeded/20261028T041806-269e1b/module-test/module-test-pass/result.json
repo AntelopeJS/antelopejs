@@ -1,0 +1,48 @@
+{
+  "feature": "module-test",
+  "journey": "module-test-pass",
+  "title": "module test loads and starts the module, then its tests reach it over HTTP",
+  "entryPoint": "ajs module test mod",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-module-init",
+      "folder": "module-test/module-test-pass/01-module-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-pass/mod/package.json exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-pass/mod/node_modules/typescript exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "02-module-test",
+      "folder": "module-test/module-test-pass/02-module-test",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stdout matches /1 passing/",
+          "pass": true,
+          "detail": "verify-http-fixture ✔ answers with its message (49ms) 1 passing (53ms)"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "module-test/module-test-pass"
+}

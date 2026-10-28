@@ -1,0 +1,43 @@
+{
+  "feature": "cli-shell",
+  "journey": "unknown-command",
+  "title": "an unknown command is a usage error that points to --help",
+  "entryPoint": "ajs nope; ajs project nope",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-unknown-command",
+      "folder": "cli-shell/unknown-command/01-unknown-command",
+      "checks": [
+        {
+          "name": "exit code 2",
+          "pass": true,
+          "detail": "exit code 2"
+        },
+        {
+          "name": "stderr matches /Unknown command 'nope'/",
+          "pass": true,
+          "detail": "✖ Unknown command 'nope' Usage: ajs [options] [command] → Run ajs --help for usage"
+        }
+      ]
+    },
+    {
+      "name": "02-unknown-subcommand",
+      "folder": "cli-shell/unknown-command/02-unknown-subcommand",
+      "checks": [
+        {
+          "name": "exit code 2",
+          "pass": true,
+          "detail": "exit code 2"
+        },
+        {
+          "name": "stderr matches /nope/",
+          "pass": true,
+          "detail": "✖ Unknown command 'nope' Usage: ajs project [options] [command] → Run ajs project --help for usage"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "cli-shell/unknown-command"
+}

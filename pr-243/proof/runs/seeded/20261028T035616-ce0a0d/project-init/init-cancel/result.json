@@ -1,0 +1,49 @@
+{
+  "feature": "project-init",
+  "journey": "init-cancel",
+  "title": "SIGINT while init installs the template stops it with exit code 130 and no process left",
+  "entryPoint": "ajs project init app …, SIGINT during the install",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-init/init-cancel/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-init/init-cancel/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "05-stop-with-sigint-during-init",
+      "folder": "project-init/init-cancel/05-stop-with-sigint-during-init",
+      "checks": [
+        {
+          "name": "ended by SIGINT (exit 130)",
+          "pass": true,
+          "detail": "exit code null, signal SIGINT"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-init/init-cancel"
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /nope/",
+    "pass": true,
+    "detail": "✖ The following modules are not present in the project: nope"
+  },
+  {
+    "name": "configuration unchanged",
+    "pass": true,
+    "detail": "expected \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\", got \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\""
+  }
+]

@@ -1,0 +1,3 @@
+✖ Unknown command 'nope'
+  Usage: ajs [options] [command]
+  → Run ajs --help for usage

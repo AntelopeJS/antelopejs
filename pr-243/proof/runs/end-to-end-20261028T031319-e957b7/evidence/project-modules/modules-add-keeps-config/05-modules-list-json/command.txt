@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app
+ajs project modules list --json

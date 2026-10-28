@@ -1,0 +1,2 @@
+✖ Invalid configuration key 'nope'
+  Valid keys: git

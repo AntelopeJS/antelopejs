@@ -1,0 +1,7 @@
+[
+  {
+    "name": "modules in build.json",
+    "pass": true,
+    "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+  }
+]

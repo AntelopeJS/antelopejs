@@ -1,0 +1,48 @@
+{
+  "feature": "module-test",
+  "journey": "module-test-fail",
+  "title": "a failing test makes module test exit non-zero and report the failure",
+  "entryPoint": "ajs module test mod (a test expects another message)",
+  "status": "FAIL",
+  "steps": [
+    {
+      "name": "01-module-init",
+      "folder": "module-test/module-test-fail/01-module-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-fail/mod/package.json exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-fail/mod/node_modules/typescript exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "03-module-test",
+      "folder": "module-test/module-test-fail/03-module-test",
+      "checks": [
+        {
+          "name": "non-zero exit code",
+          "pass": false,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stdout matches /1 failing/",
+          "pass": true,
+          "detail": "verify-http-fixture 1) answers with its message 0 passing (42ms) 1 failing 1) verify-http-fixture answers with its message: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal: + actual - expected + 'hello from the fixture' - 'another message' + expected - actual -hello from the fix…"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "module-test/module-test-fail"
+}

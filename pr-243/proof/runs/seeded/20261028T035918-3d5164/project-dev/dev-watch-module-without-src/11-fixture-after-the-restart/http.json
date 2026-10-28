@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T035918-3d5164/evidence/project-dev/dev-watch-module-without-src/11-fixture-after-the-restart",
+  "url": "http://127.0.0.1:45809/",
+  "status": 200,
+  "body": "{\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}",
+  "json": {
+    "module": "verify-http-fixture",
+    "message": "hello from the fixture"
+  },
+  "error": null
+}

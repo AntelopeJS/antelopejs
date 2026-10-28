@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-start-use-stop
+node /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/index.js /tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-start-use-stop/greeter/host /tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-start-use-stop/greeter/provider /tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-start-use-stop/app

@@ -1,0 +1,7 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T035713-44fe97/evidence/project-dev/dev-watch-module-without-src/11-fixture-after-the-restart",
+  "url": "http://127.0.0.1:37719/",
+  "status": null,
+  "body": "",
+  "error": "connect ECONNREFUSED 127.0.0.1:37719"
+}

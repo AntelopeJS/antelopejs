@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041830-725434/work/config/config-base-file
+ajs config get git

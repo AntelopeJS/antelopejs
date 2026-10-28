@@ -1,0 +1,53 @@
+{
+  "feature": "module-init",
+  "journey": "module-init-flags",
+  "title": "module init with every answer as a flag creates and installs the module",
+  "entryPoint": "ajs module init mod --git <offline manifest> --template 'Verify HTTP' --pm pnpm --no-git-init",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-module-init",
+      "folder": "module-init/module-init-flags/01-module-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/package.json exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/node_modules/typescript exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "02-module-files",
+      "folder": "module-init/module-init-flags/02-module-files",
+      "checks": [
+        {
+          "name": "package name",
+          "pass": true,
+          "detail": "expected \"verify-http-fixture\", got \"verify-http-fixture\""
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/src/index.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/.git is absent",
+          "pass": true,
+          "detail": "missing"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "module-init/module-init-flags"
+}

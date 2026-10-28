@@ -1,0 +1,116 @@
+{
+  "feature": "library-launch",
+  "journey": "launch-build-from-build",
+  "title": "launch() runs a project, build() writes its artifact, launchFromBuild() runs from it, each stops cleanly",
+  "entryPoint": "launch(project); build(project); launchFromBuild(project)",
+  "status": "FAIL",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "library-launch/launch-build-from-build/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "library-launch/launch-build-from-build/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T042035-e03a76/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T042035-e03a76/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "library-launch/launch-build-from-build/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T042035-e03a76/work/library-launch/launch-build-from-build/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T042035-e03a76/work/library-launch/launch-build-from-build/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T042035-e03a76/work/library-launch/launch-build-from-build/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "library-launch/launch-build-from-build/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-launch-host",
+      "folder": "library-launch/launch-build-from-build/06-launch-host",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "default export is launch",
+          "pass": false,
+          "detail": "expected true, got false"
+        },
+        {
+          "name": "served after launch",
+          "pass": true,
+          "detail": "expected \"hello from the fixture\", got \"hello from the fixture\""
+        },
+        {
+          "name": "refused after launch stop",
+          "pass": true,
+          "detail": "expected null, got null"
+        },
+        {
+          "name": "served after launchFromBuild",
+          "pass": true,
+          "detail": "expected \"hello from the fixture\", got \"hello from the fixture\""
+        },
+        {
+          "name": "refused after build stop",
+          "pass": true,
+          "detail": "expected null, got null"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "library-launch/launch-build-from-build"
+}

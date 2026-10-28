@@ -1,0 +1,122 @@
+{
+  "feature": "project-logging",
+  "journey": "logging-show-defaults",
+  "title": "show prints the default settings as key/value lines and as JSON",
+  "entryPoint": "ajs project logging show [--json]",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-logging/logging-show-defaults/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-logging/logging-show-defaults/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041612-37a6d3/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041612-37a6d3/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-logging/logging-show-defaults/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-show-defaults/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates …"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-show-defaults/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-show-defaults/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-logging/logging-show-defaults/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-logging-show",
+      "folder": "project-logging/logging-show-defaults/06-logging-show",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stdout matches /^Enabled\\s+yes$/m",
+          "pass": true,
+          "detail": "Enabled yes Module tracking off Date format yyyy-MM-dd HH:mm:ss Level formats default, see --json for the templates"
+        },
+        {
+          "name": "stdout matches /^Module tracking\\s+off$/m",
+          "pass": true,
+          "detail": "Enabled yes Module tracking off Date format yyyy-MM-dd HH:mm:ss Level formats default, see --json for the templates"
+        }
+      ]
+    },
+    {
+      "name": "07-logging-show-json",
+      "folder": "project-logging/logging-show-defaults/07-logging-show-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "enabled",
+          "pass": true,
+          "detail": "expected true, got true"
+        },
+        {
+          "name": "date format",
+          "pass": true,
+          "detail": "expected \"yyyy-MM-dd HH:mm:ss\", got \"yyyy-MM-dd HH:mm:ss\""
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-logging/logging-show-defaults"
+}

@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041844-607e2f/work/config/config-unknown-key
+ajs config set nope x

@@ -1,0 +1,12 @@
+✔ Found project: app
+
+Environment  any
+Project      /tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-env/app
+Output       ./.antelope/build/build.json
+ℹ Building AntelopeJS project
+✔ Installed dependencies for verify-http-fixture 3.3s
+✔ Loaded 1 module 3.3s
+Built 1 module → ./.antelope/build/build.json · 3.4s
+
+Next steps
+  ajs project start --env any  start the project from this build

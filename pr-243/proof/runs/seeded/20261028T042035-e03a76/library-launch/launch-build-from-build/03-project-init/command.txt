@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T042035-e03a76/work/library-launch/launch-build-from-build
+ajs project init app --template 'Verify HTTP' --pm pnpm --no-git-init

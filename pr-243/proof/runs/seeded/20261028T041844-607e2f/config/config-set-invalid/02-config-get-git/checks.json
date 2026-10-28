@@ -1,0 +1,7 @@
+[
+  {
+    "name": "git unchanged",
+    "pass": false,
+    "detail": "expected \"https://github.com/AntelopeJS/interfaces.git\", got \"notaurl\""
+  }
+]

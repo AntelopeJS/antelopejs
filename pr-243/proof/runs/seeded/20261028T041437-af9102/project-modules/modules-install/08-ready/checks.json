@@ -1,0 +1,7 @@
+[
+  {
+    "name": "GET http://127.0.0.1:39003/ answers 200 with greeting \"Hello, verifier\"",
+    "pass": true,
+    "detail": "status 200, body {\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}"
+  }
+]

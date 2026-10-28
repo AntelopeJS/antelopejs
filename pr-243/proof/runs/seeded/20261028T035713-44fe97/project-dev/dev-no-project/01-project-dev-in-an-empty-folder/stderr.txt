@@ -1,0 +1,2 @@
+✖ No AntelopeJS project found at /tmp/verify-antelopejs/20261028T035713-44fe97/work/project-dev/dev-no-project
+  → Run ajs project init <project-name> to create one, or pass --project <path>

@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041949-205272/work/embedded-runtime/embedded-start-use-stop/greeter/provider
+pnpm install --offline

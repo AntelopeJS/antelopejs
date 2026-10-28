@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stderr matches /Built 1 module/",
+    "pass": true,
+    "detail": "✔ Found project: app Environment default Project /tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config-changed/app Output ./.antelope/build/build.json ℹ Building AntelopeJS project ✔ Installed dependencies for verify-http-fixture 4.0s ✔ Loaded 1 module 4.0s Built 1 mo…"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config-changed/app/.antelope/build/build.json exists",
+    "pass": true,
+    "detail": "present"
+  }
+]

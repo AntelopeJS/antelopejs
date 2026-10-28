@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stdout matches /1 passing/",
+    "pass": true,
+    "detail": "verify-http-fixture ✔ answers with its message (49ms) 1 passing (53ms)"
+  }
+]

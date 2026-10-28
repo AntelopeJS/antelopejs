@@ -1,0 +1,3 @@
+/tmp/verify-antelopejs/20261028T035713-44fe97/work/project-dev/dev-modules-add-while-running/greeter/provider/src/README.md
+---
+Sources of the provider.

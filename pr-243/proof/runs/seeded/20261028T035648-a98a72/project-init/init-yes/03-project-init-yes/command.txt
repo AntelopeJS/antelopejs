@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-yes
+ajs project init app --yes

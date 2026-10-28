@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stdout matches /git\\s+https:\\/\\/github\\.com\\/AntelopeJS\\/interfaces\\.git/",
+    "pass": true,
+    "detail": "git https://github.com/AntelopeJS/interfaces.git"
+  },
+  {
+    "name": "stdout does not match /\\(custom\\)/",
+    "pass": true,
+    "detail": "git https://github.com/AntelopeJS/interfaces.git"
+  }
+]

@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T042108-19e691/work/interface-resolution/resolution-range-conflict/greeter
+ajs project dev

@@ -1,0 +1,43 @@
+{
+  "feature": "project-modules",
+  "journey": "modules-list-empty",
+  "title": "a project without modules lists none, as JSON and as text",
+  "entryPoint": "ajs project modules list [--json]",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "02-modules-list-json",
+      "folder": "project-modules/modules-list-empty/02-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "no modules",
+          "pass": true,
+          "detail": "expected [], got []"
+        }
+      ]
+    },
+    {
+      "name": "03-modules-list",
+      "folder": "project-modules/modules-list-empty/03-modules-list",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "no module lines on stdout",
+          "pass": true,
+          "detail": "expected \"\", got \"\""
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-modules/modules-list-empty"
+}

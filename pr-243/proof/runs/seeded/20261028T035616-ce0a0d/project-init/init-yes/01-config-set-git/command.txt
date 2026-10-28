@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-yes
+ajs config set git file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git

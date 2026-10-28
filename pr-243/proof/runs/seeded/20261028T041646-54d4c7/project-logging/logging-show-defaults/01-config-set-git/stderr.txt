@@ -1,0 +1,4 @@
+▲ Using a non-default git repository
+  Its interfaces are not official and may not adhere to community quality standards or best practices.
+✔ Set git to file:///tmp/verify-antelopejs/20261028T041646-54d4c7/sources/interfaces.git
+  Previous value: https://github.com/AntelopeJS/interfaces.git

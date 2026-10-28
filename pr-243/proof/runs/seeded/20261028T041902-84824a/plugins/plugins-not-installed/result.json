@@ -1,0 +1,48 @@
+{
+  "feature": "plugins",
+  "journey": "plugins-not-installed",
+  "title": "plugins lists every official plugin as not installed when none resolves",
+  "entryPoint": "ajs plugins [--json]; ajs plugins list",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-plugins-json",
+      "folder": "plugins/plugins-not-installed/01-plugins-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "dms state",
+          "pass": true,
+          "detail": "expected \"not-installed\", got \"not-installed\""
+        }
+      ]
+    },
+    {
+      "name": "02-plugins-list",
+      "folder": "plugins/plugins-not-installed/02-plugins-list",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stdout matches /dms/",
+          "pass": true,
+          "detail": "dms @antelopejs/dms-frontend - - not installed -"
+        },
+        {
+          "name": "stdout matches /not installed/",
+          "pass": true,
+          "detail": "dms @antelopejs/dms-frontend - - not installed -"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "plugins/plugins-not-installed"
+}

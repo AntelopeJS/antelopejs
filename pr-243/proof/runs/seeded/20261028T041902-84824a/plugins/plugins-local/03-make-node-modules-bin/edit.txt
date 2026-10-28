@@ -1,0 +1,2 @@
+/tmp/verify-antelopejs/20261028T041902-84824a/work/plugins/plugins-local/project/node_modules/.bin/.keep
+---

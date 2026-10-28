@@ -1,0 +1,12 @@
+✔ Found project: app
+
+Environment  default
+Watch mode   disabled
+Inspector    127.0.0.1:38573
+ℹ Starting AntelopeJS project
+Debugger listening on ws://127.0.0.1:38573/a063a205-2524-4961-813e-1943a92e0ec7
+For help, see: https://nodejs.org/learn/getting-started/debugging
+✔ Installed dependencies for verify-http-fixture 3.2s
+✔ Loaded 1 module 3.2s
+✔ Constructed modules
+✔ Stopped the project

@@ -1,0 +1,6 @@
+✔ Installed dependencies for verify-http-fixture 2.4s
+✔ Loaded 1 module 2.4s
+✔ Constructed modules
+✔ Installed dependencies for verify-http-fixture 2.3s
+✔ Loaded 1 module 2.3s
+✔ Constructed modules

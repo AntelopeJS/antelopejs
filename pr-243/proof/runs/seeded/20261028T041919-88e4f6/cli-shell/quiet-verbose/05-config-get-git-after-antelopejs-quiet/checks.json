@@ -1,0 +1,7 @@
+[
+  {
+    "name": "git after ANTELOPEJS_QUIET",
+    "pass": true,
+    "detail": "expected \"file:///verify/env\", got \"file:///verify/env\""
+  }
+]

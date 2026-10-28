@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041646-54d4c7/work/project-logging/logging-set-roundtrip/app
+ajs project logging set --disable --enable-module-tracking --include-module verify-http-fixture --level debug --format '[{{DATE}}] {{ARGS}}'

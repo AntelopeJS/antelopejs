@@ -1,0 +1,123 @@
+{
+  "feature": "project-modules",
+  "journey": "modules-remove-unknown",
+  "title": "remove with an unknown name removes nothing; --force removes the known ones",
+  "entryPoint": "ajs project modules remove nope [--force]",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-modules/modules-remove-unknown/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-modules/modules-remove-unknown/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-modules/modules-remove-unknown/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-remove-unknown/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-remove-unknown/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-remove-unknown/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-modules/modules-remove-unknown/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-modules-remove-unknown",
+      "folder": "project-modules/modules-remove-unknown/06-modules-remove-unknown",
+      "checks": [
+        {
+          "name": "exit code 1",
+          "pass": true,
+          "detail": "exit code 1"
+        },
+        {
+          "name": "stderr matches /nope/",
+          "pass": true,
+          "detail": "✖ The following modules are not present in the project: nope"
+        },
+        {
+          "name": "configuration unchanged",
+          "pass": true,
+          "detail": "expected \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\", got \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\""
+        }
+      ]
+    },
+    {
+      "name": "07-modules-remove-unknown-force",
+      "folder": "project-modules/modules-remove-unknown/07-modules-remove-unknown-force",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "08-modules-list-after-force",
+      "folder": "project-modules/modules-remove-unknown/08-modules-list-after-force",
+      "checks": [
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [], got []"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-modules/modules-remove-unknown"
+}

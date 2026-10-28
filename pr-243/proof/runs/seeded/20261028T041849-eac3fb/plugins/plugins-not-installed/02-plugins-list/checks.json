@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stdout matches /dms/",
+    "pass": true,
+    "detail": "dms @antelopejs/dms-frontend - - not installed -"
+  },
+  {
+    "name": "stdout matches /not installed/",
+    "pass": true,
+    "detail": "dms @antelopejs/dms-frontend - - not installed -"
+  }
+]

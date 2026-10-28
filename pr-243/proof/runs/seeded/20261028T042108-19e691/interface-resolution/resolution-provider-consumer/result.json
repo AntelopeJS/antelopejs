@@ -1,0 +1,44 @@
+{
+  "feature": "interface-resolution",
+  "journey": "resolution-provider-consumer",
+  "title": "a consumer module calls the interface a provider module implements",
+  "entryPoint": "ajs project dev on a provider and a consumer of verify-greeter",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "02-ready",
+      "folder": "interface-resolution/resolution-provider-consumer/02-ready",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:41165/ answers 200 with greeting \"Hello, verifier\"",
+          "pass": true,
+          "detail": "status 200, body {\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}"
+        }
+      ]
+    },
+    {
+      "name": "03-stop-with-sigint",
+      "folder": "interface-resolution/resolution-provider-consumer/03-stop-with-sigint",
+      "checks": [
+        {
+          "name": "exit code 130",
+          "pass": true,
+          "detail": "exit code 130"
+        }
+      ]
+    },
+    {
+      "name": "04-fixture-after-stop",
+      "folder": "interface-resolution/resolution-provider-consumer/04-fixture-after-stop",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:41165/ is refused",
+          "pass": true,
+          "detail": "connect ECONNREFUSED 127.0.0.1:41165"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "interface-resolution/resolution-provider-consumer"
+}

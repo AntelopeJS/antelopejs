@@ -1,0 +1,24 @@
+✔ Found project: app
+
+Environment  default
+Watch mode   enabled
+Inspector    disabled
+▲ Watch mode enabled - project will automatically restart when files change
+ℹ Starting AntelopeJS project
+✔ Installed dependencies for verify-http-fixture 2.4s
+✔ Loaded 1 module 2.4s
+✔ Constructed modules
+✔ Installed dependencies for greeter-provider
+✔ Installed dependencies for verify-http-fixture 2.7s
+✔ Loaded 2 modules 2.7s
+✔ Constructed modules
+[2026-10-28 03:58:13] [ERROR] Unhandled rejection: Error: ENOENT: no such file or directory, scandir '/tmp/verify-antelopejs/20261028T035713-44fe97/work/project-dev/dev-watch-module-without-src/greeter/provider/src'
+    at async Object.readdir (node:internal/fs/promises:1668:18)
+    at async FileWatcher.exploreDir (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/watch/file-watcher.js:304:25)
+    at async FileWatcher.scanModule (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/watch/file-watcher.js:82:13)
+    at async setupWatching (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/repl/project-launch.js:90:13)
+    at async startWatching (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/repl/project-launch.js:112:5)
+    at async runLaunchSteps (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/launch-steps.js:23:9)
+    at async startProject (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/repl/project-launch.js:134:9)
+    at async restartProject (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/repl/project-launch.js:152:9)
+    at async restartUnlessOwnWrite (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/repl/project-launch.js:169:5)

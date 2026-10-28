@@ -1,0 +1,38 @@
+{
+  "feature": "module-init",
+  "journey": "module-init-occupied",
+  "title": "module init into a non-empty folder refuses and leaves it as it was",
+  "entryPoint": "ajs module init mod (mod has files)",
+  "status": "FAIL",
+  "steps": [
+    {
+      "name": "03-module-init-into-occupied-folder",
+      "folder": "module-init/module-init-occupied/03-module-init-into-occupied-folder",
+      "checks": [
+        {
+          "name": "non-zero exit code",
+          "pass": false,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /mod/",
+          "pass": true,
+          "detail": "✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 available interfaces ✔ Module created successfully at /tmp/verify-antelopejs/20261028T041726-675825/work/module…"
+        }
+      ]
+    },
+    {
+      "name": "04-tree-after-init",
+      "folder": "module-init/module-init-occupied/04-tree-after-init",
+      "checks": [
+        {
+          "name": "file tree unchanged",
+          "pass": false,
+          "detail": "added .gitignore 18, antelope.test.ts 292, package.json 345, pnpm-lock.yaml 1449, src/, src/index.ts 561, src/message.ts 49, test/, test/http.test.js 331, tsconfig.json 197; removed "
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "module-init/module-init-occupied"
+}

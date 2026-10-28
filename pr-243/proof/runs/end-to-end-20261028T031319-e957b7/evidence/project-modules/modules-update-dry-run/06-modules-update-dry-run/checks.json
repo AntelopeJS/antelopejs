@@ -1,0 +1,22 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stderr matches /Nothing to update/",
+    "pass": true,
+    "detail": "Nothing to update: no module comes from npm · 8ms"
+  },
+  {
+    "name": "stdout does not match /\\S/",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "configuration unchanged",
+    "pass": true,
+    "detail": "expected \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\", got \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\""
+  }
+]

@@ -1,0 +1,15 @@
+/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-cancel
+app/
+app/.antelope/
+app/.antelope/cache/
+app/.gitignore 18
+app/antelope.config.ts 130
+app/antelope.test.ts 292
+app/package.json 345
+app/pnpm-lock.yaml 1449
+app/src/
+app/src/index.ts 561
+app/src/message.ts 49
+app/test/
+app/test/http.test.js 331
+app/tsconfig.json 197

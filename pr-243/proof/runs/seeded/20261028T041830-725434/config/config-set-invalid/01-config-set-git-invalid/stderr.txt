@@ -1,0 +1,3 @@
+✖ Invalid git repository URL 'notaurl'
+  Expected an https or ssh URL, an scp-like address (git@host:org/repo.git) or an absolute path.
+  → Pass a valid value, e.g. ajs config set git https://github.com/acme/interfaces.git

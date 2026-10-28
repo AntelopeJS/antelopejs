@@ -1,0 +1,7 @@
+[
+  {
+    "name": "modules read back",
+    "pass": true,
+    "detail": "expected [\"greeter-consumer\",\"greeter-provider\"], got [\"greeter-consumer\",\"greeter-provider\"]"
+  }
+]

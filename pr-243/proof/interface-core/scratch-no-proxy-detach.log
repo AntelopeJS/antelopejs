@@ -1,0 +1,39 @@
+
+
+  ImplementInterface atomicity property
+    ✔ rejects partial attachment after validation failures (106ms)
+    1) rejects partial attachment after attachment replay failures
+
+
+  1 passing (118ms)
+  1 failing
+
+  1) ImplementInterface atomicity property
+       rejects partial attachment after attachment replay failures:
+     Error: Property failed after 4 tests
+{ seed: 20261028, path: "3:1:1:1", endOnFailure: true }
+Counterexample: [[{"groups":[],"kind":"registering","present":true,"fault":"replay"}],true]
+Shrunk 3 time(s)
+
+Encountered failures were:
+- [[{"groups":[0,2,1],"kind":"sync","present":true,"fault":"valid"},{"groups":[1],"kind":"registering","present":true,"fault":"replay"}],true]
+- [[{"groups":[1],"kind":"registering","present":true,"fault":"replay"}],true]
+- [[{"groups":[],"kind":"registering","present":true,"fault":"replay"}],true]
+- [[{"groups":[],"kind":"registering","present":true,"fault":"replay"}],true]
+      at buildError (node_modules/.pnpm/fast-check@4.3.0/node_modules/fast-check/lib/cjs/check/runner/utils/RunDetailsFormatter.js:162:19)
+      at asyncThrowIfFailed (node_modules/.pnpm/fast-check@4.3.0/node_modules/fast-check/lib/cjs/check/runner/utils/RunDetailsFormatter.js:176:11)
+     Caused by: AssertionError [ERR_ASSERTION]: failed attachment must leave no consumer-visible handlers
+  + actual - expected
+  
+    [
+  +   'candidate:f0:register,candidate:f0:unregister'
+  -   [class MissingProviderError extends Error]
+    ]
+  
+      at /home/user/workspace/interface-core/dist/tests/implement-interface-atomicity.test.js:184:42
+      at async AsyncProperty.run (node_modules/.pnpm/fast-check@4.3.0/node_modules/fast-check/lib/cjs/check/property/AsyncProperty.generic.js:46:28)
+      at async asyncRunIt (node_modules/.pnpm/fast-check@4.3.0/node_modules/fast-check/lib/cjs/check/runner/Runner.js:28:21)
+      at async Context.<anonymous> (dist/tests/implement-interface-atomicity.test.js:155:13)
+
+
+

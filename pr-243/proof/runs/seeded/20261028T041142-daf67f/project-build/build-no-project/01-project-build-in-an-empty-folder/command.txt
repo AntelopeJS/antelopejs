@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-no-project
+ajs project build

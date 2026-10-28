@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041437-af9102/work/project-modules/modules-remove-unknown
+ajs project init app --template 'Verify HTTP' --pm pnpm --no-git-init

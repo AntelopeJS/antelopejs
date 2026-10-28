@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T041248-6eb897/evidence/project-start/start-base-build/08-ready",
+  "url": "http://127.0.0.1:33953/",
+  "status": 200,
+  "body": "{\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}",
+  "json": {
+    "module": "verify-http-fixture",
+    "message": "hello from the fixture"
+  },
+  "error": null
+}

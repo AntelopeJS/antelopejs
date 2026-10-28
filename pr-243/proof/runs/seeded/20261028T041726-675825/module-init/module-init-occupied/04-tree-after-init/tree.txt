@@ -1,0 +1,12 @@
+/tmp/verify-antelopejs/20261028T041726-675825/work/module-init/module-init-occupied/mod
+.gitignore 18
+antelope.test.ts 292
+keep.txt 10
+package.json 345
+pnpm-lock.yaml 1449
+src/
+src/index.ts 561
+src/message.ts 49
+test/
+test/http.test.js 331
+tsconfig.json 197

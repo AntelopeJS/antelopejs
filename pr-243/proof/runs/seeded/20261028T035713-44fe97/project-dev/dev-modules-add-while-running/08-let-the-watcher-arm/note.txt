@@ -1,0 +1,1 @@
+waited 3000 ms: the watcher hashes watched files after startAll and prints no armed line

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /No AntelopeJS project found/",
+    "pass": true,
+    "detail": "✖ No AntelopeJS project found at /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-no-project → Run ajs project init <project-name> to create one, or pass --project <path>"
+  },
+  {
+    "name": "stderr matches /ajs project init/",
+    "pass": true,
+    "detail": "✖ No AntelopeJS project found at /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-no-project → Run ajs project init <project-name> to create one, or pass --project <path>"
+  }
+]

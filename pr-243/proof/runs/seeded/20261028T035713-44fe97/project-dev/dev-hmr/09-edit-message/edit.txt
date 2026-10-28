@@ -1,0 +1,3 @@
+/tmp/verify-antelopejs/20261028T035713-44fe97/work/project-dev/dev-hmr/app/src/message.ts
+---
+export const message = "edited once";

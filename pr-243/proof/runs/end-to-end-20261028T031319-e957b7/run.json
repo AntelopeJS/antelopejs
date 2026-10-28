@@ -1,0 +1,14 @@
+{
+  "dir": "/tmp/verify-antelopejs/20261028T031319-e957b7",
+  "home": "/tmp/verify-antelopejs/20261028T031319-e957b7/home",
+  "work": "/tmp/verify-antelopejs/20261028T031319-e957b7/work",
+  "evidence": "/tmp/verify-antelopejs/20261028T031319-e957b7/evidence",
+  "id": "20261028T031319-e957b7",
+  "manifestUrl": "file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git",
+  "createdAt": "2026-10-28T03:13:19.593Z",
+  "headSha": "ba6fa178cb05b6371cff375f0218870a1825dae6",
+  "baseRef": "origin/main",
+  "baseSha": "9b812646a162b4601410ac82cded506df571f9fa",
+  "baseCli": "/home/user/.cache/verify-antelopejs/base/9b812646a162b4601410ac82cded506df571f9fa/dist/core/cli/index.js",
+  "processes": []
+}

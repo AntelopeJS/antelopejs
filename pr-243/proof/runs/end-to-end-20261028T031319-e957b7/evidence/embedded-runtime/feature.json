@@ -1,0 +1,263 @@
+[
+  {
+    "feature": "embedded-runtime",
+    "journey": "embedded-start-use-stop",
+    "title": "a host starts the runtime, calls an interface a module implements, reaches a module over HTTP, and stops it",
+    "entryPoint": "createRuntime({ modules, uses }).start() / use() / stop()",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "embedded-runtime/embedded-start-use-stop/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "embedded-runtime/embedded-start-use-stop/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "embedded-runtime/embedded-start-use-stop/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T031319-e957b7/work/embedded-runtime/embedded-start-use-stop/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templat…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/embedded-runtime/embedded-start-use-stop/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/embedded-runtime/embedded-start-use-stop/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "embedded-runtime/embedded-start-use-stop/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-pnpm-install-provider",
+        "folder": "embedded-runtime/embedded-start-use-stop/06-pnpm-install-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "07-pnpm-install-host",
+        "folder": "embedded-runtime/embedded-start-use-stop/07-pnpm-install-host",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "08-embedded-host",
+        "folder": "embedded-runtime/embedded-start-use-stop/08-embedded-host",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "running after start",
+            "pass": true,
+            "detail": "expected true, got true"
+          },
+          {
+            "name": "interface call through use()",
+            "pass": true,
+            "detail": "expected \"Hello, host\", got \"Hello, host\""
+          },
+          {
+            "name": "fixture module served while running",
+            "pass": true,
+            "detail": "expected \"hello from the fixture\", got \"hello from the fixture\""
+          },
+          {
+            "name": "host kept its SIGINT listeners",
+            "pass": true,
+            "detail": "expected true, got true"
+          },
+          {
+            "name": "stopped after stop",
+            "pass": true,
+            "detail": "expected false, got false"
+          },
+          {
+            "name": "fixture refused after stop",
+            "pass": true,
+            "detail": "expected null, got null"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "embedded-runtime/embedded-start-use-stop"
+  },
+  {
+    "feature": "embedded-runtime",
+    "journey": "embedded-missing-provider",
+    "title": "a host that uses an interface no module implements fails at start with the interface name",
+    "entryPoint": "createRuntime({ uses: ['verify-greeter'] }) without its provider",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "embedded-runtime/embedded-missing-provider/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "embedded-runtime/embedded-missing-provider/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "embedded-runtime/embedded-missing-provider/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T031319-e957b7/work/embedded-runtime/embedded-missing-provider/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templ…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/embedded-runtime/embedded-missing-provider/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/embedded-runtime/embedded-missing-provider/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "embedded-runtime/embedded-missing-provider/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-pnpm-install-provider",
+        "folder": "embedded-runtime/embedded-missing-provider/06-pnpm-install-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "07-pnpm-install-host",
+        "folder": "embedded-runtime/embedded-missing-provider/07-pnpm-install-host",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "08-embedded-host-without-provider",
+        "folder": "embedded-runtime/embedded-missing-provider/08-embedded-host-without-provider",
+        "checks": [
+          {
+            "name": "non-zero exit code",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /missing-provider|verify-greeter/",
+            "pass": true,
+            "detail": "/home/user/workspace/antelopejs/dist/core/modules/module-manifest.js:181 throw new Error(`Missing package.json in '${folder}'`); ^ Error: Missing package.json in '/tmp/verify-antelopejs/20261028T031319-e957b7/work/embedded-runtime/embedded-missing-provider/greeter/missing-provider' at ModuleManifest…"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "embedded-runtime/embedded-missing-provider"
+  }
+]

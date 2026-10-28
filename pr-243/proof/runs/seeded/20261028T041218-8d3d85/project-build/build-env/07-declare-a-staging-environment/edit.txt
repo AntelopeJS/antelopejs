@@ -1,0 +1,25 @@
+/tmp/verify-antelopejs/20261028T041218-8d3d85/work/project-build/build-env/app/antelope.config.ts
+---
+import { defineConfig } from '@antelopejs/interface-core/config';
+
+export default defineConfig({
+  name: "app",
+  modules: {
+    "verify-http-fixture": {
+      source: {
+        type: "local",
+        path: ".",
+        watchDir: [
+          "src"
+        ],
+        installCommand: [
+          "npx tsc"
+        ],
+        reloadCommand: [
+          "npx tsc"
+        ]
+      }
+    }
+  },
+  environments: { staging: {} }
+});

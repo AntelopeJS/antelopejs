@@ -1,0 +1,12 @@
+[
+  {
+    "name": "include list emptied",
+    "pass": true,
+    "detail": "expected [], got []"
+  },
+  {
+    "name": "enabled again",
+    "pass": true,
+    "detail": "expected true, got true"
+  }
+]

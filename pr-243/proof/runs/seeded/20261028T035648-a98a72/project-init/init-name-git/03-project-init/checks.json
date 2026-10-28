@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-name-git/app/antelope.config.ts matches /name: \"verified\"/",
+    "pass": false,
+    "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"app\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", watchDir: [ \"src\" ], installCommand: [ \"npx tsc\" ], reloadCommand: [ \"npx tsc\" ] } } } });"
+  }
+]

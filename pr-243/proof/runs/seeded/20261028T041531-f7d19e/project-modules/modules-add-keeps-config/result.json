@@ -1,0 +1,133 @@
+{
+  "feature": "project-modules",
+  "journey": "modules-add-keeps-config",
+  "title": "add rewrites antelope.config.ts without losing module config or environments (Data containment)",
+  "entryPoint": "ajs project modules add <path> --mode local on a hand-written configuration",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-modules/modules-add-keeps-config/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-modules/modules-add-keeps-config/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041531-f7d19e/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041531-f7d19e/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-modules/modules-add-keeps-config/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-keeps-config/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templat…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-keeps-config/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-keeps-config/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-modules/modules-add-keeps-config/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "07-pnpm-install-provider",
+      "folder": "project-modules/modules-add-keeps-config/07-pnpm-install-provider",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "08-modules-add-provider",
+      "folder": "project-modules/modules-add-keeps-config/08-modules-add-provider",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /name: \"kept\"/",
+          "pass": true,
+          "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /greeting: \"kept value\"/",
+          "pass": true,
+          "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /staging/",
+          "pass": true,
+          "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /\"greeter-provider\"/",
+          "pass": true,
+          "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+        }
+      ]
+    },
+    {
+      "name": "09-modules-list-of-the-base-configuration",
+      "folder": "project-modules/modules-add-keeps-config/09-modules-list-of-the-base-configuration",
+      "checks": [
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"greeter-provider\",\"verify-http-fixture\"], got [\"greeter-provider\",\"verify-http-fixture\"]"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-modules/modules-add-keeps-config"
+}

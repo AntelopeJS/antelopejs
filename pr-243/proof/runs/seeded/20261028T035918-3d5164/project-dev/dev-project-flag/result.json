@@ -1,0 +1,91 @@
+{
+  "feature": "project-dev",
+  "journey": "dev-project-flag",
+  "title": "--project runs a project from another directory",
+  "entryPoint": "ajs project dev --project ./app",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-dev/dev-project-flag/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-dev/dev-project-flag/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-dev/dev-project-flag/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-project-flag/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-project-flag/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-project-flag/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-dev/dev-project-flag/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "07-ready",
+      "folder": "project-dev/dev-project-flag/07-ready",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:36765/ answers 200 with message \"hello from the fixture\"",
+          "pass": true,
+          "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-dev/dev-project-flag"
+}

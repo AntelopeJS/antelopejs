@@ -1,0 +1,146 @@
+{
+  "feature": "project-modules",
+  "journey": "modules-add-remove-local",
+  "title": "add --mode local writes the module into the configuration, remove takes it out, both read back with list",
+  "entryPoint": "ajs project modules add <path> --mode local; ajs project modules remove <name>",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-modules/modules-add-remove-local/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-modules/modules-add-remove-local/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041531-f7d19e/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041531-f7d19e/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-modules/modules-add-remove-local/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-remove-local/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templat…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-remove-local/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-remove-local/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-modules/modules-add-remove-local/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-pnpm-install-provider",
+      "folder": "project-modules/modules-add-remove-local/06-pnpm-install-provider",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "07-modules-add-provider",
+      "folder": "project-modules/modules-add-remove-local/07-modules-add-provider",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "08-modules-list-after-add",
+      "folder": "project-modules/modules-add-remove-local/08-modules-list-after-add",
+      "checks": [
+        {
+          "name": "modules read back after add",
+          "pass": true,
+          "detail": "expected [\"greeter-provider\",\"verify-http-fixture\"], got [\"greeter-provider\",\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "09-modules-list-as-text",
+      "folder": "project-modules/modules-add-remove-local/09-modules-list-as-text",
+      "checks": [
+        {
+          "name": "stdout matches /^greeter-provider\\tlocal\\t/m",
+          "pass": true,
+          "detail": "verify-http-fixture local . greeter-provider local ../greeter/provider"
+        }
+      ]
+    },
+    {
+      "name": "10-modules-remove-provider",
+      "folder": "project-modules/modules-add-remove-local/10-modules-remove-provider",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "11-modules-list-after-remove",
+      "folder": "project-modules/modules-add-remove-local/11-modules-list-after-remove",
+      "checks": [
+        {
+          "name": "modules read back after remove",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-modules/modules-add-remove-local"
+}

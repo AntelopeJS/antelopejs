@@ -1,0 +1,13 @@
+API: 4 packages, 8 entries unchanged against main (committed HEAD).
+Runtime API: 4 packages, 3 entries unchanged against main (committed HEAD).
+Runtime API: skipped playground/modules/module-a, which has no build script and no committed runtime entry.
+Runtime API: skipped playground/modules/module-b, which has no build script and no committed runtime entry.
+Runtime API: skipped playground/packages/interface-greeter, which has no build script and no committed runtime entry.
+No behavioural probe ran.
+
+Counts in tracked code files (main and committed HEAD).
+| Lines | base | HEAD |
+| --- | ---: | ---: |
+| oxlint-disable / eslint-disable directive lines | 122 | 122 |
+| SAFETY: lines | 32 | 32 |
+| @ts-expect-error lines | 9 | 9 |

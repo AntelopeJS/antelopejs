@@ -1,0 +1,133 @@
+{
+  "feature": "project-build",
+  "journey": "build-env",
+  "title": "--env picks a declared environment, an undeclared one is a usage error, and without environments any name builds the base",
+  "entryPoint": "ajs project build --env <name>",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-build/build-env/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-build/build-env/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041142-daf67f/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041142-daf67f/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-build/build-env/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-env/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 avai…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-env/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-env/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-build/build-env/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-project-build-env-any-no-environments",
+      "folder": "project-build/build-env/06-project-build-env-any-no-environments",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-env/app/.antelope/build/build.json exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "08-project-build-env-nope",
+      "folder": "project-build/build-env/08-project-build-env-nope",
+      "checks": [
+        {
+          "name": "exit code 2",
+          "pass": true,
+          "detail": "exit code 2"
+        },
+        {
+          "name": "stderr matches /nope/",
+          "pass": true,
+          "detail": "✖ Unknown environment 'nope' Known environments: default, staging → Pass one of them with --env, or add an \"environments.nope\" entry to the project configuration"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-env/app/.antelope/build/build.json is absent",
+          "pass": true,
+          "detail": "missing"
+        }
+      ]
+    },
+    {
+      "name": "09-project-build-env-staging",
+      "folder": "project-build/build-env/09-project-build-env-staging",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules in build.json",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-build/build-env"
+}

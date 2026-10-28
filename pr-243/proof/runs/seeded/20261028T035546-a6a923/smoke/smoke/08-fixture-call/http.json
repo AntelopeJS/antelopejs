@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T035546-a6a923/evidence/smoke/smoke/08-fixture-call",
+  "url": "http://127.0.0.1:35631/",
+  "status": 200,
+  "body": "{\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}",
+  "json": {
+    "module": "verify-http-fixture",
+    "message": "hello from the fixture"
+  },
+  "error": null
+}

@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config
+ajs project init app --template 'Verify HTTP' --pm pnpm --no-git-init

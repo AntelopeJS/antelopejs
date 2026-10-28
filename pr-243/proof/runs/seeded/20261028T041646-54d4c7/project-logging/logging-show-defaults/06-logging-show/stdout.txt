@@ -1,0 +1,4 @@
+Enabled          yes
+Module tracking  off
+Date format      yyyy-MM-dd HH:mm:ss
+Level formats    default, see --json for the templates

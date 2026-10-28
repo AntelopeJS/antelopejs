@@ -1,0 +1,384 @@
+Interface range property verification
+de8410958eafd214b4a9aab19719b885b2480403
+v24.22.1
+
+Focused command
+TERM=xterm-256color FC_SEED=20261028 pnpm exec mocha --no-config --require ts-node/register --require test/setup.ts test/core/module-manager.interface-ranges.test.ts --exit
+
+=== Scratch break: prerelease ===
+diff --git a/src/core/modules/module-manager-packages.ts b/src/core/modules/module-manager-packages.ts
+index 99d0299..9bd58e9 100644
+--- a/src/core/modules/module-manager-packages.ts
++++ b/src/core/modules/module-manager-packages.ts
+@@ -237,7 +237,7 @@ export function findRangeConflicts(
+ ): InterfaceRangeConflict[] {
+   return plan.consumers.flatMap((consumer) => {
+     const range = validRange(consumer.range);
+-    if (!range || satisfies(plan.canonicalPackage.version, range)) {
++    if (!range || satisfies(plan.canonicalPackage.version, range, { includePrerelease: true })) {
+       return [];
+     }
+     return [
+
+
+  ModuleManager interface range properties
+    1) matches semver without admitting prereleases or rejecting invalid declarations
+
+
+  0 passing (79ms)
+  1 failing
+
+  1) ModuleManager interface range properties
+       matches semver without admitting prereleases or rejecting invalid declarations:
+     Error: Property failed after 1 tests
+{ seed: 20261028, path: "0", endOnFailure: true }
+Counterexample: ["1.2.3-alpha.0","*"]
+Shrunk 0 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+      at buildError (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2484:16)
+      at asyncThrowIfFailed (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2496:8)
+     Caused by: AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    ok(error instanceof output_1.InterfaceResolutionError)
+  
+      at /home/user/workspace/fc-ranges/test/core/module-manager.interface-ranges.test.ts:60:18
+      at async AsyncProperty.run (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:1232:19)
+      at async asyncPropertyExecution (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2579:14)
+      at async asyncRunIt (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2572:15)
+      at async Context.<anonymous> (test/core/module-manager.interface-ranges.test.ts:45:5)
+
+
+
+
+Observed exit code: 1
+
+=== Scratch break: invalid ===
+diff --git a/src/core/modules/module-manager-packages.ts b/src/core/modules/module-manager-packages.ts
+index 99d0299..ed3eabd 100644
+--- a/src/core/modules/module-manager-packages.ts
++++ b/src/core/modules/module-manager-packages.ts
+@@ -237,7 +237,7 @@ export function findRangeConflicts(
+ ): InterfaceRangeConflict[] {
+   return plan.consumers.flatMap((consumer) => {
+     const range = validRange(consumer.range);
+-    if (!range || satisfies(plan.canonicalPackage.version, range)) {
++    if (satisfies(plan.canonicalPackage.version, range!)) {
+       return [];
+     }
+     return [
+
+
+  ModuleManager interface range properties
+    1) matches semver without admitting prereleases or rejecting invalid declarations
+
+
+  0 passing (528ms)
+  1 failing
+
+  1) ModuleManager interface range properties
+       matches semver without admitting prereleases or rejecting invalid declarations:
+     Error: Property failed after 13 tests
+{ seed: 20261028, path: "12", endOnFailure: true }
+Counterexample: ["2.0.0","not-a-range"]
+Shrunk 0 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+      at buildError (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2484:16)
+      at asyncThrowIfFailed (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2496:8)
+     Caused by: Expected values to be strictly equal:
+  + actual - expected
+  
+  + InterfaceResolutionError: Incompatible interface package resolution:
+  +   - consumer-0 requires interface-shared@not-a-range, but the canonical package is 2.0.0 at /tmp/ajs-interface-resolution-HMoV8U/provider/node_modules/interface-shared (consumer copy: 9.9.9 at /tmp/ajs-interface-resolution-HMoV8U/consumer-0/node_modules/interface-shared)
+  +     at Object.validateInterfacePackages (/home/user/workspace/fc-ranges/src/core/modules/module-manager-packages.ts:230:9)
+  +     at ModuleManager.validateInterfacePackages (/home/user/workspace/fc-ranges/src/core/modules/module-manager.ts:508:29)
+  +     at Object.validateInterfacePackages (/home/user/workspace/fc-ranges/src/core/modules/module-manager.ts:176:19)
+  +     at Object.constructAll (/home/user/workspace/fc-ranges/src/core/modules/module-manager-construction.ts:27:10)
+  +     at ModuleManager.constructAll (/home/user/workspace/fc-ranges/src/core/modules/module-manager.ts:324:29)
+  +     at constructRangeProject (/home/user/workspace/fc-ranges/test/helpers/interface-range-project.ts:86:21)
+  +     at async /home/user/workspace/fc-ranges/test/core/module-manager.interface-ranges.test.ts:51:13
+  +     at async AsyncProperty.run (/home/user/workspace/fc-ranges/node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:1232:19)
+  +     at async asyncPropertyExecution (/home/user/workspace/fc-ranges/node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2579:14)
+  +     at async asyncRunIt (/home/user/workspace/fc-ranges/node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2572:15)
+  +     at async Context.<anonymous> (/home/user/workspace/fc-ranges/test/core/module-manager.interface-ranges.test.ts:45:5) {
+  +   conflicts: {
+  +     preloadedCopies: [],
+  +     rangeConflicts: [
+  +       {
+  +         canonical: {
+  +           antelopeJs: {},
+  +           entry: '/tmp/ajs-interface-resolution-HMoV8U/provider/node_modules/interface-shared/dist/index.js',
+  +           name: 'interface-shared',
+  +           realRoot: '/tmp/ajs-interface-resolution-HMoV8U/provider/node_modules/interface-shared',
+  +           resolveFrom: '/tmp/ajs-interface-resolution-HMoV8U/provider',
+  +           root: '/tmp/ajs-interface-resolution-HMoV8U/provider/node_modules/interface-shared',
+  +           version: '2.0.0'
+  +         },
+  +         consumerCopy: {
+  +           antelopeJs: {},
+  +           entry: '/tmp/ajs-interface-resolution-HMoV8U/consumer-0/node_modules/interface-shared/dist/index.js',
+  +           name: 'interface-shared',
+  +           realRoot: '/tmp/ajs-interface-resolution-HMoV8U/consumer-0/node_modules/interface-shared',
+  +           resolveFrom: '/tmp/ajs-interface-resolution-HMoV8U/consumer-0',
+  +           root: '/tmp/ajs-interface-resolution-HMoV8U/consumer-0/node_modules/interface-shared',
+  +           version: '9.9.9'
+  +         },
+  +         moduleId: 'consumer-0',
+  +         packageName: 'interface-shared',
+  +         range: 'not-a-range'
+  +       }
+  +     ]
+  +   }
+  + }
+  - undefined
+  
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + InterfaceResolutionError: Incompatible interface package resolution:
+  +   - consumer-0 requires interface-shared@not-a-range, but the canonical package is 2.0.0 at /tmp/ajs-interface-resolution-HMoV8U/provider/node_modules/interface-shared (consumer copy: 9.9.9 at /tmp/ajs-interface-resolution-HMoV8U/consumer-0/node_modules/interface-shared)
+  +     at Object.validateInterfacePackages (src/core/modules/module-manager-packages.ts:230:9)
+  +     at ModuleManager.validateInterfacePackages (src/core/modules/module-manager.ts:508:29)
+  +     at Object.validateInterfacePackages (src/core/modules/module-manager.ts:176:19)
+  +     at Object.constructAll (src/core/modules/module-manager-construction.ts:27:10)
+  +     at ModuleManager.constructAll (src/core/modules/module-manager.ts:324:29)
+  +     at constructRangeProject (test/helpers/interface-range-project.ts:86:21)
+  +     at async /home/user/workspace/fc-ranges/test/core/module-manager.interface-ranges.test.ts:51:13
+  +     at async AsyncProperty.run (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:1232:19)
+  +     at async asyncPropertyExecution (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2579:14)
+  +     at async asyncRunIt (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2572:15)
+  +     at async Context.<anonymous> (/home/user/workspace/fc-ranges/test/core/module-manager.interface-ranges.test.ts:45:5) {
+  +   conflicts: {
+  +     preloadedCopies: [],
+  +     rangeConflicts: [
+  +       {
+  +         canonical: {
+  +           antelopeJs: {},
+  +           entry: '/tmp/ajs-interface-resolution-HMoV8U/provider/node_modules/interface-shared/dist/index.js',
+  +           name: 'interface-shared',
+  +           realRoot: '/tmp/ajs-interface-resolution-HMoV8U/provider/node_modules/interface-shared',
+  +           resolveFrom: '/tmp/ajs-interface-resolution-HMoV8U/provider',
+  +           root: '/tmp/ajs-interface-resolution-HMoV8U/provider/node_modules/interface-shared',
+  +           version: '2.0.0'
+  +         },
+  +         consumerCopy: {
+  +           antelopeJs: {},
+  +           entry: '/tmp/ajs-interface-resolution-HMoV8U/consumer-0/node_modules/interface-shared/dist/index.js',
+  +           name: 'interface-shared',
+  +           realRoot: '/tmp/ajs-interface-resolution-HMoV8U/consumer-0/node_modules/interface-shared',
+  +           resolveFrom: '/tmp/ajs-interface-resolution-HMoV8U/consumer-0',
+  +           root: '/tmp/ajs-interface-resolution-HMoV8U/consumer-0/node_modules/interface-shared',
+  +           version: '9.9.9'
+  +         },
+  +         moduleId: 'consumer-0',
+  +         packageName: 'interface-shared',
+  +         range: 'not-a-range'
+  +       }
+  +     ]
+  +   }
+  + }
+  - undefined
+  
+      at /home/user/workspace/fc-ranges/test/core/module-manager.interface-ranges.test.ts:57:20
+      at async AsyncProperty.run (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:1232:19)
+      at async asyncPropertyExecution (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2579:14)
+      at async asyncRunIt (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2572:15)
+      at async Context.<anonymous> (test/core/module-manager.interface-ranges.test.ts:45:5)
+
+
+
+
+Observed exit code: 1
+
+=== Scratch break: dropped ===
+diff --git a/src/core/modules/module-manager-packages.ts b/src/core/modules/module-manager-packages.ts
+index 99d0299..81f862f 100644
+--- a/src/core/modules/module-manager-packages.ts
++++ b/src/core/modules/module-manager-packages.ts
+@@ -227,7 +227,7 @@ export function validateInterfacePackages(this: ManagerContext): void {
+   if (rangeConflicts.length === 0 && preloadedCopies.length === 0) {
+     return;
+   }
+-  throw new InterfaceResolutionError({ rangeConflicts, preloadedCopies });
++  throw new InterfaceResolutionError({ rangeConflicts: rangeConflicts.slice(0, 1), preloadedCopies });
+ }
+ 
+ export function findRangeConflicts(
+
+
+  ModuleManager interface range properties
+    1) rejects exactly the conflicting or preloaded consumers without dropping or inventing entries
+
+
+  0 passing (87ms)
+  1 failing
+
+  1) ModuleManager interface range properties
+       rejects exactly the conflicting or preloaded consumers without dropping or inventing entries:
+     Error: Property failed after 1 tests
+{ seed: 20261028, path: "0:0", endOnFailure: true }
+Counterexample: ["2.0.0",[{"range":"^1.0.0","optional":false,"copy":"missing"},{"range":"^1.0.0","optional":true,"copy":"private"},{"range":"*","optional":false,"copy":"preloaded"},{"range":"invalid","optional":true,"copy":"canonical-preloaded"}],false]
+Shrunk 1 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+      at buildError (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2484:16)
+      at asyncThrowIfFailed (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2496:8)
+     Caused by: AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      {
+        moduleId: 'consumer-0',
+        range: '^1.0.0'
+      },
+  -   {
+  -     moduleId: 'consumer-1',
+  -     range: '^1.0.0'
+  -   }
+    ]
+  
+      at /home/user/workspace/fc-ranges/test/core/module-manager.interface-ranges.test.ts:121:18
+      at async AsyncProperty.run (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:1232:19)
+      at async asyncPropertyExecution (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2579:14)
+      at async asyncRunIt (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2572:15)
+      at async Context.<anonymous> (test/core/module-manager.interface-ranges.test.ts:94:5)
+
+
+
+
+Observed exit code: 1
+
+=== Scratch break: preloaded ===
+diff --git a/src/core/modules/module-manager-packages.ts b/src/core/modules/module-manager-packages.ts
+index 99d0299..8f85b4a 100644
+--- a/src/core/modules/module-manager-packages.ts
++++ b/src/core/modules/module-manager-packages.ts
+@@ -224,7 +224,7 @@ export function validateInterfacePackages(this: ManagerContext): void {
+   const preloadedCopies = plans.flatMap(([name, plan]) =>
+     this.findPreloadedCopies(name, plan),
+   );
+-  if (rangeConflicts.length === 0 && preloadedCopies.length === 0) {
++  if (rangeConflicts.length === 0) {
+     return;
+   }
+   throw new InterfaceResolutionError({ rangeConflicts, preloadedCopies });
+
+
+  ModuleManager interface range properties
+    1) rejects exactly the conflicting or preloaded consumers without dropping or inventing entries
+
+
+  0 passing (279ms)
+  1 failing
+
+  1) ModuleManager interface range properties
+       rejects exactly the conflicting or preloaded consumers without dropping or inventing entries:
+     Error: Property failed after 2 tests
+{ seed: 20261028, path: "1:1", endOnFailure: true }
+Counterexample: ["1.0.0",[{"range":"*","optional":false,"copy":"preloaded"}],false]
+Shrunk 1 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+      at buildError (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2484:16)
+      at asyncThrowIfFailed (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2496:8)
+     Caused by: AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    ok(result.error instanceof output_1.InterfaceResolutionError)
+  
+      at /home/user/workspace/fc-ranges/test/core/module-manager.interface-ranges.test.ts:119:18
+      at async AsyncProperty.run (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:1232:19)
+      at async asyncPropertyExecution (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2579:14)
+      at async asyncRunIt (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2572:15)
+      at async Context.<anonymous> (test/core/module-manager.interface-ranges.test.ts:94:5)
+
+
+
+
+Observed exit code: 1
+
+=== Generated skill followed on scratch break ===
+
+
+  ModuleManager interface range properties
+    ✔ matches semver without admitting prereleases or rejecting invalid declarations (5121ms)
+
+  ModuleManager interface range properties
+    1) rejects exactly the conflicting or preloaded consumers without dropping or inventing entries
+
+
+  1 passing (5s)
+  1 failing
+
+  1) ModuleManager interface range properties
+       rejects exactly the conflicting or preloaded consumers without dropping or inventing entries:
+     Error: Property failed after 1 tests
+{ seed: 20261028, path: "0:0", endOnFailure: true }
+Counterexample: ["2.0.0",[{"range":"^1.0.0","optional":false,"copy":"missing"},{"range":"^1.0.0","optional":true,"copy":"private"},{"range":"*","optional":false,"copy":"preloaded"},{"range":"invalid","optional":true,"copy":"canonical-preloaded"}],false]
+Shrunk 1 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+      at buildError (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2484:16)
+      at asyncThrowIfFailed (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2496:8)
+     Caused by: AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      {
+        moduleId: 'consumer-0',
+        range: '^1.0.0'
+      },
+  -   {
+  -     moduleId: 'consumer-1',
+  -     range: '^1.0.0'
+  -   }
+    ]
+  
+      at /home/user/workspace/fc-ranges/test/core/module-manager.interface-ranges.test.ts:121:18
+      at async AsyncProperty.run (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:1232:19)
+      at async asyncPropertyExecution (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2579:14)
+      at async asyncRunIt (node_modules/.pnpm/fast-check@4.10.2/node_modules/fast-check/lib/cjs/fast-check.js:2572:15)
+      at async Context.<anonymous> (test/core/module-manager.interface-ranges.test.ts:94:5)
+
+
+
+
+=== Restored source ===
+
+
+  ModuleManager interface range properties
+    ✔ matches semver without admitting prereleases or rejecting invalid declarations (5404ms)
+
+  ModuleManager interface range properties
+    ✔ rejects exactly the conflicting or preloaded consumers without dropping or inventing entries (6312ms)
+
+
+  2 passing (12s)
+
+
+=== Full checks ===
+
+> @antelopejs/core@1.17.1 checks /home/user/workspace/fc-ranges
+> antelopejs-checks
+
+Checks: 7 passed, 0 failed.
+
+=== API comparison ===
+API: 4 packages, 8 entries unchanged against main (committed HEAD).
+Runtime API: 4 packages, 3 entries unchanged against main (committed HEAD).
+Runtime API: skipped playground/modules/module-a, which has no build script and no committed runtime entry.
+Runtime API: skipped playground/modules/module-b, which has no build script and no committed runtime entry.
+Runtime API: skipped playground/packages/interface-greeter, which has no build script and no committed runtime entry.
+No behavioural probe ran.
+
+Counts in tracked code files (main and committed HEAD).
+| Lines | base | HEAD |
+| --- | ---: | ---: |
+| oxlint-disable / eslint-disable directive lines | 122 | 122 |
+| SAFETY: lines | 32 | 32 |
+| @ts-expect-error lines | 9 | 9 |
+
+=== Coverage ===
+  1539 passing (1m)
+All files                         |    98.3 |    94.78 |   98.57 |    98.3 |                        
+  module-manager-packages.ts      |   94.64 |     91.3 |     100 |   94.64 | ...-96,126-127,140-141 

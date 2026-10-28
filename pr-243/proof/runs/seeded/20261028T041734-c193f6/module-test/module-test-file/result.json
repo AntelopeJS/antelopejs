@@ -1,0 +1,48 @@
+{
+  "feature": "module-test",
+  "journey": "module-test-file",
+  "title": "--file run from the module folder runs only the named test file",
+  "entryPoint": "cd mod && ajs module test --file test/http.test.js",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-module-init",
+      "folder": "module-test/module-test-file/01-module-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041734-c193f6/work/module-test/module-test-file/mod/package.json exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041734-c193f6/work/module-test/module-test-file/mod/node_modules/typescript exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "03-module-test-file",
+      "folder": "module-test/module-test-file/03-module-test-file",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stdout matches /1 passing/",
+          "pass": true,
+          "detail": "verify-http-fixture ✔ answers with its message (39ms) 1 passing (41ms)"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "module-test/module-test-file"
+}

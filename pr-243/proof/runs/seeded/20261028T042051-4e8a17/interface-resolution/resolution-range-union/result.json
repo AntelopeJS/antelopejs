@@ -1,0 +1,22 @@
+{
+  "feature": "interface-resolution",
+  "journey": "resolution-range-union",
+  "title": "a consumer range that admits the shared copy through a union starts normally",
+  "entryPoint": "ajs project dev, consumer requires verify-greeter ^0.9.0 || ^1.0.0",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "02-ready",
+      "folder": "interface-resolution/resolution-range-union/02-ready",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:35317/ answers 200 with greeting \"Hello, verifier\"",
+          "pass": true,
+          "detail": "status 200, body {\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "interface-resolution/resolution-range-union"
+}

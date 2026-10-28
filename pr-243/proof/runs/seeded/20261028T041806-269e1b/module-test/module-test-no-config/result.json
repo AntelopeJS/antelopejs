@@ -1,0 +1,27 @@
+{
+  "feature": "module-test",
+  "journey": "module-test-no-config",
+  "title": "a module without antelopeJs.test fails and names the missing setting",
+  "entryPoint": "ajs module test mod (no antelopeJs.test)",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "02-module-test",
+      "folder": "module-test/module-test-no-config/02-module-test",
+      "checks": [
+        {
+          "name": "non-zero exit code",
+          "pass": true,
+          "detail": "exit code 1"
+        },
+        {
+          "name": "stderr matches /antelopeJs\\.test|test/",
+          "pass": true,
+          "detail": "✖ Module plain has no test configuration The antelopeJs.test field of its package.json does not name a test configuration file. → Create antelope.test.ts, exporting defineConfig({ name, modules, test: { folder: \"test\" } }) from @antelopejs/interface-core/config → Point package.json to it: \"antelopeJ…"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "module-test/module-test-no-config"
+}

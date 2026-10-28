@@ -1,0 +1,12 @@
+[
+  {
+    "name": "include list emptied",
+    "pass": false,
+    "detail": "expected [], got [\"verify-http-fixture\"]"
+  },
+  {
+    "name": "enabled again",
+    "pass": true,
+    "detail": "expected true, got true"
+  }
+]

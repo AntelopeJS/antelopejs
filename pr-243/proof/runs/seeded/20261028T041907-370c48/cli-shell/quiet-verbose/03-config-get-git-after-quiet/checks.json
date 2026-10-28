@@ -1,0 +1,7 @@
+[
+  {
+    "name": "git after --quiet",
+    "pass": true,
+    "detail": "expected \"file:///verify/quiet\", got \"file:///verify/quiet\""
+  }
+]

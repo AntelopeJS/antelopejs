@@ -1,0 +1,151 @@
+{
+  "feature": "project-dev",
+  "journey": "dev-watch-module-without-src",
+  "title": "a local module without a src folder, added while dev --watch runs, does not crash dev",
+  "entryPoint": "ajs project dev --watch, then ajs project modules add <path without src/> --mode local",
+  "status": "FAIL",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-dev/dev-watch-module-without-src/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-dev/dev-watch-module-without-src/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035713-44fe97/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035713-44fe97/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-dev/dev-watch-module-without-src/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035713-44fe97/work/project-dev/dev-watch-module-without-src/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templat…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035713-44fe97/work/project-dev/dev-watch-module-without-src/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035713-44fe97/work/project-dev/dev-watch-module-without-src/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-dev/dev-watch-module-without-src/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "07-ready",
+      "folder": "project-dev/dev-watch-module-without-src/07-ready",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:37719/ answers 200 with message \"hello from the fixture\"",
+          "pass": true,
+          "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+        }
+      ]
+    },
+    {
+      "name": "09-pnpm-install-provider",
+      "folder": "project-dev/dev-watch-module-without-src/09-pnpm-install-provider",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "10-modules-add-provider-while-running",
+      "folder": "project-dev/dev-watch-module-without-src/10-modules-add-provider-while-running",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "13-fixture-once-the-watcher-scanned-the-module",
+      "folder": "project-dev/dev-watch-module-without-src/13-fixture-once-the-watcher-scanned-the-module",
+      "checks": [
+        {
+          "name": "stderr does not match /Unhandled rejection/",
+          "pass": false,
+          "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 2.4s ✔ Loaded 1 module 2.4s ✔ Constructed modules ✔ Installed depe…"
+        },
+        {
+          "name": "GET http://127.0.0.1:37719/ answers 200 with message \"hello from the fixture\"",
+          "pass": false,
+          "detail": "connect ECONNREFUSED 127.0.0.1:37719"
+        }
+      ]
+    },
+    {
+      "name": "11-fixture-after-the-restart",
+      "folder": "project-dev/dev-watch-module-without-src/11-fixture-after-the-restart",
+      "checks": [
+        {
+          "name": "stderr matches /Loaded 2 modules/",
+          "pass": true,
+          "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 2.4s ✔ Loaded 1 module 2.4s ✔ Constructed modules ✔ Installed depe…"
+        }
+      ]
+    },
+    {
+      "name": "14-stop-with-sigint",
+      "folder": "project-dev/dev-watch-module-without-src/14-stop-with-sigint",
+      "checks": [
+        {
+          "name": "exit code 130",
+          "pass": false,
+          "detail": "exit code 1"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-dev/dev-watch-module-without-src"
+}

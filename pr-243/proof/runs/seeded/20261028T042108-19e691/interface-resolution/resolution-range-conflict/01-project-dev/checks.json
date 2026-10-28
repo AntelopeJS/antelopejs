@@ -1,0 +1,22 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /Incompatible interface package resolution/",
+    "pass": false,
+    "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✔ Constructed modules ✖ Failed to start modules Run with --verbose for the full trace."
+  },
+  {
+    "name": "stderr matches /greeter-consumer requires verify-greeter@\\^2\\.0\\.0, but the shared copy is 1\\.0\\.0/",
+    "pass": false,
+    "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✔ Constructed modules ✖ Failed to start modules Run with --verbose for the full trace."
+  },
+  {
+    "name": "stderr matches /depend on \"verify-greeter\": \"\\^1\\.0\\.0\"/",
+    "pass": false,
+    "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✔ Constructed modules ✖ Failed to start modules Run with --verbose for the full trace."
+  }
+]

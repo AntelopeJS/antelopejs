@@ -1,0 +1,112 @@
+{
+  "feature": "project-build",
+  "journey": "build-artifact",
+  "title": "build writes .antelope/build/build.json listing every module of the project",
+  "entryPoint": "ajs project build",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-build/build-artifact/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-build/build-artifact/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041142-daf67f/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041142-daf67f/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-build/build-artifact/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-artifact/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-artifact/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-artifact/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-build/build-artifact/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-project-build",
+      "folder": "project-build/build-artifact/06-project-build",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Built 1 module/",
+          "pass": true,
+          "detail": "✔ Found project: app Environment default Project /tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-artifact/app Output ./.antelope/build/build.json ℹ Building AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.5s ✔ Loaded 1 module 3.5s Built 1 module → ./.ante…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-artifact/app/.antelope/build/build.json exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "07-tree-after-build",
+      "folder": "project-build/build-artifact/07-tree-after-build",
+      "checks": [
+        {
+          "name": "modules in build.json",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-build/build-artifact"
+}

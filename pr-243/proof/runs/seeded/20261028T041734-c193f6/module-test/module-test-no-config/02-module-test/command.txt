@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041734-c193f6/work/module-test/module-test-no-config
+ajs module test mod

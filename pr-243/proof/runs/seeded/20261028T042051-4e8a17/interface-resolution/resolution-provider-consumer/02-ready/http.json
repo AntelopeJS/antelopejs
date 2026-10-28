@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T042051-4e8a17/evidence/interface-resolution/resolution-provider-consumer/02-ready",
+  "url": "http://127.0.0.1:46437/",
+  "status": 200,
+  "body": "{\"module\":\"greeter-consumer\",\"greeting\":\"Hello, verifier\"}",
+  "json": {
+    "module": "greeter-consumer",
+    "greeting": "Hello, verifier"
+  },
+  "error": null
+}

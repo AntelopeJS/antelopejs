@@ -1,0 +1,8 @@
+✔ Project path /tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-unknown-template/app is available
+✔ Directory is valid
+▲ Using a non-default git repository
+  Its interfaces are not official and may not adhere to community quality standards or best practices.
+✔ Found 1 templates
+✖ Unknown template 'Nope'
+  Available: Verify HTTP
+  → Pass one of them, e.g. --template 'Verify HTTP'

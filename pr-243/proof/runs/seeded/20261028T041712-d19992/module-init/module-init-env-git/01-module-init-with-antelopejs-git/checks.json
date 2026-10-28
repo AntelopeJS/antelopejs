@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-env-git/mod/package.json exists",
+    "pass": true,
+    "detail": "present"
+  }
+]

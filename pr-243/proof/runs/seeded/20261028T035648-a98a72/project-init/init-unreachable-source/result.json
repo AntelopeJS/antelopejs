@@ -1,0 +1,43 @@
+{
+  "feature": "project-init",
+  "journey": "init-unreachable-source",
+  "title": "an unreachable template repository fails with the URL and writes nothing",
+  "entryPoint": "ajs config set git file:///missing && ajs project init app",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git-to-a-missing-repository",
+      "folder": "project-init/init-unreachable-source/01-config-set-git-to-a-missing-repository",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-project-init",
+      "folder": "project-init/init-unreachable-source/02-project-init",
+      "checks": [
+        {
+          "name": "exit code 1",
+          "pass": true,
+          "detail": "exit code 1"
+        },
+        {
+          "name": "stderr matches /Could not fetch templates/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-unreachable-source/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✖ Could not fetch tem…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-unreachable-source/app/antelope.config.ts is absent",
+          "pass": true,
+          "detail": "missing"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-init/init-unreachable-source"
+}

@@ -1,0 +1,1146 @@
+[
+  {
+    "feature": "project-dev",
+    "journey": "dev-call-stop",
+    "title": "dev serves the module, and SIGINT stops it with exit code 130 and frees the port",
+    "entryPoint": "ajs project dev, then SIGINT",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-dev/dev-call-stop/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-dev/dev-call-stop/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-dev/dev-call-stop/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-call-stop/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 av…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-call-stop/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-call-stop/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-dev/dev-call-stop/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-ready",
+        "folder": "project-dev/dev-call-stop/07-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:40635/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "08-stop-with-sigint",
+        "folder": "project-dev/dev-call-stop/08-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          },
+          {
+            "name": "stderr matches /Stopped the project/",
+            "pass": true,
+            "detail": "✔ Found project: app Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 2.7s ✔ Loaded 1 module 2.7s ✔ Constructed modules ✔ Stopped the project"
+          },
+          {
+            "name": "stderr matches /Watch mode\\s+disabled/",
+            "pass": true,
+            "detail": "✔ Found project: app Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 2.7s ✔ Loaded 1 module 2.7s ✔ Constructed modules ✔ Stopped the project"
+          }
+        ]
+      },
+      {
+        "name": "09-fixture-after-stop",
+        "folder": "project-dev/dev-call-stop/09-fixture-after-stop",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:40635/ is refused",
+            "pass": true,
+            "detail": "connect ECONNREFUSED 127.0.0.1:40635"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-call-stop"
+  },
+  {
+    "feature": "project-dev",
+    "journey": "dev-hmr",
+    "title": "with --watch, an edit to a watched source reloads the module",
+    "entryPoint": "ajs project dev --watch, edit src/message.ts",
+    "status": "FAIL",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-dev/dev-hmr/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-dev/dev-hmr/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-dev/dev-hmr/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-hmr/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 availabl…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-hmr/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-hmr/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-dev/dev-hmr/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-ready",
+        "folder": "project-dev/dev-hmr/07-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:40547/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "10-fixture-after-first-edit",
+        "folder": "project-dev/dev-hmr/10-fixture-after-first-edit",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:40547/ answers 200 with message \"edited once\"",
+            "pass": false,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "12-fixture-after-second-edit",
+        "folder": "project-dev/dev-hmr/12-fixture-after-second-edit",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:40547/ answers 200 with message \"edited twice\"",
+            "pass": false,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "13-stop-with-sigint",
+        "folder": "project-dev/dev-hmr/13-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-hmr"
+  },
+  {
+    "feature": "project-dev",
+    "journey": "dev-modules-add-while-running",
+    "title": "modules add and remove while dev --watch runs restart the project with the new module set",
+    "entryPoint": "ajs project dev --watch, then ajs project modules add <path> --mode local, then remove",
+    "status": "FAIL",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-dev/dev-modules-add-while-running/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-dev/dev-modules-add-while-running/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-dev/dev-modules-add-while-running/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-modules-add-while-running/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templa…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-modules-add-while-running/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-modules-add-while-running/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-dev/dev-modules-add-while-running/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-ready",
+        "folder": "project-dev/dev-modules-add-while-running/07-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:42061/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "10-pnpm-install-provider",
+        "folder": "project-dev/dev-modules-add-while-running/10-pnpm-install-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "11-modules-add-provider-while-running",
+        "folder": "project-dev/dev-modules-add-while-running/11-modules-add-provider-while-running",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "12-fixture-after-the-add-restart",
+        "folder": "project-dev/dev-modules-add-while-running/12-fixture-after-the-add-restart",
+        "checks": [
+          {
+            "name": "stderr matches /Loaded 2 modules/",
+            "pass": false,
+            "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.3s ✔ Loaded 1 module 3.3s ✔ Constructed modules"
+          },
+          {
+            "name": "GET http://127.0.0.1:42061/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "13-modules-remove-provider-while-running",
+        "folder": "project-dev/dev-modules-add-while-running/13-modules-remove-provider-while-running",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "14-fixture-after-the-remove-restart",
+        "folder": "project-dev/dev-modules-add-while-running/14-fixture-after-the-remove-restart",
+        "checks": [
+          {
+            "name": "stderr matches /Loaded 2 modules[\\s\\S]*Loaded 1 module\\b/",
+            "pass": false,
+            "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.3s ✔ Loaded 1 module 3.3s ✔ Constructed modules"
+          },
+          {
+            "name": "GET http://127.0.0.1:42061/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "15-stop-with-sigint",
+        "folder": "project-dev/dev-modules-add-while-running/15-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-modules-add-while-running"
+  },
+  {
+    "feature": "project-dev",
+    "journey": "dev-watch-module-without-src",
+    "title": "a local module without a src folder, added while dev --watch runs, does not crash dev",
+    "entryPoint": "ajs project dev --watch, then ajs project modules add <path without src/> --mode local",
+    "status": "FAIL",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-dev/dev-watch-module-without-src/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-dev/dev-watch-module-without-src/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-dev/dev-watch-module-without-src/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-watch-module-without-src/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templat…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-watch-module-without-src/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-watch-module-without-src/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-dev/dev-watch-module-without-src/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-ready",
+        "folder": "project-dev/dev-watch-module-without-src/07-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:45809/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "09-pnpm-install-provider",
+        "folder": "project-dev/dev-watch-module-without-src/09-pnpm-install-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "10-modules-add-provider-while-running",
+        "folder": "project-dev/dev-watch-module-without-src/10-modules-add-provider-while-running",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "13-fixture-once-the-watcher-scanned-the-module",
+        "folder": "project-dev/dev-watch-module-without-src/13-fixture-once-the-watcher-scanned-the-module",
+        "checks": [
+          {
+            "name": "stderr does not match /Unhandled rejection/",
+            "pass": true,
+            "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 5.5s ✔ Loaded 1 module 5.5s ✔ Constructed modules"
+          },
+          {
+            "name": "GET http://127.0.0.1:45809/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "11-fixture-after-the-restart",
+        "folder": "project-dev/dev-watch-module-without-src/11-fixture-after-the-restart",
+        "checks": [
+          {
+            "name": "stderr matches /Loaded 2 modules/",
+            "pass": false,
+            "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 5.5s ✔ Loaded 1 module 5.5s ✔ Constructed modules"
+          }
+        ]
+      },
+      {
+        "name": "14-stop-with-sigint",
+        "folder": "project-dev/dev-watch-module-without-src/14-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-watch-module-without-src"
+  },
+  {
+    "feature": "project-dev",
+    "journey": "dev-failed-reload",
+    "title": "a reload whose build fails keeps the previous module serving, and the next good edit recovers",
+    "entryPoint": "ajs project dev --watch, write a syntax error, then fix it",
+    "status": "FAIL",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-dev/dev-failed-reload/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-dev/dev-failed-reload/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-dev/dev-failed-reload/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-failed-reload/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found …"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-failed-reload/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-failed-reload/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-dev/dev-failed-reload/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-ready",
+        "folder": "project-dev/dev-failed-reload/07-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:44435/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "10-fixture-while-the-build-is-broken",
+        "folder": "project-dev/dev-failed-reload/10-fixture-while-the-build-is-broken",
+        "checks": [
+          {
+            "name": "stderr matches /Failed to reload module verify-http-fixture/",
+            "pass": false,
+            "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 4.1s ✔ Loaded 1 module 4.1s ✔ Constructed modules"
+          },
+          {
+            "name": "GET http://127.0.0.1:44435/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "12-fixture-after-the-fix",
+        "folder": "project-dev/dev-failed-reload/12-fixture-after-the-fix",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:44435/ answers 200 with message \"recovered\"",
+            "pass": false,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "13-stop-with-sigint",
+        "folder": "project-dev/dev-failed-reload/13-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          },
+          {
+            "name": "stderr matches /Stopped the project/",
+            "pass": true,
+            "detail": "✔ Found project: app Environment default Watch mode enabled Inspector disabled ▲ Watch mode enabled - project will automatically restart when files change ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 4.1s ✔ Loaded 1 module 4.1s ✔ Constructed modules ✔ Stopped the pr…"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-failed-reload"
+  },
+  {
+    "feature": "project-dev",
+    "journey": "dev-run-alias",
+    "title": "ajs project run behaves as ajs project dev",
+    "entryPoint": "ajs project run",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-dev/dev-run-alias/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-dev/dev-run-alias/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-dev/dev-run-alias/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-run-alias/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 av…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-run-alias/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-run-alias/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-dev/dev-run-alias/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-ready",
+        "folder": "project-dev/dev-run-alias/07-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:36855/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "08-stop-with-sigint",
+        "folder": "project-dev/dev-run-alias/08-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-run-alias"
+  },
+  {
+    "feature": "project-dev",
+    "journey": "dev-project-flag",
+    "title": "--project runs a project from another directory",
+    "entryPoint": "ajs project dev --project ./app",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-dev/dev-project-flag/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-dev/dev-project-flag/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-dev/dev-project-flag/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-project-flag/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-project-flag/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-project-flag/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-dev/dev-project-flag/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-ready",
+        "folder": "project-dev/dev-project-flag/07-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:36765/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-project-flag"
+  },
+  {
+    "feature": "project-dev",
+    "journey": "dev-cancel-during-start",
+    "title": "SIGINT while dev still installs and loads its modules stops it with exit code 130 and leaves nothing listening",
+    "entryPoint": "ajs project dev, SIGINT before the module answers",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-dev/dev-cancel-during-start/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-dev/dev-cancel-during-start/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-dev/dev-cancel-during-start/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-cancel-during-start/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ …"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-cancel-during-start/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-cancel-during-start/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-dev/dev-cancel-during-start/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "08-stop-with-sigint-during-start",
+        "folder": "project-dev/dev-cancel-during-start/08-stop-with-sigint-during-start",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      },
+      {
+        "name": "10-fixture-after-cancel",
+        "folder": "project-dev/dev-cancel-during-start/10-fixture-after-cancel",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:36073/ is refused",
+            "pass": true,
+            "detail": "connect ECONNREFUSED 127.0.0.1:36073"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-cancel-during-start"
+  },
+  {
+    "feature": "project-dev",
+    "journey": "dev-inspect",
+    "title": "--inspect opens the Node.js inspector on the given address while the module serves",
+    "entryPoint": "ajs project dev --inspect 127.0.0.1:<port>",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-dev/dev-inspect/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-dev/dev-inspect/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035918-3d5164/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-dev/dev-inspect/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-inspect/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 avai…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-inspect/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-inspect/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-dev/dev-inspect/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-ready",
+        "folder": "project-dev/dev-inspect/07-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:45527/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          },
+          {
+            "name": "stderr matches /Inspector\\s+127\\.0\\.0\\.1:37605/",
+            "pass": true,
+            "detail": "✔ Found project: app Environment default Watch mode disabled Inspector 127.0.0.1:37605 ℹ Starting AntelopeJS project Debugger listening on ws://127.0.0.1:37605/f93c9562-91cd-4ad1-b369-b7b282181bf2 For help, see: https://nodejs.org/learn/getting-started/debugging ✔ Installed dependencies for verify-h…"
+          }
+        ]
+      },
+      {
+        "name": "08-inspector-json-version",
+        "folder": "project-dev/dev-inspect/08-inspector-json-version",
+        "checks": [
+          {
+            "name": "inspector answers 200",
+            "pass": true,
+            "detail": "status 200"
+          }
+        ]
+      },
+      {
+        "name": "09-stop-with-sigint",
+        "folder": "project-dev/dev-inspect/09-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-inspect"
+  },
+  {
+    "feature": "project-dev",
+    "journey": "dev-no-project",
+    "title": "dev outside a project fails and says how to create one",
+    "entryPoint": "ajs project dev (empty directory)",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-project-dev-in-an-empty-folder",
+        "folder": "project-dev/dev-no-project/01-project-dev-in-an-empty-folder",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /No AntelopeJS project found/",
+            "pass": true,
+            "detail": "✖ No AntelopeJS project found at /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-no-project → Run ajs project init <project-name> to create one, or pass --project <path>"
+          },
+          {
+            "name": "stderr matches /ajs project init/",
+            "pass": true,
+            "detail": "✖ No AntelopeJS project found at /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-no-project → Run ajs project init <project-name> to create one, or pass --project <path>"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-dev/dev-no-project"
+  }
+]

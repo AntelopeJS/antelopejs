@@ -1,0 +1,7 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T035918-3d5164/evidence/project-dev/dev-call-stop/09-fixture-after-stop",
+  "url": "http://127.0.0.1:40635/",
+  "status": null,
+  "body": "",
+  "error": "connect ECONNREFUSED 127.0.0.1:40635"
+}

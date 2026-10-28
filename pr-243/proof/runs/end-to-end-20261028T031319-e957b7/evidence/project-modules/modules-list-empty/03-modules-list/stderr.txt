@@ -1,0 +1,2 @@
+ℹ No modules in empty (default)
+→ Add one with ajs project modules add <name>

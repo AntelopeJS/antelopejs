@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 2",
+    "pass": false,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stderr matches /nope/",
+    "pass": true,
+    "detail": "✔ Found project: app Environment nope Project /tmp/verify-antelopejs/20261028T041218-8d3d85/work/project-build/build-env/app Output ./.antelope/build/build.json ℹ Building AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.1s ✔ Loaded 1 module 3.1s Built 1 module → ./.antelope/bui…"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041218-8d3d85/work/project-build/build-env/app/.antelope/build/build.json is absent",
+    "pass": false,
+    "detail": "present"
+  }
+]

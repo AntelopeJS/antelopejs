@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041849-eac3fb/work/plugins/plugins-local/project
+ajs dms hello --flag

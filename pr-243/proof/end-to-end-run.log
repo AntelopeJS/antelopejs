@@ -1,0 +1,84 @@
+++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts new
++ RUN=/tmp/verify-antelopejs/20261028T031319-e957b7
++ echo 'RUN /tmp/verify-antelopejs/20261028T031319-e957b7'
+RUN /tmp/verify-antelopejs/20261028T031319-e957b7
++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts doctor /tmp/verify-antelopejs/20261028T031319-e957b7
+ok   CLI built: /home/user/workspace/antelopejs/dist/core/cli/index.js
+ok   dist newer than src: fresh
+ok   CLI version is the package version: ajs --version 1.17.1, package.json 1.17.1
+ok   HOME is the run's: /tmp/verify-antelopejs/20261028T031319-e957b7/home
+ok   offline manifest seeded: file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git
+ok   pnpm store warm: /home/user/.cache/verify-antelopejs/xdg-data/pnpm/store
+ok   head SHA unchanged since new: ba6fa178cb05b6371cff375f0218870a1825dae6
+ok   no process left from the run: none
++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts journey /tmp/verify-antelopejs/20261028T031319-e957b7 smoke
+PASS smoke/smoke
++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts journey /tmp/verify-antelopejs/20261028T031319-e957b7 interface-resolution
+PASS interface-resolution/resolution-provider-consumer
+PASS interface-resolution/resolution-range-conflict
+PASS interface-resolution/resolution-range-union
+PASS interface-resolution/resolution-missing-provider
++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts journey /tmp/verify-antelopejs/20261028T031319-e957b7 embedded-runtime
+PASS embedded-runtime/embedded-start-use-stop
+PASS embedded-runtime/embedded-missing-provider
++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts journey /tmp/verify-antelopejs/20261028T031319-e957b7 library-launch
+PASS library-launch/launch-build-from-build
++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts journey /tmp/verify-antelopejs/20261028T031319-e957b7 project-modules
+PASS project-modules/modules-list-empty
+PASS project-modules/modules-add-remove-local
+PASS project-modules/modules-add-keeps-config
+PASS project-modules/modules-remove-unknown
+PASS project-modules/modules-add-unreachable-package
+PASS project-modules/modules-install
+PASS project-modules/modules-update-dry-run
++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts journey /tmp/verify-antelopejs/20261028T031319-e957b7 project-start start-base-build
+PASS project-start/start-base-build
++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts journey /tmp/verify-antelopejs/20261028T031319-e957b7 config config-base-file
+PASS config/config-base-file
++ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts clean /tmp/verify-antelopejs/20261028T031319-e957b7
+removed home/
+removed homes/
+removed sources/
+removed work/
++ ls /tmp/verify-antelopejs/20261028T031319-e957b7
+evidence
+run.json
++ find /tmp/verify-antelopejs/20261028T031319-e957b7/evidence -maxdepth 2
++ head -40
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/smoke
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/smoke/smoke
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/smoke/feature.json
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-start
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-start/start-base-build
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-start/feature.json
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-modules
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-modules/modules-list-empty
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-modules/modules-add-keeps-config
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-modules/modules-update-dry-run
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-modules/modules-add-unreachable-package
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-modules/modules-install
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-modules/modules-remove-unknown
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-modules/modules-add-remove-local
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-modules/feature.json
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/library-launch
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/library-launch/launch-build-from-build
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/library-launch/feature.json
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/embedded-runtime
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/embedded-runtime/embedded-start-use-stop
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/embedded-runtime/embedded-missing-provider
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/embedded-runtime/feature.json
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/interface-resolution
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/interface-resolution/resolution-range-union
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/interface-resolution/resolution-missing-provider
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/interface-resolution/resolution-provider-consumer
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/interface-resolution/resolution-range-conflict
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/interface-resolution/feature.json
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/config
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/config/config-base-file
+/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/config/feature.json
++ find /tmp/verify-antelopejs/20261028T031319-e957b7/evidence -type f
++ wc -l
+485
++ echo PROOFDONE
+PROOFDONE

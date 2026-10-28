@@ -1,0 +1,11 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T035918-3d5164/evidence/project-dev/dev-failed-reload/10-fixture-while-the-build-is-broken",
+  "url": "http://127.0.0.1:44435/",
+  "status": 200,
+  "body": "{\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}",
+  "json": {
+    "module": "verify-http-fixture",
+    "message": "hello from the fixture"
+  },
+  "error": null
+}

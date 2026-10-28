@@ -1,0 +1,7 @@
+✔ Found project: app
+
+Environment  default
+Watch mode   disabled
+Inspector    disabled
+ℹ Starting AntelopeJS project
+✔ Stopped the project

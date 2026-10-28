@@ -1,0 +1,4 @@
+/tmp/verify-antelopejs/20261028T041218-8d3d85/work/project-build/build-artifact/app/.antelope
+build/
+build/build.json 1793
+cache/

@@ -1,0 +1,8 @@
+
+
+  verify-http-fixture
+    ✔ answers with its message (49ms)
+
+
+  1 passing (53ms)
+

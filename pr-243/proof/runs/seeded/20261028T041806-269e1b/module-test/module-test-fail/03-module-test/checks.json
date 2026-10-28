@@ -1,0 +1,12 @@
+[
+  {
+    "name": "non-zero exit code",
+    "pass": false,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stdout matches /1 failing/",
+    "pass": true,
+    "detail": "verify-http-fixture 1) answers with its message 0 passing (42ms) 1 failing 1) verify-http-fixture answers with its message: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal: + actual - expected + 'hello from the fixture' - 'another message' + expected - actual -hello from the fix…"
+  }
+]

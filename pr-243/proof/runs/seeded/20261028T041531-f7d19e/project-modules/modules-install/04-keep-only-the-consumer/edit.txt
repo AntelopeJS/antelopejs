@@ -1,0 +1,10 @@
+/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-install/greeter/antelope.config.ts
+---
+import { defineConfig } from "@antelopejs/interface-core/config";
+
+export default defineConfig({
+  name: "greeter",
+  modules: {
+    "greeter-consumer": { source: { type: "local", path: "./consumer" } },
+  },
+});

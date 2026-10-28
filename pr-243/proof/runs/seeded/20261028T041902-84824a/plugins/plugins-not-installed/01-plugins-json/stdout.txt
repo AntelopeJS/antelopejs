@@ -1,0 +1,12 @@
+[
+  {
+    "name": "dms",
+    "package": "@antelopejs/dms-frontend",
+    "description": "DMS frontend commands",
+    "state": "not-installed",
+    "source": null,
+    "path": null,
+    "version": null,
+    "requiredCoreRange": null
+  }
+]

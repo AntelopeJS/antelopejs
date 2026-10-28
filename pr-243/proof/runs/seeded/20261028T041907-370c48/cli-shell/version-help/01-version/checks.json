@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "version",
+    "pass": true,
+    "detail": "expected \"1.17.1\", got \"1.17.1\""
+  }
+]

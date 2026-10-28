@@ -1,0 +1,7 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T035918-3d5164/evidence/project-dev/dev-cancel-during-start/10-fixture-after-cancel",
+  "url": "http://127.0.0.1:36073/",
+  "status": null,
+  "body": "",
+  "error": "connect ECONNREFUSED 127.0.0.1:36073"
+}

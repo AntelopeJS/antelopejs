@@ -1,0 +1,48 @@
+{
+  "feature": "config",
+  "journey": "config-defaults",
+  "title": "a fresh HOME shows the default interface repository",
+  "entryPoint": "ajs config show [--json]; ajs config get git",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-show-json",
+      "folder": "config/config-defaults/01-config-show-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git default",
+          "pass": true,
+          "detail": "expected \"https://github.com/AntelopeJS/interfaces.git\", got \"https://github.com/AntelopeJS/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "02-config-show",
+      "folder": "config/config-defaults/02-config-show",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stdout matches /git\\s+https:\\/\\/github\\.com\\/AntelopeJS\\/interfaces\\.git/",
+          "pass": true,
+          "detail": "git https://github.com/AntelopeJS/interfaces.git"
+        },
+        {
+          "name": "stdout does not match /\\(custom\\)/",
+          "pass": true,
+          "detail": "git https://github.com/AntelopeJS/interfaces.git"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "config/config-defaults"
+}

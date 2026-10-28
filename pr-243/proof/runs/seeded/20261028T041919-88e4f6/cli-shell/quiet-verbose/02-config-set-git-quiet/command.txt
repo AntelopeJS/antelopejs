@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041919-88e4f6/work/cli-shell/quiet-verbose
+ajs --quiet config set git file:///verify/quiet

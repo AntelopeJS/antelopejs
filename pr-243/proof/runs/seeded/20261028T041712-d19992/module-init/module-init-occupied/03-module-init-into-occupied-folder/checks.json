@@ -1,0 +1,12 @@
+[
+  {
+    "name": "non-zero exit code",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /mod/",
+    "pass": true,
+    "detail": "✖ Directory mod is not empty → Pass an empty or new directory: ajs module init <path>"
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /Invalid configuration key 'nope'/",
+    "pass": true,
+    "detail": "✖ Invalid configuration key 'nope' Valid keys: git"
+  },
+  {
+    "name": "stderr matches /Valid keys: git/",
+    "pass": true,
+    "detail": "✖ Invalid configuration key 'nope' Valid keys: git"
+  }
+]

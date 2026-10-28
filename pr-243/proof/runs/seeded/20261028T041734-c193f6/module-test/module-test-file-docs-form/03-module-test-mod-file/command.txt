@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041734-c193f6/work/module-test/module-test-file-docs-form
+ajs module test mod --file test/http.test.js

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": false,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stderr matches /nope/",
+    "pass": true,
+    "detail": "– Skipped nope: not in the project ✔ Removed verify-http-fixture 1 module removed from antelope.config.ts · 304ms"
+  },
+  {
+    "name": "configuration unchanged",
+    "pass": false,
+    "detail": "expected \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\", got \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {}\\n});\\n\""
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-set-roundtrip/app/antelope.config.ts matches /logging/",
+    "pass": true,
+    "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"app\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", watchDir: [ \"src\" ], installCommand: [ \"npx tsc\" ], reloadCommand: [ \"npx tsc\" ] } } }, logging: { enabled: false, modu…"
+  }
+]

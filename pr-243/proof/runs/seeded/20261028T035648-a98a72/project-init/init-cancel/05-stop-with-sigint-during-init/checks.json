@@ -1,0 +1,7 @@
+[
+  {
+    "name": "ended by SIGINT (exit 130)",
+    "pass": true,
+    "detail": "exit code null, signal SIGINT"
+  }
+]

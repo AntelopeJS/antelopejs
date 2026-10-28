@@ -1,0 +1,22 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stderr matches /Created project/",
+    "pass": true,
+    "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-existing/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 a…"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-existing/app/antelope.config.ts exists",
+    "pass": true,
+    "detail": "present"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-existing/app/dist/index.js exists",
+    "pass": true,
+    "detail": "present"
+  }
+]

@@ -1,0 +1,2 @@
+/tmp/verify-antelopejs/20261028T041726-675825/work/module-init/module-init-occupied/mod
+keep.txt 10

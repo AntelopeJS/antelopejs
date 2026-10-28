@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 2",
+    "pass": true,
+    "detail": "exit code 2"
+  },
+  {
+    "name": "stderr matches /--level needs --format/",
+    "pass": true,
+    "detail": "✖ --level needs --format --level selects which level template --format replaces; it does not set a minimum log level. → Example: ajs project logging set --level debug --format '[{{DATE}}] {{ARGS}}'"
+  },
+  {
+    "name": "configuration unchanged",
+    "pass": true,
+    "detail": "expected \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\", got \"import { defineConfig } from '@antelopejs/interface-core/config';\\n\\nexport default defineConfig({\\n  name: \\\"app\\\",\\n  modules: {\\n    \\\"verify-http-fixture\\\": {\\n      source: {\\n        type: \\\"local\\\",\\n        path: \\\".\\\",\\n        watchDir: [\\n          \\\"src\\\"\\n        ],\\n        installCommand: [\\n          \\\"npx tsc\\\"\\n        ],\\n        reloadCommand: [\\n          \\\"npx tsc\\\"\\n        ]\\n      }\\n    }\\n  }\\n});\\n\""
+  }
+]

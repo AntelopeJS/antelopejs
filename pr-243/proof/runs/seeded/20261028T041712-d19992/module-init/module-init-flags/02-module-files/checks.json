@@ -1,0 +1,17 @@
+[
+  {
+    "name": "package name",
+    "pass": true,
+    "detail": "expected \"verify-http-fixture\", got \"verify-http-fixture\""
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/src/index.ts exists",
+    "pass": true,
+    "detail": "present"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/.git is absent",
+    "pass": true,
+    "detail": "missing"
+  }
+]

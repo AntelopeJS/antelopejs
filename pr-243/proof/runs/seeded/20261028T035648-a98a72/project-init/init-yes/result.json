@@ -1,0 +1,70 @@
+{
+  "feature": "project-init",
+  "journey": "init-yes",
+  "title": "--yes takes the default answer of every question",
+  "entryPoint": "ajs project init app --yes",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-init/init-yes/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-init/init-yes/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035648-a98a72/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035648-a98a72/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init-yes",
+      "folder": "project-init/init-yes/03-project-init-yes",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-yes/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "04-modules-list-json",
+      "folder": "project-init/init-yes/04-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-init/init-yes"
+}

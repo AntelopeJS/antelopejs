@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T031319-e957b7/work/interface-resolution/resolution-provider-consumer/greeter
+ajs project dev

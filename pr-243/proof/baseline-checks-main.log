@@ -1,0 +1,3378 @@
+
+> @antelopejs/core@1.17.1 checks /home/user/workspace/antelopejs
+> antelopejs-checks
+
+[test]
+
+> @antelopejs/core@1.17.1 test /home/user/workspace/antelopejs
+> pnpm test:coverage && pnpm build && ts-node test/embedded/run.ts && ts-node test/package-consumer/run.ts && pnpm --dir playground install && ts-node playground/test-playground.ts
+
+
+> @antelopejs/core@1.17.1 test:coverage /home/user/workspace/antelopejs
+> c8 --check-coverage --lines 90 --functions 90 --branches 90 --statements 90 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit
+
+
+
+  build artifact
+    ✔ computes deterministic hashes for unchanged config
+    ✔ keeps the hash stable when a config variable resolves to a new value
+    ✔ includes resolved TS module overrides in hash
+    ✔ writes and reads build artifacts
+
+  CLI UI spinner
+    ✔ writes nothing to stdout in non-terminal mode
+    ✔ draws itself as a live task and finishes with its final line
+    ✔ stops without a final line
+    ✔ reports every final status on stderr with its level symbol
+    ✔ reports nothing when it was never started
+
+  CLI UI display
+    ✔ writes errors, warnings and info to stderr
+    ✔ writes success feedback to stderr
+    ✔ handles Error objects in error and warning
+    ✔ routes the command output adapter to stderr
+    ✔ writes headers to stdout
+
+  Command logging on first use
+    ✔ logs an executed command and a failing one through the lazily created channel
+
+  Command Execution
+    ExecuteCMD spawn options
+      ✔ adds CI to the caller environment
+      ✔ falls back on the process environment
+      ✔ closes the child stdin
+      ✔ tolerates a child without stdin
+    ExecuteCMD non-interactive execution
+      ✔ exposes CI=1 to the executed command
+      ✔ does not hang when the command reads stdin
+    ExecuteCMD
+      ✔ should execute simple command
+      ✔ should capture stderr
+      ✔ rejects with an ExecError carrying the command, its output and exit code
+      ✔ falls back to stdout when the command wrote nothing on stderr
+      ✔ defaults the exit code to 1 when the command was killed
+    ExecuteFile
+      ✔ passes the arguments to the executable without a shell
+      ✔ exposes CI=1 to the executable
+      ✔ rejects with an ExecError naming the command and its exit code
+      ✔ terminates the executable when the signal aborts
+
+  config show behavior
+    ✔ aligns every setting and marks a non-default value
+    ✔ shows the default repository without a marker
+    ✔ says so on stderr when no value is set
+    ✔ prints the configuration as JSON with --json
+
+  config get behavior
+    ✔ prints only the value on stdout
+    ✔ prints the value as a JSON string with --json
+    ✔ leaves stdout empty when the value is empty
+    ✔ rejects an invalid key before reading the configuration
+    ✔ fails when a valid key is missing from the configuration
+
+  config set behavior
+    ✔ sets configuration value and warns on non-default git
+    ✔ accepts every git repository address git can clone
+    ✔ rejects a value that is not a git repository with a usage error
+    ✔ says the value is already set without writing or warning
+    ✔ rejects invalid key on set
+
+  config reset behavior
+    ✔ does nothing when reset has no changes
+    ✔ resets configuration with --yes
+    ✔ points from the current to the default value in ASCII
+    ✔ shows not set for empty values in reset summary
+    ✔ cancels reset when confirmation is declined
+    ✔ asks for --yes instead of prompting without a terminal
+    ✔ stops without resetting when the confirmation is cancelled
+
+  data commands with --json
+    ✔ prints the update notice on stderr when it is due and --json is absent
+    ✔ project modules list --json writes only one JSON document on stdout (202ms)
+    ✔ project logging show --json writes only one JSON document on stdout
+    ✔ config show --json writes only one JSON document on stdout
+    ✔ config get --json writes only one JSON document on stdout
+    ✔ plugins --json writes only one JSON document on stdout
+    ✔ plugins list --json writes only one JSON document on stdout
+
+  module init behavior
+    runs through module initialization flow
+      ✔ runs through module initialization flow
+      ✔ asks every question before writing anything
+      ✔ leaves nothing behind when a later question is cancelled
+      ✔ runs without a terminal when every answer is a flag
+      ✔ preserves a template's interface version when it is selected again
+    only offers complete project templates during project creation
+      ✔ only offers complete project templates during project creation
+      ✔ rejects an incompatible package manager before creating a project
+      ✔ takes the defaults with --yes
+      ✔ names every missing flag before writing anything without a terminal
+      ✔ rejects an unknown template before writing
+      ✔ rejects unknown interfaces before writing
+      ✔ skips the interface question when the repository has none
+    reports a non-empty directory once, before any missing flag
+      ✔ reports a non-empty directory once, before any missing flag
+      ✔ handles git init failure
+    reports an unreachable template repository once, before any missing flag
+      ✔ reports an unreachable template repository once, before any missing flag
+      ✔ explains a template repository that cannot be fetched
+      ✔ translates a refused clone of the template repository
+      ✔ rethrows errors when called from a project init flow
+
+  module test behavior
+    ✔ fails once when the module directory does not exist
+    ✔ fails once when the directory holds no module
+    ✔ explains how to add a missing test configuration
+    ✔ runs TestModule when module is valid
+    ✔ sets exitCode=1 when TestModule reports failures
+    ✔ leaves exitCode unset when TestModule reports zero failures
+    ✔ parses file options and forwards them
+
+  plugin commands behavior
+    ✔ updates everything when no plugin is given
+    ✔ updates a single plugin and propagates the exit code
+    ✔ lists official plugins as a table with their compatibility
+    ✔ lists --json once in the help of the list subcommand
+    ✔ lists official plugins through the list subcommand
+    ✔ prints the plugins as JSON with --json
+    ✔ prints the plugins as JSON with list --json
+    ✔ prints the plugins as JSON with --json list
+
+  project build/start behavior
+    fails build when project config is missing
+      ✔ fails build when project config is missing
+      ✔ runs build command and reports summary
+      ✔ runs start command from build artifact
+      ✔ sets exit code when start command fails
+    passes --refresh-config to the build artifact launch
+      ✔ passes --refresh-config to the build artifact launch
+      ✔ exits with the module set changed code when the build no longer matches
+
+  dev command child process
+    ✔ should send SIGTERM and resolve when child exits
+    ✔ should send SIGKILL after timeout when child does not exit
+
+  project init behavior
+    creates project and initializes module
+      ✔ creates project and initializes module
+      ✔ creates antelope.config.ts with defineConfig and minimal config
+      ✔ creates a complete project without rewriting its dynamic config and prints its setup steps
+      ✔ reports an existing project once, before any missing flag
+    imports an existing module when selected
+      ✔ imports an existing module when selected
+      ✔ passes the module flags and its prompter to module init
+      ✔ keeps --git out of the git repository toggle
+      ✔ takes the defaults with --yes
+      ✔ does not offer an import when a template is given
+    names the directory after the project without a terminal
+      ✔ names the directory after the project without a terminal
+      ✔ names every missing flag without a terminal and writes nothing
+      ✔ omits cd instruction when initializing in current directory
+      ✔ reports a failed module creation once and writes no project
+    lets any module creation failure reach the error boundary
+      ✔ lets any module creation failure reach the error boundary
+      ✔ lets a usage error of module init reach the error boundary
+      ✔ writes the project configuration only once the module is created
+      ✔ leaves nothing behind when the module prompts are cancelled
+      ✔ leaves nothing behind when the import prompts are cancelled
+
+  project logging set interactive behavior
+    ✔ asks its questions when no setting is given on a terminal
+    ✔ does not write when the answers keep every setting
+    ✔ names the environment and defaults to its blacklist
+
+  project logging set interactive module lists and formats
+    ✔ clears both module lists in all-modules mode
+    ✔ saves a customized level template
+    ✔ removes a listed module and saves a date format
+
+  project logging set --interactive without a terminal
+    ✔ names the flags to pass instead of asking
+    ✔ rejects --interactive even when settings are given
+
+  project logging set camelCase spellings
+    ✔ still applies the camelCase spellings
+    ✔ warns that each camelCase spelling is deprecated
+    ✔ does not warn for the kebab-case spellings
+    ✔ lists only the kebab-case spellings in the help
+
+  project logging set behavior
+    ✔ fails when config is missing
+    ✔ fails when environment is missing
+
+  project logging set --level and --format
+    ✔ rejects --level without --format before reading the project
+    ✔ rejects --format without --level
+    ✔ saves only the template of the selected level
+    ✔ saves the fallback template under the default key
+    ✔ does not write a template equal to the saved one
+
+  project logging set persisting only real changes
+    does not write when every setting is already in place
+      ✔ does not write when every setting is already in place
+      ✔ writes only the changed settings, never the built-in block
+      ✔ treats empty logging entries as their defaults
+      ✔ applies every non-interactive setting
+    lists what changed and what did not in the summary
+      ✔ lists what changed and what did not in the summary
+      ✔ reports a module tracking toggle that is already in place
+
+  project logging set with an environment
+    ✔ writes into the environment block, relative to the project block
+    ✔ sees the project block's settings from an environment
+
+  project logging set without a terminal
+    ✔ rejects a run without settings when stdin is not a terminal
+
+  project logging show behavior
+    ✔ show fails when config is missing
+    ✔ show rejects an unknown environment
+    ✔ shows the default configuration as key/value lines
+    ✔ names the tracked modules and the customized levels
+    ✔ describes excluded modules and a disabled logger
+    ✔ tracks every module when no include or exclude list is set
+    ✔ prints the merged configuration as JSON with --json
+
+  project modules behavior: add-cache-and-skips
+    ✔ uses absolute cache folder when configured
+    ✔ skips modules and shows yellow summary when all skipped
+
+  project modules behavior: add-created
+    ✔ adds modules and skips existing ones
+    ✔ reports each added module with its source, then one summary
+
+  project modules behavior: add-download-results
+    ✔ logs download success when registry returns no manifests
+    ✔ errors and skips module when download fails with non-error
+
+  project modules behavior: add-handler-cache-errors
+    ✔ handles handler errors and initializes env modules
+    ✔ does not add module when download to cache fails
+
+  project modules behavior: add-rejections
+    ✔ reports handler rejection with non-error
+    ✔ errors and skips module when download fails after loader identifier resolves
+
+  project modules behavior: add-source-errors
+    ✔ reports a module of an unknown source as failed
+    ✔ joins the summary of a failed add with the ASCII separator
+    ✔ reports an invalid git URL without offering a trace
+    ✔ reports a version that is neither a range nor a dist-tag without offering a trace
+
+  project modules behavior: git-handler
+    ✔ git handler validates url format
+
+  project modules behavior: local-paths
+    ✔ local and dir handlers resolve paths
+    ✔ local and dir handlers resolve relative paths and root
+
+  project modules behavior: package-versions
+    ✔ package handler resolves latest version as a floating caret range
+    ✔ package handler keeps an explicit semver range without registry lookup
+    ✔ package handler accepts a registry dist-tag
+    ✔ package handler rejects a spec that is neither range nor dist-tag
+    ✔ package handler throws when version fetch fails
+
+  project modules behavior: remove-config
+    ✔ errors when environment is missing for removal
+    ✔ removes modules from the root config with the default environment
+    ✔ errors when project config is missing for removal
+    ✔ errors when no modules are installed
+
+  project modules behavior: remove-dependencies
+    ✔ removes prefixed modules and warns about remaining dependencies
+    ✔ removes a module requested twice once
+    ✔ reports when no modules were removed
+
+  project modules behavior: remove-force
+    ✔ removes modules with force and writes config
+    ✔ errors when removing missing modules without force
+
+  project modules behavior: remove-missing
+    ✔ errors when none of the specified modules are installed
+    ✔ errors when some modules are missing without force
+
+  project modules behavior: update-config
+    ✔ errors when project config is missing for update
+    ✔ errors when environment is missing for update
+    ✔ errors when no modules are installed for update
+
+  project modules behavior: update-default-environment
+    ✔ shows up to date when no npm modules are available to update
+    ✔ updates the root config when the default environment is named
+
+  project modules behavior: update-dry-run
+    ✔ checks only the requested modules in a dry run
+    ✔ points to the new versions in ASCII on a dry run
+
+  project modules behavior: update-registry-failures
+    ✔ skips modules silently when npm view fails
+    ✔ skips modules silently when npm view throws
+
+  project modules behavior: update-requested
+    ✔ fails without checking or writing when a requested module is not in the project
+
+  project modules behavior: update-versions
+    ✔ reports when modules are already up to date
+    ✔ updates npm modules and writes config
+
+  project modules behavior: modes-and-config
+    ✔ offers every add handler as a --mode choice
+    ✔ errors when project config is missing
+    ✔ rejects an unknown environment before resolving any module
+
+  project modules install behavior: reports failure when add resolves with failed modules
+    ✔ reports failure when add resolves with failed modules
+
+  project modules install behavior: lets a failing add reach the error boundary
+    ✔ lets a failing add reach the error boundary
+
+  project modules install behavior: fails without exiting the process when dependency analysis fails
+    ✔ fails without exiting the process when dependency analysis fails
+
+  project modules install behavior: uses absolute cache folder when configured
+    ✔ uses absolute cache folder when configured
+
+  project modules install behavior: errors when project config is missing
+    ✔ errors when project config is missing
+    ✔ rejects an unknown environment before fetching the interface manifest
+
+  project modules install behavior: analyzes all environments when none is specified
+    ✔ analyzes all environments when none is specified
+    ✔ respects the env option when provided
+
+  resolveInstallIdentifier
+    ✔ appends the manifest version to package identifiers
+    ✔ keeps package identifiers unchanged when the manifest omits the version
+    ✔ keeps non-package identifiers unchanged
+
+  project modules install behavior: warns when no modules are found for an unresolved import
+    ✔ warns when no modules are found for an unresolved import
+
+  project modules install behavior: completes when no unresolved imports are found
+    ✔ completes when no unresolved imports are found
+
+  project modules install behavior: reuses selected modules for multiple imports
+    ✔ reuses selected modules for multiple imports
+
+  project modules install behavior: analyzes dependencies and installs selected modules
+    ✔ analyzes dependencies and installs selected modules
+
+  project modules install behavior: selects the only implementation without asking, even without a terminal
+    ✔ selects the only implementation without asking, even without a terminal
+    ✔ asks which module to add when several implement the interface
+    ✔ adds the first module listed with --yes
+    ✔ asks for --yes instead of prompting without a terminal
+
+  project modules install behavior: sums up the added modules once
+    ✔ sums up the added modules once
+
+  unresolved import reporting
+    ✔ names the interface, its version and the requiring module
+    ✔ omits the version when the module declares none
+    ✔ names the interface in the no-implementation warning
+
+  project modules list behavior
+    ✔ fails when project config is missing
+    ✔ leaves stdout empty and suggests a command when no module is configured
+    ✔ writes one tab-separated row per module when piped
+    ✔ aligns the modules under a header on a terminal
+    ✔ prints the configured modules as JSON with --json
+    ✔ prints an empty JSON array when no module is configured
+
+  project run behavior
+    fails when project config is missing
+      ✔ fails when project config is missing
+      ✔ runs project using startAntelope
+      ✔ warns when watch mode is enabled
+      ✔ sets exit code when startAntelope throws
+      ✔ runs in inspect mode with forked process
+    uses string inspect options and verbose channels in forked run
+      ✔ uses string inspect options and verbose channels in forked run
+      ✔ handles fork exit events
+    handles non-error failures from startAntelope
+      ✔ handles non-error failures from startAntelope
+      ✔ ignores cleanup errors after inspect run
+
+  scopedCommand
+    ✔ adds no flag for the current project and the default environment
+    ✔ names another project relative to the working directory
+    ✔ quotes a project path that contains spaces
+
+  project command context
+    lists the default environment first, then the configured ones
+      ✔ lists the default environment first, then the configured ones
+      ✔ resolves the default environment to the root configuration
+      ✔ treats an empty environment name as the default environment
+      ✔ resolves a named environment to its environments entry
+      ✔ fails when the folder holds no project
+      ✔ accepts any environment when a static configuration defines none
+      ✔ rejects an environment that a static configuration does not define
+      ✔ names ANTELOPEJS_LAUNCH_ENV when it sets the unknown environment
+      ✔ accepts any environment when a dynamic configuration defines none
+      ✔ rejects an unknown environment when a dynamic configuration defines some
+      ✔ reports the project found behind a spinner
+    stops the spinner when the lookup fails
+      ✔ stops the spinner when the lookup fails
+      ✔ reports a missing project once and returns false
+      ✔ propagates unexpected failures
+
+  CLI Common
+    detectIndentation
+      ✔ should detect 2-space indentation
+      ✔ should detect tab indentation
+    user config
+      ✔ returns default config when missing
+      ✔ writes and reads user config
+      ✔ falls back to default config when config file is null
+    displayNonDefaultGitWarning
+      ✔ shows one warning for a non-default repo without waiting
+      ✔ stays quiet for the default repo
+    readConfig
+      ✔ should read antelope.config.ts
+      ✔ returns undefined when antelope.config.ts is missing
+    module manifest
+      ✔ writes and reads package.json manifest
+      ✔ returns undefined when package.json is missing
+    writeConfig
+      ✔ writes antelope.config.ts with default content when config is missing
+      ✔ writes antelope.config.ts when using object export
+      ✔ writes antelope.config.ts when using defineConfig with object
+      ✔ throws for function-based antelope.config.ts exports
+
+  Core version
+    ✔ reads the version of the core package.json
+    ✔ falls back when the package.json cannot be read
+    ✔ falls back when the package.json has no version
+
+  CLI dispatcher
+    ✔ recognizes only the canonical production start invocation
+    ✔ routes project start directly to the build artifact runtime
+    ✔ never delegates a command registered on the program
+    ✔ never delegates a command alias registered on the program
+    ✔ keeps plugin management commands on the full CLI
+    ✔ delegates a plugin named after global options
+    ✔ shows the help of a plugin with the plugin's own --help
+    ✔ keeps the help of core commands on the full CLI
+    ✔ keeps core commands after global options on the full CLI
+    ✔ keeps run, dev, and build on the full CLI workflows
+
+  Executable lookup
+    ✔ returns the first matching directory of PATH
+    ✔ ignores empty PATH entries instead of searching the current directory
+    ✔ returns undefined for an empty PATH
+    ✔ tries Windows executable extensions before the bare name
+    ✔ still falls back to the bare name on Windows
+    ✔ does not append another extension to an already suffixed name
+    ✔ only tries the bare name on other platforms
+
+  Project-local executable resolution
+    ✔ prefers the project-local binary over the one in PATH
+    ✔ walks up to the node_modules of a parent directory
+    ✔ falls back to PATH when no project-local binary exists
+    ✔ returns undefined when neither a local nor a PATH binary exists
+    ✔ prefers the Windows shim over the extension-less pnpm script
+    ✔ keeps the project-local shim ahead of the one in PATH on Windows
+    ✔ tries the Windows candidates of a project-local binary
+
+  CLI exit code contract
+    exits 0 when the command succeeds
+      ✔ exits 0 when the command succeeds
+      ✔ exits 1 when the command fails
+      ✔ exits 0 with any --env when the configuration declares no environments
+      ✔ exits 0 with any ANTELOPEJS_LAUNCH_ENV when the configuration declares no environments
+      ✔ exits 2 when --env names an environment the configuration does not declare
+      ✔ exits 2 when a required argument is missing
+      ✔ exits 2 on an unknown option
+      ✔ exits 2 on an unknown option of the production start
+      ✔ exits 0 when help is requested
+      ✔ exits 2 on an unknown subcommand of a command group
+    exits 3 when the build no longer matches the configured modules
+      ✔ exits 3 when the build no longer matches the configured modules
+      ✔ exits 130 and writes nothing when a prompt is cancelled
+      ✔ exits 2 naming the flags when a prompt cannot be answered
+
+  CLI exit code without arguments
+    ✔ exits 0 and prints the help on stdout
+    ✔ exits 0 and prints the help of ajs project on stdout
+    ✔ exits 0 and prints the help of ajs project modules on stdout
+    ✔ exits 0 and prints the help of ajs config on stdout
+
+  forceExitOnFailure
+    ✔ schedules nothing when the run succeeded
+    ✔ schedules nothing when no exit code was requested
+    ✔ exits with the failing code once the grace period elapsed
+    ✔ keeps the timer from holding the process open on its own
+
+  Git operations behavior
+    loads manifest and interface info from git cache
+      ✔ loads manifest and interface info from git cache
+      ✔ pulls when git cache already exists
+      ✔ copies template using git commands
+    throws when git clone fails during setup
+      ✔ throws when git clone fails during setup
+      ✔ throws when sparse-checkout setup fails
+      ✔ throws when checkout fails
+
+  Global installation detection
+    ✔ detects a pnpm global installation
+    ✔ detects a yarn global installation
+    ✔ detects an npm global installation
+    ✔ detects an npm global installation on Windows
+    ✔ reports no global installation for a project dependency
+    ✔ reports no global installation for a source checkout
+    ✔ falls back to the raw path when it cannot be resolved
+    ✔ falls back to npm when no global installation is detected
+
+  Global package manager commands
+    ✔ builds global install commands per package manager
+    ✔ uses the .cmd shims on Windows
+    ✔ builds global root commands per package manager
+    ✔ tags packages with latest
+
+  CLI help conventions
+    ✔ renders each example as a comment followed by the command
+    ✔ appends the examples to the help page of the command
+    ✔ words --help and the help command the same on every command
+    ✔ lists the options of the parent commands on every help page
+
+  CLI help width
+    ✔ follows the terminal up to 80 columns, and is 80 columns in a pipe
+    ✔ wraps a help page to the stream it is written to
+    ✔ wraps text between words, keeping long and unbreakable words whole
+    ✔ puts a description beside its term while 30 columns are left
+    ✔ puts a description under its term when fewer columns are left
+    ✔ keeps an 80-column help page on one line per option
+    ✔ fits a help page in 64 columns
+    ✔ fits a help page in 60 columns
+    ✔ fits a help page in 40 columns
+    ✔ wraps descriptions beside their option on a 64-column terminal
+    ✔ stacks descriptions under their option on a 40-column terminal
+    ✔ wraps the comment of an example, never its command
+
+  CLI main guard
+    does not register its own SIGINT listener in module scope
+      ✔ does not register its own SIGINT listener in module scope
+      ✔ reports a cancelled prompt and exits with the cancelled code
+    exits with the cancelled code when a prompt outside the commands is cancelled
+      ✔ exits with the cancelled code when a prompt outside the commands is cancelled
+      ✔ reports a command error once and exits with its exit code
+      ✔ forces the process out when a command reported a failure
+      ✔ reports an unexpected error without its stack trace
+      ✔ shows the stack trace of an unexpected error with --verbose
+
+  CLI Entry Point
+    ✔ derives the never-delegated command names from the program
+    ✔ lists official plugins, examples and the docs after the root commands
+    ✔ lists each root command once, with its summary
+    ✔ gives every command a short one-line summary
+    ✔ shows examples on the help page of every command without subcommands
+    ✔ never prints the current directory as a default
+    ✔ should register all commands
+
+  CLI --verbose parsing
+    ✔ runs project dev for --verbose project dev
+    ✔ runs project dev for project dev --verbose
+    ✔ runs project dev for --verbose --no-color project dev
+    ✔ runs project dev for --verbose=loader,cli project dev
+    ✔ runs project dev for project dev --verbose=resolution.%
+    ✔ never reads the argument after a bare --verbose as channels
+
+  CLI root help width
+    ✔ fits the root help in a 80-column terminal, commands and links whole
+    ✔ fits the root help in a 60-column terminal, commands and links whole
+    ✔ fits the root help in a 40-column terminal, commands and links whole
+    ✔ wraps descriptions beside their term and the footer at 60 columns
+    ✔ stacks descriptions under their term at 40 columns
+
+  Logging Utils
+    stripAnsiCodes
+      ✔ should remove ANSI color codes
+    stringVisualWidth
+      ✔ should calculate width correctly
+      ✔ should handle wide characters
+      ✔ should treat single wide symbols as width 2
+    getLevelInfo
+      ✔ returns known levels and a fallback
+    getColoredText
+      ✔ returns text unchanged for unknown color
+      ✔ applies color when known
+    isTerminalOutput
+      ✔ reflects stdout and stderr tty flags
+    stripAnsi
+      ✔ removes mixed terminal sequences
+    formatDate
+      ✔ should format date with pattern
+      ✔ should fallback to ISO when format is empty
+    serializeLogValue
+      should serialize null
+        ✔ should serialize null
+        ✔ should serialize objects
+        ✔ should serialize errors and dates
+        ✔ should serialize errors without a stack
+        ✔ should serialize the errors an AggregateError carries
+        ✔ should serialize nested AggregateErrors one level deeper each
+        ✔ should stop at an AggregateError that carries itself
+        ✔ should serialize an error's cause one level deeper
+        ✔ should serialize a cause that is not an error
+        ✔ should serialize a cause chain one level deeper each
+      should stop at a cause chain that loops
+        ✔ should stop at a cause chain that loops
+        ✔ should serialize the cause of an error an AggregateError carries
+        ✔ should handle circular references
+    formatLogMessageWithRightAlignedDate
+      ✔ formats with date prefix for non-terminal output
+      ✔ right aligns date on the last line for terminal output
+      ✔ keeps intermediate lines unchanged for terminal output
+      ✔ handles multi-line output when terminal detection is stubbed
+
+  runWithErrorBoundary
+    ✔ leaves the exit code of a successful run alone
+    ✔ reports a failure once with its exit code
+    ✔ reports an unexpected failure with the failure exit code
+    ✔ uses the process ui when none is given
+    ✔ reports a cancelled prompt with the cancelled exit code
+    ✔ explains failures with the translate hook
+    ✔ handles the errors of another copy of commander by their code
+    ✔ reports an error whose code only looks like commander's
+    ✔ reports a thrown value that is not an error
+    ✔ keeps commander's help and version exits silent
+
+  output capabilities
+    ✔ detects every capability per stream
+    ✔ reads the process environment
+    colors
+      ✔ colors a terminal and not a pipe
+      ✔ honors NO_COLOR and --no-color
+      ✔ honors FORCE_COLOR in both directions
+      ✔ turns colors off on a dumb terminal and in CI
+    unicode
+      ✔ draws unicode on a UTF-8 terminal
+      ✔ falls back to ASCII on a dumb terminal
+      ✔ falls back to ASCII with a non UTF-8 locale or the Linux console
+      ✔ falls back to ASCII in the legacy Windows console only
+      ✔ selects the matching symbol set
+      ✔ keeps the ASCII set within 7-bit ASCII
+
+  hasLiveProgress
+    ✔ animates tasks on an interactive terminal
+    ✔ prints final lines only in pipes, CI, dumb terminals, verbose and quiet runs
+
+  isInteractiveSession
+    ✔ can ask when stdin and the prompt output are terminals
+    ✔ cannot ask when stdin or the prompt output is not a terminal
+    ✔ never asks in CI
+
+  process color support
+    ✔ follows the process environment for a stream
+
+  CliError
+    ✔ fails with the generic failure exit code by default
+    ✔ reports the title, the reason and every fix with its exit code
+    ✔ reports a bare title
+
+  NeedsInputError
+    ✔ names the flags to pass with the usage exit code
+    ✔ does not suggest the defaults flag twice
+    ✔ asks for a terminal when no flag answers the question
+    ✔ keeps the fixes the command gives
+
+  CancelledError
+    ✔ is reported as Cancelled
+
+  describeFailure
+    keeps the problem of a command error that has no cause
+      ✔ keeps the problem of a command error that has no cause
+      ✔ shows the last lines of an untranslated command failure without its colors
+      ✔ shows the whole command output with --verbose
+      ✔ reports a command failure on its own with its exit code
+      ✔ omits the output of a translated command failure
+      ✔ prints neither an output heading nor a hint when the command said nothing
+      ✔ reduces an unexpected error to the first line of its message
+      ✔ shows the stack of an unexpected error with --verbose
+      ✔ names an error that has no message
+      ✔ does not offer a trace for a translated system error
+      ✔ reports a thrown value that is not an error
+    explains a failure with the translate hook before the built-in translations
+      ✔ explains a failure with the translate hook before the built-in translations
+      ✔ falls back to the built-in description when the translate hook declines
+      ✔ keeps the problem of a command error whatever the translate hook says
+      ✔ does not offer a trace for a cause the translate hook explains
+      ✔ offers a trace for the unexplained cause of a command error
+      ✔ does not offer the command output when all of it is already shown
+      ✔ follows a cyclic cause chain once
+
+  reportFailure
+    ✔ prints what failed, why and the details before the fixes
+    ✔ prints the problem once and returns its exit code
+    ✔ reports a failure explained by the translate hook with its exit code
+    ✔ returns the failure exit code for other errors
+
+  output format
+    ✔ pluralizes regular and irregular nouns
+    ✔ humanizes durations
+    ✔ measures and pads text without its color codes
+    ✔ cuts a text to a width, its ellipsis included
+    ✔ paints nothing when colors are off
+    ✔ shows paths relative to the working directory when inside it
+
+  interface conflict translation
+    ✔ names the module, the range it requires and the shared copy
+    ✔ says when the module has no copy of its own
+    ✔ names the file of a copy loaded before the shared one
+    ✔ lists every conflict and suggests each fix once
+    ✔ does not offer a trace without --verbose
+    ✔ adds the stack trace with --verbose
+    ✔ prints what failed, why and how to fix it
+
+  InterfaceResolutionError
+    ✔ keeps the full list of conflicts in its message
+    ✔ says when the consumer has no copy installed
+
+  createPrompter
+    takes the answer given on the command line without asking
+      ✔ takes the answer given on the command line without asking
+      ✔ answers with the default when defaults are accepted
+      ✔ asks when the session is interactive
+      ✔ draws prompts on the prompt output stream
+      ✔ fails with NeedsInputError naming the flag when it cannot ask
+    does not offer defaults on a question without one
+      ✔ does not offer defaults on a question without one
+      ✔ answers an optional question with its default when it cannot ask
+      ✔ throws CancelledError when the prompt is cancelled
+    requireAnswers
+      ✔ names every missing flag at once when it cannot ask
+      ✔ accepts a run that can ask or takes the defaults
+      ✔ accepts a run that gave every answer
+
+  missingFlags
+    ✔ lists the flags of the options left undefined
+
+  promptEnvironment
+    ✔ loads the prompt library on demand
+    ✔ draws prompts on stderr
+    ✔ detects the session from the process streams
+
+  output symbols
+    ✔ draws every ASCII symbol with printable ASCII only
+    ✔ gives both sets the same symbols
+    ✔ joins, cuts and points with a symbol of the set
+
+  output task list (append-only)
+    ✔ prints only the final line of each task
+    ✔ counts only the first call that finishes a task
+    ✔ adds the duration of tasks that took a second or more
+    ✔ writes messages and raw lines straight through
+    ✔ prints nothing while silent but keeps writing raw lines
+    ✔ drops running tasks without a line when it turns silent
+
+  output task list run
+    ✔ prints the done label and resolves with the result
+    ✔ prints the failed label and rethrows
+    ✔ leaves a failure without failed label to whoever catches it
+    ✔ keeps the line the work printed itself
+
+  output task list (live)
+    draws one line per running task, in start order
+      ✔ draws one line per running task, in start order
+      ✔ erases the list once the last task is finished
+      ✔ writes log lines above the list
+      ✔ waits for the end of an open line before drawing again
+      ✔ routes direct writes to the streams above the list while it is drawn
+      ✔ puts back a write function the stream owned itself
+      ✔ captures a stream used for both channels once
+      ✔ animates the running tasks and relabels them
+    truncates labels to the terminal width
+      ✔ truncates labels to the terminal width
+      ✔ truncates labels with the ASCII ellipsis
+      ✔ erases the list on demand until the next frame
+      ✔ writes ui messages above the list
+
+  output process task list
+    ✔ is created once and backs the process ui
+
+  translateFailure
+    names a package the npm registry does not know
+      ✔ names a package the npm registry does not know
+      ✔ explains an unreachable npm registry, whatever the colors of the output
+      ✔ explains a git server that cannot be reached
+      ✔ names the repository of a refused clone
+      ✔ finds an ssh remote in a clone command
+      ✔ names the executable the shell could not find
+      ✔ names the executable bash or Windows could not find
+      ✔ leaves an unknown command failure untranslated
+      ✔ names a missing path
+    falls back to the message when the system error has no path
+      ✔ falls back to the message when the system error has no path
+      ✔ explains a path that is not a directory
+      ✔ explains a refused access the same way for EACCES and EPERM
+      ✔ leaves other failures untranslated
+
+  output ui tables
+    ✔ aligns columns under dim uppercase headers on a terminal
+    ✔ prints tab-separated rows without headers when piped
+    ✔ cuts the widest columns but the first to fit the terminal
+    ✔ cuts with the ASCII ellipsis when the terminal has no Unicode
+    ✔ writes one block per row when the terminal is too narrow
+
+  output ui messages
+    ✔ prints every level with its unicode symbol on the feedback stream
+    ✔ falls back to ASCII symbols
+    ✔ colors only the symbol of each level
+    ✔ prints a dim detail under the message
+    ✔ writes a message on the result stream when asked to
+
+  output ui problems
+    ✔ prints what failed, why and the details, then how to fix it
+    ✔ uses the ASCII symbols without color
+    ✔ prints the fixes last, after the reason and every detail, in ASCII
+
+  output ui blocks
+    ✔ underlines a heading without a leading blank line
+    ✔ styles a heading and falls back to an ASCII rule
+    ✔ aligns details on the longest label
+    ✔ dims the labels of details when colors are on
+    ✔ writes details on the feedback channel when asked
+    ✔ exposes the colors of each channel
+    ✔ prints a bulleted list
+    ✔ prints nothing for empty details and lists
+    ✔ separates blocks with exactly one blank line
+
+  output ui summaries
+    ✔ prints the headline, artifact, duration and aligned next steps
+    ✔ prints a bare headline when nothing else is given
+    ✔ joins the duration with the ASCII separator
+    ✔ colors commands cyan and dims the rest
+    ✔ writes every detail line under a message
+
+  output ui quiet
+    ✔ only writes warnings and errors among the messages
+    ✔ keeps results, problems and result messages
+    ✔ leaves out summaries and feedback details
+    ✔ follows the process when not told
+
+  output ui data
+    ✔ prints a bare value on the result stream, even with colors
+    ✔ prints one indented JSON document on the result stream
+    ✔ writes the data as JSON or renders it with writeData
+
+  output ui process ui
+    ✔ is created once and writes to the process streams
+    ✔ detects the capabilities of the streams it is given
+
+  output ui wrapping
+    ✔ wraps a problem between words, each part indented under its text
+    ✔ wraps messages, their details, lists and detail values
+    ✔ does not count colors and paints every wrapped line
+    ✔ keeps a word longer than the terminal whole
+    ✔ writes lines as they are when the output is not a terminal
+
+  isVerboseRun
+    ✔ is verbose with --verbose anywhere on the command line
+    ✔ is verbose when ANTELOPEJS_VERBOSE is set
+    ✔ is not verbose otherwise
+    ✔ reads the process by default
+
+  isQuietRun
+    ✔ is quiet with -q or --quiet anywhere on the command line
+    ✔ is quiet when ANTELOPEJS_QUIET is on
+    ✔ is not quiet otherwise
+    ✔ reads the process by default
+
+  normalizeVerboseArguments
+    ✔ reads --verbose project dev as --verbose=* project dev
+    ✔ reads project dev --verbose as project dev --verbose=*
+    ✔ reads --verbose=loader,cli project dev as --verbose=loader,cli project dev
+    ✔ reads --verbose --no-color dms dev as --verbose=* --no-color dms dev
+    ✔ reads project dev --verbose loader as project dev --verbose=* loader
+    ✔ reads module test -- --verbose as module test -- --verbose
+    ✔ reads --verbosely as --verbosely
+
+  Package Manager Utils
+    getModulePackageManager
+      ✔ detects supported package managers
+      ✔ returns undefined for invalid content
+      ✔ returns undefined when package.json does not exist
+    install command builders
+      builds install commands for each package manager
+        ✔ builds install commands for each package manager
+        ✔ defaults to npm when package manager is missing
+        ✔ defaults to npm when package manager is unsupported
+        ✔ uses global binaries when Corepack is unavailable
+      uses frozen lockfiles and prefers the local cache
+        ✔ uses frozen lockfiles and prefers the local cache
+        ✔ updates copied lockfiles during project initialization
+        ✔ disables frozen lockfiles in update mode without a lockfile
+      relaxes peer resolution for npm module cache installs
+        ✔ relaxes peer resolution for npm module cache installs
+        ✔ keeps peer resolution untouched for other package managers
+        ✔ keeps project installs free of --legacy-peer-deps
+        ✔ ignores malformed versions
+    getPackageManagerWithVersion
+      ✔ returns detected version
+      ✔ falls back to known versions when detection fails
+    savePackageManagerToPackageJson
+      ✔ keeps a matching template pin but replaces a different package manager
+      ✔ warns when package.json is missing
+      ✔ writes packageManager field when file exists
+      ✔ warns with non-error throw payloads
+    parsePackageInfoOutput
+      ✔ trims newlines
+
+  Plugin invocation
+    ✔ keeps a command line without global options as is
+    ✔ turns --no-color before the plugin name into NO_COLOR
+    ✔ turns --verbose before the plugin name into every channel
+    ✔ turns -q before the plugin name into ANTELOPEJS_QUIET
+    ✔ turns --quiet before the plugin name into ANTELOPEJS_QUIET
+    ✔ keeps the channel list of --verbose=<channels>
+    ✔ treats an empty channel list as every channel
+    ✔ combines global options in any order
+    ✔ leaves the options after the plugin name to the plugin
+    ✔ stops at the first argument that is not a global option
+    ✔ returns no command when only global options are given
+
+  Plugin help
+    ✔ asks the named command for its help
+    ✔ keeps the arguments after the name before --help
+    ✔ keeps the global options in front
+    ✔ keeps a help command without a name, or with an option, as is
+    ✔ keeps any other command line as is
+
+  Official plugin compatibility
+    ✔ delegates when the peer range is satisfied
+    ✔ accepts a prerelease core inside the declared range
+    ✔ rejects a prerelease core outside the declared range
+    ✔ fails when the peer range excludes the running core
+    ✔ skips the check when the plugin declares no peer range
+
+  Official plugin package discovery
+    ✔ reads the package.json from the global root behind a shim
+    ✔ warns but still delegates when no plugin package.json is found
+
+  Official plugin installation
+    explains how to install the plugin and fails when not interactive
+      ✔ explains how to install the plugin and fails when not interactive
+      ✔ asks with the shared prompt layer, defaulting to No
+      ✔ cancels the run when the install prompt is cancelled
+      ✔ prompts, installs and delegates when interactive
+      ✔ uses the Windows shim when installing on Windows
+    stops when the user declines the installation
+      ✔ stops when the user declines the installation
+      ✔ reports a failed installation
+      ✔ never offers a global install when the plugin resolves locally
+      ✔ reports when the installed plugin stays out of PATH
+
+  Official plugin statuses
+    ✔ reports an installed plugin with its version
+    ✔ reads the version from the global root behind a shim
+    ✔ reports a plugin resolved from the project node_modules
+    ✔ reports a plugin that does not support the running core
+    ✔ reports an unknown compatibility when the package.json is unreadable (167ms)
+    ✔ reports a missing plugin
+
+  Official plugin table
+    ✔ aligns plugins with their compatibility on a terminal
+    ✔ writes tab-separated rows when piped
+    ✔ prints the install command of a plugin that is not installed
+    ✔ defaults the install command to the global package manager
+    ✔ gives no hint for an incompatible plugin without a source
+    ✔ flags a project plugin that needs a newer core and how to fix it
+    ✔ suggests ajs update for a global plugin that needs a newer core
+
+  Official plugin update
+    updates the core and installed plugins
+      ✔ updates the core and installed plugins
+      ✔ updates only the core when no plugin is installed
+      ✔ leaves a locally resolved plugin to the project package manager
+      ✔ updates a single plugin by name
+      ✔ refuses to update a CLI that is not installed globally
+    rejects unknown plugin names with a usage error
+      ✔ rejects unknown plugin names with a usage error
+      ✔ validates the plugin name before the global installation
+      ✔ stops and propagates a failing update
+
+  Plugin package resolution
+    ✔ walks up from the resolved binary to the plugin package.json
+    ✔ skips package.json files that do not belong to the plugin
+    ✔ falls back to the global root when the binary is a shim
+    ✔ returns undefined when neither the binary nor the global root resolve
+    ✔ resolves a package-manager shim through the project node_modules
+    ✔ never falls back to the global root for a local binary
+    ✔ falls back to the raw path when realpath fails
+
+  Official plugin registry
+    ✔ describes the DMS plugin
+    ✔ returns undefined for unknown plugins
+    ✔ lists plugins and their names
+    ✔ labels plugins for user facing messages
+    ✔ formats the registry for the CLI help
+
+  CLI plugin delegation
+    delegates a plugin command and forwards arguments
+      ✔ delegates a plugin command and forwards arguments
+      ✔ forwards plugin flags verbatim instead of parsing them
+      ✔ passes the global options before the plugin name as environment
+      ✔ keeps the inherited environment when global options are given
+      ✔ names a third-party plugin given after global options
+      ✔ propagates a signal termination as a shell exit code
+      ✔ forwards the plugin exit status
+      ✔ sets the CLI exit status from a delegated plugin
+      ✔ delegates unknown commands when their executable exists
+      ✔ announces a third-party plugin before running it
+      ✔ does not announce an official plugin
+    does not delegate unknown commands without an executable
+      ✔ does not delegate unknown commands without an executable
+      ✔ does not delegate core help or version arguments
+      ✔ reports a spawn failure without failing the CLI with a stack
+
+  Inherited process runner
+    ✔ spawns with inherited stdio and verbatim arguments
+    ✔ spawns with the given environment
+    ✔ propagates the child exit code
+    ✔ converts a terminating signal into a shell exit code
+    ✔ falls back to a failure code when neither code nor signal is reported
+    ✔ forwards signals to the child and stops listening after exit
+    ✔ rejects when the child cannot be spawned
+
+  Inherited process runner on Windows
+    ✔ runs shell script shims through cmd.exe with quoted arguments
+    ✔ neutralizes the cmd metacharacters of an argument
+    ✔ quotes an executable path containing spaces
+    ✔ does not use the shell for real executables
+    ✔ never rewrites the invocation on other platforms
+
+  production start
+    parses production launch options
+      ✔ parses production launch options
+      ✔ launches directly from the build artifact
+      ✔ rejects invalid concurrency
+      ✔ reports invalid arguments as a usage error without starting
+      ✔ supports verbose without an explicit channel list
+      ✔ never reads the argument after a bare --verbose as channels
+      ✔ supports short options
+      ✔ uses the public environment variables
+      ✔ parses the configuration refresh flag
+      ✔ launches the build artifact with the refreshed configuration
+    exits with the module set changed code when the build no longer matches
+      ✔ exits with the module set changed code when the build no longer matches
+      ✔ propagates any other start failure
+      ✔ reports a distinct exit code for a module set change
+
+  @antelopejs/core/cli
+    ✔ exposes exactly the public output API
+
+  runCLI behavior
+    writes log lines as feedback of the CLI command
+      ✔ writes log lines as feedback of the CLI command
+      ✔ prints the help on stdout instead of parsing when no args are provided
+      ✔ adds channel filters when verbose is set
+      ✔ parses a bare --verbose without reading the command as channels
+      ✔ reports an available update after the command and cancels the check
+      ✔ cancels the update check when the command fails
+      ✔ reports a cancelled prompt with the cancelled exit code
+      ✔ reports a command error once with its own exit code
+    reports an unexpected failure without its stack trace
+      ✔ reports an unexpected failure without its stack trace
+      ✔ keeps the usage exit code when commander prints help after an incomplete command
+      ✔ keeps a successful exit code when commander exits after help
+
+  runCLI usage errors
+    ✔ formats an unknown command with the suggestion and a help hint
+    ✔ formats a missing argument with the usage of the subcommand
+    ✔ accepts --no-color after a subcommand
+    ✔ formats an unknown option of a nested command
+
+  TerminalDisplay
+    ✔ finishes the most recently started spinner first
+    ✔ tracks whether a spinner is active
+    ✔ stops a spinner without a line when no text is given
+    ✔ fails a spinner with the given text or its own label
+    ✔ ignores stop and fail when no spinner is active
+    ✔ logs to the requested stream, with or without a spinner
+    ✔ logs above the live spinner line
+    ✔ cleans every spinner without a line
+    ✔ starts no spinner while silent
+    ✔ clears the live spinner line on demand
+
+  unknown --env
+    ✔ project build exits 2 before doing any work
+    ✔ project modules list exits 2 before doing any work
+    ✔ project modules add exits 2 before doing any work
+    ✔ project modules remove exits 2 before doing any work
+    ✔ project modules update exits 2 before doing any work
+    ✔ project modules install exits 2 before doing any work
+    ✔ project logging show exits 2 before doing any work
+    ✔ project logging set exits 2 before doing any work
+    ✔ names ANTELOPEJS_LAUNCH_ENV when it sets the unknown environment
+
+  --env without declared environments
+    ✔ project build accepts any --env and builds it
+    ✔ project build accepts any ANTELOPEJS_LAUNCH_ENV and builds it
+
+  shouldCheckForUpdates
+    ✔ skips the check for --version
+    ✔ skips the check for -v
+    ✔ skips the check for --help
+    ✔ skips the check for -h
+    ✔ skips the check for the help command
+    ✔ skips the check for no arguments
+    ✔ skips the check for --json
+    ✔ skips the check for -j
+    ✔ skips the check for --quiet
+    ✔ skips the check for -q
+    ✔ skips the check for ANTELOPEJS_QUIET=1
+    ✔ skips the check for CI=true
+    ✔ skips the check for CI
+    ✔ skips the check for AJS_NO_UPDATE_CHECK=1
+    ✔ skips the check for non-TTY stderr
+    ✔ checks interactive commands
+    ✔ treats disabled flag values as unset
+
+  startUpdateCheck
+    ✔ does not start a check when skipped
+    ✔ reads the process context by default
+    ✔ caches under the home directory by default
+
+  UpdateCheck cache
+    ✔ uses a fresh cache without hitting the registry
+    ✔ fetches the latest version and caches it on a cache miss
+    ✔ records the attempt before the registry answers
+    ✔ does not retry a failed attempt within 24 hours
+    ✔ refreshes an expired cache
+    ✔ keeps the last known version when a refresh fails
+    ✔ refreshes a cache written in the future
+    ✔ ignores a cache holding a non-object
+    ✔ ignores a cache holding a missing timestamp
+    ✔ ignores a cache holding an invalid version
+    ✔ ignores an unreadable cache
+
+  UpdateCheck registry requests
+    ✔ stays quiet when the registry is unreachable
+    ✔ ignores registry error responses
+    ✔ ignores a manifest with a non-string version
+    ✔ ignores a manifest with an invalid version
+    ✔ still reports the version when the cache cannot be written
+    ✔ aborts a registry request that hangs past the timeout
+    ✔ aborts the registry request when cancelled
+
+  reportAvailableUpdate
+    ✔ prints a one-line notice on stderr when a newer version exists
+    ✔ points to the new version and the command in ASCII
+    ✔ stays silent when up to date
+    ✔ stays silent when the check was skipped
+    ✔ stays silent when the current version is not semver
+    ✔ waits for a registry request still in flight
+    ✔ waits no longer than the registry timeout
+
+  Windows shell requirement
+    ✔ requires a shell for Windows script shims
+    ✔ does not require a shell elsewhere
+
+  Windows command line
+    ✔ leaves the invocation untouched outside Windows
+    ✔ leaves real executables untouched on Windows
+    ✔ keeps an argument containing spaces in a single argument
+    ✔ neutralizes the cmd metacharacters of an argument
+    ✔ escapes the quotes and the trailing backslashes of an argument
+    ✔ keeps an executable path containing spaces in a single token
+    ✔ normalizes the separators of the executable path
+    ✔ escapes twice through a node_modules shim
+
+  config editor
+    ✔ adds an entry after the others, leaving the rest of the file as it was
+    ✔ rewrites, adds and removes single fields of an existing entry
+    ✔ removes an entry and gives the original file back
+    ✔ edits a field of an entry declared by a version string
+    ✔ adds the modules object when the file has none
+    ✔ refuses a configuration built by a function
+
+  ConfigLoader
+    load
+      loads basic config
+        ✔ loads basic config
+        ✔ merges environment config
+        ✔ keeps config variable references verbatim through the whole load
+        ✔ loads module-specific config files
+        ✔ processes template strings
+      defaults cacheFolder when missing
+        ✔ defaults cacheFolder when missing
+        ✔ defaults cacheFolder when null
+        ✔ preserves test section from config
+        ✔ applies environment test overrides
+        ✔ returns undefined test when config has no test section
+        ✔ merges module config when base config is undefined
+      uses default cache folder when env overrides return undefined
+        ✔ uses default cache folder when env overrides return undefined
+        ✔ passes environment to loadTsConfigFile
+        ✔ loads config from explicit config path
+        ✔ throws when config file is missing
+
+  loadTsConfigFile
+    ✔ loads the recommended config helper from the core copy (81ms)
+
+  ConfigParser
+    processTemplates
+      should replace simple template variables
+        ✔ should replace simple template variables
+        ✔ should handle nested templates
+        ✔ should process nested objects
+        ✔ should process arrays and mixed values
+        ✔ should keep unresolved pure templates as-is
+        ✔ does not execute expressions in pure templates
+        ✔ should parse JSON when pure template matches JSON value
+        ✔ returns original string when expression evaluation fails
+        ✔ replaces missing inline template values with empty string
+        ✔ keeps values it cannot rebuild, RegExp included
+      leaves a config variable reference verbatim
+        ✔ leaves a config variable reference verbatim
+        ✔ leaves a reserved token verbatim even when it is malformed
+    applyEnvOverrides
+      ✔ keeps values it cannot rebuild while cloning
+      ✔ should override config values from env vars
+      ✔ should handle array of paths
+      ✔ should ignore overrides when env var is missing
+    expandModuleShorthand
+      ✔ should expand version string to full source
+      ✔ should expand object shorthand with version and overrides
+      ✔ should keep importOverrides array as-is
+      ✔ keeps an import override without a source, the declared connection to a self-hosted interface
+      ✔ reads a module's export priorities
+      ✔ rejects an export priority that is not an integer
+
+  config-paths
+    findConfigPath
+      ✔ returns .ts path when it exists
+      ✔ throws when neither config file exists
+    tryFindConfigPath
+      ✔ returns .ts path when it exists
+      ✔ returns undefined when neither exists
+    getModuleConfigPath
+      ✔ builds the correct path
+
+  buildConfigVarPlan
+    ✔ stages providers only, never their consumers
+    ✔ stages a chain of providers and leaves the consumer out
+    ✔ stages providers that read no variable together
+    ✔ rejects a reference to a module that is not loaded
+    ✔ rejects a reference to a variable the provider never declares
+    ✔ rejects a malformed reserved token
+    ✔ reports the full cycle
+    ✔ reports a module referencing its own variable as a cycle
+
+  ConfigVarStore
+    ✔ substitutes published values into a consumer configuration
+    ✔ accepts a module that publishes nothing
+    ✔ rejects a declared variable the provide callback did not return
+    ✔ rejects an unresolved reference instead of substituting an empty string
+    ✔ forgets every published value once cleared
+
+  config vars
+    scanConfigVars
+      ✔ collects references at any depth, including inside arrays
+      ✔ reads a module name that carries dots
+      ✔ ignores the legacy template namespace
+      ✔ reports a reserved token that is not a valid reference
+    substituteConfigVars
+      ✔ keeps the value type when the whole string is a reference
+      ✔ interpolates a reference embedded in a larger string
+      ✔ substitutes inside arrays and leaves other values untouched
+    substituteConfigVars, values it must not rebuild
+      ✔ passes a RegExp through untouched
+      ✔ passes other non-plain values through by identity
+      ✔ returns a configuration holding no reference by identity
+      ✔ rebuilds only the branch that holds a reference
+    declaredConfigVars
+      ✔ reads the names declared in the module manifest
+      ✔ returns an empty list when the module declares nothing
+    isConfigVarKey
+      ✔ separates the reserved namespace from the legacy one
+
+  config writes
+    ✔ recognizes the content the runtime wrote, once
+    ✔ treats any other content as the user's edit
+
+  module declarations
+    ✔ lists every entry, shorthand expanded and disabled ones included
+    ✔ writes an entry the next list reads, and marks the write as its own
+    ✔ removes the entry it added, giving the file back
+
+  core/beta module interface
+    ✔ exposes module operations over the core interface
+
+  core/runtime dev server registry
+    DevRegistryStore
+      ✔ writes the registry atomically with pid and startedAt
+      ✔ merges servers across registrations
+      ✔ serializes concurrent registrations
+      ✔ cleanup removes the registry only after a registration
+      ✔ cleanup drains an in-flight registration before removing the file
+      ✔ removes an orphan registry when the owning pid is dead
+      ✔ keeps the registry when the owning pid is alive
+      ✔ removes a corrupt registry file
+    registerCoreRuntimeInterface
+      ✔ exposes runtime info and writes the dev registry in dev mode
+      ✔ removes an orphan registry left by a dead process at startup
+      ✔ keeps GetRuntimeInfo available but skips the registry outside dev mode
+
+  GitDownloader
+    ✔ uses default dependencies when none are provided
+    ✔ should clone repository and set cache version
+    ✔ checks out a branch when cloning
+
+  GitDownloader
+    ✔ should update cached repository and run install commands
+    ✔ uses the cached copy when git fetch fails
+
+  GitDownloader
+    ✔ resets to the origin branch after a force-push
+    ✔ re-clones when the manifest has an entry but the repo folder is missing
+
+  GitDownloader
+    ✔ keeps the full branch name when the default branch contains slashes
+    ✔ rejects a remote containing shell metacharacters before running git
+    ✔ rejects a branch containing shell metacharacters
+
+  GitDownloader
+    ✔ throws when git clone fails
+    ✔ uses main branch when cached and no branch is specified
+    ✔ should throw when rev-parse fails
+
+  GitDownloader
+    ✔ throws when rev-parse command throws
+    ✔ throws when install command fails with stdout only
+
+  LocalFolderDownloader
+    should load manifests from subfolders
+      ✔ should load manifests from subfolders
+      ✔ should skip non-directory entries and use folder name when id is missing
+      ✔ uses default filesystem when deps are omitted
+    should run install commands for each subfolder and keep source reload metadata
+      ✔ should run install commands for each subfolder and keep source reload metadata
+      ✔ should throw when an install command fails for a subfolder
+
+  LocalDownloader
+    should load a local module manifest
+      ✔ should load a local module manifest
+      ✔ should use basename when id is missing
+      ✔ should run install commands when provided
+      ✔ should throw when install command fails
+    should include stdout when install command fails without stderr
+      ✔ should include stdout when install command fails without stderr
+      ✔ uses the default filesystem when deps are omitted
+      ✔ should throw if the path does not exist
+
+  PackageDownloader
+    ✔ resolves dist-tags to exact versions and caches them
+    ✔ downloads and commits the resolved version for a dist-tag on an empty cache
+
+  PackageDownloader
+    ✔ re-downloads when the cache manifest references a missing folder
+    ✔ should download, extract, and install when not cached
+
+  PackageDownloader
+    ✔ should throw when npm pack fails
+    ✔ should throw when install fails
+
+  PackageDownloader
+    ✔ uses the default extractor when no custom extract is provided (515ms)
+    ✔ falls back to package name when id is not provided
+
+  PackageDownloader
+    ✔ uses default dependencies when none are provided
+    ✔ should use cached version when available
+    ✔ re-downloads when a newer version matches the range
+
+  PackageDownloader
+    ✔ keeps the cache when it already holds the latest range version
+    ✔ falls back to the cached version when the registry is unreachable
+
+  PackageDownloader
+[2026-10-28 01:57:36] [WARN] Registry unreachable, serving last cached pkg@2.0.0 for tag 'latest' (cannot verify it is current)
+    ✔ falls back to the cached version for a dist-tag when the registry is unreachable
+    ✔ re-downloads when the cached folder is missing node_modules despite declared dependencies
+
+  PackageDownloader
+    ✔ invalidates a previously cached version when a newer download fails to install
+    ✔ throws when the registry is unreachable and nothing satisfying is cached
+
+  DownloaderRegistry
+    ✔ should register and load a downloader
+[2026-10-28 01:57:36] [INFO] No loader found for type delayed, adding to waitlist
+    ✔ should wait for a downloader to be registered
+    ✔ should resolve relative paths for path identifiers
+    ✔ returns undefined when loader is not registered
+
+  Downloader utils
+    ✔ expands leading tilde
+    ✔ expands mid-string tilde when prefix matches home
+    ✔ expands mid-string tilde when prefix differs
+    ✔ returns input when no tilde exists
+
+  Install command execution
+    ✔ reports the failing command of a module with its exit code and output
+    ✔ keeps the command failure a rejected runner reports
+    ✔ reports a runner that rejects with something else as a failed command
+    ✔ runs the commands as one task that leaves its failure to the caller
+    ✔ reports the installed dependencies once every command succeeded
+    ✔ starts no task when the module has no install command
+    ✔ fails instead of hanging when the install command reads stdin
+
+  FileSystem
+    InMemoryFileSystem
+      ✔ writes, reads and checks existence
+      ✔ creates directories and lists entries
+      ✔ throws for missing paths and invalid operations
+      ✔ handles remove semantics
+      ✔ copies and renames files
+      ✔ supports helper addFile
+    NodeFileSystem
+      ✔ writes and reads strings and buffers
+      ✔ lists directory contents and stats entries
+      ✔ checks existence and access
+      ✔ copies and renames files
+
+  InterfaceRegistry
+    ✔ should map interface connections for a module
+    ✔ restores duplicate module IDs when the newer owner clears first
+    ✔ preserves duplicate module IDs when the older owner clears first
+
+  ModuleCache
+    ✔ should load and persist manifest data
+    ✔ should check semantic versions
+    ✔ should clean and recreate module folder by default
+    ✔ should transfer module folder to cache
+    ✔ does not record a version when transferring
+    ✔ records a version through commitVersion
+    ✔ removes a version through clearVersion
+    ✔ loads existing manifest data when present
+    ✔ falls back to empty manifest when stored manifest is corrupt
+    ✔ falls back to empty manifest when stored manifest is null
+    ✔ recursively copies directories when transferring
+    ✔ creates a temp folder using the OS temp directory
+
+  ModuleIsolation
+    ✔ loads the first module from its folder and a second one from a copy
+    ✔ deletes the copy of a placed module that never runs
+
+  ModuleLifecycle diagnostics
+    ✔ publishes one span per transition, in lifecycle order
+    ✔ publishes the module id and version on every event of a span
+    ✔ never publishes the module configuration
+    ✔ publishes the version set most recently
+    ✔ publishes nothing for transitions the guard rejects
+
+  ModuleLifecycle diagnostics
+    ✔ publishes nothing for a second construct
+    ✔ publishes an error event when a callback rejects
+    ✔ nests the stop span inside the destroy span
+    ✔ reports the nested stop failure on the destroy span
+    ✔ publishes no error on a span that succeeded
+
+  ModuleLifecycle
+    ✔ returns the config variables the provide callback published
+    ✔ returns undefined for a module that publishes nothing
+    ✔ should transition through lifecycle states
+    ✔ should ignore start/stop when in the wrong state
+    ✔ should not construct twice
+    ✔ allows cleanup after construct fails
+    ✔ should stop active modules during destroy
+
+  ModuleLifecycle
+    ✔ attempts destroy after stop fails and reports the stop error
+    ✔ aggregates stop and destroy failures and retries both phases
+    ✔ should do nothing on destroy when already loaded
+    ✔ should await async start callback before becoming active
+    ✔ should run the start callback once when starts overlap
+
+  ModuleLifecycle
+    ✔ should stop a module whose start is still pending
+    ✔ should destroy a module whose start is still pending
+    ✔ should stay startable after a failed start
+    ✔ should await async stop callback
+    ✔ serializes overlapping construct calls
+
+  ModuleLifecycle
+    ✔ serializes overlapping stop and destroy calls
+
+  ModuleManager interface bindings
+    ✔ refuses modules whose pins meet the default at a module that needs the interface
+    ✔ binds the modules below a pin to the pinned provider
+    ✔ refuses an import override without a source for an interface that loaded modules provide
+
+  ModuleManager config variables
+    publishes a provider value into its consumers before any construct
+      ✔ publishes a provider value into its consumers before any construct
+      ✔ constructs every module concurrently, consumers included
+    stages provide when a provider reads another provider's variable
+      ✔ stages provide when a provider reads another provider's variable
+      ✔ never constructs a consumer whose provider failed
+      ✔ cascades a failed provider through a provider that reads from it
+      ✔ fails a provider that does not publish a declared variable
+    ignores a value returned from construct
+      ✔ ignores a value returned from construct
+      ✔ rejects an unknown reference before anything runs
+      ✔ rejects a cycle before anything runs
+      ✔ survives an interface of a skipped module that cannot be loaded
+      ✔ leaves a module declaring nothing untouched
+    resolves a module constructed after startup from the frozen values
+      ✔ resolves a module constructed after startup from the frozen values
+
+  ModuleManager
+    ✔ re-evaluates a module nested inside an interface package root
+    ✔ keeps the shared graph of a module that ships its own interface
+    ✔ releases the resolver lease when partial construction fails
+
+  ModuleManager
+    ✔ keeps manager-owned global state isolated during rebuild and destroy
+    ✔ does not leak leases or global state across repeated destruction
+
+  ModuleManager lifecycle signals
+    ✔ announces started once every module started, and stopping once before the first stop
+    ✔ announces stopping only when the project stops, not when one module stops, restarts or is destroyed
+    ✔ does not announce started when a module fails to start
+
+  ModuleManager lifecycle signals
+[2026-10-28 01:57:36] [WARN] Module 'late' is still starting after 10 s
+    ✔ fails a start that does not settle in time, naming the late module
+
+  ModuleManager
+    ✔ constructs and starts a provided module list
+    ✔ should stop and destroy modules in reverse startup order
+    ✔ should stop loaded modules even when startup order is empty
+
+  ModuleManager
+    ✔ should continue stopping when one module stop fails
+
+  ModuleManager
+    ✔ waits for sibling constructs and aggregates rollback errors
+
+  ModuleManager
+    ✔ destroys every module and clears state after multiple failures
+    ✔ privately retains failed cleanup and retries it after clearing state
+
+  ModuleManager
+    ✔ cleans every live module after a start failure
+    ✔ populates interfacePackages for resolvable npm interface packages
+[2026-10-28 01:57:36] [WARN] Optional interface 'interface-stubbed' has no provider; async calls on it will reject, sync usage will no-op.
+    ✔ picks the same canonical stubbed package whatever the declaration order
+    ✔ canonicalizes compatible physical package copies before construction (45ms)
+
+  ModuleManager
+    ✔ canonicalizes nested interface imports while preparing routes (56ms)
+    ✔ rejects a canonical v2 package for a consumer requiring v1
+    ✔ rejects an incompatible interface copy loaded before construction
+
+  ModuleManager
+    ✔ skips non-resolvable interface names in interfacePackages
+    ✔ preserves declarations for reload and clears them for teardown
+
+  ModuleManager
+    ✔ should build resolved interfaces and interface connections
+    ✔ connects a provided optional dependency like a required one
+
+  ModuleManager
+    ✔ does not connect an optional dependency that has no provider
+    ✔ returns modules by id and honors import overrides
+
+  ModuleManager
+    ✔ registers interface sources from manifest.implements
+    ✔ attaches and detaches the resolver detour during lifecycle (106ms)
+    ✔ exposes entry helpers and supports replacement
+
+  ModuleManifest
+    throws when package.json is missing
+      ✔ throws when package.json is missing
+      ✔ should prefer antelope.module.json over package.json config
+      ✔ should map baseUrl and paths
+      ✔ should combine module aliases
+    supports moduleAliases without _moduleAliases
+      ✔ supports moduleAliases without _moduleAliases
+      ✔ should read dependencies from package.json
+      ✔ reads implements from antelopeJs.implements
+      ✔ defaults implements to an empty list
+      ✔ reloads manifest data and updates version
+    resets implements when reload removes them
+      ✔ resets implements when reload removes them
+      ✔ serializes and reconstructs from build entries
+      ✔ moves a build entry's paths into an instance copy of its folder, and leaves outside paths alone
+
+  resolveManifestEntryFile
+    ✔ returns the entry file a module folder stands for
+    ✔ leaves an entry that already names a file alone
+    ✔ falls back to the folder when no entry can be resolved yet
+    ✔ returns undefined when the manifest names no entry
+
+  ModuleRegistry
+    ✔ should register and return modules
+
+  ModuleTracker
+    ✔ should add module entries
+    ✔ should clear all module entries
+    ✔ clears only entries owned by the tracker
+    ✔ supports clearing owners in reverse order
+    ✔ should preserve the isImplementor flag on added entries
+
+  Module
+    leaves no active owner token when a destroyed module is destroyed again
+      ✔ leaves no active owner token when a destroyed module is destroyed again
+      ✔ publishes config variables and loads the module only once
+      ✔ publishes nothing once the module is constructed
+      ✔ reloads the module code after a destroy
+      ✔ should load and run lifecycle callbacks
+      ✔ runs a generation in one stable module context
+    uses distinct owners for replacement generations
+      ✔ uses distinct owners for replacement generations
+      ✔ emits successful destroy from the generation context after retry
+[2026-10-28 01:57:37] [INFO] Module mod already constructed
+      ✔ should not reload callbacks when already constructed
+      ✔ should reload manifest and update version
+      ✔ should throw and log when loader fails during construct
+      ✔ should throw and log when manifest reload fails
+    should throw and log when destroy fails
+      ✔ should throw and log when destroy fails
+      ✔ should await async stop callback
+
+  Module diagnostics
+    ✔ publishes the load span before the construct span
+    ✔ publishes the loaded callbacks as the load span result
+    ✔ publishes an error on the load span when the loader fails
+    ✔ publishes a well-formed span when the loader throws synchronously
+    ✔ publishes an undefined version when the manifest declares none
+[2026-10-28 01:57:37] [INFO] Module diagnostics-module already constructed
+    ✔ publishes nothing when construct is called on a constructed module
+    ✔ publishes the pre-reload version on a destroy span raised by reload
+
+  ReplSession
+    ✔ should start and close a repl session with context
+
+  buildBindingGraph: instances
+    ✔ gives a project with one provider per interface one instance per interface and no diagnostic
+    ✔ splits a self-hosted interface only where its bindings differ
+    ✔ keys each connection entry, and a named entry in its connection's scope
+
+  buildBindingGraph: pin propagation
+    ✔ carries a top-level module's pin into the providers below it
+    ✔ lets a module's own pin re-pin its subtree
+    ✔ does not treat implementing an interface as a pin for the modules below
+    ✔ never carries a pin back up a cycle
+
+  buildBindingGraph: diamonds
+    ✔ fails when two pins meet at a module that needs the interface, naming where they meet
+    ✔ fails when a pin meets the default carried by an unpinned path
+    ✔ accepts a pin equal to the default carried on the other path
+    ✔ is settled by a pin on the module the error names
+    ✔ ignores a diamond whose crossing module needs nothing of the interface
+    ✔ fails when a consumer's pin would re-bind a shared provider other consumers reach by default
+
+  buildBindingGraph: defaults
+    ✔ picks the sorted-first provider on a tie and warns, naming the top-level module to pin
+    ✔ picks the provider with the highest export priority without warning
+    ✔ skips a provider marked with a negative priority
+    ✔ warns on a tie at the top priority, listing each provider's priority
+    ✔ settles every unpinned consumer of the DMS case with one priority
+
+  buildBindingGraph: validation and unused pins
+    ✔ fails when a module pins an interface it implements to another provider
+    ✔ warns about a pin that decides no binding
+
+  buildBindingGraph: modules loaded while others run
+    ✔ refuses a module whose pin would re-bind a running module
+    ✔ refuses a change that leaves a running module on a provider that no longer provides the interface
+    ✔ loads a module whose pins agree with what runs
+    ✔ keeps running bindings when a new provider changes the default, and says the next startup differs
+
+  instance copies
+    ✔ gives a copied module its own evaluation of its files and of its node_modules (174ms)
+    ✔ follows a dependency linked from outside the folder, so the copy owns it too (194ms)
+    ✔ links files instead of copying their content
+    ✔ copies a file the filesystem refuses to link
+    ✔ never hands out the same generation path twice, and removes a copy
+    ✔ prunes the copies of processes that are no longer running and keeps its own
+
+  findUnresolvedInterfaces
+    ✔ places missing required deps into unresolved
+    ✔ places missing optional deps into stubbed, not unresolved
+    ✔ ignores deps that are not interface packages
+    ✔ skips deps that are implemented by a provider
+    ✔ treats interface as missing when provider has disabled it
+    ✔ honors knownResolved as already-implemented
+
+  findUnresolvedInterfaces (standalone interfaces)
+    ✔ routes a missing standalone required dep into stubbed, not unresolved
+    ✔ still errors (unresolved) for a missing non-standalone required dep
+    ✔ lets an implementing module win over standalone self-hosting
+    ✔ marks a missing standalone optional dep as standalone in stubbed
+
+  findUnresolvedInterfaces (runtime modules are not interfaces)
+    ✔ ignores a dependency on a package that implements interfaces
+    ✔ ignores a dependency on a package loaded as a module of the project
+    ✔ still reports a self-hosting interface package nobody loads
+
+  ObservableMap
+    ✔ reports set, delete and clear as changes
+    ✔ does not report deleting a missing key
+
+  package resolution
+    ✔ discovers interface-plain through a workspace symlink and hidden manifest
+    ✔ discovers @scope/interface-scoped through a workspace symlink and hidden manifest
+    ✔ preserves a logical package root when the resolved entry is not canonicalized
+    ✔ resolves an exported package from inside its own workspace root
+    ✔ uses path boundaries for module ownership
+
+  PathMapper
+    ✔ should resolve aliases
+    ✔ should resolve alias without suffix
+    ✔ does not resolve aliases that only share a prefix
+    ✔ should resolve mapped paths when target exists
+    ✔ should resolve index.js when present
+    ✔ should use the first matching value
+    ✔ should return undefined when no mappings match
+    ✔ should use default filesystem exists check
+    ✔ returns undefined when mapping matches but files are missing
+    ✔ falls back when default exists check fails
+
+  PathOwnerIndex
+    ✔ returns the owner of the longest containing root
+    ✔ keeps the first listed root when two roots have the same length
+    ✔ respects path boundaries
+    ✔ lists roots once and memoizes answers until invalidated
+    ✔ drops its answers when the realpath cache is cleared
+
+  path resolution cache
+    ✔ calls realpath at most once per distinct path when matching N files against M roots
+    ✔ resolves paths again once the cache is cleared
+    ✔ follows a retargeted symlink after the cache is cleared
+    ✔ does not cache paths that do not exist yet
+
+  ResolverDetour
+    ✔ uses one process hook and preserves the newer lease
+    ✔ restores the older lease when the newer lease detaches first
+    ✔ uses the resolver that owns the requesting module
+    ✔ attaches and detaches each lease idempotently
+    ✔ detects an externally replaced process hook without overwriting it
+
+  Resolver interface contexts
+    ✔ evaluates an instance in an interface context named after the package, owned by the instance
+    ✔ forwards a module's registration through the instance as that module's
+    ✔ resolves an unowned file's interface request in the instance whose context runs it
+    an instance retired and bound again
+      ✔ releases the first evaluation's own work, and leaves what modules forwarded through it
+      ✔ evaluates the instance afresh under the same owner, which attaches, registers and releases again
+      ✔ fences work left from the first evaluation once the instance is back, and keeps the second's alive
+      ✔ leaves a module holding the first evaluation's exports with a detached proxy
+
+  Resolver
+    ✔ returns undefined for @ajs.local requests
+    ✔ returns undefined for @ajs requests
+    ✔ should resolve module aliases using PathMapper
+    ✔ returns undefined for invalid @ajs request pattern
+    ✔ prefers the longest matching folder
+    ✔ does not assign sibling folders that only share a prefix
+    ✔ resolves interface package to canonical path
+    ✔ resolves interface package subpath with resolveFrom
+    ✔ does not redirect unknown packages
+    ✔ redirects @antelopejs/interface-core bare import to canonical path
+    ✔ redirects @antelopejs/interface-core subpath with resolveFrom
+    ✔ interface-core redirect takes precedence over interfacePackages
+    ✔ does not redirect packages that merely share the interface-core prefix
+
+  Resolver path ownership cache
+    ✔ sees modules added or removed after a lookup
+    ✔ calls realpath at most once per distinct path when resolving N files against M roots
+
+  Resolver interface instances
+    ✔ resolves an interface request into the instance the importer is bound to
+    ✔ serves the first instance from the canonical copy and the next one from its own copy
+    ✔ resolves a connection path to that connection's instance, subpaths included
+    ✔ refuses a connection path the importer has no connection for
+    ✔ refuses an undeclared import of a package that has several instances
+    ✔ loads an instance's own relative requests in that instance
+    ✔ deletes the instance copies it created
+
+  neutralizeInterfaceAsyncProxies
+    ✔ makes AsyncProxy-backed calls reject instead of queuing forever
+    ✔ recurses into nested namespaces
+    ✔ makes RegisteringProxy.register() a no-op in test stub mode
+    ✔ replays registrations recorded while neutralized to a later provider
+    ✔ boots a module whose async start() registers into a stubbed optional interface
+    ✔ leaves EventProxy untouched
+    ✔ neutralizes bare AsyncProxy instances (not wrapped in InterfaceFunction)
+    ✔ does not loop on circular structures
+
+  runtime build-refresh
+    swaps every module configuration when the module set is unchanged
+      ✔ swaps every module configuration when the module set is unchanged
+      ✔ stores the hash computeConfigHash gives the new configuration
+      ✔ applies environment overrides from the runtime environment
+      ✔ applies the configuration of the requested environment
+      ✔ refreshes import overrides and disabled exports from the configuration
+      ✔ matches a relative local module path with the resolved path of the build
+      ✔ rejects a local module loaded from another path
+      ✔ rejects a module the build does not contain
+      ✔ rejects a build module the configuration no longer loads
+    rejects a module requested at another version
+      ✔ rejects a module requested at another version
+      ✔ rejects a local folder source, whose modules the build does not trace back to it
+      ✔ keeps configuration values out of the module set error
+      ✔ reads the build artifact without rewriting it
+      ✔ finds a module set change among aggregated launch errors
+
+  runtime build-runtime
+    maps artifact entries with and without import overrides
+      ✔ maps artifact entries with and without import overrides
+      ✔ carries export priorities and source-less import overrides through a build artifact
+      ✔ reads build artifact or throws a friendly message
+    warns when build is stale or hash computation fails
+      ✔ warns when build is stale or hash computation fails
+      ✔ validates that all build module folders exist
+    writes project build artifact with module overrides
+      ✔ writes project build artifact with module overrides
+
+  runtime launch-sequence
+    ✔ writes log lines for an application when it owns the logging
+    ✔ leaves the log audience to an embedding host
+    ✔ releases module and registered runtime resources after startup fails (97ms)
+
+  runtime launch-sequence interrupted by a shutdown
+    ✔ stops before checking the project once it is prepared
+    ✔ cancels the check of the project and loads no module
+    ✔ constructs none of the modules whose entries it created
+    ✔ starts none of the modules it constructed (107ms)
+
+  runtime launch steps
+    ✔ runs every step in order
+    ✔ checks for a shutdown between every two steps, including an added one
+    ✔ sees a shutdown the event loop delivers after a step returned
+    ✔ starts nothing once the project is already shutting down
+
+  runtime module-loading
+    ✔ preserves the live module when reload returns no manifest
+    ✔ preserves the live module when the replacement id is invalid
+
+  runtime module-loading
+    ✔ recovers on retry after a failed reload
+
+  runtime module-loading
+    ✔ resolves and validates a replacement before destroying the live module
+    ✔ keeps the old module installed when its destroy fails
+    ✔ leaves a stopped safe state when replacement installation fails
+
+  runtime module-loading
+    ✔ cleans the replacement when association fails
+    ✔ cleans the replacement when construct fails
+    ✔ cleans the replacement when start fails
+    ✔ aggregates activation and replacement cleanup failures
+
+  runtime module-loading
+    ✔ resolves watch directories for all source variants
+    ✔ ensureGraphIsValid passes when all interfaces are resolved
+    ✔ treats a static module package as an available dependency
+    ✔ reloads watched modules and ignores unknown ones
+
+  runtime module-loading
+    ✔ reloads watched modules from source when a loader context is provided
+
+  runtime module-loading
+    ✔ publishes only a failed load span when a replacement cannot load
+
+  runtime module-loading
+    ✔ propagates interface compatibility validation during reload
+    ✔ propagates error when registry.load fails during reload
+
+  runtime module-loading
+    ✔ constructs and starts modules, and fails gracefully on construct errors
+    ✔ resolves only after async start hooks settle
+    ✔ aggregates startup and cleanup errors
+
+  runtime module-loading
+    ✔ takes the running generation down before LoadModule replaces it
+    ✔ loads a new module without touching any running one
+
+  runtime module-loading
+    ✔ drops the modules LoadModule fails to construct
+
+  runtime module-loading
+    LoadModule interface checks
+      ✔ refuses a module whose required interface nothing implements
+      ✔ loads a module whose interface a running module implements
+      ✔ loads a module that implements the interface it requires
+      ✔ loads a module whose optional interface nothing implements
+
+  runtime module-loading
+    ✔ handles module interface operations and error branches
+
+  runtime module-loading
+    ✔ lets every module finish loading before failing with the only failure
+    ✔ lists several failures once each and sums them up in one error
+    ✔ reports the loaded modules once they are all loaded
+
+  runtime process claim
+    ✔ answers SIGINT and SIGTERM for the project until it stopped
+    ✔ leaves the signals and child processes to an embedding host
+    ✔ says the project is stopping, then that it stopped, and exits with 130
+    ✔ exits with 0 after a graceful stop on SIGTERM
+    ✔ prints nothing when the runtime does not own the terminal
+    ✔ warns when the modules did not stop in time
+    ✔ kills the child processes at once when Ctrl+C is pressed again
+    ✔ stops and destroys the modules, reporting both failures
+
+  runtime runtime-bootstrap
+    registers process handlers once and handles all branches
+      ✔ registers process handlers once and handles all branches (2962ms)
+      ✔ leaves process warnings to Node.js on stderr instead of logging them as output
+      ✔ keeps the process running when work of a destroyed module generation fails during hot reload
+    calls shutdown manager on uncaughtException instead of process.exit
+      ✔ calls shutdown manager on uncaughtException instead of process.exit
+      ✔ restores the previous process shutdown manager on release
+      ✔ allows late wiring of shutdown manager after handlers are registered
+      ✔ raises and restores max listeners on success and failure
+    normalizes config and applies verbose channels when loading runtime config
+      ✔ normalizes config and applies verbose channels when loading runtime config
+      ✔ normalizes absolute cache folders without modification
+      ✔ logs an aggregate rejection once, its inner errors with it
+
+  Process tree
+    collectDescendants
+      ✔ walks the tree transitively, parents first
+      ✔ is a no-op outside Linux
+    killProcessTree
+      ✔ kills every descendant at once, without a grace period
+    terminateProcessTree
+      ✔ terminates descendants and escalates to SIGKILL
+      ✔ signals nothing when the process has no descendant
+      ✔ does not signal anything on Windows
+      ✔ kills a real grandchild process (57ms)
+
+  ShutdownManager
+    handler registration and execution
+      ✔ should execute registered handlers on shutdown
+      ✔ should execute handlers in descending priority order
+      ✔ should not execute unregistered handlers
+      ✔ should continue executing remaining handlers when one fails
+      ✔ should only execute shutdown once
+      ✔ should keep first non-zero exit code when shutdown is already running
+    stopping signal
+      ✔ is aborted as soon as the shutdown starts, before its handlers settle
+    signal during a shutdown
+      ✔ stops the process on a signal received during a shutdown no signal started
+    deadline
+      ✔ gives no time, rather than a negative one, to a handler that starts past the deadline (259ms)
+    timeout
+      ✔ should force resolve after timeout when handler hangs
+      ✔ still runs the handlers after the one that timed out
+      ✔ bounds the handlers left after the timeout by the cleanup timeout
+      ✔ tells the signal listener the shutdown timed out
+    signal handling
+      should setup and remove signal listeners
+        ✔ should setup and remove signal listeners
+        ✔ should leave the process signal listeners alone
+        ✔ listens on the process by default
+        ✔ exits with the cancelled exit code after a graceful stop on SIGINT
+        ✔ tells the signal listener the project is stopping, then stopped
+        ✔ does not tell the signal listener about a shutdown no signal started
+        ✔ should trigger shutdown on SIGTERM
+[2026-10-28 01:57:41] [WARN] Received SIGINT during shutdown. Forcing process exit.
+        ✔ forces the exit with the cancelled exit code on a second SIGINT
+[2026-10-28 01:57:41] [WARN] Received SIGTERM during shutdown. Forcing process exit.
+        ✔ forces the exit with the failure exit code on a second SIGTERM
+      should not force exit on SIGTERM received during graceful shutdown
+[2026-10-28 01:57:41] [INFO] Received SIGTERM during graceful shutdown; ignoring (already shutting down).
+        ✔ should not force exit on SIGTERM received during graceful shutdown
+[2026-10-28 01:57:41] [INFO] Received SIGINT during graceful shutdown; ignoring (already shutting down).
+        ✔ should not force exit on SIGINT received after SIGTERM starts shutdown
+
+  stub-interface
+    ✔ returns truthy __esModule property
+    ✔ returns a callable stub for any named export
+    ✔ throws when calling a method on a named export
+    ✔ throws when calling a nested property as function
+    ✔ provides proxy property on function stubs
+    ✔ returns undefined for symbol properties on module proxy
+    ✔ returns undefined for symbol properties on property proxy
+    ✔ returns truthy __esModule on nested property proxy
+
+  TestContext
+    ✔ should call custom setup and cleanup
+    ✔ should use module manager lifecycle when provided
+
+  test-module
+    TestModule
+      ✔ merges setup overrides into config before loading modules
+      ✔ does not modify config when setup returns void
+      ✔ forwards explicit file filter to executeTests after full bootstrap
+
+  test-module
+    TestModule
+      ✔ works without setup and cleanup hooks
+
+  test-module
+    runInTestModuleContext
+      ✔ preserves the tested module context across asynchronous test work
+
+  test-module
+    collectInterfaceTestFiles
+      ✔ returns empty array when no implements field
+      ✔ returns empty array when implements is empty
+      ✔ skips interface packages that cannot be resolved
+
+  test-module
+    setupTestEnvironment
+      ✔ destroys the manager when startup fails
+      ✔ aggregates startup and test-runtime cleanup errors
+      ✔ enables auto-stub on the module manager resolver
+      ✔ validates the module graph before constructing modules so standalone interfaces get canonicalized
+
+  test-module
+    setupTestEnvironment
+      ✔ registers moduleRoot in internal.moduleByFolder so test-file frames find a module
+      ✔ registers the core runtime interface so GetRuntimeInfo resolves instead of hanging
+
+  test-module
+    loadTestConfig
+      ✔ returns undefined when package.json is missing
+      ✔ returns undefined when antelopeJs.test is missing
+      ✔ returns undefined when antelopeJs.test is not a string
+      ✔ loads config from valid test config path
+      ✔ defaults test to empty object when config has no test section
+      ✔ returns undefined when config loading fails
+
+  test-module
+    loadTestConfig
+      ✔ resolves relative config path against module root
+
+  test-module
+    TestModule
+      ✔ returns EXIT_CODE_ERROR when config loading fails
+      ✔ calls setup before loading modules and cleanup in finally
+      ✔ calls cleanup even when test execution throws
+
+  TestRunner
+    ✔ should run tests and call setup/cleanup
+
+  version-checker cancellation
+    ✔ stops waiting for the registry and reports nothing once cancelled
+    ✔ does not look anything up when cancelled before it starts
+    ✔ terminates the lookups it started and returns at once
+
+  version-checker
+    fetchLatestVersion
+      ✔ returns parsed version when npm view succeeds
+      ✔ rejects when npm view fails
+    checkOutdatedModules
+      returns outdated modules only
+        ✔ returns outdated modules only
+        ✔ does not flag modules whose range already covers the latest version
+        ✔ flags modules whose range does not cover the latest version
+      returns empty array when all modules are up to date
+        ✔ returns empty array when all modules are up to date
+        ✔ warns and skips packages whose version probe fails
+        ✔ cuts a long probe failure with the ASCII ellipsis
+      emits the slow-check warning when probes exceed the threshold
+        ✔ emits the slow-check warning when probes exceed the threshold
+        ✔ does not emit the slow-check warning when probes finish quickly
+    isUpToDate
+      ✔ compares exact versions and ranges against the latest version
+      ✔ treats dist-tags as always up to date since the loader floats them
+    bumpVersionSpec
+      ✔ preserves range prefixes when bumping
+    toFloatingSpec
+      ✔ prefixes the version with a caret
+    fetchDistTags
+      ✔ parses dist-tags JSON output
+      ✔ throws when npm view exits with a non-zero code
+    validateVersionSpec
+      ✔ accepts a valid semver range without registry lookup
+      ✔ accepts an existing dist-tag
+      ✔ rejects a spec that is neither range nor dist-tag
+    warnOutdatedModules
+      ✔ displays warning when modules are outdated
+      ✔ does not display warning when array is empty
+
+  FileHasher
+    ✔ should produce different hashes for different content
+
+  FileWatcher Integration
+    ✔ should detect real file changes
+    ✔ reloads for a directory created at runtime
+    ✔ adopts a file created at runtime so later edits also reload (53ms)
+
+  FileWatcher Integration with a project root module
+    ✔ scans a project root whose files disappear during the scan
+    ✔ does not watch an excluded project state folder (302ms)
+
+  FileWatcher
+    should detect file changes for a module
+      ✔ should detect file changes for a module
+      ✔ should ignore unchanged files
+      ✔ ignores missing files and directories in handleFileChange
+      ✔ should detect changes to individually watched files
+      ✔ should ignore unchanged watched files
+      ✔ should support multiple listeners on the same watched file
+      ✔ adopts a new source file so later edits behave like it was always there
+    tracks module signature changes for added, edited, and removed files
+      ✔ tracks module signature changes for added, edited, and removed files
+      ✔ returns to the pre-trigger signature after a transient temp file appears and is removed
+      ✔ watches a directory created at runtime and reloads for it
+      ✔ recurses into nested directories created at runtime
+      ✔ re-adopts a directory that was removed and recreated
+      ✔ clears the module signature contribution of a removed directory
+    ignores a new directory that has no owning module
+      ✔ ignores a new directory that has no owning module
+      ✔ ignores a node_modules directory created at runtime
+      ✔ does not notify module changes after stopWatching
+      ✔ does not adopt or re-arm watchers for a new directory after stopWatching
+      ✔ does not notify watched-file listeners after stopWatching
+      ✔ skips excluded directories when scanning
+      ✔ skips excluded paths when scanning and on change events
+    treats a file that vanishes while handling its change as removed
+      ✔ treats a file that vanishes while handling its change as removed
+      ✔ still reports errors other than a vanished path
+
+  HotReload
+    ✔ should batch reloads within debounce window
+    ✔ should continue reloading remaining modules when one fails
+    ✔ should cancel pending reload on clear
+
+  build and launchFromBuild
+    build creates .antelope/build/build.json
+      ✔ build creates .antelope/build/build.json
+      ✔ launchFromBuild throws when build artifact is missing
+      ✔ launchFromBuild warns when build is stale
+[2026-10-28 01:57:42] [WARN] Configuration has changed since last build. Run 'ajs project build' to update.
+      ✔ launchFromBuild implements the core modules interface
+[2026-10-28 01:57:42] [INFO] Starting build created for environment 'default' with runtime env 'production'
+[2026-10-28 01:57:42] [WARN] Configuration has changed since last build. Run 'ajs project build' to update.
+      ✔ launchFromBuild skips download and watch paths
+    launchFromBuild throws when a module folder is missing
+[2026-10-28 01:57:42] [WARN] Configuration has changed since last build. Run 'ajs project build' to update.
+      ✔ launchFromBuild throws when a module folder is missing
+      ✔ launchFromBuild starts with the refreshed configuration (163ms)
+      ✔ launchFromBuild starts with the build configuration by default (215ms)
+      ✔ launchFromBuild refuses to refresh a build of another module set
+
+  launch
+    starts watch and interactive flows when enabled
+      ✔ starts watch and interactive flows when enabled
+    handles empty loaded modules in watch mode
+      ✔ handles empty loaded modules in watch mode
+      ✔ cleans up once when post-launch watch setup fails
+      ✔ closes the REPL and cleans up once when interactive setup fails
+
+  Embedded runtime
+    routes a host interface call to a module implementation
+      ✔ routes a host interface call to a module implementation (193ms)
+      ✔ routes a host call made through an interface package subpath (212ms)
+      ✔ rejects a subpath of an interface no loaded module provides (134ms)
+      ✔ rejects an interface no loaded module provides (112ms)
+      ✔ refuses to hand out interfaces before start
+      ✔ gives the host a module identity that survives an association rebuild (92ms)
+      ✔ keeps host calls working after an association rebuild (117ms)
+      ✔ leaves process signal handlers to the host (97ms)
+      ✔ never creates a module cache directory (129ms)
+      ✔ fails to start when a declared interface resolves to nothing (125ms)
+    does not itself reject a prerelease interface package
+      ✔ does not itself reject a prerelease interface package (150ms)
+      ✔ shares one launch between concurrent start calls (93ms)
+      ✔ waits for an in-flight start before shutting down (179ms)
+      ✔ restores spinner output after a failed launch (144ms)
+      ✔ refuses to provide an interface the host did not declare (180ms)
+      ✔ attaches a host implementation and releases it on detach (1194ms)
+
+  a provider that fails to publish its config variables
+    ✔ fails the interface consumers of the modules it skipped (330ms)
+    ✔ terminates the process with a failing exit code (5834ms)
+
+  a module that fails to reload in watch mode
+    ✔ keeps the dev process running, and reloads the module on the next change (297ms)
+
+  HMR propagates RegisteringProxy changes across module reloads
+    ✔ unregisters old args and re-registers with new args when the consumer reloads (1556ms)
+
+  HMR end-to-end
+    picks up module source edits and runs new code after reload
+      ✔ picks up module source edits and runs new code after reload (694ms)
+    adopts a source file added at runtime and reloads for it and its later edits
+      ✔ adopts a source file added at runtime and reloads for it and its later edits (1234ms)
+    does not reload when atomic-write temp files appear
+      ✔ does not reload when atomic-write temp files appear (3234ms)
+
+  interface instances
+    ✔ evaluates an interface once per provider binding, each module reaching its own provider (635ms)
+    ✔ carries a top-level module's pin down to the providers below it (905ms)
+    ✔ binds a connection's path, and objects built from it, to that connection's provider (654ms)
+    ✔ shares one instance, and its classes, between modules bound the same way (578ms)
+
+  Launch Function
+[2026-10-28 01:58:02] [WARN] Optional interface 'iface-pkg' has no provider; async calls on it will reject, sync usage will no-op.
+    ✔ loads an unimplemented optional interface and stubs its AsyncProxies (196ms)
+
+  Launch Function
+    ✔ starts without an optional module whose required interface nothing implements (105ms)
+
+  Launch Function
+    ✔ self-hosts a standalone interface required with no implementer (198ms)
+
+  Launch Function
+    ✔ should respect environment option (100ms)
+
+  Launch Function
+    ✔ boots when a variable consumer serves an interface awaited during construct (298ms)
+
+  Launch Function
+    ✔ should return ModuleManager instance (108ms)
+    ✔ should load modules from antelope.config.ts (188ms)
+
+  Launch Function
+    ✔ publishes a config variable before any module constructs (205ms)
+
+  Module isolation
+    ✔ keeps the module-level state of two instances of one package apart, dependencies included
+    ✔ runs each instance's construct in its own module context
+    ✔ reloads one instance without touching the other, in a fresh copy (109ms)
+    ✔ deletes the instance copies when the project is torn down
+
+  stopping ajs project dev
+    ✔ exits with the cancelled exit code and stops the processes modules started (4207ms)
+    ✔ stops the project the same way while its modules are still starting (5977ms)
+    ✔ stops at once while the module version check waits on the registry (3553ms)
+    ✔ starts no module when interrupted while the modules are constructed (5124ms)
+
+  provider-aware runtime
+[2026-10-28 01:58:24] [WARN] Optional interface 'automation-interface' has no provider; async calls on it will reject, sync usage will no-op.
+    ✔ routes transitive registrations and no-ops optional sync stubs at start (531ms)
+    ✔ canonicalizes a standalone subpath from a pnpm nested copy (367ms)
+    ✔ loads a circular interface subpath through its declaration root (132ms)
+
+  provider-aware runtime
+[2026-10-28 01:58:25] [WARN] provider-consumer resolves routing-interface to 'provider-a' by default (providers: provider-a, provider-b). Pin routing-interface on provider-consumer.
+[2026-10-28 01:58:25] [WARN] consumer-default resolves routing-interface to 'provider-a' by default (providers: provider-a, provider-b). Pin routing-interface on consumer-default.
+    ✔ routes exported subpaths without pre-evaluating a self-provider root (753ms)
+
+  provider-aware runtime
+[2026-10-28 01:58:26] [WARN] provider-consumer resolves routing-interface to 'provider-a' by default (providers: provider-a, provider-b). Pin routing-interface on provider-consumer.
+[2026-10-28 01:58:26] [WARN] consumer-default resolves routing-interface to 'provider-a' by default (providers: provider-a, provider-b). Pin routing-interface on consumer-default.
+    ✔ updates a selected provider through the hot-reload replacement path (920ms)
+[2026-10-28 01:58:27] [WARN] provider-consumer resolves routing-interface to 'provider-a' by default (providers: provider-a, provider-b). Pin routing-interface on provider-consumer.
+[2026-10-28 01:58:27] [WARN] consumer-default resolves routing-interface to 'provider-a' by default (providers: provider-a, provider-b). Pin routing-interface on consumer-default.
+    ✔ gives each provider's instance its own declarations, kept across that provider's reload (1245ms)
+[2026-10-28 01:58:28] [WARN] provider-consumer resolves routing-interface to 'provider-a' by default (providers: provider-a, provider-b). Pin routing-interface on provider-consumer.
+[2026-10-28 01:58:28] [WARN] consumer-default resolves routing-interface to 'provider-a' by default (providers: provider-a, provider-b). Pin routing-interface on consumer-default.
+    ✔ canonicalizes a compatible nested interface-core copy (1106ms)
+
+  provider-aware runtime
+    ✔ rejects an override whose module does not provide the interface (42ms)
+
+  interface bindings when modules arrive at runtime
+[2026-10-28 01:58:29] [WARN] dms keeps @instances/interface-database on 'mongodb' while running; the next startup binds it to 'a-pg'.
+    ✔ keeps running modules on their provider when a new provider arrives, and says the next startup differs (542ms)
+[2026-10-28 01:58:30] [WARN] dms keeps @instances/interface-database on 'mongodb' while running; the next startup binds it to 'a-pg'.
+    ✔ refuses a module whose pin would re-bind a running provider, and changes nothing (525ms)
+[2026-10-28 01:58:30] [WARN] dms keeps @instances/interface-database on 'mongodb' while running; the next startup binds it to 'a-pg'.
+[2026-10-28 01:58:31] [WARN] Module 'agreeing' pins @instances/interface-database, but that pin decides no binding.
+    ✔ loads a module whose pins agree with what runs (603ms)
+
+  interface instances across reloads
+[2026-10-28 01:58:32] [WARN] Module 'user-b' pins @instances/interface-database, but that pin decides no binding.
+    ✔ deletes the copy of an interface instance no module reaches any more (911ms)
+[2026-10-28 01:58:33] [WARN] Module 'user-a' pins @instances/interface-database, but that pin decides no binding.
+[2026-10-28 01:58:33] [WARN] Module 'user-a' pins @instances/interface-database, but that pin decides no binding.
+    ✔ never hands an instance the files of one that left the canonical copy, nor moves an instance off its own copy (1019ms)
+[2026-10-28 01:58:34] [WARN] Module 'user-a' pins @instances/interface-database, but that pin decides no binding.
+[2026-10-28 01:58:34] [WARN] Module 'user-a' pins @instances/interface-database, but that pin decides no binding.
+    ✔ evaluates the canonical copy afresh for an instance that takes it after its owner left (970ms)
+[2026-10-28 01:58:35] [WARN] Module 'user-b' pins @instances/interface-database, but that pin decides no binding.
+    ✔ releases what a disposed instance's own body registered (845ms)
+    ✔ refuses a reload that takes a provider away from running modules, and keeps the running provider up (747ms)
+
+  self-hosted interface packages
+    ✔ routes registrations when the consumer imports the interface first (244ms)
+    ✔ routes registrations when the provider imports the interface first (247ms)
+    ✔ holds a registration for the provider it is bound to, never handing it to another provider (388ms)
+
+  registrations made while an interface package is evaluated
+    ✔ stay registered when the module that imported the package first reloads (253ms)
+    ✔ are replayed to each new generation of the provider (372ms)
+    ✔ survive reloads of the provider when it imported the package first (288ms)
+    ✔ keep reaching their provider once the importer that loaded the package reloads (330ms)
+
+  TestModule Function
+
+
+  sample
+    ✔ passes
+
+
+  1 passing (1ms)
+
+    ✔ should run tests and return success code (107ms)
+
+
+  selected
+    ✔ runs
+
+
+  1 passing (1ms)
+
+    ✔ runs only filtered files and skips other tests in the folder (103ms)
+    config flow
+      ✔ fails when package.json is missing
+      ✔ fails when antelopeJs.test is missing from package.json
+
+  Logging Module
+    levelMap
+      ✔ should map level names to numbers
+    terminal output
+      ✔ should write an INFO event to stdout when enabled
+      ✔ should write nothing when disabled
+      ✔ should route ERROR to stderr
+      ✔ should keep each level on its stream while a task is running
+    channel filtering
+      ✔ should drop a channel below its threshold
+      ✔ should lower a channel threshold through addChannelFilter
+    module tracking
+      should prefix the responsible module
+        ✔ should prefix the responsible module
+        ✔ should not filter by module when tracking is disabled
+        ✔ emits one line for a log raised from a timer callback
+        ✔ should attribute unmodule logs to the core module
+        ✔ should hide core logs when core is excluded
+        ✔ should hide core logs when includes omits core
+        ✔ should keep core logs when includes lists core
+      should apply includes and excludes together
+        ✔ should apply includes and excludes together
+
+  Logging audience
+    ✔ writes every level on stderr for a CLI command
+    ✔ writes the log lines of an application on stdout, errors on stderr
+
+  saved logging formats
+    ✔ renders a level with its saved template
+    ✔ keeps the built-in format for a level without a saved template
+    ✔ renders a level without its own template with the default one
+    ✔ keeps the built-in format for templates equal to the built-in ones
+    ✔ formats the date with the configured date format
+    ✔ renders the responsible module when module tracking is on
+    ✔ routes a templated ERROR line to stderr
+    ✔ applies style directives when colors are on
+    ✔ drops style directives when colors are off
+    ✔ keeps unknown placeholders and styles as written
+
+  Lock Utilities
+    acquireLock
+      ✔ ignores unlock failures
+
+  Object Utilities
+    mergeDeep
+      ✔ should merge nested objects
+      ✔ should replace arrays instead of merging
+      ✔ skips undefined sources
+    diffDeep
+      ✔ keeps only the keys whose value changed
+      ✔ compares arrays by content and keeps new keys
+      ✔ returns an empty object when nothing changed
+    set
+      ✔ should set nested value by path
+
+  Promise Utilities
+    Detour
+      ✔ should wrap a function with side effect
+    CreateDetour
+      ✔ should allow swapping side effects
+      ✔ should work without a detour
+
+
+  1537 passing (1m)
+
+----------------------------------|---------|----------|---------|---------|------------------------
+File                              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s      
+----------------------------------|---------|----------|---------|---------|------------------------
+All files                         |   98.31 |     94.8 |   98.57 |   98.31 |                        
+ src                              |     100 |      100 |      50 |     100 |                        
+  index.ts                        |     100 |      100 |      50 |     100 |                        
+ src/cli                          |   99.36 |    95.61 |   99.47 |   99.36 |                        
+  command-runner.ts               |     100 |       80 |     100 |     100 | 25                     
+  common.ts                       |   95.66 |    91.93 |     100 |   95.66 | ...154,161-163,167-172 
+  core-version.ts                 |     100 |      100 |     100 |     100 |                        
+  executable-lookup.ts            |     100 |    94.44 |     100 |     100 | 45,150                 
+  failure-exit.ts                 |     100 |      100 |     100 |     100 |                        
+  full-cli.ts                     |     100 |      100 |     100 |     100 |                        
+  git-operations.ts               |   99.48 |    88.46 |     100 |   99.48 | 35                     
+  git-url.ts                      |     100 |      100 |     100 |     100 |                        
+  global-package-manager.ts       |   98.75 |     82.6 |     100 |   98.75 | 154-155                
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  lazy-action.ts                  |     100 |      100 |     100 |     100 |                        
+  lock.ts                         |     100 |      100 |     100 |     100 |                        
+  options.ts                      |     100 |      100 |     100 |     100 |                        
+  plugin-arguments.ts             |     100 |      100 |     100 |     100 |                        
+  plugin-compatibility.ts         |     100 |     87.5 |     100 |     100 | 84,126                 
+  plugin-management.ts            |     100 |     94.2 |      96 |     100 | 220,277,284            
+  plugin-package.ts               |   98.62 |    96.77 |     100 |   98.62 | 106-107                
+  plugin-registry.ts              |     100 |      100 |     100 |     100 |                        
+  plugin.ts                       |     100 |      100 |     100 |     100 |                        
+  process-runner.ts               |     100 |    95.65 |     100 |     100 | 70                     
+  production-start.ts             |     100 |      100 |     100 |     100 |                        
+  version-check.ts                |     100 |      100 |     100 |     100 |                        
+ src/cli/commands                 |     100 |      100 |     100 |     100 |                        
+  plugins-action.ts               |     100 |      100 |     100 |     100 |                        
+  plugins.ts                      |     100 |      100 |     100 |     100 |                        
+  update.ts                       |     100 |      100 |     100 |     100 |                        
+ src/cli/commands/config          |     100 |    98.38 |     100 |     100 |                        
+  get-action.ts                   |     100 |      100 |     100 |     100 |                        
+  get.ts                          |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  keys.ts                         |     100 |      100 |     100 |     100 |                        
+  reset-action.ts                 |     100 |      100 |     100 |     100 |                        
+  reset.ts                        |     100 |      100 |     100 |     100 |                        
+  set-action.ts                   |     100 |    88.88 |     100 |     100 | 49                     
+  set.ts                          |     100 |      100 |     100 |     100 |                        
+  show-action.ts                  |     100 |      100 |     100 |     100 |                        
+  show.ts                         |     100 |      100 |     100 |     100 |                        
+ src/cli/commands/module          |     100 |    98.29 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  init-action.ts                  |     100 |    97.82 |     100 |     100 | 91,429                 
+  init.ts                         |     100 |      100 |     100 |     100 |                        
+  test-action.ts                  |     100 |      100 |     100 |     100 |                        
+  test.ts                         |     100 |      100 |     100 |     100 |                        
+ src/cli/commands/project         |   98.13 |    94.26 |     100 |   98.13 |                        
+  build-action.ts                 |     100 |      100 |     100 |     100 |                        
+  build.ts                        |     100 |      100 |     100 |     100 |                        
+  dev-action.ts                   |   94.29 |    88.23 |     100 |   94.29 | ...163-166,185-186,202 
+  dev.ts                          |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  init-action.ts                  |     100 |      100 |     100 |     100 |                        
+  init.ts                         |     100 |      100 |     100 |     100 |                        
+  run.ts                          |     100 |      100 |     100 |     100 |                        
+  start-action.ts                 |   97.26 |       90 |     100 |   97.26 | 55-56                  
+  start.ts                        |     100 |      100 |     100 |     100 |                        
+ src/cli/commands/project/logging |   99.69 |    95.29 |     100 |   99.69 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  logging-draft.ts                |     100 |      100 |     100 |     100 |                        
+  set-action.ts                   |   99.06 |    94.33 |     100 |   99.06 | 136-138                
+  set-operations.ts               |     100 |    98.07 |     100 |     100 | 195                    
+  set-usage.ts                    |     100 |      100 |     100 |     100 |                        
+  set.ts                          |     100 |      100 |     100 |     100 |                        
+  show-action.ts                  |     100 |     86.2 |     100 |     100 | 27,47-48,64            
+  show.ts                         |     100 |      100 |     100 |     100 |                        
+ src/cli/commands/project/modules |   99.53 |    96.22 |     100 |   99.53 |                        
+  add-action.ts                   |   99.48 |    94.44 |     100 |   99.48 | 151-152                
+  add.ts                          |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  install-action.ts               |   98.87 |     93.9 |     100 |   98.87 | 166,301-302,337-338    
+  install.ts                      |     100 |      100 |     100 |     100 |                        
+  list-action.ts                  |     100 |      100 |     100 |     100 |                        
+  list.ts                         |     100 |      100 |     100 |     100 |                        
+  remove-action.ts                |     100 |    96.15 |     100 |     100 | 103                    
+  remove.ts                       |     100 |      100 |     100 |     100 |                        
+  update-action.ts                |     100 |      100 |     100 |     100 |                        
+  update.ts                       |     100 |      100 |     100 |     100 |                        
+ src/cli/commands/shared          |      99 |    95.83 |     100 |      99 |                        
+  names.ts                        |     100 |      100 |     100 |     100 |                        
+  next-steps.ts                   |     100 |      100 |     100 |     100 |                        
+  project-command.ts              |   98.75 |    94.44 |     100 |   98.75 | 35-36                  
+ src/core/build                   |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+ src/core/cli                     |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  public.ts                       |     100 |      100 |     100 |     100 |                        
+ src/core/config                  |   97.79 |    89.63 |     100 |   97.79 |                        
+  config-editor.ts                |   94.76 |    79.06 |     100 |   94.76 | ...238,260-261,349-352 
+  config-loader.ts                |     100 |     92.3 |     100 |     100 | 53,65                  
+  config-parser.ts                |   99.07 |    98.43 |     100 |   99.07 | 158-159                
+  config-paths.ts                 |     100 |      100 |     100 |     100 |                        
+  config-var-graph.ts             |   95.45 |    83.33 |     100 |   95.45 | ...132,142-144,153-154 
+  config-var-store.ts             |     100 |      100 |     100 |     100 |                        
+  config-vars.ts                  |     100 |      100 |     100 |     100 |                        
+  config-writes.ts                |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  module-declarations.ts          |     100 |    77.77 |     100 |     100 | 35,38,55,77            
+  module-entry.ts                 |     100 |      100 |     100 |     100 |                        
+ src/core/downloaders             |   98.06 |    93.51 |     100 |   98.06 |                        
+  git.ts                          |   98.37 |    96.49 |     100 |   98.37 | 44-45,50-51            
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  local-folder.ts                 |     100 |    84.61 |     100 |     100 | 43-44                  
+  local.ts                        |     100 |      100 |     100 |     100 |                        
+  package.ts                      |    94.9 |    88.33 |     100 |    94.9 | ...-95,160-161,212-213 
+  registry.ts                     |     100 |      100 |     100 |     100 |                        
+  types.ts                        |     100 |      100 |     100 |     100 |                        
+  utils.ts                        |     100 |    96.87 |     100 |     100 | 21                     
+ src/core/embedded                |   93.04 |    82.14 |   96.96 |   93.04 |                        
+  host-module.ts                  |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  prepare-embedded.ts             |    91.6 |       80 |   88.88 |    91.6 | 27-35,43-44            
+  proxy-ownership.ts              |   84.84 |    78.94 |     100 |   84.84 | ...0,41-43,57-58,63-64 
+  runtime.ts                      |      95 |     82.6 |     100 |      95 | ...-97,143-146,182-183 
+  types.ts                        |     100 |      100 |     100 |     100 |                        
+ src/core/filesystem              |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+ src/core/modules                 |   98.54 |    94.93 |     100 |   98.54 |                        
+  build-artifact.ts               |     100 |      100 |     100 |     100 |                        
+  diagnostics.ts                  |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  interface-registry.ts           |   94.84 |    91.66 |     100 |   94.84 | 81-82,85-87            
+  lifecycle-signals.ts            |     100 |      100 |     100 |     100 |                        
+  module-cache.ts                 |     100 |      100 |     100 |     100 |                        
+  module-errors.ts                |     100 |    88.88 |     100 |     100 | 15                     
+  module-isolation.ts             |   97.05 |    92.85 |     100 |   97.05 | 102-103,114-115        
+  module-lifecycle.ts             |    98.9 |    98.27 |     100 |    98.9 | 49-50                  
+  module-manager-bindings.ts      |   97.34 |    93.97 |     100 |   97.34 | ...279,328-331,336-339 
+  module-manager-cache.ts         |     100 |      100 |     100 |     100 |                        
+  module-manager-construction.ts  |   96.29 |    90.14 |     100 |   96.29 | ...209,248-249,254-259 
+  module-manager-context.ts       |     100 |      100 |     100 |     100 |                        
+  module-manager-lifecycle.ts     |      99 |       95 |     100 |      99 | 194-195                
+  module-manager-logger.ts        |     100 |      100 |     100 |     100 |                        
+  module-manager-packages.ts      |   94.64 |     91.3 |     100 |   94.64 | ...-96,126-127,140-141 
+  module-manager-records.ts       |   96.29 |    79.41 |     100 |   96.29 | 66-68,106,156-157      
+  module-manager.ts               |     100 |      100 |     100 |     100 |                        
+  module-manifest.ts              |     100 |      100 |     100 |     100 |                        
+  module-registry.ts              |     100 |      100 |     100 |     100 |                        
+  module-tracker.ts               |     100 |      100 |     100 |     100 |                        
+  module.ts                       |     100 |      100 |     100 |     100 |                        
+  path-mapper.ts                  |     100 |      100 |     100 |     100 |                        
+  resolver-detour.ts              |   96.58 |    92.72 |     100 |   96.58 | ...91-92,94-95,215-216 
+  resolver.ts                     |   98.51 |    89.37 |     100 |   98.51 | 66-67,247,333-336      
+  version-checker.ts              |     100 |      100 |     100 |     100 |                        
+ src/core/output                  |   99.86 |    97.61 |   99.28 |   99.86 |                        
+  boundary.ts                     |     100 |      100 |     100 |     100 |                        
+  cancellation.ts                 |     100 |      100 |     100 |     100 |                        
+  capabilities.ts                 |     100 |      100 |     100 |     100 |                        
+  child-process.ts                |     100 |      100 |     100 |     100 |                        
+  cli-ui.ts                       |     100 |      100 |     100 |     100 |                        
+  command.ts                      |     100 |    88.88 |     100 |     100 | 94,120-121             
+  data.ts                         |     100 |      100 |     100 |     100 |                        
+  errors.ts                       |     100 |      100 |     100 |     100 |                        
+  exit-codes.ts                   |     100 |      100 |     100 |     100 |                        
+  failures.ts                     |     100 |    98.21 |     100 |     100 | 70                     
+  flags.ts                        |     100 |      100 |     100 |     100 |                        
+  format.ts                       |     100 |    96.96 |     100 |     100 | 91                     
+  help.ts                         |     100 |    96.66 |    92.3 |     100 | 91                     
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  interface-conflicts.ts          |     100 |      100 |     100 |     100 |                        
+  interface-resolution-error.ts   |     100 |      100 |     100 |     100 |                        
+  logging-utils.ts                |   99.39 |    95.12 |     100 |   99.39 | 328-329                
+  package-manager-name.ts         |     100 |      100 |     100 |     100 |                        
+  package-manager.ts              |   99.66 |    94.36 |     100 |   99.66 | 120                    
+  prompt.ts                       |     100 |     97.5 |     100 |     100 | 165                    
+  symbols.ts                      |     100 |      100 |     100 |     100 |                        
+  tasks.ts                        |   99.53 |      100 |   98.18 |   99.53 | 65-66                  
+  translations.ts                 |     100 |    96.66 |     100 |     100 | 150                    
+  types.ts                        |     100 |      100 |     100 |     100 |                        
+  ui.ts                           |     100 |    98.07 |     100 |     100 | 340,375                
+  usage-errors.ts                 |     100 |      100 |     100 |     100 |                        
+  verbosity.ts                    |     100 |      100 |     100 |     100 |                        
+  windows-command-line.ts         |     100 |      100 |     100 |     100 |                        
+ src/core/repl                    |   87.24 |    93.87 |   85.71 |   87.24 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  launch.ts                       |     100 |      100 |     100 |     100 |                        
+  project-launch.ts               |   84.86 |    93.18 |      80 |   84.86 | ...129,201-219,240-251 
+  repl-session.ts                 |     100 |      100 |     100 |     100 |                        
+ src/core/resolution              |   98.75 |    95.03 |    98.3 |   98.75 |                        
+  binding-diagnostics.ts          |   97.63 |    89.47 |   91.66 |   97.63 | 71-73                  
+  binding-graph-order.ts          |     100 |    91.66 |     100 |     100 | 18                     
+  binding-graph-types.ts          |     100 |      100 |     100 |     100 |                        
+  binding-graph-warnings.ts       |   98.44 |    93.75 |     100 |   98.44 | 23-24                  
+  binding-graph.ts                |     100 |    97.36 |     100 |     100 | 359,422,501-502        
+  binding-providers.ts            |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  instance-copies.ts              |   96.27 |    84.61 |     100 |   96.27 | 30-31,49-50,69-70      
+  interface-dependencies.ts       |   95.34 |    83.33 |     100 |   95.34 | 21-22                  
+  interface-instances.ts          |   98.22 |    95.16 |   94.11 |   98.22 | 62-63,190-191,194      
+  interface-resolution.ts         |   98.72 |    94.11 |     100 |   98.72 | 79-80                  
+  observable-map.ts               |     100 |      100 |     100 |     100 |                        
+  path-owner-index.ts             |     100 |      100 |     100 |     100 |                        
+  stub-interface-runtime.ts       |   97.57 |    94.87 |     100 |   97.57 | 55-56,111-112          
+ src/core/runtime                 |   97.93 |    94.84 |   96.45 |   97.93 |                        
+  build-refresh.ts                |     100 |      100 |     100 |     100 |                        
+  build-runtime.ts                |     100 |     97.5 |     100 |     100 | 135                    
+  core-module-interface.ts        |   95.79 |    90.24 |   82.35 |   95.79 | 169-170,181-187        
+  dev-server-registry.ts          |      95 |    96.77 |   93.33 |      95 | 23-31                  
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  launch-sequence.ts              |   98.14 |    89.09 |     100 |   98.14 | ...269,423-424,428-429 
+  launch-steps.ts                 |     100 |      100 |     100 |     100 |                        
+  module-interfaces.ts            |     100 |    95.83 |     100 |     100 | 53                     
+  module-load-failure.ts          |     100 |    83.33 |     100 |     100 | 10                     
+  module-loading.ts               |   94.01 |    93.75 |      95 |   94.01 | ...150,167-169,184-188 
+  module-reloading.ts             |   97.26 |    93.75 |     100 |   97.26 | 93-94,99-100           
+  process-claim.ts                |     100 |      100 |     100 |     100 |                        
+  runtime-bootstrap.ts            |   98.98 |     97.5 |     100 |   98.98 | 80-81                  
+  runtime-policy.ts               |     100 |      100 |     100 |     100 |                        
+  runtime-types.ts                |     100 |      100 |     100 |     100 |                        
+ src/core/runtime/shutdown        |   97.44 |    92.38 |   96.87 |   97.44 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  process-tree.ts                 |   95.55 |    85.71 |     100 |   95.55 | ...44-45,95-96,111-112 
+  shutdown-manager.ts             |   98.61 |    98.21 |   95.65 |   98.61 | 138-139,151-152        
+ src/core/runtime/watch           |   94.04 |    90.69 |     100 |   94.04 |                        
+  file-hasher.ts                  |     100 |      100 |     100 |     100 |                        
+  file-watcher.ts                 |   95.21 |    91.74 |     100 |   95.21 | ...240,330-331,354-355 
+  hot-reload.ts                   |    87.8 |    82.35 |     100 |    87.8 | 22-24,50-51,61-65      
+ src/core/test                    |    85.4 |    88.76 |   85.71 |    85.4 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  stub-interface.ts               |     100 |      100 |   85.71 |     100 |                        
+  test-context.ts                 |     100 |      100 |     100 |     100 |                        
+  test-module.ts                  |   79.33 |    83.33 |   81.81 |   79.33 | ...218,236-254,311-314 
+  test-runner.ts                  |     100 |      100 |      80 |     100 |                        
+ src/logging                      |   96.51 |    91.83 |     100 |   96.51 |                        
+  index.ts                        |    95.5 |       90 |     100 |    95.5 | 86-91,104-108,229-230  
+  log-template.ts                 |     100 |    96.42 |     100 |     100 | 30                     
+ src/types                        |     100 |      100 |     100 |     100 |                        
+  config.types.ts                 |     100 |      100 |     100 |     100 |                        
+  filesystem.types.ts             |     100 |      100 |     100 |     100 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  module.types.ts                 |     100 |      100 |     100 |     100 |                        
+ src/utils                        |   98.75 |    95.77 |     100 |   98.75 |                        
+  index.ts                        |     100 |      100 |     100 |     100 |                        
+  object.ts                       |     100 |      100 |     100 |     100 |                        
+  package-resolution.ts           |   97.83 |    91.42 |     100 |   97.83 | 123-124,151-152        
+  promise.ts                      |     100 |      100 |     100 |     100 |                        
+----------------------------------|---------|----------|---------|---------|------------------------
+
+> @antelopejs/core@1.17.1 build /home/user/workspace/antelopejs
+> rimraf dist && tsc
+
+ok - named import of createRuntime from an ESM host
+ok - use() returns the interface object
+ok - interface call routes to the module implementation
+ok - host did not surrender SIGINT
+ok - host did not surrender SIGTERM
+ok - no module cache was created
+ok - runtime reports stopped
+
+ESM host verification passed.
+ ELIFECYCLE  Test failed. See above for more details.
+✔ Removed foo
+1 module removed from antelope.config.ts · 0ms
+✖ No AntelopeJS project found at /tmp/project
+  → Run ajs project init <project-name> to create one, or pass --project <path>
+ℹ Running third-party plugin ajs-custom (/tmp/antelopejs-UWEmjM/ajs-custom)
+(node:4123) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ℹ Package manager set to pnpm
+ℹ Package manager set to npm
+✔ Loaded 0 modules
+✔ Constructed modules
+✔ Cloned https://github.com/org/repo.git
+✔ Cloned https://github.com/org/repo.git
+✔ Updated https://github.com/org/repo.git
+✔ Installed dependencies for https___github_com_org_repo_git
+▲ Could not fetch https://github.com/org/repo.git, using cached copy
+✔ Updated https://github.com/org/repo.git
+✔ Cloned https://github.com/org/repo.git
+✔ Cloned https://github.com/org/repo.git
+✔ Updated https://github.com/org/repo.git
+✔ Cloned https://github.com/org/repo.git
+✔ Cloned https://github.com/org/repo.git
+✔ Installed dependencies for group-a
+✔ Installed dependencies for group-b
+✔ Installed dependencies for mod
+[2026-10-28 01:57:36] [ERROR] Failed to provide config variables:
+[2026-10-28 01:57:36] [ERROR]   - ID: api
+[2026-10-28 01:57:36] [ERROR]   - Version: 1.0.0
+[2026-10-28 01:57:36] [ERROR]   - Error: Error: api boom
+    at Object.provide (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:230:19)
+    at Module.provide (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:73:31)
+    at Object.provideModule (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:307:25)
+    at ModuleManager.provideModule (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:416:29)
+    at Object.provideModule (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:149:45)
+    at Object.provideEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:293:32)
+    at ModuleManager.provideEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:410:29)
+    at Object.provideEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:148:44)
+    at /home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:143:33
+    at Array.map (<anonymous>)
+    at Object.runProvidePhase (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:143:16)
+    at ModuleManager.runProvidePhase (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:362:29)
+    at Object.runProvidePhase (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:138:47)
+    at Object.constructAll (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:30:27)
+    at ModuleManager.constructAll (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:324:29)
+    at constructAllErrors (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:96:19)
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:238:30)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:36] [ERROR] Module 'dms' did not construct: provider 'api' failed.
+[2026-10-28 01:57:36] [ERROR] Failed to provide config variables:
+[2026-10-28 01:57:36] [ERROR]   - ID: api
+[2026-10-28 01:57:36] [ERROR]   - Version: 1.0.0
+[2026-10-28 01:57:36] [ERROR]   - Error: Error: api boom
+    at Object.provide (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:254:19)
+    at Module.provide (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:73:31)
+    at Object.provideModule (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:307:25)
+    at ModuleManager.provideModule (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:416:29)
+    at Object.provideModule (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:149:45)
+    at Object.provideEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:293:32)
+    at ModuleManager.provideEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:410:29)
+    at Object.provideEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:148:44)
+    at /home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:143:33
+    at Array.map (<anonymous>)
+    at Object.runProvidePhase (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:143:16)
+    at ModuleManager.runProvidePhase (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:362:29)
+    at Object.runProvidePhase (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:138:47)
+    at Object.constructAll (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:30:27)
+    at ModuleManager.constructAll (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:324:29)
+    at constructAllErrors (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:96:19)
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:268:30)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:36] [ERROR] Module 'gateway' did not provide its config variables: provider 'api' failed.
+[2026-10-28 01:57:36] [ERROR] Module 'dms' did not construct: provider 'gateway' failed.
+[2026-10-28 01:57:36] [ERROR] Module 'dms' did not construct: provider 'api' failed.
+[2026-10-28 01:57:36] [ERROR] Module 'dms' did not construct: provider 'api' failed.
+[2026-10-28 01:57:36] [ERROR] Failed to provide config variables:
+[2026-10-28 01:57:36] [ERROR]   - ID: api
+[2026-10-28 01:57:36] [ERROR]   - Version: 1.0.0
+[2026-10-28 01:57:36] [ERROR]   - Error: Error: api boom
+    at Object.provide (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:367:19)
+    at Module.provide (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:73:31)
+    at Object.provideModule (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:307:25)
+    at ModuleManager.provideModule (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:416:29)
+    at Object.provideModule (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:149:45)
+    at Object.provideEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:293:32)
+    at ModuleManager.provideEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:410:29)
+    at Object.provideEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:148:44)
+    at /home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:143:33
+    at Array.map (<anonymous>)
+    at Object.runProvidePhase (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:143:16)
+    at ModuleManager.runProvidePhase (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:362:29)
+    at Object.runProvidePhase (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:138:47)
+    at Object.constructAll (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:30:27)
+    at ModuleManager.constructAll (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:324:29)
+    at constructAllErrors (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:96:19)
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module-manager.config-vars.test.ts:376:30)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:36] [ERROR] Module 'dms' did not construct: provider 'api' failed.
+[2026-10-28 01:57:36] [ERROR] Failed to construct module:
+[2026-10-28 01:57:36] [ERROR]   - ID: failing
+[2026-10-28 01:57:36] [ERROR]   - Version: 1.0.0
+[2026-10-28 01:57:36] [ERROR]   - Error: Error: construct failed
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module-manager.isolation.test.ts:103:41)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at cbHookRun (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:592:7)
+    at done (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:310:5)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:389:7)
+    at Hook.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:551:10)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:36] [ERROR] Failed to construct module:
+[2026-10-28 01:57:36] [ERROR]   - ID: b
+[2026-10-28 01:57:36] [ERROR]   - Version: 1.0.0
+[2026-10-28 01:57:36] [ERROR]   - Error: Error: construct:b
+    at Module.construct (/home/user/workspace/antelopejs/test/core/module-manager.lifecycle.test.ts:222:15)
+    at Object.constructModule (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:97:18)
+    at ModuleManager.constructModule (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:350:29)
+    at Object.constructModule (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:136:47)
+    at Object.constructEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:323:14)
+    at ModuleManager.constructEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:422:29)
+    at Object.constructEntry (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:150:46)
+    at Object.constructOrDisable (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:192:16)
+    at ModuleManager.constructOrDisable (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:374:29)
+    at Object.constructOrDisable (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:141:50)
+    at /home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:181:34
+    at Array.map (<anonymous>)
+    at Object.constructReadyModules (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:181:14)
+    at ModuleManager.constructReadyModules (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:368:29)
+    at Object.constructReadyModules (/home/user/workspace/antelopejs/src/core/modules/module-manager.ts:140:19)
+    at Object.constructAll (/home/user/workspace/antelopejs/src/core/modules/module-manager-construction.ts:43:20)
+[2026-10-28 01:57:37] [ERROR] Error: destroy failed
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module.test.ts:185:39)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:37] [ERROR] Failed to load module mod Error: load failed
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module.test.ts:231:45)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:37] [ERROR] Error: reload failed
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module.test.ts:245:40)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:37] [ERROR] Error: destroy failed
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module.test.ts:263:39)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:37] [ERROR] Failed to load module diagnostics-module Error: load failed
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module.test.ts:378:28)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at cbHookRun (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:592:7)
+    at done (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:310:5)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:389:7)
+    at Hook.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:551:10)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:37] [ERROR] Failed to load module diagnostics-module Error: sync load failed
+    at Module.loader (/home/user/workspace/antelopejs/test/core/module.test.ts:394:13)
+    at /home/user/workspace/antelopejs/src/core/modules/module.ts:115:26
+    at node:diagnostics_channel:394:23
+    at run (node:diagnostics_channel:186:14)
+    at Channel.runStores (node:diagnostics_channel:195:12)
+    at TracingChannel.tracePromise (node:diagnostics_channel:392:18)
+    at Module.ensureLoaded (/home/user/workspace/antelopejs/src/core/modules/module.ts:114:53)
+    at /home/user/workspace/antelopejs/src/core/modules/module.ts:103:18
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:65:14)
+    at runWithModuleContext (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/internal.ts:205:36)
+    at RunWithModuleContext (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/modules.ts:18:30)
+    at Module.construct (/home/user/workspace/antelopejs/src/core/modules/module.ts:102:31)
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/module.test.ts:398:15)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at cbHookRun (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:592:7)
+    at done (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:310:5)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:389:7)
+    at Hook.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:551:10)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+✔ Constructed modules
+[2026-10-28 01:57:38] [ERROR] Failed to load module alpha Error: Cannot find module '/mods/alpha/no-such-module-entry.js'
+Require stack:
+- /home/user/workspace/antelopejs/src/core/modules/module.ts
+- /home/user/workspace/antelopejs/src/core/modules/index.ts
+- /home/user/workspace/antelopejs/test/core/build/build-artifact.test.ts
+- /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/nodejs/esm-utils.js
+- /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/mocha.js
+- /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/cli/one-and-dones.js
+- /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/cli/options.js
+- /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/bin/mocha.js
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1564:15)
+    at Module._resolveFilename.sharedData.moduleResolveFilenameHook.installedValue [as _resolveFilename] (/home/user/workspace/antelopejs/node_modules/.pnpm/@cspotcode+source-map-support@0.8.1/node_modules/@cspotcode/source-map-support/source-map-support.js:811:30)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at /home/user/workspace/antelopejs/src/core/modules/module.ts:25:36
+    at async Module.defaultLoader [as loader] (/home/user/workspace/antelopejs/src/core/modules/module.ts:25:15)
+✔ Constructed modules
+[2026-10-28 01:57:38] [ERROR] Failed to clean up modules after startup failure: Error: destroy failed
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/runtime/module-loading.startup.test.ts:111:40)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:41] [ERROR] Uncaught exception: Error: boom
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/runtime/runtime-bootstrap.test.ts:163:18)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate._onImmediate (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:41] [ERROR] Uncaught exception: Error: boom
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/runtime/runtime-bootstrap.test.ts:189:18)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate._onImmediate (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:41] [ERROR] Uncaught exception: Error: boom
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/runtime/runtime-bootstrap.test.ts:215:18)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate._onImmediate (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+[2026-10-28 01:57:41] [ERROR] Shutdown handler error: Error: fail
+    at /home/user/workspace/antelopejs/test/core/shutdown/shutdown-manager.test.ts:113:17
+    at ShutdownManager.runHandler (/home/user/workspace/antelopejs/src/core/runtime/shutdown/shutdown-manager.ts:283:13)
+    at ShutdownManager.runHandlersWithin (/home/user/workspace/antelopejs/src/core/runtime/shutdown/shutdown-manager.ts:271:14)
+    at async ShutdownManager.executeHandlers (/home/user/workspace/antelopejs/src/core/runtime/shutdown/shutdown-manager.ts:253:17)
+    at async ShutdownManager.executeShutdown (/home/user/workspace/antelopejs/src/core/runtime/shutdown/shutdown-manager.ts:228:25)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/shutdown/shutdown-manager.test.ts:119:9)
+[2026-10-28 01:57:41] [ERROR] Shutdown timed out after 0.05s, abandoning the handler still running
+[1970-01-01 00:00:00] [ERROR] Shutdown timed out after 0.5s, abandoning the handler still running
+[1970-01-01 00:00:00] [ERROR] Shutdown timed out after 0.5s, abandoning the handler still running
+[1970-01-01 00:00:00] [ERROR] Shutdown timed out after 0.5s, abandoning the handler still running
+[1970-01-01 00:00:00] [ERROR] Shutdown timed out after 0.5s, abandoning the handler still running
+[2026-10-28 01:57:41] [ERROR] Shutdown timed out after 0.05s, abandoning the handler still running
+[2026-10-28 01:57:41] [ERROR] Shutdown timed out after 0.05s, abandoning the handler still running
+[2026-10-28 01:57:42] [ERROR] Failed to clean up modules after startup failure: Error: destroy failed
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/test/test-module.setup.test.ts:77:18)
+    at callFn (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:366:21)
+    at Test.Runnable.run (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runnable.js:354:5)
+    at Runner.runTest (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:719:10)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:842:12
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:634:14)
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:644:7
+    at next (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:527:14)
+    at Immediate.<anonymous> (/home/user/workspace/antelopejs/node_modules/.pnpm/mocha@11.7.5/node_modules/mocha/lib/runner.js:612:5)
+    at processImmediate (node:internal/timers:574:21)
+Failed to watch directory /mod: Error: ENOENT: no such file or directory, watch '/mod'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:188:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod',
+  filename: '/mod'
+}
+Failed to watch directory /mod/page: Error: ENOENT: no such file or directory, watch '/mod/page'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:188:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod/page',
+  filename: '/mod/page'
+}
+Failed to watch directory /mod: Error: ENOENT: no such file or directory, watch '/mod'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:208:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod',
+  filename: '/mod'
+}
+Failed to watch directory /mod/category: Error: ENOENT: no such file or directory, watch '/mod/category'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:208:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod/category',
+  filename: '/mod/category'
+}
+Failed to watch directory /mod/category/xy: Error: ENOENT: no such file or directory, watch '/mod/category/xy'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:208:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod/category/xy',
+  filename: '/mod/category/xy'
+}
+Failed to watch directory /mod: Error: ENOENT: no such file or directory, watch '/mod'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:231:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod',
+  filename: '/mod'
+}
+Failed to watch directory /mod/page: Error: ENOENT: no such file or directory, watch '/mod/page'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:231:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod/page',
+  filename: '/mod/page'
+}
+Failed to watch directory /mod: Error: ENOENT: no such file or directory, watch '/mod'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:242:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod',
+  filename: '/mod'
+}
+Failed to watch directory /mod/page: Error: ENOENT: no such file or directory, watch '/mod/page'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:242:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod/page',
+  filename: '/mod/page'
+}
+Failed to watch directory /mod: Error: ENOENT: no such file or directory, watch '/mod'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:261:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod',
+  filename: '/mod'
+}
+Failed to watch directory /mod/page: Error: ENOENT: no such file or directory, watch '/mod/page'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at FileWatcher.handleNewPath (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:242:12)
+    at async FileWatcher.processFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:183:7)
+    at async FileWatcher.handleFileChange (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:164:7)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:261:9) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod/page',
+  filename: '/mod/page'
+}
+Failed to watch directory /mod: Error: ENOENT: no such file or directory, watch '/mod'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at watch (node:fs:2608:36)
+    at FileWatcher.startWatching (/home/user/workspace/antelopejs/src/core/runtime/watch/file-watcher.ts:97:30)
+    at Context.<anonymous> (/home/user/workspace/antelopejs/test/core/watch/file-watcher.test.ts:329:17) {
+  errno: -2,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: '/mod',
+  filename: '/mod'
+}
+[2026-10-28 01:57:42] [ERROR] Failed to reload module failing: Error: tsc compilation failed
+    at HotReload.reload (/home/user/workspace/antelopejs/test/core/watch/hot-reload.test.ts:26:15)
+    at HotReload.reloadOne (/home/user/workspace/antelopejs/src/core/runtime/watch/hot-reload.ts:75:18)
+    at HotReload.flush (/home/user/workspace/antelopejs/src/core/runtime/watch/hot-reload.ts:58:22)
+    at Timeout._onTimeout (/home/user/workspace/antelopejs/src/core/runtime/watch/hot-reload.ts:44:17)
+    at listOnTimeout (node:internal/timers:685:17)
+    at processTimers (node:internal/timers:618:7)
+✔ Loaded 0 modules
+✔ Constructed modules
+✔ Constructed modules
+✔ Constructed modules
+✔ Loaded 1 module
+✔ Constructed modules
+✔ Loaded 1 module
+✔ Constructed modules
+✔ Loaded 1 module
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 0 modules
+✔ Constructed modules
+✔ Loaded 1 module
+✔ Constructed modules
+✔ Loaded 0 modules
+✔ Constructed modules
+✔ Loaded 3 modules
+[2026-10-28 01:57:46] [ERROR] Failed to provide config variables:
+[2026-10-28 01:57:46] [ERROR]   - ID: api
+[2026-10-28 01:57:46] [ERROR]   - Version: 1.0.0
+[2026-10-28 01:57:46] [ERROR]   - Error: Error: publicBaseUrl is required outside dev
+    at Object.exports.provide (/tmp/ajs-failed-provider-ciEA3T/api/index.js:2:9)
+    at ModuleLifecycle.runProvide (/home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:52:37)
+    at /home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:42:36
+[2026-10-28 01:57:46] [ERROR] Module 'dms' did not construct: provider 'api' failed.
+[2026-10-28 01:57:46] [ERROR] Failed to construct module:
+[2026-10-28 01:57:46] [ERROR]   - ID: dms-api
+[2026-10-28 01:57:46] [ERROR]   - Version: 1.0.0
+[2026-10-28 01:57:46] [ERROR]   - Error: Error: Interface 'iface-frontend' has no provider: module 'dms' did not construct; the call was rejected.
+    at makeRejection (/home/user/workspace/antelopejs/src/core/resolution/stub-interface-runtime.ts:21:5)
+    at /home/user/workspace/antelopejs/src/core/resolution/stub-interface-runtime.ts:32:22
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:257:49
+    at /home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:134:5
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:65:14)
+    at enterModuleContext (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/internal.ts:240:33)
+    at runAttachment (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:133:28)
+    at AsyncProxy.invoke (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:257:9)
+    at AsyncProxy.call (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:236:19)
+    at Object.func [as AddFrontendModule] (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:292:50)
+    at Object.exports.construct (/tmp/ajs-failed-provider-ciEA3T/dms-api/index.js:3:24)
+    at ModuleLifecycle.applyConstruct (/home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:77:38)
+    at /home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:68:18
+    at TracingChannel.tracePromise (node:diagnostics_channel:370:14)
+    at ModuleLifecycle.runConstruct (/home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:67:40)
+    at /home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:57:36
+✖ Failed to construct modules
+✔ Loaded 1 module
+✔ Constructed modules
+[2026-10-28 01:57:53] [ERROR] Failed to construct module:
+[2026-10-28 01:57:53] [ERROR]   - ID: fragile
+[2026-10-28 01:57:53] [ERROR]   - Version: 1.0.0
+[2026-10-28 01:57:53] [ERROR]   - Error: Error: page is missing a required option
+    at Object.exports.construct (/tmp/ajs-failed-reload-8e1bce/fragile/index.js:9:11)
+    at ModuleLifecycle.applyConstruct (/home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:77:38)
+    at /home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:68:18
+    at TracingChannel.tracePromise (node:diagnostics_channel:370:14)
+    at ModuleLifecycle.runConstruct (/home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:67:40)
+    at /home/user/workspace/antelopejs/src/core/modules/module-lifecycle.ts:57:36
+[2026-10-28 01:57:53] [ERROR] Unhandled rejection in work of a destroyed module generation; the process keeps running: ModuleContextInvalidatedError: Module context has been invalidated: fragile
+    at assertActiveModuleContext (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/internal.ts:184:11)
+    at captureModuleContext (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/internal.ts:213:5)
+    at AsyncProxy.call (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:231:36)
+    at func (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:292:50)
+    at Timeout._onTimeout (/tmp/ajs-failed-reload-8e1bce/fragile/index.js:7:13)
+    at listOnTimeout (node:internal/timers:685:17)
+    at processTimers (node:internal/timers:618:7)
+[2026-10-28 01:57:53] [ERROR] Unhandled rejection in work of a destroyed module generation; the process keeps running: ModuleContextInvalidatedError: Module context has been invalidated: fragile
+    at assertActiveModuleContext (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/internal.ts:184:11)
+    at captureModuleContext (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/internal.ts:213:5)
+    at AsyncProxy.call (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:231:36)
+    at func (/home/user/workspace/antelopejs/node_modules/.pnpm/@antelopejs+interface-core@0.2.6/node_modules/@antelopejs/interface-core/src/proxies.ts:292:50)
+    at Timeout._onTimeout (/tmp/ajs-failed-reload-8e1bce/fragile/index.js:7:13)
+    at listOnTimeout (node:internal/timers:685:17)
+    at processTimers (node:internal/timers:618:7)
+Watched file deleted: /tmp/ajs-failed-reload-8e1bce/antelope.config.ts
+✔ Loaded 2 modules
+✔ Constructed modules
+Watched file deleted: /tmp/ajs-hmr-proxy-EB6S10/antelope.config.ts
+✔ Loaded 1 module
+✔ Constructed modules
+Watched file deleted: /tmp/ajs-hmr-HAIVZL/antelope.config.ts
+✔ Loaded 1 module
+✔ Constructed modules
+Watched file deleted: /tmp/ajs-hmr-add-py3EKd/antelope.config.ts
+✔ Loaded 1 module
+✔ Constructed modules
+Watched file deleted: /tmp/ajs-hmr-atomic-y3GRlw/antelope.config.ts
+✔ Loaded 5 modules
+✔ Constructed modules
+✔ Loaded 5 modules
+✔ Constructed modules
+✔ Loaded 4 modules
+✔ Constructed modules
+✔ Loaded 4 modules
+✔ Constructed modules
+✔ Loaded 1 module
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+[2026-10-28 01:58:03] [ERROR] Optional module consumer failed to start; running without it Error: Unresolved interface dependencies:
+  - consumer requires iface-pkg
+
+Run 'ajs project modules install' to resolve missing dependencies.
+    at unresolvedInterfacesError (/home/user/workspace/antelopejs/src/core/runtime/module-interfaces.ts:73:10)
+    at ensureInterfacesResolved (/home/user/workspace/antelopejs/src/core/runtime/module-interfaces.ts:96:11)
+    at activateLoadedModules (/home/user/workspace/antelopejs/src/core/runtime/module-interfaces.ts:22:5)
+    at activateLoadedModules (/home/user/workspace/antelopejs/src/core/runtime/module-loading.ts:67:25)
+    at startOptionalModule (/home/user/workspace/antelopejs/src/core/runtime/launch-sequence.ts:344:32)
+    at startOptionalModules (/home/user/workspace/antelopejs/src/core/runtime/launch-sequence.ts:358:11)
+    at runLaunchSteps (/home/user/workspace/antelopejs/src/core/runtime/launch-steps.ts:38:11)
+    at async withRaisedMaxListeners (/home/user/workspace/antelopejs/src/core/runtime/runtime-bootstrap.ts:134:12)
+    at async runLaunchSteps (/home/user/workspace/antelopejs/src/core/runtime/launch-steps.ts:38:5)
+    at async completeLaunchSequence (/home/user/workspace/antelopejs/src/core/runtime/launch-sequence.ts:403:3)
+    at async runLaunchSequence (/home/user/workspace/antelopejs/src/core/runtime/launch-sequence.ts:258:12)
+    at async startProject (/home/user/workspace/antelopejs/src/core/repl/project-launch.ts:178:19)
+    at async launch (/home/user/workspace/antelopejs/src/core/repl/launch.ts:12:19)
+    at async Context.<anonymous> (/home/user/workspace/antelopejs/test/integration/launch.optional.test.ts:218:23)
+✔ Loaded 1 module
+✔ Constructed modules
+✔ Loaded 1 module
+✔ Constructed modules
+✔ Loaded 3 modules
+✔ Constructed modules
+✔ Loaded 1 module
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 3 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 1 module
+✔ Constructed modules
+✔ Loaded 6 modules
+✔ Constructed modules
+✔ Loaded 6 modules
+✔ Constructed modules
+✔ Loaded 6 modules
+✔ Constructed modules
+✔ Loaded 6 modules
+✔ Constructed modules
+✔ Loaded 6 modules
+✔ Loaded 3 modules
+✔ Constructed modules
+✔ Loaded 3 modules
+✔ Constructed modules
+✔ Loaded 3 modules
+✔ Constructed modules
+✔ Loaded 5 modules
+✔ Constructed modules
+✔ Loaded 5 modules
+✔ Constructed modules
+✔ Loaded 5 modules
+✔ Constructed modules
+✔ Loaded 5 modules
+✔ Constructed modules
+✔ Loaded 5 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 3 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 2 modules
+✔ Constructed modules
+✔ Loaded 0 modules
+✔ Constructed modules
+✔ Loaded 0 modules
+✔ Constructed modules
+(node:4623) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ Loaded 3 modules
+✔ Constructed modules
+✔ Loaded 3 modules
+✖ Failed to construct modules
+Error: @antelopejs/core/cli took 35.8 ms to load (budget 30 ms)
+    at verifyLoadBudget (/tmp/ajs-package-consumer-KM3yv8/consumer/verify-cli-api.cjs:179:11)
+    at main (/tmp/ajs-package-consumer-KM3yv8/consumer/verify-cli-api.cjs:188:3)
+    at Object.<anonymous> (/tmp/ajs-package-consumer-KM3yv8/consumer/verify-cli-api.cjs:198:1)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+Error: Command failed: /home/user/.nvm/versions/node/v24.22.1/bin/node /tmp/ajs-package-consumer-KM3yv8/consumer/verify-cli-api.cjs
+    at genericNodeError (node:internal/errors:986:15)
+    at wrappedFn (node:internal/errors:540:14)
+    at checkExecSyncError (node:child_process:943:11)
+    at execFileSync (node:child_process:979:15)
+    at run (/home/user/workspace/antelopejs/test/package-consumer/run.ts:31:22)
+    at verifyConsumer (/home/user/workspace/antelopejs/test/package-consumer/run.ts:129:3)
+    at Object.<anonymous> (/home/user/workspace/antelopejs/test/package-consumer/run.ts:139:3)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Module.m._compile (/home/user/workspace/antelopejs/node_modules/.pnpm/ts-node@10.9.2_@types+node@22.19.15_typescript@5.9.3/node_modules/ts-node/src/index.ts:1618:23)
+    at node:internal/modules/cjs/loader:2060:10 {
+  status: 1,
+  signal: null,
+  output: [ null, '', null ],
+  pid: 4726,
+  stdout: '',
+  stderr: null
+}
+Checks: 6 passed, 1 failed.
+ ELIFECYCLE  Command failed with exit code 1.
+EXIT 1

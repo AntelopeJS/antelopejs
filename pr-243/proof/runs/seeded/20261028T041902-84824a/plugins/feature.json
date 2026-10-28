@@ -1,0 +1,141 @@
+[
+  {
+    "feature": "plugins",
+    "journey": "plugins-not-installed",
+    "title": "plugins lists every official plugin as not installed when none resolves",
+    "entryPoint": "ajs plugins [--json]; ajs plugins list",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-plugins-json",
+        "folder": "plugins/plugins-not-installed/01-plugins-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "dms state",
+            "pass": true,
+            "detail": "expected \"not-installed\", got \"not-installed\""
+          }
+        ]
+      },
+      {
+        "name": "02-plugins-list",
+        "folder": "plugins/plugins-not-installed/02-plugins-list",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stdout matches /dms/",
+            "pass": true,
+            "detail": "dms @antelopejs/dms-frontend - - not installed -"
+          },
+          {
+            "name": "stdout matches /not installed/",
+            "pass": true,
+            "detail": "dms @antelopejs/dms-frontend - - not installed -"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "plugins/plugins-not-installed"
+  },
+  {
+    "feature": "plugins",
+    "journey": "plugins-local",
+    "title": "a plugin in node_modules/.bin is reported local and compatible, and ajs <plugin> runs it with the arguments",
+    "entryPoint": "ajs plugins --json; ajs dms hello --flag",
+    "status": "FAIL",
+    "steps": [
+      {
+        "name": "04-plugins-json",
+        "folder": "plugins/plugins-local/04-plugins-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "dms state",
+            "pass": true,
+            "detail": "expected \"compatible\", got \"compatible\""
+          },
+          {
+            "name": "dms source",
+            "pass": false,
+            "detail": "expected \"local\", got \"global\""
+          },
+          {
+            "name": "dms version",
+            "pass": true,
+            "detail": "expected \"9.9.9\", got \"9.9.9\""
+          }
+        ]
+      },
+      {
+        "name": "05-ajs-dms-hello-flag",
+        "folder": "plugins/plugins-local/05-ajs-dms-hello-flag",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stdout matches /plugin ran with \\[\"hello\",\"--flag\"\\]/",
+            "pass": true,
+            "detail": "plugin ran with [\"hello\",\"--flag\"]"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "plugins/plugins-local"
+  },
+  {
+    "feature": "plugins",
+    "journey": "update-not-global",
+    "title": "update from a source checkout refuses and says to update the project dependency",
+    "entryPoint": "ajs update",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-update",
+        "folder": "plugins/update-not-global/01-update",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /not installed globally/",
+            "pass": true,
+            "detail": "✖ ajs is not installed globally ajs update only updates a CLI installed globally with npm, pnpm or Yarn; this one comes from a project dependency or a source checkout. → Update @antelopejs/core in the project with its package manager instead"
+          }
+        ]
+      },
+      {
+        "name": "02-update-unknown-plugin",
+        "folder": "plugins/update-not-global/02-update-unknown-plugin",
+        "checks": [
+          {
+            "name": "non-zero exit code",
+            "pass": true,
+            "detail": "exit code 2"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "plugins/update-not-global"
+  }
+]

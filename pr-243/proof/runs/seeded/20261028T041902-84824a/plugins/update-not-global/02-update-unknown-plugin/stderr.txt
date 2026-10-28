@@ -1,0 +1,3 @@
+✖ Unknown plugin 'nope'
+  Official plugins: dms.
+  → Run ajs plugins to list them

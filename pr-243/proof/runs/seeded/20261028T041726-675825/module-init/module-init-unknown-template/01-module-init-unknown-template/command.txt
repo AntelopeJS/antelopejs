@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041726-675825/work/module-init/module-init-unknown-template
+ajs module init mod --git file:///tmp/verify-antelopejs/20261028T041726-675825/sources/interfaces.git --template Nope --pm pnpm --no-git-init

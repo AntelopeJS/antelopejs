@@ -1,0 +1,38 @@
+{
+  "feature": "plugins",
+  "journey": "update-not-global",
+  "title": "update from a source checkout refuses and says to update the project dependency",
+  "entryPoint": "ajs update",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-update",
+      "folder": "plugins/update-not-global/01-update",
+      "checks": [
+        {
+          "name": "exit code 1",
+          "pass": true,
+          "detail": "exit code 1"
+        },
+        {
+          "name": "stderr matches /not installed globally/",
+          "pass": true,
+          "detail": "✖ ajs is not installed globally ajs update only updates a CLI installed globally with npm, pnpm or Yarn; this one comes from a project dependency or a source checkout. → Update @antelopejs/core in the project with its package manager instead"
+        }
+      ]
+    },
+    {
+      "name": "02-update-unknown-plugin",
+      "folder": "plugins/update-not-global/02-update-unknown-plugin",
+      "checks": [
+        {
+          "name": "non-zero exit code",
+          "pass": true,
+          "detail": "exit code 2"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "plugins/update-not-global"
+}

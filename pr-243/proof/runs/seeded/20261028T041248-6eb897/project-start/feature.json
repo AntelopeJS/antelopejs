@@ -1,0 +1,650 @@
+[
+  {
+    "feature": "project-start",
+    "journey": "start-from-build",
+    "title": "start serves the built project and SIGINT stops it",
+    "entryPoint": "ajs project build && ajs project start",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-start/start-from-build/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-start/start-from-build/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-start/start-from-build/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-from-build/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-from-build/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-from-build/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-start/start-from-build/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-project-build",
+        "folder": "project-start/start-from-build/06-project-build",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Built 1 module/",
+            "pass": true,
+            "detail": "✔ Found project: app Environment default Project /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-from-build/app Output ./.antelope/build/build.json ℹ Building AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.3s ✔ Loaded 1 module 3.3s Built 1 module → ./.an…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-from-build/app/.antelope/build/build.json exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "08-ready",
+        "folder": "project-start/start-from-build/08-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:36897/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "09-stop-with-sigint",
+        "folder": "project-start/start-from-build/09-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      },
+      {
+        "name": "10-fixture-after-stop",
+        "folder": "project-start/start-from-build/10-fixture-after-stop",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:36897/ is refused",
+            "pass": true,
+            "detail": "connect ECONNREFUSED 127.0.0.1:36897"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-start/start-from-build"
+  },
+  {
+    "feature": "project-start",
+    "journey": "start-without-build",
+    "title": "start without a build fails and says to run ajs project build",
+    "entryPoint": "ajs project start (no build.json)",
+    "status": "FAIL",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-start/start-without-build/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-start/start-without-build/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-start/start-without-build/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-without-build/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Fo…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-without-build/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-without-build/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-start/start-without-build/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-project-start-without-a-build",
+        "folder": "project-start/start-without-build/06-project-start-without-a-build",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /No build found/",
+            "pass": true,
+            "detail": "✖ No build found at .antelope/build/build.json Run with --verbose for the full trace."
+          },
+          {
+            "name": "stderr matches /ajs project build/",
+            "pass": false,
+            "detail": "✖ No build found at .antelope/build/build.json Run with --verbose for the full trace."
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-start/start-without-build"
+  },
+  {
+    "feature": "project-start",
+    "journey": "start-refresh-config",
+    "title": "--refresh-config starts from the current configuration while the module set matches the build",
+    "entryPoint": "ajs project start --refresh-config",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-start/start-refresh-config/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-start/start-refresh-config/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-start/start-refresh-config/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ F…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-start/start-refresh-config/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-project-build",
+        "folder": "project-start/start-refresh-config/06-project-build",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Built 1 module/",
+            "pass": true,
+            "detail": "✔ Found project: app Environment default Project /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config/app Output ./.antelope/build/build.json ℹ Building AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.5s ✔ Loaded 1 module 3.5s Built 1 module → .…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config/app/.antelope/build/build.json exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "08-ready",
+        "folder": "project-start/start-refresh-config/08-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:45109/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "09-stop-with-sigint",
+        "folder": "project-start/start-refresh-config/09-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      },
+      {
+        "name": "10-fixture-after-stop",
+        "folder": "project-start/start-refresh-config/10-fixture-after-stop",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:45109/ is refused",
+            "pass": true,
+            "detail": "connect ECONNREFUSED 127.0.0.1:45109"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-start/start-refresh-config"
+  },
+  {
+    "feature": "project-start",
+    "journey": "start-refresh-config-changed",
+    "title": "--refresh-config exits 3 when the configuration lists a module the build lacks",
+    "entryPoint": "ajs project start --refresh-config after ajs project modules add",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-start/start-refresh-config-changed/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-start/start-refresh-config-changed/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-start/start-refresh-config-changed/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config-changed/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templ…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config-changed/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config-changed/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-start/start-refresh-config-changed/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-project-build",
+        "folder": "project-start/start-refresh-config-changed/06-project-build",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Built 1 module/",
+            "pass": true,
+            "detail": "✔ Found project: app Environment default Project /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config-changed/app Output ./.antelope/build/build.json ℹ Building AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.2s ✔ Loaded 1 module 3.2s Built 1 mo…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-refresh-config-changed/app/.antelope/build/build.json exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "07-pnpm-install-provider",
+        "folder": "project-start/start-refresh-config-changed/07-pnpm-install-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "08-modules-add-provider",
+        "folder": "project-start/start-refresh-config-changed/08-modules-add-provider",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "09-project-start-refresh-config",
+        "folder": "project-start/start-refresh-config-changed/09-project-start-refresh-config",
+        "checks": [
+          {
+            "name": "exit code 3",
+            "pass": true,
+            "detail": "exit code 3"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-start/start-refresh-config-changed"
+  },
+  {
+    "feature": "project-start",
+    "journey": "start-base-build",
+    "title": "a build.json written by the base branch's CLI starts with the head's CLI (Format containment)",
+    "entryPoint": "ajs@base project build && ajs project start",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "start-base-build",
+        "folder": "project-start/start-base-build",
+        "checks": [
+          {
+            "name": "base CLI built by verify-ajs new",
+            "pass": true,
+            "detail": "/home/user/.cache/verify-antelopejs/base/9b812646a162b4601410ac82cded506df571f9fa/dist/core/cli/index.js"
+          }
+        ]
+      },
+      {
+        "name": "01-config-set-git",
+        "folder": "project-start/start-base-build/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-start/start-base-build/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041248-6eb897/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-start/start-base-build/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-base-build/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-base-build/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-base-build/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-start/start-base-build/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-project-build-with-the-base-cli",
+        "folder": "project-start/start-base-build/06-project-build-with-the-base-cli",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Built 1 module/",
+            "pass": true,
+            "detail": "✔ Found project: app Environment default Project /tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-base-build/app Output ./.antelope/build/build.json ℹ Building AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.2s ✔ Loaded 1 module 3.2s Built 1 module → ./.an…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041248-6eb897/work/project-start/start-base-build/app/.antelope/build/build.json exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "08-ready",
+        "folder": "project-start/start-base-build/08-ready",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:33953/ answers 200 with message \"hello from the fixture\"",
+            "pass": true,
+            "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+          }
+        ]
+      },
+      {
+        "name": "09-stop-with-sigint",
+        "folder": "project-start/start-base-build/09-stop-with-sigint",
+        "checks": [
+          {
+            "name": "exit code 130",
+            "pass": true,
+            "detail": "exit code 130"
+          }
+        ]
+      },
+      {
+        "name": "10-fixture-after-stop",
+        "folder": "project-start/start-base-build/10-fixture-after-stop",
+        "checks": [
+          {
+            "name": "GET http://127.0.0.1:33953/ is refused",
+            "pass": true,
+            "detail": "connect ECONNREFUSED 127.0.0.1:33953"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-start/start-base-build"
+  }
+]

@@ -1,0 +1,83 @@
+✔ Found project: greeter
+
+Environment  default
+Watch mode   disabled
+Inspector    disabled
+ℹ Starting AntelopeJS project
+✔ Loaded 1 module
+[2026-10-28 04:20:59] [ERROR] Failed to load module greeter-consumer Error: Cannot find module 'verify-greeter'
+Require stack:
+- /tmp/verify-antelopejs/20261028T042051-4e8a17/work/interface-resolution/resolution-missing-provider/greeter/consumer/index.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/module.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/index.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/cli/commands/project/dev-action.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/cli/commands/project/dev.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/cli/commands/project/index.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/cli/full-cli.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/cli/index.js
+    at ResolverDetourCoordinator.originalResolver (node:internal/modules/cjs/loader:1564:15)
+    at ResolverDetourCoordinator.resolveWith (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:94:43)
+    at ResolverDetourCoordinator.resolve (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:89:21)
+    at Module.installedResolver [as _resolveFilename] (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:55:77)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at ResolverDetourCoordinator.originalLoader (node:internal/modules/cjs/loader:1341:5)
+    at ResolverDetourCoordinator.load (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:72:41)
+    at Module.installedLoader [as _load] (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:56:66)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/tmp/verify-antelopejs/20261028T042051-4e8a17/work/interface-resolution/resolution-missing-provider/greeter/consumer/index.js:2:21)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at ResolverDetourCoordinator.originalLoader (node:internal/modules/cjs/loader:1443:12)
+    at ResolverDetourCoordinator.load (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:72:41)
+    at Module.installedLoader [as _load] (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:56:66)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/module.js:46:77
+    at async Module.defaultLoader [as loader] (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/module.js:46:17)
+[2026-10-28 04:20:59] [ERROR] Failed to construct module:
+[2026-10-28 04:20:59] [ERROR]   - ID: greeter-consumer
+[2026-10-28 04:20:59] [ERROR]   - Version: 1.0.0
+[2026-10-28 04:20:59] [ERROR]   - Error: Error: Cannot find module 'verify-greeter'
+Require stack:
+- /tmp/verify-antelopejs/20261028T042051-4e8a17/work/interface-resolution/resolution-missing-provider/greeter/consumer/index.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/module.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/index.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/cli/commands/project/dev-action.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/cli/commands/project/dev.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/cli/commands/project/index.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/cli/full-cli.js
+- /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/cli/index.js
+    at ResolverDetourCoordinator.originalResolver (node:internal/modules/cjs/loader:1564:15)
+    at ResolverDetourCoordinator.resolveWith (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:94:43)
+    at ResolverDetourCoordinator.resolve (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:89:21)
+    at Module.installedResolver [as _resolveFilename] (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:55:77)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at ResolverDetourCoordinator.originalLoader (node:internal/modules/cjs/loader:1341:5)
+    at ResolverDetourCoordinator.load (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:72:41)
+    at Module.installedLoader [as _load] (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:56:66)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/tmp/verify-antelopejs/20261028T042051-4e8a17/work/interface-resolution/resolution-missing-provider/greeter/consumer/index.js:2:21)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at ResolverDetourCoordinator.originalLoader (node:internal/modules/cjs/loader:1443:12)
+    at ResolverDetourCoordinator.load (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:72:41)
+    at Module.installedLoader [as _load] (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/resolver-detour.js:56:66)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/module.js:46:77
+    at async Module.defaultLoader [as loader] (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/module.js:46:17)
+✖ Failed to construct modules
+✖ Failed to construct modules
+  Run with --verbose for the full trace.

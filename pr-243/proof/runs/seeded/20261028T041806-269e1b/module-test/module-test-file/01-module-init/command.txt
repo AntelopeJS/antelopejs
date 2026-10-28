@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-file
+ajs module init mod --git file:///tmp/verify-antelopejs/20261028T041806-269e1b/sources/interfaces.git --template 'Verify HTTP' --pm pnpm --no-git-init

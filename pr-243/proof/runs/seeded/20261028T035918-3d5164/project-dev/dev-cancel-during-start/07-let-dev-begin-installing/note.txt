@@ -1,0 +1,1 @@
+waited 500 ms: cancel must land while the install command still runs

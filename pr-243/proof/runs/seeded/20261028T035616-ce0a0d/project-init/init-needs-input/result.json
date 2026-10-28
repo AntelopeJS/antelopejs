@@ -1,0 +1,64 @@
+{
+  "feature": "project-init",
+  "journey": "init-needs-input",
+  "title": "without a terminal and without flags, init names the missing flags and writes nothing",
+  "entryPoint": "ajs project init app (CI=1, no flags)",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-init/init-needs-input/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-init/init-needs-input/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init-without-flags",
+      "folder": "project-init/init-needs-input/03-project-init-without-flags",
+      "checks": [
+        {
+          "name": "exit code 2",
+          "pass": true,
+          "detail": "exit code 2"
+        },
+        {
+          "name": "stderr matches /Cannot prompt/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Cannot…"
+        },
+        {
+          "name": "stderr matches /--template <name>/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Cannot…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is absent",
+          "pass": true,
+          "detail": "missing"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-init/init-needs-input"
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "enabled",
+    "pass": true,
+    "detail": "expected true, got true"
+  },
+  {
+    "name": "date format",
+    "pass": true,
+    "detail": "expected \"yyyy-MM-dd HH:mm:ss\", got \"yyyy-MM-dd HH:mm:ss\""
+  }
+]

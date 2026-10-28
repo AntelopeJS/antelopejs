@@ -1,0 +1,4 @@
+✔ Valid module found: verify-http-fixture
+✔ Installed dependencies for verify-http-fixture 4.0s
+✔ Loaded 1 module 4.0s
+✔ Constructed modules

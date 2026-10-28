@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "git read back across versions",
+    "pass": true,
+    "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\""
+  }
+]

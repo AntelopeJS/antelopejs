@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config
+ajs config get git

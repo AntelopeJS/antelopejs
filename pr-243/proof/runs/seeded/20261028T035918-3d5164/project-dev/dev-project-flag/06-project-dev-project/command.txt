@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T035918-3d5164/work/project-dev/dev-project-flag
+ajs project dev --project ./app

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /Could not fetch templates/",
+    "pass": true,
+    "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-unreachable-source/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✖ Could not fetch tem…"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-unreachable-source/app/antelope.config.ts is absent",
+    "pass": true,
+    "detail": "missing"
+  }
+]

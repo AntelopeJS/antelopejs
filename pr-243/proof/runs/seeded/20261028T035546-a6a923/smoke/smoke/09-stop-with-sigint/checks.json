@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 130",
+    "pass": true,
+    "detail": "exit code 130"
+  },
+  {
+    "name": "stderr matches /Stopped the project/",
+    "pass": true,
+    "detail": "✔ Found project: app Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 2.7s ✔ Loaded 1 module 2.7s ✔ Constructed modules ✔ Stopped the project"
+  }
+]

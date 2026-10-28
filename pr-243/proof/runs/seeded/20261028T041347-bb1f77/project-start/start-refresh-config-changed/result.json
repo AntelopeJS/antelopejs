@@ -1,0 +1,134 @@
+{
+  "feature": "project-start",
+  "journey": "start-refresh-config-changed",
+  "title": "--refresh-config exits 3 when the configuration lists a module the build lacks",
+  "entryPoint": "ajs project start --refresh-config after ajs project modules add",
+  "status": "FAIL",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-start/start-refresh-config-changed/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-start/start-refresh-config-changed/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041347-bb1f77/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041347-bb1f77/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-start/start-refresh-config-changed/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config-changed/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templ…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config-changed/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config-changed/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-start/start-refresh-config-changed/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-project-build",
+      "folder": "project-start/start-refresh-config-changed/06-project-build",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Built 1 module/",
+          "pass": true,
+          "detail": "✔ Found project: app Environment default Project /tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config-changed/app Output ./.antelope/build/build.json ℹ Building AntelopeJS project ✔ Installed dependencies for verify-http-fixture 4.0s ✔ Loaded 1 module 4.0s Built 1 mo…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config-changed/app/.antelope/build/build.json exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "07-pnpm-install-provider",
+      "folder": "project-start/start-refresh-config-changed/07-pnpm-install-provider",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "08-modules-add-provider",
+      "folder": "project-start/start-refresh-config-changed/08-modules-add-provider",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "09-project-start-refresh-config",
+      "folder": "project-start/start-refresh-config-changed/09-project-start-refresh-config",
+      "checks": [
+        {
+          "name": "exit code 3",
+          "pass": false,
+          "detail": "exit code 1"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-start/start-refresh-config-changed"
+}

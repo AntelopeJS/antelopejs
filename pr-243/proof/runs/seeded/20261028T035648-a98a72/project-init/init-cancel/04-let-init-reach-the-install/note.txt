@@ -1,0 +1,1 @@
+waited 1500 ms: the template copy and pnpm install run in the first seconds

@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041437-af9102/work/project-modules/modules-remove-unknown/app
+ajs project modules remove nope verify-http-fixture

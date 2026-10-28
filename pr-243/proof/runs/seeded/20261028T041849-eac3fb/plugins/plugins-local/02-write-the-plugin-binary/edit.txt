@@ -1,0 +1,4 @@
+/tmp/verify-antelopejs/20261028T041849-eac3fb/work/plugins/plugins-local/project/node_modules/@antelopejs/dms-frontend/bin.js
+---
+#!/usr/bin/env node
+process.stdout.write(`plugin ran with ${JSON.stringify(process.argv.slice(2))}\n`);

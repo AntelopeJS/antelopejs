@@ -1,0 +1,107 @@
+{
+  "feature": "project-modules",
+  "journey": "modules-add-unreachable-package",
+  "title": "adding an npm package the offline registry cannot serve fails and leaves the configuration as it was",
+  "entryPoint": "ajs project modules add verify-antelopejs-missing-package",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-modules/modules-add-unreachable-package/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-modules/modules-add-unreachable-package/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041531-f7d19e/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041531-f7d19e/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-modules/modules-add-unreachable-package/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-unreachable-package/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 …"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-unreachable-package/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-add-unreachable-package/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-modules/modules-add-unreachable-package/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "07-modules-add-missing-package",
+      "folder": "project-modules/modules-add-unreachable-package/07-modules-add-missing-package",
+      "checks": [
+        {
+          "name": "exit code 1",
+          "pass": true,
+          "detail": "exit code 1"
+        },
+        {
+          "name": "stderr matches /verify-antelopejs-missing-package/",
+          "pass": true,
+          "detail": "✖ Command 'npm view verify-antelopejs-missing-package version' failed with exit code 1 Command output: npm error code ENOTCACHED npm error request to https://registry.npmjs.org/verify-antelopejs-missing-package failed: cache mode is 'only-if-cached' but no cached response is available. npm error A c…"
+        }
+      ]
+    },
+    {
+      "name": "08-tree-after-add",
+      "folder": "project-modules/modules-add-unreachable-package/08-tree-after-add",
+      "checks": [
+        {
+          "name": "file tree unchanged",
+          "pass": true,
+          "detail": "identical"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-modules/modules-add-unreachable-package"
+}

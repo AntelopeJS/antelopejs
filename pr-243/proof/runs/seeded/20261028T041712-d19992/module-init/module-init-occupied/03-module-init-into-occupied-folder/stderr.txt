@@ -1,0 +1,2 @@
+✖ Directory mod is not empty
+  → Pass an empty or new directory: ajs module init <path>

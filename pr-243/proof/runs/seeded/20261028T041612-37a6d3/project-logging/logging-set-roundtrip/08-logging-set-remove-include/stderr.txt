@@ -1,0 +1,6 @@
+✔ Logging enabled
+✔ Removed verify-http-fixture from the include list
+Saved the logging configuration of app
+
+Next steps
+  ajs project logging show  view the current settings

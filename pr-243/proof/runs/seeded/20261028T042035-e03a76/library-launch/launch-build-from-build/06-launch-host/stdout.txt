@@ -1,0 +1,1 @@
+{"launchIsDefault":false,"afterLaunch":"hello from the fixture","afterLaunchStop":null,"afterLaunchFromBuild":"hello from the fixture","afterBuildStop":null}

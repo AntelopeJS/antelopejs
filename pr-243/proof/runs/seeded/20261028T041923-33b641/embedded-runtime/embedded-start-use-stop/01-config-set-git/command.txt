@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-start-use-stop
+ajs config set git file:///tmp/verify-antelopejs/20261028T041923-33b641/sources/interfaces.git

@@ -1,0 +1,16 @@
+✔ Found project: greeter
+
+Environment  default
+Watch mode   disabled
+Inspector    disabled
+ℹ Starting AntelopeJS project
+✔ Installed dependencies for greeter-provider
+✔ Loaded 2 modules
+✖ Failed to construct modules
+✖ Incompatible interface package resolution
+  Modules share one copy of each interface package, and that copy does not work for these modules:
+  greeter-consumer requires verify-greeter@^2.0.0, but the shared copy is 1.0.0
+    shared copy: ./provider/node_modules/.pnpm/verify-greeter@file+..+verify-greeter/node_modules/verify-greeter
+    copy of greeter-consumer: not installed
+  → Update greeter-consumer to a release that supports verify-greeter 1.0.0
+  → Or depend on "verify-greeter": "^1.0.0" in the package.json of greeter-consumer, then reinstall its dependencies

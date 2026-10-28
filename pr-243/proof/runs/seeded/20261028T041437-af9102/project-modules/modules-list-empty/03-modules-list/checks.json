@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "no module lines on stdout",
+    "pass": true,
+    "detail": "expected \"\", got \"\""
+  }
+]

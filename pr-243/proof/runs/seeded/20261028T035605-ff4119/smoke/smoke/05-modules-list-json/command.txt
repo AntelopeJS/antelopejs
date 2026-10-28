@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T035605-ff4119/work/smoke/smoke/app
+ajs project modules list --json

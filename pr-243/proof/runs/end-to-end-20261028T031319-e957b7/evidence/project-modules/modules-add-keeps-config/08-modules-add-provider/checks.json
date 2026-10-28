@@ -1,0 +1,27 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /name: \"kept\"/",
+    "pass": true,
+    "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /greeting: \"kept value\"/",
+    "pass": true,
+    "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /staging/",
+    "pass": true,
+    "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T031319-e957b7/work/project-modules/modules-add-keeps-config/app/antelope.config.ts matches /\"greeter-provider\"/",
+    "pass": true,
+    "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"kept\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", installCommand: [ \"npx tsc\" ] }, config: { greeting: \"kept value\" } }, \"greeter-provider\": { source: { type: \"local\", …"
+  }
+]

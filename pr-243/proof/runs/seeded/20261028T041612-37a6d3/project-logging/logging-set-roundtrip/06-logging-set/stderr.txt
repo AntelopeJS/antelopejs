@@ -1,0 +1,8 @@
+✔ Logging disabled
+✔ Module tracking enabled
+✔ Added verify-http-fixture to the include list
+✔ Set DEBUG format to [{{DATE}}] {{ARGS}}
+Saved the logging configuration of app
+
+Next steps
+  ajs project logging show  view the current settings

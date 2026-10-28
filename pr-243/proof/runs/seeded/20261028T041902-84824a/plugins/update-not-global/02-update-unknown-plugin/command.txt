@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041902-84824a/work/plugins/update-not-global
+ajs update nope

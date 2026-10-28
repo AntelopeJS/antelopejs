@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-unreachable-source
+ajs project init app --template 'Verify HTTP' --pm pnpm --no-git-init

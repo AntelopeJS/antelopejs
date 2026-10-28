@@ -1,0 +1,12 @@
+▲ Using a non-default git repository
+  Its interfaces are not official and may not adhere to community quality standards or best practices.
+✔ Analyzed environment default
+▲ 1 unresolved import in default:
+  verify-greeter@file:../verify-greeter (required by greeter-consumer)
+ℹ greeter-provider is the only module implementing verify-greeter: selected automatically
+✔ Installed dependencies for greeter-provider
+✔ Added greeter-provider ../../../../sources/greeter/provider
+1 module added to antelope.config.ts · 1.2s
+
+Next steps
+  ajs project dev  run the project with its new modules

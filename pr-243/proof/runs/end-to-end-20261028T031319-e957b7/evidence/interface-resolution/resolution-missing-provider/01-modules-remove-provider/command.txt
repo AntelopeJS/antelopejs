@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T031319-e957b7/work/interface-resolution/resolution-missing-provider/greeter
+ajs project modules remove greeter-provider

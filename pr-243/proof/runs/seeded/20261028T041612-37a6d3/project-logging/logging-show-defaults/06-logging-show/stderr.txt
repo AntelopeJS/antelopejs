@@ -1,0 +1,1 @@
+ℹ Logging configuration of app (default)

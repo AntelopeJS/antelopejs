@@ -1,0 +1,3 @@
+✖ --level needs --format
+  --level selects which level template --format replaces; it does not set a minimum log level.
+  → Example: ajs project logging set --level debug --format '[{{DATE}}] {{ARGS}}'

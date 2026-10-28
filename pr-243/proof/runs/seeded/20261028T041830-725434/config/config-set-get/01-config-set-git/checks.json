@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041830-725434/homes/config/config-set-get/.antelopejs/config.json matches /file:\\/\\/\\/tmp\\/verify-antelopejs\\/20261028T041830-725434\\/sources\\/interfaces\\.git/",
+    "pass": true,
+    "detail": "{ \"git\": \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\" }"
+  }
+]

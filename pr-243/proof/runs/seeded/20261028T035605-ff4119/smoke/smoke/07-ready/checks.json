@@ -1,0 +1,7 @@
+[
+  {
+    "name": "GET http://127.0.0.1:36361/ answers 200 with message \"hello from the fixture\"",
+    "pass": false,
+    "detail": "connect ECONNREFUSED 127.0.0.1:36361"
+  }
+]

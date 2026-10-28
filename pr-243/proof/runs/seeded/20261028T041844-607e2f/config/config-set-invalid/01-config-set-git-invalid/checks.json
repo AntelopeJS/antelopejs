@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 2",
+    "pass": false,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stderr matches /Invalid git repository URL 'notaurl'/",
+    "pass": false,
+    "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to notaurl Previous value: https://github.com/AntelopeJS/interfaces.git"
+  }
+]

@@ -1,0 +1,17 @@
+/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/module-manifest.js:181
+            throw new Error(`Missing package.json in '${folder}'`);
+                  ^
+
+Error: Missing package.json in '/tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-missing-provider/greeter/missing-provider'
+    at ModuleManifest.readManifest (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/module-manifest.js:181:19)
+    at async ModuleManifest.create (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/modules/module-manifest.js:162:26)
+    at async /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/embedded/prepare-embedded.js:75:26
+    at async Promise.all (index 0)
+    at async createEmbeddedEntries (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/embedded/prepare-embedded.js:72:21)
+    at async createModuleEntries (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/launch-sequence.js:184:22)
+    at async runLaunchSteps (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/launch-steps.js:23:9)
+    at async withRaisedMaxListeners (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/runtime-bootstrap.js:92:16)
+    at async runLaunchSteps (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/launch-steps.js:23:9)
+    at async completeLaunchSequence (/tmp/verify-antelopejs-seeded-control-vQDXvx/dist/core/runtime/launch-sequence.js:241:5)
+
+Node.js v24.22.1

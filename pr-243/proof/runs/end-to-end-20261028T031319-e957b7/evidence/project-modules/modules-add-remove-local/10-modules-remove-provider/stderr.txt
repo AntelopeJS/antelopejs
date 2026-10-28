@@ -1,0 +1,5 @@
+✔ Removed greeter-provider
+1 module removed from antelope.config.ts · 206ms
+
+Next steps
+  ajs project modules install  check that every interface is still implemented

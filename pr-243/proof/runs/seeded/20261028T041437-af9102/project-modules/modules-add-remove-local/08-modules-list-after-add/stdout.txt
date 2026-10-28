@@ -1,0 +1,34 @@
+[
+  {
+    "name": "verify-http-fixture",
+    "source": {
+      "type": "local",
+      "path": ".",
+      "watchDir": [
+        "src"
+      ],
+      "installCommand": [
+        "npx tsc"
+      ],
+      "reloadCommand": [
+        "npx tsc"
+      ]
+    }
+  },
+  {
+    "name": "greeter-provider",
+    "source": {
+      "type": "local",
+      "path": "../greeter/provider",
+      "watchDir": [
+        "src"
+      ],
+      "installCommand": [
+        "npx tsc"
+      ],
+      "reloadCommand": [
+        "npx tsc"
+      ]
+    }
+  }
+]

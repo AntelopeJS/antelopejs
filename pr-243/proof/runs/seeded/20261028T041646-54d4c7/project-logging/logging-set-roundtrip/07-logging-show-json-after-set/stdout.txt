@@ -1,0 +1,19 @@
+{
+  "enabled": false,
+  "moduleTracking": {
+    "enabled": true,
+    "includes": [
+      "verify-http-fixture"
+    ],
+    "excludes": []
+  },
+  "formatter": {
+    "0": "{{chalk.gray}}[{{DATE}}] {{chalk.magenta}}{{chalk.bold}}[TRACE]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}",
+    "10": "[{{DATE}}] {{ARGS}}",
+    "20": "{{chalk.gray}}[{{DATE}}] {{chalk.green}}{{chalk.bold}}[INFO]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}",
+    "30": "{{chalk.gray}}[{{DATE}}] {{chalk.yellow}}{{chalk.bold}}[WARN]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}",
+    "40": "{{chalk.gray}}[{{DATE}}] {{chalk.red}}{{chalk.bold}}[ERROR]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}",
+    "default": "{{chalk.gray}}[{{DATE}}] {{chalk.white}}{{chalk.bold}}[LOG]{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}"
+  },
+  "dateFormat": "yyyy-MM-dd HH:mm:ss"
+}

@@ -1,0 +1,134 @@
+{
+  "feature": "project-start",
+  "journey": "start-refresh-config",
+  "title": "--refresh-config starts from the current configuration while the module set matches the build",
+  "entryPoint": "ajs project start --refresh-config",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-start/start-refresh-config/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-start/start-refresh-config/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041347-bb1f77/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041347-bb1f77/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-start/start-refresh-config/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ F…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-start/start-refresh-config/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-project-build",
+      "folder": "project-start/start-refresh-config/06-project-build",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Built 1 module/",
+          "pass": true,
+          "detail": "✔ Found project: app Environment default Project /tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config/app Output ./.antelope/build/build.json ℹ Building AntelopeJS project ✔ Installed dependencies for verify-http-fixture 3.1s ✔ Loaded 1 module 3.1s Built 1 module → .…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041347-bb1f77/work/project-start/start-refresh-config/app/.antelope/build/build.json exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "08-ready",
+      "folder": "project-start/start-refresh-config/08-ready",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:35007/ answers 200 with message \"hello from the fixture\"",
+          "pass": true,
+          "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+        }
+      ]
+    },
+    {
+      "name": "09-stop-with-sigint",
+      "folder": "project-start/start-refresh-config/09-stop-with-sigint",
+      "checks": [
+        {
+          "name": "exit code 130",
+          "pass": true,
+          "detail": "exit code 130"
+        }
+      ]
+    },
+    {
+      "name": "10-fixture-after-stop",
+      "folder": "project-start/start-refresh-config/10-fixture-after-stop",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:35007/ is refused",
+          "pass": true,
+          "detail": "connect ECONNREFUSED 127.0.0.1:35007"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-start/start-refresh-config"
+}

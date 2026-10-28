@@ -1,0 +1,6 @@
+✔ Installed dependencies for greeter-provider
+✔ Added greeter-provider ../greeter/provider
+1 module added to antelope.config.ts · 1.0s
+
+Next steps
+  ajs project modules install  resolve the interfaces they need

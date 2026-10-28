@@ -1,0 +1,7 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T041248-6eb897/evidence/project-start/start-refresh-config/10-fixture-after-stop",
+  "url": "http://127.0.0.1:45109/",
+  "status": null,
+  "body": "",
+  "error": "connect ECONNREFUSED 127.0.0.1:45109"
+}

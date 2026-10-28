@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /Project already exists/",
+    "pass": true,
+    "detail": "✖ Project already exists at /tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-existing/app → Pass another directory: ajs project init <project> → Or delete the existing project"
+  }
+]

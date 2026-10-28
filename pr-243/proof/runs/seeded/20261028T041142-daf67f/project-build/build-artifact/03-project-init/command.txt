@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041142-daf67f/work/project-build/build-artifact
+ajs project init app --template 'Verify HTTP' --pm pnpm --no-git-init

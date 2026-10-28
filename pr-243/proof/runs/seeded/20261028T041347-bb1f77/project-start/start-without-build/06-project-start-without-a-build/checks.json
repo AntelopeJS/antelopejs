@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /No build found/",
+    "pass": true,
+    "detail": "✖ No build found at .antelope/build/build.json Run with --verbose for the full trace."
+  },
+  {
+    "name": "stderr matches /ajs project build/",
+    "pass": false,
+    "detail": "✖ No build found at .antelope/build/build.json Run with --verbose for the full trace."
+  }
+]

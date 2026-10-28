@@ -1,0 +1,6 @@
+✔ Valid module found: verify-http-fixture
+✔ Installed dependencies for verify-http-fixture 3.4s
+✔ Loaded 1 module 3.4s
+✔ Constructed modules
+✖ Cannot find module '/tmp/verify-antelopejs/20261028T041734-c193f6/work/module-test/module-test-file-docs-form/test/http.test.js'
+  Run with --verbose for the full trace.

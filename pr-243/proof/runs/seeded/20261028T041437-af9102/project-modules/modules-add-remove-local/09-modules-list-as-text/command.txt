@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041437-af9102/work/project-modules/modules-add-remove-local/app
+ajs project modules list

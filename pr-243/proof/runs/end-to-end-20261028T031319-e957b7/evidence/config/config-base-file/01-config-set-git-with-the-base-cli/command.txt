@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T031319-e957b7/work/config/config-base-file
+ajs@base config set git file:///tmp/verify-antelopejs/20261028T031319-e957b7/sources/interfaces.git

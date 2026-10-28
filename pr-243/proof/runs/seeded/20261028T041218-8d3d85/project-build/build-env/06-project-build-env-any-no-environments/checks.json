@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "/tmp/verify-antelopejs/20261028T041218-8d3d85/work/project-build/build-env/app/.antelope/build/build.json exists",
+    "pass": true,
+    "detail": "present"
+  }
+]

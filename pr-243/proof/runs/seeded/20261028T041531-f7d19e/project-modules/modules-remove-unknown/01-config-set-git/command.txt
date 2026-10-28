@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041531-f7d19e/work/project-modules/modules-remove-unknown
+ajs config set git file:///tmp/verify-antelopejs/20261028T041531-f7d19e/sources/interfaces.git

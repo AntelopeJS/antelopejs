@@ -1,0 +1,221 @@
+[
+  {
+    "feature": "module-init",
+    "journey": "module-init-flags",
+    "title": "module init with every answer as a flag creates and installs the module",
+    "entryPoint": "ajs module init mod --git <offline manifest> --template 'Verify HTTP' --pm pnpm --no-git-init",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-module-init",
+        "folder": "module-init/module-init-flags/01-module-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/package.json exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/node_modules/typescript exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "02-module-files",
+        "folder": "module-init/module-init-flags/02-module-files",
+        "checks": [
+          {
+            "name": "package name",
+            "pass": true,
+            "detail": "expected \"verify-http-fixture\", got \"verify-http-fixture\""
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/src/index.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-flags/mod/.git is absent",
+            "pass": true,
+            "detail": "missing"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-init/module-init-flags"
+  },
+  {
+    "feature": "module-init",
+    "journey": "module-init-env-git",
+    "title": "ANTELOPEJS_GIT selects the interface repository like --git",
+    "entryPoint": "ANTELOPEJS_GIT=<offline manifest> ajs module init mod",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-module-init-with-antelopejs-git",
+        "folder": "module-init/module-init-env-git/01-module-init-with-antelopejs-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-env-git/mod/package.json exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-init/module-init-env-git"
+  },
+  {
+    "feature": "module-init",
+    "journey": "module-init-needs-input",
+    "title": "without a terminal and without --template, module init names the flag and writes nothing",
+    "entryPoint": "ajs module init mod --git <offline manifest> (CI=1)",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-module-init-without-flags",
+        "folder": "module-init/module-init-needs-input/01-module-init-without-flags",
+        "checks": [
+          {
+            "name": "exit code 2",
+            "pass": true,
+            "detail": "exit code 2"
+          },
+          {
+            "name": "stderr matches /Cannot prompt/",
+            "pass": true,
+            "detail": "✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Cannot prompt: this is not an interactive terminal ajs module init mod needs answers it cannot ask for when stdin is no…"
+          },
+          {
+            "name": "stderr matches /--template/",
+            "pass": true,
+            "detail": "✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Cannot prompt: this is not an interactive terminal ajs module init mod needs answers it cannot ask for when stdin is no…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-needs-input/mod is absent",
+            "pass": true,
+            "detail": "missing"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-init/module-init-needs-input"
+  },
+  {
+    "feature": "module-init",
+    "journey": "module-init-occupied",
+    "title": "module init into a non-empty folder refuses and leaves it as it was",
+    "entryPoint": "ajs module init mod (mod has files)",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "03-module-init-into-occupied-folder",
+        "folder": "module-init/module-init-occupied/03-module-init-into-occupied-folder",
+        "checks": [
+          {
+            "name": "non-zero exit code",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /mod/",
+            "pass": true,
+            "detail": "✖ Directory mod is not empty → Pass an empty or new directory: ajs module init <path>"
+          }
+        ]
+      },
+      {
+        "name": "04-tree-after-init",
+        "folder": "module-init/module-init-occupied/04-tree-after-init",
+        "checks": [
+          {
+            "name": "file tree unchanged",
+            "pass": true,
+            "detail": "identical"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-init/module-init-occupied"
+  },
+  {
+    "feature": "module-init",
+    "journey": "module-init-unknown-template",
+    "title": "an unknown template is a usage error that lists the available ones",
+    "entryPoint": "ajs module init mod --template Nope",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-module-init-unknown-template",
+        "folder": "module-init/module-init-unknown-template/01-module-init-unknown-template",
+        "checks": [
+          {
+            "name": "exit code 2",
+            "pass": true,
+            "detail": "exit code 2"
+          },
+          {
+            "name": "stderr matches /Unknown template 'Nope'/",
+            "pass": true,
+            "detail": "✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Unknown template 'Nope' Available: Verify HTTP → Pass one of them, e.g. --template 'Verify HTTP'"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-unknown-template/mod is absent",
+            "pass": true,
+            "detail": "missing"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-init/module-init-unknown-template"
+  },
+  {
+    "feature": "module-init",
+    "journey": "module-init-bad-git",
+    "title": "an unreachable --git repository fails with its URL and writes nothing",
+    "entryPoint": "ajs module init mod --git file:///missing",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-module-init-bad-git",
+        "folder": "module-init/module-init-bad-git/01-module-init-bad-git",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /Could not fetch templates/",
+            "pass": true,
+            "detail": "✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✖ Could not fetch templates from file:///tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-bad-git/missing.git Comman…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-bad-git/mod is absent",
+            "pass": true,
+            "detail": "missing"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-init/module-init-bad-git"
+  }
+]

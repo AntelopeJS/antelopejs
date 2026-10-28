@@ -1,0 +1,129 @@
+{
+  "feature": "smoke",
+  "journey": "smoke",
+  "title": "init a project, run it with dev, call the fixture module, stop with SIGINT",
+  "entryPoint": "ajs project init → ajs project dev → GET / → SIGINT",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "smoke/smoke/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "smoke/smoke/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035546-a6a923/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035546-a6a923/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "smoke/smoke/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035546-a6a923/work/smoke/smoke/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 available interf…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035546-a6a923/work/smoke/smoke/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035546-a6a923/work/smoke/smoke/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "smoke/smoke/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "07-ready",
+      "folder": "smoke/smoke/07-ready",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:35631/ answers 200 with message \"hello from the fixture\"",
+          "pass": true,
+          "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+        }
+      ]
+    },
+    {
+      "name": "08-fixture-call",
+      "folder": "smoke/smoke/08-fixture-call",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:35631/ answers 200 with module \"verify-http-fixture\"",
+          "pass": true,
+          "detail": "status 200, body {\"module\":\"verify-http-fixture\",\"message\":\"hello from the fixture\"}"
+        }
+      ]
+    },
+    {
+      "name": "09-stop-with-sigint",
+      "folder": "smoke/smoke/09-stop-with-sigint",
+      "checks": [
+        {
+          "name": "exit code 130",
+          "pass": true,
+          "detail": "exit code 130"
+        },
+        {
+          "name": "stderr matches /Stopped the project/",
+          "pass": true,
+          "detail": "✔ Found project: app Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for verify-http-fixture 2.7s ✔ Loaded 1 module 2.7s ✔ Constructed modules ✔ Stopped the project"
+        }
+      ]
+    },
+    {
+      "name": "10-fixture-after-stop",
+      "folder": "smoke/smoke/10-fixture-after-stop",
+      "checks": [
+        {
+          "name": "GET http://127.0.0.1:35631/ is refused",
+          "pass": true,
+          "detail": "connect ECONNREFUSED 127.0.0.1:35631"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "smoke/smoke"
+}

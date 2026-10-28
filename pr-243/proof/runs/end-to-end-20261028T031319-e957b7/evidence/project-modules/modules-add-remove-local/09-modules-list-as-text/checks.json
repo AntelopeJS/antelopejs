@@ -1,0 +1,7 @@
+[
+  {
+    "name": "stdout matches /^greeter-provider\\tlocal\\t/m",
+    "pass": true,
+    "detail": "verify-http-fixture local . greeter-provider local ../greeter/provider"
+  }
+]

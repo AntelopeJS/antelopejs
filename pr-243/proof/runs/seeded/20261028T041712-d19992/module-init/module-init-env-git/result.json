@@ -1,0 +1,27 @@
+{
+  "feature": "module-init",
+  "journey": "module-init-env-git",
+  "title": "ANTELOPEJS_GIT selects the interface repository like --git",
+  "entryPoint": "ANTELOPEJS_GIT=<offline manifest> ajs module init mod",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-module-init-with-antelopejs-git",
+      "folder": "module-init/module-init-env-git/01-module-init-with-antelopejs-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041712-d19992/work/module-init/module-init-env-git/mod/package.json exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "module-init/module-init-env-git"
+}

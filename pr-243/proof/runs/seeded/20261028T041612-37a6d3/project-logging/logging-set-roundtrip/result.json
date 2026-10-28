@@ -1,0 +1,149 @@
+{
+  "feature": "project-logging",
+  "journey": "logging-set-roundtrip",
+  "title": "set writes each changed setting to antelope.config.ts, and show reads it back",
+  "entryPoint": "ajs project logging set --disable --include-module m --level debug --format '…'",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-logging/logging-set-roundtrip/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-logging/logging-set-roundtrip/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041612-37a6d3/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041612-37a6d3/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init",
+      "folder": "project-logging/logging-set-roundtrip/03-project-init",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Created project/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-set-roundtrip/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates …"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-set-roundtrip/app/antelope.config.ts exists",
+          "pass": true,
+          "detail": "present"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-set-roundtrip/app/dist/index.js exists",
+          "pass": true,
+          "detail": "present"
+        }
+      ]
+    },
+    {
+      "name": "05-modules-list-json",
+      "folder": "project-logging/logging-set-roundtrip/05-modules-list-json",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "modules read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        }
+      ]
+    },
+    {
+      "name": "06-logging-set",
+      "folder": "project-logging/logging-set-roundtrip/06-logging-set",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041612-37a6d3/work/project-logging/logging-set-roundtrip/app/antelope.config.ts matches /logging/",
+          "pass": true,
+          "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"app\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", watchDir: [ \"src\" ], installCommand: [ \"npx tsc\" ], reloadCommand: [ \"npx tsc\" ] } } }, logging: { enabled: false, modu…"
+        }
+      ]
+    },
+    {
+      "name": "07-logging-show-json-after-set",
+      "folder": "project-logging/logging-set-roundtrip/07-logging-show-json-after-set",
+      "checks": [
+        {
+          "name": "enabled read back",
+          "pass": true,
+          "detail": "expected false, got false"
+        },
+        {
+          "name": "module tracking read back",
+          "pass": true,
+          "detail": "expected true, got true"
+        },
+        {
+          "name": "include list read back",
+          "pass": true,
+          "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+        },
+        {
+          "name": "debug template read back",
+          "pass": true,
+          "detail": "expected \"[{{DATE}}] {{ARGS}}\", got \"[{{DATE}}] {{ARGS}}\""
+        }
+      ]
+    },
+    {
+      "name": "08-logging-set-remove-include",
+      "folder": "project-logging/logging-set-roundtrip/08-logging-set-remove-include",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "09-logging-show-json-after-remove",
+      "folder": "project-logging/logging-set-roundtrip/09-logging-show-json-after-remove",
+      "checks": [
+        {
+          "name": "include list emptied",
+          "pass": true,
+          "detail": "expected [], got []"
+        },
+        {
+          "name": "enabled again",
+          "pass": true,
+          "detail": "expected true, got true"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-logging/logging-set-roundtrip"
+}

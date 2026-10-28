@@ -1,0 +1,7 @@
+{
+  "folder": "/tmp/verify-antelopejs/20261028T031319-e957b7/evidence/project-start/start-base-build/10-fixture-after-stop",
+  "url": "http://127.0.0.1:43033/",
+  "status": null,
+  "body": "",
+  "error": "connect ECONNREFUSED 127.0.0.1:43033"
+}

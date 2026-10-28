@@ -1,0 +1,38 @@
+{
+  "feature": "config",
+  "journey": "config-set-invalid",
+  "title": "an invalid git URL is a usage error that leaves the setting as it was",
+  "entryPoint": "ajs config set git notaurl",
+  "status": "FAIL",
+  "steps": [
+    {
+      "name": "01-config-set-git-invalid",
+      "folder": "config/config-set-invalid/01-config-set-git-invalid",
+      "checks": [
+        {
+          "name": "exit code 2",
+          "pass": false,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "stderr matches /Invalid git repository URL 'notaurl'/",
+          "pass": false,
+          "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to notaurl Previous value: https://github.com/AntelopeJS/interfaces.git"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "config/config-set-invalid/02-config-get-git",
+      "checks": [
+        {
+          "name": "git unchanged",
+          "pass": false,
+          "detail": "expected \"https://github.com/AntelopeJS/interfaces.git\", got \"notaurl\""
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "config/config-set-invalid"
+}

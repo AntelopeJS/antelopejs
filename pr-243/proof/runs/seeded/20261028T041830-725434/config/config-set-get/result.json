@@ -1,0 +1,65 @@
+{
+  "feature": "config",
+  "journey": "config-set-get",
+  "title": "set writes ~/.antelopejs/config.json and get, show read it back",
+  "entryPoint": "ajs config set git <url>; ajs config get git; ajs config show",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "config/config-set-get/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T041830-725434/homes/config/config-set-get/.antelopejs/config.json matches /file:\\/\\/\\/tmp\\/verify-antelopejs\\/20261028T041830-725434\\/sources\\/interfaces\\.git/",
+          "pass": true,
+          "detail": "{ \"git\": \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\" }"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "config/config-set-get/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-config-get-git-json",
+      "folder": "config/config-set-get/03-config-get-git-json",
+      "checks": [
+        {
+          "name": "git read back as JSON",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "04-config-show",
+      "folder": "config/config-set-get/04-config-show",
+      "checks": [
+        {
+          "name": "stdout matches /\\(custom\\)/",
+          "pass": true,
+          "detail": "git file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git (custom)"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "config/config-set-get"
+}

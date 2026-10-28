@@ -1,0 +1,3 @@
+✖ Unknown environment 'nope'
+  Known environments: default, staging
+  → Pass one of them with --env, or add an "environments.nope" entry to the project configuration

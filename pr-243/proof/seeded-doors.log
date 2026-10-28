@@ -1,0 +1,21 @@
+== .agents/skills/verify-antelopejs/seeded-doors/contract.patch
+One-way-door: contract
+  contract: src/cli/commands/project/init.ts
+== .agents/skills/verify-antelopejs/seeded-doors/data.patch
+One-way-door: data, format
+  data: src/cli/common.ts
+  format: src/cli/common.ts
+== .agents/skills/verify-antelopejs/seeded-doors/exposure.patch
+One-way-door: exposure
+  exposure: src/cli/commands/config/show-action.ts
+== .agents/skills/verify-antelopejs/seeded-doors/format.patch
+One-way-door: format
+  format: src/core/modules/build-artifact.ts
+== .agents/skills/verify-antelopejs/seeded-doors/outbound.patch
+One-way-door: format, outbound
+  format: src/cli/version-check.ts
+  outbound: src/cli/version-check.ts
+== .agents/skills/verify-antelopejs/seeded-doors/publish.patch
+One-way-door: contract, publish
+  contract: package.json
+  publish: package.json

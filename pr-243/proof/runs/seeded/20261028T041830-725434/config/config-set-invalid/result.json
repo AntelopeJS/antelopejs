@@ -1,0 +1,38 @@
+{
+  "feature": "config",
+  "journey": "config-set-invalid",
+  "title": "an invalid git URL is a usage error that leaves the setting as it was",
+  "entryPoint": "ajs config set git notaurl",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git-invalid",
+      "folder": "config/config-set-invalid/01-config-set-git-invalid",
+      "checks": [
+        {
+          "name": "exit code 2",
+          "pass": true,
+          "detail": "exit code 2"
+        },
+        {
+          "name": "stderr matches /Invalid git repository URL 'notaurl'/",
+          "pass": true,
+          "detail": "✖ Invalid git repository URL 'notaurl' Expected an https or ssh URL, an scp-like address (git@host:org/repo.git) or an absolute path. → Pass a valid value, e.g. ajs config set git https://github.com/acme/interfaces.git"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "config/config-set-invalid/02-config-get-git",
+      "checks": [
+        {
+          "name": "git unchanged",
+          "pass": true,
+          "detail": "expected \"https://github.com/AntelopeJS/interfaces.git\", got \"https://github.com/AntelopeJS/interfaces.git\""
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "config/config-set-invalid"
+}

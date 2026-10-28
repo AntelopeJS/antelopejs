@@ -1,0 +1,25 @@
+[
+  {
+    "name": "greeter-consumer",
+    "source": {
+      "type": "local",
+      "path": "./consumer"
+    }
+  },
+  {
+    "name": "greeter-provider",
+    "source": {
+      "type": "local",
+      "path": "../../../../sources/greeter/provider",
+      "watchDir": [
+        "src"
+      ],
+      "installCommand": [
+        "npx tsc"
+      ],
+      "reloadCommand": [
+        "npx tsc"
+      ]
+    }
+  }
+]

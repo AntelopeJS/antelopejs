@@ -1,0 +1,321 @@
+[
+  {
+    "feature": "config",
+    "journey": "config-defaults",
+    "title": "a fresh HOME shows the default interface repository",
+    "entryPoint": "ajs config show [--json]; ajs config get git",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-show-json",
+        "folder": "config/config-defaults/01-config-show-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git default",
+            "pass": true,
+            "detail": "expected \"https://github.com/AntelopeJS/interfaces.git\", got \"https://github.com/AntelopeJS/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "02-config-show",
+        "folder": "config/config-defaults/02-config-show",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stdout matches /git\\s+https:\\/\\/github\\.com\\/AntelopeJS\\/interfaces\\.git/",
+            "pass": true,
+            "detail": "git https://github.com/AntelopeJS/interfaces.git"
+          },
+          {
+            "name": "stdout does not match /\\(custom\\)/",
+            "pass": true,
+            "detail": "git https://github.com/AntelopeJS/interfaces.git"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "config/config-defaults"
+  },
+  {
+    "feature": "config",
+    "journey": "config-set-get",
+    "title": "set writes ~/.antelopejs/config.json and get, show read it back",
+    "entryPoint": "ajs config set git <url>; ajs config get git; ajs config show",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "config/config-set-get/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041830-725434/homes/config/config-set-get/.antelopejs/config.json matches /file:\\/\\/\\/tmp\\/verify-antelopejs\\/20261028T041830-725434\\/sources\\/interfaces\\.git/",
+            "pass": true,
+            "detail": "{ \"git\": \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\" }"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "config/config-set-get/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-config-get-git-json",
+        "folder": "config/config-set-get/03-config-get-git-json",
+        "checks": [
+          {
+            "name": "git read back as JSON",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "04-config-show",
+        "folder": "config/config-set-get/04-config-show",
+        "checks": [
+          {
+            "name": "stdout matches /\\(custom\\)/",
+            "pass": true,
+            "detail": "git file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git (custom)"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "config/config-set-get"
+  },
+  {
+    "feature": "config",
+    "journey": "config-set-invalid",
+    "title": "an invalid git URL is a usage error that leaves the setting as it was",
+    "entryPoint": "ajs config set git notaurl",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git-invalid",
+        "folder": "config/config-set-invalid/01-config-set-git-invalid",
+        "checks": [
+          {
+            "name": "exit code 2",
+            "pass": true,
+            "detail": "exit code 2"
+          },
+          {
+            "name": "stderr matches /Invalid git repository URL 'notaurl'/",
+            "pass": true,
+            "detail": "✖ Invalid git repository URL 'notaurl' Expected an https or ssh URL, an scp-like address (git@host:org/repo.git) or an absolute path. → Pass a valid value, e.g. ajs config set git https://github.com/acme/interfaces.git"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "config/config-set-invalid/02-config-get-git",
+        "checks": [
+          {
+            "name": "git unchanged",
+            "pass": true,
+            "detail": "expected \"https://github.com/AntelopeJS/interfaces.git\", got \"https://github.com/AntelopeJS/interfaces.git\""
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "config/config-set-invalid"
+  },
+  {
+    "feature": "config",
+    "journey": "config-unknown-key",
+    "title": "an unknown key fails and lists the valid keys",
+    "entryPoint": "ajs config get nope; ajs config set nope x",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-get-unknown",
+        "folder": "config/config-unknown-key/01-config-get-unknown",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /Invalid configuration key 'nope'/",
+            "pass": true,
+            "detail": "✖ Invalid configuration key 'nope' Valid keys: git"
+          },
+          {
+            "name": "stderr matches /Valid keys: git/",
+            "pass": true,
+            "detail": "✖ Invalid configuration key 'nope' Valid keys: git"
+          }
+        ]
+      },
+      {
+        "name": "02-config-set-unknown",
+        "folder": "config/config-unknown-key/02-config-set-unknown",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /Invalid configuration key 'nope'/",
+            "pass": true,
+            "detail": "✖ Invalid configuration key 'nope' Valid keys: git"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "config/config-unknown-key"
+  },
+  {
+    "feature": "config",
+    "journey": "config-reset",
+    "title": "reset asks for confirmation without a terminal, and --yes restores the defaults",
+    "entryPoint": "ajs config reset; ajs config reset --yes",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "config/config-reset/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-reset-without-yes",
+        "folder": "config/config-reset/02-config-reset-without-yes",
+        "checks": [
+          {
+            "name": "exit code 2",
+            "pass": true,
+            "detail": "exit code 2"
+          },
+          {
+            "name": "stderr matches /config reset --yes/",
+            "pass": true,
+            "detail": "✖ Cannot prompt: this is not an interactive terminal ajs config reset needs an answer it cannot ask for when stdin is not a terminal or CI is set. → Pass it as a flag: ajs config reset --yes"
+          }
+        ]
+      },
+      {
+        "name": "03-config-get-git-after-refused-reset",
+        "folder": "config/config-reset/03-config-get-git-after-refused-reset",
+        "checks": [
+          {
+            "name": "git kept",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "04-config-reset-yes",
+        "folder": "config/config-reset/04-config-reset-yes",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "05-config-get-git-after-reset",
+        "folder": "config/config-reset/05-config-get-git-after-reset",
+        "checks": [
+          {
+            "name": "git restored",
+            "pass": true,
+            "detail": "expected \"https://github.com/AntelopeJS/interfaces.git\", got \"https://github.com/AntelopeJS/interfaces.git\""
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "config/config-reset"
+  },
+  {
+    "feature": "config",
+    "journey": "config-base-file",
+    "title": "a config.json written by the base branch's CLI reads back with the head's CLI (Format containment)",
+    "entryPoint": "ajs@base config set git <url>; ajs config get git",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "config-base-file",
+        "folder": "config/config-base-file",
+        "checks": [
+          {
+            "name": "base CLI built by verify-ajs new",
+            "pass": true,
+            "detail": "/home/user/.cache/verify-antelopejs/base/9b812646a162b4601410ac82cded506df571f9fa/dist/core/cli/index.js"
+          }
+        ]
+      },
+      {
+        "name": "01-config-set-git-with-the-base-cli",
+        "folder": "config/config-base-file/01-config-set-git-with-the-base-cli",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git-with-the-head-cli",
+        "folder": "config/config-base-file/02-config-get-git-with-the-head-cli",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git read back across versions",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041830-725434/sources/interfaces.git\""
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "config/config-base-file"
+  }
+]

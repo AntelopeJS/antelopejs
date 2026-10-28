@@ -1,0 +1,49 @@
+{
+  "feature": "config",
+  "journey": "config-base-file",
+  "title": "a config.json written by the base branch's CLI reads back with the head's CLI (Format containment)",
+  "entryPoint": "ajs@base config set git <url>; ajs config get git",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "config-base-file",
+      "folder": "config/config-base-file",
+      "checks": [
+        {
+          "name": "base CLI built by verify-ajs new",
+          "pass": true,
+          "detail": "/home/user/.cache/verify-antelopejs/base/9b812646a162b4601410ac82cded506df571f9fa/dist/core/cli/index.js"
+        }
+      ]
+    },
+    {
+      "name": "01-config-set-git-with-the-base-cli",
+      "folder": "config/config-base-file/01-config-set-git-with-the-base-cli",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git-with-the-head-cli",
+      "folder": "config/config-base-file/02-config-get-git-with-the-head-cli",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git read back across versions",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T041844-607e2f/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T041844-607e2f/sources/interfaces.git\""
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "config/config-base-file"
+}

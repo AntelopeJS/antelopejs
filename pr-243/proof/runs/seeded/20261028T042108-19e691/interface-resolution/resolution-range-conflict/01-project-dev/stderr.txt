@@ -1,0 +1,11 @@
+✔ Found project: greeter
+
+Environment  default
+Watch mode   disabled
+Inspector    disabled
+ℹ Starting AntelopeJS project
+✔ Installed dependencies for greeter-provider
+✔ Loaded 2 modules
+✔ Constructed modules
+✖ Failed to start modules
+  Run with --verbose for the full trace.

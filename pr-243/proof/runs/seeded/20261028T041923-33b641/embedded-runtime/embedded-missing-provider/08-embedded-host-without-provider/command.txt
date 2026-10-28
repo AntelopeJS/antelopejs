@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-missing-provider
+node /tmp/verify-antelopejs-seeded-control-vQDXvx/dist/index.js /tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-missing-provider/greeter/host /tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-missing-provider/greeter/missing-provider /tmp/verify-antelopejs/20261028T041923-33b641/work/embedded-runtime/embedded-missing-provider/app

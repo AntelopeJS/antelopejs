@@ -1,0 +1,221 @@
+[
+  {
+    "feature": "module-test",
+    "journey": "module-test-pass",
+    "title": "module test loads and starts the module, then its tests reach it over HTTP",
+    "entryPoint": "ajs module test mod",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-module-init",
+        "folder": "module-test/module-test-pass/01-module-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-pass/mod/package.json exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-pass/mod/node_modules/typescript exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "02-module-test",
+        "folder": "module-test/module-test-pass/02-module-test",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stdout matches /1 passing/",
+            "pass": true,
+            "detail": "verify-http-fixture ✔ answers with its message (49ms) 1 passing (53ms)"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-test/module-test-pass"
+  },
+  {
+    "feature": "module-test",
+    "journey": "module-test-fail",
+    "title": "a failing test makes module test exit non-zero and report the failure",
+    "entryPoint": "ajs module test mod (a test expects another message)",
+    "status": "FAIL",
+    "steps": [
+      {
+        "name": "01-module-init",
+        "folder": "module-test/module-test-fail/01-module-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-fail/mod/package.json exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-fail/mod/node_modules/typescript exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "03-module-test",
+        "folder": "module-test/module-test-fail/03-module-test",
+        "checks": [
+          {
+            "name": "non-zero exit code",
+            "pass": false,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stdout matches /1 failing/",
+            "pass": true,
+            "detail": "verify-http-fixture 1) answers with its message 0 passing (42ms) 1 failing 1) verify-http-fixture answers with its message: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal: + actual - expected + 'hello from the fixture' - 'another message' + expected - actual -hello from the fix…"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-test/module-test-fail"
+  },
+  {
+    "feature": "module-test",
+    "journey": "module-test-file",
+    "title": "--file run from the module folder runs only the named test file",
+    "entryPoint": "cd mod && ajs module test --file test/http.test.js",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-module-init",
+        "folder": "module-test/module-test-file/01-module-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-file/mod/package.json exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-file/mod/node_modules/typescript exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "03-module-test-file",
+        "folder": "module-test/module-test-file/03-module-test-file",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stdout matches /1 passing/",
+            "pass": true,
+            "detail": "verify-http-fixture ✔ answers with its message (60ms) 1 passing (65ms)"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-test/module-test-file"
+  },
+  {
+    "feature": "module-test",
+    "journey": "module-test-file-docs-form",
+    "title": "--file with a module path resolves the file inside the module, as docs/5.cli/3.module.md shows",
+    "entryPoint": "ajs module test mod --file test/http.test.js (from the parent folder)",
+    "status": "FAIL",
+    "steps": [
+      {
+        "name": "01-module-init",
+        "folder": "module-test/module-test-file-docs-form/01-module-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-file-docs-form/mod/package.json exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T041806-269e1b/work/module-test/module-test-file-docs-form/mod/node_modules/typescript exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "03-module-test-mod-file",
+        "folder": "module-test/module-test-file-docs-form/03-module-test-mod-file",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": false,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stdout matches /1 passing/",
+            "pass": false,
+            "detail": ""
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-test/module-test-file-docs-form"
+  },
+  {
+    "feature": "module-test",
+    "journey": "module-test-no-config",
+    "title": "a module without antelopeJs.test fails and names the missing setting",
+    "entryPoint": "ajs module test mod (no antelopeJs.test)",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "02-module-test",
+        "folder": "module-test/module-test-no-config/02-module-test",
+        "checks": [
+          {
+            "name": "non-zero exit code",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /antelopeJs\\.test|test/",
+            "pass": true,
+            "detail": "✖ Module plain has no test configuration The antelopeJs.test field of its package.json does not name a test configuration file. → Create antelope.test.ts, exporting defineConfig({ name, modules, test: { folder: \"test\" } }) from @antelopejs/interface-core/config → Point package.json to it: \"antelopeJ…"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "module-test/module-test-no-config"
+  }
+]

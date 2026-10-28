@@ -1,0 +1,8 @@
+/tmp/verify-antelopejs/20261028T041437-af9102/work/project-modules/modules-list-empty/empty/antelope.config.ts
+---
+import { defineConfig } from "@antelopejs/interface-core/config";
+
+export default defineConfig({
+  name: "empty",
+  modules: {},
+});

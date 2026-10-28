@@ -1,0 +1,8 @@
+✔ Directory is valid
+▲ Using a non-default git repository
+  Its interfaces are not official and may not adhere to community quality standards or best practices.
+✔ Found 1 templates
+✔ Found 1 available interfaces
+✔ Module created successfully at /tmp/verify-antelopejs/20261028T041734-c193f6/work/module-test/module-test-file/mod
+✔ Dependencies installed
+Created module from template Verify HTTP → ./mod

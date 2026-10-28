@@ -1,0 +1,7 @@
+[
+  {
+    "name": "git restored",
+    "pass": true,
+    "detail": "expected \"https://github.com/AntelopeJS/interfaces.git\", got \"https://github.com/AntelopeJS/interfaces.git\""
+  }
+]

@@ -1,0 +1,39 @@
+AntelopeJS CLI v1.17.1
+
+Usage: ajs [options] [command]
+
+Build modular Node.js applications from explicit interfaces.
+
+Options:
+  -v, --version             Print the version
+  --verbose [=channels]     Print TRACE logs and full error details, optionally
+                            for some log channels only (comma-separated)
+                            (preset: "*", env: ANTELOPEJS_VERBOSE)
+  -q, --quiet               Print only results, warnings and errors: no
+                            progress, information or summaries (env:
+                            ANTELOPEJS_QUIET)
+  --no-color                Disable colors (also NO_COLOR=1)
+  -h, --help                Show help for a command
+
+Commands:
+  project                   Create, run, build and configure projects
+  module                    Create and test modules
+  config                    Show or change CLI settings
+  update [plugin]           Update the CLI and its global plugins
+  plugins|plugin [options]  List official plugins
+  help [command]            Show help for a command
+
+Plugins:
+  dms        DMS frontend commands (@antelopejs/dms-frontend)
+  Resolved from the nearest node_modules/.bin, then from PATH.
+
+Examples:
+  # Create a project
+  $ ajs project init my-app
+  # Add a module from npm
+  $ ajs project modules add @antelopejs/api
+  # Run the project and reload it on changes
+  $ ajs project dev --watch
+
+Run ajs <command> --help for details.
+Docs: https://antelopejs.com/docs/cli/introduction

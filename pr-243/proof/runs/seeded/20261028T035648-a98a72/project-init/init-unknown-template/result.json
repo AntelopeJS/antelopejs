@@ -1,0 +1,64 @@
+{
+  "feature": "project-init",
+  "journey": "init-unknown-template",
+  "title": "an unknown template is a usage error that lists the available ones and writes nothing",
+  "entryPoint": "ajs project init app --template Nope",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-config-set-git",
+      "folder": "project-init/init-unknown-template/01-config-set-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        }
+      ]
+    },
+    {
+      "name": "02-config-get-git",
+      "folder": "project-init/init-unknown-template/02-config-get-git",
+      "checks": [
+        {
+          "name": "exit code 0",
+          "pass": true,
+          "detail": "exit code 0"
+        },
+        {
+          "name": "git setting read back",
+          "pass": true,
+          "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035648-a98a72/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035648-a98a72/sources/interfaces.git\""
+        }
+      ]
+    },
+    {
+      "name": "03-project-init-unknown-template",
+      "folder": "project-init/init-unknown-template/03-project-init-unknown-template",
+      "checks": [
+        {
+          "name": "exit code 2",
+          "pass": true,
+          "detail": "exit code 2"
+        },
+        {
+          "name": "stderr matches /Unknown template 'Nope'/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-unknown-template/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ U…"
+        },
+        {
+          "name": "stderr matches /Available: Verify HTTP/",
+          "pass": true,
+          "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-unknown-template/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ U…"
+        },
+        {
+          "name": "/tmp/verify-antelopejs/20261028T035648-a98a72/work/project-init/init-unknown-template/app is absent",
+          "pass": true,
+          "detail": "missing"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "project-init/init-unknown-template"
+}

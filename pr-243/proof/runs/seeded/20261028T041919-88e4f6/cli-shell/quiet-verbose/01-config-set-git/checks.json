@@ -1,0 +1,17 @@
+[
+  {
+    "name": "exit code 0",
+    "pass": true,
+    "detail": "exit code 0"
+  },
+  {
+    "name": "stderr matches /✔ Set git/",
+    "pass": true,
+    "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/normal Previous value: https://github.com/AntelopeJS/interfaces.git"
+  },
+  {
+    "name": "stderr matches /▲ Using a non-default git repository/",
+    "pass": true,
+    "detail": "▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Set git to file:///verify/normal Previous value: https://github.com/AntelopeJS/interfaces.git"
+  }
+]

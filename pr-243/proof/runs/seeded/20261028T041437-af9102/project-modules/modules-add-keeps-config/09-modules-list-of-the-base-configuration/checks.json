@@ -1,0 +1,7 @@
+[
+  {
+    "name": "modules read back",
+    "pass": true,
+    "detail": "expected [\"greeter-provider\",\"verify-http-fixture\"], got [\"greeter-provider\",\"verify-http-fixture\"]"
+  }
+]

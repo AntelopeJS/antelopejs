@@ -1,0 +1,12 @@
+[
+  {
+    "name": "exit code 1",
+    "pass": true,
+    "detail": "exit code 1"
+  },
+  {
+    "name": "stderr matches /not installed globally/",
+    "pass": true,
+    "detail": "✖ ajs is not installed globally ajs update only updates a CLI installed globally with npm, pnpm or Yarn; this one comes from a project dependency or a source checkout. → Update @antelopejs/core in the project with its package manager instead"
+  }
+]

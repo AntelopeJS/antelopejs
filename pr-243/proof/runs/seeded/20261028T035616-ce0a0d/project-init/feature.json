@@ -1,0 +1,575 @@
+[
+  {
+    "feature": "project-init",
+    "journey": "init-flags",
+    "title": "every answer as a flag creates the project, its module and its configuration",
+    "entryPoint": "ajs project init app --template 'Verify HTTP' --pm pnpm --no-git-init",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-init/init-flags/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-init/init-flags/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-init/init-flags/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-flags/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 avai…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-flags/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-flags/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-init/init-flags/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "06-project-files",
+        "folder": "project-init/init-flags/06-project-files",
+        "checks": [
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-flags/app/antelope.config.ts matches /name: \"app\"/",
+            "pass": true,
+            "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"app\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", watchDir: [ \"src\" ], installCommand: [ \"npx tsc\" ], reloadCommand: [ \"npx tsc\" ] } } } });"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-flags/app/antelope.config.ts matches /\"verify-http-fixture\": \\{/",
+            "pass": true,
+            "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"app\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", watchDir: [ \"src\" ], installCommand: [ \"npx tsc\" ], reloadCommand: [ \"npx tsc\" ] } } } });"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-flags/app/.git is absent",
+            "pass": true,
+            "detail": "missing"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-flags/app/node_modules/@antelopejs/interface-core exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-init/init-flags"
+  },
+  {
+    "feature": "project-init",
+    "journey": "init-name-git",
+    "title": "--name sets the project name and --git-init creates a repository",
+    "entryPoint": "ajs project init app --name verified --git-init",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-init/init-name-git/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-init/init-name-git/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-init/init-name-git/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-name-git/app/antelope.config.ts matches /name: \"verified\"/",
+            "pass": true,
+            "detail": "import { defineConfig } from '@antelopejs/interface-core/config'; export default defineConfig({ name: \"verified\", modules: { \"verify-http-fixture\": { source: { type: \"local\", path: \".\", watchDir: [ \"src\" ], installCommand: [ \"npx tsc\" ], reloadCommand: [ \"npx tsc\" ] } } } });"
+          }
+        ]
+      },
+      {
+        "name": "04-git-status",
+        "folder": "project-init/init-name-git/04-git-status",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stdout matches /^## /",
+            "pass": true,
+            "detail": "## No commits yet on master ?? .gitignore ?? antelope.config.ts ?? antelope.test.ts ?? package.json ?? pnpm-lock.yaml ?? src/ ?? test/ ?? tsconfig.json"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-init/init-name-git"
+  },
+  {
+    "feature": "project-init",
+    "journey": "init-yes",
+    "title": "--yes takes the default answer of every question",
+    "entryPoint": "ajs project init app --yes",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-init/init-yes/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-init/init-yes/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init-yes",
+        "folder": "project-init/init-yes/03-project-init-yes",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-yes/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "04-modules-list-json",
+        "folder": "project-init/init-yes/04-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-init/init-yes"
+  },
+  {
+    "feature": "project-init",
+    "journey": "init-needs-input",
+    "title": "without a terminal and without flags, init names the missing flags and writes nothing",
+    "entryPoint": "ajs project init app (CI=1, no flags)",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-init/init-needs-input/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-init/init-needs-input/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init-without-flags",
+        "folder": "project-init/init-needs-input/03-project-init-without-flags",
+        "checks": [
+          {
+            "name": "exit code 2",
+            "pass": true,
+            "detail": "exit code 2"
+          },
+          {
+            "name": "stderr matches /Cannot prompt/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Cannot…"
+          },
+          {
+            "name": "stderr matches /--template <name>/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ Cannot…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-needs-input/app is absent",
+            "pass": true,
+            "detail": "missing"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-init/init-needs-input"
+  },
+  {
+    "feature": "project-init",
+    "journey": "init-unknown-template",
+    "title": "an unknown template is a usage error that lists the available ones and writes nothing",
+    "entryPoint": "ajs project init app --template Nope",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-init/init-unknown-template/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-init/init-unknown-template/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init-unknown-template",
+        "folder": "project-init/init-unknown-template/03-project-init-unknown-template",
+        "checks": [
+          {
+            "name": "exit code 2",
+            "pass": true,
+            "detail": "exit code 2"
+          },
+          {
+            "name": "stderr matches /Unknown template 'Nope'/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-unknown-template/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ U…"
+          },
+          {
+            "name": "stderr matches /Available: Verify HTTP/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-unknown-template/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✖ U…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-unknown-template/app is absent",
+            "pass": true,
+            "detail": "missing"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-init/init-unknown-template"
+  },
+  {
+    "feature": "project-init",
+    "journey": "init-existing",
+    "title": "init into an existing project refuses and leaves every file as it was",
+    "entryPoint": "ajs project init app (app already a project)",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-init/init-existing/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-init/init-existing/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "03-project-init",
+        "folder": "project-init/init-existing/03-project-init",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "stderr matches /Created project/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-existing/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✔ Found 1 templates ✔ Found 1 a…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-existing/app/antelope.config.ts exists",
+            "pass": true,
+            "detail": "present"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-existing/app/dist/index.js exists",
+            "pass": true,
+            "detail": "present"
+          }
+        ]
+      },
+      {
+        "name": "05-modules-list-json",
+        "folder": "project-init/init-existing/05-modules-list-json",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "modules read back",
+            "pass": true,
+            "detail": "expected [\"verify-http-fixture\"], got [\"verify-http-fixture\"]"
+          }
+        ]
+      },
+      {
+        "name": "07-project-init-again",
+        "folder": "project-init/init-existing/07-project-init-again",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /Project already exists/",
+            "pass": true,
+            "detail": "✖ Project already exists at /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-existing/app → Pass another directory: ajs project init <project> → Or delete the existing project"
+          }
+        ]
+      },
+      {
+        "name": "08-tree-after-second-init",
+        "folder": "project-init/init-existing/08-tree-after-second-init",
+        "checks": [
+          {
+            "name": "file tree unchanged",
+            "pass": true,
+            "detail": "identical"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-init/init-existing"
+  },
+  {
+    "feature": "project-init",
+    "journey": "init-cancel",
+    "title": "SIGINT while init installs the template stops it with exit code 130 and no process left",
+    "entryPoint": "ajs project init app …, SIGINT during the install",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git",
+        "folder": "project-init/init-cancel/01-config-set-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-config-get-git",
+        "folder": "project-init/init-cancel/02-config-get-git",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          },
+          {
+            "name": "git setting read back",
+            "pass": true,
+            "detail": "expected \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\", got \"file:///tmp/verify-antelopejs/20261028T035616-ce0a0d/sources/interfaces.git\""
+          }
+        ]
+      },
+      {
+        "name": "05-stop-with-sigint-during-init",
+        "folder": "project-init/init-cancel/05-stop-with-sigint-during-init",
+        "checks": [
+          {
+            "name": "ended by SIGINT (exit 130)",
+            "pass": true,
+            "detail": "exit code null, signal SIGINT"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-init/init-cancel"
+  },
+  {
+    "feature": "project-init",
+    "journey": "init-unreachable-source",
+    "title": "an unreachable template repository fails with the URL and writes nothing",
+    "entryPoint": "ajs config set git file:///missing && ajs project init app",
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "01-config-set-git-to-a-missing-repository",
+        "folder": "project-init/init-unreachable-source/01-config-set-git-to-a-missing-repository",
+        "checks": [
+          {
+            "name": "exit code 0",
+            "pass": true,
+            "detail": "exit code 0"
+          }
+        ]
+      },
+      {
+        "name": "02-project-init",
+        "folder": "project-init/init-unreachable-source/02-project-init",
+        "checks": [
+          {
+            "name": "exit code 1",
+            "pass": true,
+            "detail": "exit code 1"
+          },
+          {
+            "name": "stderr matches /Could not fetch templates/",
+            "pass": true,
+            "detail": "✔ Project path /tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-unreachable-source/app is available ✔ Directory is valid ▲ Using a non-default git repository Its interfaces are not official and may not adhere to community quality standards or best practices. ✖ Could not fetch tem…"
+          },
+          {
+            "name": "/tmp/verify-antelopejs/20261028T035616-ce0a0d/work/project-init/init-unreachable-source/app/antelope.config.ts is absent",
+            "pass": true,
+            "detail": "missing"
+          }
+        ]
+      }
+    ],
+    "error": null,
+    "folder": "project-init/init-unreachable-source"
+  }
+]

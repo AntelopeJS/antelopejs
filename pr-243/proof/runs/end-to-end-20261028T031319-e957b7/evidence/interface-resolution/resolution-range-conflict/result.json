@@ -1,0 +1,37 @@
+{
+  "feature": "interface-resolution",
+  "journey": "resolution-range-conflict",
+  "title": "a consumer whose range rejects the shared copy stops the start with the conflict and its fixes",
+  "entryPoint": "ajs project dev, consumer requires verify-greeter ^2.0.0, shared copy 1.0.0",
+  "status": "PASS",
+  "steps": [
+    {
+      "name": "01-project-dev",
+      "folder": "interface-resolution/resolution-range-conflict/01-project-dev",
+      "checks": [
+        {
+          "name": "exit code 1",
+          "pass": true,
+          "detail": "exit code 1"
+        },
+        {
+          "name": "stderr matches /Incompatible interface package resolution/",
+          "pass": true,
+          "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✖ Failed to construct modules ✖ Incompatible interface package resolution Modules share one copy of each interface packag…"
+        },
+        {
+          "name": "stderr matches /greeter-consumer requires verify-greeter@\\^2\\.0\\.0, but the shared copy is 1\\.0\\.0/",
+          "pass": true,
+          "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✖ Failed to construct modules ✖ Incompatible interface package resolution Modules share one copy of each interface packag…"
+        },
+        {
+          "name": "stderr matches /depend on \"verify-greeter\": \"\\^1\\.0\\.0\"/",
+          "pass": true,
+          "detail": "✔ Found project: greeter Environment default Watch mode disabled Inspector disabled ℹ Starting AntelopeJS project ✔ Installed dependencies for greeter-provider ✔ Loaded 2 modules ✖ Failed to construct modules ✖ Incompatible interface package resolution Modules share one copy of each interface packag…"
+        }
+      ]
+    }
+  ],
+  "error": null,
+  "folder": "interface-resolution/resolution-range-conflict"
+}

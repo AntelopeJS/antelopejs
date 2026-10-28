@@ -1,0 +1,28 @@
+
+
+  verify-http-fixture
+    1) answers with its message
+
+
+  0 passing (69ms)
+  1 failing
+
+  1) verify-http-fixture
+       answers with its message:
+
+      AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'hello from the fixture'
+- 'another message'
+
+      + expected - actual
+
+      -hello from the fixture
+      +another message
+      
+      at Context.<anonymous> (mod/test/http.test.js:7:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+
+

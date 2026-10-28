@@ -1,0 +1,12 @@
+/tmp/verify-antelopejs/20261028T041902-84824a/work/plugins/plugins-local/project/node_modules/@antelopejs/dms-frontend/package.json
+---
+{
+  "name": "@antelopejs/dms-frontend",
+  "version": "9.9.9",
+  "bin": {
+    "ajs-dms": "bin.js"
+  },
+  "peerDependencies": {
+    "@antelopejs/core": "^1.17.1"
+  }
+}

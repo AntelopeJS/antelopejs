@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T035713-44fe97/work/project-dev/dev-failed-reload/app
+ajs project modules list --json
