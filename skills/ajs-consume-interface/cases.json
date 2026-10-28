@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "ajs-consume-interface-provide",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "How do I make my module implement the auth interface so other modules can call it?",
+      "expect": {
+        "skills": ["ajs-consume-interface"],
+        "acceptable": ["antelopejs", "core-interface"],
+        "mustMention": ["ImplementInterface", "implements"]
+      }
+    },
+    {
+      "id": "ajs-consume-interface-unresolved-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "startup fails with unresolved interface dependencies, no idea what to do",
+      "expect": {
+        "skills": ["ajs-consume-interface"],
+        "acceptable": ["antelopejs", "ajs-cli"],
+        "mustMention": ["ajs project modules install"]
+      }
+    },
+    {
+      "id": "ajs-consume-interface-optional",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "The auth interface my module uses may have no provider in some projects. How do I declare that and check at runtime whether it is implemented?",
+      "expect": {
+        "skills": ["ajs-consume-interface"],
+        "acceptable": ["antelopejs", "core-interface"],
+        "mustMention": ["optionalDependencies", "GetInterfaceInstances"]
+      }
+    },
+    {
+      "id": "ajs-consume-interface-api-neighbour",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "How do I add a GET endpoint with a controller and a JSON body parameter in my module?",
+      "expect": {
+        "skills": ["api-interface"],
+        "acceptable": ["antelopejs", "core-interface"],
+        "avoid": ["ajs-consume-interface"]
+      }
+    }
+  ]
+}

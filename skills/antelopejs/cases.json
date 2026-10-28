@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "project-config",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "Where is the project configured?",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["antelopejs"],
+        "acceptable": ["ajs-cli", "core-interface"],
+        "mustMention": ["antelope.config.ts"]
+      }
+    },
+    {
+      "id": "project-config-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "where's the config file",
+      "origin": "docs-assistant",
+      "expect": {
+        "skills": ["antelopejs"],
+        "acceptable": ["ajs-cli", "core-interface"],
+        "mustMention": ["antelope.config.ts"]
+      }
+    },
+    {
+      "id": "install-claude-code",
+      "area": "install",
+      "style": "clean",
+      "prompt": "How do I install the AntelopeJS skills in Claude Code?",
+      "expect": {
+        "skills": ["antelopejs"],
+        "acceptable": ["ajs-cli", "dms", "dms-ai"]
+      }
+    },
+    {
+      "id": "install-codex-casual",
+      "area": "install",
+      "style": "casual",
+      "prompt": "the dms skills dont show up in codex",
+      "expect": {
+        "skills": ["antelopejs"],
+        "acceptable": ["dms", "ajs-cli", "dms-ai"]
+      }
+    },
+    {
+      "id": "antelopejs-dms-page-neighbour",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "I want to add a new admin page with a table and a KPI card to my DMS dashboard. Where do I start?",
+      "expect": {
+        "skills": ["dms"],
+        "acceptable": ["dms-pages", "dms-project"],
+        "avoid": ["antelopejs"]
+      }
+    },
+    {
+      "id": "antelopejs-attach-implementation",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "In one or two sentences and no code: how does a module attach its code to an interface so another module can call it without importing it?",
+      "expect": {
+        "skills": ["antelopejs"],
+        "acceptable": [
+          "ajs-consume-interface",
+          "ajs-author-interface",
+          "core-interface"
+        ],
+        "mustMention": ["ImplementInterface"]
+      }
+    }
+  ]
+}
