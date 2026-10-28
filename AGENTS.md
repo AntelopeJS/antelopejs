@@ -29,7 +29,7 @@ The release commit writes `CHANGELOG.md`. release-it and changelogen rewrite it 
 
 ## Guardrails
 
-Finish every change with `pnpm run checks`. It runs typecheck, lint, format, knip, tests, size, and sync, and prints only what failed. The change is done when it prints no failure.
+Finish every change with `pnpm run checks`. It runs typecheck, lint, format, knip, tests, size, suppressions, and sync, and prints only what failed. The change is done when it prints no failure.
 
 Prove a change works with the verification skill in [`.agents/skills/verify-antelopejs/SKILL.md`](.agents/skills/verify-antelopejs/SKILL.md) before you call it done.
 
@@ -53,13 +53,17 @@ Hold every test you write or keep to this checklist:
 
 ### Cleanup proof
 
-A behaviour-preserving cleanup PR shows `antelopejs-api-diff <base-ref>` passing. Published declarations and built runtime exports stay unchanged. A comment-only PR shows `antelopejs-comment-proof <base-ref>` passing instead of a verifier. Both compare committed HEAD.
+A behaviour-preserving cleanup PR shows `antelopejs-api-diff <base-ref>` passing. Published declarations and built runtime exports stay unchanged; pass `--allow-added <glob>` (repeatable, e.g. `'**/internal/**'`) to let added entries under that glob pass when their module is `@internal`, and copy its "Added (allowed)" list. A comment-only PR shows `antelopejs-comment-proof <base-ref>` passing instead of a verifier. Both compare committed HEAD.
 
-Copy counts from the proof's base and HEAD table. Never type counts by hand. Keep the command and the committed head beside the copied output. Directive lines are not individual suppressed rules.
+Copy counts from the proof's base and HEAD table. Never type counts by hand. Keep the command and the committed head beside the copied output. The table counts a lint directive once per rule it names, inline directives included.
 
 Pass `--probe <file.cjs>` to api-diff when changing receivers, positional calls, or modules that no published entry reaches. The same captured script runs against both worktree roots, supplied as `argv[2]`, and prints JSON observations. Matching metadata alone does not prove those behaviours.
 
 An entry-only rule exempts only its own module. Add a second module entry rather than exempting another importer. A no-upward rule must reject peers in the same tier as well as higher tiers. Probe the rank decision with an import, not just a reading of the configuration.
+
+### Suppression budget
+
+`guardrails.suppressions.json` caps the suppressions in authored code: lint directives per rule they name (`*` for none), `@ts-expect-error`, `@ts-ignore` and `SAFETY:` comments. A suppression over its ceiling fails: fix the code, or remove another suppression of the same kind. A rule that keeps needing suppressions should be changed in the preset. Never raise or remove a number in that file: the check fails a ceiling higher than on the pull request base, and only the operator approves a raise. After you remove suppressions, run `pnpm run suppressions:update` and commit the lowered file.
 
 ### What enforces what
 
@@ -79,7 +83,9 @@ An entry-only rule exempts only its own module. Add a second module entry rather
 | Receiver, positional and unpublished-module behaviour                          | `antelopejs-api-diff <base-ref> --probe <file.cjs>` |
 | Type suppressions and directive reasons are justified                          | review; no tool                                     |
 | No-upward rules reject same-tier peers                                         | review and import probes                            |
+| No `@ts-ignore`                                                                | `typescript/ban-ts-comment`                         |
 | Files ≤ 20,000 bytes, tests included                                           | `antelopejs-check-size` (pre-commit)                |
+| Suppressions stay within `guardrails.suppressions.json`                        | `antelopejs-suppressions` (pre-commit, checks)      |
 | Types check                                                                    | `tsc` (pre-push)                                    |
 | No dead files, exports, or dependencies                                        | knip                                                |
 | Managed files match the pack                                                   | `antelopejs-sync --check`                           |

@@ -66,7 +66,9 @@
     "size": "antelopejs-check-size",
     "sync": "antelopejs-sync",
     "sync:check": "antelopejs-sync --check",
-    "typecheck": "tsc --noEmit && tsc -p .agents/skills/verify-antelopejs"
+    "typecheck": "tsc --noEmit && tsc -p .agents/skills/verify-antelopejs",
+    "suppressions": "antelopejs-suppressions",
+    "suppressions:update": "antelopejs-suppressions --update"
   },
   "dependencies": {
     "@antelopejs/interface-core": ">=0.2.6 <0.3.0",
@@ -83,7 +85,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@antelopejs/tooling-configs": "^0.2.3",
+    "@antelopejs/tooling-configs": "^0.2.7",
     "@types/chai": "^4.3.20",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.15",
