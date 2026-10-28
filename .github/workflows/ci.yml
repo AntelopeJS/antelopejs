@@ -22,9 +22,27 @@ jobs:
           node-version: 24
       - run: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts map
 
+  formal-module-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/antelopejs-formal
+          key: tla2tools-1.7.4
+      - run: node .agents/skills/formal-module-lifecycle/check.mjs
+
   checks:
     if: always()
-    needs: [ci, verify-map]
+    needs: [ci, verify-map, formal-module-lifecycle]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
