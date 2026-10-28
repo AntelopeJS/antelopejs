@@ -19,14 +19,16 @@ function getOwnedProxies(owner: string): Set<OwnedProxy>[] {
   );
 }
 
+function hasCleanup(proxy: OwnedProxy): proxy is RuntimeCleanup {
+  return isFunction(proxy.cleanup);
+}
+
 function releaseProxy(proxy: OwnedProxy): void {
-  const cleanup = proxy.cleanup;
-  if (isFunction(cleanup)) {
-    cleanup.call(proxy);
+  if (hasCleanup(proxy)) {
+    proxy.cleanup();
     return;
   }
-  // SAFETY: interface-core stores either a callable cleanup or its legacy detach proxy; the callable-cleanup branch returned above.
-  (proxy as { detach(): void }).detach();
+  proxy.detach();
 }
 
 function forgetProxy(owner: string, proxy: OwnedProxy): void {

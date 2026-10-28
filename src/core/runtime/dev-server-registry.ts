@@ -26,11 +26,8 @@ function isProcessAlive(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    if (!(error instanceof Error)) {
-      return false;
-    }
-    const systemError: NodeJS.ErrnoException = error;
-    return systemError.code === PERMISSION_DENIED_CODE;
+    // SAFETY: Node process.kill reports system-call failures with Error objects carrying an errno code; this catch contains only that native call.
+    return (error as NodeJS.ErrnoException).code === PERMISSION_DENIED_CODE;
   }
 }
 

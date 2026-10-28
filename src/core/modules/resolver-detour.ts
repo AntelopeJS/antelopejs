@@ -169,14 +169,9 @@ class ResolverDetourCoordinator {
     return activeResolver.locate(result, resolvedPath);
   }
 
-  private resolveOriginal(
-    request: string,
-    parent: any,
-    isMain: boolean,
-    options: any,
-  ): string {
+  private resolveOriginal(...args: Parameters<ModuleResolver>): string {
     // SAFETY: only the installed hooks reach this, inside a lease, after ensureInstalled captured Node's resolver and before releaseHooks clears it.
-    return this.originalResolver?.(request, parent, isMain, options) as string;
+    return this.originalResolver?.(...args) as string;
   }
 
   private createResolutionParent(parent: any, resolveFrom?: string): any {
