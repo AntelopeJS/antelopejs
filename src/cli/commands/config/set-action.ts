@@ -2,37 +2,36 @@ import { getProcessUi } from "../../../core/output";
 import {
   displayNonDefaultGitWarning,
   readUserConfig,
-  type UserConfig,
   writeUserConfig,
 } from "../../common";
 import {
-  CONFIG_KEYS,
+  type ConfigKey,
   invalidConfigKeyError,
   invalidConfigValueError,
+  isConfigKey,
 } from "./keys";
 
 const NOT_SET_LABEL = "not set";
 
-function validateSetting(key: string, value: string): void {
-  if (!CONFIG_KEYS.includes(key)) {
+function validateSetting(key: string, value: string): ConfigKey {
+  if (!isConfigKey(key)) {
     throw invalidConfigKeyError(key);
   }
   const valueError = invalidConfigValueError(key, value);
   if (valueError) {
     throw valueError;
   }
+  return key;
 }
 
 export async function setConfigValue(
   key: string,
   value: string,
 ): Promise<void> {
-  validateSetting(key, value);
+  const settingKey = validateSetting(key, value);
   const ui = getProcessUi();
   const shownKey = ui.palette().bold(key);
   const config = await readUserConfig();
-  // SAFETY: validateSetting rejected keys outside CONFIG_KEYS, whose only entry is the UserConfig git setting.
-  const settingKey = key as keyof UserConfig;
   const oldValue = config[settingKey];
   if (oldValue === value) {
     ui.message("info", `${shownKey} is already set to ${value}`);

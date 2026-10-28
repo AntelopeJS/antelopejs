@@ -1,14 +1,20 @@
+import { CANCEL_SYMBOL } from "@clack/prompts";
 import sinon from "sinon";
 
 import { promptEnvironment, type PromptBackend } from "../../src/core/output";
 
-export const CANCEL = Symbol("cancel");
+export const CANCEL = CANCEL_SYMBOL;
 
 type PromptKind = "text" | "confirm" | "select" | "multiselect";
 
 interface AskedOptions {
   message: string;
-  options?: Parameters<PromptBackend["select"]>[0]["options"];
+  options?: Array<{
+    value: unknown;
+    label?: string;
+    hint?: string;
+    disabled?: boolean;
+  }>;
   initialValue?: Parameters<PromptBackend["select"]>[0]["initialValue"];
 }
 
@@ -30,22 +36,24 @@ export interface FakePromptsOptions {
 }
 
 function createBackend(queue: unknown[], asked: AskedPrompt[]): PromptBackend {
-  const answer = (kind: PromptKind) => async (options: AskedOptions) => {
-    asked.push({ kind, message: options.message, options });
-    if (queue.length === 0) {
-      throw new Error(`Unexpected ${kind} prompt: ${options.message}`);
-    }
-    return queue.shift();
-  };
-  // SAFETY: This fake only reads each prompt's message; tests enqueue its matching answer in prompt order, including CANCEL.
+  const answer =
+    (kind: PromptKind) =>
+    async (options: AskedOptions): Promise<any> => {
+      asked.push({ kind, message: options.message, options });
+      if (queue.length === 0) {
+        throw new Error(`Unexpected ${kind} prompt: ${options.message}`);
+      }
+      return queue.shift();
+    };
   return {
     text: answer("text"),
     confirm: answer("confirm"),
     select: answer("select"),
     multiselect: answer("multiselect"),
-    isCancel: (value: Parameters<PromptBackend["isCancel"]>[0]): boolean =>
-      value === CANCEL,
-  } as PromptBackend;
+    isCancel: (
+      value: Parameters<PromptBackend["isCancel"]>[0],
+    ): value is typeof CANCEL_SYMBOL => value === CANCEL_SYMBOL,
+  };
 }
 
 /**

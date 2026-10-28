@@ -48,9 +48,12 @@ function createSubscribers(
   };
 }
 
+function isModuleOperation(key: string): key is ModuleOperation {
+  return Object.hasOwn(ModuleDiagnostics, key);
+}
+
 function operations(): ModuleOperation[] {
-  // SAFETY: ModuleDiagnostics is the fixed channel object imported above, with no additional runtime keys.
-  return Object.keys(ModuleDiagnostics) as ModuleOperation[];
+  return Object.keys(ModuleDiagnostics).filter(isModuleOperation);
 }
 
 /** Subscribes to every module lifecycle channel and collects the published events. */

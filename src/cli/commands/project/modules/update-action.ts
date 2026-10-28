@@ -1,5 +1,6 @@
 import type {
   AntelopeConfig,
+  ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 
@@ -30,26 +31,31 @@ interface UpdateOptions {
   dryRun: boolean;
 }
 
+const PACKAGE_SOURCE_TYPE = "package";
+
+function isPackageSource(source: ModuleSource): source is ModuleSourcePackage {
+  return source.type === PACKAGE_SOURCE_TYPE;
+}
+
 function applyUpdates(
-  env: Partial<AntelopeConfig>,
+  envModules: NonNullable<AntelopeConfig["modules"]>,
   outdated: OutdatedModule[],
   antelopeModules: Record<string, ExpandedModuleConfig>,
 ): void {
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Environment modules is optional in the exported config; missing values must retain the existing indexed-write error rather than a new validation error (#228).
-  const envModules = env.modules as NonNullable<AntelopeConfig["modules"]>;
   for (const entry of outdated) {
+    const { source } = antelopeModules[entry.name];
+    if (!isPackageSource(source)) {
+      continue;
+    }
     envModules[entry.name] = {
       ...antelopeModules[entry.name],
       source: {
-        // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- ConfigLoader leaves package fields unchecked; validating them before this existing spread would change accepted configs (#228).
-        ...(antelopeModules[entry.name].source as ModuleSourcePackage),
+        ...source,
         version: bumpVersionSpec(entry.current, entry.latest),
       },
     };
   }
 }
-
-const PACKAGE_SOURCE_TYPE = "package";
 const UPDATE_COMMAND = "ajs project modules update";
 const DEV_COMMAND = "ajs project dev";
 
@@ -172,7 +178,7 @@ export async function updateModules(
 
   const outdated = await checkOutdatedModules(selectedModules);
   if (outdated.length > 0 && !options.dryRun) {
-    applyUpdates(env, outdated, antelopeConfig.modules);
+    applyUpdates(env.modules, outdated, antelopeConfig.modules);
     await writeConfig(options.project, config);
   }
   displayResults({

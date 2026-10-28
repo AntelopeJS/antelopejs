@@ -1,4 +1,4 @@
-import type * as fsSync from "node:fs";
+import * as fsSync from "node:fs";
 
 import type { IFileSystem } from "../../src/types";
 
@@ -116,12 +116,11 @@ export class InMemoryFileSystem implements IFileSystem {
       throw new Error(`ENOENT: no such file or directory: ${filePath}`);
     }
 
-    // SAFETY: Filesystem consumers in these fixtures read only isFile, isDirectory and size.
-    return {
+    return Object.assign(Object.create(fsSync.Stats.prototype), {
       isFile: () => node.type === "file",
       isDirectory: () => node.type === "directory",
       size: node.content?.length ?? 0,
-    } as fsSync.Stats;
+    });
   }
 
   async mkdir(

@@ -5,7 +5,7 @@ import semver from "semver";
 
 import { getProcessUi, info, isQuietRun } from "../core/output";
 import { CORE_PACKAGE_NAME } from "./core-version";
-import { isNumber, isString } from "../utils";
+import { isFunction, isNumber, isObjectOrNull, isString } from "../utils";
 
 const UPDATE_COMMAND = "ajs update";
 const REGISTRY_URL = "https://registry.npmjs.org";
@@ -39,6 +39,10 @@ interface UpdateCheckCache {
 
 interface PackageManifest {
   version?: unknown;
+}
+
+function isPackageManifest(body: unknown): body is PackageManifest {
+  return (isObjectOrNull(body) && body !== null) || isFunction(body);
 }
 
 function isFlagEnabled(value: string | undefined): boolean {
@@ -121,9 +125,8 @@ async function fetchLatestVersion(
   if (!response.ok) {
     return undefined;
   }
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Registry JSON is deliberately accessed before shape validation; rejecting null here would change the caught property-access error.
-  const manifest = (await response.json()) as PackageManifest;
-  return isString(manifest.version)
+  const manifest = await response.json();
+  return isPackageManifest(manifest) && isString(manifest.version)
     ? (semver.valid(manifest.version) ?? undefined)
     : undefined;
 }

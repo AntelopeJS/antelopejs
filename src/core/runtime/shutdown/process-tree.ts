@@ -64,9 +64,20 @@ function isAlive(pid: number, kill: ProcessKill): boolean {
     kill(pid, 0);
     return true;
   } catch (error) {
-    // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- ProcessTreeOptions accepts a custom kill callback; preserving its thrown-value behavior rules out validating or replacing arbitrary throws here.
-    return (error as NodeJS.ErrnoException).code === PERMISSION_DENIED_CODE;
+    return isPermissionDenied(error);
   }
+}
+
+function isPermissionDenied(
+  thrown: unknown,
+): thrown is { code: typeof PERMISSION_DENIED_CODE } {
+  if (thrown === null || thrown === undefined) {
+    throw new TypeError(
+      `Cannot read properties of ${String(thrown)} (reading 'code')`,
+    );
+  }
+  const candidate: { code?: unknown } = Object(thrown);
+  return candidate.code === PERMISSION_DENIED_CODE;
 }
 
 function signal(pid: number, name: string, kill: ProcessKill): void {

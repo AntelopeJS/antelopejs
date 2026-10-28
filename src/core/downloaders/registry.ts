@@ -25,27 +25,28 @@ type WaitingType = {
   reject: (error?: PromiseRejectedResult["reason"]) => void;
 };
 
+interface KnownDownloader {
+  loaderIdentifier: keyof any;
+  loader: ModuleLoader<any>;
+}
+
 export class DownloaderRegistry {
   private waiting = new Map<string, WaitingType[]>();
-  private knownTypes = new Map<
-    string,
-    { loaderIdentifier: keyof any; loader: ModuleLoader<any> }
-  >();
+  private knownTypes = new Map<string, KnownDownloader>();
 
   register<T extends ModuleSource>(
     type: string,
     loaderIdentifier: keyof T,
     loader: ModuleLoader<T>,
   ): void {
-    this.knownTypes.set(type, { loaderIdentifier, loader });
+    const known: KnownDownloader = { loaderIdentifier, loader };
+    this.knownTypes.set(type, known);
     const waitingList = this.waiting.get(type);
     if (waitingList) {
       for (const waiter of waitingList) {
-        // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- register<T> permits arbitrary custom source extensions and dispatches by a string; validating T would change the exported registration contract.
-        void loader(waiter.cache, waiter.source as T, waiter.options).then(
-          waiter.resolve,
-          waiter.reject,
-        );
+        void known
+          .loader(waiter.cache, waiter.source, waiter.options)
+          .then(waiter.resolve, waiter.reject);
       }
       this.waiting.delete(type);
     }

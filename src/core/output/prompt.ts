@@ -4,7 +4,6 @@ import { isInteractiveSession } from "./capabilities";
 import { CancelledError, NeedsInputError } from "./errors";
 import type {
   MultiSelectQuestion,
-  OutputStream,
   PromptChoice,
   Prompter,
   PrompterOptions,
@@ -32,7 +31,7 @@ type Ask<Answer> = (
 export interface PromptEnvironment {
   isInteractive(): boolean;
   loadBackend(): Promise<PromptBackend>;
-  output(): OutputStream;
+  output(): PromptOutput;
 }
 
 export const promptEnvironment: PromptEnvironment = {
@@ -62,6 +61,13 @@ export function missingFlags<Options>(
   return answers
     .filter((answer) => options[answer.option] === undefined)
     .map((answer) => answer.flag);
+}
+
+function isCancellation(
+  backend: PromptBackend,
+  answer: Parameters<PromptBackend["isCancel"]>[0],
+): answer is symbol {
+  return backend.isCancel(answer);
 }
 
 function toBackendOptions<Value>(
@@ -165,14 +171,12 @@ class SessionPrompter implements Prompter {
       throw this.needsInput(question.flag ? [question.flag] : []);
     }
     const backend = await promptEnvironment.loadBackend();
-    // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- PromptEnvironment.output publicly permits a minimal OutputStream; enforcing Node WriteStream would reject existing custom backends.
-    const output = promptEnvironment.output() as PromptOutput;
+    const output = promptEnvironment.output();
     const answer = await ask(backend, output);
-    if (backend.isCancel(answer)) {
+    if (isCancellation(backend, answer)) {
       throw new CancelledError();
     }
-    // SAFETY: Clack returns a symbol only for cancellation, which isCancel rejected above; the remaining value is the answer of the supplied generic ask callback.
-    return answer as Answer;
+    return answer;
   }
 
   private needsInput(flags: string[]): NeedsInputError {

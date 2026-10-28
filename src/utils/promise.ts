@@ -1,22 +1,24 @@
+type Detoured<T extends (...args: any[]) => any> = (
+  ...args: Parameters<T>
+) => ReturnType<T>;
+
 export function Detour<T extends (...args: any[]) => any>(
   fn: T,
   sideEffect: (...args: Parameters<T>) => void,
-): T {
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- A fresh wrapper does not copy callable-object properties; narrowing the exported T return would break declarations (#227).
-  return ((...args: Parameters<T>) => {
+): Detoured<T> {
+  return (...args: Parameters<T>) => {
     sideEffect(...args);
     return fn(...args);
-  }) as T;
+  };
 }
 
 export function CreateDetour<T extends (...args: any[]) => any>(fn: T) {
   let currentSideEffect: ((...args: Parameters<T>) => void) | undefined;
 
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- A fresh wrapper does not copy callable-object properties; narrowing the exported T return would break declarations (#227).
-  const wrapped = ((...args: Parameters<T>) => {
+  const wrapped: Detoured<T> = (...args: Parameters<T>) => {
     currentSideEffect?.(...args);
     return fn(...args);
-  }) as T;
+  };
 
   return {
     fn: wrapped,

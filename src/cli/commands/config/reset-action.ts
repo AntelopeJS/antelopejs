@@ -9,6 +9,7 @@ import {
   writeUserConfig,
   type UserConfig,
 } from "../../common";
+import { isConfigKey } from "./keys";
 
 interface ResetOptions {
   yes?: boolean;
@@ -35,14 +36,12 @@ function describeResetValues(
 ): DetailEntry[] {
   const ui = getProcessUi();
   const palette = ui.palette();
-  return Object.entries(defaultConfig).map(([key, defaultValue]) => {
-    // SAFETY: getDefaultUserConfig constructs an object literal containing only the UserConfig git key.
-    const currentValue = currentConfig[key as keyof UserConfig];
-    return {
+  return Object.keys(defaultConfig)
+    .filter(isConfigKey)
+    .map((key) => ({
       label: key,
-      value: `${palette.dim(currentValue || NOT_SET_LABEL)} ${ui.symbols.arrow} ${defaultValue}`,
-    };
-  });
+      value: `${palette.dim(currentConfig[key] || NOT_SET_LABEL)} ${ui.symbols.arrow} ${defaultConfig[key]}`,
+    }));
 }
 
 export async function resetConfig(options: ResetOptions): Promise<void> {
@@ -50,10 +49,9 @@ export async function resetConfig(options: ResetOptions): Promise<void> {
   const currentConfig = await readUserConfig();
   const defaultConfig = getDefaultUserConfig();
 
-  const hasChanges = Object.entries(defaultConfig).some(
-    // SAFETY: getDefaultUserConfig constructs an object literal containing only the UserConfig git key.
-    ([key, value]) => currentConfig[key as keyof UserConfig] !== value,
-  );
+  const hasChanges = Object.keys(defaultConfig)
+    .filter(isConfigKey)
+    .some((key) => currentConfig[key] !== defaultConfig[key]);
 
   if (!hasChanges) {
     ui.message("info", "Configuration is already at default values");
