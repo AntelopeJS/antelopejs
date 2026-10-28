@@ -26,8 +26,8 @@ const { levels } = getProcessUi().symbols;
 function stubUserConfig(
   config: Partial<common.UserConfig> & Record<string, string>,
 ): void {
-  // SAFETY: Config get/show enumerate the supplied string entries, including an intentionally absent git key.
-  sinon.stub(common, "readUserConfig").resolves(config as common.UserConfig);
+  const readUserConfig: sinon.SinonStub = sinon.stub(common, "readUserConfig");
+  readUserConfig.resolves(config);
 }
 
 async function runShow(args: string[] = []): Promise<MemoryUi> {

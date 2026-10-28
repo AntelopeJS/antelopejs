@@ -39,22 +39,30 @@ interface ChildListeners {
   close?: ProcessCloseListener;
 }
 
+type ListenerSetters = {
+  [Event in keyof Required<ChildListeners>]: (
+    listener: Required<ChildListeners>[Event],
+  ) => void;
+};
+
 function createChild(
   listeners: ChildListeners,
   kills: ForwardedSignal[],
 ): SpawnedProcess {
+  const store: ListenerSetters = {
+    error: (listener) => {
+      listeners.error = listener;
+    },
+    close: (listener) => {
+      listeners.close = listener;
+    },
+  };
   return {
-    once(
-      event: "error" | "close",
-      listener: ProcessErrorListener | ProcessCloseListener,
+    once<Event extends keyof ListenerSetters>(
+      event: Event,
+      listener: Required<ChildListeners>[Event],
     ) {
-      if (event === "error") {
-        // SAFETY: SpawnedProcess.once overloads pair the error event with ProcessErrorListener.
-        listeners.error = listener as ProcessErrorListener;
-        return undefined;
-      }
-      // SAFETY: The remaining SpawnedProcess.once overload pairs close with ProcessCloseListener.
-      listeners.close = listener as ProcessCloseListener;
+      store[event](listener);
       return undefined;
     },
     kill(signal: ForwardedSignal) {

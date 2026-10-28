@@ -90,8 +90,8 @@ function parseArgsOrReportUsage(
   try {
     return parseProductionStartArgs(args);
   } catch (error) {
-    // SAFETY: parseProductionStartArgs only calls Node's argument parser and our parsers, which throw Error instances on invalid arguments.
-    process.stderr.write(`${(error as Error).message}\n`);
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${message}\n`);
     process.exitCode = USAGE_EXIT_CODE;
     return undefined;
   }

@@ -18,7 +18,13 @@ const CONFIG_VALUE_RULES = {
   },
 } satisfies Record<string, ConfigValueRule>;
 
+export type ConfigKey = keyof typeof CONFIG_VALUE_RULES;
+
 export const CONFIG_KEYS = Object.keys(CONFIG_VALUE_RULES);
+
+export function isConfigKey(key: string): key is ConfigKey {
+  return CONFIG_KEYS.includes(key);
+}
 
 export function invalidConfigKeyError(key: string): CliError {
   return new CliError({

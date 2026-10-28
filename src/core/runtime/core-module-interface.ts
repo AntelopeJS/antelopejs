@@ -72,20 +72,25 @@ function getModuleStatus(module: {
   return statuses[module.state] ?? "unknown";
 }
 
-function toModuleSource(
-  source: moduleInterfaceBeta.ModuleDefinition["source"],
-): ModuleSource {
+type BetaModuleSource = moduleInterfaceBeta.ModuleDefinition["source"];
+
+function isSupportedSource(
+  source: BetaModuleSource,
+): source is BetaModuleSource & ModuleSource {
   const type = source?.type;
-  if (
-    type !== "local" &&
-    type !== "git" &&
-    type !== "package" &&
-    type !== "local-folder"
-  ) {
-    throw new Error(`Unsupported module source type: ${String(type)}`);
+  return (
+    type === "local" ||
+    type === "git" ||
+    type === "package" ||
+    type === "local-folder"
+  );
+}
+
+function toModuleSource(source: BetaModuleSource): ModuleSource {
+  if (!isSupportedSource(source)) {
+    throw new Error(`Unsupported module source type: ${String(source?.type)}`);
   }
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Beta source declarations allow arbitrary id/ignoreCache values; validating more than type would change the accepted definition contract (#228).
-  return source as ModuleSource;
+  return source;
 }
 
 /**

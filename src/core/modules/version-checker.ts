@@ -148,9 +148,13 @@ async function fetchLatestVersions(
 
 type ModuleEntry = [string, ExpandedModuleConfig];
 
-function packageSourceOf(info: ExpandedModuleConfig): ModuleSourcePackage {
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Package dispatch checks only type; validating the unchecked package/version fields would change existing config handling (#228).
-  return info.source as ModuleSourcePackage;
+type PackageModuleEntry = [
+  string,
+  ExpandedModuleConfig & { source: ModuleSourcePackage },
+];
+
+function isPackageModule(entry: ModuleEntry): entry is PackageModuleEntry {
+  return entry[1].source?.type === "package";
 }
 
 function warnUncheckedPackage(
@@ -166,13 +170,13 @@ function warnUncheckedPackage(
 }
 
 function collectOutdatedModules(
-  packageModules: ModuleEntry[],
+  packageModules: PackageModuleEntry[],
   results: PromiseSettledResult<string>[],
 ): OutdatedModule[] {
   return packageModules.reduce<OutdatedModule[]>(
     (outdated, [name, info], index) => {
       const result = results[index];
-      const source = packageSourceOf(info);
+      const { source } = info;
       if (result.status === "rejected") {
         warnUncheckedPackage(source.package, result.reason);
         return outdated;
@@ -195,15 +199,13 @@ export async function checkOutdatedModules(
   modules: Record<string, ExpandedModuleConfig>,
   signal?: AbortSignal,
 ): Promise<OutdatedModule[]> {
-  const packageModules = Object.entries(modules).filter(
-    ([, info]) => info.source?.type === "package",
-  );
+  const packageModules = Object.entries(modules).filter(isPackageModule);
   if (packageModules.length === 0 || signal?.aborted) {
     return [];
   }
 
   const results = await fetchLatestVersions(
-    packageModules.map(([, info]) => packageSourceOf(info).package),
+    packageModules.map(([, info]) => info.source.package),
     signal,
   );
   return signal?.aborted ? [] : collectOutdatedModules(packageModules, results);

@@ -1,4 +1,5 @@
 import type {
+  ModuleSource,
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
 } from "@antelopejs/interface-core/config";
@@ -14,6 +15,10 @@ import {
 import { ModuleCache } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+
+function isLocalSource(source: ModuleSource): source is ModuleSourceLocal {
+  return source.type === "local";
+}
 
 function createExecSpy() {
   const calls: Array<{ command: string; cwd?: string }> = [];
@@ -156,9 +161,8 @@ function createExecSpy() {
           `${a.cwd}:${a.command}`.localeCompare(`${b.cwd}:${b.command}`),
         );
         expect(sortedCalls).to.deep.equal(expectedCalls);
-        // SAFETY: registerLocalFolderDownloader creates local sources with each folder's path and preserves installCommand and watchDir.
-        const localSource = result[0].source as ModuleSourceLocal;
-        expect(localSource.type).to.equal("local");
+        const localSource = result[0].source;
+        assert.ok(isLocalSource(localSource));
         expect(localSource.installCommand).to.deep.equal([
           "pnpm install",
           "pnpm build",

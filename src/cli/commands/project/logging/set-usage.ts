@@ -48,8 +48,11 @@ export const SET_OPTION_FLAGS: Record<SettingOption, string> = {
   dateFormat: "--date-format",
 };
 
-// SAFETY: SET_OPTION_FLAGS is a local object literal with exactly the SettingOption keys and is never extended.
-const SETTING_OPTIONS = Object.keys(SET_OPTION_FLAGS) as SettingOption[];
+function isSettingOption(key: string): key is SettingOption {
+  return Object.hasOwn(SET_OPTION_FLAGS, key);
+}
+
+const SETTING_OPTIONS = Object.keys(SET_OPTION_FLAGS).filter(isSettingOption);
 
 function hasSetting(options: SetOptions): boolean {
   return SETTING_OPTIONS.some((option) => options[option] !== undefined);

@@ -141,12 +141,8 @@ async function waitForAsyncWork(): Promise<void> {
   const checkUsesStringInspectOptionsAnd: (this: Mocha.Suite) => void =
     function () {
       it("uses string inspect options and verbose channels in forked run", async () => {
-        // SAFETY: The inspect path reads only optional name/cacheFolder/modules; their absence exercises its fallback values.
-        sinon
-          .stub(common, "readConfig")
-          .resolves(
-            {} as NonNullable<Awaited<ReturnType<typeof common.readConfig>>>,
-          );
+        const readConfig: sinon.SinonStub = sinon.stub(common, "readConfig");
+        readConfig.resolves({});
         const forkStub = sinon.stub(childProcess, "fork").returns({
           on: sinon.stub().returnsThis(),
         });

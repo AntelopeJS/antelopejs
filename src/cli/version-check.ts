@@ -121,8 +121,7 @@ async function fetchLatestVersion(
   if (!response.ok) {
     return undefined;
   }
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Registry JSON is deliberately accessed before shape validation; rejecting null here would change the caught property-access error.
-  const manifest = (await response.json()) as PackageManifest;
+  const manifest: PackageManifest = await response.json();
   return isString(manifest.version)
     ? (semver.valid(manifest.version) ?? undefined)
     : undefined;

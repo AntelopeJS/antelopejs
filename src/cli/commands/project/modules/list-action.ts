@@ -64,27 +64,30 @@ function gitReference(source: ModuleSourceGit): string {
   return [source.remote, branch, commit].filter(Boolean).join(" ");
 }
 
+function summarizeOwnSource<Source extends ModuleSource>(
+  summarize: (source: Source, moduleName: string) => SourceSummary,
+): SourceSummarizer {
+  // SAFETY: SOURCE_SUMMARIZERS is indexed by the source's type discriminator, so each summarizer only receives the source interface that discriminator names.
+  return (source, moduleName) => summarize(source as Source, moduleName);
+}
+
 const SOURCE_SUMMARIZERS = {
-  // SAFETY: summarizeSource dispatches this callback only for the package discriminator.
-  package: (source, moduleName) => ({
+  package: summarizeOwnSource((source: ModuleSourcePackage, moduleName) => ({
     kind: "npm",
-    reference: packageReference(source as ModuleSourcePackage, moduleName),
-  }),
-  // SAFETY: summarizeSource dispatches this callback only for the git discriminator.
-  git: (source) => ({
+    reference: packageReference(source, moduleName),
+  })),
+  git: summarizeOwnSource((source: ModuleSourceGit) => ({
     kind: "git",
-    reference: gitReference(source as ModuleSourceGit),
-  }),
-  // SAFETY: summarizeSource dispatches this callback only for the local discriminator.
-  local: (source) => ({
+    reference: gitReference(source),
+  })),
+  local: summarizeOwnSource((source: ModuleSourceLocal) => ({
     kind: "local",
-    reference: (source as ModuleSourceLocal).path,
-  }),
-  // SAFETY: summarizeSource dispatches this callback only for the local-folder discriminator.
-  "local-folder": (source) => ({
+    reference: source.path,
+  })),
+  "local-folder": summarizeOwnSource((source: ModuleSourceLocalFolder) => ({
     kind: "folder",
-    reference: (source as ModuleSourceLocalFolder).path,
-  }),
+    reference: source.path,
+  })),
 } satisfies Record<string, SourceSummarizer>;
 
 function summarizeSource(listing: ModuleListing): SourceSummary {

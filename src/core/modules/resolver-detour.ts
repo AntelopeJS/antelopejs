@@ -144,13 +144,7 @@ class ResolverDetourCoordinator {
   ): string {
     const result = activeResolver?.resolve(request, parent);
     if (!activeResolver || !result) {
-      // SAFETY: resolveWith is called only by the installed hooks, after ensureInstalled captured Node's resolver and before releaseHooks clears it.
-      return this.originalResolver?.(
-        request,
-        parent,
-        isMain,
-        options,
-      ) as string;
+      return this.resolveOriginal(request, parent, isMain, options);
     }
     return this.resolveResult(activeResolver, result, parent, isMain, options);
   }
@@ -166,14 +160,23 @@ class ResolverDetourCoordinator {
       parent,
       result.resolveFrom,
     );
-    // SAFETY: resolveResult runs inside an installed hook lease, while the original Node resolver is retained.
-    const resolvedPath = this.originalResolver?.(
+    const resolvedPath = this.resolveOriginal(
       result.resolvedPath,
       contextParent,
       isMain,
       options,
-    ) as string;
+    );
     return activeResolver.locate(result, resolvedPath);
+  }
+
+  private resolveOriginal(
+    request: string,
+    parent: any,
+    isMain: boolean,
+    options: any,
+  ): string {
+    // SAFETY: only the installed hooks reach this, inside a lease, after ensureInstalled captured Node's resolver and before releaseHooks clears it.
+    return this.originalResolver?.(request, parent, isMain, options) as string;
   }
 
   private createResolutionParent(parent: any, resolveFrom?: string): any {
