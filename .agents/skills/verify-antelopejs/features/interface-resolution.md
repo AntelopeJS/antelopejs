@@ -4,6 +4,7 @@ covers:
   - src/core/modules/module-manager-packages.ts
   - src/core/modules/interface-registry.ts
   - src/core/modules/resolver*.ts
+  - src/node-module-internals.d.ts
   - src/core/modules/version-checker.ts
   - src/core/output/interface-*.ts
   - src/utils/package-resolution.ts
