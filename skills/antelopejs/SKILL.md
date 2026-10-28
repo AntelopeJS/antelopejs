@@ -1,6 +1,6 @@
 ---
 name: antelopejs
-description: Gives the AntelopeJS mental model (a tight core and the `ajs` CLI orchestrating modules that talk only through versioned interfaces) and routes to the right skill. Use when working in an AntelopeJS project, module or interface repository (DMS projects included), or when the user mentions AntelopeJS. Routes to ajs-consume-interface, ajs-author-interface, ajs-cli, the interface contract resolver, and the skills synced from the project's packages.
+description: Gives the AntelopeJS mental model (a tight core and the `ajs` CLI orchestrating modules that talk only through versioned interfaces) and routes to the right skill. Use when working in an AntelopeJS project, module or interface repository (DMS projects included, for installing or syncing their skills), when the user mentions AntelopeJS, or when asking how a module attaches its code to an interface so another module can call it. Not for building DMS admin pages (use dms). Routes to ajs-consume-interface, ajs-author-interface, ajs-cli, the interface contract resolver, and the skills synced from the project's packages.
 ---
 
 # AntelopeJS
@@ -73,6 +73,8 @@ installed `dms-*` module (e.g. `dms-saas`). For DMS work, invoke `dms` first and
 its routing. When those skills are missing, the dependencies are not installed yet: run
 `pnpm install` (and `ajs project modules install` for modules declared in `antelope.config.ts`),
 then `/antelopejs:sync-skills` (anywhere else: `npx -y github:AntelopeJS/agent-skills sync`).
+
+The project is configured in `antelope.config.ts` at its root, written with `defineConfig` from `@antelopejs/interface-core/config` (not from `@antelopejs/core`).
 
 ## Interface contract resolver (use this instead of guessing)
 
