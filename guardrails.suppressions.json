@@ -5,7 +5,7 @@
     "anti-slop/no-unknown-parameters": 8,
     "anti-slop/no-unknown-returns": 2,
     "anti-slop/no-unsafe-dictionary-type": 4,
-    "anti-slop/require-safety-comment-for-type-assertion": 18,
+    "anti-slop/require-safety-comment-for-type-assertion": 6,
     "eslint/no-control-regex": 1,
     "import/no-cycle": 0,
     "import/no-self-import": 0,
@@ -14,5 +14,5 @@
   },
   "tsExpectError": 8,
   "tsIgnore": 0,
-  "safety": 32
+  "safety": 12
 }

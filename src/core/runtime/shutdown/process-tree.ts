@@ -68,8 +68,16 @@ function isAlive(pid: number, kill: ProcessKill): boolean {
   }
 }
 
-function isPermissionDenied(thrown: PromiseRejectedResult["reason"]): boolean {
-  return thrown.code === PERMISSION_DENIED_CODE;
+function isPermissionDenied(
+  thrown: unknown,
+): thrown is { code: typeof PERMISSION_DENIED_CODE } {
+  if (thrown === null || thrown === undefined) {
+    throw new TypeError(
+      `Cannot read properties of ${String(thrown)} (reading 'code')`,
+    );
+  }
+  const candidate: { code?: unknown } = Object(thrown);
+  return candidate.code === PERMISSION_DENIED_CODE;
 }
 
 function signal(pid: number, name: string, kill: ProcessKill): void {
