@@ -37,7 +37,7 @@ export class ModuleLifecycle {
    * transition, it only feeds the configuration of the modules that reference
    * them.
    */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported lifecycle provide accepts opaque application config; narrowing changes its declaration.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- ModuleLifecycle is emitted in the published declarations through Module.state, so provide keeps its unknown application config parameter.
   provide(config: unknown): Promise<ConfigVars | void> {
     return this.enqueue(() => this.runProvide(config));
   }
@@ -52,7 +52,7 @@ export class ModuleLifecycle {
     return this.callbacks?.provide?.(config) ?? undefined;
   }
 
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported lifecycle construct accepts opaque application config; narrowing changes its declaration.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- ModuleLifecycle is emitted in the published declarations through Module.state, so construct keeps its unknown application config parameter.
   construct(config: unknown): Promise<void> {
     return this.enqueue(() => this.runConstruct(config));
   }

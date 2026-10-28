@@ -1,4 +1,7 @@
-import type { ConfigVarValue } from "@antelopejs/interface-core/config";
+import type {
+  ConfigVarProvider,
+  ConfigVarValue,
+} from "@antelopejs/interface-core/config";
 
 import { isPlainObject, isString } from "../../utils";
 
@@ -40,8 +43,9 @@ export function declaredConfigVars(source?: {
 }
 
 /** Every config variable reference a configuration holds, at any depth. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported scanning accepts any application config and ignores non-string leaves without rejecting them.
-export function scanConfigVars(config: unknown): ConfigVarScan {
+export function scanConfigVars(
+  config: Parameters<ConfigVarProvider>[0],
+): ConfigVarScan {
   const references = new Map<string, ConfigVarReference>();
   const malformed = new Set<string>();
 
@@ -68,8 +72,7 @@ export function scanConfigVars(config: unknown): ConfigVarScan {
  * came in.
  */
 export function substituteConfigVars(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported substitution accepts arbitrary config values and preserves untouched branches by identity.
-  config: unknown,
+  config: Parameters<ConfigVarProvider>[0],
   lookup: ConfigVarLookup,
 ) {
   if (isString(config)) {

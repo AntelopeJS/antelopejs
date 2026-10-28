@@ -1,4 +1,5 @@
 import type {
+  ConfigVarProvider,
   ConfigVars,
   ConfigVarValue,
 } from "@antelopejs/interface-core/config";
@@ -16,8 +17,11 @@ export class ConfigVarStore {
   private readonly published = new Map<string, ConfigVars>();
 
   /** Freezes what a provider returned, once its `provide` callback resolved. */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported record accepts arbitrary provider results and checks declared names only; narrowing would change declarations and acceptance.
-  record(moduleId: string, declared: string[], returned: unknown): void {
+  record(
+    moduleId: string,
+    declared: string[],
+    returned: Awaited<ReturnType<ConfigVarProvider>>,
+  ): void {
     // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- record accepts arbitrary provider values and checks names only; enforcing ConfigVarValue would change existing acceptance.
     const values = isObject(returned) ? (returned as ConfigVars) : {};
     const missing = declared.filter((name) => !(name in values));
@@ -30,8 +34,7 @@ export class ConfigVarStore {
   }
 
   /** The consumer configuration with every reference replaced by its value. */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported resolve preserves arbitrary application configuration, including values with no references, by identity.
-  resolve(consumerId: string, config: unknown) {
+  resolve(consumerId: string, config: Parameters<ConfigVarProvider>[0]) {
     return substituteConfigVars(config, (reference) =>
       this.lookup(consumerId, reference),
     );

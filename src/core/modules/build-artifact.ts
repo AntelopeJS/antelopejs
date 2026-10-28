@@ -1,5 +1,6 @@
 import type {
   AntelopeLogging,
+  ConfigVarProvider,
   ModuleSource,
 } from "@antelopejs/interface-core/config";
 import crypto from "node:crypto";
@@ -105,8 +106,7 @@ function toStableHashValue(
  * Serialise a value with object keys sorted, so equal values always produce
  * the same string whatever their key insertion order.
  */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported stable JSON serialization accepts arbitrary JavaScript values; narrowing changes its declaration and stringify behavior.
-export function toStableJson(value: unknown): string {
+export function toStableJson(value: Parameters<ConfigVarProvider>[0]): string {
   return JSON.stringify(toStableHashValue(value));
 }
 

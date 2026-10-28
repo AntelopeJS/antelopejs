@@ -95,8 +95,7 @@ function walk(
 }
 
 export function neutralizeInterfaceAsyncProxies(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported neutralization accepts arbitrary package exports, ignoring primitive leaves; narrowing changes the declaration.
-  exports: unknown,
+  exports: NodeJS.Module["exports"],
   interfaceName: string,
   reason: string = NO_PROVIDER_REASON,
 ): void {

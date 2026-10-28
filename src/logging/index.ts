@@ -19,7 +19,7 @@ const DEFAULT_FORMATTER_KEY = "default";
 const DEFAULT_LEVEL_NAME = "LOG";
 const LOG_SUFFIX = "{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}";
 
-// oxlint-disable-next-line anti-slop/no-known-value-widening -- The exported Record<number, string> is a mutable open lookup; inferring fixed keys changes its published declaration.
+// oxlint-disable-next-line anti-slop/no-known-value-widening -- levelNames is indexed with runtime numeric level ids that no literal key list covers, so inferred fixed keys would reject the lookups.
 export const levelNames: Record<number, string> = {
   0: "TRACE",
   10: "DEBUG",
@@ -28,7 +28,7 @@ export const levelNames: Record<number, string> = {
   40: "ERROR",
 };
 
-// oxlint-disable-next-line anti-slop/no-known-value-widening -- The exported Record<string, number> accepts custom level names; inferring fixed keys changes its published declaration.
+// oxlint-disable-next-line anti-slop/no-known-value-widening -- levelMap is indexed with user-supplied level names, so inferred fixed keys would reject the lookups.
 export const levelMap: Record<string, number> = {
   trace: 0,
   debug: 10,

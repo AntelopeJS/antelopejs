@@ -6,8 +6,7 @@ export class ReplSession {
   private server?: REPLServer;
 
   constructor(
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported REPL sessions accept arbitrary host bindings; narrowing this context changes their constructor contract.
-    private context: Record<string, unknown> = {},
+    private context: REPLServer["context"] = {},
     private createRepl: ReplFactory = repl.start,
   ) {}
 
