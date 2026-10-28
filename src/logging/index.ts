@@ -10,7 +10,7 @@ import {
   getProcessTasks,
   processStreams,
 } from "../core/output";
-import { mergeDeep } from "../utils";
+import { mergeDeep, isString } from "../utils";
 import { renderLogTemplate } from "./log-template";
 
 const DEFAULT_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
@@ -77,8 +77,7 @@ const channelCache: Record<string, number> = {};
 const channelFilters: Record<string, number | string> = {};
 
 function resolveLevelValue(level: number | string): number {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The published logging config accepts numeric levels and named/numeric strings; the untagged alternatives use different existing resolution paths.
-  if (typeof level === "string") {
+  if (isString(level)) {
     const normalized = level.toLowerCase();
     if (normalized in levelMap) {
       return levelMap[normalized];

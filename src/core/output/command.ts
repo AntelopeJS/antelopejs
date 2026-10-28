@@ -8,6 +8,7 @@ import type {
 import { loadChildProcess } from "./child-process";
 import { FAILURE_EXIT_CODE } from "./exit-codes";
 import { buildProcessInvocation } from "./windows-command-line";
+import { isNumber } from "../../utils";
 
 let channel: Logging.Channel | undefined;
 
@@ -92,8 +93,7 @@ export function closeStdin(child: ChildProcess): void {
 
 function exitCodeOf(err: Error): number {
   const code = "code" in err ? err.code : undefined;
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Child-process errors can carry numeric exit statuses or string errno codes; only nonzero numeric statuses are propagated.
-  return typeof code === "number" && code !== 0 ? code : FAILURE_EXIT_CODE;
+  return isNumber(code) && code !== 0 ? code : FAILURE_EXIT_CODE;
 }
 
 interface CommandOutput {

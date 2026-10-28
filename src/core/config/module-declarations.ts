@@ -10,6 +10,7 @@ import type {
   ModuleDeclarationChanges,
   ModuleEntryConfig,
 } from "./module-entry";
+import { isString } from "../../utils";
 
 const FILE_ENCODING = "utf-8";
 const PACKAGE_SOURCE = "package";
@@ -22,8 +23,7 @@ function toDeclaration(
   key: string,
   entry: string | ModuleEntryConfig,
 ): ModuleDeclaration {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The published config format accepts string versions or module objects; this boundary preserves both without adding validation.
-  if (typeof entry === "string") {
+  if (isString(entry)) {
     const source: ModuleSourcePackage = {
       type: PACKAGE_SOURCE,
       package: key,

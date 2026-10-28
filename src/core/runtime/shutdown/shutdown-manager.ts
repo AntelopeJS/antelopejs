@@ -5,6 +5,7 @@ import {
   FAILURE_EXIT_CODE,
   SUCCESS_EXIT_CODE,
 } from "../../output";
+import { isNumber } from "../../../utils";
 
 export type ShutdownHandler = () => Promise<void> | void;
 
@@ -206,8 +207,7 @@ export class ShutdownManager {
   }
 
   private updateRequestedExitCode(exitCode?: number): void {
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Public shutdown calls may supply unchecked values; existing behavior ignores nonnumeric exit requests rather than coercing or throwing.
-    if (typeof exitCode !== "number") {
+    if (!isNumber(exitCode)) {
       return;
     }
 

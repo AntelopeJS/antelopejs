@@ -11,6 +11,7 @@ import path from "node:path";
 
 import type { IFileSystem } from "../../types";
 import type { ShutdownManager } from "./shutdown/index";
+import { isNumber } from "../../utils";
 
 const TEMP_FILE_SUFFIX = ".tmp";
 const JSON_INDENT = 2;
@@ -82,8 +83,7 @@ export class DevRegistryStore {
 
   private isOwnerAlive(registry: DevServerRegistry): boolean {
     const probe = this.options.isPidAlive ?? isProcessAlive;
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Registry files are unchecked JSON; only numeric PIDs are probed, without coercing strings or changing stale-owner handling.
-    return typeof registry.pid === "number" && probe(registry.pid);
+    return isNumber(registry.pid) && probe(registry.pid);
   }
 
   private async readRegistry(): Promise<DevServerRegistry | undefined> {

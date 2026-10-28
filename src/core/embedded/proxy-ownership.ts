@@ -3,6 +3,7 @@ import {
   internal,
   type RuntimeCleanup,
 } from "@antelopejs/interface-core/internal";
+import { isFunction } from "../../utils";
 
 type OwnedProxy = RuntimeCleanup | { detach(): void; cleanup?: unknown };
 type OwnedProxyMap = Map<string, Set<OwnedProxy>>;
@@ -20,8 +21,7 @@ function getOwnedProxies(owner: string): Set<OwnedProxy>[] {
 
 function releaseProxy(proxy: OwnedProxy): void {
   const cleanup = proxy.cleanup;
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Interface-core exposes callable cleanup and legacy detach proxies; this boundary must select the existing protocol without requiring new tags.
-  if (typeof cleanup === "function") {
+  if (isFunction(cleanup)) {
     cleanup.call(proxy);
     return;
   }

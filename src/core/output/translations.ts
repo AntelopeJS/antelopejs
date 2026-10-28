@@ -3,6 +3,7 @@ import { describeInterfaceConflicts } from "./interface-conflicts";
 import { InterfaceResolutionError } from "./interface-resolution-error";
 import { stripAnsiCodes } from "./logging-utils";
 import type { CliProblem } from "./types";
+import { isString } from "../../utils";
 
 interface ExecTranslation {
   command: RegExp;
@@ -107,8 +108,7 @@ function isSystemError(error: unknown): error is NodeJS.ErrnoException {
     return false;
   }
   const candidate: NodeJS.ErrnoException = error;
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This boundary recognizes string errno codes across Error subclasses without rejecting arbitrary thrown values.
-  return typeof candidate.code === "string";
+  return isString(candidate.code);
 }
 
 function applyExecTranslation(

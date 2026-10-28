@@ -1,6 +1,6 @@
 import type { ConfigVarValue } from "@antelopejs/interface-core/config";
 
-import { isPlainObject } from "../../utils";
+import { isPlainObject, isString } from "../../utils";
 
 const RESERVED_PREFIX = "@";
 const REFERENCE_PATTERN = /\$\{@([^{}]+)\.([A-Za-z_][A-Za-z0-9_]*)\}/g;
@@ -72,8 +72,7 @@ export function substituteConfigVars(
   config: unknown,
   lookup: ConfigVarLookup,
 ) {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Exported config substitution accepts arbitrary leaves and changes only string references, preserving untouched values by identity.
-  if (typeof config === "string") {
+  if (isString(config)) {
     return substituteString(config, lookup);
   }
 
@@ -132,8 +131,7 @@ function visitStrings(
   value: Parameters<typeof scanConfigVars>[0],
   visit: (value: string) => void,
 ): void {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Reference scanning traverses open application config and must visit strings while ignoring other primitive leaves without rejecting them.
-  if (typeof value === "string") {
+  if (isString(value)) {
     visit(value);
     return;
   }

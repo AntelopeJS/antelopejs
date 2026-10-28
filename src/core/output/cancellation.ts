@@ -1,4 +1,5 @@
 import { CANCELLED_EXIT_CODE } from "./exit-codes";
+import { isObjectOrNull } from "../../utils";
 
 export const CANCELLED_ERROR_NAME = "CancelledError";
 export const CANCELLED_MESSAGE = "Cancelled";
@@ -7,8 +8,7 @@ export const CANCELLED_MESSAGE = "Cancelled";
 export function isPromptCancellation(error: unknown): boolean {
   return (
     error !== null &&
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The exported cancellation predicate accepts cross-package objects by name but deliberately excludes callable objects.
-    typeof error === "object" &&
+    isObjectOrNull(error) &&
     "name" in error &&
     error.name === CANCELLED_ERROR_NAME
   );

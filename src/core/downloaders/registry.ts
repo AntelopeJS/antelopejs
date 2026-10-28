@@ -3,6 +3,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import * as path from "node:path";
 
 import type { ModuleCache, ModuleManifest } from "../modules";
+import { isString } from "../../utils";
 
 const Logger = new Logging.Channel("loader.common");
 
@@ -63,8 +64,7 @@ export class DownloaderRegistry {
       if (type.loaderIdentifier === "path") {
         const pathSource: ModuleSource & { path?: unknown } = source;
         const pathValue = pathSource[type.loaderIdentifier];
-        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Custom downloader sources are open; only string paths are resolved, while other existing identifier values pass through unchanged.
-        if (typeof pathValue === "string" && !path.isAbsolute(pathValue)) {
+        if (isString(pathValue) && !path.isAbsolute(pathValue)) {
           pathSource[type.loaderIdentifier] = path.resolve(
             projectFolder,
             pathValue,

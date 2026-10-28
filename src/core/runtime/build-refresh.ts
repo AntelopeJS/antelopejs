@@ -18,6 +18,7 @@ import {
   serializeModuleConfig,
 } from "./build-runtime";
 import { toModuleConfig } from "./module-loading";
+import { isString } from "../../utils";
 
 const REBUILD_HINT = "Run 'ajs project build' to rebuild.";
 
@@ -63,8 +64,7 @@ function resolveSourcePath(
   source: PathModuleSource,
   projectFolder: string,
 ): PathModuleSource {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Loaded config is unchecked; non-string paths remain untouched instead of being rejected or coerced during refresh (#228).
-  if (typeof source.path !== "string" || path.isAbsolute(source.path)) {
+  if (!isString(source.path) || path.isAbsolute(source.path)) {
     return source;
   }
   return { ...source, path: path.resolve(projectFolder, source.path) };

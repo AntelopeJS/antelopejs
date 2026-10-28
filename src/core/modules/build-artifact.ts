@@ -9,6 +9,7 @@ import type { IFileSystem } from "../../types";
 import { ConfigLoader, type LoadedConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { ModulePackageJson } from "./module-manifest";
+import { isObjectOrNull } from "../../utils";
 
 const BUILD_ARTIFACT_VERSION = "1";
 const BUILD_FOLDER = ".antelope/build";
@@ -82,8 +83,7 @@ interface RawProjectConfig {
 function isRawProjectConfig(
   value: Parameters<typeof toStableJson>[0],
 ): value is RawProjectConfig {
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Stable hashing accepts all non-null objects, including arrays and class instances; a narrower config schema changes serialization.
-  return typeof value === "object" && value !== null;
+  return isObjectOrNull(value) && value !== null;
 }
 
 function toStableHashValue(

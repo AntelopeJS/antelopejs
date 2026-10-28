@@ -7,7 +7,7 @@ import type {
 import { createJiti } from "jiti";
 
 import type { IFileSystem } from "../../types";
-import { mergeDeep } from "../../utils";
+import { mergeDeep, isFunction } from "../../utils";
 // oxlint-disable-next-line import/no-self-import, import/no-cycle -- test seam: calls go through `self.` so `sinon.stub(module, "fn")` takes effect
 import * as self from "./config-loader";
 import { ConfigParser, type ExpandedModuleConfig } from "./config-parser";
@@ -60,8 +60,7 @@ export async function loadTsConfigFile(
 ): Promise<AntelopeConfig> {
   const configInput = await importConfigInput(configPath, fresh);
 
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The published ConfigInput union accepts either a config object or factory; adding a discriminator would change accepted config exports.
-  if (typeof configInput === "function") {
+  if (isFunction(configInput)) {
     return await configInput({ env: environment ?? DEFAULT_ENV });
   }
 
