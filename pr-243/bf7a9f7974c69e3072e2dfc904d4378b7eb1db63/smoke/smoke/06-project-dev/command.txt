@@ -1,0 +1,2 @@
+cd /tmp/verify-antelopejs/20261028T032730-eddb4a/work/smoke/smoke/app
+ajs project dev

@@ -1,0 +1,17 @@
+/tmp/verify-antelopejs/20261028T032730-eddb4a/work/smoke/smoke/app
+.antelope/
+.antelope/cache/
+.gitignore 18
+antelope.config.ts 393
+antelope.test.ts 292
+dist/
+dist/index.js 709
+dist/message.js 147
+package.json 345
+pnpm-lock.yaml 1449
+src/
+src/index.ts 561
+src/message.ts 49
+test/
+test/http.test.js 331
+tsconfig.json 197
