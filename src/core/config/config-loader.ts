@@ -2,26 +2,17 @@ import type {
   AntelopeConfig,
   AntelopeLogging,
   AntelopeTestConfig,
-  ConfigInput,
 } from "@antelopejs/interface-core/config";
-import { createJiti } from "jiti";
-import path from "node:path";
 
 import type { IFileSystem } from "../../types";
-import { mergeDeep, isFunction } from "../../utils";
-// oxlint-disable-next-line import/no-self-import, import/no-cycle -- test seam: calls go through `self.` so `sinon.stub(module, "fn")` takes effect
-import * as self from "./config-loader";
+import { mergeDeep } from "../../utils";
 import { ConfigParser, type ExpandedModuleConfig } from "./config-parser";
 import {
   DEFAULT_CACHE_DIR,
-  DEFAULT_ENV,
   findConfigPath,
   getModuleConfigPath,
 } from "./config-paths";
-import { loadProjectEnv } from "./project-env";
-
-const CORE_CONFIG_PACKAGE = "@antelopejs/interface-core/config";
-const CORE_CONFIG_ENTRY = require.resolve(CORE_CONFIG_PACKAGE);
+import * as tsConfigFile from "./ts-config-file";
 
 export interface LoadedConfig {
   name: string;
@@ -30,44 +21,6 @@ export interface LoadedConfig {
   logging?: AntelopeLogging;
   envOverrides: Record<string, string | string[]>;
   test?: AntelopeTestConfig;
-}
-
-/**
- * Imports the configuration file. `fresh` skips jiti's module and file
- * caches, for a file the running process may have written since it last read
- * it.
- */
-async function importConfigInput(
-  configPath: string,
-  fresh = false,
-): Promise<ConfigInput> {
-  const options: NonNullable<Parameters<typeof createJiti>[1]> = {
-    alias: { [CORE_CONFIG_PACKAGE]: CORE_CONFIG_ENTRY },
-  };
-  if (fresh) {
-    options.moduleCache = false;
-    options.fsCache = false;
-  }
-  const jiti = createJiti(configPath, options);
-  const loaded = await jiti.import<ConfigInput & { default?: ConfigInput }>(
-    configPath,
-  );
-  return loaded.default ?? loaded;
-}
-
-export async function loadTsConfigFile(
-  configPath: string,
-  environment?: string,
-  fresh = false,
-): Promise<AntelopeConfig> {
-  loadProjectEnv(path.dirname(configPath));
-  const configInput = await importConfigInput(configPath, fresh);
-
-  if (isFunction(configInput)) {
-    return await configInput({ env: environment ?? DEFAULT_ENV });
-  }
-
-  return configInput;
 }
 
 export class ConfigLoader {
@@ -144,7 +97,7 @@ export class ConfigLoader {
   ): Promise<AntelopeConfig> {
     const resolvedPath =
       configPath ?? (await findConfigPath(projectFolder, this.fs));
-    return self.loadTsConfigFile(resolvedPath, environment, true);
+    return tsConfigFile.loadTsConfigFile(resolvedPath, environment, true);
   }
 
   private async loadJsonFile<T>(filePath: string): Promise<T> {

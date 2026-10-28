@@ -173,7 +173,7 @@ describe("test-module", () => {
   });
   describe("TestModule", () => {
     it("returns EXIT_CODE_ERROR when config loading fails", async () => {
-      sinon.stub(testModule, "loadTestConfig").resolves(undefined);
+      sinon.stub(testModule.testSteps, "loadTestConfig").resolves(undefined);
 
       const result = await testModule.TestModule("/module");
 
@@ -201,17 +201,19 @@ describe("test-module", () => {
         test: { setup: setupFn, cleanup: cleanupFn },
       });
 
-      sinon.stub(testModule, "loadTestConfig").resolves({
+      sinon.stub(testModule.testSteps, "loadTestConfig").resolves({
         config: mockConfig,
         test: mockConfig.test,
       });
 
-      sinon.stub(testModule, "setupTestEnvironment").callsFake(async () => {
-        callOrder.push("setupEnv");
-        return managerFixture({ destroyAll: destroyAllStub });
-      });
+      sinon
+        .stub(testModule.testSteps, "setupTestEnvironment")
+        .callsFake(async () => {
+          callOrder.push("setupEnv");
+          return managerFixture({ destroyAll: destroyAllStub });
+        });
 
-      sinon.stub(testModule, "executeTests").callsFake(async () => {
+      sinon.stub(testModule.testSteps, "executeTests").callsFake(async () => {
         callOrder.push("runTests");
         return 0;
       });
@@ -239,18 +241,20 @@ describe("test-module", () => {
         test: { cleanup: cleanupFn },
       });
 
-      sinon.stub(testModule, "loadTestConfig").resolves({
+      sinon.stub(testModule.testSteps, "loadTestConfig").resolves({
         config: mockConfig,
         test: mockConfig.test,
       });
 
-      sinon.stub(testModule, "setupTestEnvironment").resolves(
+      sinon.stub(testModule.testSteps, "setupTestEnvironment").resolves(
         managerFixture({
           destroyAll: destroyAllStub,
         }),
       );
 
-      sinon.stub(testModule, "executeTests").rejects(new Error("test crash"));
+      sinon
+        .stub(testModule.testSteps, "executeTests")
+        .rejects(new Error("test crash"));
       let hasThrown = false;
 
       try {

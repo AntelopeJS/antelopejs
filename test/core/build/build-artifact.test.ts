@@ -5,7 +5,7 @@ import { isObject } from "../../../src/utils";
 
 import {
   ConfigLoader,
-  configLoaderModule as configLoader,
+  tsConfigFileModule as tsConfigFile,
   ConfigVarStore,
 } from "../../../src/core/config";
 import {
@@ -34,7 +34,7 @@ describe("build artifact", () => {
   it("computes deterministic hashes for unchanged config", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile("/project/antelope.config.ts", "");
-    sinon.stub(configLoader, "loadTsConfigFile").resolves({
+    sinon.stub(tsConfigFile, "loadTsConfigFile").resolves({
       name: "sample",
       modules: {
         zeta: { source: { type: "local", path: "./zeta" } },
@@ -61,7 +61,7 @@ describe("build artifact", () => {
   it("keeps the hash stable when a config variable resolves to a new value", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile("/project/antelope.config.ts", "");
-    sinon.stub(configLoader, "loadTsConfigFile").resolves({
+    sinon.stub(tsConfigFile, "loadTsConfigFile").resolves({
       name: "sample",
       modules: {
         api: { source: { type: "local", path: "./api" } },
@@ -94,7 +94,7 @@ describe("build artifact", () => {
       JSON.stringify({ host: "localhost" }),
     );
 
-    sinon.stub(configLoader, "loadTsConfigFile").resolves({
+    sinon.stub(tsConfigFile, "loadTsConfigFile").resolves({
       name: "sample",
       modules: { database: "1.0.0" },
     });

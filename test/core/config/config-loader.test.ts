@@ -10,7 +10,7 @@ import sinon from "sinon";
 
 import {
   ConfigLoader,
-  configLoaderModule as configLoader,
+  tsConfigFileModule as tsConfigFile,
 } from "../../../src/core/config";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
@@ -347,7 +347,7 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
     beforeEach(() => {
       fs = new InMemoryFileSystem();
       loader = new ConfigLoader(fs);
-      loadTsConfigFileStub = sinon.stub(configLoader, "loadTsConfigFile");
+      loadTsConfigFileStub = sinon.stub(tsConfigFile, "loadTsConfigFile");
     });
 
     afterEach(() => {
@@ -389,7 +389,7 @@ export default defineConfig({
 });`,
       );
 
-      const loaded = await configLoader.loadTsConfigFile(configPath);
+      const loaded = await tsConfigFile.loadTsConfigFile(configPath);
 
       expect(loaded.name).to.equal(
         require.resolve("@antelopejs/interface-core/config"),
