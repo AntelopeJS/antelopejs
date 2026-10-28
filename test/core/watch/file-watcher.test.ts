@@ -107,6 +107,39 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         expect(listener2).to.have.lengthOf(1);
       });
 
+      it("notifies the creation and the deletion of an optional watched file", async () => {
+        const fs = new InMemoryFileSystem();
+        const watcher = new FileWatcher(fs);
+        const changes: string[] = [];
+        await watcher.watchFile("/project/.env", (p) => changes.push(p), {
+          optional: true,
+        });
+
+        await fs.writeFile("/project/.env", "A=1");
+        await watcher.handleFileChange("/project/.env");
+        await fs.rm("/project/.env");
+        await watcher.handleFileChange("/project/.env");
+        await watcher.handleFileChange("/project/.env");
+
+        expect(changes).to.deep.equal(["/project/.env", "/project/.env"]);
+      });
+
+      it("ignores the deletion of a watched file that is not optional", async () => {
+        const fs = new InMemoryFileSystem();
+        await fs.writeFile("/project/antelope.config.ts", "content");
+        const watcher = new FileWatcher(fs);
+        const changes: string[] = [];
+        await watcher.watchFile("/project/antelope.config.ts", (p) =>
+          changes.push(p),
+        );
+        sinon.stub(console, "warn");
+
+        await fs.rm("/project/antelope.config.ts");
+        await watcher.handleFileChange("/project/antelope.config.ts");
+
+        expect(changes).to.deep.equal([]);
+      });
+
       it("adopts a new source file so later edits behave like it was always there", async () => {
         const fs = new InMemoryFileSystem();
         await fs.writeFile("/mod/index.js", "v1");

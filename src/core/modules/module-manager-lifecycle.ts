@@ -7,6 +7,7 @@ import {
 } from "./lifecycle-signals";
 import { Module } from "./module";
 import { collectRejectedErrors, unpackErrors } from "./module-errors";
+import { evictInterfacePackageCopies } from "./module-manager-cache";
 import {
   type ManagedModule,
   type ManagerContext,
@@ -135,6 +136,7 @@ export async function destroyAll(this: ManagerContext): Promise<void> {
   for (const id of this.loaded.keys()) {
     this.evictModuleFiles(id, false);
   }
+  evictInterfacePackageCopies(this.interfacePackagePlans);
   this.isolation.releaseAll();
   this.resolver.releaseInstances();
   const errors = [...results.errors, ...this.clearManagedState()];

@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
 import type { LaunchOptions } from "../../types";
+import { loadProjectEnv } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { BuildArtifact } from "../modules";
 import { INSTANCES_FOLDER, ModuleManager, unpackErrors } from "../modules";
@@ -170,6 +171,7 @@ export const prepareFromArtifact: ProjectPreparer = async (
   env,
 ) => {
   const fs = new NodeFileSystem();
+  loadProjectEnv(projectFolder);
   const artifact = await readBuildArtifactOrThrow(projectFolder, fs);
 
   return prepareFromBuiltArtifact(artifact, projectFolder, fs, async () => {

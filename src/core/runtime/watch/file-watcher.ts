@@ -8,6 +8,17 @@ import { FileHasher } from "./file-hasher";
 export type ModuleChangeListener = (moduleId: string) => void;
 export type FileChangeListener = (filePath: string) => void;
 
+export interface WatchFileOptions {
+  /** The file may be absent: its creation and its deletion are changes. */
+  optional?: boolean;
+}
+
+interface WatchedFile {
+  hash: string | undefined;
+  optional: boolean;
+  listeners: FileChangeListener[];
+}
+
 const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
 const VANISHED_PATH_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
 
@@ -37,10 +48,7 @@ export class FileWatcher {
   private watchers = new Map<string, FSWatcher>();
   private watchedDirs = new Set<string>();
   private dirModules = new Map<string, string>();
-  private watchedFiles = new Map<
-    string,
-    { hash: string; listeners: FileChangeListener[] }
-  >();
+  private watchedFiles = new Map<string, WatchedFile>();
   private changeChains = new Map<string, Promise<void>>();
   private stopped = false;
 
@@ -70,6 +78,7 @@ export class FileWatcher {
   async watchFile(
     filePath: string,
     listener: FileChangeListener,
+    { optional = false }: WatchFileOptions = {},
   ): Promise<void> {
     const resolved = path.resolve(filePath);
     const dir = path.dirname(resolved);
@@ -80,8 +89,11 @@ export class FileWatcher {
       return;
     }
 
-    const hash = await this.hasher.hashFile(resolved);
-    this.watchedFiles.set(resolved, { hash, listeners: [listener] });
+    const hash =
+      optional && !(await this.fs.exists(resolved))
+        ? undefined
+        : await this.hasher.hashFile(resolved);
+    this.watchedFiles.set(resolved, { hash, optional, listeners: [listener] });
     this.watchedDirs.add(dir);
   }
 
@@ -203,14 +215,15 @@ export class FileWatcher {
 
   private async handleWatchedFileChange(
     filePath: string,
-    entry: { hash: string; listeners: FileChangeListener[] },
+    entry: WatchedFile,
   ): Promise<void> {
-    if (!(await this.fs.exists(filePath))) {
+    const exists = await this.fs.exists(filePath);
+    if (!exists && !entry.optional) {
       console.warn(`Watched file deleted: ${filePath}`);
       return;
     }
 
-    const newHash = await this.hasher.hashFile(filePath);
+    const newHash = exists ? await this.hasher.hashFile(filePath) : undefined;
     if (newHash === entry.hash) {
       return;
     }

@@ -120,6 +120,14 @@ function writeRecordingModule(projectFolder: string): void {
   );
 }
 
+function writeEnvRecordingModule(projectFolder: string): void {
+  writeRecordingModule(projectFolder);
+  fs.writeFileSync(
+    path.join(projectFolder, "modules", "recorder", "index.js"),
+    `exports.construct = () => { globalThis.${RECORDED_CONFIG_KEY} = { token: process.env.${TOKEN_VARIABLE} }; };\n`,
+  );
+}
+
 function recorderConfig<Tconfig>(
   config: Tconfig,
   extra: { envOverrides?: Record<string, string> } = {},
@@ -349,6 +357,24 @@ function readRecordedConfig() {
         await manager.destroyAll();
 
         expect(readRecordedConfig()).to.deep.equal({ token: "placeholder" });
+      });
+
+      it("launchFromBuild loads the project's .env without a configuration file beside the build", async () => {
+        const projectFolder = makeTempDir("antelope-start-env-");
+        tempDirs.push(projectFolder);
+        writeEnvRecordingModule(projectFolder);
+        writeTsConfig(projectFolder, recorderConfig({}));
+        await build(projectFolder, "default");
+        fs.rmSync(path.join(projectFolder, "antelope.config.ts"));
+        fs.writeFileSync(
+          path.join(projectFolder, ".env"),
+          `${TOKEN_VARIABLE}=from-env-file\n`,
+        );
+
+        const manager = await launchFromBuild(projectFolder, "default");
+        await manager.destroyAll();
+
+        expect(readRecordedConfig()).to.deep.equal({ token: "from-env-file" });
       });
 
       it("launchFromBuild refuses to refresh a build of another module set", async () => {
