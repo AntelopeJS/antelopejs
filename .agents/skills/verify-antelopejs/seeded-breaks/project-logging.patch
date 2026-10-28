@@ -1,0 +1,13 @@
+diff --git a/src/cli/commands/project/logging/set-operations.ts b/src/cli/commands/project/logging/set-operations.ts
+index eda558c..73007d9 100644
+--- a/src/cli/commands/project/logging/set-operations.ts
++++ b/src/cli/commands/project/logging/set-operations.ts
+@@ -184,7 +184,7 @@ const OPERATIONS: LoggingOperation[] = [
+     ),
+   (logging, options) =>
+     whenGiven(options.removeInclude, (module) =>
+-      removeModule(logging, "includes", module),
++      removeModule(logging, "excludes", module),
+     ),
+   (logging, options) =>
+     whenGiven(options.removeExclude, (module) =>

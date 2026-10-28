@@ -1,0 +1,13 @@
+diff --git a/src/core/modules/module-manager-packages.ts b/src/core/modules/module-manager-packages.ts
+index 99d0299..c2b2fc9 100644
+--- a/src/core/modules/module-manager-packages.ts
++++ b/src/core/modules/module-manager-packages.ts
+@@ -224,7 +224,7 @@ export function validateInterfacePackages(this: ManagerContext): void {
+   const preloadedCopies = plans.flatMap(([name, plan]) =>
+     this.findPreloadedCopies(name, plan),
+   );
+-  if (rangeConflicts.length === 0 && preloadedCopies.length === 0) {
++  if (preloadedCopies.length === 0) {
+     return;
+   }
+   throw new InterfaceResolutionError({ rangeConflicts, preloadedCopies });

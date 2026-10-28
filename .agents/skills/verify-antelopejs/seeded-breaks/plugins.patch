@@ -1,0 +1,13 @@
+diff --git a/src/cli/plugin-management.ts b/src/cli/plugin-management.ts
+index 52429d0..3045467 100644
+--- a/src/cli/plugin-management.ts
++++ b/src/cli/plugin-management.ts
+@@ -134,7 +134,7 @@ const MISSING_VALUE = "-";
+ const UPDATE_COMMAND = "ajs update";
+ 
+ const SOURCE_LABELS: Record<ExecutableSource, string> = {
+-  [LOCAL_EXECUTABLE_SOURCE]: "local",
++  [LOCAL_EXECUTABLE_SOURCE]: "global",
+   [PATH_EXECUTABLE_SOURCE]: "global",
+ };
+ 

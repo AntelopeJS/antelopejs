@@ -1,0 +1,17 @@
+diff --git a/src/cli/common.ts b/src/cli/common.ts
+index 94d5fd8..fb825e3 100644
+--- a/src/cli/common.ts
++++ b/src/cli/common.ts
+@@ -226,11 +226,7 @@ export async function writeConfig(
+   fileSystem: IFileSystem = new NodeFileSystem(),
+ ): Promise<void> {
+   const configPath = await tryFindConfigPath(project, fileSystem);
+-  if (!configPath) {
+-    await writeNewTsConfig(project, data, fileSystem);
+-    return;
+-  }
+-  await writeTsConfig(configPath, data, fileSystem);
++  await writeNewTsConfig(project, data, fileSystem);
+ }
+ 
+ export async function readConfig(

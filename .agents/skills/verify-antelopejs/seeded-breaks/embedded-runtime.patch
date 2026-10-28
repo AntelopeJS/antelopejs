@@ -1,0 +1,12 @@
+diff --git a/src/core/embedded/runtime.ts b/src/core/embedded/runtime.ts
+index f9ca7a6..6be599e 100644
+--- a/src/core/embedded/runtime.ts
++++ b/src/core/embedded/runtime.ts
+@@ -87,7 +87,6 @@ export class AntelopeRuntime {
+     if (!started) {
+       return;
+     }
+-    this.started = undefined;
+     await started.shutdownManager.shutdown();
+   }
+ 

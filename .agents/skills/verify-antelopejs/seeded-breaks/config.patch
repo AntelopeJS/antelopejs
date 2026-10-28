@@ -1,0 +1,13 @@
+diff --git a/src/cli/commands/config/keys.ts b/src/cli/commands/config/keys.ts
+index 7e9785c..598c643 100644
+--- a/src/cli/commands/config/keys.ts
++++ b/src/cli/commands/config/keys.ts
+@@ -38,7 +38,7 @@ export function invalidConfigValueError(
+   const rules: typeof CONFIG_VALUE_RULES & Record<string, ConfigValueRule> =
+     CONFIG_VALUE_RULES;
+   const rule = rules[key];
+-  if (!rule || rule.isValid(value)) {
++  if (!rule || !rule.isValid(value) || rule.isValid(value)) {
+     return undefined;
+   }
+   return new CliError({

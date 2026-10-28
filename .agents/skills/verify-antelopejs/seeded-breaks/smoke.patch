@@ -1,0 +1,13 @@
+diff --git a/src/core/runtime/launch-sequence.ts b/src/core/runtime/launch-sequence.ts
+index c9b623e..e7f1f0c 100644
+--- a/src/core/runtime/launch-sequence.ts
++++ b/src/core/runtime/launch-sequence.ts
+@@ -329,7 +329,7 @@ function constructProjectModules({ manager }: ProjectLaunch): Promise<void> {
+ }
+ 
+ function startModules({ manager }: ProjectLaunch): Promise<void> {
+-  return manager.startAll();
++  return Promise.resolve();
+ }
+ 
+ /**

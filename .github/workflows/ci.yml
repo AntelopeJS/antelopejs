@@ -12,9 +12,19 @@ jobs:
   ci:
     uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
 
+  verify-map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts map
+
   checks:
     if: always()
-    needs: [ci]
+    needs: [ci, verify-map]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

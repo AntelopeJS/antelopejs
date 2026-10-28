@@ -1,0 +1,6 @@
+{
+  "name": "verify-greeter",
+  "version": "1.0.0",
+  "main": "index.js",
+  "antelopeJs": {}
+}
