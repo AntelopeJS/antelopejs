@@ -84,7 +84,8 @@ Write your judgement to `$RUN/evidence/judgement.json`:
   "doors": { "none": "the diff changes only the verification skill and tests", "rows": [] },
   "docs": [{ "page": "docs/1.get-started/3.quick-start.md", "matches": true, "note": "" }],
   "notVerified": ["What no journey reached, and why"],
-  "attention": ["Behaviour the owner should look at that is not a bug the skill can judge"]
+  "attention": ["Behaviour the owner should look at that is not a bug the skill can judge"],
+  "verifier": "fresh Amp thread, not the author"
 }
 ```
 
@@ -101,7 +102,7 @@ node "$VERIFY" publish "$RUN" --pr <n>
 - `publish` commits `evidence/` to the orphan branch `verify-evidence` under `pr-<n>/<sha>/`. It works from a temporary worktree and never touches the checkout under review. It then posts the verdict with `gh pr comment` and sets commit status `verify` on the head SHA: `success` for PASS and PASS+NOTES, `failure` for FAIL. Finally it reads the status back from GitHub.
 - A new push invalidates the status, so verify again on the new head.
 
-Post a verdict only from a thread that did not write the change.
+Post a verdict only from a thread that did not write the change. `verifier` names who judged; when that is not true, say who did.
 
 ## Seeded breaks
 

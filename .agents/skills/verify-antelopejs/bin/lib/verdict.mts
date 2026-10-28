@@ -33,6 +33,7 @@ export interface Judgement {
   docs: DocsJudgement[];
   doorsNone: string | null;
   doors: DoorRow[];
+  verifier: string;
 }
 
 /** A rendered verdict and the facts it was computed from. */
@@ -50,6 +51,7 @@ const CONTAINED_KINDS = new Set(["data", "format"]);
 interface JudgementFile {
   notVerified?: string[];
   attention?: string[];
+  verifier?: string;
   docs?: { page: string; matches: boolean; note?: string }[];
   doors?: { none?: string; rows?: (Omit<DoorRow, "containmentJourney"> & { containmentJourney?: string })[] };
 }
@@ -75,6 +77,7 @@ export function readJudgement(file: string): Judgement {
     attention: raw.attention ?? [],
     docs: (raw.docs ?? []).map((entry) => ({ page: entry.page, matches: entry.matches === true, note: entry.note ?? "" })),
     doorsNone: none,
+    verifier: raw.verifier?.trim() || "fresh Amp thread, not the author",
     doors: rows.map((row) => ({ ...row, containmentJourney: row.containmentJourney ?? "" })),
   };
 }
@@ -194,7 +197,7 @@ export function renderVerdict(state: RunState, pr: number, judgement: Judgement)
   const markdown = [
     `## Verify: ${result}`,
     "",
-    `**Head** \`${short(plan.headSha)}\` · **Skill** \`verify-antelopejs\` @ \`${short(skillSha)}\` (not trusted yet) · **Verifier** fresh Amp thread, not the author`,
+    `**Head** \`${short(plan.headSha)}\` · **Skill** \`verify-antelopejs\` @ \`${short(skillSha)}\` (not trusted yet) · **Verifier** ${judgement.verifier}`,
     "",
     "### One-way doors",
     ...doorsSection(judgement),
