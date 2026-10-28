@@ -1,12 +1,14 @@
 import repl, { type REPLServer } from "node:repl";
 
+import type { UnknownDictionary } from "../../utils";
+
 export type ReplFactory = (prompt?: string) => REPLServer;
 
 export class ReplSession {
   private server?: REPLServer;
 
   constructor(
-    private context: REPLServer["context"] = {},
+    private context: UnknownDictionary = {},
     private createRepl: ReplFactory = repl.start,
   ) {}
 

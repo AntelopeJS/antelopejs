@@ -5,7 +5,7 @@ import { isObjectOrNull } from "./type-guards";
 type OpenDictionary = Record<string, any>;
 
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The result of a plain-object guard: its keys are known to be strings and its leaves are what the guard's caller goes on to decode.
-type UnknownDictionary = Record<string, unknown>;
+export type UnknownDictionary = Record<string, unknown>;
 
 export function isObject(item: unknown): item is UnknownDictionary {
   return isObjectOrNull(item) && item !== null && !Array.isArray(item);
@@ -78,7 +78,7 @@ export function diffDeep(
 export function set(
   obj: OpenDictionary,
   path: string,
-  value: OpenDictionary[string],
+  value: UnknownDictionary[string],
 ): void {
   const keys = path.split(".");
   let current = obj;

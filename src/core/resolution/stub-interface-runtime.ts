@@ -95,7 +95,7 @@ function walk(
 }
 
 export function neutralizeInterfaceAsyncProxies(
-  exports: NodeJS.Module["exports"],
+  exports: PromiseFulfilledResult<unknown>["value"],
   interfaceName: string,
   reason: string = NO_PROVIDER_REASON,
 ): void {
