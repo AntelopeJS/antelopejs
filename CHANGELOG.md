@@ -1,5 +1,55 @@
 # Changelog
 
+## v1.18.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.17.1...v1.18.0)
+
+### 🚀 Enhancements
+
+- **skills:** Add the verify-antelopejs verification skill and formal checks ([#243](https://github.com/AntelopeJS/antelopejs/pull/243))
+- **config:** Load and watch the project's .env, restart with the edited configuration ([#244](https://github.com/AntelopeJS/antelopejs/pull/244))
+
+### 🩹 Fixes
+
+- **cli:** Route the ./cli facade through the output entry ([#241](https://github.com/AntelopeJS/antelopejs/pull/241))
+
+### 💅 Refactors
+
+- **test:** Make every test assert behaviour and drop coverage filler ([#223](https://github.com/AntelopeJS/antelopejs/pull/223))
+- Replace comments with TSDoc, directive reasons, and test names ([#225](https://github.com/AntelopeJS/antelopejs/pull/225))
+- Remove type assertions and bring type and lint ceilings to zero ([#235](https://github.com/AntelopeJS/antelopejs/pull/235))
+- Enforce module layers with dependency-cruiser ([#238](https://github.com/AntelopeJS/antelopejs/pull/238))
+- Split oversize files and retire the ratchet ([#239](https://github.com/AntelopeJS/antelopejs/pull/239))
+- **utils:** Decode typeof tags through named type guards ([#254](https://github.com/AntelopeJS/antelopejs/pull/254))
+- **config:** Replace self-import test seams and the untyped inly import suppression ([#255](https://github.com/AntelopeJS/antelopejs/pull/255))
+- **types:** Derive unknown boundary types from their owners ([#256](https://github.com/AntelopeJS/antelopejs/pull/256))
+- Replace type assertions with guards, inference and typed fixtures ([#257](https://github.com/AntelopeJS/antelopejs/pull/257))
+- **modules:** Type Node's CommonJS Module internals instead of asserting them ([#258](https://github.com/AntelopeJS/antelopejs/pull/258))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of core 1.17.1 ([#220](https://github.com/AntelopeJS/antelopejs/pull/220))
+
+### 📦 Build
+
+- Adopt the suppression budget from tooling-configs 0.2.7 ([#253](https://github.com/AntelopeJS/antelopejs/pull/253))
+- **deps:** Adopt @antelopejs/interface-core 0.3.0 ([#259](https://github.com/AntelopeJS/antelopejs/pull/259))
+
+### 🏡 Chore
+
+- Adopt the guardrail pack from tooling-configs 0.2.0 ([#221](https://github.com/AntelopeJS/antelopejs/pull/221))
+- Configure Renovate with the shared preset ([#222](https://github.com/AntelopeJS/antelopejs/pull/222))
+- Upgrade the guardrail pack to 0.2.3 ([#242](https://github.com/AntelopeJS/antelopejs/pull/242))
+
+### ✅ Tests
+
+- **skills:** Add eval cases for the antelopejs skills ([#245](https://github.com/AntelopeJS/antelopejs/pull/245))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+
 ## v1.17.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.17.0...v1.17.1)
