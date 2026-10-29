@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@antelopejs/interface-core':
-        specifier: '>=0.2.6 <0.3.0'
-        version: 0.2.6
+        specifier: '>=0.3.0 <0.4.0'
+        version: 0.3.0
       '@clack/prompts':
         specifier: ^1.8.1
         version: 1.8.1
@@ -111,8 +111,8 @@ importers:
 
 packages:
 
-  '@antelopejs/interface-core@0.2.6':
-    resolution: {integrity: sha512-PJp58D1snKLVEmpfn9Yj2htuohZhUxHqyyec3xtkPPy61mtACs0YznnhcgbYQNhIy/q8J+lSwDICPZIsKjhAIA==}
+  '@antelopejs/interface-core@0.3.0':
+    resolution: {integrity: sha512-GeGclCe5JOg+9H7XvTxYmE78u9tHG7QpVddHkB11kSgjNKq1hXqbEXPv0BRKQD9jjiV594qr1HuFuuYp4aqCZQ==}
 
   '@antelopejs/tooling-configs@0.2.7':
     resolution: {integrity: sha512-NxAaMG3zU423u6EeUpDWPGLeZqAYmAWdh8kYF/86xavyrruz93jvhwDOqFRy75fdIZI470k4bxWOJISb3wGqvQ==}
@@ -2772,7 +2772,7 @@ packages:
 
 snapshots:
 
-  '@antelopejs/interface-core@0.2.6':
+  '@antelopejs/interface-core@0.3.0':
     dependencies:
       reflect-metadata: 0.2.2
 
