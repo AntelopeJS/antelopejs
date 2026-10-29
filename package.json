@@ -71,7 +71,7 @@
     "suppressions:update": "antelopejs-suppressions --update"
   },
   "dependencies": {
-    "@antelopejs/interface-core": ">=0.2.6 <0.3.0",
+    "@antelopejs/interface-core": ">=0.3.0 <0.4.0",
     "@clack/prompts": "^1.8.1",
     "@types/proper-lockfile": "^4.1.4",
     "commander": "^13.1.0",
