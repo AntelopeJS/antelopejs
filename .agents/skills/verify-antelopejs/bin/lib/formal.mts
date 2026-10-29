@@ -26,7 +26,7 @@ export interface FormalResult {
 }
 
 /** The rules a run of the check reported as broken and as holding. */
-interface Rules {
+export interface Rules {
   exitCode: number | null;
   violated: string[];
   passing: string[];
@@ -43,9 +43,13 @@ export interface FormalWeight {
   outcome: string;
 }
 
-/** The formal checks whose covered files a set of changed files touches. */
-export function touchedFormalChecks(changed: string[]): FormalCheck[] {
-  return config.formal.filter((check) => changed.some((file) => check.covers.includes(file)));
+function changesCheckFiles(check: FormalCheck, changed: string[]): boolean {
+  return changed.some((file) => check.files.some((glob) => path.matchesGlob(file, glob)));
+}
+
+/** The formal checks whose covered files or own `files` a set of changed files touches. */
+export function touchedFormalChecks(changed: string[], checks: FormalCheck[] = config.formal): FormalCheck[] {
+  return checks.filter((check) => changed.some((file) => check.covers.includes(file)) || changesCheckFiles(check, changed));
 }
 
 function violatedRules(check: FormalCheck, exitCode: number | null, output: string): string[] {
@@ -79,23 +83,31 @@ function writeRun(folder: string, prefix: string, command: string[], run: Return
   writeFileSync(path.join(folder, `${prefix}exit-code.txt`), `${run.status}\n`);
 }
 
+/** The rules the base broke that HEAD reports passing, and those HEAD reports neither failing nor passing. */
+export interface RuleChanges {
+  fixed: string[];
+  missing: string[];
+}
+
+/** What HEAD did to the rules the base broke. */
+export function ruleChanges(base: Rules, head: Rules): RuleChanges {
+  const atHead = new Set([...head.violated, ...head.passing]);
+  return {
+    fixed: base.violated.filter((rule) => head.passing.includes(rule) && !head.violated.includes(rule)),
+    missing: base.violated.filter((rule) => !atHead.has(rule)),
+  };
+}
+
 function gateFields(check: FormalCheck, diff: FormalDiff, folder: string, head: Rules): Partial<FormalResult> {
   const behaviour = behaviourChange(check, diff);
-  const checkChanged = diff.changed.some((file) => check.files.some((glob) => path.matchesGlob(file, glob)));
+  const checkChanged = changesCheckFiles(check, diff.changed);
   if (!behaviour.changed && !checkChanged) {
     return { behaviour, checkChanged, base: null, fixed: [], missing: [] };
   }
   const run = inWorktree(diff.baseSha, (dir) => runCommand(check.command, dir));
   writeRun(folder, "base-", check.command, run);
   const base = rulesOf(check, run);
-  const atHead = new Set([...head.violated, ...head.passing]);
-  return {
-    behaviour,
-    checkChanged,
-    base,
-    fixed: base.violated.filter((rule) => head.passing.includes(rule) && !head.violated.includes(rule)),
-    missing: base.violated.filter((rule) => !atHead.has(rule)),
-  };
+  return { behaviour, checkChanged, base, ...ruleChanges(base, head) };
 }
 
 /**
