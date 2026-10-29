@@ -171,6 +171,18 @@ export async function loadInterfacesFromGit(
   }
 }
 
+/**
+ * Paths, relative to a template repository root, that a scaffold never
+ * receives: the repository metadata and the template's own agent layer
+ * (its verification skill and the symlinks that expose it). `.claude/settings.json`
+ * is not listed because templates ship it on purpose.
+ */
+export const SCAFFOLD_EXCLUDED_PATHS = [
+  ".git",
+  ".agents",
+  path.join(".claude", "skills"),
+] as const;
+
 export async function copyTemplate(template: Template, distPath: string) {
   await mkdirSync(distPath, { recursive: true });
   await ExecuteCMD("git init", {
@@ -189,5 +201,7 @@ export async function copyTemplate(template: Template, distPath: string) {
     cwd: distPath,
   });
 
-  rmSync(path.join(distPath, ".git"), { recursive: true, force: true });
+  for (const excluded of SCAFFOLD_EXCLUDED_PATHS) {
+    rmSync(path.join(distPath, excluded), { recursive: true, force: true });
+  }
 }
