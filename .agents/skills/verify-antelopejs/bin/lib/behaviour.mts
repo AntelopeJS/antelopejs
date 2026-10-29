@@ -1,14 +1,12 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type TypeScript from "typescript";
 
 import type { FormalCheck } from "../../verify.config.ts";
+import { type EmitFingerprint, type EmitItem, emitFingerprint } from "./emit.mts";
 import { REPO_DIR } from "./run.mts";
 
-const CODE_EXTENSIONS = new Set([".ts", ".mts", ".cts", ".tsx", ".js", ".mjs", ".cjs", ".jsx"]);
 const DETAIL_LIMIT = 5;
 const DETAIL_LENGTH = 160;
 const OUTPUT_LIMIT = 64 * 1024 * 1024;
@@ -25,55 +23,6 @@ export interface BehaviourChange {
 export interface Commits {
   baseSha: string;
   headSha: string;
-}
-
-function fileAt(sha: string, file: string): string | null {
-  const shown = spawnSync("git", ["show", `${sha}:${file}`], { cwd: REPO_DIR, encoding: "utf8", maxBuffer: OUTPUT_LIMIT });
-  return shown.status === 0 ? shown.stdout : null;
-}
-
-let typescript: typeof TypeScript | undefined;
-
-function loadTypeScript(): typeof TypeScript {
-  const loaded: typeof TypeScript = typescript ?? createRequire(path.join(REPO_DIR, "package.json"))("typescript");
-  typescript = loaded;
-  return loaded;
-}
-
-function scriptStatements(file: string, source: string): string[] {
-  const ts = loadTypeScript();
-  const { outputText } = ts.transpileModule(source, {
-    fileName: file,
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: true, experimentalDecorators: true },
-  });
-  const emitted = ts.createSourceFile("emit.js", outputText, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
-  const printer = ts.createPrinter({ removeComments: true });
-  return emitted.statements
-    .filter((statement) => !ts.isImportDeclaration(statement))
-    .filter((statement) => !(ts.isExportDeclaration(statement) && statement.moduleSpecifier))
-    .map((statement) => printer.printNode(ts.EmitHint.Unspecified, statement, emitted).replace(/^export (default )?/, ""));
-}
-
-function statementsOf(file: string, source: string): string[] {
-  if (CODE_EXTENSIONS.has(path.extname(file))) {
-    return scriptStatements(file, source);
-  }
-  return [`file ${source.replace(/\s+/g, " ").trim()}`];
-}
-
-/**
- * What the covered code does at a commit, as the sorted top-level
- * statements of its JavaScript: types, comments, formatting, imports and
- * export keywords left out, so a type-only edit, a comment or a verbatim
- * move between covered files keeps the same fingerprint.
- */
-export function emitFingerprint(sha: string, files: string[]): string[] {
-  return files
-    .flatMap((file) => {
-      const source = fileAt(sha, file);
-      return source === null ? [] : statementsOf(file, source);
-    })
-    .sort((left, right) => left.localeCompare(right));
 }
 
 /** Runs `action` in a throwaway worktree of `sha` whose `node_modules` links the checkout's, then removes it. */
@@ -100,17 +49,17 @@ function probeFingerprint(command: string[], sha: string): string[] {
   });
 }
 
-function difference(left: string[], right: string[]): string[] {
+function difference<Item>(left: Item[], right: Item[], key: (item: Item) => string): Item[] {
   const counts = new Map<string, number>();
   for (const item of right) {
-    counts.set(item, (counts.get(item) ?? 0) + 1);
+    counts.set(key(item), (counts.get(key(item)) ?? 0) + 1);
   }
   return left.filter((item) => {
-    const count = counts.get(item) ?? 0;
+    const count = counts.get(key(item)) ?? 0;
     if (count === 0) {
       return true;
     }
-    counts.set(item, count - 1);
+    counts.set(key(item), count - 1);
     return false;
   });
 }
@@ -119,23 +68,64 @@ function summary(lines: string[]): string[] {
   return lines.slice(0, DETAIL_LIMIT).map((line) => (line.length > DETAIL_LENGTH ? `${line.slice(0, DETAIL_LENGTH)}…` : line));
 }
 
+interface Differences {
+  removed: string[];
+  added: string[];
+}
+
+function sequenceChanges(file: string, base: EmitItem[], head: EmitItem[]): Differences {
+  const length = Math.max(base.length, head.length);
+  for (let index = 0; index < length; index += 1) {
+    if (base[index]?.structure !== head[index]?.structure) {
+      return {
+        removed: [`${file} statement ${index + 1}: ${base[index]?.text ?? "(none)"}`],
+        added: [`${file} statement ${index + 1}: ${head[index]?.text ?? "(none)"}`],
+      };
+    }
+  }
+  return { removed: [], added: [] };
+}
+
+function compareEmit(base: EmitFingerprint, head: EmitFingerprint): Differences {
+  const structure = (item: EmitItem) => item.structure;
+  const removed = difference(base.functions, head.functions, structure).map((item) => `hoisted ${item.text}`);
+  const added = difference(head.functions, base.functions, structure).map((item) => `hoisted ${item.text}`);
+  for (const file of new Set([...Object.keys(base.files), ...Object.keys(head.files)])) {
+    const change = sequenceChanges(file, base.files[file] ?? [], head.files[file] ?? []);
+    removed.push(...change.removed);
+    added.push(...change.added);
+  }
+  return { removed, added };
+}
+
+function compareProbe(base: string[], head: string[]): Differences {
+  if (JSON.stringify(base) === JSON.stringify(head)) {
+    return { removed: [], added: [] };
+  }
+  const line = (item: string) => item;
+  const removed = difference(base, head, line);
+  const added = difference(head, base, line);
+  return removed.length + added.length > 0 ? { removed, added } : { removed: ["(order)"], added: ["(order)"] };
+}
+
 /**
  * Whether a diff changed the behaviour of the code a formal check covers,
- * decided without judgement: for `emit`, the covered files keep the same
- * JavaScript statements on the base and on HEAD; for `probe`, the check's
- * probe prints the same lines on a checkout of each.
+ * decided without judgement. For `emit`, each covered file keeps its
+ * top-level statements, in order, with the same structure, and the covered
+ * function declarations stay the same wherever they live; for `probe`, the
+ * check's probe prints the same lines on a checkout of each. `repo` is the
+ * checkout the commits belong to.
  */
-export function behaviourChange(check: FormalCheck, commits: Commits): BehaviourChange {
+export function behaviourChange(check: FormalCheck, commits: Commits, repo: string = REPO_DIR): BehaviourChange {
   const behaviour = check.behaviour;
-  const fingerprint = (sha: string) => (behaviour.kind === "probe" ? probeFingerprint(behaviour.command, sha) : emitFingerprint(sha, check.covers));
-  const base = fingerprint(commits.baseSha);
-  const head = fingerprint(commits.headSha);
-  const removed = difference(base, head);
-  const added = difference(head, base);
+  const change =
+    behaviour.kind === "probe"
+      ? compareProbe(probeFingerprint(behaviour.command, commits.baseSha), probeFingerprint(behaviour.command, commits.headSha))
+      : compareEmit(emitFingerprint(repo, commits.baseSha, check.covers), emitFingerprint(repo, commits.headSha, check.covers));
   return {
     method: behaviour.kind === "probe" ? `probe ${behaviour.command.join(" ")}` : "emit",
-    changed: removed.length + added.length > 0,
-    removed: summary(removed),
-    added: summary(added),
+    changed: change.removed.length + change.added.length > 0,
+    removed: summary(change.removed),
+    added: summary(change.added),
   };
 }

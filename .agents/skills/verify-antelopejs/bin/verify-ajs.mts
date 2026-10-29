@@ -122,7 +122,7 @@ function runFormal(dir: string, all: boolean): number {
   const checks = all ? config.formal : touched;
   for (const check of checks) {
     const gate = touched.includes(check);
-    const result = runFormalCheck(state, check, gate ? { baseSha: plan.baseSha, headSha: plan.headSha } : null);
+    const result = runFormalCheck(state, check, gate ? { baseSha: plan.baseSha, headSha: plan.headSha, changed: plan.changed } : null);
     const weight = formalGate(result);
     const outcome = gate ? (weight.fails ? "FAIL" : "PASS") : result.violated.length > 0 ? "VIOLATED" : result.exitCode === 0 ? "HOLDS" : "ERROR";
     print(`${outcome} ${check.name}: ${gate ? weight.outcome : `${result.violated.join(", ") || "no violated rule"} (does not cover the diff)`} (exit ${result.exitCode})`);

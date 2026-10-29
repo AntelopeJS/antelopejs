@@ -19,15 +19,20 @@ export interface DoorRule {
 export type Behaviour = { kind: "emit" } | { kind: "probe"; command: string[] };
 
 /**
- * A formal check: the source files it covers, the command that runs it, how
- * its output names a violated rule, and how the gate decides that a diff
- * changed the covered behaviour.
+ * A formal check: the source files it covers, the check's own files, the
+ * command that runs it, how its output names a violated and a passing rule
+ * (without `passing` and `violation`, a zero exit is the one rule `property`
+ * holding), and how the gate decides that a diff changed the covered
+ * behaviour. A diff that changes the covered behaviour or the check's own
+ * files also runs the check on the base to tell which findings HEAD fixed.
  */
 export interface FormalCheck {
   name: string;
   covers: string[];
+  files: string[];
   command: string[];
   violation: RegExp | null;
+  passing: RegExp | null;
   behaviour: Behaviour;
 }
 
@@ -119,8 +124,10 @@ const config: VerifyConfig = {
         "src/core/runtime/watch/file-watcher.ts",
         "src/core/runtime/watch/hot-reload.ts",
       ],
+      files: [".agents/skills/formal-module-lifecycle/**"],
       command: ["node", ".agents/skills/formal-module-lifecycle/check.mjs"],
       violation: /^(?:finding|BROKEN) (\w+)/gm,
+      passing: /(?<=^holds +(?:\w+, )*)(\w+)(?=,| \()/gm,
       behaviour: { kind: "emit" },
     },
     {
@@ -131,7 +138,9 @@ const config: VerifyConfig = {
         "src/core/output/interface-resolution-error.ts",
       ],
       command: ["pnpm", "exec", "mocha", "--no-config", "--require", "ts-node/register", "--require", "test/setup.ts", "test/core/module-manager.interface-ranges.test.ts", "--exit"],
+      files: ["test/core/module-manager.interface-ranges.test.ts"],
       violation: null,
+      passing: null,
       behaviour: { kind: "emit" },
     },
   ],

@@ -15,11 +15,26 @@ export interface FormalResult {
   name: string;
   exitCode: number | null;
   violated: string[];
+  passing?: string[];
   folder: string;
   commits?: Commits;
   behaviour?: BehaviourChange;
-  base?: { exitCode: number | null; violated: string[] } | null;
+  checkChanged?: boolean;
+  base?: Rules | null;
   fixed?: string[];
+  missing?: string[];
+}
+
+/** The rules a run of the check reported as broken and as holding. */
+interface Rules {
+  exitCode: number | null;
+  violated: string[];
+  passing: string[];
+}
+
+/** The diff a covered check is gated on: its two commits and the files it changed. */
+export interface FormalDiff extends Commits {
+  changed: string[];
 }
 
 /** How a formal result weighs on a verdict whose diff the check covers. */
@@ -40,6 +55,18 @@ function violatedRules(check: FormalCheck, exitCode: number | null, output: stri
   return exitCode === 0 ? [] : ["property"];
 }
 
+function passingRules(check: FormalCheck, exitCode: number | null, output: string): string[] {
+  if (check.passing) {
+    return [...new Set([...output.matchAll(check.passing)].map((match) => match[1]))];
+  }
+  return !check.violation && exitCode === 0 ? ["property"] : [];
+}
+
+function rulesOf(check: FormalCheck, run: ReturnType<typeof runCommand>): Rules {
+  const output = run.stdout ?? "";
+  return { exitCode: run.status, violated: violatedRules(check, run.status, output), passing: passingRules(check, run.status, output) };
+}
+
 function runCommand(command: string[], cwd: string) {
   const [program, ...args] = command;
   return spawnSync(program, args, { cwd, encoding: "utf8", env: { ...process.env, TERM: "xterm-256color" }, maxBuffer: 64 * 1024 * 1024 });
@@ -52,33 +79,43 @@ function writeRun(folder: string, prefix: string, command: string[], run: Return
   writeFileSync(path.join(folder, `${prefix}exit-code.txt`), `${run.status}\n`);
 }
 
-function gateFields(check: FormalCheck, commits: Commits, folder: string, violated: string[]): Pick<FormalResult, "behaviour" | "base" | "fixed"> {
-  const behaviour = behaviourChange(check, commits);
-  if (!behaviour.changed) {
-    return { behaviour, base: null, fixed: [] };
+function gateFields(check: FormalCheck, diff: FormalDiff, folder: string, head: Rules): Partial<FormalResult> {
+  const behaviour = behaviourChange(check, diff);
+  const checkChanged = diff.changed.some((file) => check.files.some((glob) => path.matchesGlob(file, glob)));
+  if (!behaviour.changed && !checkChanged) {
+    return { behaviour, checkChanged, base: null, fixed: [], missing: [] };
   }
-  const run = inWorktree(commits.baseSha, (dir) => runCommand(check.command, dir));
+  const run = inWorktree(diff.baseSha, (dir) => runCommand(check.command, dir));
   writeRun(folder, "base-", check.command, run);
-  const base = { exitCode: run.status, violated: violatedRules(check, run.status, run.stdout ?? "") };
-  return { behaviour, base, fixed: base.violated.filter((rule) => !violated.includes(rule)) };
+  const base = rulesOf(check, run);
+  const atHead = new Set([...head.violated, ...head.passing]);
+  return {
+    behaviour,
+    checkChanged,
+    base,
+    fixed: base.violated.filter((rule) => head.passing.includes(rule) && !head.violated.includes(rule)),
+    missing: base.violated.filter((rule) => !atHead.has(rule)),
+  };
 }
 
 /**
  * Runs one formal check from the repository root and writes its command,
  * output, exit code and violated rules under evidence/formal/<name>/. When
- * the diff touches the check (`commits` given), it also records whether the
- * diff changed the covered behaviour and, when it did, runs the check on the
- * base to tell which rules HEAD fixed.
+ * the diff touches the check (`diff` given), it also records whether the
+ * diff changed the covered behaviour. When it did, or when the diff changed
+ * the check's own `files`, it runs the check on the base: `fixed` lists the
+ * rules the base broke that HEAD reports passing, and `missing` the rules the
+ * base broke that HEAD reports neither failing nor passing.
  */
-export function runFormalCheck(state: RunState, check: FormalCheck, commits: Commits | null): FormalResult {
+export function runFormalCheck(state: RunState, check: FormalCheck, diff: FormalDiff | null): FormalResult {
   const folder = path.join(state.evidence, "formal", check.name);
   mkdirSync(folder, { recursive: true });
   const run = runCommand(check.command, REPO_DIR);
   writeRun(folder, "", check.command, run);
-  const violated = violatedRules(check, run.status, run.stdout ?? "");
-  const result: FormalResult = { name: check.name, exitCode: run.status, violated, folder: path.relative(state.evidence, folder) };
-  if (commits) {
-    Object.assign(result, { commits }, gateFields(check, commits, folder, violated));
+  const head = rulesOf(check, run);
+  const result: FormalResult = { name: check.name, exitCode: run.status, violated: head.violated, passing: head.passing, folder: path.relative(state.evidence, folder) };
+  if (diff) {
+    Object.assign(result, { commits: { baseSha: diff.baseSha, headSha: diff.headSha } }, gateFields(check, diff, folder, head));
   }
   writeFileSync(path.join(folder, "result.json"), `${JSON.stringify(result, null, 2)}\n`);
   return result;
@@ -88,13 +125,16 @@ export function runFormalCheck(state: RunState, check: FormalCheck, commits: Com
  * How a formal result weighs on a verdict whose diff the check covers: a
  * non-zero exit (a tool error, or a check that no longer matches its record)
  * fails; recorded findings fail only when the diff changed the covered
- * behaviour; rules the base broke and HEAD no longer does are reported as
- * fixed.
+ * behaviour; a rule the base broke that HEAD does not report at all fails;
+ * rules the base broke that HEAD reports passing are reported as fixed.
  */
 export function formalGate(result: FormalResult): FormalWeight {
   if (result.exitCode !== 0) {
     const what = result.violated.length > 0 ? `the check no longer matches its record: ${result.violated.join(", ")}` : "tool error";
     return { fails: true, outcome: `${what}, exit ${result.exitCode}` };
+  }
+  if (result.missing && result.missing.length > 0) {
+    return { fails: true, outcome: `rules the base broke are absent at HEAD: ${result.missing.join(", ")}` };
   }
   if (!result.behaviour) {
     return { fails: result.violated.length > 0, outcome: `violated ${result.violated.join(", ") || "nothing"}` };
