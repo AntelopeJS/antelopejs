@@ -21,7 +21,7 @@ It needs Node 24 and Java 11 or later (`$JAVA`, or `java` on PATH). The first ru
 
 ## When to run it
 
-Run it when a change touches any file in the coverage record below. A failure makes the Verdict FAIL.
+Run it when a change touches any file in the coverage record below. A changed rule (exit 1) makes the Verdict FAIL. The recorded findings fail it only when the diff changes what the covered code does, which `verify-ajs formal` decides by comparing the covered files' JavaScript statements on the base and on HEAD (`verify-antelopejs` verdict rule 5).
 
 ## The rules
 

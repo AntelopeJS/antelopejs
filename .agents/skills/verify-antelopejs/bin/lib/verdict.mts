@@ -5,7 +5,7 @@ import path from "node:path";
 import config, { type DoorKind } from "../../verify.config.ts";
 import { FEATURE_JOURNEYS } from "../journeys/index.mts";
 import { flaggedDoors } from "./doors.mts";
-import { readFormalResult, touchedFormalChecks } from "./formal.mts";
+import { formalGate, readFormalResult, touchedFormalChecks } from "./formal.mts";
 import type { JourneyResult } from "./journey.mts";
 import { planFor, type Plan, SMOKE_FEATURE } from "./map.mts";
 import { REPO_DIR, type RunState, SKILL_DIR } from "./run.mts";
@@ -229,18 +229,21 @@ function formalSection(state: RunState, plan: Plan, pr: number) {
   const touched = touchedFormalChecks(plan.changed).map((check) => check.name);
   for (const check of config.formal) {
     const result = readFormalResult(state, check.name);
+    const gate = touched.includes(check.name);
     if (!result) {
-      if (touched.includes(check.name)) {
+      if (gate) {
         reasons.push(`formal check ${check.name} covers the diff but was not run`);
       }
       continue;
     }
-    const gate = touched.includes(check.name);
-    const broken = result.violated.length > 0 || (result.exitCode !== 0 && result.exitCode !== 1);
-    if (gate && broken) {
-      reasons.push(`formal check ${check.name}: ${result.violated.length > 0 ? `violated ${result.violated.join(", ")}` : `tool error, exit ${result.exitCode}`}`);
+    if (gate && !result.behaviour && result.exitCode === 0) {
+      reasons.push(`formal check ${check.name} covers the diff but its run did not compare the covered behaviour with the base`);
     }
-    const summary = result.violated.length > 0 ? `violated: ${result.violated.join(", ")}` : `exit ${result.exitCode}, no violated rule`;
+    const weight = formalGate(result);
+    if (gate && weight.fails) {
+      reasons.push(`formal check ${check.name}: ${weight.outcome}`);
+    }
+    const summary = gate ? weight.outcome : result.violated.length > 0 ? `violated: ${result.violated.join(", ")}` : `exit ${result.exitCode}, no violated rule`;
     lines.push(`\`${check.name}\` (${gate ? "covers the diff, gates the verdict" : "does not cover the diff, informational"}): ${summary}. [evidence](${evidenceUrl(pr, plan.headSha, result.folder)})`);
   }
   return { reasons, lines };

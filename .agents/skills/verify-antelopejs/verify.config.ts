@@ -9,12 +9,26 @@ export interface DoorRule {
   why: string;
 }
 
-/** A formal check: the source files it covers, the command that runs it, and how its output names a violated rule. */
+/**
+ * How the gate decides whether a diff changed what the covered code does:
+ * `emit` compares the JavaScript statements of the covered files on the
+ * base and on HEAD (types, comments, formatting, imports and export
+ * keywords left out); `probe` runs a command on a checkout of each, the
+ * checkout's path as last argument, and compares what it prints.
+ */
+export type Behaviour = { kind: "emit" } | { kind: "probe"; command: string[] };
+
+/**
+ * A formal check: the source files it covers, the command that runs it, how
+ * its output names a violated rule, and how the gate decides that a diff
+ * changed the covered behaviour.
+ */
 export interface FormalCheck {
   name: string;
   covers: string[];
   command: string[];
   violation: RegExp | null;
+  behaviour: Behaviour;
 }
 
 /** The repo-owned layer of the verification skill. */
@@ -107,6 +121,7 @@ const config: VerifyConfig = {
       ],
       command: ["node", ".agents/skills/formal-module-lifecycle/check.mjs"],
       violation: /^(?:finding|BROKEN) (\w+)/gm,
+      behaviour: { kind: "emit" },
     },
     {
       name: "formal-interface-ranges",
@@ -117,6 +132,7 @@ const config: VerifyConfig = {
       ],
       command: ["pnpm", "exec", "mocha", "--no-config", "--require", "ts-node/register", "--require", "test/setup.ts", "test/core/module-manager.interface-ranges.test.ts", "--exit"],
       violation: null,
+      behaviour: { kind: "emit" },
     },
   ],
 };
