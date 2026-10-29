@@ -1,8 +1,9 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import ts from "typescript";
+import type TypeScript from "typescript";
 
 import type { FormalCheck } from "../../verify.config.ts";
 import { REPO_DIR } from "./run.mts";
@@ -31,7 +32,16 @@ function fileAt(sha: string, file: string): string | null {
   return shown.status === 0 ? shown.stdout : null;
 }
 
+let typescript: typeof TypeScript | undefined;
+
+function loadTypeScript(): typeof TypeScript {
+  const loaded: typeof TypeScript = typescript ?? createRequire(path.join(REPO_DIR, "package.json"))("typescript");
+  typescript = loaded;
+  return loaded;
+}
+
 function scriptStatements(file: string, source: string): string[] {
+  const ts = loadTypeScript();
   const { outputText } = ts.transpileModule(source, {
     fileName: file,
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: true, experimentalDecorators: true },
