@@ -14,6 +14,7 @@ import { writeConfig } from "../../../common";
 import { formatNames } from "../../shared/names";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
+import { pruneModuleLocks } from "./module-locks";
 
 const INSTALL_COMMAND = "ajs project modules install";
 const INSTALL_DESCRIPTION = "check that every interface is still implemented";
@@ -120,6 +121,7 @@ export async function projectModulesRemoveCommand(
 
   const removedKeys = removeModules(requested, missingModules, envModules);
   await writeConfig(options.project, config);
+  await pruneModuleLocks(options.project, config);
   const remainingModules = Object.keys(antelopeConfig.modules).filter(
     (m) => !removedKeys.includes(m),
   );

@@ -18,6 +18,7 @@ import {
 
 interface BuildCommandOptions extends ProjectCommandOptions {
   project: string;
+  frozenModules?: boolean;
 }
 
 const START_COMMAND = "ajs project start";
@@ -82,6 +83,7 @@ export async function runBuild(
   const startedAt = Date.now();
   await build(commandOptions.project, context.environment, {
     verbose: commandOptions.verbose,
+    frozenModules: commandOptions.frozenModules,
   });
   await displayBuildSummary(commandOptions, Date.now() - startedAt);
 }

@@ -19,6 +19,10 @@ const LOCKFILES: Record<PackageManagerName, string[]> = {
   pnpm: ["pnpm-lock.yaml"],
 };
 
+/** Every lockfile name a module's package manager can write, npm, yarn or pnpm. */
+export const MODULE_LOCKFILE_NAMES: readonly string[] =
+  Object.values(LOCKFILES).flat();
+
 const FALLBACK_VERSIONS: Record<PackageManagerName, string> = {
   npm: "npm@10.2.4",
   yarn: "yarn@1.22.21",
@@ -131,11 +135,20 @@ function hasCorepack(): boolean {
   }
 }
 
+function packageManagerName(packageManager?: string): PackageManagerName {
+  return normalizePackageManager(
+    packageManager?.match(PACKAGE_MANAGER_PATTERN)?.[1] ?? packageManager,
+  );
+}
+
 function resolvePackageManager(packageManager?: string): PackageManager {
-  const match = packageManager?.match(PACKAGE_MANAGER_PATTERN);
-  const name = normalizePackageManager(match?.[1] ?? packageManager);
+  const name = packageManagerName(packageManager);
   const executable =
-    match && hasCorepack() ? `corepack ${packageManager}` : name;
+    packageManager !== undefined &&
+    PACKAGE_MANAGER_PATTERN.test(packageManager) &&
+    hasCorepack()
+      ? `corepack ${packageManager}`
+      : name;
   return { executable, name };
 }
 
@@ -151,6 +164,26 @@ async function hasPackageManagerLockfile(
     ),
   );
   return matches.includes(true);
+}
+
+/**
+ * The lockfile the package manager of the module in `directory` wrote there,
+ * or `undefined` when it wrote none.
+ */
+export async function findModuleLockfile(
+  directory: string,
+  fileSystem: IFileSystem = new NodeFileSystem(),
+): Promise<string | undefined> {
+  const lockfiles =
+    LOCKFILES[
+      packageManagerName(await getModulePackageManager(directory, fileSystem))
+    ];
+  const matches = await Promise.all(
+    lockfiles.map((lockfile) =>
+      fileSystem.exists(path.join(directory, lockfile)),
+    ),
+  );
+  return lockfiles.find((_, index) => matches[index]);
 }
 
 export async function getModulePackageManager(

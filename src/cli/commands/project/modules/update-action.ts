@@ -22,6 +22,11 @@ import {
 } from "../../../../core/output";
 import { writeConfig } from "../../../common";
 import { formatNames } from "../../shared/names";
+import {
+  type LockedModule,
+  pruneModuleLocks,
+  refreshModuleLocks,
+} from "./module-locks";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 
@@ -56,6 +61,26 @@ function applyUpdates(
     };
   }
 }
+/**
+ * The package modules of `selected`, at the version `modules update` moves
+ * them to.
+ */
+function lockedModules(
+  selected: Record<string, ExpandedModuleConfig>,
+  outdated: OutdatedModule[],
+): LockedModule[] {
+  return Object.entries(selected).flatMap(([id, { source }]) => {
+    if (!isPackageSource(source)) {
+      return [];
+    }
+    const update = outdated.find((entry) => entry.name === id);
+    const version = update
+      ? bumpVersionSpec(update.current, update.latest)
+      : source.version;
+    return [{ id, source: { ...source, version } }];
+  });
+}
+
 const UPDATE_COMMAND = "ajs project modules update";
 const DEV_COMMAND = "ajs project dev";
 
@@ -177,9 +202,17 @@ export async function updateModules(
   }
 
   const outdated = await checkOutdatedModules(selectedModules);
-  if (outdated.length > 0 && !options.dryRun) {
-    applyUpdates(env.modules, outdated, antelopeConfig.modules);
-    await writeConfig(options.project, config);
+  if (!options.dryRun) {
+    await refreshModuleLocks(
+      options.project,
+      config,
+      lockedModules(selectedModules, outdated),
+    );
+    if (outdated.length > 0) {
+      applyUpdates(env.modules, outdated, antelopeConfig.modules);
+      await writeConfig(options.project, config);
+    }
+    await pruneModuleLocks(options.project, config);
   }
   displayResults({
     modules,
