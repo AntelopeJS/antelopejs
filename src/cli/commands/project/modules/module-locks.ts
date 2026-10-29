@@ -119,6 +119,11 @@ interface RefreshedLock {
   change: ModuleLockChange | "missing";
 }
 
+/** Whether `modules update` wrote a new or different lock for the module. */
+export function isChangedLock(refreshed: RefreshedLock): boolean {
+  return refreshed.change === "added" || refreshed.change === "changed";
+}
+
 async function recordedContents(
   store: ModuleLockStore,
   pkg: string,

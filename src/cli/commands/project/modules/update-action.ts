@@ -23,6 +23,7 @@ import {
 import { writeConfig } from "../../../common";
 import { formatNames } from "../../shared/names";
 import {
+  isChangedLock,
   type LockedModule,
   pruneModuleLocks,
   refreshModuleLocks,
@@ -88,6 +89,7 @@ interface UpdateReport {
   modules: string[];
   outdated: OutdatedModule[];
   checkedCount: number;
+  changedLocks: number;
   options: UpdateOptions;
   durationMs: number;
 }
@@ -111,7 +113,10 @@ function updateHeadline(report: UpdateReport): string {
   if (report.checkedCount === 0) {
     return "Nothing to update: no module comes from npm";
   }
-  return `Everything is up to date (${pluralize(report.checkedCount, "npm module")} checked)`;
+  const checked = `${pluralize(report.checkedCount, "npm module")} checked`;
+  return report.changedLocks > 0
+    ? `Versions up to date (${checked}), ${pluralize(report.changedLocks, "module lock")} resolved again`
+    : `Everything is up to date (${checked})`;
 }
 
 function updateNextSteps(report: UpdateReport): NextStep[] {
@@ -202,12 +207,14 @@ export async function updateModules(
   }
 
   const outdated = await checkOutdatedModules(selectedModules);
+  let changedLocks = 0;
   if (!options.dryRun) {
-    await refreshModuleLocks(
+    const refreshed = await refreshModuleLocks(
       options.project,
       config,
       lockedModules(selectedModules, outdated),
     );
+    changedLocks = refreshed.filter(isChangedLock).length;
     if (outdated.length > 0) {
       applyUpdates(env.modules, outdated, antelopeConfig.modules);
       await writeConfig(options.project, config);
@@ -218,6 +225,7 @@ export async function updateModules(
     modules,
     outdated,
     checkedCount: countPackageModules(selectedModules),
+    changedLocks,
     options,
     durationMs: Date.now() - startedAt,
   });
