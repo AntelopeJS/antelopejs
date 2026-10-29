@@ -5,6 +5,7 @@ covers:
   - src/core/runtime/build-*.ts
   - src/core/modules/build-artifact.ts
   - src/core/config/**
+  - src/cli/commands/shared/project-command.ts
 docs:
   - docs/5.cli/2.project.md
   - docs/2.concepts/4.configuration.md

@@ -1,11 +1,13 @@
 diff --git a/package.json b/package.json
-index 5d17ae6..00cf29e 100644
+index 792ee45..6edec12 100644
 --- a/package.json
 +++ b/package.json
-@@ -1,5 +1,5 @@
- {
--  "name": "@antelopejs/core",
-+  "name": "@antelopejs/framework",
-   "version": "1.17.1",
-   "description": "TypeScript framework extending hexagonal architecture across your application and its ecosystem through explicit contracts and replaceable modules.",
-   "keywords": [
+@@ -41,7 +41,7 @@
+     "./package.json": "./package.json"
+   },
+   "publishConfig": {
+-    "access": "public",
++    "access": "restricted",
+     "provenance": true
+   },
+   "scripts": {
