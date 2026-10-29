@@ -1,0 +1,40 @@
+$ verify-ajs map
+map ok
+exit 0
+$ node --test .agents/skills/verify-antelopejs/bin/lib/*.test.mts
+✔ a break that edits a file only another feature covers is reported (catches a map that checks only that some feature covers it) (2.545089ms)
+✔ a break inside its own feature's globs passes (catches exact-path matching instead of globs) (0.143676ms)
+✔ the smoke feature is exempt, because it runs on every verdict (catches a rule that fails smoke's empty covers) (0.105702ms)
+ℹ pass 3
+ℹ fail 0
+$ verify-ajs doors seeded-doors/data.patch
+(git apply --check: applies)
+One-way-door: data, format
+  data: src/cli/common.ts
+  format: src/cli/common.ts
+$ verify-ajs doors seeded-doors/format.patch
+(git apply --check: applies)
+One-way-door: format
+  format: src/core/modules/build-artifact.ts
+$ verify-ajs doors seeded-doors/contract.patch
+(git apply --check: applies)
+One-way-door: contract
+  contract: src/cli/commands/project/init.ts
+$ verify-ajs doors seeded-doors/outbound.patch
+(git apply --check: applies)
+One-way-door: format, outbound
+  format: src/cli/version-check.ts
+  outbound: src/cli/version-check.ts
+$ verify-ajs doors seeded-doors/exposure.patch
+(git apply --check: applies)
+One-way-door: exposure
+  exposure: src/cli/commands/config/show-action.ts
+$ verify-ajs doors seeded-doors/publish.patch
+(git apply --check: applies)
+One-way-door: contract, publish
+  contract: package.json
+  publish: package.json
+$ (scratch) project-build covers as on main, then verify-ajs map
+.agents/skills/verify-antelopejs/features/project-build.md: its seeded break edits src/cli/commands/shared/project-command.ts, which its covers globs miss, so plan would not run it
+1 map problems
+exit 1

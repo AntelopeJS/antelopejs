@@ -1,0 +1,3 @@
+$ git apply seeded-breaks/project-build.patch && git commit (scratch)
+$ verify-ajs plan
+run ['smoke', 'project-build', 'project-dev']

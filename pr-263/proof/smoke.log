@@ -1,0 +1,11 @@
+$ RUN=$(verify-ajs new --no-base)
+exit 0 -> /tmp/verify-antelopejs/20261029T114033-bcd924
+$ verify-ajs doctor $RUN
+FAIL pnpm store warm: /home/antony/.cache/verify-antelopejs/xdg-data/pnpm/store
+exit 1
+$ verify-ajs journey $RUN smoke
+PASS smoke/smoke
+exit 0
+$ verify-ajs clean $RUN
+exit 0
+evidence files after clean: 39

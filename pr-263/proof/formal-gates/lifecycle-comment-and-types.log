@@ -1,0 +1,8 @@
+### lifecycle-comment-and-types: a TSDoc comment and a type annotation in process-claim.ts
+$ git commit (scratch worktree at c1d7b788, base 9624da5e)
+$ verify-ajs formal <run>
+PASS formal-module-lifecycle: covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-module-lifecycle` (covers the diff, gates the verdict): covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/c1d7b788cf83213606ab87f3bc4e2e27618a567b/formal/formal-module-lifecycle)
+formal reasons in Why it fails: none
+behaviour: {"formal-module-lifecycle": {"method": "emit", "changed": false, "removed": [], "added": []}}

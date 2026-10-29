@@ -1,0 +1,10 @@
+
+> @antelopejs/core@1.18.0 checks /home/antony/code/antelope/t6/antelopejs-v1fix
+> antelopejs-checks
+
+Checks: 8 passed, 0 failed.
+
+real	2m45.740s
+user	2m53.512s
+sys	0m17.481s
+exit 0

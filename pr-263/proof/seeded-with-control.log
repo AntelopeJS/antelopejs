@@ -1,0 +1,13 @@
+CAUGHT project-build by build-env (evidence /tmp/verify-antelopejs/20261029T114125-d40fd1/evidence/project-build, control /tmp/verify-antelopejs/20261029T114059-7b8506/evidence/project-build)
+    PASS project-build/build-artifact
+    FAIL project-build/build-env
+        08-project-build-env-nope: exit code 2 (exit code 0)
+        08-project-build-env-nope: /tmp/verify-antelopejs/20261029T114125-d40fd1/work/project-build/build-env/app/.antelope/build/build.json is absent (present)
+    PASS project-build/build-no-project
+    
+CAUGHT smoke by smoke (evidence /tmp/verify-antelopejs/20261029T114155-66f298/evidence/smoke, control /tmp/verify-antelopejs/20261029T114145-2ccdac/evidence/smoke)
+    FAIL smoke/smoke
+        07-ready: GET http://127.0.0.1:33761/ answers 200 with message "hello from the fixture" (connect ECONNREFUSED 127.0.0.1:33761)
+        critical step 07-ready failed
+    
+exit 0

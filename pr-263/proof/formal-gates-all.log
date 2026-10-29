@@ -1,0 +1,46 @@
+### ranges-behaviour-change: the conflict line says 'missing' instead of 'not installed from the consumer'
+$ git commit (scratch worktree at f9eb946c, base 9624da5e)
+$ verify-ajs formal <run>
+PASS formal-interface-ranges: covered behaviour changed (emit), no violated rule (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-interface-ranges` (covers the diff, gates the verdict): covered behaviour changed (emit), no violated rule. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/f9eb946c8da73fa17433d9be5965046c165c84c2/formal/formal-interface-ranges)
+formal reasons in Why it fails: none
+behaviour: {"formal-interface-ranges": {"method": "emit", "changed": true, "removed": ["const MISSING_CONSUMER_COPY = \"not installed from the consumer\";"], "added": ["const MISSING_CONSUMER_COPY = \"missing\";"]}}
+
+### lifecycle-move: getLoadedModuleEntry moved verbatim from module-manager-records.ts to module-manager-cache.ts, re-exported
+$ git commit (scratch worktree at 2bd8c2a1, base 9624da5e)
+$ verify-ajs formal <run>
+PASS formal-module-lifecycle: covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-module-lifecycle` (covers the diff, gates the verdict): covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/2bd8c2a1d4bb6499b40a4a588667ab29b61cce9a/formal/formal-module-lifecycle)
+formal reasons in Why it fails: none
+behaviour: {"formal-module-lifecycle": {"method": "emit", "changed": false, "removed": [], "added": []}}
+
+### lifecycle-comment-and-types: a TSDoc comment and a type annotation in process-claim.ts
+$ git commit (scratch worktree at c1d7b788, base 9624da5e)
+$ verify-ajs formal <run>
+PASS formal-module-lifecycle: covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-module-lifecycle` (covers the diff, gates the verdict): covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/c1d7b788cf83213606ab87f3bc4e2e27618a567b/formal/formal-module-lifecycle)
+formal reasons in Why it fails: none
+behaviour: {"formal-module-lifecycle": {"method": "emit", "changed": false, "removed": [], "added": []}}
+
+### lifecycle-behaviour-change: modules stop at shutdown priority 5 instead of 30, after child processes
+$ git commit (scratch worktree at 8bd89413, base 9624da5e)
+$ verify-ajs formal <run>
+FAIL formal-module-lifecycle: covered behaviour changed (emit), violated NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-module-lifecycle` (covers the diff, gates the verdict): covered behaviour changed (emit), violated NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/8bd8941340d7f2e6a70ca786bfba152366a425db/formal/formal-module-lifecycle)
+formal reasons in Why it fails: - formal check formal-module-lifecycle: covered behaviour changed (emit), violated NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork
+behaviour: {"formal-module-lifecycle": {"method": "emit", "changed": true, "removed": ["const SHUTDOWN_PRIORITY_MODULES = 30;"], "added": ["const SHUTDOWN_PRIORITY_MODULES = 5;"]}}
+
+### ranges-doc-only: a TSDoc change in interface-resolution-error.ts
+$ git commit (scratch worktree at 21094a2d, base 9624da5e)
+$ verify-ajs formal <run>
+PASS formal-interface-ranges: covered behaviour unchanged (emit): no violated rule (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-interface-ranges` (covers the diff, gates the verdict): covered behaviour unchanged (emit): no violated rule. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/21094a2dbb788bbaafd68a1d1aee3c3c91457205/formal/formal-interface-ranges)
+formal reasons in Why it fails: none
+behaviour: {"formal-interface-ranges": {"method": "emit", "changed": false, "removed": [], "added": []}}
+
+exit 0
