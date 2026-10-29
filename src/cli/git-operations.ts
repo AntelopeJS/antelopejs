@@ -1,5 +1,5 @@
 import type { ModuleSource } from "@antelopejs/interface-core/config";
-import fs, { mkdirSync, rmSync } from "node:fs";
+import fs, { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -171,6 +171,24 @@ export async function loadInterfacesFromGit(
   }
 }
 
+/**
+ * Paths, relative to a template repository root and written with `/`, that a
+ * scaffold never checks out: the template's own agent layer (its verification
+ * skill and the symlinks that expose it). `.claude/settings.json` is not listed
+ * because templates ship it on purpose. They are left out through a sparse
+ * checkout, so files the target directory already holds at these paths are
+ * kept.
+ */
+export const SCAFFOLD_EXCLUDED_PATHS = [".agents", ".claude/skills"] as const;
+
+function scaffoldSparsePatterns(): string {
+  const exclusions = SCAFFOLD_EXCLUDED_PATHS.flatMap((excluded) => [
+    `!/${excluded}`,
+    `!/${excluded}/`,
+  ]);
+  return ["/*", ...exclusions, ""].join("\n");
+}
+
 export async function copyTemplate(template: Template, distPath: string) {
   await mkdirSync(distPath, { recursive: true });
   await ExecuteCMD("git init", {
@@ -184,6 +202,16 @@ export async function copyTemplate(template: Template, distPath: string) {
   await ExecuteCMD("git fetch", {
     cwd: distPath,
   });
+
+  await ExecuteCMD("git config core.sparseCheckout true", {
+    cwd: distPath,
+  });
+  const gitInfo = path.join(distPath, ".git", "info");
+  mkdirSync(gitInfo, { recursive: true });
+  writeFileSync(
+    path.join(gitInfo, "sparse-checkout"),
+    scaffoldSparsePatterns(),
+  );
 
   await ExecuteCMD(`git reset --hard origin/${template.branch}`, {
     cwd: distPath,
