@@ -18,6 +18,7 @@ docs:
 
 - `build-artifact`: the artifact exists and lists every module.
 - `build-env`: without `environments` any `--env` builds the base; once `staging` is declared, `--env nope` exits 2 and writes no artifact, `--env staging` builds.
+- `build-range-conflict`: error path: a consumer requiring `verify-greeter ^2.0.0` against the shared 1.0.0 fails the build with the conflict, the module the shared copy comes from and the fix, writes no `build.json`, and `start` then finds no build.
 - `build-no-project`: empty path: outside a project, exit 1.
 
 ## How to get to it (user POV)

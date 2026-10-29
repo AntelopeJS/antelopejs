@@ -26,6 +26,7 @@ docs:
 - `modules-remove-unknown`: error path: an unknown name removes nothing; `--force` removes the known ones.
 - `modules-add-unreachable-package`: error path: an npm package the offline store cannot serve exits 1 and leaves the tree identical.
 - `modules-install`: `install --git <manifest> --yes` adds the provider of an unimplemented interface; `dev` then serves the consumer's greeting.
+- `modules-install-range-conflict`: error path: `install --yes` adds `greeter-provider`, then exits 1 because the consumer's `^2.0.0` excludes the shared `verify-greeter` 1.0.0; the added provider stays in the configuration.
 - `modules-update-dry-run`: empty path: no npm module, `Nothing to update`, configuration unchanged.
 
 ## How to get to it (user POV)
