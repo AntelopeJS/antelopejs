@@ -100,6 +100,7 @@ describe("project modules install behavior: sums up the added modules once", () 
     ).to.deep.equal([
       ["success", "Analyzed environment default"],
       ["warn", "1 unresolved import in default:"],
+      ["success", "Checked interface versions in default"],
     ]);
     expect(output.summary.firstCall.args[0]).to.deep.include({
       headline: "1 module added to antelope.config.ts",

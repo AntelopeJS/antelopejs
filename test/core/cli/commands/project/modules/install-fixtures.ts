@@ -9,6 +9,7 @@ import {
   gitOperationsModule as gitOps,
   commandsProjectModulesAddActionModule as projectModulesAddModule,
 } from "../../../../../../src/cli";
+import { interfaceRangesModule } from "../../../../../../src/core/build";
 import { DownloaderRegistry } from "../../../../../../src/core/downloaders";
 import {
   ModuleCache,
@@ -85,6 +86,14 @@ export function installFixture() {
     await rm(tempModuleDir, { recursive: true, force: true });
   });
 
+  let rangeCheck = sinon.stub();
+
+  beforeEach(() => {
+    rangeCheck = sinon
+      .stub(interfaceRangesModule, "findProjectInterfaceRangeConflicts")
+      .resolves([]);
+  });
+
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;
@@ -128,7 +137,7 @@ export function installFixture() {
         modules,
       }),
     );
-    stubTaskOutput();
+    const output = stubTaskOutput();
     const infoStub = sinon.stub(cliUi, "info");
     sinon.stub(cliUi, "success");
     sinon.stub(cliUi, "warning");
@@ -136,11 +145,14 @@ export function installFixture() {
     const addStub = sinon
       .stub(projectModulesAddModule, "addModules")
       .resolves(ADDED_MOD_A);
-    return { addStub, infoStub };
+    return { addStub, infoStub, output };
   }
   return {
     get tempModuleDir() {
       return tempModuleDir;
+    },
+    get rangeCheck(): sinon.SinonStub {
+      return rangeCheck;
     },
     ifaceName,
     ifaceName2,
