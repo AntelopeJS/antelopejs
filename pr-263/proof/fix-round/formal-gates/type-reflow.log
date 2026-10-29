@@ -1,0 +1,8 @@
+### type-reflow: a long type annotation in process-claim.ts, reflowed by oxfmt
+$ git commit (scratch worktree at 5c92cec2, base f9efd797)
+$ verify-ajs formal <run>
+PASS formal-module-lifecycle: covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-module-lifecycle` (covers the diff, gates the verdict): covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/5c92cec22689b781b918c800f5dfaf867df80192/formal/formal-module-lifecycle)
+formal reasons in Why it fails: none
+behaviour: {"formal-module-lifecycle": {"method": "emit", "changed": false, "removed": [], "added": []}}

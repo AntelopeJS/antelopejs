@@ -1,0 +1,8 @@
+### lifecycle-move: getLoadedModuleEntry moved verbatim from module-manager-records.ts to module-manager-cache.ts, re-exported
+$ git commit (scratch worktree at 3441aa06, base f9efd797)
+$ verify-ajs formal <run>
+PASS formal-module-lifecycle: covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-module-lifecycle` (covers the diff, gates the verdict): covered behaviour unchanged (emit): known findings NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/3441aa06de6b090b815bb227d3ec9117dceaff90/formal/formal-module-lifecycle)
+formal reasons in Why it fails: none
+behaviour: {"formal-module-lifecycle": {"method": "emit", "changed": false, "removed": [], "added": []}}

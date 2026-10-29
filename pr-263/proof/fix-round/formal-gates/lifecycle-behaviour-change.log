@@ -1,0 +1,8 @@
+### lifecycle-behaviour-change: modules stop at shutdown priority 5 instead of 30, after child processes
+$ git commit (scratch worktree at 653b4894, base f9efd797)
+$ verify-ajs formal <run>
+FAIL formal-module-lifecycle: covered behaviour changed (emit), violated NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-module-lifecycle` (covers the diff, gates the verdict): covered behaviour changed (emit), violated NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/653b4894bc312441b520f305a2625da12e09043f/formal/formal-module-lifecycle)
+formal reasons in Why it fails: - formal check formal-module-lifecycle: covered behaviour changed (emit), violated NoOrphanGeneration, LaunchReadsCurrentConfig, ConfigEditsReachProject, NoCrashFromStaleWork
+behaviour: {"formal-module-lifecycle": {"method": "emit", "changed": true, "removed": ["src/core/runtime/process-claim.ts statement 2: const SHUTDOWN_PRIORITY_MODULES = 30;"], "added": ["src/core/runtime/process-claim.ts statement 2: const SHUTDOWN_PRIORITY_MODULES = 5;"]}}

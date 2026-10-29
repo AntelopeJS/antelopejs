@@ -1,0 +1,8 @@
+### ranges-doc-only: a TSDoc change in interface-resolution-error.ts
+$ git commit (scratch worktree at af1cadd0, base f9efd797)
+$ verify-ajs formal <run>
+PASS formal-interface-ranges: covered behaviour unchanged (emit): no violated rule (exit 0)
+$ verify-ajs verdict <run> --pr 263  (Formal checks section)
+- `formal-interface-ranges` (covers the diff, gates the verdict): covered behaviour unchanged (emit): no violated rule. [evidence](https://github.com/AntelopeJS/antelopejs/tree/verify-evidence/pr-263/af1cadd01bd2ed74a4a87fec6e9d5277c7d7618e/formal/formal-interface-ranges)
+formal reasons in Why it fails: none
+behaviour: {"formal-interface-ranges": {"method": "emit", "changed": false, "removed": [], "added": []}}
