@@ -138,7 +138,7 @@ function originsOf(
     const module = moduleKey(path, specifier.text);
     if (ts.isImportDeclaration(statement)) {
       if (statement.importClause === undefined) {
-        if (!covered.has(module)) texts.push(`import ${module}`);
+        texts.push(`import ${module}`);
         continue;
       }
       for (const [name, origin] of importedBindings(statement.importClause, module, covered))
