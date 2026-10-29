@@ -7,7 +7,12 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { ExpandedModuleConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { ManagedModule, ModuleConfig, ModuleManager } from "../modules";
-import { ModuleCache, ModuleManifest, unpackErrors } from "../modules";
+import {
+  ModuleCache,
+  ModuleLockStore,
+  ModuleManifest,
+  unpackErrors,
+} from "../modules";
 import { pluralize, runTask } from "../output";
 import {
   registerCoreInterfaces as registerInterfaces,
@@ -49,7 +54,13 @@ export async function createLoaderContext(
   const registry = new DownloaderRegistry();
   local.registerLocalDownloader(registry, { fs });
   localFolder.registerLocalFolderDownloader(registry, { fs });
-  packageDownloader.registerPackageDownloader(registry, { fs });
+  packageDownloader.registerPackageDownloader(registry, {
+    fs,
+    lock: {
+      store: new ModuleLockStore(config.projectFolder, fs),
+      mode: config.moduleLocks ?? "record",
+    },
+  });
   git.registerGitDownloader(registry, { fs });
 
   return {

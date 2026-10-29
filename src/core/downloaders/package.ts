@@ -11,6 +11,7 @@ import {
   type ModulePackageJson,
 } from "../modules";
 import { ExecError, ExecuteCMD, getModuleCacheInstallCommand } from "../output";
+import { type PackageLockPolicy, PackageLocks } from "./package-locks";
 import type { DownloaderRegistry } from "./registry";
 import type { CommandRunner } from "./types";
 import { installFailure } from "./utils";
@@ -21,9 +22,13 @@ export interface PackageDownloaderDeps {
   extract?: (from: string, to: string) => Promise<void>;
   getInstallCommand?: (folder: string) => Promise<string>;
   getTemp?: () => Promise<string>;
+  /** Module locks of the project to replay and record; none by default. */
+  lock?: PackageLockPolicy;
 }
 
-type PackageLoaderContext = Required<PackageDownloaderDeps>;
+type PackageLoaderContext = Required<Omit<PackageDownloaderDeps, "lock">> & {
+  locks: PackageLocks;
+};
 
 type VersionFetcher = (
   pkg: string,
@@ -190,9 +195,12 @@ async function downloadPackage(
   const manifest: ModulePackageJson = JSON.parse(
     await ctx.fs.readFileString(path.join(tmpPackage, PACKAGE_JSON)),
   );
+  const key = { package: source.package, version: manifest.version };
+  const record = await ctx.locks.find(key);
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);
   await cache.clearVersion(source.package);
   const folder = await cache.transfer(tmpPackage, source.package);
+  await ctx.locks.replay(folder, record);
 
   Logger.Debug(`Installing dependencies for ${source.package}@${version}`);
   const cmd = await ctx.getInstallCommand(folder);
@@ -204,6 +212,7 @@ async function downloadPackage(
     );
   }
   await cache.commitVersion(source.package, manifest.version);
+  await ctx.locks.keep(key, folder, record);
   return folder;
 }
 
@@ -216,11 +225,16 @@ async function loadPackage(
   if (source.ignoreCache) {
     return downloadPackage(cache, source, source.version, ctx);
   }
-  const target = await resolveTargetVersion(source, cache, fetchVersion);
-  if (cache.hasVersion(source.package, target)) {
+  const target =
+    (await ctx.locks.recordedVersion(source)) ??
+    (await resolveTargetVersion(source, cache, fetchVersion));
+  const key = { package: source.package, version: target };
+  const record = await ctx.locks.find(key);
+  if (ctx.locks.reusesCache && cache.hasVersion(source.package, target)) {
     const cachedFolder = await findCachedFolder(cache, source.package, ctx.fs);
-    if (cachedFolder) {
+    if (cachedFolder && (await ctx.locks.matches(cachedFolder, record))) {
       Logger.Trace(`Using cached version of ${source.package}@${target}`);
+      await ctx.locks.keep(key, cachedFolder, record);
       return cachedFolder;
     }
   }
@@ -231,12 +245,14 @@ export function registerPackageDownloader(
   registry: DownloaderRegistry,
   deps: PackageDownloaderDeps = {},
 ): void {
+  const fs = deps.fs ?? new NodeFileSystem();
   const ctx: PackageLoaderContext = {
-    fs: deps.fs ?? new NodeFileSystem(),
+    fs,
     exec: deps.exec ?? ExecuteCMD,
     extract: deps.extract ?? defaultExtract,
     getInstallCommand: deps.getInstallCommand ?? getModuleCacheInstallCommand,
     getTemp: deps.getTemp ?? (() => ModuleCache.getTemp()),
+    locks: new PackageLocks(deps.lock, fs),
   };
   const fetchVersion = memoizeVersionFetcher(ctx.exec);
 

@@ -190,6 +190,9 @@ export async function loadProjectRuntimeConfig(
   setupProcessHandlers(shutdownManager);
 
   const config = await loadProjectConfig(projectFolder, env);
+  if ("frozenModules" in options && options.frozenModules) {
+    config.normalizedConfig.moduleLocks = "frozen";
+  }
 
   setupAntelopeProjectLogging(config.normalizedConfig.logging);
   applyVerboseChannels(options.verbose);

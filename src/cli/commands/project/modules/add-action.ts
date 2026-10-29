@@ -10,24 +10,16 @@ import {
   TS_CONFIG_FILE,
   type LoadedConfig,
 } from "../../../../core/config";
-import {
-  DownloaderRegistry,
-  registerGitDownloader,
-  registerLocalDownloader,
-  registerLocalFolderDownloader,
-  registerPackageDownloader,
-} from "../../../../core/downloaders";
+import type { DownloaderRegistry } from "../../../../core/downloaders";
 import { NodeFileSystem } from "../../../../core/filesystem";
-import type { ModulePackageJson } from "../../../../core/modules";
+import type { ModuleCache, ModulePackageJson } from "../../../../core/modules";
 import {
   fetchLatestVersion,
-  ModuleCache,
   toFloatingSpec,
   validateVersionSpec,
 } from "../../../../core/modules";
 import {
   CliError,
-  ExecuteCMD,
   FAILURE_EXIT_CODE,
   getProcessPalette,
   getProcessTasks,
@@ -41,10 +33,10 @@ import { writeConfig } from "../../../common";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import { isObjectOrNull, isString } from "../../../../utils";
+import { createModuleRegistry, openModuleCache } from "./module-locks";
 
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
 const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];
-const DEFAULT_CACHE_FOLDER = ".antelope/cache";
 const INSTALL_COMMAND = "ajs project modules install";
 const INSTALL_DESCRIPTION = "resolve the interfaces they need";
 
@@ -98,16 +90,6 @@ function sourceReference(moduleConfig: AntelopeModuleConfig | string): string {
   return source.version ?? source.remote ?? source.path ?? "";
 }
 
-function createRegistry(): DownloaderRegistry {
-  const fs = new NodeFileSystem();
-  const registry = new DownloaderRegistry();
-  registerLocalDownloader(registry, { fs, exec: ExecuteCMD });
-  registerLocalFolderDownloader(registry, { fs });
-  registerPackageDownloader(registry, { fs, exec: ExecuteCMD });
-  registerGitDownloader(registry, { fs, exec: ExecuteCMD });
-  return registry;
-}
-
 async function createAddContext(
   options: AddOptions,
   config: AntelopeConfig,
@@ -115,13 +97,10 @@ async function createAddContext(
 ): Promise<AddContext> {
   const loader = new ConfigLoader(new NodeFileSystem());
   const antelopeConfig = await loader.load(options.project, environment);
-  const cacheFolder = config.cacheFolder ?? DEFAULT_CACHE_FOLDER;
-  const cache = new ModuleCache(path.resolve(options.project, cacheFolder));
-  await cache.load();
   return {
     options,
-    registry: createRegistry(),
-    cache,
+    registry: createModuleRegistry(options.project, "record"),
+    cache: await openModuleCache(options.project, config),
     existingModules: antelopeConfig.modules,
   };
 }

@@ -1,0 +1,13 @@
+diff --git a/src/core/downloaders/package-locks.ts b/src/core/downloaders/package-locks.ts
+index 03fc2cc..21b1c3e 100644
+--- a/src/core/downloaders/package-locks.ts
++++ b/src/core/downloaders/package-locks.ts
+@@ -91,7 +91,7 @@ export class PackageLocks {
+     folder: string,
+     record: ModuleLockRecord | undefined,
+   ): Promise<boolean> {
+-    if (!record) {
++    if (!record || folder !== "") {
+       return true;
+     }
+     const cached = path.join(folder, record.lockfile);

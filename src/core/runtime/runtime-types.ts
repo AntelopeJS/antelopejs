@@ -6,6 +6,7 @@ import type { NodeFileSystem } from "../filesystem";
 import type {
   ModuleCache,
   ModuleConfig,
+  ModuleLockMode,
   ModuleManager,
   ModuleManifest,
 } from "../modules";
@@ -26,12 +27,19 @@ export interface ModuleManifestEntry {
 
 export interface BuildOptions {
   verbose?: string[];
+  /**
+   * Install every package module from its lock in `antelope-lock/`, and fail
+   * when one has none, instead of resolving and recording its dependencies.
+   */
+  frozenModules?: boolean;
 }
 
 export interface NormalizedLoadedConfig extends LoadedConfig {
   cacheFolder: string;
   projectFolder: string;
   modules: Record<string, ExpandedModuleConfig>;
+  /** How package modules use the project's module locks; `record` by default. */
+  moduleLocks?: ModuleLockMode;
 }
 
 export interface ProjectRuntimeConfig {
@@ -42,6 +50,8 @@ export interface ProjectRuntimeConfig {
 export interface LoaderConfig {
   cacheFolder: string;
   projectFolder: string;
+  /** How package modules use the project's module locks; `record` by default. */
+  moduleLocks?: ModuleLockMode;
 }
 
 export interface LoaderContext {

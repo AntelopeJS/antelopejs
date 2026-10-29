@@ -8,6 +8,7 @@ export * from "./module-cache";
 export * from "./module-errors";
 export * from "./module-isolation";
 export * from "./module-lifecycle";
+export * from "./module-locks";
 export * from "./module-manager";
 export * from "./module-manifest";
 export * from "./module-registry";

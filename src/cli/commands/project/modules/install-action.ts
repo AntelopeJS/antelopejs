@@ -11,20 +11,13 @@ import {
   TS_CONFIG_FILE,
   type LoadedConfig,
 } from "../../../../core/config";
-import {
-  DownloaderRegistry,
-  registerGitDownloader,
-  registerLocalDownloader,
-  registerLocalFolderDownloader,
-  registerPackageDownloader,
-} from "../../../../core/downloaders";
+import type { DownloaderRegistry } from "../../../../core/downloaders";
 import { NodeFileSystem } from "../../../../core/filesystem";
-import { ModuleCache, ModuleManifest } from "../../../../core/modules";
+import { type ModuleCache, ModuleManifest } from "../../../../core/modules";
 import {
   CliError,
   createPrompter,
   describeFailure,
-  ExecuteCMD,
   getProcessPalette,
   getProcessUi,
   info,
@@ -45,6 +38,7 @@ import {
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import { addModules, type AddCommandResult } from "./add-action";
+import { createModuleRegistry, openModuleCache } from "./module-locks";
 
 interface InstallOptions {
   project: string;
@@ -79,7 +73,6 @@ const PACKAGE_SOURCE_TYPE = "package";
 const INSTALL_COMMAND = "ajs project modules install";
 const YES_FLAG = "--yes";
 const DEFAULT_ENVIRONMENT = "default";
-const DEFAULT_CACHE_FOLDER = ".antelope/cache";
 const GROUP_KEY_SEPARATOR = ":";
 const DEV_COMMAND = "ajs project dev";
 const DEV_DESCRIPTION = "run the project with its new modules";
@@ -214,15 +207,6 @@ interface InstallOutcome {
   failed: number;
 }
 
-function createRegistry(fs: NodeFileSystem): DownloaderRegistry {
-  const registry = new DownloaderRegistry();
-  registerLocalDownloader(registry, { fs, exec: ExecuteCMD });
-  registerLocalFolderDownloader(registry, { fs });
-  registerPackageDownloader(registry, { fs, exec: ExecuteCMD });
-  registerGitDownloader(registry, { fs, exec: ExecuteCMD });
-  return registry;
-}
-
 async function createInstallContext(
   options: InstallOptions,
   baseConfig: AntelopeConfig,
@@ -231,9 +215,7 @@ async function createInstallContext(
   displayNonDefaultGitWarning(git);
   const gitManifest = await loadManifestFromGit(git);
   const fs = new NodeFileSystem();
-  const cacheFolder = baseConfig.cacheFolder ?? DEFAULT_CACHE_FOLDER;
-  const cache = new ModuleCache(path.resolve(options.project, cacheFolder));
-  await cache.load();
+  const cache = await openModuleCache(options.project, baseConfig);
   return {
     options,
     prompter: createPrompter({
@@ -245,7 +227,7 @@ async function createInstallContext(
     gitManifest,
     fs,
     loader: new ConfigLoader(fs),
-    registry: createRegistry(fs),
+    registry: createModuleRegistry(options.project, "record", fs),
     cache,
     modulesToInstall: [],
     unresolvedImportCount: 0,
