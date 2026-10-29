@@ -1,4 +1,5 @@
 import type { ManagedModule, ModuleManager } from "../modules";
+import { InterfaceResolutionError } from "../output";
 import {
   findUnresolvedInterfaces,
   type InterfaceConsumer,
@@ -75,6 +76,26 @@ function unresolvedInterfacesError(unresolved: UnresolvedInterface[]): Error {
   );
 }
 
+function findInterfaces(
+  manager: ModuleManager,
+  consumers: Iterable<ManagedModule>,
+): InterfaceResolutionResult {
+  return findUnresolvedInterfaces(
+    collectInterfaceProviders(manager),
+    [...consumers].map(toInterfaceConsumer),
+    collectStaticPackages(manager),
+  );
+}
+
+function registerStubs(
+  manager: ModuleManager,
+  stubbed: UnresolvedInterface[],
+): void {
+  if (stubbed.length > 0) {
+    manager.registerStubbedInterfaces(stubbed);
+  }
+}
+
 /**
  * Checks that every interface `consumers` require is implemented by a module
  * the manager holds, them included, and tells which optional ones nothing
@@ -87,11 +108,7 @@ function ensureInterfacesResolved(
   manager: ModuleManager,
   consumers: Iterable<ManagedModule>,
 ): InterfaceResolutionResult {
-  const result = findUnresolvedInterfaces(
-    collectInterfaceProviders(manager),
-    [...consumers].map(toInterfaceConsumer),
-    collectStaticPackages(manager),
-  );
+  const result = findInterfaces(manager, consumers);
   if (result.unresolved.length > 0) {
     throw unresolvedInterfacesError(result.unresolved);
   }
@@ -107,7 +124,31 @@ export function ensureGraphIsValid(manager: ModuleManager): void {
     manager,
     manager.getLoadedModules(),
   );
-  if (stubbed.length > 0) {
-    manager.registerStubbedInterfaces(stubbed);
+  registerStubs(manager, stubbed);
+}
+
+/**
+ * Plans the shared copy of every interface package the loaded modules use,
+ * stubbing the optional ones nothing implements, without failing on a
+ * required interface nothing implements.
+ */
+export function planInterfacePackages(manager: ModuleManager): void {
+  registerStubs(
+    manager,
+    findInterfaces(manager, manager.getLoadedModules()).stubbed,
+  );
+}
+
+/**
+ * Checks, from package.json files only, that the shared copy of each interface
+ * package satisfies the range every module declares for it.
+ *
+ * @throws the {@link InterfaceResolutionError} the modules would otherwise
+ * throw when constructed.
+ */
+export function ensureInterfaceRangesAreValid(manager: ModuleManager): void {
+  const rangeConflicts = manager.findInterfaceRangeConflicts();
+  if (rangeConflicts.length > 0) {
+    throw new InterfaceResolutionError({ rangeConflicts, preloadedCopies: [] });
   }
 }

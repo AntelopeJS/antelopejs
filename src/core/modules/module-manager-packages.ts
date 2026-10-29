@@ -24,6 +24,8 @@ import {
 } from "./module-manager-context";
 import { Logger } from "./module-manager-logger";
 
+const stubbedCopyProviders = new WeakMap<ResolvedPackage, string>();
+
 function compareModuleIds(left: string, right: string): number {
   return left.localeCompare(right);
 }
@@ -48,15 +50,18 @@ export function registerStubbedInterfacePackage(
   entries: UnresolvedInterface[],
 ): void {
   const consumers = this.collectInterfacePackageConsumers(packageName);
-  const canonicalPackage = [...consumers]
+  const provider = [...consumers]
     .sort((left, right) => compareModuleIds(left.moduleId, right.moduleId))
-    .find((consumer) => consumer.resolvedPackage)?.resolvedPackage;
+    .find((consumer) => consumer.resolvedPackage);
+  const canonicalPackage = provider?.resolvedPackage;
   if (!canonicalPackage) {
     return;
   }
   this.stubbedInterfacePackages.set(packageName, canonicalPackage);
+  stubbedCopyProviders.set(canonicalPackage, provider.moduleId);
   this.interfacePackagePlans.set(packageName, {
     canonicalPackage,
+    provider: provider.moduleId,
     consumers,
   });
   this.registerInterfacePackage(packageName, canonicalPackage, true);
@@ -131,6 +136,7 @@ export function resolveInterfacePackagePaths(
     }
     this.interfacePackagePlans.set(ifacePkg, {
       canonicalPackage,
+      provider: module.id,
       consumers: this.collectInterfacePackageConsumers(ifacePkg),
     });
     this.registerInterfacePackage(ifacePkg, canonicalPackage, false);
@@ -141,6 +147,7 @@ export function resolveInterfacePackagePaths(
     }
     this.interfacePackagePlans.set(packageName, {
       canonicalPackage,
+      provider: stubbedCopyProviders.get(canonicalPackage),
       consumers: this.collectInterfacePackageConsumers(packageName),
     });
     this.registerInterfacePackage(packageName, canonicalPackage, true);
@@ -216,11 +223,17 @@ export function registerInterfacePackage(
   this.resolver.lifecycleInterfacePackages.delete(packageName);
 }
 
-export function validateInterfacePackages(this: ManagerContext): void {
-  const plans = [...this.interfacePackagePlans];
-  const rangeConflicts = plans.flatMap(([name, plan]) =>
+export function findInterfaceRangeConflicts(
+  this: ManagerContext,
+): InterfaceRangeConflict[] {
+  return [...this.interfacePackagePlans].flatMap(([name, plan]) =>
     this.findRangeConflicts(name, plan),
   );
+}
+
+export function validateInterfacePackages(this: ManagerContext): void {
+  const plans = [...this.interfacePackagePlans];
+  const rangeConflicts = this.findInterfaceRangeConflicts();
   const preloadedCopies = plans.flatMap(([name, plan]) =>
     this.findPreloadedCopies(name, plan),
   );
@@ -246,6 +259,7 @@ export function findRangeConflicts(
         packageName,
         range: consumer.range,
         canonical: plan.canonicalPackage,
+        provider: plan.provider,
         consumerCopy: consumer.resolvedPackage,
       },
     ];

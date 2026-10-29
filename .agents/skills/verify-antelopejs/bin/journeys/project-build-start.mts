@@ -4,7 +4,7 @@ import path from "node:path";
 import { absent, answers, equal, exists, exitIs, has, refused } from "../lib/checks.mts";
 import { field, keys, parseJson } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, initProject, installFixture } from "../lib/project.mts";
+import { copyGreeter, initProject, installFixture, setConsumerRange } from "../lib/project.mts";
 import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
 const BUILD_FILE = path.join(".antelope", "build", "build.json");
@@ -57,6 +57,25 @@ export const buildJourneys: Journey[] = [
       context.expect(undeclared.folder, [exitIs(undeclared, 2), has("stderr", undeclared.stderr, /nope/), absent(path.join(project, BUILD_FILE))]);
       const declared = await context.ajs("project build --env staging", ["project", "build", "--env", "staging"], { cwd: project });
       context.expect(declared.folder, [exitIs(declared, 0), equal("modules in build.json", builtModules(project), ["verify-http-fixture"])]);
+    },
+  },
+  {
+    id: "build-range-conflict",
+    title: "build fails and writes no build.json when a module's range excludes the shared interface copy, so start finds no build",
+    entryPoint: "ajs project build, then ajs project start; consumer requires verify-greeter ^2.0.0, shared copy 1.0.0",
+    async run(context) {
+      const greeter = copyGreeter(context);
+      setConsumerRange(greeter, "^2.0.0");
+      const build = await context.ajs("project build", ["project", "build"], { cwd: greeter });
+      context.expect(build.folder, [
+        exitIs(build, 1),
+        has("stderr", build.stderr, /Incompatible interface package resolution/),
+        has("stderr", build.stderr, /greeter-consumer requires verify-greeter@\^2\.0\.0, but the shared copy is 1\.0\.0 \(provided by greeter-provider\)/),
+        has("stderr", build.stderr, /depend on "verify-greeter": "\^1\.0\.0" in the package\.json of greeter-consumer/),
+        absent(path.join(greeter, BUILD_FILE)),
+      ]);
+      const start = await context.ajs("project start after the failed build", ["project", "start"], { cwd: greeter });
+      context.expect(start.folder, [exitIs(start, 1), has("stderr", start.stderr, /No build found/)]);
     },
   },
   {
