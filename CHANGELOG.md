@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.18.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.18.0...v1.18.1)
+
+### 🩹 Fixes
+
+- **cli:** Leave the template's agent layer out of scaffolded projects ([#262](https://github.com/AntelopeJS/antelopejs/pull/262))
+- **skills:** Repair verify-antelopejs drift and gate formal findings on changed behaviour ([#263](https://github.com/AntelopeJS/antelopejs/pull/263))
+- **skills:** Key exports and file-local names by origin in the verify-antelopejs gate ([#267](https://github.com/AntelopeJS/antelopejs/pull/267))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.18.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.17.1...v1.18.0)
