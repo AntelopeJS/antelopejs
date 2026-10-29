@@ -6,7 +6,7 @@ import path from "node:path";
 import sinon from "sinon";
 import { Module as CoreModule, ModuleManager } from "../../src/core/modules";
 import { manifestFixture, moduleFixture } from "../helpers/module-fixtures";
-import { nodeModule } from "../helpers/node-module";
+import nodeModule from "node:module";
 import { trackInstanceFiles } from "./module-manager.fixtures";
 
 describe("ModuleManager", () => {

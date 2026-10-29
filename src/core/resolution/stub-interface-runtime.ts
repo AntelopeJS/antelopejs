@@ -6,6 +6,7 @@ import {
 import { Logging } from "@antelopejs/interface-core/logging";
 import Module from "node:module";
 import path from "node:path";
+import type {} from "../../node-module-internals";
 import { isFunction, isObjectOrNull } from "../../utils";
 
 const Logger = new Logging.Channel("loader");
@@ -123,10 +124,7 @@ export function neutralizeInterfacePackage(
   interfaceName: string,
   reason: string = NO_PROVIDER_REASON,
 ): void {
-  // SAFETY: Node's CommonJS Module constructor owns _cache, whose filename keys contain the loaded NodeModule records walked below.
-  const cache =
-    // oxlint-disable-next-line typescript/no-redundant-type-constituents -- oxlint misresolves the Node Module import as any; TypeScript resolves the constructor (#229).
-    (Module as typeof Module & { _cache: Record<string, NodeModule> })._cache;
+  const cache = Module._cache;
   const seen = new WeakSet<object>();
   for (const filename of Object.keys(cache)) {
     if (!isWithin(filename, packageRoot)) {
