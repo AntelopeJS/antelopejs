@@ -1,0 +1,27 @@
+API: 4 packages, 8 entries unchanged against origin/main (committed HEAD).
+API: skipped .agents/skills/verify-antelopejs, private.
+API: skipped .agents/skills/verify-antelopejs/fixtures/greeter/provider, private.
+API: skipped .agents/skills/verify-antelopejs/fixtures/template-verify-http, private.
+Runtime API: 4 packages, 3 entries unchanged against origin/main (committed HEAD).
+Runtime API: skipped playground/modules/module-a, which has no build script and no committed runtime entry.
+Runtime API: skipped playground/modules/module-b, which has no build script and no committed runtime entry.
+Runtime API: skipped playground/packages/interface-greeter, which has no build script and no committed runtime entry.
+No behavioural probe ran.
+
+Suppressions in authored code files (origin/main and committed HEAD). A lint directive counts once per rule it names; `*` is a directive naming none.
+| Suppressions | base | HEAD |
+| --- | ---: | ---: |
+| Lint suppressions, all rules | 28 | 28 |
+| Lint suppressions, `anti-slop/no-known-value-widening` | 2 | 2 |
+| Lint suppressions, `anti-slop/no-runtime-typeof` | 1 | 1 |
+| Lint suppressions, `anti-slop/no-unknown-parameters` | 8 | 8 |
+| Lint suppressions, `anti-slop/no-unknown-returns` | 2 | 2 |
+| Lint suppressions, `anti-slop/no-unsafe-dictionary-type` | 4 | 4 |
+| Lint suppressions, `anti-slop/require-safety-comment-for-type-assertion` | 6 | 6 |
+| Lint suppressions, `eslint/no-control-regex` | 1 | 1 |
+| Lint suppressions, `typescript/no-base-to-string` | 1 | 1 |
+| Lint suppressions, `typescript/no-redundant-type-constituents` | 3 | 3 |
+| `@ts-expect-error` | 8 | 8 |
+| `@ts-ignore` | 0 | 0 |
+| `SAFETY:` comments | 10 | 10 |
+exit 0
