@@ -1,5 +1,6 @@
 import { type ResolvedPackage } from "../../utils";
 import { ConfigVarStore } from "../config";
+import type { InterfaceRangeConflict } from "../output";
 import type { BindingGraph, UnresolvedInterface } from "../resolution";
 import {
   type InterfaceConnectionRef,
@@ -174,6 +175,8 @@ export class ModuleManager {
           manager.registerInterfacePackage(...args),
         validateInterfacePackages: (...args) =>
           manager.validateInterfacePackages(...args),
+        findInterfaceRangeConflicts: (...args) =>
+          manager.findInterfaceRangeConflicts(...args),
         findRangeConflicts: (...args) => manager.findRangeConflicts(...args),
         findPreloadedCopies: (...args) => manager.findPreloadedCopies(...args),
         buildModuleAssociations: (...args) =>
@@ -506,6 +509,15 @@ export class ModuleManager {
 
   private validateInterfacePackages() {
     return operations(this).validateInterfacePackages();
+  }
+
+  /**
+   * Lists the modules whose declared range of an interface package excludes
+   * the shared copy the manager planned for it. Reads only package.json
+   * files, so it runs before any module code is loaded.
+   */
+  findInterfaceRangeConflicts(): InterfaceRangeConflict[] {
+    return operations(this).findInterfaceRangeConflicts();
   }
 
   private findRangeConflicts(

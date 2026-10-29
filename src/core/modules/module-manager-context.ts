@@ -53,6 +53,7 @@ export interface InterfacePackageConsumer {
 
 export interface InterfacePackagePlan {
   canonicalPackage: ResolvedPackage;
+  provider?: string;
   consumers: InterfacePackageConsumer[];
 }
 
@@ -223,6 +224,7 @@ export interface ManagerMethods {
     isStubbed?: boolean,
   ): void;
   validateInterfacePackages(): void;
+  findInterfaceRangeConflicts(): InterfaceRangeConflict[];
   findRangeConflicts(
     packageName: string,
     plan: InterfacePackagePlan,
@@ -306,6 +308,7 @@ type ContextMethods = Pick<
   | "collectInterfacePackageConsumers"
   | "registerInterfacePackage"
   | "validateInterfacePackages"
+  | "findInterfaceRangeConflicts"
   | "findRangeConflicts"
   | "findPreloadedCopies"
   | "buildModuleAssociations"
@@ -484,6 +487,8 @@ export function bindOperations(context: ManagerContext): ManagerMethods {
       packages.collectInterfacePackageConsumers.bind(context),
     registerInterfacePackage: packages.registerInterfacePackage.bind(context),
     validateInterfacePackages: packages.validateInterfacePackages.bind(context),
+    findInterfaceRangeConflicts:
+      packages.findInterfaceRangeConflicts.bind(context),
     findRangeConflicts: packages.findRangeConflicts.bind(context),
     findPreloadedCopies: packages.findPreloadedCopies.bind(context),
     buildModuleAssociations: bindings.buildModuleAssociations.bind(context),

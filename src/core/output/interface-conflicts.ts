@@ -1,9 +1,10 @@
 import { displayPath } from "./format";
-import type {
-  InterfacePackageCopy,
-  InterfaceRangeConflict,
-  InterfaceResolutionError,
-  PreloadedInterfaceCopy,
+import {
+  describeSharedCopyProvider,
+  type InterfacePackageCopy,
+  type InterfaceRangeConflict,
+  type InterfaceResolutionError,
+  type PreloadedInterfaceCopy,
 } from "./interface-resolution-error";
 import type { CliProblem } from "./types";
 
@@ -24,7 +25,7 @@ function rangeConflictDetails(conflict: InterfaceRangeConflict): string[] {
     ? `${consumerCopy.version} at ${displayPath(consumerCopy.root)}`
     : MISSING_COPY;
   return [
-    `${moduleId} requires ${packageName}@${conflict.range}, but the shared copy is ${conflict.canonical.version}`,
+    `${moduleId} requires ${packageName}@${conflict.range}, but the shared copy is ${conflict.canonical.version}${describeSharedCopyProvider(conflict)}`,
     sharedCopyDetail(conflict.canonical),
     `${NESTED_DETAIL_INDENT}copy of ${moduleId}: ${ownCopy}`,
   ];

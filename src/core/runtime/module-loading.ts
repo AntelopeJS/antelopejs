@@ -16,6 +16,8 @@ import {
 import {
   activateLoadedModules as activateModules,
   ensureGraphIsValid as validateGraph,
+  ensureInterfaceRangesAreValid as validateInterfaceRanges,
+  planInterfacePackages as planPackages,
 } from "./module-interfaces";
 import { moduleLoadFailure } from "./module-load-failure";
 import { reloadWatchedModule as reloadModule } from "./module-reloading";
@@ -281,4 +283,12 @@ export async function destroyModulesAfterFailure(
 
 export function ensureGraphIsValid(manager: ModuleManager): void {
   return validateGraph(manager);
+}
+
+export function ensureInterfaceRangesAreValid(manager: ModuleManager): void {
+  return validateInterfaceRanges(manager);
+}
+
+export function planInterfacePackages(manager: ModuleManager): void {
+  return planPackages(manager);
 }
