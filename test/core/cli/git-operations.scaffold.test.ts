@@ -84,4 +84,49 @@ describe("copyTemplate scaffold", function () {
       '{"name":"tpl"}\n',
     );
   });
+
+  it("keeps the agent layer a target directory already holds", async function () {
+    this.timeout(30_000);
+    const repo = buildTemplateRepository(root);
+    const dist = path.join(root, "existing");
+    mkdirSync(path.join(dist, ".agents", "skills", "mine"), {
+      recursive: true,
+    });
+    mkdirSync(path.join(dist, ".claude", "skills", "mine"), {
+      recursive: true,
+    });
+    writeFileSync(
+      path.join(dist, ".agents", "skills", "mine", "SKILL.md"),
+      "# mine\n",
+    );
+    writeFileSync(
+      path.join(dist, ".claude", "skills", "mine", "SKILL.md"),
+      "# mine too\n",
+    );
+
+    await gitOperationsModule.copyTemplate(
+      {
+        name: "fixture",
+        repository: pathToFileURL(repo).href,
+        branch: "main",
+      },
+      dist,
+    );
+
+    expect(
+      readText(path.join(dist, ".agents", "skills", "mine", "SKILL.md")),
+    ).to.equal("# mine\n");
+    expect(
+      readText(path.join(dist, ".claude", "skills", "mine", "SKILL.md")),
+    ).to.equal("# mine too\n");
+    expect(existsSync(path.join(dist, ".agents", "skills", "x"))).to.equal(
+      false,
+    );
+    expect(existsSync(path.join(dist, ".claude", "skills", "x"))).to.equal(
+      false,
+    );
+    expect(readText(path.join(dist, ".claude", "settings.json"))).to.equal(
+      '{"a":1}\n',
+    );
+  });
 });
