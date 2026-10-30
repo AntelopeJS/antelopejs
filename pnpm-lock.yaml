@@ -45,6 +45,9 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
     devDependencies:
+      '@antelopejs/core':
+        specifier: link:.
+        version: 'link:'
       '@antelopejs/tooling-configs':
         specifier: ^0.2.7
         version: 0.2.7(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
