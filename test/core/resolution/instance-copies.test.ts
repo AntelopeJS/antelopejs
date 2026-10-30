@@ -55,6 +55,51 @@ function writeDependency(folder: string): void {
   );
 }
 
+interface LinkedDependency {
+  id: number;
+  nested: { id: number };
+}
+
+const DEPENDENCY_STORE = path.join(
+  "node_modules",
+  ".pnpm",
+  "dependency@1.0.0",
+  "node_modules",
+);
+
+function writePnpmDependency(original: string): void {
+  const dependencyStore = path.join(original, DEPENDENCY_STORE);
+  const nestedStore = path.join(
+    original,
+    "node_modules",
+    ".pnpm",
+    "nested@1.0.0",
+    "node_modules",
+  );
+  writeFile(
+    path.join(dependencyStore, "dependency", "package.json"),
+    '{"name":"dependency","version":"1.0.0"}',
+  );
+  writeFile(
+    path.join(dependencyStore, "dependency", "index.js"),
+    "module.exports = { id: Math.random(), nested: require('nested') };",
+  );
+  writeDependency(path.join(nestedStore, "nested"));
+  symlinkSync(
+    path.relative(dependencyStore, path.join(nestedStore, "nested")),
+    path.join(dependencyStore, "nested"),
+  );
+  symlinkSync(
+    path.join(".pnpm", "dependency@1.0.0", "node_modules", "dependency"),
+    path.join(original, "node_modules", "dependency"),
+  );
+}
+
+function loadLinked(file: string): LinkedDependency {
+  const loaded: LinkedDependency = require(file);
+  return loaded;
+}
+
 function load(folder: string): StatefulModule {
   const loaded: StatefulModule = require(path.join(folder, "index.js"));
   return loaded;
@@ -85,7 +130,7 @@ describe("instance copies", () => {
     expect(second.dependency).to.not.equal(first.dependency);
   });
 
-  it("follows a dependency linked from outside the folder, so the copy owns it too", () => {
+  it("follows a dependency linked from outside the folder, so the copy owns it too, and reports the link", () => {
     const store = path.join(root, "store", "dependency");
     writeDependency(store);
     const original = path.join(root, "module");
@@ -94,9 +139,12 @@ describe("instance copies", () => {
     symlinkSync(store, path.join(original, "node_modules", "dependency"));
     const copy = path.join(root, "copy");
 
-    createInstanceCopy(original, copy);
+    const report = createInstanceCopy(original, copy);
 
     expect(load(copy).dependency).to.not.equal(load(original).dependency);
+    expect(report.followedLinks).to.deep.equal([
+      path.join("node_modules", "dependency"),
+    ]);
   });
 
   it("links files instead of copying their content", () => {
@@ -116,8 +164,10 @@ describe("instance copies", () => {
     writeStatefulPackage(original);
     const copy = path.join(root, "copy");
 
-    createInstanceCopy(original, copy, () => {
-      throw Object.assign(new Error("cross-device link"), { code: "EXDEV" });
+    createInstanceCopy(original, copy, {
+      link: () => {
+        throw Object.assign(new Error("cross-device link"), { code: "EXDEV" });
+      },
     });
 
     expect(readText(path.join(copy, "state.js"))).to.equal(
@@ -153,5 +203,69 @@ describe("instance copies", () => {
 
     expect(existsSync(stale)).to.equal(false);
     expect(existsSync(own)).to.equal(true);
+  });
+});
+
+describe("instance copies of linked dependencies", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(path.join(tmpdir(), "ajs-instance-copies-"));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("keeps a pnpm layout's links inside the copy, so a dependency resolves its own dependencies apart from the original", () => {
+    const original = path.join(root, "module");
+    writeStatefulPackage(original);
+    writePnpmDependency(original);
+    const copy = path.join(root, "copy");
+
+    const report = createInstanceCopy(original, copy);
+
+    const copied = loadLinked(path.join(copy, "node_modules", "dependency"));
+    const shared = loadLinked(
+      path.join(original, "node_modules", "dependency"),
+    );
+    expect(copied.nested.id).to.be.a("number");
+    expect(copied.nested).to.not.equal(shared.nested);
+    expect(report.followedLinks).to.deep.equal([]);
+  });
+
+  it("evaluates a package reached through several links once per copy", () => {
+    const original = path.join(root, "module");
+    writeStatefulPackage(original);
+    writePnpmDependency(original);
+    const copy = path.join(root, "copy");
+
+    createInstanceCopy(original, copy);
+
+    expect(loadLinked(path.join(copy, "node_modules", "dependency"))).to.equal(
+      loadLinked(path.join(copy, DEPENDENCY_STORE, "dependency")),
+    );
+  });
+
+  it("follows a link inside the folder that the filesystem refuses to create", () => {
+    const original = path.join(root, "module");
+    writeStatefulPackage(original);
+    writeDependency(path.join(original, "vendor", "dependency"));
+    mkdirSync(path.join(original, "node_modules"), { recursive: true });
+    symlinkSync(
+      path.join("..", "vendor", "dependency"),
+      path.join(original, "node_modules", "dependency"),
+    );
+    const copy = path.join(root, "copy");
+
+    createInstanceCopy(original, copy, {
+      symlink: () => {
+        throw Object.assign(new Error("operation not permitted"), {
+          code: "EPERM",
+        });
+      },
+    });
+
+    expect(load(copy).dependency).to.not.equal(load(original).dependency);
   });
 });
