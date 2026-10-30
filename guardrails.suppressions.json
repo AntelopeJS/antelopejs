@@ -14,5 +14,6 @@
   },
   "tsExpectError": 8,
   "tsIgnore": 0,
-  "safety": 10
+  "safety": 10,
+  "config": {}
 }

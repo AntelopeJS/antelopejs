@@ -68,7 +68,9 @@
     "sync:check": "antelopejs-sync --check",
     "typecheck": "tsc --noEmit && tsc -p .agents/skills/verify-antelopejs",
     "suppressions": "antelopejs-suppressions",
-    "suppressions:update": "antelopejs-suppressions --update"
+    "suppressions:update": "antelopejs-suppressions --update",
+    "ratchet": "antelopejs-ratchet",
+    "ratchet:update": "antelopejs-ratchet --update"
   },
   "dependencies": {
     "@antelopejs/interface-core": ">=0.3.0 <0.4.0",
@@ -86,7 +88,7 @@
   },
   "devDependencies": {
     "@antelopejs/core": "link:.",
-    "@antelopejs/tooling-configs": "^0.2.7",
+    "@antelopejs/tooling-configs": "^0.2.17",
     "@types/chai": "^4.3.20",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.15",
