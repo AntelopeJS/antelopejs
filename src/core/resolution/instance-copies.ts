@@ -19,9 +19,15 @@ type FileLinker = (source: string, destination: string) => void;
 
 /**
  * Creates `destination` as a symbolic link to `target`, given relative to the
- * folder of `destination`; throws when the filesystem refuses.
+ * folder of `destination`; throws when the filesystem refuses. `type` is the
+ * link Windows needs: a junction for a directory, which takes no privilege,
+ * and a file link otherwise. Other platforms ignore it.
  */
-type SymbolicLinker = (target: string, destination: string) => void;
+type SymbolicLinker = (
+  target: string,
+  destination: string,
+  type: "junction" | "file",
+) => void;
 
 /** How an instance copy places files and links; both default to the filesystem. */
 interface InstanceCopyLinkers {
@@ -90,6 +96,7 @@ function keepLink(
     context.symlink(
       path.relative(path.dirname(destination), copiedTarget),
       destination,
+      statSync(target).isDirectory() ? "junction" : "file",
     );
     return true;
   } catch {

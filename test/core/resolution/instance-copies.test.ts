@@ -247,6 +247,30 @@ describe("instance copies of linked dependencies", () => {
     );
   });
 
+  it("creates a kept link to a directory as a junction and to a file as a file link", () => {
+    const original = path.join(root, "module");
+    writeStatefulPackage(original);
+    writePnpmDependency(original);
+    symlinkSync("index.js", path.join(original, "alias.js"));
+    const copy = path.join(root, "copy");
+    const types = new Map<string, string>();
+
+    createInstanceCopy(original, copy, {
+      symlink: (target, destination, type) => {
+        types.set(path.relative(copy, destination), type);
+        symlinkSync(target, destination, type);
+      },
+    });
+
+    expect(types.get("alias.js")).to.equal("file");
+    expect(types.get(path.join("node_modules", "dependency"))).to.equal(
+      "junction",
+    );
+    expect(types.get(path.join(DEPENDENCY_STORE, "nested"))).to.equal(
+      "junction",
+    );
+  });
+
   it("follows a link inside the folder that the filesystem refuses to create", () => {
     const original = path.join(root, "module");
     writeStatefulPackage(original);
