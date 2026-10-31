@@ -1,4 +1,7 @@
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -22,7 +25,7 @@ describe("project modules behavior: add-rejections", () => {
   });
 
   it("reports handler rejection with non-error", async () => {
-    const config: any = { name: "proj" };
+    const config: AntelopeConfig = { name: "proj" };
     sinon.stub(common, "readConfig").resolves(config);
     sinon.stub(common, "writeConfig").resolves();
     stubLoadedConfig();
@@ -53,7 +56,7 @@ describe("project modules behavior: add-rejections", () => {
   });
 
   it("errors and skips module when download fails after loader identifier resolves", async () => {
-    const config: any = { name: "proj", modules: {} };
+    const config: AntelopeConfig = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     sinon.stub(common, "writeConfig").resolves();
     stubLoadedConfig();

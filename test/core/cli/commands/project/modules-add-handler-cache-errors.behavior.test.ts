@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -22,7 +23,7 @@ describe("project modules behavior: add-handler-cache-errors", () => {
   });
 
   it("handles handler errors and initializes env modules", async () => {
-    const config: any = { name: "proj" };
+    const config: AntelopeConfig = { name: "proj" };
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
     stubLoadedConfig();
@@ -55,7 +56,7 @@ describe("project modules behavior: add-handler-cache-errors", () => {
   });
 
   it("does not add module when download to cache fails", async () => {
-    const config: any = { name: "proj", modules: {} };
+    const config: AntelopeConfig = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
 

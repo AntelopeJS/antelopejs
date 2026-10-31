@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 
 import {
@@ -18,7 +19,7 @@ describe("project logging set interactive behavior", () => {
   const prompts = useSetCommandSandbox(true);
 
   it("asks its questions when no setting is given on a terminal", async () => {
-    const config: any = { name: "test-project" };
+    const config: AntelopeConfig = { name: "test-project" };
     const stubs = stubSetCommand(config);
     prompts().enqueue(true, true, "whitelist", "mod1", "", false, false);
 
@@ -34,7 +35,7 @@ describe("project logging set interactive behavior", () => {
   });
 
   it("does not write when the answers keep every setting", async () => {
-    const config: any = { name: "test-project" };
+    const config: AntelopeConfig = { name: "test-project" };
     const stubs = stubSetCommand(config);
     prompts().enqueue(true, false, false, false);
 
@@ -48,7 +49,7 @@ describe("project logging set interactive behavior", () => {
   });
 
   it("names the environment and defaults to its blacklist", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
       name: "test-project",
       environments: {
         staging: {
@@ -74,7 +75,7 @@ describe("project logging set interactive module lists and formats", () => {
   const prompts = useSetCommandSandbox(true);
 
   it("clears both module lists in all-modules mode", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
       name: "test-project",
       logging: {
         moduleTracking: {
@@ -90,12 +91,12 @@ describe("project logging set interactive module lists and formats", () => {
     await runSet();
 
     expect(stubs.writeConfig.calledOnce).to.equal(true);
-    expect(config.logging.moduleTracking.includes).to.deep.equal([]);
-    expect(config.logging.moduleTracking.excludes).to.deep.equal([]);
+    expect(config.logging?.moduleTracking?.includes).to.deep.equal([]);
+    expect(config.logging?.moduleTracking?.excludes).to.deep.equal([]);
   });
 
   it("saves a customized level template", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
       name: "test-project",
       logging: {
         moduleTracking: { enabled: true, includes: ["mod1"], excludes: [] },
@@ -119,12 +120,12 @@ describe("project logging set interactive module lists and formats", () => {
     await runSet();
 
     expect(stubs.writeConfig.calledOnce).to.equal(true);
-    expect(config.logging.formatter).to.deep.equal({ "0": "TRACE {{ARGS}}" });
-    expect(config.logging.moduleTracking.includes).to.deep.equal(["mod1"]);
+    expect(config.logging?.formatter).to.deep.equal({ "0": "TRACE {{ARGS}}" });
+    expect(config.logging?.moduleTracking?.includes).to.deep.equal(["mod1"]);
   });
 
   it("removes a listed module and saves a date format", async () => {
-    const config: any = { name: "test-project" };
+    const config: AntelopeConfig = { name: "test-project" };
     const stubs = stubSetCommand(config);
     prompts().enqueue(
       true,
