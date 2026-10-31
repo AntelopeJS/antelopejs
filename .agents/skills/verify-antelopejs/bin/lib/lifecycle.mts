@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 
+import { parseJson, textField } from "./json.mts";
 import { killGroup } from "./journey.mts";
 import { CLI_ENTRY, isolatedEnv, REPO_DIR, type RunState, saveRun } from "./run.mts";
 import { STORE_DIR } from "./sources.mts";
@@ -42,7 +43,7 @@ function cliVersion(state: RunState): string {
  * in place, the store is warm, and no process of an earlier run is alive.
  */
 export function doctor(state: RunState): DoctorLine[] {
-  const packageVersion = JSON.parse(execFileSync("git", ["show", "HEAD:package.json"], { cwd: REPO_DIR, encoding: "utf8" })).version;
+  const packageVersion = textField(parseJson(execFileSync("git", ["show", "HEAD:package.json"], { cwd: REPO_DIR, encoding: "utf8" })), "version");
   const built = existsSync(CLI_ENTRY);
   const distFresh = built && statSync(CLI_ENTRY).mtimeMs >= newestMtime(path.join(REPO_DIR, "src"));
   const version = built ? cliVersion(state) : "missing";

@@ -8,7 +8,12 @@ const observations = {};
 async function fixtureMessage() {
   try {
     const response = await fetch(`http://127.0.0.1:${port}/`);
-    return (await response.json()).message;
+    /** @type {unknown} */
+    const body = await response.json();
+    if (body === null) {
+      return null;
+    }
+    return body instanceof Object && "message" in body ? body.message : undefined;
   } catch {
     return null;
   }
