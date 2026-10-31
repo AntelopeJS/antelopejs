@@ -5,7 +5,7 @@
     "antelopejs/no-presence-only-type-guard": 3,
     "typescript/no-unnecessary-type-parameters": 27,
     "typescript/no-unsafe-argument": 71,
-    "typescript/no-unsafe-assignment": 223,
+    "typescript/no-unsafe-assignment": 193,
     "typescript/no-unsafe-return": 52,
     "typescript/use-unknown-in-catch-callback-variable": 12
   },
