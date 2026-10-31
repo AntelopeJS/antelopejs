@@ -27,6 +27,19 @@ export function isPlainObject(item: unknown): item is UnknownDictionary {
   return prototype === Object.prototype || prototype === null;
 }
 
+function assignOwn(
+  target: OpenDictionary,
+  key: string,
+  value: UnknownDictionary[string],
+): void {
+  Object.defineProperty(target, key, {
+    value,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
+}
+
 export function mergeDeep(
   target: OpenDictionary,
   ...sources: Array<OpenDictionary | undefined>
@@ -38,12 +51,14 @@ export function mergeDeep(
     for (const key in source) {
       if (Object.hasOwn(source, key)) {
         const sourceValue = source[key];
-        const targetValue = result[key];
+        const targetValue = Object.hasOwn(result, key)
+          ? result[key]
+          : undefined;
 
         if (isObject(sourceValue) && isObject(targetValue)) {
-          result[key] = mergeDeep(targetValue, sourceValue);
+          assignOwn(result, key, mergeDeep(targetValue, sourceValue));
         } else {
-          result[key] = sourceValue;
+          assignOwn(result, key, sourceValue);
         }
       }
     }
@@ -65,7 +80,7 @@ export function diffDeep(
 ): UnknownDictionary {
   return Object.fromEntries(
     Object.entries(after).flatMap(([key, value]): ObjectEntry[] => {
-      const previous = before[key];
+      const previous = Object.hasOwn(before, key) ? before[key] : undefined;
       if (isPlainObject(previous) && isPlainObject(value)) {
         const nested = diffDeep(previous, value);
         return Object.keys(nested).length > 0 ? [[key, nested]] : [];
@@ -73,6 +88,18 @@ export function diffDeep(
       return isDeepStrictEqual(previous, value) ? [] : [[key, value]];
     }),
   );
+}
+
+function assignKey(
+  target: OpenDictionary,
+  key: string,
+  value: UnknownDictionary[string],
+): void {
+  if (key === "__proto__") {
+    assignOwn(target, key, value);
+  } else {
+    target[key] = value;
+  }
 }
 
 export function set(
@@ -85,11 +112,13 @@ export function set(
 
   for (let i = 0; i < keys.length - 1; i++) {
     const key = keys[i];
-    if (!(key in current) || !isObject(current[key])) {
-      current[key] = {};
+    const present =
+      key === "__proto__" ? Object.hasOwn(current, key) : key in current;
+    if (!present || !isObject(current[key])) {
+      assignKey(current, key, {});
     }
     current = current[key];
   }
 
-  current[keys[keys.length - 1]] = value;
+  assignKey(current, keys[keys.length - 1], value);
 }

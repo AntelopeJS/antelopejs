@@ -212,7 +212,8 @@ async function askInterfaces(
       hint: entry.manifest.description,
     })),
   });
-  const unknown = names.filter((name) => !catalog[name]);
+  const available = new Map(Object.entries(catalog));
+  const unknown = names.filter((name) => !available.has(name));
   if (unknown.length > 0) {
     throw unknownChoiceError({
       kind: "interface",
@@ -221,7 +222,7 @@ async function askInterfaces(
       known,
     });
   }
-  return names.map((name) => catalog[name]);
+  return names.flatMap((name) => available.get(name) ?? []);
 }
 
 function askPackageManager(

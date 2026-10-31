@@ -42,15 +42,16 @@ function applyUpdates(
   outdated: OutdatedModule[],
   antelopeModules: Record<string, ExpandedModuleConfig>,
 ): void {
+  const configured = new Map(Object.entries(antelopeModules));
   for (const entry of outdated) {
-    const { source } = antelopeModules[entry.name];
-    if (!isPackageSource(source)) {
+    const module = configured.get(entry.name);
+    if (!module || !isPackageSource(module.source)) {
       continue;
     }
     envModules[entry.name] = {
-      ...antelopeModules[entry.name],
+      ...module,
       source: {
-        ...source,
+        ...module.source,
         version: bumpVersionSpec(entry.current, entry.latest),
       },
     };
@@ -135,7 +136,8 @@ function selectRequestedModules(
   if (requested.length === 0) {
     return projectModules;
   }
-  const notFound = requested.filter((name) => !projectModules[name]);
+  const configured = new Map(Object.entries(projectModules));
+  const notFound = requested.filter((name) => !configured.has(name));
   if (notFound.length > 0) {
     errorUI(
       `The following modules are not present in the project: ${formatNames(notFound)}`,
@@ -145,7 +147,10 @@ function selectRequestedModules(
     return undefined;
   }
   return Object.fromEntries(
-    requested.map((name) => [name, projectModules[name]]),
+    requested.flatMap((name) => {
+      const module = configured.get(name);
+      return module ? [[name, module]] : [];
+    }),
   );
 }
 

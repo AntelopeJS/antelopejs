@@ -66,6 +66,18 @@ describe("config show behavior", () => {
     expect(result.text).to.equal(`git  ${common.DEFAULT_GIT_REPO}\n`);
   });
 
+  it("does not mark a setting named like an Object.prototype member as custom", async () => {
+    stubUserConfig({ git: common.DEFAULT_GIT_REPO, constructor: "mine" });
+
+    const { result } = await runShow();
+
+    expect(result.text).to.equal(
+      [`git          ${common.DEFAULT_GIT_REPO}`, "constructor  mine", ""].join(
+        "\n",
+      ),
+    );
+  });
+
   it("says so on stderr when no value is set", async () => {
     stubUserConfig({});
 

@@ -150,3 +150,25 @@ describe("ModuleCache", () => {
     }
   });
 });
+
+describe("ModuleCache packages named like Object.prototype members", () => {
+  it("knows no version for a package named like an Object.prototype member", async () => {
+    const cache = new ModuleCache("/cache", new InMemoryFileSystem());
+    await cache.load();
+
+    for (const name of ["constructor", "toString", "valueOf", "__proto__"]) {
+      expect(cache.getVersion(name), name).to.equal(undefined);
+      expect(cache.hasVersion(name, "^1.0.0"), name).to.equal(false);
+    }
+  });
+
+  it("keeps a version recorded for a package named like an Object.prototype member", async () => {
+    const cache = new ModuleCache("/cache", new InMemoryFileSystem());
+    await cache.load();
+
+    cache.setVersion("constructor", "1.2.0");
+
+    expect(cache.getVersion("constructor")).to.equal("1.2.0");
+    expect(cache.hasVersion("constructor", "^1.0.0")).to.equal(true);
+  });
+});
