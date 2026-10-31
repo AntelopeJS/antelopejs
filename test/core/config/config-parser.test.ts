@@ -1,3 +1,4 @@
+import type { AntelopeModuleConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 
 import { ConfigParser } from "../../../src/core/config";
@@ -256,14 +257,14 @@ import { ConfigParser } from "../../../src/core/config";
       });
 
       it("should expand object shorthand with version and overrides", () => {
-        const modules: any = {
+        const modules = {
           mod: {
             version: "2.0.0",
             config: { enabled: true },
             importOverrides: { "core.logging": "github:repo/core" },
             disabledExports: ["legacy"],
           },
-        };
+        } satisfies Record<string, AntelopeModuleConfig>;
 
         const result = parser.expandModuleShorthand(modules);
 
@@ -278,12 +279,12 @@ import { ConfigParser } from "../../../src/core/config";
       });
 
       it("should keep importOverrides array as-is", () => {
-        const modules: any = {
+        const modules = {
           mod: {
             source: { type: "git", remote: "git://example.com/mod.git" },
             importOverrides: [{ interface: "core", source: "local" }],
           },
-        };
+        } satisfies Record<string, AntelopeModuleConfig>;
 
         const result = parser.expandModuleShorthand(modules);
 

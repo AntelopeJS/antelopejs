@@ -95,7 +95,11 @@ async function constructAllErrors(manager: ModuleManager): Promise<unknown[]> {
   try {
     await manager.constructAll();
   } catch (error) {
-    return error instanceof AggregateError ? error.errors : [error];
+    if (error instanceof AggregateError) {
+      const nested: unknown[] = error.errors;
+      return nested;
+    }
+    return [error];
   }
   return [];
 }
