@@ -80,9 +80,6 @@ describe("project modules install behavior: reuses selected modules for multiple
     sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
       interfaceInfo("iface", {
         description: "iface",
-        versions: ["1.0.0"],
-        files: {},
-        dependencies: {},
         modules: [MOD_A],
       }),
     );
