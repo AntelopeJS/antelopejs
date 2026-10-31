@@ -1,11 +1,13 @@
-import { AsyncProxy } from "@antelopejs/interface-core";
+import type { AsyncProxy } from "@antelopejs/interface-core";
 import assert from "node:assert/strict";
+
+import { AsyncProxyClass } from "../../src/core/resolution";
 
 type Func = (...args: never[]) => void;
 
 export function interfaceProxy(fn: Func): AsyncProxy {
   const proxy: unknown = Object.getOwnPropertyDescriptor(fn, "proxy")?.value;
-  assert.ok(proxy instanceof AsyncProxy);
+  assert.ok(proxy instanceof AsyncProxyClass);
   return proxy;
 }
 
