@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -24,7 +25,8 @@ describe("project modules behavior: remove-force", () => {
   });
 
   it("removes modules with force and writes config", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
+      name: "proj",
       modules: {
         foo: { source: { type: "package", package: "foo", version: "1.0.0" } },
       },
@@ -49,7 +51,8 @@ describe("project modules behavior: remove-force", () => {
   });
 
   it("errors when removing missing modules without force", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
+      name: "proj",
       modules: {
         foo: { source: { type: "package", package: "foo", version: "1.0.0" } },
       },

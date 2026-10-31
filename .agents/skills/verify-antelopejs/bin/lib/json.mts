@@ -23,6 +23,17 @@ export function field(value: JsonRead, key: string): JsonRead {
   return isRecord(value) && Object.hasOwn(value, key) ? value[key] : undefined;
 }
 
+/** Whether a JSON value is a string. */
+function isText(value: JsonRead): value is string {
+  return typeof value === "string";
+}
+
+/** A string member of a JSON object, or undefined when the member is missing or not a string. */
+export function textField(value: JsonRead, key: string): string | undefined {
+  const found = field(value, key);
+  return isText(found) ? found : undefined;
+}
+
 /** The keys of a JSON object, or none when the value is not an object. */
 export function keys(value: JsonRead): string[] {
   return isRecord(value) ? Object.keys(value) : [];

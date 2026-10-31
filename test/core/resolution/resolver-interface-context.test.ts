@@ -169,7 +169,7 @@ function createFixture(): ContextFixture {
 function outcomeOf<T>(promise: Promise<T>): Promise<T | Error> {
   return promise.then(
     (value) => value,
-    (error) => {
+    (error: unknown) => {
       assert.ok(error instanceof Error);
       return error;
     },

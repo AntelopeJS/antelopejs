@@ -11,6 +11,7 @@ import {
   USAGE_EXIT_CODE,
 } from "../../../core/output";
 import { readConfig } from "../../common";
+import { verboseChannelsOf } from "../../options";
 
 export interface ProjectCommandOptions {
   project: string;
@@ -34,7 +35,8 @@ export function resolveInheritedVerbose(
   if (verbose) {
     return verbose;
   }
-  return command.parent?.parent?.getOptionValue("verbose");
+  const root = command.parent?.parent;
+  return root ? verboseChannelsOf(root) : undefined;
 }
 
 export function listKnownEnvironments(config: AntelopeConfig): string[] {

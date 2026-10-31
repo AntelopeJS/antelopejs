@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "rootDir": "..",
+    "skipLibCheck": true,
+    "paths": {
+      "@antelopejs/core": ["../src/index.ts"]
+    }
+  },
+  "include": ["./*.ts"]
+}

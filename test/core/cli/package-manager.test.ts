@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import nodeFs from "node:fs";
 import sinon from "sinon";
 
 import {
@@ -16,6 +17,7 @@ import {
   cleanupTempDir,
   makeTempDir,
   readJson,
+  readText,
   writeJson,
 } from "../../helpers/temp";
 
@@ -65,6 +67,24 @@ import {
         expect(await getModulePackageManager("/project", fs)).to.equal(
           undefined,
         );
+      });
+
+      it("ignores a packageManager field that is not a string", async () => {
+        const fs = new InMemoryFileSystem();
+        for (const packageManager of [
+          ["pnpm@8.0.0"],
+          [["pnpm@8.0.0"]],
+          8,
+          {},
+        ]) {
+          await fs.writeFile(
+            "/project/package.json",
+            JSON.stringify({ packageManager }),
+          );
+          expect(await getModulePackageManager("/project", fs)).to.equal(
+            undefined,
+          );
+        }
       });
     };
   }
@@ -409,6 +429,26 @@ import {
         }
       });
 
+      it("leaves a package.json that is not a JSON object untouched and warns", () => {
+        for (const content of [[], [1, 2], null, 5, "npm"]) {
+          const tempDir = makeTempDir();
+          const warnStub = sinon.stub(cliUi, "warning");
+          const infoStub = sinon.stub(cliUi, "info");
+          try {
+            writeJson(`${tempDir}/package.json`, content);
+            const before = readText(`${tempDir}/package.json`);
+            savePackageManagerToPackageJson("pnpm", tempDir);
+            expect(readText(`${tempDir}/package.json`)).to.equal(before);
+            expect(warnStub.calledOnce).to.equal(true);
+            expect(infoStub.called).to.equal(false);
+          } finally {
+            infoStub.restore();
+            warnStub.restore();
+            cleanupTempDir(tempDir);
+          }
+        }
+      });
+
       it("warns when package.json is missing", () => {
         const tempDir = makeTempDir();
         const warnStub = sinon.stub(cliUi, "warning");
@@ -441,10 +481,7 @@ import {
 
       it("warns with non-error throw payloads", () => {
         const tempDir = makeTempDir();
-        const fsModule = require("node:fs");
-        const readStub = sinon
-          .stub(fsModule, "readFileSync")
-          .throws("bad-read");
+        const readStub = sinon.stub(nodeFs, "readFileSync").throws("bad-read");
         const warnStub = sinon.stub(cliUi, "warning");
         try {
           writeJson(`${tempDir}/package.json`, { name: "test" });
