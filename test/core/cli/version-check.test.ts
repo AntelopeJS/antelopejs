@@ -16,6 +16,7 @@ import { cliUiModule as cliUi, stripAnsi } from "../../../src/core/output";
 import { useAsciiSymbols } from "../../helpers/ascii-symbols";
 import { captureOutputAsync } from "../../helpers/capture-output";
 import { readJson } from "../../helpers/temp";
+import type { JsonValue } from "../../helpers/json";
 
 const NOW = Date.UTC(2026, 0, 2);
 const HOUR_MS = 60 * 60 * 1000;
@@ -30,7 +31,7 @@ const INTERACTIVE_CONTEXT: UpdateCheckContext = {
   isStderrTerminal: true,
 };
 
-function jsonResponse<T>(body: T, status = 200): Response {
+function jsonResponse(body: JsonValue, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
 }
 
@@ -53,7 +54,7 @@ function dependencies(
   return { fetch: fetchManifest, cachePath, now: () => now };
 }
 
-function writeCache<T>(content: T): void {
+function writeCache(content: JsonValue): void {
   fs.mkdirSync(path.dirname(cachePath), { recursive: true });
   fs.writeFileSync(cachePath, JSON.stringify(content));
 }

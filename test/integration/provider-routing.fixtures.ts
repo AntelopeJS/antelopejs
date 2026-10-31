@@ -9,6 +9,7 @@ import {
   RoutingProject,
 } from "./provider-routing.fixture-types";
 import { consumerSource, providerSource } from "./provider-routing.sources";
+import type { JsonValue } from "../helpers/json";
 
 export async function writeModule(
   folder: string,
@@ -119,9 +120,9 @@ export function projectConfig() {
   };
 }
 
-export async function writeProjectConfig<Tconfig>(
+export async function writeProjectConfig(
   folder: string,
-  config: Tconfig,
+  config: JsonValue,
 ): Promise<void> {
   await fs.writeFile(
     path.join(folder, "antelope.config.ts"),

@@ -6,7 +6,7 @@ import {
   RegisterDevServer,
 } from "@antelopejs/interface-core/runtime";
 import { expect } from "chai";
-import { interfaceProxy } from "../helpers/interface-proxy";
+import { resetProxy } from "../helpers/interface-proxy";
 
 import {
   DevRegistryStore,
@@ -14,14 +14,6 @@ import {
   ShutdownManager,
 } from "../../src/core/runtime";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
-
-function resetProxy<Args extends unknown[], Result>(
-  interfaceFunction: (...args: Args) => Result,
-): void {
-  const proxy = interfaceProxy(interfaceFunction);
-  proxy.onCall(() => undefined, true);
-  proxy.detach();
-}
 
 const PROJECT_PATH = "/project";
 const REGISTRY_PATH = `${PROJECT_PATH}/${DEV_REGISTRY_PATH}`;

@@ -2,7 +2,7 @@
   "pack": "0.2.17",
   "rules": {
     "antelopejs/no-presence-only-type-guard": 3,
-    "typescript/no-unnecessary-type-parameters": 27,
+    "typescript/no-unnecessary-type-parameters": 5,
     "typescript/no-unsafe-argument": 70,
     "typescript/no-unsafe-assignment": 142,
     "typescript/no-unsafe-return": 40,

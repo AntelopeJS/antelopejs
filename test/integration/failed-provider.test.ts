@@ -1,6 +1,7 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import { spawn } from "node:child_process";
+import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -159,9 +160,11 @@ exports.construct = () =>
   return projectFolder;
 }
 
-function flattenErrors<T>(error: T): string[] {
+function flattenErrors(error: Error): string[] {
   if (error instanceof AggregateError) {
-    return error.errors.flatMap((nested) => flattenErrors(nested));
+    return error.errors.flatMap((nested) =>
+      nested instanceof Error ? flattenErrors(nested) : [String(nested)],
+    );
   }
   return [String(error)];
 }
@@ -210,6 +213,7 @@ describe("a provider that fails to publish its config variables", () => {
         thrown = error;
       }
 
+      assert.ok(thrown instanceof Error);
       const messages = flattenErrors(thrown).map(String);
       expect(messages.join("\n")).to.include(
         "publicBaseUrl is required outside dev",
