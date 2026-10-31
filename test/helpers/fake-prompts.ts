@@ -50,9 +50,7 @@ function createBackend(queue: unknown[], asked: AskedPrompt[]): PromptBackend {
     confirm: answer("confirm"),
     select: answer("select"),
     multiselect: answer("multiselect"),
-    isCancel: (
-      value: Parameters<PromptBackend["isCancel"]>[0],
-    ): value is typeof CANCEL_SYMBOL => value === CANCEL_SYMBOL,
+    isCancel: (value): value is typeof CANCEL_SYMBOL => value === CANCEL_SYMBOL,
   };
 }
 
