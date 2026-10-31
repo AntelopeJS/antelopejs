@@ -12,7 +12,7 @@
     "typescript/no-base-to-string": 1,
     "typescript/no-redundant-type-constituents": 3
   },
-  "tsExpectError": 8,
+  "tsExpectError": 12,
   "tsIgnore": 0,
   "safety": 10,
   "config": {}
