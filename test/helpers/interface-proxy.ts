@@ -1,7 +1,7 @@
 import type { AsyncProxy } from "@antelopejs/interface-core";
 import assert from "node:assert/strict";
 
-import { AsyncProxyClass } from "../../src/core/resolution/stub-interface-runtime";
+import { AsyncProxyClass } from "../../src/core/resolution";
 
 type Func = (...args: never[]) => void;
 
