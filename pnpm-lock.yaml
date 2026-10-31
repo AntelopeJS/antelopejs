@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@antelopejs/tooling-configs': file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz
+
 importers:
 
   .:
@@ -67,8 +70,8 @@ importers:
         specifier: 0.1.0
         version: 0.1.0(@antelopejs/interface-core@0.3.0)
       '@antelopejs/tooling-configs':
-        specifier: ^0.2.17
-        version: 0.2.17(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz
+        version: file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       '@types/chai':
         specifier: ^4.3.20
         version: 4.3.20
@@ -178,8 +181,9 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
-  '@antelopejs/tooling-configs@0.2.17':
-    resolution: {integrity: sha512-8fwh7xQPzazP/l/ivEwRKpfN8qShV9+PRizpI9cBewe2TwoRPu4n95w6sYSlygiRmm0HxLJYZFhmSPRgtiNo1Q==}
+  '@antelopejs/tooling-configs@file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz':
+    resolution: {integrity: sha512-7XrhAYF82ZtSMpDAA1I02uRL8RmgcPm6VHRua+MBlf5IMdpaHbI0WmrdkQHBncu8XwGKV+psp+wjdMueS+AKxw==, tarball: file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz}
+    version: 0.2.17
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -2882,7 +2886,7 @@ snapshots:
     dependencies:
       '@antelopejs/interface-core': 0.3.0
 
-  '@antelopejs/tooling-configs@0.2.17(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
+  '@antelopejs/tooling-configs@file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
     dependencies:
       '@oxlint/plugins': 1.81.0
       dts-bundle-generator: 9.5.1
