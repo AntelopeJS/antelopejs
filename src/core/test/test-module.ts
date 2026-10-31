@@ -7,7 +7,7 @@ import path from "node:path";
 
 import { setupAntelopeProjectLogging } from "../../logging";
 import type { IFileSystem } from "../../types";
-import { mergeDeep, isString } from "../../utils";
+import { isObject, isString, mergeDeep } from "../../utils";
 import { ConfigLoader, DEFAULT_ENV, type LoadedConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../modules";
@@ -69,7 +69,7 @@ export async function loadTestConfig(
 ): Promise<LoadedTestConfig | undefined> {
   const packPath = path.join(moduleRoot, "package.json");
 
-  let pack: any;
+  let pack: unknown;
   try {
     const packContent = await fs.readFileString(packPath, "utf-8");
     pack = JSON.parse(packContent);
@@ -78,7 +78,8 @@ export async function loadTestConfig(
     return undefined;
   }
 
-  const testConfigPath = pack.antelopeJs?.test;
+  const antelopeJs = isObject(pack) ? pack.antelopeJs : undefined;
+  const testConfigPath = isObject(antelopeJs) ? antelopeJs.test : undefined;
   if (!testConfigPath || !isString(testConfigPath)) {
     console.error(
       "Missing or invalid antelopeJs.test config path in package.json",
@@ -144,8 +145,12 @@ export async function collectInterfaceTestFiles(
     path.join(moduleRoot, "package.json"),
     "utf-8",
   );
-  const pack = JSON.parse(packContent);
-  const implementsList: string[] = pack.antelopeJs?.implements ?? [];
+  const pack: unknown = JSON.parse(packContent);
+  const antelopeJs = isObject(pack) ? pack.antelopeJs : undefined;
+  const declared = isObject(antelopeJs) ? antelopeJs.implements : undefined;
+  const implementsList = Array.isArray(declared)
+    ? declared.filter(isString)
+    : [];
   const files: string[] = [];
 
   for (const ifacePkg of implementsList) {
