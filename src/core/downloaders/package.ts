@@ -4,6 +4,7 @@ import * as path from "node:path";
 import { maxSatisfying, satisfies, valid, validRange } from "semver";
 
 import type { IFileSystem } from "../../types";
+import { isObject, isString } from "../../utils";
 import { NodeFileSystem } from "../filesystem";
 import {
   ModuleCache,
@@ -81,8 +82,10 @@ async function fetchRegistryVersion(
     return undefined;
   }
   try {
-    const parsed: string | string[] = JSON.parse(output);
-    const versions = Array.isArray(parsed) ? parsed : [parsed];
+    const parsed: unknown = JSON.parse(output);
+    const versions = (Array.isArray(parsed) ? parsed : [parsed]).filter(
+      isString,
+    );
     return pickBestVersion(versions, spec);
   } catch {
     Logger.Debug(`Unexpected npm view output for ${pkg}@${spec}: ${output}`);
@@ -187,7 +190,7 @@ async function downloadPackage(
   await ctx.extract(path.join(tmp, filename), tmp);
 
   const tmpPackage = path.join(tmp, "package");
-  const manifest: ModulePackageJson = JSON.parse(
+  const packed: unknown = JSON.parse(
     await ctx.fs.readFileString(path.join(tmpPackage, PACKAGE_JSON)),
   );
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);
@@ -203,7 +206,13 @@ async function downloadPackage(
       new ExecError({ ...installResult, command: cmd }),
     );
   }
-  await cache.commitVersion(source.package, manifest.version);
+  const packedVersion = isObject(packed) ? packed.version : undefined;
+  if (!isString(packedVersion)) {
+    throw new Error(
+      `The package ${source.package}@${version} has no version in its package.json`,
+    );
+  }
+  await cache.commitVersion(source.package, packedVersion);
   return folder;
 }
 
