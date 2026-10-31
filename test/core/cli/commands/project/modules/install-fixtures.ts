@@ -1,4 +1,8 @@
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  AntelopeModuleConfig,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -91,12 +95,10 @@ export function installFixture() {
   });
 
   function stubUnresolvedImport(modules: gitOps.ModuleInterfaceInfo[]) {
-    const config: any = {
-      name: "proj",
-      modules: {
-        app: { source: { type: "package", package: "app", version: "1.0.0" } },
-      },
-    };
+    const appModules = {
+      app: { source: { type: "package", package: "app", version: "1.0.0" } },
+    } satisfies Record<string, AntelopeModuleConfig>;
+    const config: AntelopeConfig = { name: "proj", modules: appModules };
     sinon.stub(common, "readConfig").resolves(config);
     sinon
       .stub(common, "readUserConfig")
@@ -107,7 +109,7 @@ export function installFixture() {
       starredInterfaces: [],
       templates: [],
     });
-    stubLoadedConfig({ modules: config.modules });
+    stubLoadedConfig({ modules: appModules });
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(DownloaderRegistry.prototype, "load").resolves([
       moduleManifest({

@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { Command } from "commander";
+import nodeFs from "node:fs";
 import sinon from "sinon";
 
 import {
@@ -15,7 +16,7 @@ import {
 import { launchModule as indexModule } from "../../../../../src/core/repl";
 import { collectStderr } from "../../../../helpers/capture-output";
 
-const fsPromises = require("node:fs").promises;
+const fsPromises = nodeFs.promises;
 const childProcess = require("node:child_process");
 
 async function waitForAsyncWork(): Promise<void> {

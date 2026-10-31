@@ -159,7 +159,7 @@ describe("a module that fails to reload in watch mode", () => {
     state.failNextConstruct = true;
     const orphanedFailure = waitForOrphanedFailure();
     const reloadFailure = await reloadModule(manager, projectFolder).catch(
-      (error) => {
+      (error: unknown) => {
         assert.ok(error instanceof Error);
         return error;
       },

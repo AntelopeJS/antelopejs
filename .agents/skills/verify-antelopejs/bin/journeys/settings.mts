@@ -2,7 +2,7 @@ import { chmodSync, readFileSync, symlinkSync } from "node:fs";
 import path from "node:path";
 
 import { equal, exitIs, fileHas, has, lacks } from "../lib/checks.mts";
-import { field, items, parseJson } from "../lib/json.mts";
+import { field, items, parseJson, textField } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
 import { REPO_DIR } from "../lib/run.mts";
 
@@ -25,7 +25,7 @@ export const configJourneys: Journey[] = [
     entryPoint: "ajs config show [--json]; ajs config get git",
     async run(context) {
       const show = await context.ajs("config show --json", ["config", "show", "--json"]);
-      context.expect(show.folder, [exitIs(show, 0), equal("git default", field(parseJson(show.stdout), "git"), DEFAULT_GIT)]);
+      context.expect(show.folder, [exitIs(show, 0), equal("git default", textField(parseJson(show.stdout), "git"), DEFAULT_GIT)]);
       const text = await context.ajs("config show", ["config", "show"]);
       context.expect(text.folder, [exitIs(text, 0), has("stdout", text.stdout, /git\s+https:\/\/github\.com\/AntelopeJS\/interfaces\.git/), lacks("stdout", text.stdout, /\(custom\)/)]);
     },
@@ -101,7 +101,7 @@ export const configJourneys: Journey[] = [
 function installFakePlugin(context: JourneyContext): string {
   const project = path.join(context.work, "project");
   const pluginFolder = path.join(project, "node_modules", "@antelopejs", "dms-frontend");
-  const coreVersion = JSON.parse(readFileSync(path.join(REPO_DIR, "package.json"), "utf8")).version;
+  const coreVersion = textField(parseJson(readFileSync(path.join(REPO_DIR, "package.json"), "utf8")), "version");
   context.edit("install a plugin package", path.join(pluginFolder, "package.json"), `${JSON.stringify({ name: "@antelopejs/dms-frontend", version: "9.9.9", bin: { "ajs-dms": "bin.js" }, peerDependencies: { "@antelopejs/core": `^${coreVersion}` } }, null, 2)}\n`);
   context.edit("write the plugin binary", path.join(pluginFolder, "bin.js"), "#!/usr/bin/env node\nprocess.stdout.write(`plugin ran with ${JSON.stringify(process.argv.slice(2))}\\n`);\n");
   chmodSync(path.join(pluginFolder, "bin.js"), 0o755);
@@ -165,7 +165,7 @@ export const shellJourneys: Journey[] = [
     entryPoint: "ajs --version; ajs --help; ajs help project",
     async run(context) {
       const version = await context.ajs("--version", ["--version"]);
-      const expected = JSON.parse(readFileSync(path.join(REPO_DIR, "package.json"), "utf8")).version;
+      const expected = textField(parseJson(readFileSync(path.join(REPO_DIR, "package.json"), "utf8")), "version");
       context.expect(version.folder, [exitIs(version, 0), equal("version", version.stdout.trim(), expected)]);
       const help = await context.ajs("--help", ["--help"]);
       context.expect(help.folder, [exitIs(help, 0), ...["project", "module", "config", "update", "plugins"].map((name) => has("stdout", help.stdout, new RegExp(`^  ${name}\\b`, "m")))]);
