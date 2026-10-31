@@ -4,7 +4,11 @@
     "noEmit": true,
     "declaration": false,
     "rootDir": "..",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@antelopejs/core": ["../src/index.ts"],
+      "@antelopejs/core/cli": ["../src/core/cli/public.ts"]
+    }
   },
   "include": ["./**/*.ts", "./**/*.cjs", "./**/*.mjs"]
 }
