@@ -88,6 +88,12 @@
   },
   "devDependencies": {
     "@antelopejs/core": "link:.",
+    "@antelopejs/interface-api": "0.1.0",
+    "@antelopejs/interface-auth": "0.1.0",
+    "@antelopejs/interface-data-api": "0.5.0",
+    "@antelopejs/interface-database": "0.2.0",
+    "@antelopejs/interface-database-decorators": "0.1.11",
+    "@antelopejs/interface-email": "0.1.0",
     "@antelopejs/tooling-configs": "^0.2.17",
     "@types/chai": "^4.3.20",
     "@types/mocha": "^10.0.10",
