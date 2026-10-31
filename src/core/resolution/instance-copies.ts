@@ -2,22 +2,55 @@ import {
   copyFileSync,
   existsSync,
   linkSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
 } from "node:fs";
 import path from "node:path";
 
 import { clearPathResolutionCache } from "../../utils";
 
 /** Creates `destination` as a hard link to `source`; throws when the filesystem refuses. */
-export type FileLinker = (source: string, destination: string) => void;
+type FileLinker = (source: string, destination: string) => void;
+
+/**
+ * Creates `destination` as a symbolic link to `target`, given relative to the
+ * folder of `destination`; throws when the filesystem refuses. `type` is the
+ * link Windows needs: a junction for a directory, which takes no privilege,
+ * and a file link otherwise. Other platforms ignore it.
+ */
+type SymbolicLinker = (
+  target: string,
+  destination: string,
+  type: "junction" | "file",
+) => void;
+
+/** How an instance copy places files and links; both default to the filesystem. */
+interface InstanceCopyLinkers {
+  link?: FileLinker;
+  symlink?: SymbolicLinker;
+}
+
+/** What an instance copy could not keep inside itself. */
+interface InstanceCopyReport {
+  /**
+   * Symbolic links, relative to the copied folder, whose target lies outside
+   * that folder and is copied in their place.
+   */
+  followedLinks: string[];
+}
 
 interface CopyContext {
   link: FileLinker;
+  symlink: SymbolicLinker;
   ancestors: Set<string>;
+  sourceRoot: string;
+  destinationRoot: string;
+  followedLinks: string[];
 }
 
 let nextGeneration = 1;
@@ -29,6 +62,64 @@ function realDirectory(folder: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function linkTarget(source: string): string | undefined {
+  try {
+    return lstatSync(source).isSymbolicLink()
+      ? realpathSync.native(source)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isWithin(folder: string, target: string): boolean {
+  const relative = path.relative(folder, target);
+  return (
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
+function keepLink(
+  target: string,
+  destination: string,
+  context: CopyContext,
+): boolean {
+  const copiedTarget = path.join(
+    context.destinationRoot,
+    path.relative(context.sourceRoot, target),
+  );
+  try {
+    context.symlink(
+      path.relative(path.dirname(destination), copiedTarget),
+      destination,
+      statSync(target).isDirectory() ? "junction" : "file",
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function placeLink(
+  source: string,
+  destination: string,
+  context: CopyContext,
+): boolean {
+  const target = linkTarget(source);
+  if (!target) {
+    return false;
+  }
+  if (isWithin(context.sourceRoot, target)) {
+    return keepLink(target, destination, context);
+  }
+  context.followedLinks.push(
+    path.relative(context.destinationRoot, destination),
+  );
+  return false;
 }
 
 function placeFile(source: string, destination: string, link: FileLinker) {
@@ -75,6 +166,9 @@ function copyEntry(
   destination: string,
   context: CopyContext,
 ): void {
+  if (placeLink(source, destination, context)) {
+    return;
+  }
   const kind = entryKind(source);
   if (kind === "directory") {
     copyDirectory(source, destination, context);
@@ -87,23 +181,37 @@ function copyEntry(
 
 /**
  * Builds an instance copy of a folder: a tree of hard links to its files, so
- * no file content is copied, with every symbolic link followed, so a package
- * linked from outside the folder (a pnpm or workspace layout) is part of the
- * copy instead of a link back to the shared original. A file the filesystem
- * refuses to link, across filesystems for instance, is copied instead.
+ * no file content is copied. A file the filesystem refuses to link, across
+ * filesystems for instance, is copied instead.
  *
- * Node keys loaded modules by path, so every file of the copy is evaluated
- * apart from the original, dependencies included. Any previous content at
- * `destination` is removed first.
+ * A symbolic link whose target lies inside the folder, as in a pnpm layout,
+ * is recreated as a link to the same place in the copy, so a package keeps
+ * resolving the packages installed beside it. A link whose target lies
+ * outside the folder, as in a workspace, is followed: its target becomes part
+ * of the copy instead of a link back to the shared original, and the report
+ * lists it, since what is installed beside that target is not copied.
+ *
+ * Node keys loaded modules by their real path, so every file of the copy is
+ * evaluated apart from the original, dependencies included. Any previous
+ * content at `destination` is removed first.
  */
 export function createInstanceCopy(
   source: string,
   destination: string,
-  link: FileLinker = linkSync,
-): void {
+  { link = linkSync, symlink = symlinkSync }: InstanceCopyLinkers = {},
+): InstanceCopyReport {
   rmSync(destination, { recursive: true, force: true });
-  copyDirectory(source, destination, { link, ancestors: new Set() });
+  const followedLinks: string[] = [];
+  copyDirectory(source, destination, {
+    link,
+    symlink,
+    ancestors: new Set(),
+    sourceRoot: realDirectory(source) ?? path.resolve(source),
+    destinationRoot: destination,
+    followedLinks,
+  });
   clearPathResolutionCache();
+  return { followedLinks };
 }
 
 /** Deletes an instance copy once its files are no longer loaded. */
