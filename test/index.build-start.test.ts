@@ -19,7 +19,6 @@ import {
 import {
   cleanupTempDir,
   makeTempDir,
-  readJson,
   readText,
   writeJson,
 } from "./helpers/temp";
@@ -180,11 +179,11 @@ function readRecordedConfig() {
           "build",
           "build.json",
         );
-        const artifact = readJson<BuildArtifact>(artifactPath);
+        const artifact: unknown = JSON.parse(readText(artifactPath));
 
-        expect(artifact.env).to.equal("production");
-        expect(artifact.config.name).to.equal("sample");
-        expect(Object.keys(artifact.modules)).to.have.length(0);
+        expect(artifact).to.have.property("env", "production");
+        expect(artifact).to.have.nested.property("config.name", "sample");
+        expect(artifact).to.have.property("modules").that.deep.equals({});
       });
 
       it("launchFromBuild throws when build artifact is missing", async () => {
