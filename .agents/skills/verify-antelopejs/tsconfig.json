@@ -8,8 +8,22 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
     "strict": true,
-    "types": ["node"],
-    "skipLibCheck": true
+    "types": [
+      "node"
+    ],
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
+    "paths": {
+      "verify-greeter": [
+        "./fixtures/greeter/verify-greeter/index.js"
+      ]
+    }
   },
-  "include": ["bin/**/*.mts"]
+  "include": [
+    "bin/**/*.mts",
+    "fixtures/hosts/*.mjs",
+    "fixtures/greeter/*/index.js",
+    "fixtures/template-verify-http/test/*.js"
+  ]
 }

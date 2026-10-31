@@ -20,7 +20,7 @@ function isRecord(value: JsonRead): value is { [key: string]: Json } {
 
 /** Reads `key` of a JSON object, or undefined when the value is not an object. */
 export function field(value: JsonRead, key: string): JsonRead {
-  return isRecord(value) ? value[key] : undefined;
+  return isRecord(value) && Object.hasOwn(value, key) ? value[key] : undefined;
 }
 
 /** The keys of a JSON object, or none when the value is not an object. */
