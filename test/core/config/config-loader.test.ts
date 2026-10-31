@@ -10,6 +10,7 @@ import sinon from "sinon";
 
 import {
   ConfigLoader,
+  type ConfigParser,
   tsConfigFileModule as tsConfigFile,
 } from "../../../src/core/config";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
@@ -276,10 +277,12 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
           sinon
             .stub(loader["parser"], "applyEnvOverrides")
-            .callsFake((config: any) => ({
-              ...config,
-              cacheFolder: undefined,
-            }));
+            .callsFake(
+              (config: Parameters<ConfigParser["applyEnvOverrides"]>[0]) => ({
+                ...config,
+                cacheFolder: undefined,
+              }),
+            );
 
           const config = await loader.load("/project");
 
