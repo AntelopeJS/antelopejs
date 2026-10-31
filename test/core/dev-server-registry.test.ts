@@ -1,7 +1,6 @@
 import {
   DEV_REGISTRY_PATH,
   type DevServerEndpoint,
-  type DevServerRegistry,
   GetRuntimeInfo,
   RegisterDevServer,
 } from "@antelopejs/interface-core/runtime";
@@ -40,10 +39,9 @@ function createStore(
   });
 }
 
-async function readRegistry(
-  fs: InMemoryFileSystem,
-): Promise<DevServerRegistry> {
-  return JSON.parse(await fs.readFileString(REGISTRY_PATH));
+async function expectRegistry(fs: InMemoryFileSystem) {
+  const registry: unknown = JSON.parse(await fs.readFileString(REGISTRY_PATH));
+  return expect(registry);
 }
 
 {
@@ -58,7 +56,7 @@ async function readRegistry(
 
         await store.register("api", API_ENDPOINTS);
 
-        expect(await readRegistry(fs)).to.deep.equal({
+        (await expectRegistry(fs)).to.deep.equal({
           pid: OWNER_PID,
           startedAt: STARTED_AT.toISOString(),
           servers: { api: { endpoints: API_ENDPOINTS } },
@@ -73,11 +71,12 @@ async function readRegistry(
         await store.register("api", API_ENDPOINTS);
         await store.register("ws", WS_ENDPOINTS);
 
-        const registry = await readRegistry(fs);
-        expect(registry.servers).to.deep.equal({
-          api: { endpoints: API_ENDPOINTS },
-          ws: { endpoints: WS_ENDPOINTS },
-        });
+        (await expectRegistry(fs)).to.have
+          .property("servers")
+          .that.deep.equals({
+            api: { endpoints: API_ENDPOINTS },
+            ws: { endpoints: WS_ENDPOINTS },
+          });
       });
 
       it("serializes concurrent registrations", async () => {
@@ -89,11 +88,12 @@ async function readRegistry(
           store.register("ws", WS_ENDPOINTS),
         ]);
 
-        const registry = await readRegistry(fs);
-        expect(registry.servers).to.deep.equal({
-          api: { endpoints: API_ENDPOINTS },
-          ws: { endpoints: WS_ENDPOINTS },
-        });
+        (await expectRegistry(fs)).to.have
+          .property("servers")
+          .that.deep.equals({
+            api: { endpoints: API_ENDPOINTS },
+            ws: { endpoints: WS_ENDPOINTS },
+          });
         expect(await fs.exists(TEMP_REGISTRY_PATH)).to.equal(false);
       });
 
@@ -187,11 +187,12 @@ async function readRegistry(
         });
 
         await RegisterDevServer("api", API_ENDPOINTS);
-        const registry = await readRegistry(fs);
-        expect(registry.pid).to.equal(process.pid);
-        expect(registry.servers).to.deep.equal({
-          api: { endpoints: API_ENDPOINTS },
-        });
+        (await expectRegistry(fs)).to.have.property("pid", process.pid);
+        (await expectRegistry(fs)).to.have
+          .property("servers")
+          .that.deep.equals({
+            api: { endpoints: API_ENDPOINTS },
+          });
 
         await shutdownManager.shutdown();
         expect(await fs.exists(REGISTRY_PATH)).to.equal(false);
