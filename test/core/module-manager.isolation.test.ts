@@ -342,9 +342,11 @@ describe("ModuleManager lifecycle signals", () => {
 
     expect(error).to.be.instanceOf(AggregateError);
     assert.ok(error instanceof AggregateError);
-    expect(error.errors.map((e) => e.message)).to.deep.equal([
+    expect(error.errors).to.have.lengthOf(1);
+    expect(error.errors[0]).to.have.property(
+      "message",
       "Module 'late' did not start within 120 s",
-    ]);
+    );
     expect(calls).to.not.include("started");
   });
 });
