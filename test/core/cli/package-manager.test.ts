@@ -15,8 +15,8 @@ import {
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   cleanupTempDir,
+  expectJsonFile,
   makeTempDir,
-  readJson,
   readText,
   writeJson,
 } from "../../helpers/temp";
@@ -469,10 +469,9 @@ import {
         try {
           writeJson(`${tempDir}/package.json`, { name: "test" });
           savePackageManagerToPackageJson("npm", tempDir);
-          const pkg = readJson<{ packageManager: string }>(
-            `${tempDir}/package.json`,
-          );
-          expect(pkg.packageManager).to.include("npm@");
+          expectJsonFile(`${tempDir}/package.json`)
+            .to.have.property("packageManager")
+            .that.includes("npm@");
         } finally {
           execStub.restore();
           cleanupTempDir(tempDir);
