@@ -174,9 +174,12 @@ function withHangGuard<T>(promise: Promise<T>): Promise<T> {
 
         const error = await runtime.start().then(
           () => undefined,
-          (reason: Error) => reason,
+          (reason: unknown) => reason,
         );
-        expect(error?.message).to.match(/not-installed-pkg/);
+        expect(error)
+          .to.be.instanceOf(Error)
+          .with.property("message")
+          .that.matches(/not-installed-pkg/);
       });
     };
 
@@ -249,9 +252,11 @@ function withHangGuard<T>(promise: Promise<T>): Promise<T> {
 
       const afterDetach = await withHangGuard(clock.HostClock.now()).then(
         () => "resolved",
-        (error: Error) => error.message,
+        (error: unknown) => error,
       );
-      expect(afterDetach).to.equal("HANG");
+      expect(afterDetach)
+        .to.be.instanceOf(Error)
+        .with.property("message", "HANG");
     });
   };
 

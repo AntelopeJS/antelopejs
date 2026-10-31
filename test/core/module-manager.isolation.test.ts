@@ -336,7 +336,7 @@ describe("ModuleManager lifecycle signals", () => {
 
     const starting = manager
       .startModules([...manager["loaded"].values()])
-      .catch((error: AggregateError) => error);
+      .catch((error: unknown) => error);
     await clock.tickAsync(120_000);
     const error = await starting;
 
