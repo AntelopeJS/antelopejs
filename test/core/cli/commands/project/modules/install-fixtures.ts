@@ -125,8 +125,6 @@ export function installFixture() {
     sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
       interfaceInfo(ifaceName, {
         description: "",
-        files: {},
-        dependencies: {},
         modules,
       }),
     );

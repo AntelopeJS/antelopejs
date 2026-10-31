@@ -75,9 +75,6 @@ describe("project modules install behavior: analyzes dependencies and installs s
     sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
       interfaceInfo("@antelopejs/interface-core", {
         description: "core interface",
-        versions: ["0.0.2"],
-        files: {},
-        dependencies: {},
         modules: [MOD_A],
       }),
     );
