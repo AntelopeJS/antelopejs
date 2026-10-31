@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -20,7 +21,7 @@ import { collectStderr } from "../../../../helpers/capture-output";
 import { expectProjectNotFound } from "../../../../helpers/cli-error";
 import { buildArtifact } from "../../fixtures";
 
-const PROJECT_WITH_PRODUCTION: any = {
+const PROJECT_WITH_PRODUCTION: AntelopeConfig = {
   name: "project",
   environments: { production: {} },
 };
