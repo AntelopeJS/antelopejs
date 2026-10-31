@@ -145,12 +145,8 @@ export async function collectInterfaceTestFiles(
     path.join(moduleRoot, "package.json"),
     "utf-8",
   );
-  const pack: unknown = JSON.parse(packContent);
-  const antelopeJs = isObject(pack) ? pack.antelopeJs : undefined;
-  const declared = isObject(antelopeJs) ? antelopeJs.implements : undefined;
-  const implementsList = Array.isArray(declared)
-    ? declared.filter(isString)
-    : [];
+  const pack = JSON.parse(packContent);
+  const implementsList: string[] = pack.antelopeJs?.implements ?? [];
   const files: string[] = [];
 
   for (const ifacePkg of implementsList) {
