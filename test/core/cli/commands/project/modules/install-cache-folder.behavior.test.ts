@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -18,7 +19,7 @@ describe("project modules install behavior: uses absolute cache folder when conf
   const fixture = installFixture();
 
   it("uses absolute cache folder when configured", async () => {
-    const baseConfig: any = {
+    const baseConfig: AntelopeConfig = {
       name: "proj",
       cacheFolder: "/tmp/cache",
       modules: {},

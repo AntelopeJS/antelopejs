@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -51,7 +52,8 @@ describe("project modules behavior: update-versions", () => {
   });
 
   it("updates npm modules and writes config", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
+      name: "proj",
       modules: {
         pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } },
       },

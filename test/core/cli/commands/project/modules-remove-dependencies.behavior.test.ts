@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -24,7 +25,8 @@ describe("project modules behavior: remove-dependencies", () => {
   });
 
   it("removes prefixed modules and warns about remaining dependencies", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
+      name: "proj",
       modules: {
         ":foo": {
           source: { type: "package", package: "foo", version: "1.0.0" },
@@ -59,7 +61,8 @@ describe("project modules behavior: remove-dependencies", () => {
   });
 
   it("removes a module requested twice once", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
+      name: "proj",
       modules: {
         foo: { source: { type: "package", package: "foo", version: "1.0.0" } },
       },
@@ -83,7 +86,8 @@ describe("project modules behavior: remove-dependencies", () => {
   });
 
   it("reports when no modules were removed", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
+      name: "proj",
       modules: {
         foo: { source: { type: "package", package: "foo", version: "1.0.0" } },
       },
