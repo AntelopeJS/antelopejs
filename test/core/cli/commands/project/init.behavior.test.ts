@@ -42,7 +42,9 @@ const DASHBOARD_TEMPLATE: gitOps.Template = {
 interface InitStubs {
   readConfig: sinon.SinonStub;
   writeConfig: sinon.SinonStub;
-  moduleInit: sinon.SinonStub;
+  moduleInit: sinon.SinonStubbedMember<
+    typeof moduleInitModule.moduleInitCommand
+  >;
   add: sinon.SinonStub;
   feedback: () => string;
   error: sinon.SinonStub;
@@ -261,8 +263,8 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
           pm: "pnpm",
           gitInit: false,
         });
-        expect(context.isFromProject).to.equal(true);
-        expect(context.prompter.isInteractive).to.equal(false);
+        expect(context?.isFromProject).to.equal(true);
+        expect(context?.prompter?.isInteractive).to.equal(false);
         expect(stubs.writeConfig.firstCall.args[1]).to.deep.include({
           name: "shop",
         });

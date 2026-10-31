@@ -66,7 +66,7 @@ const INTERFACE_CATALOG = {
 
 interface ModuleInitStubs {
   manifest: sinon.SinonStub;
-  copy: sinon.SinonStub;
+  copy: sinon.SinonStubbedMember<typeof gitOps.copyTemplate>;
   savePackageManager: sinon.SinonStub;
   getInstallCommand: sinon.SinonStub;
   exec: sinon.SinonStub;

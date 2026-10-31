@@ -3,9 +3,9 @@
   "rules": {
     "antelopejs/no-presence-only-type-guard": 3,
     "typescript/no-unnecessary-type-parameters": 27,
-    "typescript/no-unsafe-argument": 70,
-    "typescript/no-unsafe-assignment": 142,
-    "typescript/no-unsafe-return": 40,
+    "typescript/no-unsafe-argument": 68,
+    "typescript/no-unsafe-assignment": 141,
+    "typescript/no-unsafe-return": 39,
     "typescript/use-unknown-in-catch-callback-variable": 12
   },
   "oversizeFiles": {}

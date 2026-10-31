@@ -27,8 +27,8 @@ import {
 export const ADDED_MOD_A = { added: ["modA"], skipped: [], failed: [] };
 
 interface TaskOutputStubs {
-  message: sinon.SinonStub;
-  summary: sinon.SinonStub;
+  message: sinon.SinonStubbedMember<ReturnType<typeof getProcessUi>["message"]>;
+  summary: sinon.SinonStubbedMember<ReturnType<typeof getProcessUi>["summary"]>;
 }
 
 export function stubTaskOutput(): TaskOutputStubs {
