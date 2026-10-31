@@ -111,7 +111,10 @@ export class Resolver {
     this.instances.update(graph, this.canonicalPackages(), this.fixedRoots());
   }
 
-  resolve(request: string, parent?: ResolverParent): ResolveResult | undefined {
+  resolve(
+    request: string,
+    parent?: ResolverParent | null,
+  ): ResolveResult | undefined {
     const fileOwner = parent?.filename
       ? this.owners.findOwner(parent.filename)
       : undefined;
@@ -138,7 +141,10 @@ export class Resolver {
     return this.instances.locate(result.instance, resolvedPath) ?? resolvedPath;
   }
 
-  ownsResolutionContext(_request: string, parent?: ResolverParent): boolean {
+  ownsResolutionContext(
+    _request: string,
+    parent?: ResolverParent | null,
+  ): boolean {
     if (this.contextOwner()) {
       return true;
     }
@@ -150,7 +156,10 @@ export class Resolver {
    * interface request resolves into, or, for a relative request made by an
    * instance's own file, that file's instance.
    */
-  instanceToLoad(request: string, parent?: ResolverParent): string | undefined {
+  instanceToLoad(
+    request: string,
+    parent?: ResolverParent | null,
+  ): string | undefined {
     const resolved = this.resolve(request, parent)?.instance;
     if (resolved) {
       return resolved;
@@ -204,7 +213,9 @@ export class Resolver {
     if (!root || !entry) {
       return undefined;
     }
-    this.runInInstance(instance, () => require(entry));
+    this.runInInstance(instance, () => {
+      require(entry);
+    });
     return root;
   }
 
@@ -215,7 +226,7 @@ export class Resolver {
    */
   entryToPrime(
     request: string,
-    parent: ResolverParent | undefined,
+    parent: ResolverParent | null | undefined,
     resolvedPath: string,
   ): string | undefined {
     const instance = this.resolve(request, parent)?.instance;

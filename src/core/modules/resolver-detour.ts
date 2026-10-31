@@ -6,6 +6,8 @@ import type { ResolveResult, Resolver } from "./resolver";
 
 type ModuleResolver = typeof Module._resolveFilename;
 type ModuleLoader = typeof Module._load;
+type ResolveParent = Parameters<ModuleResolver>[1];
+type ResolveOptions = Parameters<ModuleResolver>[3];
 
 interface ResolverLease {
   owner: symbol;
@@ -79,7 +81,7 @@ class ResolverDetourCoordinator {
 
   private load(
     request: string,
-    parent: any,
+    parent: ResolveParent,
     isMain?: boolean,
   ): ReturnType<ModuleLoader> {
     const activeResolver = this.findResolver(request, parent);
@@ -109,9 +111,9 @@ class ResolverDetourCoordinator {
 
   private resolve(
     request: string,
-    parent: any,
+    parent: ResolveParent,
     isMain?: boolean,
-    options?: any,
+    options?: ResolveOptions,
   ): string {
     const activeResolver = this.findResolver(request, parent);
     return this.resolveWith(activeResolver, request, parent, isMain, options);
@@ -120,9 +122,9 @@ class ResolverDetourCoordinator {
   private resolveWith(
     activeResolver: Resolver | undefined,
     request: string,
-    parent: any,
+    parent: ResolveParent,
     isMain?: boolean,
-    options?: any,
+    options?: ResolveOptions,
   ): string {
     const result = activeResolver?.resolve(request, parent);
     if (!activeResolver || !result) {
@@ -134,9 +136,9 @@ class ResolverDetourCoordinator {
   private resolveResult(
     activeResolver: Resolver,
     result: ResolveResult,
-    parent: any,
+    parent: ResolveParent,
     isMain?: boolean,
-    options?: any,
+    options?: ResolveOptions,
   ): string {
     const contextParent = this.createResolutionParent(
       parent,
@@ -156,7 +158,10 @@ class ResolverDetourCoordinator {
     return this.originalResolver?.(...args) as string;
   }
 
-  private createResolutionParent(parent: any, resolveFrom?: string): any {
+  private createResolutionParent(
+    parent: ResolveParent,
+    resolveFrom?: string,
+  ): (NonNullable<ResolveParent> & { paths?: string[] }) | ResolveParent {
     if (!resolveFrom) {
       return parent;
     }
@@ -167,7 +172,10 @@ class ResolverDetourCoordinator {
     };
   }
 
-  private findResolver(request: string, parent: any): Resolver | undefined {
+  private findResolver(
+    request: string,
+    parent: ResolveParent,
+  ): Resolver | undefined {
     for (let index = this.leases.length - 1; index >= 0; index -= 1) {
       const resolver = this.leases[index].resolver;
       if (resolver.ownsResolutionContext(request, parent)) {
