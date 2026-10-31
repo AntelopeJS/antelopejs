@@ -146,13 +146,13 @@ describe("project logging set --level and --format", () => {
       const config: Partial<AntelopeConfig> = {
         name: "test-project",
         logging: {
-          // @ts-expect-error A null enabled flag exercises the command's defaulting of empty logging entries.
+          // @ts-expect-error A null enabled flag is tolerated and stays null in the written config.
           enabled: null,
-          // @ts-expect-error A null moduleTracking entry exercises the command's defaulting of empty logging entries.
+          // @ts-expect-error A null moduleTracking entry is treated as empty and takes the included module.
           moduleTracking: null,
-          // @ts-expect-error A null formatter entry exercises the command's defaulting of empty logging entries.
+          // @ts-expect-error A null formatter entry is treated as empty and takes the new level format.
           formatter: null,
-          // @ts-expect-error A null dateFormat entry exercises the command's defaulting of empty logging entries.
+          // @ts-expect-error A null dateFormat is tolerated and stays null in the written config.
           dateFormat: null,
         },
       };
