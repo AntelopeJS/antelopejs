@@ -2,6 +2,7 @@ import { type Command, Option } from "commander";
 import path from "node:path";
 
 import { LAUNCH_ENVIRONMENT_VARIABLE } from "../core/config";
+import { isString } from "../utils";
 import {
   ALL_LOG_CHANNELS,
   PACKAGE_MANAGER_NAMES,
@@ -88,6 +89,16 @@ export namespace Options {
 
 function warnRenamedOption(legacyFlag: string, flag: string): void {
   warning(`${legacyFlag} is deprecated, use ${flag} instead`);
+}
+
+/**
+ * The channels `--verbose` selected on a command, or undefined when the option
+ * was not given. Commander types the stored value `any`; the option's parser
+ * only ever stores a list of strings.
+ */
+export function verboseChannelsOf(command: Command): string[] | undefined {
+  const channels: unknown = command.getOptionValue("verbose");
+  return Array.isArray(channels) ? channels.filter(isString) : undefined;
 }
 
 /**
