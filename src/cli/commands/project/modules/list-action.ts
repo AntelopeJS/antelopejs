@@ -71,28 +71,40 @@ function summarizeOwnSource<Source extends ModuleSource>(
   return (source, moduleName) => summarize(source as Source, moduleName);
 }
 
-const SOURCE_SUMMARIZERS = {
-  package: summarizeOwnSource((source: ModuleSourcePackage, moduleName) => ({
-    kind: "npm",
-    reference: packageReference(source, moduleName),
-  })),
-  git: summarizeOwnSource((source: ModuleSourceGit) => ({
-    kind: "git",
-    reference: gitReference(source),
-  })),
-  local: summarizeOwnSource((source: ModuleSourceLocal) => ({
-    kind: "local",
-    reference: source.path,
-  })),
-  "local-folder": summarizeOwnSource((source: ModuleSourceLocalFolder) => ({
-    kind: "folder",
-    reference: source.path,
-  })),
-} satisfies Record<string, SourceSummarizer>;
+const SOURCE_SUMMARIZERS = new Map<string, SourceSummarizer>([
+  [
+    "package",
+    summarizeOwnSource((source: ModuleSourcePackage, moduleName) => ({
+      kind: "npm",
+      reference: packageReference(source, moduleName),
+    })),
+  ],
+  [
+    "git",
+    summarizeOwnSource((source: ModuleSourceGit) => ({
+      kind: "git",
+      reference: gitReference(source),
+    })),
+  ],
+  [
+    "local",
+    summarizeOwnSource((source: ModuleSourceLocal) => ({
+      kind: "local",
+      reference: source.path,
+    })),
+  ],
+  [
+    "local-folder",
+    summarizeOwnSource((source: ModuleSourceLocalFolder) => ({
+      kind: "folder",
+      reference: source.path,
+    })),
+  ],
+]);
 
 function summarizeSource(listing: ModuleListing): SourceSummary {
   const sourceType = listing.source?.type;
-  const summarize = sourceType ? SOURCE_SUMMARIZERS[sourceType] : undefined;
+  const summarize = sourceType ? SOURCE_SUMMARIZERS.get(sourceType) : undefined;
   if (!summarize) {
     return {
       kind: UNKNOWN_SOURCE_KIND,

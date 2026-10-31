@@ -104,6 +104,34 @@ function countOccurrences(output: string, needle: string): number {
         expect(kept.stderr).to.contain("at threshold");
       });
 
+      it("should filter a channel named like an Object.prototype member by its own threshold", () => {
+        setupAntelopeProjectLogging({
+          enabled: true,
+          channelFilter: { constructor: "error" },
+        });
+        const channel = new Logging.Channel("constructor");
+
+        const dropped = captureOutput(() => channel.Info("below threshold"));
+        const kept = captureOutput(() => channel.Error("at threshold"));
+
+        expect(dropped.stdout).to.equal("");
+        expect(kept.stderr).to.contain("at threshold");
+      });
+
+      it("should read a threshold named like an Object.prototype member as an unknown level", () => {
+        setupAntelopeProjectLogging({
+          enabled: true,
+          channelFilter: { "odd-level-probe": "constructor" },
+        });
+        const channel = new Logging.Channel("odd-level-probe");
+
+        const dropped = captureOutput(() => channel.Info("below warn"));
+        const kept = captureOutput(() => channel.Warn("at warn"));
+
+        expect(dropped.stdout).to.equal("");
+        expect(kept.stdout).to.contain("at warn");
+      });
+
       it("should lower a channel threshold through addChannelFilter", () => {
         setupAntelopeProjectLogging({ enabled: true });
         const channel = new Logging.Channel("verbose-probe");

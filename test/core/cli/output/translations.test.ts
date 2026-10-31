@@ -166,6 +166,20 @@ function systemError(code: string, path?: string): NodeJS.ErrnoException {
       expect(translateFailure(new Error("boom"))).to.equal(undefined);
       expect(translateFailure("boom")).to.equal(undefined);
     });
+
+    for (const code of [
+      "constructor",
+      "toString",
+      "valueOf",
+      "hasOwnProperty",
+      "__proto__",
+    ]) {
+      it(`leaves a system error coded ${code} untranslated`, () => {
+        expect(translateFailure(systemError(code, "/work/x"))).to.equal(
+          undefined,
+        );
+      });
+    }
   };
 
   registerTranslateFailure = () => {

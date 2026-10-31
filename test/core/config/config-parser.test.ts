@@ -345,3 +345,42 @@ import { ConfigParser } from "../../../src/core/config";
     registerConfigParser.call(this);
   });
 }
+
+describe("ConfigParser templates named like Object.prototype members", () => {
+  const parser = new ConfigParser();
+
+  it("treats a template named like an Object.prototype member as missing", () => {
+    const config = {
+      pure: "${constructor}",
+      inline: "a ${toString} b",
+      proto: "${__proto__}",
+    };
+
+    const result = parser.processTemplates(config);
+
+    expect(result).to.deep.equal({
+      pure: "${constructor}",
+      inline: "a  b",
+      proto: "${__proto__}",
+    });
+  });
+
+  it("resolves a template whose key is named like an Object.prototype member", () => {
+    const config = {
+      constructor: "mine",
+      toString: '{"ok":true}',
+      a: "${constructor}",
+      b: "x ${toString}",
+      c: "${toString}",
+      ["__proto__"]: "own",
+      d: "${__proto__}",
+    };
+
+    const result = parser.processTemplates(config);
+
+    expect(result.a).to.equal("mine");
+    expect(result.b).to.equal('x {"ok":true}');
+    expect(result.c).to.deep.equal({ ok: true });
+    expect(result.d).to.equal("own");
+  });
+});
