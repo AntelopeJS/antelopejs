@@ -90,6 +90,51 @@ describe("Object Utilities", () => {
       expect(obj.a.c?.d).to.equal(42);
     });
 
+    describe("on values that are not plain objects", () => {
+      it("assigns through the setter of a class instance", () => {
+        class Pool {
+          #max = 10;
+
+          get max(): number {
+            return this.#max;
+          }
+
+          set max(value: number | string) {
+            this.#max = Number(value);
+          }
+        }
+        const pool = new Pool();
+
+        set({ db: { pool } }, "db.pool.max", "20");
+
+        expect(pool.max).to.equal(20);
+        expect(Object.hasOwn(pool, "max")).to.equal(false);
+      });
+
+      it("assigns through the setter of a built-in", () => {
+        const api = new URL("http://a.example/");
+
+        set({ api }, "api.host", "b.example");
+
+        expect(api.href).to.equal("http://b.example/");
+      });
+
+      it("writes into the object an inherited getter returns", () => {
+        const shared = { a: 1 };
+        class Holder {
+          get inner() {
+            return shared;
+          }
+        }
+        const holder = new Holder();
+
+        set({ holder }, "holder.inner.x", "y");
+
+        expect(shared).to.deep.equal({ a: 1, x: "y" });
+        expect(Object.hasOwn(holder, "inner")).to.equal(false);
+      });
+    });
+
     describe("with a path segment named __proto__", () => {
       afterEach(() => {
         Reflect.deleteProperty(Object.prototype, "polluted");
