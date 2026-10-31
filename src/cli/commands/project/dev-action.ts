@@ -22,7 +22,6 @@ import {
   resolveInheritedVerbose,
   validateProjectExists,
 } from "../shared/project-command";
-import { isFunction } from "../../../utils";
 
 interface RunnerEnv extends NodeJS.ProcessEnv {
   ANTELOPE_PROJECT_PATH: string;
@@ -126,15 +125,7 @@ export function terminateChildProcess(
   timeoutMs: number = CHILD_TERMINATE_TIMEOUT_MS,
 ): Promise<void> {
   return new Promise((resolve) => {
-    if (!isFunction(child.kill) || !isFunction(child.on)) {
-      resolve();
-      return;
-    }
-
     const detachExitListener = () => {
-      if (!isFunction(child.removeListener)) {
-        return;
-      }
       child.removeListener("exit", onExit);
     };
 

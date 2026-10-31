@@ -204,7 +204,9 @@ export class Resolver {
     if (!root || !entry) {
       return undefined;
     }
-    this.runInInstance(instance, () => require(entry));
+    this.runInInstance(instance, () => {
+      require(entry);
+    });
     return root;
   }
 

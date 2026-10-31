@@ -3,6 +3,7 @@
     "target": "esnext",
     "module": "commonjs",
     "lib": ["ES2022"],
+    "types": ["node", "mocha"],
     "allowJs": true,
     "checkJs": false,
     "outDir": "dist",

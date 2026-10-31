@@ -139,7 +139,7 @@ export class FileWatcher {
     const previous = this.changeChains.get(dir) ?? Promise.resolve();
     const next = previous
       .then(() => this.handleFileChange(filePath))
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error(`FileWatcher error handling ${filePath}:`, err);
       });
     this.changeChains.set(dir, next);

@@ -3,7 +3,7 @@ import type { FailureTranslator } from "../output";
 export function collectRejectedErrors(
   results: PromiseSettledResult<unknown>[],
 ): unknown[] {
-  return results.flatMap((result) =>
+  return results.flatMap((result): unknown[] =>
     result.status === "rejected" ? [result.reason] : [],
   );
 }
