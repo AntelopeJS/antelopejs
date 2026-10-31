@@ -36,7 +36,7 @@ function stubWatchedModuleDownloads() {
   sinon.stub(ModuleCache.prototype, "load").resolves();
   sinon
     .stub(DownloaderRegistry.prototype, "load")
-    .callsFake(async (_project, _cache, source: any) => {
+    .callsFake(async (_project, _cache, source) => {
       const id = source.id;
       const watchDir = id === "modA" ? ["src", "lib"] : "src2";
       return [
