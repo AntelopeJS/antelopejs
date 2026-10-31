@@ -1,27 +1,5 @@
-/**
- * One TLC state of the spec, the variables of ModuleLifecycleState.tla as the
- * statechart skill hands them over. Functions of a generation or a launch
- * are read by number.
- *
- * @typedef {object} LifecycleState
- * @property {boolean} exited
- * @property {boolean} crashed
- * @property {boolean} sigint
- * @property {boolean} staleRead
- * @property {string} configOwner
- * @property {number} launch
- * @property {number} nextGen
- * @property {Record<number, string>} lpc
- * @property {Record<number, string>} sd
- * @property {Record<number, string>} state
- * @property {Record<number, string>} gmod
- * @property {Array<Record<string, number>>} loaded
- * @property {Array<{ pc: string, mod: string, repl: number, prev: number }>} rl
- */
-
 export const readerActions = ["ConfigEdit", "SourceEdit", "Sigint"];
 
-/** @type {Partial<Record<string, string>>} */
 const RELOAD = {
   manifest: "loading new code",
   destroy: "destroying old generation",
@@ -34,10 +12,6 @@ const RELOAD = {
   recovering: "restarting old generation",
 };
 
-/**
- * @param {LifecycleState} v
- * @returns {string}
- */
 function context(v) {
   if (v.exited) return v.crashed ? "Process crashed" : "Process exited";
   const L = v.launch;
@@ -52,10 +26,6 @@ function context(v) {
   return `Launch ${L} starting`;
 }
 
-/**
- * @param {LifecycleState} v
- * @returns {string}
- */
 function progress(v) {
   const busy = v.rl.find((r) => r.pc !== "idle");
   const orphan = orphans(v).length > 0;
@@ -65,12 +35,7 @@ function progress(v) {
   return orphan ? `${reload}, a generation outside the project runs` : reload;
 }
 
-/**
- * @param {LifecycleState} v
- * @returns {number[]}
- */
 function orphans(v) {
-  /** @type {number[]} */
   const found = [];
   for (let g = 1; g < v.nextGen; g++) {
     if (v.state[g] === "Loaded") continue;
@@ -79,17 +44,12 @@ function orphans(v) {
   return found;
 }
 
-/**
- * @param {LifecycleState} v
- * @returns {string}
- */
 export function state(v) {
   return `${context(v)}: ${progress(v)}`;
 }
 
 export const regionNames = ["Project", "Hot reload"];
 
-/** @type {Partial<Record<string, string>>} */
 const STEPS = {
   BatchEnds: "the reload batch ends",
   ConfigEdit: "antelope.config.ts is edited",
@@ -130,20 +90,10 @@ const STEPS = {
   StaleWorkFails: "a destroyed generation's leftover work fails",
   StartApply: "a module starts",
 };
-/**
- * @param {string} action
- * @returns {string}
- */
 export function step(action) {
   return STEPS[action] ?? action;
 }
 
-/**
- * @param {LifecycleState} v
- * @param {unknown} facts
- * @param {string} invariant
- * @returns {string | null}
- */
 export function cause(v, facts, invariant) {
   if (invariant === "ConfigEditsReachProject") {
     return v.staleRead
