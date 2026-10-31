@@ -142,13 +142,17 @@ describe("project logging set --level and --format", () => {
       });
     });
 
-    it("treats empty logging entries as their defaults", async () => {
-      const config: any = {
+    it("tolerates null logging entries, keeping null enabled and dateFormat and setting only the new moduleTracking and formatter values", async () => {
+      const config: Partial<AntelopeConfig> = {
         name: "test-project",
         logging: {
+          // @ts-expect-error A null enabled flag is tolerated and stays null in the config after the command.
           enabled: null,
+          // @ts-expect-error A null moduleTracking entry is tolerated and afterwards holds only the included module.
           moduleTracking: null,
+          // @ts-expect-error A null formatter entry is tolerated and afterwards holds only the new level format.
           formatter: null,
+          // @ts-expect-error A null dateFormat is tolerated and stays null in the config after the command.
           dateFormat: null,
         },
       };
