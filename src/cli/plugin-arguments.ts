@@ -80,9 +80,11 @@ export function parsePluginInvocation(args: string[]): PluginInvocation {
   const globalFlagCount = countGlobalFlags(args);
   return {
     args: args.slice(globalFlagCount),
-    environment: Object.assign(
-      {},
-      ...args.slice(0, globalFlagCount).flatMap(flagEnvironments),
+    environment: Object.fromEntries(
+      args
+        .slice(0, globalFlagCount)
+        .flatMap(flagEnvironments)
+        .flatMap((environment) => Object.entries(environment)),
     ),
   };
 }
