@@ -4,8 +4,8 @@
     "antelopejs/no-inherited-key-lookup": 41,
     "antelopejs/no-presence-only-type-guard": 3,
     "typescript/no-unnecessary-type-parameters": 27,
-    "typescript/no-unsafe-argument": 76,
-    "typescript/no-unsafe-assignment": 227,
+    "typescript/no-unsafe-argument": 71,
+    "typescript/no-unsafe-assignment": 226,
     "typescript/no-unsafe-return": 53,
     "typescript/use-unknown-in-catch-callback-variable": 12
   },
