@@ -199,10 +199,12 @@ describe("runtime module-loading", () => {
       registry: { load },
     });
 
-    const caught = await buildModuleConfigs(config, context).catch((err) => {
-      assert.ok(err instanceof Error);
-      return err;
-    });
+    const caught = await buildModuleConfigs(config, context).catch(
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        return err;
+      },
+    );
 
     expect(caught).to.be.instanceOf(CliError);
     assert.ok(caught instanceof CliError);

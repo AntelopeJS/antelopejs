@@ -326,7 +326,7 @@ describe("runtime launch steps", () => {
     const controller = new AbortController();
     return runLaunchSteps(steps, controller, controller.signal).then(
       () => undefined,
-      (error) => {
+      (error: unknown) => {
         assert.ok(error instanceof Error);
         return error;
       },
@@ -384,7 +384,7 @@ describe("runtime launch steps", () => {
       [first],
       controller,
       controller.signal,
-    ).catch((error) => {
+    ).catch((error: unknown) => {
       assert.ok(error instanceof Error);
       return error;
     });
