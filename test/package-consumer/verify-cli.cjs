@@ -23,6 +23,7 @@ function cliEntry() {
   return path.join(path.dirname(main), "core", "cli", "index.js");
 }
 
+/** @param {string} folder */
 function writeRecorder(folder) {
   const recorder = path.join(folder, "record-modules.cjs");
   fs.writeFileSync(
@@ -32,6 +33,11 @@ function writeRecorder(folder) {
   return recorder;
 }
 
+/**
+ * @param {string[]} args
+ * @param {string} home
+ * @param {string[]} [extraArgs]
+ */
 function runCli(args, home, extraArgs = []) {
   return execFileSync(process.execPath, [...extraArgs, cliEntry(), ...args], {
     encoding: "utf8",
@@ -40,6 +46,7 @@ function runCli(args, home, extraArgs = []) {
   });
 }
 
+/** @param {string} folder */
 function verifyHelpStaysLight(folder) {
   const loadedModulesFile = path.join(folder, "loaded-modules.json");
   process.env[LOADED_MODULES_VARIABLE] = loadedModulesFile;
@@ -50,16 +57,24 @@ function verifyHelpStaysLight(folder) {
   if (!output.includes(HELP_HEADER)) {
     throw new Error(`Unexpected ajs --help output:\n${output}`);
   }
+  /** @type {unknown} */
   const loaded = require(loadedModulesFile);
-  const heavy = loaded.filter((file) => HEAVY_MODULE_PATTERN.test(file));
+  if (!Array.isArray(loaded)) {
+    throw new Error("ajs --help recorded an unexpected module list");
+  }
+  const heavy = loaded
+    .map(String)
+    .filter((file) => HEAVY_MODULE_PATTERN.test(file));
   if (heavy.length > 0) {
     throw new Error(`ajs --help loaded heavy modules:\n${heavy.join("\n")}`);
   }
 }
 
+/** @param {string} folder */
 function verifyLazyActionResolves(folder) {
+  /** @type {unknown} */
   const config = JSON.parse(runCli(["config", "show", "--json"], folder));
-  if (String(config.git) !== config.git) {
+  if (!(config instanceof Object) || String(config.git) !== config.git) {
     throw new Error(
       `Unexpected ajs config show output: ${JSON.stringify(config)}`,
     );
@@ -68,18 +83,24 @@ function verifyLazyActionResolves(folder) {
 
 function verifyPromptLibraryLoads() {
   const coreFolder = path.dirname(require.resolve("@antelopejs/core"));
+  /** @type {unknown} */
   const library = require(
     require.resolve(PROMPT_LIBRARY, { paths: [coreFolder] }),
   );
-  if (!(library.confirm instanceof Function)) {
+  if (!(Object(library).confirm instanceof Function)) {
     throw new Error(`${PROMPT_LIBRARY} did not load with require()`);
   }
 }
 
+/**
+ * @param {string[]} args
+ * @param {string} cwd
+ */
 function git(args, cwd) {
   execFileSync("git", [...GIT_IDENTITY, ...args], { cwd, stdio: "ignore" });
 }
 
+/** @param {string} folder */
 function useLocalTemplateRepository(folder) {
   const repository = path.join(folder, "interfaces");
   fs.mkdirSync(repository);
@@ -98,6 +119,7 @@ function useLocalTemplateRepository(folder) {
   );
 }
 
+/** @param {string} folder */
 function verifyMissingAnswersExit(folder) {
   useLocalTemplateRepository(folder);
   const project = path.join(folder, "demo");
@@ -129,8 +151,9 @@ try {
   verifyLazyActionResolves(folder);
   verifyPromptLibraryLoads();
   verifyMissingAnswersExit(folder);
-} catch (error) {
-  process.stderr.write(`${error.stack ?? error}\n`);
+} catch (/** @type {unknown} */ error) {
+  const detail = error instanceof Error ? (error.stack ?? error) : error;
+  process.stderr.write(`${String(detail)}\n`);
   process.exitCode = 1;
 } finally {
   fs.rmSync(folder, { recursive: true, force: true });
