@@ -170,9 +170,10 @@ export function createPackageReader(
   links: Record<string, string> = {},
 ): PluginPackageReader {
   return {
-    realpath: async (target: string) => links[target] ?? target,
+    realpath: async (target: string) =>
+      Object.hasOwn(links, target) ? links[target] : target,
     readFile: async (target: string) => {
-      const content = files[target];
+      const content = Object.hasOwn(files, target) ? files[target] : undefined;
       if (content === undefined) {
         throw new Error(`ENOENT: ${target}`);
       }

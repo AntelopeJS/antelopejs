@@ -90,18 +90,24 @@ function permissionDenied(error: NodeJS.ErrnoException): CliProblem {
   };
 }
 
-const SYSTEM_ERROR_TRANSLATIONS = {
-  ENOENT: (error) => ({
-    title: `Path not found: ${subjectOf(error)}`,
-    fixes: ["Check the path, then try again"],
-  }),
-  ENOTDIR: (error) => ({
-    title: `Not a directory: ${subjectOf(error)}`,
-    fixes: ["Pass the path of a directory"],
-  }),
-  EACCES: permissionDenied,
-  EPERM: permissionDenied,
-} satisfies Record<string, SystemErrorTranslation>;
+const SYSTEM_ERROR_TRANSLATIONS = new Map<string, SystemErrorTranslation>([
+  [
+    "ENOENT",
+    (error) => ({
+      title: `Path not found: ${subjectOf(error)}`,
+      fixes: ["Check the path, then try again"],
+    }),
+  ],
+  [
+    "ENOTDIR",
+    (error) => ({
+      title: `Not a directory: ${subjectOf(error)}`,
+      fixes: ["Pass the path of a directory"],
+    }),
+  ],
+  ["EACCES", permissionDenied],
+  ["EPERM", permissionDenied],
+]);
 
 function isSystemError(
   error: Parameters<FailureTranslator>[0],
@@ -148,9 +154,7 @@ export function translateFailure(
     return describeInterfaceConflicts(error);
   }
   if (isSystemError(error)) {
-    const translations: typeof SYSTEM_ERROR_TRANSLATIONS &
-      Record<string, SystemErrorTranslation> = SYSTEM_ERROR_TRANSLATIONS;
-    return translations[error.code ?? ""]?.(error);
+    return SYSTEM_ERROR_TRANSLATIONS.get(error.code ?? "")?.(error);
   }
   return undefined;
 }
