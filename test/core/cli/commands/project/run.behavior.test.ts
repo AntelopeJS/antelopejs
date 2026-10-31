@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { Command } from "commander";
+import childProcess from "node:child_process";
 import nodeFs from "node:fs";
 import sinon from "sinon";
 
@@ -17,7 +18,13 @@ import { launchModule as indexModule } from "../../../../../src/core/repl";
 import { collectStderr } from "../../../../helpers/capture-output";
 
 const fsPromises = nodeFs.promises;
-const childProcess = require("node:child_process");
+
+function stubFork(): sinon.SinonStub<
+  [string | URL, (readonly string[])?, childProcess.ForkOptions?],
+  unknown
+> {
+  return sinon.stub(childProcess, "fork");
+}
 
 async function waitForAsyncWork(): Promise<void> {
   await new Promise((resolve) => setImmediate(resolve));
@@ -100,7 +107,7 @@ async function waitForAsyncWork(): Promise<void> {
 
       it("runs in inspect mode with forked process", async () => {
         sinon.stub(common, "readConfig").resolves({ name: "test-project" });
-        const forkStub = sinon.stub(childProcess, "fork").returns({
+        const forkStub = stubFork().returns({
           on: sinon.stub().returnsThis(),
         });
 
@@ -144,7 +151,7 @@ async function waitForAsyncWork(): Promise<void> {
       it("uses string inspect options and verbose channels in forked run", async () => {
         const readConfig: sinon.SinonStub = sinon.stub(common, "readConfig");
         readConfig.resolves({});
-        const forkStub = sinon.stub(childProcess, "fork").returns({
+        const forkStub = stubFork().returns({
           on: sinon.stub().returnsThis(),
         });
 
@@ -191,12 +198,12 @@ async function waitForAsyncWork(): Promise<void> {
         expect(feedback()).to.match(/Inspector\s+127\.0\.0\.1:9333/);
 
         const forkOptions = forkStub.firstCall.args[2];
-        expect(forkOptions.execArgv).to.deep.equal([
+        expect(forkOptions?.execArgv).to.deep.equal([
           "--inspect=127.0.0.1:9333",
         ]);
-        expect(forkOptions.env.ANTELOPE_WATCH).to.equal("true");
-        expect(forkOptions.env.ANTELOPE_CONCURRENCY).to.equal("2");
-        expect(forkOptions.env.ANTELOPE_VERBOSE).to.equal("a,b");
+        expect(forkOptions?.env?.ANTELOPE_WATCH).to.equal("true");
+        expect(forkOptions?.env?.ANTELOPE_CONCURRENCY).to.equal("2");
+        expect(forkOptions?.env?.ANTELOPE_VERBOSE).to.equal("a,b");
       });
 
       it("handles fork exit events", async () => {
@@ -208,7 +215,7 @@ async function waitForAsyncWork(): Promise<void> {
             return child;
           },
         };
-        sinon.stub(childProcess, "fork").returns(child);
+        stubFork().returns(child);
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         sinon.stub(fsPromises, "rm").resolves();
@@ -279,7 +286,7 @@ async function waitForAsyncWork(): Promise<void> {
             return child;
           },
         };
-        sinon.stub(childProcess, "fork").returns(child);
+        stubFork().returns(child);
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         const rmStub = sinon
