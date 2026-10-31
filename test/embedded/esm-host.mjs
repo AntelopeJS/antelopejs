@@ -1,9 +1,8 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import process from "node:process";
-import { pathToFileURL } from "node:url";
 
-const [projectFolder, corePath] = process.argv.slice(2);
+const [projectFolder] = process.argv.slice(2);
 
 const failures = [];
 
@@ -18,7 +17,7 @@ function check(label, actual, expected) {
 const sigintBefore = process.listenerCount("SIGINT");
 const sigtermBefore = process.listenerCount("SIGTERM");
 
-const { createRuntime } = await import(pathToFileURL(corePath).href);
+const { createRuntime } = await import("@antelopejs/core");
 check(
   "named import of createRuntime from an ESM host",
   createRuntime instanceof Function,
