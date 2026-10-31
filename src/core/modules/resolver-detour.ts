@@ -85,7 +85,10 @@ class ResolverDetourCoordinator {
     isMain?: boolean,
   ): ReturnType<ModuleLoader> {
     const activeResolver = this.findResolver(request, parent);
-    const instance = activeResolver?.instanceToLoad(request, parent);
+    const instance = activeResolver?.instanceToLoad(
+      request,
+      parent ?? undefined,
+    );
     if (!activeResolver || !instance) {
       return this.originalLoader?.(request, parent, isMain);
     }
@@ -96,7 +99,11 @@ class ResolverDetourCoordinator {
       isMain,
       undefined,
     );
-    const entry = activeResolver.entryToPrime(request, parent, resolvedPath);
+    const entry = activeResolver.entryToPrime(
+      request,
+      parent ?? undefined,
+      resolvedPath,
+    );
     activeResolver.recordInstanceFile(instance, resolvedPath);
     if (entry) {
       activeResolver.recordInstanceFile(instance, entry);
@@ -126,7 +133,7 @@ class ResolverDetourCoordinator {
     isMain?: boolean,
     options?: ResolveOptions,
   ): string {
-    const result = activeResolver?.resolve(request, parent);
+    const result = activeResolver?.resolve(request, parent ?? undefined);
     if (!activeResolver || !result) {
       return this.resolveOriginal(request, parent, isMain, options);
     }
@@ -178,7 +185,7 @@ class ResolverDetourCoordinator {
   ): Resolver | undefined {
     for (let index = this.leases.length - 1; index >= 0; index -= 1) {
       const resolver = this.leases[index].resolver;
-      if (resolver.ownsResolutionContext(request, parent)) {
+      if (resolver.ownsResolutionContext(request, parent ?? undefined)) {
         return resolver;
       }
     }
