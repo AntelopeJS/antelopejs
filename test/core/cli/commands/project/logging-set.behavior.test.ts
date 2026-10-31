@@ -142,7 +142,7 @@ describe("project logging set --level and --format", () => {
       });
     });
 
-    it("treats empty logging entries as their defaults", async () => {
+    it("tolerates null enabled and dateFormat and treats null moduleTracking and formatter as empty", async () => {
       const config: Partial<AntelopeConfig> = {
         name: "test-project",
         logging: {
