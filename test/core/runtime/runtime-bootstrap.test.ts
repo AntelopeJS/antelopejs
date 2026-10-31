@@ -11,6 +11,9 @@ import * as bootstrap from "../../../src/core/runtime";
 import { ShutdownManager } from "../../../src/core/runtime";
 import * as logging from "../../../src/logging";
 
+const CHILD_LIMIT_MS = 20000;
+const ASSERTION_MARGIN_MS = 5000;
+
 type ProcessEventName = "uncaughtException" | "unhandledRejection" | "warning";
 
 type ProcessListenerSnapshot = Record<
@@ -47,7 +50,8 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
 
   const checkRegistersProcessHandlersOnceAnd: (this: Mocha.Suite) => void =
     function () {
-      it("registers process handlers once and handles all branches", () => {
+      it("registers process handlers once and handles all branches", function () {
+        this.timeout(CHILD_LIMIT_MS + ASSERTION_MARGIN_MS);
         const result = spawnSync(
           process.execPath,
           [
@@ -85,7 +89,7 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
           {
             encoding: "utf8",
             env: { ...process.env, TS_NODE_TRANSPILE_ONLY: "true" },
-            timeout: 20000,
+            timeout: CHILD_LIMIT_MS,
           },
         );
         expect(result.status, result.stderr).to.equal(0);

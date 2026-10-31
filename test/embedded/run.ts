@@ -26,11 +26,10 @@ async function markProjectAsEsm(fixture: EmbeddedFixture): Promise<void> {
 
 function runHost(projectFolder: string): Promise<number> {
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      process.execPath,
-      [HOST_SCRIPT, projectFolder, CORE_ENTRY],
-      { stdio: "inherit", cwd: projectFolder },
-    );
+    const child = spawn(process.execPath, [HOST_SCRIPT, projectFolder], {
+      stdio: "inherit",
+      cwd: projectFolder,
+    });
     child.on("error", reject);
     child.on("close", (code) => resolve(code ?? EXIT_CODE_ERROR));
   });
