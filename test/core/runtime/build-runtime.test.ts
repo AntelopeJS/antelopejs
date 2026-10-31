@@ -286,9 +286,9 @@ function createArtifact(
         expect(written)
           .to.have.nested.property("modules.alpha.disabledExports")
           .that.deep.equals(["core@beta"]);
-        expect(written).to.not.have.nested.property(
-          "modules.beta.importOverrides",
-        );
+        expect(written)
+          .to.have.nested.property("modules.beta")
+          .that.does.not.have.property("importOverrides");
       });
     };
 
