@@ -30,7 +30,7 @@ export function isPlainObject(item: unknown): item is UnknownDictionary {
 function assignOwn(
   target: OpenDictionary,
   key: string,
-  value: OpenDictionary[string],
+  value: UnknownDictionary[string],
 ): void {
   Object.defineProperty(target, key, {
     value,
@@ -90,6 +90,18 @@ export function diffDeep(
   );
 }
 
+function assignKey(
+  target: OpenDictionary,
+  key: string,
+  value: UnknownDictionary[string],
+): void {
+  if (key === "__proto__") {
+    assignOwn(target, key, value);
+  } else {
+    target[key] = value;
+  }
+}
+
 export function set(
   obj: OpenDictionary,
   path: string,
@@ -100,15 +112,13 @@ export function set(
 
   for (let i = 0; i < keys.length - 1; i++) {
     const key = keys[i];
-    const next = Object.hasOwn(current, key) ? current[key] : undefined;
-    if (isObject(next)) {
-      current = next;
-    } else {
-      const created: UnknownDictionary = {};
-      assignOwn(current, key, created);
-      current = created;
+    const present =
+      key === "__proto__" ? Object.hasOwn(current, key) : key in current;
+    if (!present || !isObject(current[key])) {
+      assignKey(current, key, {});
     }
+    current = current[key];
   }
 
-  assignOwn(current, keys[keys.length - 1], value);
+  assignKey(current, keys[keys.length - 1], value);
 }
