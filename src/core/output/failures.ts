@@ -86,12 +86,7 @@ function explainFailure(
   return translate?.(error) ?? translateFailure(error);
 }
 
-function hasHiddenOutput(
-  error: Parameters<typeof describeFailure>[0],
-): boolean {
-  if (!(error instanceof ExecError)) {
-    return false;
-  }
+function hasHiddenOutput(error: ExecError): boolean {
   const shownLineCount =
     translateExecError(error) === undefined ? OUTPUT_TAIL_LINE_COUNT : 0;
   return outputLines(error).length > shownLineCount;
@@ -101,7 +96,9 @@ function verboseHint(
   chain: unknown[],
   translate?: FailureTranslator,
 ): string[] {
-  if (chain.some(hasHiddenOutput)) {
+  if (
+    chain.some((error) => error instanceof ExecError && hasHiddenOutput(error))
+  ) {
     return [COMMAND_OUTPUT_HINT];
   }
   const hasUnexplainedTrace = chain.some(
