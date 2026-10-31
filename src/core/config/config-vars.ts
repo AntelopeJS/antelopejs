@@ -122,9 +122,15 @@ function substituteString(
     return lookup({ token: value, module: pure[1], variable: pure[2] });
   }
 
-  return value.replace(REFERENCE_PATTERN, (token, module, variable) =>
-    String(lookup({ token, module, variable })),
-  );
+  let substituted = "";
+  let copiedUpTo = 0;
+  for (const match of value.matchAll(REFERENCE_PATTERN)) {
+    const [token, module, variable] = match;
+    substituted += value.slice(copiedUpTo, match.index);
+    substituted += String(lookup({ token, module, variable }));
+    copiedUpTo = match.index + token.length;
+  }
+  return substituted + value.slice(copiedUpTo);
 }
 
 function matchReferences(value: string): ConfigVarReference[] {
