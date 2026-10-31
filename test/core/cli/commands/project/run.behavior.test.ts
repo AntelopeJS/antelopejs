@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { Command } from "commander";
+import childProcess, { ChildProcess } from "node:child_process";
 import nodeFs from "node:fs";
 import sinon from "sinon";
 
@@ -17,7 +18,17 @@ import { launchModule as indexModule } from "../../../../../src/core/repl";
 import { collectStderr } from "../../../../helpers/capture-output";
 
 const fsPromises = nodeFs.promises;
-const childProcess = require("node:child_process");
+
+function stubForkedChild(
+  callbacks: Record<string, (...args: any[]) => void> = {},
+) {
+  const child = sinon.createStubInstance(ChildProcess);
+  child.on.callsFake((event, cb) => {
+    callbacks[event] = cb;
+    return child;
+  });
+  return child;
+}
 
 async function waitForAsyncWork(): Promise<void> {
   await new Promise((resolve) => setImmediate(resolve));
@@ -100,9 +111,9 @@ async function waitForAsyncWork(): Promise<void> {
 
       it("runs in inspect mode with forked process", async () => {
         sinon.stub(common, "readConfig").resolves({ name: "test-project" });
-        const forkStub = sinon.stub(childProcess, "fork").returns({
-          on: sinon.stub().returnsThis(),
-        });
+        const forkStub = sinon
+          .stub(childProcess, "fork")
+          .returns(stubForkedChild());
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         sinon.stub(fsPromises, "rm").resolves();
@@ -144,9 +155,9 @@ async function waitForAsyncWork(): Promise<void> {
       it("uses string inspect options and verbose channels in forked run", async () => {
         const readConfig: sinon.SinonStub = sinon.stub(common, "readConfig");
         readConfig.resolves({});
-        const forkStub = sinon.stub(childProcess, "fork").returns({
-          on: sinon.stub().returnsThis(),
-        });
+        const forkStub = sinon
+          .stub(childProcess, "fork")
+          .returns(stubForkedChild());
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         sinon.stub(fsPromises, "rm").resolves();
@@ -191,24 +202,18 @@ async function waitForAsyncWork(): Promise<void> {
         expect(feedback()).to.match(/Inspector\s+127\.0\.0\.1:9333/);
 
         const forkOptions = forkStub.firstCall.args[2];
-        expect(forkOptions.execArgv).to.deep.equal([
+        expect(forkOptions?.execArgv).to.deep.equal([
           "--inspect=127.0.0.1:9333",
         ]);
-        expect(forkOptions.env.ANTELOPE_WATCH).to.equal("true");
-        expect(forkOptions.env.ANTELOPE_CONCURRENCY).to.equal("2");
-        expect(forkOptions.env.ANTELOPE_VERBOSE).to.equal("a,b");
+        expect(forkOptions?.env?.ANTELOPE_WATCH).to.equal("true");
+        expect(forkOptions?.env?.ANTELOPE_CONCURRENCY).to.equal("2");
+        expect(forkOptions?.env?.ANTELOPE_VERBOSE).to.equal("a,b");
       });
 
       it("handles fork exit events", async () => {
         sinon.stub(common, "readConfig").resolves({ name: "test-project" });
         const callbacks: Record<string, (...args: any[]) => void> = {};
-        const child = {
-          on(event: string, cb: (...args: any[]) => void) {
-            callbacks[event] = cb;
-            return child;
-          },
-        };
-        sinon.stub(childProcess, "fork").returns(child);
+        sinon.stub(childProcess, "fork").returns(stubForkedChild(callbacks));
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         sinon.stub(fsPromises, "rm").resolves();
@@ -273,13 +278,7 @@ async function waitForAsyncWork(): Promise<void> {
       it("ignores cleanup errors after inspect run", async () => {
         sinon.stub(common, "readConfig").resolves({ name: "test-project" });
         const callbacks: Record<string, (...args: any[]) => void> = {};
-        const child = {
-          on(event: string, cb: (...args: any[]) => void) {
-            callbacks[event] = cb;
-            return child;
-          },
-        };
-        sinon.stub(childProcess, "fork").returns(child);
+        sinon.stub(childProcess, "fork").returns(stubForkedChild(callbacks));
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         const rmStub = sinon
