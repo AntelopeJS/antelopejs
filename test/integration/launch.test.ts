@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import launch, { ModuleManager } from "../../src";
+import type { JsonValue } from "../helpers/json";
 
 async function createModule(folder: string, name: string) {
   await fs.mkdir(folder, { recursive: true });
@@ -13,10 +14,7 @@ async function createModule(folder: string, name: string) {
   await fs.writeFile(path.join(folder, "index.js"), "module.exports = {};");
 }
 
-async function writeProjectConfig<Tconfig>(
-  projectFolder: string,
-  config: Tconfig,
-) {
+async function writeProjectConfig(projectFolder: string, config: JsonValue) {
   await fs.writeFile(
     path.join(projectFolder, "antelope.config.ts"),
     `export default ${JSON.stringify(config, null, 2)};\n`,

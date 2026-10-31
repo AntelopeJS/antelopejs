@@ -102,14 +102,6 @@ async function reloadModule(
   await reloadWatchedModule(manager, MODULE_ID, loaderContext);
 }
 
-function isInvalidatedModuleError<T>(reason: T): boolean {
-  return (
-    reason instanceof Error &&
-    "code" in reason &&
-    reason.code === MODULE_CONTEXT_INVALIDATED_CODE
-  );
-}
-
 /** Resolves once the destroyed generation's work has failed unhandled. */
 function waitForOrphanedFailure(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -118,7 +110,13 @@ function waitForOrphanedFailure(): Promise<void> {
       reject(new Error("The destroyed generation's work never failed"));
     }, ORPHAN_TIMEOUT_MS);
     const onRejection: NodeJS.UnhandledRejectionListener = (reason) => {
-      if (!isInvalidatedModuleError(reason)) {
+      if (
+        !(
+          reason instanceof Error &&
+          "code" in reason &&
+          reason.code === MODULE_CONTEXT_INVALIDATED_CODE
+        )
+      ) {
         return;
       }
       clearTimeout(deadline);

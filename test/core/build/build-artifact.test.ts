@@ -16,7 +16,10 @@ import {
 } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
-function resolveWith<T>(config: T, port: number) {
+function resolveWith(
+  config: Parameters<ConfigVarStore["resolve"]>[1],
+  port: number,
+) {
   const store = new ConfigVarStore();
   store.record("api", ["API_PORT"], { API_PORT: port });
   const result = store.resolve("dms", config);

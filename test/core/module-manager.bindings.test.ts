@@ -8,6 +8,7 @@ import path from "node:path";
 import type { InterfaceConnectionRef } from "../../src/core/modules";
 import { ModuleManager, ModuleManifest } from "../../src/core/modules";
 import { InterfaceBindingError } from "../../src/core/resolution";
+import type { JsonValue } from "../helpers/json";
 
 const DATABASE = "@bindings/interface-database";
 const MIDDLE = "@bindings/interface-middle";
@@ -21,7 +22,7 @@ interface ModuleSpec {
   importOverrides?: Map<string, InterfaceConnectionRef[]>;
 }
 
-async function writeJson<T>(file: string, value: T): Promise<void> {
+async function writeJson(file: string, value: JsonValue): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, JSON.stringify(value));
 }

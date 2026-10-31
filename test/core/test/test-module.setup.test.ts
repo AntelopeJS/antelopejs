@@ -5,17 +5,9 @@ import sinon from "sinon";
 import { ModuleManager } from "../../../src/core/modules";
 import { moduleLoadingModule as moduleLoading } from "../../../src/core/runtime";
 import { testModuleModule as testModule } from "../../../src/core/test";
-import { interfaceProxy } from "../../helpers/interface-proxy";
+import { resetProxy } from "../../helpers/interface-proxy";
 
 const RUNTIME_INFO_TIMEOUT_MS = 1000;
-
-function resetProxy<Args extends unknown[], Result>(
-  interfaceFunction: (...args: Args) => Result,
-): void {
-  const proxy = interfaceProxy(interfaceFunction);
-  proxy.onCall(() => undefined, true);
-  proxy.detach();
-}
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: Parameters<typeof clearTimeout>[0];
