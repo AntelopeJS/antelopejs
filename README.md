@@ -85,10 +85,7 @@ When a plugin is missing, `ajs` offers to install it with the package manager th
 
 <!-- antelopejs-docs-compat:end -->
 
-| Requirement                                                                  | Version          |
-| ---------------------------------------------------------------------------- | ---------------- |
-| Node.js                                                                      | `>=20.19`        |
-| [`@antelopejs/interface-core`](https://github.com/AntelopeJS/interface-core) | `>=0.3.0 <0.4.0` |
+The package declares Node.js `>=20.19` in `engines`. The contract it implements is [`@antelopejs/interface-core`](https://github.com/AntelopeJS/interface-core), whose range the table above lists.
 
 ## Contributing
 
