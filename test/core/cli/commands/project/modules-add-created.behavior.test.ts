@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -29,7 +30,7 @@ describe("project modules behavior: add-created", () => {
   });
 
   it("adds modules and skips existing ones", async () => {
-    const config: any = { name: "proj", modules: {} };
+    const config: AntelopeConfig = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     const writeStub = sinon.stub(common, "writeConfig").resolves();
 
@@ -75,7 +76,7 @@ describe("project modules behavior: add-created", () => {
   });
 
   it("reports each added module with its source, then one summary", async () => {
-    const config: any = { name: "proj", modules: {} };
+    const config: AntelopeConfig = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();

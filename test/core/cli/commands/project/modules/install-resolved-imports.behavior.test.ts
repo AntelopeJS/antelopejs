@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -20,7 +21,7 @@ describe("project modules install behavior: completes when no unresolved imports
   const fixture = installFixture();
 
   it("completes when no unresolved imports are found", async () => {
-    const baseConfig: any = {
+    const baseConfig: AntelopeConfig = {
       name: "proj",
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },

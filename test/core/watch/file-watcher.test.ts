@@ -473,7 +473,7 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
         await watcher.handleFileChange("/mod/a.txt").then(
           () => expect.fail("expected the change to fail"),
-          (error) => expect(error).to.equal(denied),
+          (error: unknown) => expect(error).to.equal(denied),
         );
       });
     };
