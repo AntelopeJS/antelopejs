@@ -28,7 +28,7 @@ describe("ModuleManager", () => {
     const previous: NodeJS.Require["cache"] = {};
     for (const entry of cacheEntries) {
       previous[entry] = require.cache[entry];
-      require.cache[entry] = new (require("node:module"))(entry);
+      require.cache[entry] = new nodeModule(entry);
     }
 
     manager["loaded"].set("playground", {
@@ -63,7 +63,7 @@ describe("ModuleManager", () => {
     const previous: NodeJS.Require["cache"] = {};
     for (const entry of cacheEntries) {
       previous[entry] = require.cache[entry];
-      require.cache[entry] = new (require("node:module"))(entry);
+      require.cache[entry] = new nodeModule(entry);
     }
 
     manager["loaded"].set("self", {

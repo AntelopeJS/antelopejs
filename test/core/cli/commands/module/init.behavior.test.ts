@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import childProcess from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import sinon from "sinon";
@@ -104,7 +105,7 @@ function stubModuleInit(
   const exec = sinon
     .stub(command, "ExecuteCMD")
     .resolves({ code: 0, stdout: "", stderr: "" });
-  const gitInit = sinon.stub(require("node:child_process"), "execSync");
+  const gitInit = sinon.stub(childProcess, "execSync");
   sinon.stub(cliUi.Spinner.prototype, "start").resolves();
   sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
   const spinnerFail = sinon.stub(cliUi.Spinner.prototype, "fail").resolves();

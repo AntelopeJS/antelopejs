@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import nodeFs from "node:fs";
+import nodePath from "node:path";
 import sinon from "sinon";
 
 import {
@@ -74,11 +76,9 @@ import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
       });
 
       it("falls back to default config when config file is null", async () => {
-        const fsNode = require("node:fs");
-        const path = require("node:path");
-        const configDir = path.join(tempHome, ".antelopejs");
-        fsNode.mkdirSync(configDir, { recursive: true });
-        fsNode.writeFileSync(path.join(configDir, "config.json"), "null");
+        const configDir = nodePath.join(tempHome, ".antelopejs");
+        nodeFs.mkdirSync(configDir, { recursive: true });
+        nodeFs.writeFileSync(nodePath.join(configDir, "config.json"), "null");
 
         const config = await readUserConfig();
         expect(config.git).to.equal(DEFAULT_GIT_REPO);

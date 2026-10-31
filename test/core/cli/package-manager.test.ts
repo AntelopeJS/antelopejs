@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import nodeFs from "node:fs";
 import sinon from "sinon";
 
 import {
@@ -441,10 +442,7 @@ import {
 
       it("warns with non-error throw payloads", () => {
         const tempDir = makeTempDir();
-        const fsModule = require("node:fs");
-        const readStub = sinon
-          .stub(fsModule, "readFileSync")
-          .throws("bad-read");
+        const readStub = sinon.stub(nodeFs, "readFileSync").throws("bad-read");
         const warnStub = sinon.stub(cliUi, "warning");
         try {
           writeJson(`${tempDir}/package.json`, { name: "test" });
