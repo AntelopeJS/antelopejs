@@ -23,13 +23,26 @@ function stubForkedChild(
   callbacks: Record<string, (...args: any[]) => void> = {},
 ) {
   const child = sinon.createStubInstance(ChildProcess);
-  for (const method of Object.keys(child)) {
-    if (method === "on") {
-      continue;
+  for (
+    let proto: object | null = child;
+    proto !== null && proto !== Object.prototype;
+    proto = Reflect.getPrototypeOf(proto)
+  ) {
+    for (const key of Reflect.ownKeys(proto)) {
+      if (key === "on") {
+        continue;
+      }
+      if (
+        Reflect.getOwnPropertyDescriptor(child, key)?.configurable === false
+      ) {
+        continue;
+      }
+      Object.defineProperty(child, key, {
+        value: key === "constructor" ? Object : undefined,
+        writable: true,
+        enumerable: false,
+      });
     }
-    Reflect.set(child, method, () => {
-      throw new Error(`the fork path must not call child.${method}`);
-    });
   }
   child.on.callsFake((event, cb) => {
     callbacks[event] = cb;
