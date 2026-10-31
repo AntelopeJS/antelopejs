@@ -38,7 +38,9 @@ export class ModuleCache {
   }
 
   getVersion(module: string): string | undefined {
-    return this.manifest[module];
+    return Object.hasOwn(this.manifest, module)
+      ? this.manifest[module]
+      : undefined;
   }
 
   setVersion(module: string, version: string): void {
@@ -46,9 +48,8 @@ export class ModuleCache {
   }
 
   hasVersion(module: string, version: string): boolean {
-    return !!(
-      this.manifest[module] && satisfies(this.manifest[module], version)
-    );
+    const cached = this.getVersion(module);
+    return !!cached && satisfies(cached, version);
   }
 
   async getFolder(

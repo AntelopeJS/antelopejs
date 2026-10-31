@@ -47,24 +47,23 @@ export class ConfigParser {
   private flattenConfig(
     obj: Parameters<ConfigParser["processTemplates"]>[0],
     prefix = "",
+    result = new Map<string, string>(),
   ) {
-    const result: Record<string, string> = {};
-
     for (const [key, value] of Object.entries(obj)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
 
       if (isString(value) || isNumber(value) || isBoolean(value)) {
-        result[key] = String(value);
-        result[fullKey] = String(value);
+        result.set(key, String(value));
+        result.set(fullKey, String(value));
       } else if (isObject(value)) {
-        Object.assign(result, this.flattenConfig(value, fullKey));
+        this.flattenConfig(value, fullKey, result);
       }
     }
 
     return result;
   }
 
-  private processObject(obj: any, values: Record<string, string>): any {
+  private processObject(obj: any, values: Map<string, string>): any {
     if (isString(obj)) {
       return this.processString(obj, values);
     }
@@ -84,28 +83,29 @@ export class ConfigParser {
     return obj;
   }
 
-  private processString(str: string, values: Record<string, string>): any {
+  private processString(str: string, values: Map<string, string>): any {
     const pureMatch = str.match(/^\$\{([^}]+)\}$/);
     if (pureMatch) {
       const key = pureMatch[1];
       if (isConfigVarKey(key)) {
         return str;
       }
-      if (key in values) {
+      const value = values.get(key);
+      if (value !== undefined) {
         try {
-          return JSON.parse(values[key]);
+          return JSON.parse(value);
         } catch {
-          return values[key];
+          return value;
         }
       }
       return str;
     }
 
-    return str.replace(/\$\{([^}]+)\}/g, (token, key) => {
+    return str.replace(/\$\{([^}]+)\}/g, (token: string, key: string) => {
       if (isConfigVarKey(key)) {
         return token;
       }
-      return values[key] ?? "";
+      return values.get(key) ?? "";
     });
   }
 
