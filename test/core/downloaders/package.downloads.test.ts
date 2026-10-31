@@ -284,6 +284,54 @@ describe("PackageDownloader", () => {
     }
     expect(cache.getVersion("pkg")).to.equal(undefined);
   });
+
+  it("should throw without committing a version when the packed package.json has none", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    const registry = new DownloaderRegistry();
+    const exec = async (command: string, _options: { cwd?: string }) => {
+      if (command.startsWith("npm pack")) {
+        return { stdout: "pkg-1.0.0.tgz", stderr: "", code: 0 };
+      }
+      return { stdout: "", stderr: "", code: 0 };
+    };
+
+    const extract = async () => {
+      await fs.writeFile(
+        "/tmp/pkg/package/package.json",
+        JSON.stringify({ name: "pkg" }),
+      );
+    };
+
+    registerPackageDownloader(registry, {
+      fs,
+      exec,
+      getTemp: async () => "/tmp/pkg",
+      extract,
+      getInstallCommand: async () => "npm install",
+    });
+
+    const source: ModuleSourcePackage = {
+      type: "package",
+      package: "pkg",
+      version: "1.0.0",
+      id: "pkg",
+    };
+
+    try {
+      await registry.load("/project", cache, source);
+      expect.fail("Expected a missing version failure");
+    } catch (err) {
+      expect(err).to.be.instanceOf(Error);
+      expect(err).to.have.property(
+        "message",
+        "The package pkg@1.0.0 has no version in its package.json",
+      );
+    }
+    expect(cache.getVersion("pkg")).to.equal(undefined);
+  });
 });
 
 describe("PackageDownloader", () => {
