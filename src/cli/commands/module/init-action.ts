@@ -24,7 +24,6 @@ import {
   USAGE_EXIT_CODE,
   warning,
 } from "../../../core/output";
-import { isObject } from "../../../utils";
 import { displayNonDefaultGitWarning, readUserConfig } from "../../common";
 import {
   copyTemplate,
@@ -347,17 +346,11 @@ function addInterfaceDependencies(
     return;
   }
   const pkgJsonPath = path.resolve(modulePath, "package.json");
-  const pkgJson: unknown = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-  if (!isObject(pkgJson)) {
-    throw new TypeError(`${pkgJsonPath} does not hold a JSON object`);
-  }
-  const dependencies = isObject(pkgJson.dependencies)
-    ? pkgJson.dependencies
-    : {};
+  const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+  pkgJson.dependencies ??= {};
   packages.forEach((name) => {
-    dependencies[name] ??= LATEST_VERSION;
+    pkgJson.dependencies[name] ??= LATEST_VERSION;
   });
-  pkgJson.dependencies = dependencies;
   writeFileSync(
     pkgJsonPath,
     `${JSON.stringify(pkgJson, null, JSON_INDENTATION)}\n`,
