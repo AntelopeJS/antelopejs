@@ -33,6 +33,7 @@ import {
   loadManifestFromGit,
   type Template,
 } from "../../git-operations";
+import { isObject } from "../../../utils";
 
 export interface ModuleInitOptions {
   git?: string;
@@ -335,6 +336,16 @@ async function askModuleAnswers(
   return { template, interfaces, packageManager, isGitInitialized };
 }
 
+function unusableManifest(pkgJsonPath: string, reason: string): CliError {
+  return new CliError({
+    title: `Cannot add the chosen interfaces to ${displayPath(pkgJsonPath)}`,
+    reason,
+    fixes: [
+      "Make the template's package.json a JSON object whose dependencies, when it has any, are an object of package names and version ranges",
+    ],
+  });
+}
+
 function addInterfaceDependencies(
   modulePath: string,
   interfaces: InterfaceInfo[],
@@ -346,10 +357,20 @@ function addInterfaceDependencies(
     return;
   }
   const pkgJsonPath = path.resolve(modulePath, "package.json");
-  const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-  pkgJson.dependencies ??= {};
+  const pkgJson: unknown = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+  if (!isObject(pkgJson)) {
+    throw unusableManifest(pkgJsonPath, "The file must hold a JSON object.");
+  }
+  const dependencies = pkgJson.dependencies ?? {};
+  if (!isObject(dependencies)) {
+    throw unusableManifest(
+      pkgJsonPath,
+      "Its dependencies field must be a JSON object.",
+    );
+  }
+  pkgJson.dependencies = dependencies;
   packages.forEach((name) => {
-    pkgJson.dependencies[name] ??= LATEST_VERSION;
+    dependencies[name] ??= LATEST_VERSION;
   });
   writeFileSync(
     pkgJsonPath,
