@@ -3,10 +3,13 @@ import { test } from "node:test";
 
 import { cause, state } from "./ModuleLifecycle.map.mjs";
 
+/** @import { LifecycleState } from "./ModuleLifecycle.map.mjs" */
+
 const IDLE = { pc: "idle", mod: "a", prev: 0, repl: 0 };
 
 /**
- * @param {Record<string, unknown>} overrides
+ * @param {Partial<LifecycleState>} overrides
+ * @returns {LifecycleState}
  */
 function lifecycle(overrides) {
   return {

@@ -49,6 +49,7 @@ jobs:
         with:
           path: ~/.cache/antelopejs-formal
           key: tla2tools-1.7.4
+      - run: node --test .agents/skills/formal-module-lifecycle/*.test.mjs
       - run: node .agents/skills/formal-module-lifecycle/check.mjs
 
   checks:

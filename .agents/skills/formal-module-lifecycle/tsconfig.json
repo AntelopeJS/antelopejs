@@ -13,7 +13,6 @@
     "skipLibCheck": true
   },
   "include": [
-    "check.mjs",
-    "ModuleLifecycle.map.test.mjs"
+    "*.mjs"
   ]
 }
