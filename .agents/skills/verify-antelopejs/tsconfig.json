@@ -21,6 +21,7 @@
     }
   },
   "include": [
+    "verify.config.ts",
     "bin/**/*.mts",
     "fixtures/hosts/*.mjs",
     "fixtures/greeter/*/index.js",
