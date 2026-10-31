@@ -5,7 +5,7 @@
 
 <a href="https://www.npmjs.com/package/@antelopejs/core"><img alt="npm" src="https://img.shields.io/npm/v/@antelopejs/core?style=for-the-badge&labelColor=000000&color=000000"></a>
 <a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/core?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="https://discord.gg/kxzZMWqdFU"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://discord.gg/g4pFt6eXqu"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
 <a href="https://framework.antelopejs.com/docs/get-started/introduction"><img alt="Docs" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
 </div>
