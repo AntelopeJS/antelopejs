@@ -70,9 +70,6 @@ describe("project modules install behavior: reports failure when add resolves wi
     sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
       interfaceInfo("iface", {
         description: "iface",
-        versions: ["1.0.0"],
-        files: {},
-        dependencies: {},
         modules: [MOD_A],
       }),
     );
