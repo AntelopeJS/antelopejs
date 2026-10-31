@@ -77,6 +77,14 @@ When a plugin is missing, `ajs` offers to install it with the package manager th
 
 ## Compatibility
 
+<!-- antelopejs-docs-compat:start -->
+
+| Package                      | Supported        | Tested with |
+| ---------------------------- | ---------------- | ----------- |
+| `@antelopejs/interface-core` | `>=0.3.0 <0.4.0` | `0.3.0`     |
+
+<!-- antelopejs-docs-compat:end -->
+
 | Requirement                                                                  | Version          |
 | ---------------------------------------------------------------------------- | ---------------- |
 | Node.js                                                                      | `>=20.19`        |
