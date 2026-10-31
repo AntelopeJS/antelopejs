@@ -19,10 +19,26 @@ import { collectStderr } from "../../../../helpers/capture-output";
 
 const fsPromises = nodeFs.promises;
 
+const UNEXPECTED_CHILD_CALLS = [
+  "addListener",
+  "emit",
+  "kill",
+  "off",
+  "once",
+  "ref",
+  "removeListener",
+  "unref",
+] as const;
+
 function stubForkedChild(
   callbacks: Record<string, (...args: any[]) => void> = {},
 ) {
   const child = sinon.createStubInstance(ChildProcess);
+  for (const method of UNEXPECTED_CHILD_CALLS) {
+    child[method].throws(
+      new Error(`the fork path must not call child.${method}`),
+    );
+  }
   child.on.callsFake((event, cb) => {
     callbacks[event] = cb;
     return child;
