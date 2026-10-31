@@ -44,9 +44,11 @@ function levelLabel(level: string): string {
 }
 
 function describeLevelFormats(logging: AntelopeLogging): string {
-  const defaults: Record<string, string> = defaultConfigLogging.formatter ?? {};
+  const defaults = new Map(
+    Object.entries(defaultConfigLogging.formatter ?? {}),
+  );
   const customLevels = Object.entries(logging.formatter ?? {})
-    .filter(([level, template]) => template !== defaults[level])
+    .filter(([level, template]) => template !== defaults.get(level))
     .map(([level]) => levelLabel(level));
   const summary =
     customLevels.length > 0

@@ -191,17 +191,18 @@ export class ConfigParser {
           }
         }
 
-        result[name] = {
+        const expanded: ExpandedModuleConfig = {
           source: source!,
           config: config.config ?? {},
           importOverrides,
           disabledExports: config.disabledExports ?? [],
         };
+        result[name] = expanded;
         if (config.optional) {
-          result[name].optional = true;
+          expanded.optional = true;
         }
         if (config.exportPriority) {
-          result[name].exportPriority = readExportPriority(
+          expanded.exportPriority = readExportPriority(
             name,
             config.exportPriority,
           );
