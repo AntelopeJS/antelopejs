@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.18.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.18.1...v1.18.2)
+
+### 🩹 Fixes
+
+- **resolution:** Keep links inside an instance copy so pnpm dependencies resolve ([#270](https://github.com/AntelopeJS/antelopejs/pull/270))
+
+### ❤️ Contributors
+
+- Thomas ([@Thomasims](https://github.com/Thomasims))
+
 ## v1.18.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.18.0...v1.18.1)
