@@ -269,22 +269,26 @@ function createArtifact(
           fs,
         );
 
-        const written: BuildArtifact = JSON.parse(
+        const written: unknown = JSON.parse(
           await fs.readFileString(
             "/project/.antelope/build/build.json",
             "utf-8",
           ),
         );
 
-        expect(written.configHash).to.equal("computed-hash");
-        expect(written.env).to.equal("production");
-        expect(written.modules.alpha.importOverrides).to.deep.equal([
-          { interface: "db@beta", source: "rethinkdb", id: "main" },
-        ]);
-        expect(written.modules.alpha.disabledExports).to.deep.equal([
-          "core@beta",
-        ]);
-        expect(written.modules.beta.importOverrides).to.equal(undefined);
+        expect(written).to.have.property("configHash", "computed-hash");
+        expect(written).to.have.property("env", "production");
+        expect(written)
+          .to.have.nested.property("modules.alpha.importOverrides")
+          .that.deep.equals([
+            { interface: "db@beta", source: "rethinkdb", id: "main" },
+          ]);
+        expect(written)
+          .to.have.nested.property("modules.alpha.disabledExports")
+          .that.deep.equals(["core@beta"]);
+        expect(written).to.not.have.nested.property(
+          "modules.beta.importOverrides",
+        );
       });
     };
 

@@ -15,8 +15,9 @@ describe("ModuleCache", () => {
     cache.setVersion("test", "1.2.3");
     await cache.save();
 
-    const data = JSON.parse(await fs.readFileString("/cache/manifest.json"));
-    expect(data.test).to.equal("1.2.3");
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.have.property("test", "1.2.3");
   });
 
   it("should check semantic versions", async () => {
@@ -76,8 +77,9 @@ describe("ModuleCache", () => {
 
     await cache.commitVersion("mod", "1.0.0");
 
-    const data = JSON.parse(await fs.readFileString("/cache/manifest.json"));
-    expect(data.mod).to.equal("1.0.0");
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.have.property("mod", "1.0.0");
   });
 
   it("removes a version through clearVersion", async () => {
@@ -89,8 +91,9 @@ describe("ModuleCache", () => {
     await cache.clearVersion("mod");
 
     expect(cache.getVersion("mod")).to.equal(undefined);
-    const data = JSON.parse(await fs.readFileString("/cache/manifest.json"));
-    expect(data.mod).to.equal(undefined);
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.not.have.property("mod");
   });
 
   it("loads existing manifest data when present", async () => {

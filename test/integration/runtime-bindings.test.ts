@@ -6,6 +6,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import launch, { type ModuleManager } from "../../src";
+import { isObject } from "../../src/utils";
 import {
   createLoaderContext,
   reloadWatchedModule,
@@ -351,14 +352,10 @@ describe("interface instances across reloads", () => {
     this.timeout(20000);
     const started = await launchListers();
     const mongodb = path.join(projectFolder, "mongodb");
-    const manifest: {
-      name: string;
-      version: string;
-      main: string;
-      antelopeJs?: object;
-    } = JSON.parse(
+    const manifest: unknown = JSON.parse(
       await fs.readFile(path.join(mongodb, "package.json"), "utf8"),
     );
+    assert.ok(isObject(manifest));
     await fs.writeFile(
       path.join(mongodb, "package.json"),
       JSON.stringify({ ...manifest, antelopeJs: {} }),
