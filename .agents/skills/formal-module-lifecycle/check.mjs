@@ -46,11 +46,16 @@ const FINDINGS = {
 const EXIT_CHANGED = 1;
 const EXIT_TOOL = 2;
 
+/**
+ * @param {string} message
+ * @returns {never}
+ */
 function fail(message) {
   console.error(`check: ${message}`);
   process.exit(EXIT_TOOL);
 }
 
+/** @param {string} file */
 function sha256(file) {
   return createHash("sha256").update(readFileSync(file)).digest("hex");
 }
@@ -96,6 +101,17 @@ function readConfig() {
   return { constants, invariants };
 }
 
+/**
+ * @param {{
+ *   java: string,
+ *   jar: string,
+ *   work: string,
+ *   name: string,
+ *   constants: string[],
+ *   invariants: string[],
+ *   workers: string,
+ * }} run
+ */
 function runTlc({ java, jar, work, name, constants, invariants, workers }) {
   const cfg = path.join(work, `${name}.cfg`);
   writeFileSync(
@@ -154,7 +170,7 @@ for (const file of readdirSync(HERE).filter((name) => name.endsWith(".tla"))) {
   copyFileSync(path.join(HERE, file), path.join(work, file));
 }
 
-const holding = invariants.filter((rule) => !(rule in FINDINGS));
+const holding = invariants.filter((rule) => !Object.hasOwn(FINDINGS, rule));
 console.log(
   `TLC ${TLC_VERSION} on ${SPEC}.tla with ${constants.map((line) => line.trim()).join(", ")}`,
 );
