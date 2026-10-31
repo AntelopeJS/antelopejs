@@ -1,11 +1,10 @@
 {
   "pack": "0.2.17",
   "rules": {
-    "antelopejs/no-inherited-key-lookup": 37,
     "antelopejs/no-presence-only-type-guard": 3,
     "typescript/no-unnecessary-type-parameters": 27,
-    "typescript/no-unsafe-argument": 71,
-    "typescript/no-unsafe-assignment": 149,
+    "typescript/no-unsafe-argument": 70,
+    "typescript/no-unsafe-assignment": 148,
     "typescript/no-unsafe-return": 42,
     "typescript/use-unknown-in-catch-callback-variable": 12
   },

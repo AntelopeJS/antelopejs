@@ -103,10 +103,13 @@ function substituteObject(
   config: Record<string, Parameters<typeof substituteConfigVars>[0]>,
   lookup: ConfigVarLookup,
 ): ReturnType<typeof Object.fromEntries<unknown>> {
-  const entries = Object.entries(config).map(
+  const original = Object.entries(config);
+  const entries = original.map(
     ([key, value]) => [key, substituteConfigVars(value, lookup)] as const,
   );
-  const changed = entries.some(([key, value]) => value !== config[key]);
+  const changed = entries.some(
+    ([, value], index) => value !== original[index][1],
+  );
   return changed ? Object.fromEntries(entries) : config;
 }
 

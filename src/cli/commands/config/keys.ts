@@ -15,8 +15,8 @@ const CONFIG_VALUE_RULES = {
     expected:
       "an https or ssh URL, an scp-like address (git@host:org/repo.git) or an absolute path",
     example: "https://github.com/acme/interfaces.git",
-  },
-} satisfies Record<string, ConfigValueRule>;
+  } satisfies ConfigValueRule,
+};
 
 export type ConfigKey = keyof typeof CONFIG_VALUE_RULES;
 
@@ -38,13 +38,11 @@ export function invalidConfigKeyError(key: string): CliError {
  * value is valid.
  */
 export function invalidConfigValueError(
-  key: string,
+  key: ConfigKey,
   value: string,
 ): CliError | undefined {
-  const rules: typeof CONFIG_VALUE_RULES & Record<string, ConfigValueRule> =
-    CONFIG_VALUE_RULES;
-  const rule = rules[key];
-  if (!rule || rule.isValid(value)) {
+  const rule = CONFIG_VALUE_RULES[key];
+  if (rule.isValid(value)) {
     return undefined;
   }
   return new CliError({

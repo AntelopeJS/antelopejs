@@ -117,16 +117,18 @@ function refreshModuleEntries(
   artifact: BuildArtifact,
   modules: ConfiguredModules,
 ): Record<string, BuildModuleEntry> {
+  const configured = new Map(Object.entries(modules));
   return Object.fromEntries(
-    Object.entries(artifact.modules).map(([name, entry]) => [
-      name,
-      {
-        ...entry,
-        ...serializeModuleConfig(
-          toModuleConfig(modules[entry.source.id ?? ""]),
-        ),
-      },
-    ]),
+    Object.entries(artifact.modules).map(([name, entry]) => {
+      const moduleConfig = configured.get(entry.source.id ?? "");
+      if (!moduleConfig) {
+        throw new BuildModuleSetChangedError([entry.name]);
+      }
+      return [
+        name,
+        { ...entry, ...serializeModuleConfig(toModuleConfig(moduleConfig)) },
+      ];
+    }),
   );
 }
 

@@ -73,13 +73,13 @@ let eventLogUnregister: (() => void) | null = null;
 let loggingConfig: AntelopeLogging = defaultConfigLogging;
 let logAudience: LogAudience = "app";
 
-const channelCache: Record<string, number> = {};
+const channelCache = new Map<string, number>();
 const channelFilters: Record<string, number | string> = {};
 
 function resolveLevelValue(level: number | string): number {
   if (isString(level)) {
     const normalized = level.toLowerCase();
-    if (normalized in levelMap) {
+    if (Object.hasOwn(levelMap, normalized)) {
       return levelMap[normalized];
     }
     const numeric = Number(level);
@@ -115,10 +115,10 @@ function getChannelFilter(channel: string): number {
 }
 
 function shouldIgnoreChannel(log: Log): boolean {
-  let filter = channelCache[log.channel];
+  let filter = channelCache.get(log.channel);
   if (filter === undefined) {
     filter = getChannelFilter(log.channel);
-    channelCache[log.channel] = filter;
+    channelCache.set(log.channel, filter);
   }
   return filter > log.levelId;
 }
@@ -135,9 +135,7 @@ function shouldIgnoreModule(module: string): boolean {
 }
 
 function clearChannelCache(): void {
-  for (const key of Object.keys(channelCache)) {
-    delete channelCache[key];
-  }
+  channelCache.clear();
 }
 
 function configureFilters(): void {
