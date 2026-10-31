@@ -4,10 +4,10 @@
     "antelopejs/no-inherited-key-lookup": 41,
     "antelopejs/no-presence-only-type-guard": 3,
     "typescript/no-unnecessary-type-parameters": 27,
-    "typescript/no-unsafe-argument": 100,
-    "typescript/no-unsafe-assignment": 258,
-    "typescript/no-unsafe-return": 55,
-    "typescript/use-unknown-in-catch-callback-variable": 14
+    "typescript/no-unsafe-argument": 71,
+    "typescript/no-unsafe-assignment": 223,
+    "typescript/no-unsafe-return": 52,
+    "typescript/use-unknown-in-catch-callback-variable": 12
   },
   "oversizeFiles": {}
 }
