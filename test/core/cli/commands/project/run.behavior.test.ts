@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { Command } from "commander";
-import childProcess, { ChildProcess } from "node:child_process";
+import childProcess from "node:child_process";
 import nodeFs from "node:fs";
 import sinon from "sinon";
 
@@ -19,36 +19,11 @@ import { collectStderr } from "../../../../helpers/capture-output";
 
 const fsPromises = nodeFs.promises;
 
-function stubForkedChild(
-  callbacks: Record<string, (...args: any[]) => void> = {},
-) {
-  const child = sinon.createStubInstance(ChildProcess);
-  for (
-    let proto: object | null = child;
-    proto !== null && proto !== Object.prototype;
-    proto = Reflect.getPrototypeOf(proto)
-  ) {
-    for (const key of Reflect.ownKeys(proto)) {
-      if (key === "on") {
-        continue;
-      }
-      if (
-        Reflect.getOwnPropertyDescriptor(child, key)?.configurable === false
-      ) {
-        continue;
-      }
-      Object.defineProperty(child, key, {
-        value: key === "constructor" ? Object : undefined,
-        writable: true,
-        enumerable: false,
-      });
-    }
-  }
-  child.on.callsFake((event, cb) => {
-    callbacks[event] = cb;
-    return child;
-  });
-  return child;
+function stubFork(): sinon.SinonStub<
+  [string | URL, (readonly string[])?, childProcess.ForkOptions?],
+  unknown
+> {
+  return sinon.stub(childProcess, "fork");
 }
 
 async function waitForAsyncWork(): Promise<void> {
@@ -132,9 +107,9 @@ async function waitForAsyncWork(): Promise<void> {
 
       it("runs in inspect mode with forked process", async () => {
         sinon.stub(common, "readConfig").resolves({ name: "test-project" });
-        const forkStub = sinon
-          .stub(childProcess, "fork")
-          .returns(stubForkedChild());
+        const forkStub = stubFork().returns({
+          on: sinon.stub().returnsThis(),
+        });
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         sinon.stub(fsPromises, "rm").resolves();
@@ -176,9 +151,9 @@ async function waitForAsyncWork(): Promise<void> {
       it("uses string inspect options and verbose channels in forked run", async () => {
         const readConfig: sinon.SinonStub = sinon.stub(common, "readConfig");
         readConfig.resolves({});
-        const forkStub = sinon
-          .stub(childProcess, "fork")
-          .returns(stubForkedChild());
+        const forkStub = stubFork().returns({
+          on: sinon.stub().returnsThis(),
+        });
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         sinon.stub(fsPromises, "rm").resolves();
@@ -234,7 +209,13 @@ async function waitForAsyncWork(): Promise<void> {
       it("handles fork exit events", async () => {
         sinon.stub(common, "readConfig").resolves({ name: "test-project" });
         const callbacks: Record<string, (...args: any[]) => void> = {};
-        sinon.stub(childProcess, "fork").returns(stubForkedChild(callbacks));
+        const child = {
+          on(event: string, cb: (...args: any[]) => void) {
+            callbacks[event] = cb;
+            return child;
+          },
+        };
+        stubFork().returns(child);
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         sinon.stub(fsPromises, "rm").resolves();
@@ -299,7 +280,13 @@ async function waitForAsyncWork(): Promise<void> {
       it("ignores cleanup errors after inspect run", async () => {
         sinon.stub(common, "readConfig").resolves({ name: "test-project" });
         const callbacks: Record<string, (...args: any[]) => void> = {};
-        sinon.stub(childProcess, "fork").returns(stubForkedChild(callbacks));
+        const child = {
+          on(event: string, cb: (...args: any[]) => void) {
+            callbacks[event] = cb;
+            return child;
+          },
+        };
+        stubFork().returns(child);
 
         sinon.stub(ModuleCache, "getTemp").resolves("/tmp");
         const rmStub = sinon
