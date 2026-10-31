@@ -1,6 +1,9 @@
+import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+
+import { isObject } from "../../src/utils";
 import {
   COMPATIBLE_NESTED_CORE_VERSION,
   CORE_INTERFACE_NAME,
@@ -77,7 +80,8 @@ async function linkInterfaceCore(
   }
   await fs.cp(interfaceCore, destination, { recursive: true });
   const manifestPath = path.join(destination, "package.json");
-  const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  const manifest: unknown = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  assert.ok(isObject(manifest));
   manifest.version = COMPATIBLE_NESTED_CORE_VERSION;
   await fs.writeFile(manifestPath, JSON.stringify(manifest));
   const dependencies = path.join(destination, "node_modules");
