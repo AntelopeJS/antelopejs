@@ -74,9 +74,6 @@ describe("project modules install behavior: sums up the added modules once", () 
     sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
       interfaceInfo("@antelopejs/interface-core", {
         description: "core",
-        versions: ["0.0.2"],
-        files: {},
-        dependencies: {},
         modules: [MOD_A],
       }),
     );

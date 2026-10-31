@@ -1,6 +1,7 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { satisfies, validRange } from "semver";
 
+import { isObject, isString } from "../../utils";
 import type { ExpandedModuleConfig } from "../config";
 import {
   CliError,
@@ -75,11 +76,17 @@ async function viewPackage(
   return result;
 }
 
+function isStringEntry(entry: [string, unknown]): entry is [string, string] {
+  return isString(entry[1]);
+}
+
 export async function fetchDistTags(
   packageName: string,
 ): Promise<Record<string, string>> {
   const result = await viewPackage(packageName, DIST_TAGS_ARGUMENTS);
-  return JSON.parse(result.stdout);
+  const parsed: unknown = JSON.parse(result.stdout);
+  const entries = isObject(parsed) ? Object.entries(parsed) : [];
+  return Object.fromEntries(entries.filter(isStringEntry));
 }
 
 export async function validateVersionSpec(

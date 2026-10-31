@@ -12,6 +12,10 @@ import { ModuleLifecycle } from "../../../src/core/modules";
 import { neutralizeInterfaceAsyncProxies } from "../../../src/core/resolution";
 import { ModuleState } from "../../../src/types";
 
+interface CyclicInterface {
+  a: { back?: CyclicInterface };
+}
+
 describe("neutralizeInterfaceAsyncProxies", () => {
   it("makes AsyncProxy-backed calls reject instead of queuing forever", async () => {
     const iface = {
@@ -127,7 +131,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
   });
 
   it("does not loop on circular structures", () => {
-    const iface: any = { a: {} };
+    const iface: CyclicInterface = { a: {} };
     iface.a.back = iface;
     expect(() =>
       neutralizeInterfaceAsyncProxies(iface, "cycle-iface"),
