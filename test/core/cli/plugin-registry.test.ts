@@ -22,6 +22,17 @@ describe("Official plugin registry", () => {
     expect(findOfficialPlugin("unknown")).to.equal(undefined);
   });
 
+  it("returns undefined for the names Object.prototype gives every object", () => {
+    for (const name of [
+      "constructor",
+      "toString",
+      "hasOwnProperty",
+      "__proto__",
+    ]) {
+      expect(findOfficialPlugin(name), name).to.equal(undefined);
+    }
+  });
+
   it("lists plugins and their names", () => {
     expect(officialPluginNames()).to.deep.equal(["dms"]);
     expect(listOfficialPlugins().map((plugin) => plugin.bin)).to.deep.equal([

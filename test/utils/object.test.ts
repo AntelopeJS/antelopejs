@@ -22,6 +22,24 @@ describe("Object Utilities", () => {
       expect(result).to.deep.equal({ arr: [3, 4, 5] });
     });
 
+    it("copies a __proto__ key from JSON as data and leaves the result's prototype alone", () => {
+      const source = { ["__proto__"]: { polluted: true }, kept: 1 };
+
+      const result = mergeDeep({ a: 1 }, source);
+
+      expect(Object.getPrototypeOf(result)).to.equal(Object.prototype);
+      expect(Object.hasOwn(result, "__proto__")).to.equal(true);
+      expect(Object.hasOwn(result, "kept")).to.equal(true);
+      expect("polluted" in result).to.equal(false);
+    });
+
+    it("replaces the inherited constructor when the source carries a plain-object constructor key", () => {
+      const result = mergeDeep({}, { constructor: { name: "mine" } });
+
+      expect(Object.getPrototypeOf(result)).to.equal(Object.prototype);
+      expect(result.constructor).to.deep.equal({ name: "mine" });
+    });
+
     it("skips undefined sources", () => {
       const target = { a: 1 };
       const result = mergeDeep(target, undefined, { b: 2 });
@@ -48,6 +66,13 @@ describe("Object Utilities", () => {
       });
     });
 
+    it("treats a key named like an Object.prototype member as absent from before", () => {
+      expect(diffDeep({}, { toString: undefined })).to.deep.equal({});
+      expect(diffDeep({}, { constructor: 1 })).to.deep.equal({
+        constructor: 1,
+      });
+    });
+
     it("returns an empty object when nothing changed", () => {
       const value = { a: { b: [1, 2] } };
 
@@ -63,6 +88,22 @@ describe("Object Utilities", () => {
       const obj: NestedConfig = { a: { b: 1 } };
       set(obj, "a.c.d", 42);
       expect(obj.a.c?.d).to.equal(42);
+    });
+
+    describe("with a path segment named __proto__", () => {
+      afterEach(() => {
+        Reflect.deleteProperty(Object.prototype, "polluted");
+      });
+
+      it("stores it as data and leaves Object.prototype alone", () => {
+        const obj = {};
+
+        set(obj, "__proto__.polluted", "yes");
+
+        expect(Object.hasOwn(Object.prototype, "polluted")).to.equal(false);
+        expect(Object.getPrototypeOf(obj)).to.equal(Object.prototype);
+        expect(Object.hasOwn(obj, "__proto__")).to.equal(true);
+      });
     });
   });
 });

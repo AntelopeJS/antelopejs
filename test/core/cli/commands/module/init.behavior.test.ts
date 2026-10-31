@@ -368,14 +368,14 @@ function readDependencies(moduleDir: string): Record<string, string> {
         const failure = await rejectionOf(
           moduleInitCommand(moduleDir, {
             template: "basic",
-            interfaces: ["api", "auth"],
+            interfaces: ["api", "auth", "constructor", "toString"],
             pm: "npm",
             gitInit: false,
           }),
         );
 
         expect(failure.problem.title).to.equal(
-          "Unknown interface 'api', 'auth'",
+          "Unknown interface 'api', 'auth', 'constructor', 'toString'",
         );
         expect(failure.problem.reason).to.equal("Available: none");
         expect(failure.problem.fixes).to.deep.equal([]);
