@@ -5,7 +5,13 @@ import semver from "semver";
 
 import { getProcessUi, info, isQuietRun } from "../core/output";
 import { CORE_PACKAGE_NAME } from "./core-version";
-import { isFunction, isNumber, isObjectOrNull, isString } from "../utils";
+import {
+  isFunction,
+  isNumber,
+  isObject,
+  isObjectOrNull,
+  isString,
+} from "../utils";
 
 const UPDATE_COMMAND = "ajs update";
 const REGISTRY_URL = "https://registry.npmjs.org";
@@ -71,12 +77,12 @@ export function shouldCheckForUpdates(context: UpdateCheckContext): boolean {
 }
 
 function isValidCache(value: unknown): value is UpdateCheckCache {
-  const cache: { checkedAt?: unknown; latestVersion?: unknown } = Object(value);
   return (
-    isNumber(cache?.checkedAt) &&
-    (cache.latestVersion === undefined ||
-      (isString(cache.latestVersion) &&
-        semver.valid(cache.latestVersion) !== null))
+    isObject(value) &&
+    isNumber(value.checkedAt) &&
+    (value.latestVersion === undefined ||
+      (isString(value.latestVersion) &&
+        semver.valid(value.latestVersion) !== null))
   );
 }
 
