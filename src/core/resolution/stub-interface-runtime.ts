@@ -10,6 +10,15 @@ import type {} from "../../node-module-internals";
 import { isFunction, isObjectOrNull } from "../../utils";
 
 const Logger = new Logging.Channel("loader");
+
+/**
+ * The proxy classes under the type their default type arguments name.
+ * `instanceof` against the generic class narrows to `AsyncProxy<any, any>`,
+ * which the helpers below, typed with the defaults, reject as unsafe.
+ */
+export const AsyncProxyClass: new (...args: never[]) => AsyncProxy = AsyncProxy;
+const RegisteringProxyClass: new (...args: never[]) => RegisteringProxy =
+  RegisteringProxy;
 const warned = new Set<string>();
 
 const NO_PROVIDER_REASON = "has no provider for this async method";
@@ -59,7 +68,7 @@ function walk(
   if (isFunction(value)) {
     const callable: Function & { proxy?: unknown } = value;
     const maybeProxy = callable.proxy;
-    if (maybeProxy instanceof AsyncProxy) {
+    if (maybeProxy instanceof AsyncProxyClass) {
       neutralizeAsyncProxy(maybeProxy, interfaceName, reason);
     }
     return;
@@ -72,11 +81,11 @@ function walk(
   }
   seen.add(value);
 
-  if (value instanceof AsyncProxy) {
+  if (value instanceof AsyncProxyClass) {
     neutralizeAsyncProxy(value, interfaceName, reason);
     return;
   }
-  if (value instanceof RegisteringProxy) {
+  if (value instanceof RegisteringProxyClass) {
     neutralizeRegisteringProxy(value, interfaceName, reason);
     return;
   }
