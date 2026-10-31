@@ -28,7 +28,7 @@ A replacement provider leaves consuming code unchanged only when it supports the
 
 ## Install
 
-AntelopeJS requires Node.js 20.19 or later. Install the CLI globally:
+AntelopeJS requires Node.js 20.19 or later, or 22.12 or later. Node.js 21 and 22.0 to 22.11 are not supported. Install the CLI globally:
 
 ```bash
 pnpm add -g @antelopejs/core
@@ -85,7 +85,7 @@ When a plugin is missing, `ajs` offers to install it with the package manager th
 
 <!-- antelopejs-docs-compat:end -->
 
-The package declares Node.js `>=20.19` in `engines`. The contract it implements is [`@antelopejs/interface-core`](https://github.com/AntelopeJS/interface-core), whose range the table above lists.
+The package declares Node.js `^20.19.0 || >=22.12.0` in `engines`. The contract it implements is [`@antelopejs/interface-core`](https://github.com/AntelopeJS/interface-core), whose range the table above lists.
 
 ## Contributing
 
