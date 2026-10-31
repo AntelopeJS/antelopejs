@@ -25,8 +25,8 @@ import { collectStderr } from "../../../../helpers/capture-output";
 import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
 import {
   cleanupTempDir,
+  expectJsonFile,
   makeTempDir,
-  readJson,
 } from "../../../../helpers/temp";
 import { expectInstanceOf } from "../../fixtures";
 
@@ -138,10 +138,10 @@ async function rejectionOf(promise: Promise<unknown>): Promise<CliError> {
   throw new Error("Expected the module init to fail");
 }
 
-function readDependencies(moduleDir: string): Record<string, string> {
-  return readJson<{ dependencies: Record<string, string> }>(
-    path.join(moduleDir, "package.json"),
-  ).dependencies;
+function expectDependencies(moduleDir: string) {
+  return expectJsonFile(path.join(moduleDir, "package.json")).to.have.property(
+    "dependencies",
+  );
 }
 
 {
@@ -190,7 +190,7 @@ function readDependencies(moduleDir: string): Record<string, string> {
         await moduleInitCommand(moduleDir, {});
 
         expect(copiedAfterQuestions).to.equal(4);
-        expect(readDependencies(moduleDir)).to.deep.equal({
+        expectDependencies(moduleDir).to.deep.equal({
           "@antelopejs/interface-api": "latest",
         });
         expect(stubs.savePackageManager.calledWith("pnpm")).to.equal(true);
@@ -234,7 +234,7 @@ function readDependencies(moduleDir: string): Record<string, string> {
 
         expect(prompts.asked).to.deep.equal([]);
         expect(stubs.copy.firstCall.args[0].name).to.equal("api");
-        expect(readDependencies(moduleDir)).to.deep.equal({
+        expectDependencies(moduleDir).to.deep.equal({
           "@antelopejs/interface-api": "latest",
         });
         expect(stubs.savePackageManager.calledWith("yarn")).to.equal(true);
@@ -262,7 +262,7 @@ function readDependencies(moduleDir: string): Record<string, string> {
           yes: true,
         });
 
-        expect(readDependencies(moduleDir)).to.deep.equal({
+        expectDependencies(moduleDir).to.deep.equal({
           "@antelopejs/interface-api": ">=0.0.14 <0.1.0",
         });
       });

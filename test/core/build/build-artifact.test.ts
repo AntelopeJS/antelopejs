@@ -16,19 +16,6 @@ import {
 } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
-function resolveWith(
-  config: Parameters<ConfigVarStore["resolve"]>[1],
-  port: number,
-) {
-  const store = new ConfigVarStore();
-  store.record("api", ["API_PORT"], { API_PORT: port });
-  const result = store.resolve("dms", config);
-  assert.ok(isObject(result));
-  assert.ok("apiBaseUrl" in result);
-  assert.equal(String(result.apiBaseUrl), result.apiBaseUrl);
-  return result;
-}
-
 describe("build artifact", () => {
   afterEach(() => {
     sinon.restore();
@@ -79,13 +66,20 @@ describe("build artifact", () => {
     const hashB = await computeConfigHash("/project", "default", fs);
     const config = await new ConfigLoader(fs).load("/project", "default");
     const template = config.modules.dms.config;
+    const resolveAt = (port: number) => {
+      const store = new ConfigVarStore();
+      store.record("api", ["API_PORT"], { API_PORT: port });
+      const result = store.resolve("dms", template);
+      assert.ok(isObject(result));
+      assert.ok("apiBaseUrl" in result);
+      assert.equal(String(result.apiBaseUrl), result.apiBaseUrl);
+      return result;
+    };
 
     expect(template).to.deep.equal({
       apiBaseUrl: "http://127.0.0.1:${@api.API_PORT}",
     });
-    expect(resolveWith(template, 5010)).to.not.deep.equal(
-      resolveWith(template, 5011),
-    );
+    expect(resolveAt(5010)).to.not.deep.equal(resolveAt(5011));
     expect(hashA).to.equal(hashB);
   });
 

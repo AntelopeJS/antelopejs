@@ -100,10 +100,10 @@ function stubWatchedModuleDownloads() {
           ],
         ]);
 
-        let addedModules: any[] = [];
+        let addedModules: Parameters<ModuleManager["addModules"]>[0] = [];
         sinon.stub(ModuleManager.prototype, "addModules").callsFake(function (
           this: any,
-          modules: any[],
+          modules: typeof addedModules,
         ) {
           addedModules = modules;
           this.loaded = loaded;
@@ -131,10 +131,10 @@ function stubWatchedModuleDownloads() {
 
         const pendingReloads: Promise<void>[] = [];
         sinon.stub(HotReload.prototype, "queue").callsFake(function (
-          this: any,
+          this: HotReload,
           moduleId: string,
         ) {
-          const pending = Promise.resolve(this.reload(moduleId));
+          const pending = Promise.resolve(this["reload"](moduleId));
           pendingReloads.push(pending);
           return pending;
         });
@@ -165,10 +165,12 @@ function stubWatchedModuleDownloads() {
         const modAConfig = addedModules.find(
           (entry) => entry.manifest.name === "modA",
         )?.config;
-        expect(modAConfig.importOverrides.get("core@beta")).to.deep.equal([
+        expect(modAConfig?.importOverrides?.get("core@beta")).to.deep.equal([
           { module: "provider", id: "v1" },
         ]);
-        expect(Array.from(modAConfig.disabledExports)).to.deep.equal(["foo"]);
+        expect(Array.from(modAConfig?.disabledExports ?? [])).to.deep.equal([
+          "foo",
+        ]);
       });
     };
 

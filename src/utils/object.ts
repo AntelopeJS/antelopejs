@@ -23,7 +23,7 @@ export function isPlainObject(item: unknown): item is UnknownDictionary {
   if (!isObject(item)) {
     return false;
   }
-  const prototype = Object.getPrototypeOf(item);
+  const prototype = Reflect.getPrototypeOf(item);
   return prototype === Object.prototype || prototype === null;
 }
 
