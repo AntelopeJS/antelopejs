@@ -220,7 +220,7 @@ async function main() {
   verifyResolution();
   verifyStaysLight();
   verifyLoadBudget();
-  const cli = require(PUBLIC_ENTRY);
+  const cli = require("@antelopejs/core/cli");
   verifyExitCodes(cli);
   verifyOutput(cli);
   verifyHelp(cli);
