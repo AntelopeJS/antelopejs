@@ -11,7 +11,7 @@ import {
   type PackageManagerName,
 } from "./package-manager-name";
 import { getProcessPalette } from "./tasks";
-import { isObject, isString } from "../../utils";
+import { isString } from "../../utils";
 const PACKAGE_MANAGER_PATTERN = /^(npm|yarn|pnpm)@([0-9A-Za-z._+-]+)$/;
 const LOCKFILES: Record<PackageManagerName, string[]> = {
   npm: ["npm-shrinkwrap.json", "package-lock.json"],
@@ -162,18 +162,15 @@ export async function getModulePackageManager(
     if (!(await fileSystem.exists(packageJsonPath))) {
       return undefined;
     }
-    const packageJson: unknown = JSON.parse(
+    const packageJson = JSON.parse(
       await fileSystem.readFileString(packageJsonPath),
     );
-    const packageManager = isObject(packageJson)
-      ? packageJson.packageManager
-      : undefined;
-    if (!isString(packageManager) || packageManager === "") {
+    if (!packageJson.packageManager) {
       return undefined;
     }
-    return PACKAGE_MANAGER_PATTERN.test(packageManager) ||
-      PACKAGE_MANAGER_NAMES.some((name) => name === packageManager)
-      ? packageManager
+    return PACKAGE_MANAGER_PATTERN.test(packageJson.packageManager) ||
+      PACKAGE_MANAGER_NAMES.includes(packageJson.packageManager)
+      ? packageJson.packageManager
       : undefined;
   } catch {
     return undefined;
@@ -210,12 +207,9 @@ export function savePackageManagerToPackageJson(
   }
 
   try {
-    const packageJsonContent: unknown = JSON.parse(
+    const packageJsonContent = JSON.parse(
       fs.readFileSync(packageJsonPath, "utf8"),
     );
-    if (!isObject(packageJsonContent)) {
-      throw new TypeError(`${packageJsonPath} does not hold a JSON object`);
-    }
     const currentPackageManager = packageJsonContent.packageManager;
     if (
       isString(currentPackageManager) &&
