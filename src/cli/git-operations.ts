@@ -190,7 +190,7 @@ function scaffoldSparsePatterns(): string {
 }
 
 export async function copyTemplate(template: Template, distPath: string) {
-  await mkdirSync(distPath, { recursive: true });
+  mkdirSync(distPath, { recursive: true });
   await ExecuteCMD("git init", {
     cwd: distPath,
   });
