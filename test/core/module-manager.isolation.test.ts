@@ -1,4 +1,5 @@
 import { internal } from "@antelopejs/interface-core/internal";
+import { Logging } from "@antelopejs/interface-core/logging";
 import { Events } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import assert from "node:assert/strict";
@@ -355,7 +356,7 @@ describe("ModuleManager lifecycle signals", () => {
     expect(calls).to.not.include("started");
   });
 
-  it("rejects a timed-out start after bounded cleanup and destroys the remaining modules", async () => {
+  it("logs a timed-out start at its deadline, then rejects after bounded cleanup and destroys the remaining modules", async () => {
     const clock = sinon.useFakeTimers({
       toFake: ["setTimeout", "clearTimeout"],
     });
@@ -374,11 +375,19 @@ describe("ModuleManager lifecycle signals", () => {
       () => new Promise<void>(() => undefined),
     );
 
+    const logError = sinon.stub(Logging.Channel.prototype, "Error");
+
     let thrown: unknown;
     const starting = manager.startAll().catch((error: AggregateError) => {
       thrown = error;
     });
-    await clock.tickAsync(130_000);
+    await clock.tickAsync(120_000);
+
+    expect(
+      logError.calledWith("Module 'late' did not start within 120 s"),
+    ).to.equal(true);
+    expect(thrown).to.equal(undefined);
+    await clock.tickAsync(10_000);
 
     assert.ok(thrown instanceof AggregateError);
     expect(thrown.errors.map((error) => error.message)).to.deep.equal([
