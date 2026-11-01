@@ -15,8 +15,8 @@ export default function () {
     .addOption(
       new Option(
         "--frozen-modules",
-        "Install every npm module from its lock in antelope-lock/ and fail when one has none, instead of recording it",
-      ).env("ANTELOPEJS_FROZEN_MODULES"),
+        "Install every npm module from its lock in antelope-lock/ and fail when one has none, instead of recording it (also enabled by ANTELOPEJS_FROZEN_MODULES=1 or true)",
+      ),
     )
     .action(lazyAction(async () => (await import("./build-action")).runBuild));
   return withExamples(command, [

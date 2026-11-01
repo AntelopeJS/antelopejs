@@ -230,6 +230,7 @@ describe("project build behavior: --frozen-modules", () => {
   for (const [label, args, env] of [
     ["--frozen-modules", ["--frozen-modules"], undefined],
     ["ANTELOPEJS_FROZEN_MODULES", [], "1"],
+    ["ANTELOPEJS_FROZEN_MODULES=true", [], "true"],
   ] as const) {
     it(`build passes frozenModules to the build when ${label} is set`, async () => {
       if (env) {
@@ -252,6 +253,23 @@ describe("project build behavior: --frozen-modules", () => {
       ]);
 
       expect(build.firstCall.args[2]).to.deep.include({ frozenModules: true });
+    });
+  }
+
+  for (const value of ["false", "0", ""]) {
+    it(`build leaves frozenModules off when ANTELOPEJS_FROZEN_MODULES is '${value}'`, async () => {
+      process.env.ANTELOPEJS_FROZEN_MODULES = value;
+      sinon.stub(common, "readConfig").resolves({ name: "proj" });
+      const build = sinon.stub(buildModule, "build").resolves();
+      sinon
+        .stub(buildArtifactModule, "readBuildArtifact")
+        .resolves(buildArtifact());
+      collectStderr();
+      sinon.stub(getProcessUi(), "summary");
+
+      await cmdBuild().parseAsync(["node", "test", "--project", temp.folder]);
+
+      expect(build.firstCall.args[2]?.frozenModules).to.not.equal(true);
     });
   }
 
