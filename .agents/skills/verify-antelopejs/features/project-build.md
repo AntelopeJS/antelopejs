@@ -5,6 +5,7 @@ covers:
   - src/core/runtime/build-*.ts
   - src/core/modules/build-artifact.ts
   - src/core/config/**
+  - src/cli/commands/shared/project-command.ts
 docs:
   - docs/5.cli/2.project.md
   - docs/2.concepts/4.configuration.md
@@ -18,6 +19,7 @@ docs:
 
 - `build-artifact`: the artifact exists and lists every module.
 - `build-env`: without `environments` any `--env` builds the base; once `staging` is declared, `--env nope` exits 2 and writes no artifact, `--env staging` builds.
+- `build-range-conflict`: error path: a consumer requiring `verify-greeter ^2.0.0` against the shared 1.0.0 fails the build with the conflict, the module the shared copy comes from and the fix, writes no `build.json`, and `start` then finds no build.
 - `build-no-project`: empty path: outside a project, exit 1.
 
 ## How to get to it (user POV)

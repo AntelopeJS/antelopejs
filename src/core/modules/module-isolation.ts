@@ -9,9 +9,11 @@ import {
   pruneStaleInstanceCopies,
   removeInstanceCopy,
 } from "../resolution";
+import { Logger } from "./module-manager-logger";
 import type { ModuleManifest } from "./module-manifest";
 
 const DEFAULT_INSTANCE_ROOT = path.join(os.tmpdir(), "antelopejs-instances");
+const LISTED_FOLLOWED_LINKS = 3;
 
 /** Folder, inside a module cache, that holds instance copies of module packages. */
 export const INSTANCES_FOLDER = ".instances";
@@ -22,6 +24,26 @@ function realFolder(folder: string): string {
   } catch {
     return path.resolve(folder);
   }
+}
+
+function warnFollowedLinks(
+  moduleId: string,
+  folder: string,
+  followedLinks: string[],
+): void {
+  if (followedLinks.length === 0) {
+    return;
+  }
+  const listed = followedLinks.slice(0, LISTED_FOLLOWED_LINKS).join(", ");
+  const unlisted = followedLinks.length - LISTED_FOLLOWED_LINKS;
+  const more = unlisted > 0 ? ` and ${unlisted} more` : "";
+  const links =
+    followedLinks.length === 1
+      ? "1 link leads"
+      : `${followedLinks.length} links lead`;
+  Logger.Warn(
+    `Module ${moduleId} runs from a copy of ${folder}, where ${links} outside the folder: ${listed}${more}. The copy holds their targets but not the packages installed beside them, so their own dependencies may fail to resolve.`,
+  );
 }
 
 function evictFolder(folder: string): void {
@@ -125,7 +147,8 @@ export class ModuleIsolation {
     }
     const base = path.join(this.root, encodeURIComponent(moduleId));
     const copy = nextInstanceCopyPath(base);
-    createInstanceCopy(folder, copy);
+    const { followedLinks } = createInstanceCopy(folder, copy);
+    warnFollowedLinks(moduleId, folder, followedLinks);
     return copy;
   }
 

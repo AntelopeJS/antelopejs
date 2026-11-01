@@ -10,7 +10,7 @@ import { checkMap, planFor } from "./lib/map.mts";
 import { runSeededBreaks } from "./lib/seeded.mts";
 import { buildBaseCli } from "./lib/base.mts";
 import config from "../verify.config.ts";
-import { runFormalCheck, touchedFormalChecks } from "./lib/formal.mts";
+import { formalGate, runFormalCheck, touchedFormalChecks } from "./lib/formal.mts";
 import { doorLine, flaggedDoors, patchFiles } from "./lib/doors.mts";
 import { postComment, pushEvidence, readStatus, setStatus } from "./lib/publish.mts";
 import { readJudgement, renderVerdict } from "./lib/verdict.mts";
@@ -117,10 +117,15 @@ function runSeeded(features: string[], baseRef: string): number {
 
 function runFormal(dir: string, all: boolean): number {
   const state = loadRun(dir);
-  const checks = all ? config.formal : touchedFormalChecks(planFor(state.baseRef || "origin/main").changed);
+  const plan = planFor(state.baseRef || "origin/main");
+  const touched = touchedFormalChecks(plan.changed);
+  const checks = all ? config.formal : touched;
   for (const check of checks) {
-    const result = runFormalCheck(state, check);
-    print(`${result.violated.length > 0 ? "VIOLATED" : result.exitCode === 0 ? "HOLDS" : "ERROR"} ${check.name}${result.violated.length > 0 ? `: ${result.violated.join(", ")}` : ""} (exit ${result.exitCode})`);
+    const gate = touched.includes(check);
+    const result = runFormalCheck(state, check, gate ? { baseSha: plan.baseSha, headSha: plan.headSha, changed: plan.changed } : null);
+    const weight = formalGate(result);
+    const outcome = gate ? (weight.fails ? "FAIL" : "PASS") : result.violated.length > 0 ? "VIOLATED" : result.exitCode === 0 ? "HOLDS" : "ERROR";
+    print(`${outcome} ${check.name}: ${gate ? weight.outcome : `${result.violated.join(", ") || "no violated rule"} (does not cover the diff)`} (exit ${result.exitCode})`);
   }
   if (checks.length === 0) {
     print("no formal check covers the diff");

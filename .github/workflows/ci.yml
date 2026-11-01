@@ -20,7 +20,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts map
+      - run: node --test .agents/skills/verify-antelopejs/bin/lib/*.test.mts
 
   formal-module-lifecycle:
     runs-on: ubuntu-latest

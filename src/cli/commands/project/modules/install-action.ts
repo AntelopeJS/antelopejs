@@ -6,6 +6,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 import path from "node:path";
 
+import { interfaceRangesModule } from "../../../../core/build";
 import {
   ConfigLoader,
   TS_CONFIG_FILE,
@@ -26,6 +27,8 @@ import {
   getProcessPalette,
   getProcessUi,
   info,
+  type InterfaceRangeConflict,
+  InterfaceResolutionError,
   pluralize,
   runTask,
   warning,
@@ -418,6 +421,49 @@ function installNextSteps(
   ];
 }
 
+function rangeConflictKey(conflict: InterfaceRangeConflict): string {
+  return JSON.stringify([
+    conflict.moduleId,
+    conflict.packageName,
+    conflict.range,
+    conflict.canonical.root,
+  ]);
+}
+
+/**
+ * Loads each environment's modules as `ajs project build` does and finds
+ * every module whose declared range of an interface package excludes the
+ * shared copy it would get at startup, so the conflict surfaces before a build
+ * or a deployment.
+ *
+ * @returns an InterfaceResolutionError naming every conflicting module once,
+ * or undefined when no range conflicts.
+ */
+async function findInterfaceRangeFailure(
+  project: string,
+  environments: string[],
+): Promise<InterfaceResolutionError | undefined> {
+  const conflicts = new Map<string, InterfaceRangeConflict>();
+  for (const env of environments) {
+    const found = await runTask(
+      `Checking interface versions in ${env}`,
+      () =>
+        interfaceRangesModule.findProjectInterfaceRangeConflicts(project, env),
+      { done: `Checked interface versions in ${env}` },
+    );
+    found.forEach((conflict) =>
+      conflicts.set(rangeConflictKey(conflict), conflict),
+    );
+  }
+  if (conflicts.size === 0) {
+    return undefined;
+  }
+  return new InterfaceResolutionError({
+    rangeConflicts: [...conflicts.values()],
+    preloadedCopies: [],
+  });
+}
+
 export async function installModules(options: InstallOptions): Promise<void> {
   const startedAt = Date.now();
   const { config: baseConfig, environment } = await resolveProjectContext(
@@ -425,14 +471,22 @@ export async function installModules(options: InstallOptions): Promise<void> {
     options.env,
   );
   const context = await createInstallContext(options, baseConfig);
-  for (const env of environmentsToAnalyze(options, baseConfig, environment)) {
+  const environments = environmentsToAnalyze(options, baseConfig, environment);
+  for (const env of environments) {
     await resolveEnvironment(context, env);
   }
   const outcome = await installSelectedModules(context);
   reportRecordedLocks(context.locks);
+  const rangeFailure = await findInterfaceRangeFailure(
+    options.project,
+    environments,
+  );
   getProcessUi().summary({
     headline: installHeadline(context, outcome),
     durationMs: Date.now() - startedAt,
-    nextSteps: installNextSteps(context, outcome),
+    nextSteps: rangeFailure ? [] : installNextSteps(context, outcome),
   });
+  if (rangeFailure) {
+    throw rangeFailure;
+  }
 }

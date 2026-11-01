@@ -5,12 +5,12 @@
 
 <a href="https://www.npmjs.com/package/@antelopejs/core"><img alt="npm" src="https://img.shields.io/npm/v/@antelopejs/core?style=for-the-badge&labelColor=000000&color=000000"></a>
 <a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/core?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="https://discord.gg/sjK28QHrA7"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://discord.gg/g4pFt6eXqu"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
 <a href="https://framework.antelopejs.com/docs/get-started/introduction"><img alt="Docs" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
 </div>
 
-AntelopeJS is a TypeScript framework and CLI for Node.js applications. It extends the ports-and-adapters model from your own code to the modules you install: business modules depend on contracts, provider modules implement them, and the application picks which provider runs.
+AntelopeJS is a TypeScript framework and CLI for Node.js applications. It extends the ports-and-adapters model from your own code to the modules you install: business modules depend on contracts, provider modules implement them, and the application picks which provider runs. The open-source back office [AntelopeJS DMS](https://github.com/AntelopeJS/dms) is built on it.
 
 <p align="center">
   <img src="./.github/assets/contract-model.svg" alt="A business module depends on the database contract; the MongoDB and RethinkDB modules implement it; antelope.config.ts selects MongoDB." width="880">
@@ -19,7 +19,7 @@ AntelopeJS is a TypeScript framework and CLI for Node.js applications. It extend
 ## Why AntelopeJS
 
 - **Contracts, not imports.** A module imports interface packages such as [`@antelopejs/interface-database`](https://github.com/AntelopeJS/interface-database), never another module's files.
-- **Providers you can swap.** [`@antelopejs/mongodb`](https://github.com/AntelopeJS/mongodb) and [`@antelopejs/rethinkdb`](https://github.com/AntelopeJS/rethinkdb) implement the same database contract; `antelope.config.ts` chooses one, from npm, Git or a local folder.
+- **Providers you can swap.** [`@antelopejs/postgres`](https://github.com/AntelopeJS/postgres), [`@antelopejs/mongodb`](https://github.com/AntelopeJS/mongodb) and [`@antelopejs/rethinkdb`](https://github.com/AntelopeJS/rethinkdb) implement the same database contract; `antelope.config.ts` chooses one, from npm, Git or a local folder.
 - **A runtime that wires them.** The core binds every interface to its provider, queues calls until the provider is ready, and runs each module's `construct`, `start`, `stop` and `destroy` steps.
 - **Hot reload in development.** `ajs project dev --watch` reloads a changed module without restarting the others.
 - **One CLI.** `ajs` creates projects and modules, adds providers, runs tests, and builds and starts the application. It can also run embedded in a host application through `createRuntime`.

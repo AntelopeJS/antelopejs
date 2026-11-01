@@ -1,4 +1,4 @@
-import { cpSync } from "node:fs";
+import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { exists, exitIs, has, equal } from "./checks.mts";
@@ -47,6 +47,12 @@ export async function initProject(context: JourneyContext, name: string): Promis
 export async function installFixture(context: JourneyContext, folder: string): Promise<void> {
   const install = await context.command(`pnpm install ${path.basename(folder)}`, "pnpm", ["install", "--offline"], { cwd: folder });
   context.expect(install.folder, [exitIs(install, 0)], { critical: true });
+}
+
+/** Sets the range of `verify-greeter` the greeter consumer declares. */
+export function setConsumerRange(greeter: string, range: string): void {
+  const file = path.join(greeter, "consumer", "package.json");
+  writeFileSync(file, readFileSync(file, "utf8").replace('"^1.0.0"', JSON.stringify(range)));
 }
 
 /** Copies the greeter fixture project into the journey's own folder. */

@@ -27,6 +27,7 @@ import {
   registerCoreInterfaces,
   registerCoreModuleInterface,
 } from "./module-loading";
+import { partitionModuleEntries } from "./module-interfaces";
 import {
   claimProcess,
   createShutdownManager,
@@ -322,8 +323,9 @@ function addModules(launch: ProjectLaunch): void {
   if (project.instanceRoot) {
     manager.setInstanceRoot(project.instanceRoot);
   }
-  launch.optionalEntries = entries.filter((entry) => entry.config?.optional);
-  manager.addModules(entries.filter((entry) => !entry.config?.optional));
+  const { required, optional } = partitionModuleEntries(entries);
+  launch.optionalEntries = optional;
+  manager.addModules(required);
   ensureGraphIsValid(manager);
 }
 

@@ -274,6 +274,42 @@ function installFailure(): CliError {
   });
 }
 
+describe("describeFailure aggregates", () => {
+  function failedLaunch(): AggregateError {
+    return new AggregateError(
+      [
+        new AggregateError(
+          [
+            new Error("Module 'late' did not start within 120 s"),
+            new Error("Module 'late' did not stop within 10 s"),
+          ],
+          "Failed to start modules",
+        ),
+        new Error("Module 'late' did not stop within 10 s"),
+      ],
+      "Failed to launch project",
+    );
+  }
+
+  it("shows nested leaf messages instead of only the aggregate wrapper", () => {
+    expect(describeFailure(failedLaunch(), false)).to.deep.equal({
+      title: "Failed to launch project",
+      details: [
+        "Module 'late' did not start within 120 s",
+        "Module 'late' did not stop within 10 s",
+        STACK_TRACE_HINT,
+      ],
+    });
+  });
+
+  it("includes nested stacks instead of only the aggregate stack with --verbose", () => {
+    expect(describeFailure(failedLaunch(), true).details).to.include.members([
+      "Error: Module 'late' did not start within 120 s",
+      "Error: Module 'late' did not stop within 10 s",
+    ]);
+  });
+});
+
 describe("reportFailure", () => {
   it("prints what failed, why and the details before the fixes", () => {
     const { ui, feedback } = createMemoryUi({ hasUnicode: false });
