@@ -309,11 +309,18 @@ describe("ModuleManager lifecycle signals", () => {
     manager: ModuleManager,
     id: string,
     start: (() => void) | (() => Promise<void>),
+    destroy?: () => void | Promise<void>,
   ): Promise<CoreModule> {
     const module = new CoreModule(
-      manifestFixture({ name: id, version: "1.0.0", main: `/${id}/index.js` }),
+      manifestFixture({
+        name: id,
+        version: "1.0.0",
+        main: `/${id}/index.js`,
+        folder: `/${id}`,
+      }),
       sinon.stub().resolves({
         start,
+        destroy,
         stop: () => calls.push(`stop:${id}`),
       }),
     );
@@ -346,5 +353,39 @@ describe("ModuleManager lifecycle signals", () => {
       "Module 'late' did not start within 120 s",
     ]);
     expect(calls).to.not.include("started");
+  });
+
+  it("rejects a timed-out start after bounded cleanup and destroys the remaining modules", async () => {
+    const clock = sinon.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout"],
+    });
+    const manager = new ModuleManager();
+    await addConstructedModule(
+      manager,
+      "punctual",
+      () => undefined,
+      () => {
+        calls.push("destroy:punctual");
+      },
+    );
+    await addConstructedModule(
+      manager,
+      "late",
+      () => new Promise<void>(() => undefined),
+    );
+
+    let thrown: unknown;
+    const starting = manager.startAll().catch((error: AggregateError) => {
+      thrown = error;
+    });
+    await clock.tickAsync(130_000);
+
+    assert.ok(thrown instanceof AggregateError);
+    expect(thrown.errors.map((error) => error.message)).to.deep.equal([
+      "Module 'late' did not start within 120 s",
+      "Module 'late' did not stop within 10 s",
+    ]);
+    expect(calls).to.include("destroy:punctual");
+    await starting;
   });
 });
