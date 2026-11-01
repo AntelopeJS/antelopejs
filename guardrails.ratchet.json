@@ -2,9 +2,9 @@
   "pack": "0.2.17",
   "rules": {
     "typescript/no-unnecessary-type-parameters": 2,
-    "typescript/no-unsafe-argument": 6,
-    "typescript/no-unsafe-assignment": 61,
-    "typescript/no-unsafe-return": 22
+    "typescript/no-unsafe-argument": 2,
+    "typescript/no-unsafe-assignment": 53,
+    "typescript/no-unsafe-return": 20
   },
   "oversizeFiles": {}
 }
