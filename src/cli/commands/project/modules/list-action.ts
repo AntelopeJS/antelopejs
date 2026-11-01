@@ -15,6 +15,7 @@ import {
   type TableColumn,
   type Ui,
 } from "../../../../core/output";
+import { isObject, isString } from "../../../../utils";
 import { resolveProjectContext } from "../../shared/project-command";
 
 interface ListOptions {
@@ -36,11 +37,6 @@ interface SourceSummary {
 interface ModuleRow extends SourceSummary {
   name: string;
 }
-
-type SourceSummarizer = (
-  source: ModuleSource,
-  moduleName: string,
-) => SourceSummary;
 
 const UNKNOWN_SOURCE_KIND = "unknown";
 const MISSING_REFERENCE = "-";
@@ -64,54 +60,59 @@ function gitReference(source: ModuleSourceGit): string {
   return [source.remote, branch, commit].filter(Boolean).join(" ");
 }
 
-function summarizeOwnSource<Source extends ModuleSource>(
-  summarize: (source: Source, moduleName: string) => SourceSummary,
-): SourceSummarizer {
-  // SAFETY: SOURCE_SUMMARIZERS is indexed by the source's type discriminator, so each summarizer only receives the source interface that discriminator names.
-  return (source, moduleName) => summarize(source as Source, moduleName);
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || isString(value);
 }
 
-const SOURCE_SUMMARIZERS = new Map<string, SourceSummarizer>([
-  [
-    "package",
-    summarizeOwnSource((source: ModuleSourcePackage, moduleName) => ({
-      kind: "npm",
-      reference: packageReference(source, moduleName),
-    })),
-  ],
-  [
-    "git",
-    summarizeOwnSource((source: ModuleSourceGit) => ({
-      kind: "git",
-      reference: gitReference(source),
-    })),
-  ],
-  [
-    "local",
-    summarizeOwnSource((source: ModuleSourceLocal) => ({
-      kind: "local",
-      reference: source.path,
-    })),
-  ],
-  [
-    "local-folder",
-    summarizeOwnSource((source: ModuleSourceLocalFolder) => ({
-      kind: "folder",
-      reference: source.path,
-    })),
-  ],
-]);
+function isPackageSource(source: ModuleSource): source is ModuleSourcePackage {
+  return (
+    isObject(source) &&
+    source.type === "package" &&
+    isString(source.package) &&
+    isString(source.version)
+  );
+}
+
+function isGitSource(source: ModuleSource): source is ModuleSourceGit {
+  return (
+    isObject(source) &&
+    source.type === "git" &&
+    isString(source.remote) &&
+    isOptionalString(source.branch) &&
+    isOptionalString(source.commit)
+  );
+}
+
+function isLocalSource(source: ModuleSource): source is ModuleSourceLocal {
+  return isObject(source) && source.type === "local" && isString(source.path);
+}
+
+function isFolderSource(
+  source: ModuleSource,
+): source is ModuleSourceLocalFolder {
+  return (
+    isObject(source) && source.type === "local-folder" && isString(source.path)
+  );
+}
 
 function summarizeSource(listing: ModuleListing): SourceSummary {
-  const sourceType = listing.source?.type;
-  const summarize = sourceType ? SOURCE_SUMMARIZERS.get(sourceType) : undefined;
-  if (!summarize) {
-    return {
-      kind: UNKNOWN_SOURCE_KIND,
-      reference: JSON.stringify(listing.source) ?? MISSING_REFERENCE,
-    };
+  const { source, name } = listing;
+  if (isPackageSource(source)) {
+    return { kind: "npm", reference: packageReference(source, name) };
   }
-  return summarize(listing.source, listing.name);
+  if (isGitSource(source)) {
+    return { kind: "git", reference: gitReference(source) };
+  }
+  if (isLocalSource(source)) {
+    return { kind: "local", reference: source.path };
+  }
+  if (isFolderSource(source)) {
+    return { kind: "folder", reference: source.path };
+  }
+  return {
+    kind: UNKNOWN_SOURCE_KIND,
+    reference: JSON.stringify(source) ?? MISSING_REFERENCE,
+  };
 }
 
 const MODULE_COLUMNS: TableColumn<ModuleRow>[] = [

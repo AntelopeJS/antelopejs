@@ -1,9 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import { isObjectOrNull, isString } from "./type-guards";
 
-// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Application config and logging dictionaries carry caller-owned keys and leaf values of every kind, so the merge, diff and path-assignment helpers can only treat the leaves as open.
-type OpenDictionary = Record<string, any>;
-
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The result of a plain-object guard: its keys are known to be strings and its leaves are what the guard's caller goes on to decode.
 export type UnknownDictionary = Record<string, unknown>;
 
@@ -32,40 +29,39 @@ export function isPlainObject(item: unknown): item is UnknownDictionary {
   return prototype === Object.prototype || prototype === null;
 }
 
-function assignOwn(
-  target: OpenDictionary,
-  key: string,
-  value: UnknownDictionary[string],
-): void {
-  Object.defineProperty(target, key, {
+function ownDataProperty(value: UnknownDictionary[string]) {
+  return {
     value,
     enumerable: true,
     writable: true,
     configurable: true,
-  });
+  };
 }
 
-export function mergeDeep(
-  target: OpenDictionary,
-  ...sources: Array<OpenDictionary | undefined>
-) {
-  const result: typeof target = { ...target };
+export function mergeDeep<T extends object>(
+  target: T,
+  ...sources: Array<Partial<T> | undefined>
+): T {
+  const result: T = { ...target };
 
   for (const source of sources) {
     if (!source) continue;
-    for (const key in source) {
-      if (Object.hasOwn(source, key)) {
-        const sourceValue = source[key];
-        const targetValue = Object.hasOwn(result, key)
-          ? result[key]
-          : undefined;
+    const entries: ObjectEntry[] = Object.entries(source);
+    for (const [key, sourceValue] of entries) {
+      const targetValue: unknown = Object.getOwnPropertyDescriptor(
+        result,
+        key,
+      )?.value;
 
-        if (isObject(sourceValue) && isObject(targetValue)) {
-          assignOwn(result, key, mergeDeep(targetValue, sourceValue));
-        } else {
-          assignOwn(result, key, sourceValue);
-        }
-      }
+      Object.defineProperty(
+        result,
+        key,
+        ownDataProperty(
+          isObject(sourceValue) && isObject(targetValue)
+            ? mergeDeep(targetValue, sourceValue)
+            : sourceValue,
+        ),
+      );
     }
   }
 
@@ -79,13 +75,17 @@ type ObjectEntry = [string, unknown];
  * reduced to their own differing keys. Merging the result into `before` with
  * {@link mergeDeep} yields `after`, as long as no key was removed.
  */
-export function diffDeep(
-  before: OpenDictionary,
-  after: OpenDictionary,
+export function diffDeep<T extends object>(
+  before: T,
+  after: T,
 ): UnknownDictionary {
+  const entries: ObjectEntry[] = Object.entries(after);
   return Object.fromEntries(
-    Object.entries(after).flatMap(([key, value]): ObjectEntry[] => {
-      const previous = Object.hasOwn(before, key) ? before[key] : undefined;
+    entries.flatMap(([key, value]): ObjectEntry[] => {
+      const previous: unknown = Object.getOwnPropertyDescriptor(
+        before,
+        key,
+      )?.value;
       if (isPlainObject(previous) && isPlainObject(value)) {
         const nested = diffDeep(previous, value);
         return Object.keys(nested).length > 0 ? [[key, nested]] : [];
@@ -96,19 +96,19 @@ export function diffDeep(
 }
 
 function assignKey(
-  target: OpenDictionary,
+  target: UnknownDictionary,
   key: string,
   value: UnknownDictionary[string],
 ): void {
   if (key === "__proto__") {
-    assignOwn(target, key, value);
+    Object.defineProperty(target, key, ownDataProperty(value));
   } else {
     target[key] = value;
   }
 }
 
 export function set(
-  obj: OpenDictionary,
+  obj: UnknownDictionary,
   path: string,
   value: UnknownDictionary[string],
 ): void {
@@ -119,10 +119,14 @@ export function set(
     const key = keys[i];
     const present =
       key === "__proto__" ? Object.hasOwn(current, key) : key in current;
-    if (!present || !isObject(current[key])) {
-      assignKey(current, key, {});
+    const existing = current[key];
+    if (present && isObject(existing)) {
+      current = existing;
+    } else {
+      const created: UnknownDictionary = {};
+      assignKey(current, key, created);
+      current = created;
     }
-    current = current[key];
   }
 
   assignKey(current, keys[keys.length - 1], value);
