@@ -168,6 +168,31 @@ export class ModuleLockStore {
     return { ...key, lockfile, content };
   }
 
+  /**
+   * Stages the record next to its folder and renames it into place, so a
+   * failed write leaves the previous record as it was.
+   */
+  private async replaceRecordFolder(record: ModuleLockRecord): Promise<void> {
+    const folder = this.recordFolder(record);
+    const staging = path.join(
+      path.dirname(folder),
+      `.${path.basename(folder)}.${process.pid}.tmp`,
+    );
+    const discard = { recursive: true, force: true };
+    try {
+      await this.fs.rm(staging, discard);
+      await this.fs.mkdir(staging, { recursive: true });
+      await this.fs.writeFile(
+        path.join(staging, record.lockfile),
+        record.content,
+      );
+      await this.fs.rm(folder, discard);
+      await this.fs.rename(staging, folder);
+    } finally {
+      await this.fs.rm(staging, discard);
+    }
+  }
+
   async write(record: ModuleLockRecord): Promise<ModuleLockChange> {
     const previous = await this.read(record);
     if (
@@ -176,10 +201,7 @@ export class ModuleLockStore {
     ) {
       return "unchanged";
     }
-    const folder = this.recordFolder(record);
-    await this.fs.rm(folder, { recursive: true, force: true });
-    await this.fs.mkdir(folder, { recursive: true });
-    await this.fs.writeFile(path.join(folder, record.lockfile), record.content);
+    await this.replaceRecordFolder(record);
     this.recorded.set(recordName(record), normalizeKey(record));
     return previous ? "changed" : "added";
   }

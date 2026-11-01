@@ -1,4 +1,5 @@
 import * as fsSync from "node:fs";
+import * as path from "node:path";
 
 import type { IFileSystem } from "../../src/types";
 
@@ -195,9 +196,18 @@ export class InMemoryFileSystem implements IFileSystem {
   }
 
   async rename(oldPath: string, newPath: string): Promise<void> {
-    const content = await this.readFile(oldPath);
-    await this.writeFile(newPath, content);
-    await this.rm(oldPath);
+    const source = this.getParent(oldPath);
+    const node = source?.parent.children?.get(source.name);
+    if (!source || !node) {
+      throw new Error(`ENOENT: no such file or directory: ${oldPath}`);
+    }
+    await this.mkdir(path.dirname(newPath), { recursive: true });
+    const target = this.getParent(newPath);
+    if (!target) {
+      throw new Error(`ENOENT: no such file or directory: ${newPath}`);
+    }
+    source.parent.children?.delete(source.name);
+    target.parent.children?.set(target.name, node);
   }
 
   addFile(filePath: string, content: string): void {

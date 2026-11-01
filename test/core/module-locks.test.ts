@@ -1,10 +1,14 @@
 import { expect } from "chai";
 
+import path from "node:path";
 import sinon from "sinon";
 
 import { ModuleLockStore, reportRecordedLocks } from "../../src/core/modules";
+import { NodeFileSystem } from "../../src/core/filesystem";
+import type { IFileSystem } from "../../src/types";
 import { getProcessUi } from "../../src/core/output";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
+import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
 const API = { package: "@antelopejs/api", version: "1.5.0" };
 
@@ -128,6 +132,62 @@ describe("ModuleLockStore", () => {
     const store = new ModuleLockStore("/project", new InMemoryFileSystem());
 
     expect(await store.list()).to.deep.equal([]);
+  });
+});
+
+describe("ModuleLockStore atomic write", () => {
+  let project = "";
+
+  beforeEach(() => {
+    project = makeTempDir("ajs-lock-store-");
+  });
+
+  afterEach(() => {
+    cleanupTempDir(project);
+  });
+
+  it("keeps the previous record and leaves no debris when writing the new one fails", async () => {
+    class InterruptedFileSystem extends NodeFileSystem {
+      async writeFile(
+        filePath: string,
+        data: Parameters<IFileSystem["writeFile"]>[1],
+      ): Promise<void> {
+        if (data === "lock: b") {
+          throw new Error("disk full");
+        }
+        return super.writeFile(filePath, data);
+      }
+    }
+    await new ModuleLockStore(project).write(lockRecord("1.5.0", "lock: a"));
+    const store = new ModuleLockStore(project, new InterruptedFileSystem());
+
+    const failure = await store
+      .write(lockRecord("1.5.0", "lock: b"))
+      .catch((error) => error);
+
+    expect(failure).to.be.instanceOf(Error);
+    expect(await store.read(API)).to.deep.equal(lockRecord("1.5.0", "lock: a"));
+    expect(
+      await new NodeFileSystem().readdir(
+        path.join(project, "antelope-lock", "@antelopejs"),
+      ),
+    ).to.deep.equal(["api@1.5.0"]);
+  });
+
+  it("replaces a record whose lockfile name changed", async () => {
+    const store = new ModuleLockStore(project);
+    await store.write(lockRecord("1.5.0", "lock: a"));
+
+    await store.write({
+      ...lockRecord("1.5.0", "{}"),
+      lockfile: "package-lock.json",
+    });
+
+    expect(
+      await new NodeFileSystem().readdir(
+        path.join(store.folder, "@antelopejs", "api@1.5.0"),
+      ),
+    ).to.deep.equal(["package-lock.json"]);
   });
 });
 
