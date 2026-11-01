@@ -154,15 +154,19 @@ function describeChange(
   return previous === current ? "unchanged" : "changed";
 }
 
+/** What `modules update` resolves the locks of the modules with. */
+interface RefreshContext {
+  project: string;
+  cache: ModuleCache;
+  registry: DownloaderRegistry;
+  store: ModuleLockStore;
+}
+
 async function refreshModuleLock(
-  context: {
-    project: string;
-    cache: ModuleCache;
-    registry: DownloaderRegistry;
-  },
+  context: RefreshContext,
   module: LockedModule,
 ): Promise<RefreshedLock> {
-  const store = new ModuleLockStore(context.project);
+  const { store } = context;
   const before = await recordedContents(store, module.source.package);
   const [manifest] = await context.registry.load(
     context.project,
@@ -196,24 +200,29 @@ function reportRefreshedLock({ key, change }: RefreshedLock): void {
 /**
  * Downloads `modules` again, resolves their dependencies from the registry
  * without their recorded locks, and records the lockfiles they get.
+ * @param context Where to download and record; the project's own by default
  */
 export async function refreshModuleLocks(
   project: string,
   config: AntelopeConfig,
   modules: LockedModule[],
+  context?: RefreshContext,
 ): Promise<RefreshedLock[]> {
   if (modules.length === 0) {
     return [];
   }
-  const context = {
+  const refreshContext = context ?? {
     project,
+    store: new ModuleLockStore(project),
     cache: await openModuleCache(project, config),
     registry: createModuleRegistry(project, "refresh"),
   };
   const refreshed = await runTask(
     "Resolving module dependencies",
     () =>
-      Promise.all(modules.map((module) => refreshModuleLock(context, module))),
+      Promise.all(
+        modules.map((module) => refreshModuleLock(refreshContext, module)),
+      ),
     { done: "Resolved module dependencies" },
   );
   refreshed.forEach(reportRefreshedLock);
