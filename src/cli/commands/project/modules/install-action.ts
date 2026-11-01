@@ -13,7 +13,12 @@ import {
 } from "../../../../core/config";
 import type { DownloaderRegistry } from "../../../../core/downloaders";
 import { NodeFileSystem } from "../../../../core/filesystem";
-import { type ModuleCache, ModuleManifest } from "../../../../core/modules";
+import {
+  type ModuleCache,
+  ModuleLockStore,
+  ModuleManifest,
+  reportRecordedLocks,
+} from "../../../../core/modules";
 import {
   CliError,
   createPrompter,
@@ -197,6 +202,7 @@ interface InstallContext {
   loader: ConfigLoader;
   registry: DownloaderRegistry;
   cache: ModuleCache;
+  locks: ModuleLockStore;
   modulesToInstall: ModuleToInstall[];
   unresolvedImportCount: number;
   unimplementedImportCount: number;
@@ -216,6 +222,7 @@ async function createInstallContext(
   const gitManifest = await loadManifestFromGit(git);
   const fs = new NodeFileSystem();
   const cache = await openModuleCache(options.project, baseConfig);
+  const locks = new ModuleLockStore(options.project, fs);
   return {
     options,
     prompter: createPrompter({
@@ -227,8 +234,9 @@ async function createInstallContext(
     gitManifest,
     fs,
     loader: new ConfigLoader(fs),
-    registry: createModuleRegistry(options.project, "record", fs),
+    registry: createModuleRegistry(locks, "record", fs),
     cache,
+    locks,
     modulesToInstall: [],
     unresolvedImportCount: 0,
     unimplementedImportCount: 0,
@@ -368,6 +376,7 @@ async function installSelectedModules(
       await addModules(
         modules.map((module) => module.loaderIdentifier),
         { mode, project: context.options.project, env },
+        context.locks,
       ),
     );
   }
@@ -420,6 +429,7 @@ export async function installModules(options: InstallOptions): Promise<void> {
     await resolveEnvironment(context, env);
   }
   const outcome = await installSelectedModules(context);
+  reportRecordedLocks(context.locks);
   getProcessUi().summary({
     headline: installHeadline(context, outcome),
     durationMs: Date.now() - startedAt,

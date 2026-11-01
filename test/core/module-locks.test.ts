@@ -1,6 +1,9 @@
 import { expect } from "chai";
 
-import { ModuleLockStore } from "../../src/core/modules";
+import sinon from "sinon";
+
+import { ModuleLockStore, reportRecordedLocks } from "../../src/core/modules";
+import { getProcessUi } from "../../src/core/output";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
 const API = { package: "@antelopejs/api", version: "1.5.0" };
@@ -196,5 +199,35 @@ describe("ModuleLockStore prune", () => {
     expect(ModuleLockStore.relativePath(API)).to.equal(
       "antelope-lock/@antelopejs/api@1.5.0",
     );
+  });
+});
+
+describe("reportRecordedLocks", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("prints one line for every record written since the last report", async () => {
+    const message = sinon.stub(getProcessUi(), "message");
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+    await store.write(lockRecord("1.5.0", "a"));
+    await store.write(lockRecord("1.6.0", "b"));
+    await store.write(lockRecord("1.6.0", "b"));
+
+    reportRecordedLocks(store);
+    reportRecordedLocks(store);
+
+    expect(message.callCount).to.equal(1);
+    expect(message.firstCall.args[1]).to.include("Recorded 2 module locks");
+  });
+
+  it("prints nothing when no record was written", () => {
+    const message = sinon.stub(getProcessUi(), "message");
+
+    reportRecordedLocks(
+      new ModuleLockStore("/project", new InMemoryFileSystem()),
+    );
+
+    expect(message.called).to.equal(false);
   });
 });

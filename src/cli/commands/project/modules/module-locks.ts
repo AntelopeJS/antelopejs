@@ -47,10 +47,10 @@ function isPackageSource(
 
 /**
  * The downloaders a modules command loads modules with. Package modules use
- * the project's module locks in `mode`.
+ * the module locks in `locks` in `mode`.
  */
 export function createModuleRegistry(
-  project: string,
+  locks: ModuleLockStore,
   mode: ModuleLockMode,
   fs: NodeFileSystem = new NodeFileSystem(),
 ): DownloaderRegistry {
@@ -60,7 +60,7 @@ export function createModuleRegistry(
   registerPackageDownloader(registry, {
     fs,
     exec: ExecuteCMD,
-    lock: { store: new ModuleLockStore(project, fs), mode },
+    lock: { store: locks, mode },
   });
   registerGitDownloader(registry, { fs, exec: ExecuteCMD });
   return registry;
@@ -185,6 +185,9 @@ async function refreshModuleLock(
 }
 
 function reportRefreshedLock({ key, change }: RefreshedLock): void {
+  if (change === "unchanged") {
+    return;
+  }
   const ui = getProcessUi();
   const lock = getProcessPalette().bold(ModuleLockStore.relativePath(key));
   if (change === "missing") {
@@ -194,7 +197,7 @@ function reportRefreshedLock({ key, change }: RefreshedLock): void {
     );
     return;
   }
-  ui.message(change === "unchanged" ? "info" : "success", `${lock} ${change}`);
+  ui.message("success", `${lock} ${change}`);
 }
 
 /**
@@ -215,7 +218,7 @@ export async function refreshModuleLocks(
     project,
     store: new ModuleLockStore(project),
     cache: await openModuleCache(project, config),
-    registry: createModuleRegistry(project, "refresh"),
+    registry: createModuleRegistry(new ModuleLockStore(project), "refresh"),
   };
   const refreshed = await runTask(
     "Resolving module dependencies",

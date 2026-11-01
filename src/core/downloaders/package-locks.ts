@@ -120,11 +120,6 @@ export class PackageLocks {
       return;
     }
     const content = await this.fs.readFileString(path.join(folder, lockfile));
-    const change = await this.policy.store.write({ ...key, lockfile, content });
-    if (change !== "unchanged" && this.policy.mode === "record") {
-      Logger.Info(
-        `Recorded ${ModuleLockStore.relativePath(key)}: commit it so every install of ${key.package}@${key.version} gets the same dependencies`,
-      );
-    }
+    await this.policy.store.write({ ...key, lockfile, content });
   }
 }

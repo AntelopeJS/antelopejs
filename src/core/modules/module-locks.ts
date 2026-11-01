@@ -3,7 +3,12 @@ import { maxSatisfying, valid, validRange } from "semver";
 
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import { CliError, MODULE_LOCKFILE_NAMES } from "../output";
+import {
+  CliError,
+  getProcessUi,
+  MODULE_LOCKFILE_NAMES,
+  pluralize,
+} from "../output";
 
 /** Folder of the project, next to `antelope.config.ts`, that holds the module locks. */
 export const MODULE_LOCK_FOLDER = "antelope-lock";
@@ -126,6 +131,7 @@ function keptVersions(
  */
 export class ModuleLockStore {
   readonly folder: string;
+  private readonly recorded = new Map<string, ModuleLockKey>();
 
   constructor(
     projectFolder: string,
@@ -172,7 +178,15 @@ export class ModuleLockStore {
     await this.fs.rm(folder, { recursive: true, force: true });
     await this.fs.mkdir(folder, { recursive: true });
     await this.fs.writeFile(path.join(folder, record.lockfile), record.content);
+    this.recorded.set(recordName(record), normalizeKey(record));
     return previous ? "changed" : "added";
+  }
+
+  /** The records written since the last call. */
+  takeRecorded(): ModuleLockKey[] {
+    const keys = [...this.recorded.values()];
+    this.recorded.clear();
+    return keys;
   }
 
   async remove(key: ModuleLockKey): Promise<void> {
@@ -230,4 +244,19 @@ export class ModuleLockStore {
     }
     return removed;
   }
+}
+
+/**
+ * Prints one line for the records `store` wrote since the last report, so a
+ * command that installs many modules does not print one line per module.
+ */
+export function reportRecordedLocks(store: ModuleLockStore): void {
+  const count = store.takeRecorded().length;
+  if (count === 0) {
+    return;
+  }
+  getProcessUi().message(
+    "info",
+    `Recorded ${pluralize(count, "module lock")} in ${MODULE_LOCK_FOLDER}/: commit ${count === 1 ? "it" : "them"} so every install gets the same dependencies`,
+  );
 }

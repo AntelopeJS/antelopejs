@@ -12,11 +12,14 @@ import {
 } from "../../../../core/config";
 import type { DownloaderRegistry } from "../../../../core/downloaders";
 import { NodeFileSystem } from "../../../../core/filesystem";
-import type { ModuleCache, ModulePackageJson } from "../../../../core/modules";
 import {
   fetchLatestVersion,
+  ModuleLockStore,
+  reportRecordedLocks,
   toFloatingSpec,
   validateVersionSpec,
+  type ModuleCache,
+  type ModulePackageJson,
 } from "../../../../core/modules";
 import {
   CliError,
@@ -94,12 +97,13 @@ async function createAddContext(
   options: AddOptions,
   config: AntelopeConfig,
   environment: string,
+  locks: ModuleLockStore,
 ): Promise<AddContext> {
   const loader = new ConfigLoader(new NodeFileSystem());
   const antelopeConfig = await loader.load(options.project, environment);
   return {
     options,
-    registry: createModuleRegistry(options.project, "record"),
+    registry: createModuleRegistry(locks, "record"),
     cache: await openModuleCache(options.project, config),
     existingModules: antelopeConfig.modules,
   };
@@ -190,16 +194,23 @@ function groupOutcomes(outcomes: ModuleAddOutcome[]): AddCommandResult {
 /**
  * Adds modules to the project configuration, one line per module, and
  * writes the configuration when at least one was added. Prints no summary,
- * so other commands can add modules as one of their steps.
+ * so other commands can add modules as one of their steps. The module locks
+ * it records stay in `locks` for the caller to report.
  */
 export async function addModules(
   modules: string[],
   options: AddOptions,
+  locks = new ModuleLockStore(path.resolve(options.project)),
 ): Promise<AddCommandResult> {
   const addOptions = { ...options, project: path.resolve(options.project) };
   const { config, environment, environmentConfig } =
     await resolveProjectContext(addOptions.project, options.env);
-  const context = await createAddContext(addOptions, config, environment);
+  const context = await createAddContext(
+    addOptions,
+    config,
+    environment,
+    locks,
+  );
   const outcomes = await Promise.all(
     modules.map((module) => addModule(module, context)),
   );
@@ -252,7 +263,9 @@ export async function projectModulesAddCommand(
   options: AddOptions,
 ): Promise<AddCommandResult | undefined> {
   const startedAt = Date.now();
-  const result = await addModules(modules, options);
+  const locks = new ModuleLockStore(path.resolve(options.project));
+  const result = await addModules(modules, options, locks);
+  reportRecordedLocks(locks);
   getProcessUi().summary({
     headline: addHeadline(result),
     durationMs: Date.now() - startedAt,

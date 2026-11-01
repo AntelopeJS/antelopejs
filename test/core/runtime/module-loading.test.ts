@@ -14,6 +14,7 @@ import {
   registerCoreModuleInterface,
 } from "../../../src/core/runtime";
 import { ModuleState } from "../../../src/types";
+import { fakeNpm } from "../../helpers/fake-npm";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   loadedConfigFixture,
@@ -282,5 +283,50 @@ describe("runtime module-loading: frozen module locks", () => {
 
     expect(caught).to.be.instanceOf(CliError);
     expect(caught.message).to.equal("No module lock for extra@1.0.0");
+  });
+});
+
+describe("runtime module-loading: recorded module locks", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("reports the module locks a load recorded as one line", async () => {
+    const messageStub = sinon.stub(getProcessTasks().ui, "message");
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    const locks = new ModuleLockStore("/project", fs);
+    const registry = new DownloaderRegistry();
+    registerPackageDownloader(registry, {
+      fs,
+      ...fakeNpm(fs, () => "lock"),
+      lock: { store: locks, mode: "record" },
+    });
+    const config = loadedConfigFixture({
+      modules: {
+        alpha: {
+          source: { type: "package", package: "alpha", version: "1.0.0" },
+        },
+        beta: {
+          source: { type: "package", package: "beta", version: "2.0.0" },
+        },
+      },
+      moduleLocks: undefined,
+    });
+
+    await buildModuleConfigs(config, {
+      fs: new NodeFileSystem(),
+      cache,
+      registry,
+      projectFolder: "/project",
+      locks,
+    });
+
+    const reported = messageStub.args
+      .map(([, text]) => text)
+      .filter((text) => text.includes("antelope-lock"));
+    expect(reported).to.have.length(1);
+    expect(reported[0]).to.include("Recorded 2 module locks");
   });
 });

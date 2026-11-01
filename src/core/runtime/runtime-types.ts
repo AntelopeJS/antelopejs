@@ -7,6 +7,7 @@ import type {
   ModuleCache,
   ModuleConfig,
   ModuleLockMode,
+  ModuleLockStore,
   ModuleManager,
   ModuleManifest,
 } from "../modules";
@@ -59,6 +60,8 @@ export interface LoaderContext {
   cache: ModuleCache;
   registry: DownloaderRegistry;
   projectFolder: string;
+  /** The module locks the registry records into, reported once modules load. */
+  locks?: ModuleLockStore;
 }
 
 /**

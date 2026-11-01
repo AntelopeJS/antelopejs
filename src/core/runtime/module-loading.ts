@@ -12,6 +12,7 @@ import {
   ModuleCache,
   ModuleLockStore,
   ModuleManifest,
+  reportRecordedLocks,
   unpackErrors,
 } from "../modules";
 import { pluralize, runTask } from "../output";
@@ -52,15 +53,13 @@ export async function createLoaderContext(
   const cache = new ModuleCache(config.cacheFolder, fs);
   await cache.load();
 
+  const locks = new ModuleLockStore(config.projectFolder, fs);
   const registry = new DownloaderRegistry();
   local.registerLocalDownloader(registry, { fs });
   localFolder.registerLocalFolderDownloader(registry, { fs });
   packageDownloader.registerPackageDownloader(registry, {
     fs,
-    lock: {
-      store: new ModuleLockStore(config.projectFolder, fs),
-      mode: config.moduleLocks ?? "record",
-    },
+    lock: { store: locks, mode: config.moduleLocks ?? "record" },
   });
   git.registerGitDownloader(registry, { fs });
 
@@ -69,6 +68,7 @@ export async function createLoaderContext(
     cache,
     registry,
     projectFolder: config.projectFolder,
+    locks,
   };
 }
 
@@ -215,7 +215,11 @@ export async function buildModuleConfigs(
     "Loading modules",
     () => loadModuleEntries(config.modules, loaderContext),
     { done: `Loaded ${pluralize(moduleCount, "module")}` },
-  );
+  ).finally(() => {
+    if (loaderContext.locks) {
+      reportRecordedLocks(loaderContext.locks);
+    }
+  });
   validateModuleNameCollisions(modules);
   return modules;
 }

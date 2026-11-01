@@ -86,6 +86,10 @@ describe("project modules behavior: refreshModuleLocks", () => {
     const reported = message.args
       .map(([, text]) => text)
       .filter((text) => text.includes("antelope-lock"));
+    expect(reported).to.have.length(2);
+    expect(
+      reported.filter((text) => text.includes("kept@1.0.0")),
+    ).to.deep.equal([]);
     expect(
       reported.filter((text) => text.includes("moved@2.0.0")),
     ).to.have.length(1);
