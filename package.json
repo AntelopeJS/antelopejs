@@ -73,7 +73,7 @@
     "ratchet:update": "antelopejs-ratchet --update"
   },
   "dependencies": {
-    "@antelopejs/interface-core": ">=0.3.0 <0.4.0",
+    "@antelopejs/interface-core": ">=0.4.0 <0.5.0",
     "@clack/prompts": "^1.8.1",
     "@types/proper-lockfile": "^4.1.4",
     "commander": "^13.1.0",
@@ -136,7 +136,8 @@
   "pnpm": {
     "overrides": {
       "@antelopejs/tooling-configs": "file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz",
-      "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz"
+      "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz",
+      "@antelopejs/interface-core": "file:.campaign/tgz/antelopejs-interface-core-c1a7185.tgz"
     }
   },
   "antelopeJs": {

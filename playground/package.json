@@ -6,6 +6,6 @@
   },
   "dependencies": {
     "@antelopejs/core": "link:..",
-    "@antelopejs/interface-core": ">=0.2.5 <1.0.0"
+    "@antelopejs/interface-core": "file:../.campaign/tgz/antelopejs-interface-core-c1a7185.tgz"
   }
 }
