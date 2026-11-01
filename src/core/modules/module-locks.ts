@@ -64,12 +64,18 @@ const PACKAGE_NAME_PATTERN = /^(?:@[A-Za-z0-9][\w.~-]*\/)?[A-Za-z0-9][\w.~-]*$/;
 const VERSION_SEPARATOR = "@";
 const SCOPE_PREFIX = "@";
 
-function assertValidKey(key: ModuleLockKey): void {
-  if (!PACKAGE_NAME_PATTERN.test(key.package) || valid(key.version) === null) {
+/**
+ * The key of a record: the exact version without its `v` or `=` prefix and
+ * build metadata, so `v1.0.0` and `1.0.0` name the same record.
+ */
+function normalizeKey(key: ModuleLockKey): ModuleLockKey {
+  const version = valid(key.version);
+  if (!PACKAGE_NAME_PATTERN.test(key.package) || version === null) {
     throw new Error(
       `Invalid module lock key ${key.package}${VERSION_SEPARATOR}${key.version}`,
     );
   }
+  return { package: key.package, version };
 }
 
 function parseRecordName(name: string): ModuleLockKey | undefined {
@@ -87,7 +93,8 @@ function parseRecordName(name: string): ModuleLockKey | undefined {
 }
 
 function recordName(key: ModuleLockKey): string {
-  return `${key.package}${VERSION_SEPARATOR}${key.version}`;
+  const { package: pkg, version } = normalizeKey(key);
+  return `${pkg}${VERSION_SEPARATOR}${version}`;
 }
 
 /**
@@ -99,8 +106,9 @@ function keptVersions(
   requirement: ModuleLockRequirement,
   recorded: string[],
 ): string[] {
-  if (valid(requirement.spec) !== null) {
-    return [requirement.spec];
+  const exact = valid(requirement.spec);
+  if (exact !== null) {
+    return [exact];
   }
   const range = validRange(requirement.spec);
   if (range === null) {
@@ -132,11 +140,11 @@ export class ModuleLockStore {
   }
 
   private recordFolder(key: ModuleLockKey): string {
-    assertValidKey(key);
     return path.join(this.folder, recordName(key));
   }
 
-  async read(key: ModuleLockKey): Promise<ModuleLockRecord | undefined> {
+  async read(requested: ModuleLockKey): Promise<ModuleLockRecord | undefined> {
+    const key = normalizeKey(requested);
     const folder = this.recordFolder(key);
     if (!(await this.fs.exists(folder))) {
       return undefined;

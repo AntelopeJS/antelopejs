@@ -237,7 +237,9 @@ describe("PackageDownloader module locks", () => {
 
     expect(harness.lockAtInstall).to.deep.equal([RECORDED_LOCK]);
   });
+});
 
+describe("PackageDownloader module locks: sources", () => {
   it("keeps a locked range on its recorded version when the source ignores the cache", async () => {
     const harness = await createHarness("record", ["1.0.0", "1.1.0"]);
     await harness.store.write(recorded("1.0.0", RECORDED_LOCK));
@@ -254,6 +256,16 @@ describe("PackageDownloader module locks", () => {
     await harness.store.write(recorded("1.0.0", RECORDED_LOCK));
 
     const version = await harness.load("^1.0.0", { ignoreCache: true });
+
+    expect(version).to.equal("1.0.0");
+    expect(harness.lockAtInstall).to.deep.equal([RECORDED_LOCK]);
+  });
+
+  it("installs a v-prefixed exact version from the record of its clean version in frozen mode", async () => {
+    const harness = await createHarness("frozen");
+    await harness.store.write(recorded("1.0.0", RECORDED_LOCK));
+
+    const version = await harness.load("v1.0.0");
 
     expect(version).to.equal("1.0.0");
     expect(harness.lockAtInstall).to.deep.equal([RECORDED_LOCK]);

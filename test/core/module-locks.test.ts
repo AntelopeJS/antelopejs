@@ -50,6 +50,25 @@ describe("ModuleLockStore", () => {
     expect(changes).to.deep.equal(["added", "unchanged", "changed"]);
   });
 
+  it("reads and writes the same record under a v-prefixed and a clean version", async () => {
+    const fs = new InMemoryFileSystem();
+    const store = new ModuleLockStore("/project", fs);
+
+    const changes = [
+      await store.write(lockRecord("v1.5.0", "lock: a")),
+      await store.write(lockRecord("1.5.0", "lock: a")),
+    ];
+
+    expect(changes).to.deep.equal(["added", "unchanged"]);
+    expect(await store.list()).to.deep.equal([API]);
+    expect(await store.read({ ...API, version: "v1.5.0" })).to.deep.equal(
+      lockRecord("1.5.0", "lock: a"),
+    );
+    expect(
+      ModuleLockStore.relativePath({ ...API, version: "v1.5.0" }),
+    ).to.equal("antelope-lock/@antelopejs/api@1.5.0");
+  });
+
   it("has no record for a version it never wrote, nor for a folder without a lockfile", async () => {
     const fs = new InMemoryFileSystem();
     const store = new ModuleLockStore("/project", fs);
@@ -159,6 +178,18 @@ describe("ModuleLockStore prune", () => {
     ]);
 
     expect(removed).to.deep.equal([]);
+  });
+
+  it("keeps the record of a version pinned with a v prefix", async () => {
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+    await store.write(lockRecord("1.5.0", "a"));
+
+    const removed = await store.prune([
+      { package: API.package, spec: "v1.5.0" },
+    ]);
+
+    expect(removed).to.deep.equal([]);
+    expect(await store.list()).to.deep.equal([API]);
   });
 
   it("names the record folder relative to the project", () => {
