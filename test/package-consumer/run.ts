@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { isObject } from "../../src/utils";
+import { overriddenInterfaceCore } from "../helpers/interface-core-override";
 import { listDirectory } from "../helpers/temp";
 
 const root = path.resolve(__dirname, "../..");
@@ -14,7 +15,8 @@ const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const builtEntry = path.join(root, "dist", "index.js");
 const skillsFolder = "skills";
 const skillFile = "SKILL.md";
-const interfaceCoreTarball = process.env.ANTELOPE_INTERFACE_CORE_TARBALL;
+const interfaceCoreTarball =
+  process.env.ANTELOPE_INTERFACE_CORE_TARBALL ?? overriddenInterfaceCore(root);
 const interfaceCoreSpec = interfaceCoreTarball
   ? `file:${interfaceCoreTarball}`
   : "0.2.5";
