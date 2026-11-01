@@ -12,20 +12,21 @@ importers:
         specifier: link:..
         version: link:..
       '@antelopejs/interface-core':
-        specifier: '>=0.2.5 <1.0.0'
-        version: 0.2.5
+        specifier: file:../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz
+        version: file:../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz
 
 packages:
 
-  '@antelopejs/interface-core@0.2.5':
-    resolution: {integrity: sha512-80PMZM9/2bGx/Tb7yqsjrogNkX67UOsIlNsgrQl/7xjb01ymBAti7OAuObWmxP/JDNn7weumwFKIFGTFKTgh8A==}
+  '@antelopejs/interface-core@file:../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz':
+    resolution: {integrity: sha512-ur2KLvtD8h4SCZ0VSoQDc1pg+E9Bk/py3EW3qHHdoo3i6RvKWrrDKsX2khVdqQESuF2QMc1sJ6B+7ISjx5TvpQ==, tarball: file:../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz}
+    version: 0.4.0
 
   reflect-metadata@0.2.2:
     resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
 
 snapshots:
 
-  '@antelopejs/interface-core@0.2.5':
+  '@antelopejs/interface-core@file:../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz':
     dependencies:
       reflect-metadata: 0.2.2
 

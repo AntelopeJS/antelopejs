@@ -4,7 +4,7 @@
   "private": true,
   "main": "dist/index.js",
   "dependencies": {
-    "@antelopejs/interface-core": "0.3.0"
+    "@antelopejs/interface-core": "file:../../../../../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz"
   },
   "devDependencies": {
     "@types/node": "22.19.15",
@@ -13,5 +13,10 @@
   "packageManager": "pnpm@10.6.5",
   "antelopeJs": {
     "test": "antelope.test.ts"
+  },
+  "pnpm": {
+    "overrides": {
+      "@antelopejs/interface-core": "file:../../../../../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz"
+    }
   }
 }
