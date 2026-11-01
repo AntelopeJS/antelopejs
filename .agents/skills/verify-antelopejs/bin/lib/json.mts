@@ -28,6 +28,11 @@ export function isText(value: JsonRead): value is string {
   return typeof value === "string";
 }
 
+/** Whether a JSON value is a number or a boolean, which a template literal prints as `String` does. */
+export function isPrintable(value: JsonRead): value is number | boolean {
+  return typeof value === "number" || typeof value === "boolean";
+}
+
 /** A string member of a JSON object, or undefined when the member is missing or not a string. */
 export function textField(value: JsonRead, key: string): string | undefined {
   const found = field(value, key);
