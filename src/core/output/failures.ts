@@ -39,14 +39,34 @@ function genericProblem(
   return { title: String(error) };
 }
 
-function causeChain(error: Error["cause"]): unknown[] {
-  const chain: unknown[] = [];
-  let current: unknown = error;
-  while (current !== undefined && !chain.includes(current)) {
-    chain.push(current);
-    current = current instanceof Error ? current.cause : undefined;
+function causeChain(error: Error["cause"], chain: unknown[] = []): unknown[] {
+  if (error === undefined || chain.includes(error)) {
+    return chain;
+  }
+  chain.push(error);
+  if (error instanceof AggregateError) {
+    for (const inner of error.errors) {
+      causeChain(inner, chain);
+    }
+  }
+  if (error instanceof Error) {
+    causeChain(error.cause, chain);
   }
   return chain;
+}
+
+function aggregateDetails(chain: unknown[]): string[] {
+  const titles = chain
+    .filter(
+      (error) =>
+        !(error instanceof AggregateError) &&
+        chain.some(
+          (parent) =>
+            parent instanceof AggregateError && parent.errors.includes(error),
+        ),
+    )
+    .map((error) => genericProblem(error).title);
+  return [...new Set(titles)];
 }
 
 function isTraceable(error: unknown): error is Error {
@@ -132,7 +152,11 @@ export function describeFailure(
   const chain = causeChain(error);
   const diagnostics = verbose
     ? verboseDetails(chain)
-    : [...untranslatedOutputTail(chain), ...verboseHint(chain, translate)];
+    : [
+        ...aggregateDetails(chain),
+        ...untranslatedOutputTail(chain),
+        ...verboseHint(chain, translate),
+      ];
   return { ...problem, details: [...(problem.details ?? []), ...diagnostics] };
 }
 
