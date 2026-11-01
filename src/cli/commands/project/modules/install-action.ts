@@ -440,17 +440,18 @@ function rangeConflictKey(conflict: InterfaceRangeConflict): string {
 }
 
 /**
- * Loads each environment's modules as `ajs project build` does and fails
- * when a module's declared range of an interface package excludes the shared
- * copy it would get at startup, so the conflict surfaces before a build or
- * a deployment.
+ * Loads each environment's modules as `ajs project build` does and finds
+ * every module whose declared range of an interface package excludes the
+ * shared copy it would get at startup, so the conflict surfaces before a build
+ * or a deployment.
  *
- * @throws InterfaceResolutionError naming every conflicting module once.
+ * @returns an InterfaceResolutionError naming every conflicting module once,
+ * or undefined when no range conflicts.
  */
-async function ensureInterfaceRanges(
+async function findInterfaceRangeFailure(
   project: string,
   environments: string[],
-): Promise<void> {
+): Promise<InterfaceResolutionError | undefined> {
   const conflicts = new Map<string, InterfaceRangeConflict>();
   for (const env of environments) {
     const found = await runTask(
@@ -463,12 +464,13 @@ async function ensureInterfaceRanges(
       conflicts.set(rangeConflictKey(conflict), conflict),
     );
   }
-  if (conflicts.size > 0) {
-    throw new InterfaceResolutionError({
-      rangeConflicts: [...conflicts.values()],
-      preloadedCopies: [],
-    });
+  if (conflicts.size === 0) {
+    return undefined;
   }
+  return new InterfaceResolutionError({
+    rangeConflicts: [...conflicts.values()],
+    preloadedCopies: [],
+  });
 }
 
 export async function installModules(options: InstallOptions): Promise<void> {
@@ -483,10 +485,16 @@ export async function installModules(options: InstallOptions): Promise<void> {
     await resolveEnvironment(context, env);
   }
   const outcome = await installSelectedModules(context);
-  await ensureInterfaceRanges(options.project, environments);
+  const rangeFailure = await findInterfaceRangeFailure(
+    options.project,
+    environments,
+  );
   getProcessUi().summary({
     headline: installHeadline(context, outcome),
     durationMs: Date.now() - startedAt,
-    nextSteps: installNextSteps(context, outcome),
+    nextSteps: rangeFailure ? [] : installNextSteps(context, outcome),
   });
+  if (rangeFailure) {
+    throw rangeFailure;
+  }
 }

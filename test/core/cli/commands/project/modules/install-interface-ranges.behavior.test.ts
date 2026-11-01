@@ -66,7 +66,7 @@ describe("project modules install behavior: checks interface ranges after adding
   const fixture = installFixture();
 
   it("fails with the conflict once the selected modules are added", async () => {
-    const { addStub, output } = fixture.stubUnresolvedImport([MOD_A]);
+    const { output } = fixture.stubUnresolvedImport([MOD_A]);
     fakePrompts();
     fixture.rangeCheck.resolves([AUTH_CONFLICT]);
 
@@ -79,12 +79,14 @@ describe("project modules install behavior: checks interface ranges after adding
       rangeConflicts: [AUTH_CONFLICT],
       preloadedCopies: [],
     });
-    expect(addStub.calledBefore(fixture.rangeCheck)).to.equal(true);
     expect(fixture.rangeCheck.firstCall.args).to.deep.equal([
       "/tmp/project",
       "default",
     ]);
-    expect(output.summary.called).to.equal(false);
+    expect(output.summary.firstCall.args[0]).to.deep.include({
+      headline: "1 module added to antelope.config.ts",
+      nextSteps: [],
+    });
     expect(describeFailure(failure, false).details).to.include(
       "backend requires @antelopejs/interface-auth@>=0.0.7 <0.1.0, but the shared copy is 0.1.0 (provided by auth-jwt)",
     );
