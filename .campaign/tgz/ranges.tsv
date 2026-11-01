@@ -1,2 +1,4 @@
 @antelopejs/tooling-configs	package.json	devDependencies	^0.2.17
 @antelopejs/tooling-configs	package.json	pnpm.overrides	
+@antelopejs/interface-api	package.json	devDependencies	0.1.0
+@antelopejs/interface-api	package.json	pnpm.overrides	

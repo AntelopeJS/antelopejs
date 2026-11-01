@@ -88,7 +88,7 @@
   },
   "devDependencies": {
     "@antelopejs/core": "link:.",
-    "@antelopejs/interface-api": "0.1.0",
+    "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-fc8048d.tgz",
     "@antelopejs/interface-auth": "0.1.0",
     "@antelopejs/interface-data-api": "0.5.0",
     "@antelopejs/interface-database": "0.2.0",
@@ -135,7 +135,8 @@
   "packageManager": "pnpm@10.6.5",
   "pnpm": {
     "overrides": {
-      "@antelopejs/tooling-configs": "file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz"
+      "@antelopejs/tooling-configs": "file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz",
+      "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-fc8048d.tgz"
     }
   },
   "antelopeJs": {
