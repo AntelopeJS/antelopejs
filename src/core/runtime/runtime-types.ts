@@ -51,7 +51,10 @@ export interface ProjectRuntimeConfig {
 export interface LoaderConfig {
   cacheFolder: string;
   projectFolder: string;
-  /** How package modules use the project's module locks; `record` by default. */
+  /**
+   * How package modules use the project's module locks; `record` by default.
+   * A started project uses `replay`: it never writes the project's locks.
+   */
   moduleLocks?: ModuleLockMode;
 }
 

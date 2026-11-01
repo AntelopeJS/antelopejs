@@ -271,6 +271,17 @@ describe("PackageDownloader module locks: sources", () => {
     expect(harness.lockAtInstall).to.deep.equal([RECORDED_LOCK]);
   });
 
+  it("installs from the record in replay mode, and installs without recording when the project has none", async () => {
+    const harness = await createHarness("replay");
+    await harness.store.write(recorded("1.0.0", RECORDED_LOCK));
+
+    await harness.load("1.0.0");
+    await harness.load("2.0.0");
+
+    expect(harness.lockAtInstall).to.deep.equal([RECORDED_LOCK, undefined]);
+    expect(await harness.store.versions(PKG)).to.deep.equal(["1.0.0"]);
+  });
+
   it("writes no lock folder when the downloader has no lock policy", async () => {
     const harness = await createHarness(undefined);
 

@@ -19,10 +19,12 @@ export const MODULE_LOCK_FOLDER = "antelope-lock";
  * - `record`: replay the lock of a module when the project has one, and record
  *   the lockfile the package manager wrote when it has none.
  * - `frozen`: replay the lock of a module, and fail when the project has none.
+ * - `replay`: replay the lock of a module when the project has one, and never
+ *   write the project's locks, as a running project's folder may be read-only.
  * - `refresh`: ignore the recorded lock, resolve the dependencies again and
  *   record the result.
  */
-export type ModuleLockMode = "record" | "frozen" | "refresh";
+export type ModuleLockMode = "record" | "frozen" | "replay" | "refresh";
 
 /** A package module at one exact version. */
 export interface ModuleLockKey {

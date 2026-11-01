@@ -111,7 +111,9 @@ export class PackageLocks {
     folder: string,
     record: ModuleLockRecord | undefined,
   ): Promise<void> {
-    if (!this.policy || this.policy.mode === "frozen" || record) {
+    const writes =
+      this.policy?.mode === "record" || this.policy?.mode === "refresh";
+    if (!this.policy || !writes || record) {
       return;
     }
     const lockfile = await findModuleLockfile(folder, this.fs);
