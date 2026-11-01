@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.19.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.18.2...v1.19.0)
+
+### 🚀 Enhancements
+
+- **build:** Validate interface ranges at build and modules install ([#264](https://github.com/AntelopeJS/antelopejs/pull/264))
+- **modules:** Record module lockfiles in antelope-lock/ and add build --frozen-modules ([#265](https://github.com/AntelopeJS/antelopejs/pull/265))
+
+### 🩹 Fixes
+
+- **modules:** End a start that misses its deadline instead of hanging ([#352](https://github.com/AntelopeJS/antelopejs/pull/352))
+
+### 📖 Documentation
+
+- **readme:** List PostgreSQL as a provider and link the DMS ([#342](https://github.com/AntelopeJS/antelopejs/pull/342))
+- **readme:** Use one Discord invite ([#332](https://github.com/AntelopeJS/antelopejs/pull/332))
+
+### ❤️ Contributors
+
+- Alessandro Aloisio ([@alessaloisio](https://github.com/alessaloisio))
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.18.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.18.1...v1.18.2)
