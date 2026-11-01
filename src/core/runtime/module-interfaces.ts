@@ -197,8 +197,8 @@ async function checkOptionalModule(
   } catch (error) {
     await discardCreatedModules(manager, created);
     Logger.Warn(
-      `Optional module ${entry.manifest.name} would fail to start; a launch runs without it`,
-      error,
+      `Optional module ${entry.manifest.name} would fail to start; a launch runs without it.`,
+      error instanceof Error ? error.message : String(error),
     );
   }
 }
