@@ -39,7 +39,7 @@ ajs project modules install              # add a provider module for every unres
 
 `modules install` (not `add`) fixes **unresolved imports**, and despite its name it installs no npm dependencies: it finds the interfaces no loaded module implements, looks up their implementing modules in the interface repository, and writes the chosen one into `antelope.config.ts`. A single implementer is added without a question; with several it asks, or takes the first with `-y`. It then checks interface ranges like `build`.
 
-`build` and `modules install` fail (exit `1`, no `build.json` written) with `Incompatible interface package resolution` when a module's declared range of an interface package excludes the shared copy, the same error `start` and `dev` raise. Fix it as the error says: update that module, or widen its range to the shared version (`^<version>`) and reinstall, or keep the module that provides the shared copy on a version within the range. Do not skip the build check.
+`build` and `modules install` fail (exit `1`, no `build.json` written) with `Incompatible interface package resolution` when a module's declared range of an interface package excludes the shared copy, the same error `start` and `dev` raise. Fix it as the error says: update that module, or widen its range to the shared version (`^<version>`) and reinstall, or keep the module that provides the shared copy on a version within the range. Do not skip the build check. A module marked `optional: true` that would conflict only produces a warning, as `start` runs without it.
 
 Modules declared in `antelope.config.ts` are downloaded into `.antelope/cache` by `dev`, `build`, and `modules add`; a module's own npm dependencies install inside its cache folder.
 

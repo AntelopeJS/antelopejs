@@ -10,7 +10,10 @@ interface IncidentModule {
   name: string;
   range: string;
   copy?: string;
+  /** Declares the interface under `optionalDependencies`. */
   optional?: boolean;
+  /** Marks the module `optional: true` in `antelope.config`. */
+  configOptional?: boolean;
   implementsInterface?: boolean;
 }
 
@@ -62,6 +65,21 @@ async function writeIncidentModule(
   }
 }
 
+interface IncidentModuleConfig {
+  source: { type: string; path: string };
+  optional?: boolean;
+}
+
+function moduleConfig(module: IncidentModule): IncidentModuleConfig {
+  const config: IncidentModuleConfig = {
+    source: { type: "local", path: `./modules/${module.name}` },
+  };
+  if (module.configOptional) {
+    config.optional = true;
+  }
+  return config;
+}
+
 /**
  * Writes a project whose modules are local folders with their own
  * `node_modules`, so loading it needs neither a registry nor a network.
@@ -76,10 +94,7 @@ export async function writeIncidentProject(
   const config = {
     name: "incident",
     modules: Object.fromEntries(
-      modules.map((module) => [
-        module.name,
-        { source: { type: "local", path: `./modules/${module.name}` } },
-      ]),
+      modules.map((module) => [module.name, moduleConfig(module)]),
     ),
   };
   await writeFile(

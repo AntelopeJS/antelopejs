@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 
 import { build, interfaceRangesModule } from "../../../src/core/build";
+import { readBuildArtifact } from "../../../src/core/modules";
 import { InterfaceResolutionError } from "../../../src/core/output";
 import {
   INCIDENT_INTERFACE,
@@ -136,5 +137,76 @@ describe("interface range check before startup", function () {
 
     expect(conflicts).to.deep.equal([]);
     expect(buildError?.message).to.include("Unresolved interface dependencies");
+  });
+});
+
+describe("interface range check with modules marked optional in the config", function () {
+  this.timeout(30000);
+  const projects: string[] = [];
+
+  async function project(...args: Parameters<typeof writeIncidentProject>) {
+    const folder = await writeIncidentProject(...args);
+    projects.push(folder);
+    return folder;
+  }
+
+  afterEach(() => {
+    projects.splice(0).forEach(cleanupTempDir);
+  });
+
+  const optionalBackend = { ...INCIDENT_MODULES[1], configOptional: true };
+
+  it("builds, as a launch runs without the optional module that conflicts", async () => {
+    const folder = await project([INCIDENT_MODULES[0], optionalBackend]);
+
+    await build(folder, "default");
+
+    expect(existsSync(buildArtifactPath(folder))).to.equal(true);
+    expect(
+      await findProjectInterfaceRangeConflicts(folder, "default"),
+    ).to.deep.equal([]);
+  });
+
+  it("keeps the optional module in the build artifact", async () => {
+    const folder = await project([INCIDENT_MODULES[0], optionalBackend]);
+
+    await build(folder, "default");
+
+    const artifact = await readBuildArtifact(folder);
+    expect(Object.keys(artifact.modules)).to.have.members([
+      "auth-jwt",
+      "backend",
+    ]);
+  });
+
+  it("fails when a required module conflicts with the shared copy the required modules provide", async () => {
+    const folder = await project([
+      { ...INCIDENT_MODULES[0], name: "z-impl", copy: "0.1.0" },
+      {
+        ...INCIDENT_MODULES[0],
+        name: "a-impl",
+        copy: "0.0.9",
+        configOptional: true,
+      },
+      { ...INCIDENT_MODULES[1], name: "consumer" },
+    ]);
+
+    const error = await rejectionOf(build(folder, "default"));
+    const conflicts = await findProjectInterfaceRangeConflicts(
+      folder,
+      "default",
+    );
+
+    assert.ok(error instanceof InterfaceResolutionError);
+    expect(
+      error.conflicts.rangeConflicts.map(({ moduleId, provider }) => ({
+        moduleId,
+        provider,
+      })),
+    ).to.deep.equal([{ moduleId: "consumer", provider: "z-impl" }]);
+    expect(conflicts.map(({ moduleId }) => moduleId)).to.deep.equal([
+      "consumer",
+    ]);
+    expect(existsSync(buildArtifactPath(folder))).to.equal(false);
   });
 });

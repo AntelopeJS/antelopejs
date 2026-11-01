@@ -1,5 +1,10 @@
+import { Logging } from "@antelopejs/interface-core/logging";
+
 import type { ManagedModule, ModuleManager } from "../modules";
-import { InterfaceResolutionError } from "../output";
+import {
+  type InterfaceRangeConflict,
+  InterfaceResolutionError,
+} from "../output";
 import {
   findUnresolvedInterfaces,
   type InterfaceConsumer,
@@ -7,6 +12,35 @@ import {
   type InterfaceResolutionResult,
   type UnresolvedInterface,
 } from "../resolution";
+import type { ModuleManifestEntry } from "./runtime-types";
+
+const Logger = new Logging.Channel("loader");
+
+interface PartitionedModuleEntries {
+  required: ModuleManifestEntry[];
+  optional: ModuleManifestEntry[];
+}
+
+/**
+ * Splits the entries of a project into the ones a launch adds and starts as a
+ * whole and the `optional: true` ones it adds one at a time afterwards.
+ */
+export function partitionModuleEntries(
+  entries: ModuleManifestEntry[],
+): PartitionedModuleEntries {
+  return {
+    required: entries.filter((entry) => !entry.config?.optional),
+    optional: entries.filter((entry) => entry.config?.optional),
+  };
+}
+
+async function discardCreatedModules(
+  manager: ModuleManager,
+  created: ManagedModule[],
+): Promise<void> {
+  await Promise.allSettled(created.map(({ module }) => module.destroy()));
+  manager.discardModules(created.map(({ module }) => module.id));
+}
 
 /**
  * Checks the interfaces of modules `LoadModule` just added, then constructs
@@ -26,8 +60,7 @@ export async function activateLoadedModules(
       await manager.startModules(created);
     }
   } catch (error) {
-    await Promise.allSettled(created.map(({ module }) => module.destroy()));
-    manager.discardModules(created.map(({ module }) => module.id));
+    await discardCreatedModules(manager, created);
     throw error;
   }
 }
@@ -139,16 +172,77 @@ export function planInterfacePackages(manager: ModuleManager): void {
   );
 }
 
+function rangeConflictError(
+  rangeConflicts: InterfaceRangeConflict[],
+): InterfaceResolutionError {
+  return new InterfaceResolutionError({ rangeConflicts, preloadedCopies: [] });
+}
+
 /**
- * Checks, from package.json files only, that the shared copy of each interface
- * package satisfies the range every module declares for it.
- *
- * @throws the {@link InterfaceResolutionError} the modules would otherwise
- * throw when constructed.
+ * Adds one optional module and checks, from package.json files only, what
+ * constructing it would check. A module that fails is dropped again and its
+ * error is logged, as a launch runs on without it.
  */
-export function ensureInterfaceRangesAreValid(manager: ModuleManager): void {
+async function checkOptionalModule(
+  manager: ModuleManager,
+  entry: ModuleManifestEntry,
+): Promise<void> {
+  const created = manager.addModules([entry]);
+  try {
+    ensureInterfacesResolved(manager, created);
+    const rangeConflicts = manager.findInterfaceRangeConflicts();
+    if (rangeConflicts.length > 0) {
+      throw rangeConflictError(rangeConflicts);
+    }
+  } catch (error) {
+    await discardCreatedModules(manager, created);
+    Logger.Warn(
+      `Optional module ${entry.manifest.name} would fail to start; a launch runs without it`,
+      error,
+    );
+  }
+}
+
+/**
+ * Adds the entries of a project to `manager` in the order a launch does, and
+ * checks from package.json files only that the shared copy of each interface
+ * package satisfies the range every module declares for it. The required
+ * modules are checked together and decide the result. Each optional module is
+ * then added on its own, and one that would fail is dropped with a warning,
+ * since a launch runs without it.
+ *
+ * @param planRequired plans the interface packages of the required modules.
+ * @returns the range conflicts among the required modules, none when the
+ * check passes.
+ */
+export async function findEntryRangeConflicts(
+  manager: ModuleManager,
+  entries: ModuleManifestEntry[],
+  planRequired: (manager: ModuleManager) => void,
+): Promise<InterfaceRangeConflict[]> {
+  const { required, optional } = partitionModuleEntries(entries);
+  manager.addModules(required);
+  planRequired(manager);
   const rangeConflicts = manager.findInterfaceRangeConflicts();
   if (rangeConflicts.length > 0) {
-    throw new InterfaceResolutionError({ rangeConflicts, preloadedCopies: [] });
+    return rangeConflicts;
+  }
+  for (const entry of optional) {
+    await checkOptionalModule(manager, entry);
+  }
+  return [];
+}
+
+/**
+ * Throws the {@link InterfaceResolutionError} the modules would otherwise
+ * throw when constructed.
+ *
+ * @throws InterfaceResolutionError when `rangeConflicts` is not empty.
+ */
+export function ensureNoRangeConflicts(
+  rangeConflicts: InterfaceRangeConflict[],
+): void {
+  if (rangeConflicts.length > 0) {
+    throw rangeConflictError(rangeConflicts);
   }
 }
