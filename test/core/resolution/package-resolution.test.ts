@@ -118,4 +118,26 @@ describe("package resolution", () => {
       cleanupTempDir(root);
     }
   });
+
+  it("does not resolve a same-named outer package past one whose version is not a string", () => {
+    const root = makeTempDir("ajs-package-outer-");
+    try {
+      const inner = path.join(root, "node_modules", "numbered");
+      mkdirSync(inner, { recursive: true });
+      writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "numbered", version: "9.9.9" }),
+      );
+      writeFileSync(
+        path.join(inner, "package.json"),
+        JSON.stringify({ name: "numbered", version: 1 }),
+      );
+      const entry = path.join(inner, "index.js");
+      writeFileSync(entry, "module.exports = {};");
+
+      expect(findPackageFromEntry(entry, "numbered", root)).to.equal(undefined);
+    } finally {
+      cleanupTempDir(root);
+    }
+  });
 });

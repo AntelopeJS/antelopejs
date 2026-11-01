@@ -5,7 +5,12 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import type { IFileSystem } from "../../types";
-import { isObject, mergeDeep, type UnknownDictionary } from "../../utils";
+import {
+  isObject,
+  isString,
+  mergeDeep,
+  type UnknownDictionary,
+} from "../../utils";
 import { ConfigParser, type ExpandedModuleConfig } from "./config-parser";
 import {
   DEFAULT_CACHE_DIR,
@@ -97,15 +102,25 @@ export class ConfigLoader {
     return tsConfigFile.loadTsConfigFile(resolvedPath, environment, true);
   }
 
-  /** Reads a module's `antelope.<module>.json` file, which must hold a JSON object. */
+  /**
+   * Reads a module's `antelope.<module>.json` file as the entries to merge
+   * into its configuration. An object contributes its own keys, a string or an
+   * array its index keys, and `null`, a number or a boolean nothing, as the
+   * historic merge of the parsed value did.
+   */
   private async loadJsonFile(filePath: string): Promise<UnknownDictionary> {
     const content = await this.fs.readFileString(filePath);
     const parsed: unknown = JSON.parse(content);
-    if (!isObject(parsed)) {
-      throw new Error(
-        `Module configuration '${filePath}' is not a JSON object`,
-      );
+    if (isObject(parsed)) {
+      return parsed;
     }
-    return parsed;
+    if (isString(parsed)) {
+      return Object.fromEntries(parsed.split("").entries());
+    }
+    if (Array.isArray(parsed)) {
+      const items: unknown[] = parsed;
+      return Object.fromEntries(items.entries());
+    }
+    return {};
   }
 }

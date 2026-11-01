@@ -1,7 +1,12 @@
 import { expect } from "chai";
 import path from "node:path";
 
-import { resolvePluginPackage } from "../../../src/cli";
+import type { JsonValue } from "../../helpers/json";
+import {
+  CORE_PACKAGE_NAME,
+  evaluatePluginCompatibility,
+  resolvePluginPackage,
+} from "../../../src/cli";
 import {
   createGlobalRootResolver,
   createPackageReader,
@@ -127,38 +132,85 @@ describe("Plugin package resolution", () => {
   });
 });
 
-describe("Plugin package resolution of malformed documents", () => {
-  for (const [label, document] of [
-    ["a version that is not a string", { version: 4 }],
-    [
-      "peer dependency ranges that are not strings",
-      { peerDependencies: { a: 1 } },
-    ],
-    ["a name that is not a string", { name: 7 }],
-  ] as const) {
-    it(`treats a package.json with ${label} as unreadable`, async () => {
-      const packageJson = await resolvePluginPackage(
-        DMS_PACKAGE_NAME,
-        GLOBAL_DMS,
-        {
-          reader: createPackageReader(
-            {
-              [path.join(DMS_PACKAGE_DIRECTORY, "package.json")]:
-                JSON.stringify({ name: DMS_PACKAGE_NAME, ...document }),
-            },
-            {
-              [DMS_EXECUTABLE]: path.join(
-                DMS_PACKAGE_DIRECTORY,
-                "dist",
-                "cli.js",
-              ),
-            },
-          ),
-          resolveGlobalRoot: createGlobalRootResolver(),
-        },
-      );
+function manifest(fields: Record<string, JsonValue>): string {
+  return JSON.stringify({ name: DMS_PACKAGE_NAME, ...fields });
+}
 
-      expect(packageJson).to.equal(undefined);
+describe("Plugin package resolution of malformed documents", () => {
+  async function resolveDocument(document: string) {
+    return resolvePluginPackage(DMS_PACKAGE_NAME, GLOBAL_DMS, {
+      reader: createPackageReader(
+        {
+          [path.join(DMS_PACKAGE_DIRECTORY, "package.json")]: document,
+        },
+        {
+          [DMS_EXECUTABLE]: path.join(DMS_PACKAGE_DIRECTORY, "dist", "cli.js"),
+        },
+      ),
+      resolveGlobalRoot: createGlobalRootResolver(),
     });
   }
+
+  it("keeps the package and drops a version that is not a string", async () => {
+    const packageJson = await resolveDocument(manifest({ version: 4 }));
+
+    expect(packageJson?.name).to.equal(DMS_PACKAGE_NAME);
+    expect(packageJson?.version).to.equal(undefined);
+  });
+
+  it("still blocks an incompatible plugin whose version is not a string", async () => {
+    const packageJson = await resolveDocument(
+      manifest({
+        version: 4,
+        peerDependencies: { [CORE_PACKAGE_NAME]: "^99.0.0" },
+      }),
+    );
+
+    expect(evaluatePluginCompatibility(packageJson, "1.5.1")).to.include({
+      status: "incompatible",
+      requiredRange: "^99.0.0",
+    });
+  });
+
+  it("drops peer ranges that are not strings when they are not the core's", async () => {
+    const packageJson = await resolveDocument(
+      manifest({
+        peerDependencies: { react: 18, [CORE_PACKAGE_NAME]: "^99.0.0" },
+      }),
+    );
+
+    expect(packageJson?.peerDependencies).to.deep.equal({
+      [CORE_PACKAGE_NAME]: "^99.0.0",
+    });
+  });
+
+  const nonObjectPeerDependencies: Array<[string, JsonValue]> = [
+    ["null", null],
+    ["a string", "react"],
+    ["an array", ["react"]],
+    ["a number", 3],
+  ];
+  for (const [label, peerDependencies] of nonObjectPeerDependencies) {
+    it(`reads peerDependencies holding ${label} as absent`, async () => {
+      const packageJson = await resolveDocument(manifest({ peerDependencies }));
+
+      expect(evaluatePluginCompatibility(packageJson, "1.5.1")).to.deep.equal({
+        status: "compatible",
+      });
+    });
+  }
+
+  it("treats a package.json whose core peer range is not a string as unreadable", async () => {
+    const packageJson = await resolveDocument(
+      manifest({ peerDependencies: { [CORE_PACKAGE_NAME]: 1 } }),
+    );
+
+    expect(packageJson).to.equal(undefined);
+  });
+
+  it("does not take a package.json whose name is not a string for the plugin", async () => {
+    const packageJson = await resolveDocument(JSON.stringify({ name: 7 }));
+
+    expect(packageJson).to.equal(undefined);
+  });
 });

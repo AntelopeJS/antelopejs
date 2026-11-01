@@ -2,7 +2,8 @@ import { readFileSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import { isObject, isOptionalString } from "./object";
+import { isObject } from "./object";
+import { isString } from "./type-guards";
 
 export interface ResolvedPackage {
   name: string;
@@ -110,12 +111,9 @@ function parsePackageJson(text: string): PackageJson | undefined {
     return undefined;
   }
   const { name, version, antelopeJs } = parsed;
-  if (!isOptionalString(name) || !isOptionalString(version)) {
-    return undefined;
-  }
   return {
-    name,
-    version,
+    name: isString(name) ? name : undefined,
+    version: isString(version) ? version : undefined,
     antelopeJs: isObject(antelopeJs) ? antelopeJs : undefined,
   };
 }
