@@ -5,7 +5,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import type { IFileSystem } from "../../types";
-import { mergeDeep } from "../../utils";
+import { isObject, mergeDeep, type UnknownDictionary } from "../../utils";
 import { ConfigParser, type ExpandedModuleConfig } from "./config-parser";
 import {
   DEFAULT_CACHE_DIR,
@@ -56,10 +56,7 @@ export class ConfigLoader {
     for (const moduleName of Object.keys(expandedModules)) {
       const moduleConfigPath = getModuleConfigPath(projectFolder, moduleName);
       if (await this.fs.exists(moduleConfigPath)) {
-        const moduleConfig =
-          await this.loadJsonFile<Parameters<typeof mergeDeep>[0]>(
-            moduleConfigPath,
-          );
+        const moduleConfig = await this.loadModuleConfig(moduleConfigPath);
         expandedModules[moduleName].config = mergeDeep(
           // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
           (expandedModules[moduleName].config as Parameters<
@@ -100,8 +97,14 @@ export class ConfigLoader {
     return tsConfigFile.loadTsConfigFile(resolvedPath, environment, true);
   }
 
-  private async loadJsonFile<T>(filePath: string): Promise<T> {
+  private async loadModuleConfig(filePath: string): Promise<UnknownDictionary> {
     const content = await this.fs.readFileString(filePath);
-    return JSON.parse(content);
+    const parsed: unknown = JSON.parse(content);
+    if (!isObject(parsed)) {
+      throw new Error(
+        `Module configuration '${filePath}' is not a JSON object`,
+      );
+    }
+    return parsed;
   }
 }

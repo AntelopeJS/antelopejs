@@ -126,3 +126,39 @@ describe("Plugin package resolution", () => {
     expect(packageJson?.version).to.equal("5.0.0");
   });
 });
+
+describe("Plugin package resolution of malformed documents", () => {
+  for (const [label, document] of [
+    ["a version that is not a string", { version: 4 }],
+    [
+      "peer dependency ranges that are not strings",
+      { peerDependencies: { a: 1 } },
+    ],
+    ["a name that is not a string", { name: 7 }],
+  ] as const) {
+    it(`treats a package.json with ${label} as unreadable`, async () => {
+      const packageJson = await resolvePluginPackage(
+        DMS_PACKAGE_NAME,
+        GLOBAL_DMS,
+        {
+          reader: createPackageReader(
+            {
+              [path.join(DMS_PACKAGE_DIRECTORY, "package.json")]:
+                JSON.stringify({ name: DMS_PACKAGE_NAME, ...document }),
+            },
+            {
+              [DMS_EXECUTABLE]: path.join(
+                DMS_PACKAGE_DIRECTORY,
+                "dist",
+                "cli.js",
+              ),
+            },
+          ),
+          resolveGlobalRoot: createGlobalRootResolver(),
+        },
+      );
+
+      expect(packageJson).to.equal(undefined);
+    });
+  }
+});

@@ -102,4 +102,20 @@ describe("package resolution", () => {
       false,
     );
   });
+
+  it("ignores a package.json whose version is not a string", () => {
+    const root = makeTempDir("ajs-package-version-");
+    try {
+      writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "numbered", version: 1 }),
+      );
+      const entry = path.join(root, "index.js");
+      writeFileSync(entry, "module.exports = {};");
+
+      expect(findPackageFromEntry(entry, "numbered", root)).to.equal(undefined);
+    } finally {
+      cleanupTempDir(root);
+    }
+  });
 });

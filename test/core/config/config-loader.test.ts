@@ -132,6 +132,28 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         });
       });
 
+      for (const [label, document] of [
+        ["an array", "[1]"],
+        ["a string", '"ab"'],
+        ["null", "null"],
+      ]) {
+        it(`refuses a module config file holding ${label}`, async () => {
+          await mockTsConfig({
+            name: "test",
+            modules: { database: "1.0.0" },
+          });
+          await fs.writeFile("/project/antelope.database.json", document);
+
+          let failure: unknown;
+          await loader.load("/project").catch((error: unknown) => {
+            failure = error;
+          });
+
+          expect(failure).to.be.instanceOf(Error);
+          expect(String(failure)).to.contain("antelope.database.json");
+        });
+      }
+
       it("processes template strings", async () => {
         await mockTsConfig({
           name: "my-app",

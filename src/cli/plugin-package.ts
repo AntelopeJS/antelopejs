@@ -2,6 +2,7 @@ import { readFile, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type { PackageManagerName } from "../core/output";
+import { isObject, isOptionalString, isString } from "../utils";
 import {
   PATH_EXECUTABLE_SOURCE,
   type ResolvedExecutable,
@@ -38,12 +39,39 @@ const nodePluginPackageReader: PluginPackageReader = {
   readFile: (target) => readFile(target, "utf8"),
 };
 
+function parsePluginPackage(text: string): PluginPackage | undefined {
+  const parsed: unknown = JSON.parse(text);
+  if (!isObject(parsed)) {
+    return undefined;
+  }
+  const { name, version, peerDependencies } = parsed;
+  if (!isOptionalString(name) || !isOptionalString(version)) {
+    return undefined;
+  }
+  if (peerDependencies === undefined) {
+    return { name, version };
+  }
+  if (!isObject(peerDependencies)) {
+    return undefined;
+  }
+  const ranges: Record<string, string> = {};
+  for (const [packageName, range] of Object.entries(peerDependencies)) {
+    if (!isString(range)) {
+      return undefined;
+    }
+    ranges[packageName] = range;
+  }
+  return { name, version, peerDependencies: ranges };
+}
+
 async function readPackageJson(
   directory: string,
   reader: PluginPackageReader,
 ): Promise<PluginPackage | undefined> {
   try {
-    return JSON.parse(await reader.readFile(join(directory, PACKAGE_JSON)));
+    return parsePluginPackage(
+      await reader.readFile(join(directory, PACKAGE_JSON)),
+    );
   } catch {
     return undefined;
   }

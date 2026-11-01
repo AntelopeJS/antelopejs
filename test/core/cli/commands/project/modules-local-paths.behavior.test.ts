@@ -91,4 +91,30 @@ describe("project modules behavior: local-paths", () => {
       cleanupTempDir(tempDir);
     }
   });
+
+  for (const [label, manifest] of [
+    ["has no name", {}],
+    ["names the module with a number", { name: 5 }],
+  ] as const) {
+    it(`local handler refuses a package.json that ${label}`, async () => {
+      const tempDir = makeTempDir("antelope-mod-name-");
+      try {
+        writeJson(`${tempDir}/moduleA/package.json`, manifest);
+
+        const failure = await handlers.get("local")!(`${tempDir}/moduleA`, {
+          mode: "local",
+          project: tempDir,
+        }).then(
+          () => undefined,
+          (error: unknown) => error,
+        );
+
+        expect(failure)
+          .to.have.property("message")
+          .that.contains("package name");
+      } finally {
+        cleanupTempDir(tempDir);
+      }
+    });
+  }
 });

@@ -2,6 +2,8 @@ import { readFileSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { isObject, isOptionalString } from "./object";
+
 export interface ResolvedPackage {
   name: string;
   version: string;
@@ -102,9 +104,25 @@ export function isPathWithin(filePath: string, folderPath: string): boolean {
   return createPathWithinMatcher(folderPath)(filePath);
 }
 
+function parsePackageJson(text: string): PackageJson | undefined {
+  const parsed: unknown = JSON.parse(text);
+  if (!isObject(parsed)) {
+    return undefined;
+  }
+  const { name, version, antelopeJs } = parsed;
+  if (!isOptionalString(name) || !isOptionalString(version)) {
+    return undefined;
+  }
+  return {
+    name,
+    version,
+    antelopeJs: isObject(antelopeJs) ? antelopeJs : undefined,
+  };
+}
+
 function readPackageJson(packageRoot: string): PackageJson | undefined {
   try {
-    return JSON.parse(
+    return parsePackageJson(
       readFileSync(path.join(packageRoot, "package.json"), "utf8"),
     );
   } catch {

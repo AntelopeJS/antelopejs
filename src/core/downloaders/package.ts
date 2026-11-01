@@ -4,6 +4,7 @@ import * as path from "node:path";
 import { maxSatisfying, satisfies, valid, validRange } from "semver";
 
 import type { IFileSystem } from "../../types";
+import { isObject } from "../../utils";
 import { NodeFileSystem } from "../filesystem";
 import {
   ModuleCache,
@@ -140,6 +141,19 @@ async function resolveTargetVersion(
   );
 }
 
+/** The number of dependencies a cached package.json declares, or `undefined` when its shape is not a manifest. */
+function countDeclaredDependencies(text: string): number | undefined {
+  const parsed: unknown = JSON.parse(text);
+  if (!isObject(parsed)) {
+    return undefined;
+  }
+  const { dependencies } = parsed;
+  if (dependencies === undefined || dependencies === null) {
+    return 0;
+  }
+  return isObject(dependencies) ? Object.keys(dependencies).length : undefined;
+}
+
 async function findCachedFolder(
   cache: ModuleCache,
   pkg: string,
@@ -151,12 +165,14 @@ async function findCachedFolder(
     return undefined;
   }
   try {
-    const manifest: ModulePackageJson = JSON.parse(
+    const dependencyCount = countDeclaredDependencies(
       await fs.readFileString(manifestPath),
     );
-    const hasDependencies = Object.keys(manifest.dependencies ?? {}).length > 0;
+    if (dependencyCount === undefined) {
+      return undefined;
+    }
     if (
-      hasDependencies &&
+      dependencyCount > 0 &&
       !(await fs.exists(path.join(folder, NODE_MODULES)))
     ) {
       return undefined;

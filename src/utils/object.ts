@@ -1,11 +1,16 @@
 import { isDeepStrictEqual } from "node:util";
-import { isObjectOrNull } from "./type-guards";
+import { isObjectOrNull, isString } from "./type-guards";
 
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Application config and logging dictionaries carry caller-owned keys and leaf values of every kind, so the merge, diff and path-assignment helpers can only treat the leaves as open.
 type OpenDictionary = Record<string, any>;
 
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The result of a plain-object guard: its keys are known to be strings and its leaves are what the guard's caller goes on to decode.
 export type UnknownDictionary = Record<string, unknown>;
+
+/** Whether a value is absent or a primitive string. */
+export function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || isString(value);
+}
 
 export function isObject(item: unknown): item is UnknownDictionary {
   return isObjectOrNull(item) && item !== null && !Array.isArray(item);
