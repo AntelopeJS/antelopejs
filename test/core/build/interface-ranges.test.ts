@@ -124,7 +124,7 @@ describe("interface range check before startup", function () {
     ]);
   });
 
-  it("reports range conflicts while a required interface is still unimplemented", async () => {
+  it("reports no range conflict and fails the build while a required interface is unimplemented", async () => {
     const folder = await project([
       { name: "alpha", range: "^0.1.0", copy: "0.1.0" },
     ]);
