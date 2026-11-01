@@ -278,7 +278,7 @@ function applySetupOverrides(
   overrides: Partial<AntelopeConfig>,
 ): LoadedConfig {
   // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Setup overrides can overwrite required fields; validating the historic merge would change accepted configuration (#228).
-  return mergeDeep(config, overrides) as LoadedConfig;
+  return mergeDeep<object>(config, overrides) as LoadedConfig;
 }
 
 function clearStubModulePath(manager: ModuleManager | null): void {

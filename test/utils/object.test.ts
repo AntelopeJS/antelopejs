@@ -1,23 +1,31 @@
 import { expect } from "chai";
 
-import { diffDeep, mergeDeep, set } from "../../src/utils";
+import {
+  diffDeep,
+  mergeDeep,
+  set,
+  type UnknownDictionary,
+} from "../../src/utils";
+
+const merge = mergeDeep<UnknownDictionary>;
+const diff = diffDeep<UnknownDictionary>;
 
 describe("Object Utilities", () => {
   describe("mergeDeep", () => {
     it("should merge nested objects", () => {
-      const target = { a: { b: 1, c: 2 } };
-      const source = { a: { c: 3, d: 4 } };
+      const target: UnknownDictionary = { a: { b: 1, c: 2 } };
+      const source: UnknownDictionary = { a: { c: 3, d: 4 } };
 
-      const result = mergeDeep(target, source);
+      const result = merge(target, source);
 
       expect(result).to.deep.equal({ a: { b: 1, c: 3, d: 4 } });
     });
 
     it("should replace arrays instead of merging", () => {
-      const target = { arr: [1, 2] };
-      const source = { arr: [3, 4, 5] };
+      const target: UnknownDictionary = { arr: [1, 2] };
+      const source: UnknownDictionary = { arr: [3, 4, 5] };
 
-      const result = mergeDeep(target, source);
+      const result = merge(target, source);
 
       expect(result).to.deep.equal({ arr: [3, 4, 5] });
     });
@@ -25,7 +33,7 @@ describe("Object Utilities", () => {
     it("copies a __proto__ key from JSON as data and leaves the result's prototype alone", () => {
       const source = { ["__proto__"]: { polluted: true }, kept: 1 };
 
-      const result = mergeDeep({ a: 1 }, source);
+      const result = merge({ a: 1 }, source);
 
       expect(Object.getPrototypeOf(result)).to.equal(Object.prototype);
       expect(Object.hasOwn(result, "__proto__")).to.equal(true);
@@ -34,15 +42,14 @@ describe("Object Utilities", () => {
     });
 
     it("replaces the inherited constructor when the source carries a plain-object constructor key", () => {
-      const result = mergeDeep({}, { constructor: { name: "mine" } });
+      const result = merge({}, { constructor: { name: "mine" } });
 
       expect(Object.getPrototypeOf(result)).to.equal(Object.prototype);
       expect(result.constructor).to.deep.equal({ name: "mine" });
     });
 
     it("skips undefined sources", () => {
-      const target = { a: 1 };
-      const result = mergeDeep(target, undefined, { b: 2 });
+      const result = merge({ a: 1 }, undefined, { b: 2 });
 
       expect(result).to.deep.equal({ a: 1, b: 2 });
     });
@@ -67,8 +74,8 @@ describe("Object Utilities", () => {
     });
 
     it("treats a key named like an Object.prototype member as absent from before", () => {
-      expect(diffDeep({}, { toString: undefined })).to.deep.equal({});
-      expect(diffDeep({}, { constructor: 1 })).to.deep.equal({
+      expect(diff({}, { toString: undefined })).to.deep.equal({});
+      expect(diff({}, { constructor: 1 })).to.deep.equal({
         constructor: 1,
       });
     });
@@ -82,9 +89,7 @@ describe("Object Utilities", () => {
 
   describe("set", () => {
     it("should set nested value by path", () => {
-      interface NestedConfig {
-        a: { b: number; c?: { d: number } };
-      }
+      type NestedConfig = { a: { b: number; c?: { d: number } } };
       const obj: NestedConfig = { a: { b: 1 } };
       set(obj, "a.c.d", 42);
       expect(obj.a.c?.d).to.equal(42);

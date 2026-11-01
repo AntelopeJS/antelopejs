@@ -86,12 +86,14 @@ export class DownloaderRegistry {
     });
   }
 
-  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- The exported downloader API explicitly returns any | undefined; simplifying the redundant union would change its declaration.
-  getLoaderIdentifier(source: ModuleSource): any | undefined {
+  getLoaderIdentifier(source: ModuleSource): string | undefined {
     const type = this.knownTypes.get(source.type);
     if (type) {
-      // SAFETY: the generic registry key is read without claiming a value type; the published return already permits any custom downloader identifier.
-      return (source as any)[type.loaderIdentifier];
+      const identifier: unknown = Object.getOwnPropertyDescriptor(
+        source,
+        type.loaderIdentifier,
+      )?.value;
+      return isString(identifier) ? identifier : undefined;
     }
     return undefined;
   }
