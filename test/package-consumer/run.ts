@@ -65,7 +65,7 @@ function inspectManifest(tarball: string): void {
   const interfaceCoreRange = isObject(dependencies)
     ? dependencies["@antelopejs/interface-core"]
     : undefined;
-  if (interfaceCoreRange !== ">=0.3.0 <0.4.0") {
+  if (interfaceCoreRange !== ">=0.4.0 <0.5.0") {
     throw new Error(
       "Packed core does not pin interface-core to the minor it implements.",
     );
