@@ -223,7 +223,8 @@ async function loadPackage(
   fetchVersion: VersionFetcher,
 ): Promise<string> {
   if (source.ignoreCache) {
-    return downloadPackage(cache, source, source.version, ctx);
+    const version = (await ctx.locks.recordedVersion(source)) ?? source.version;
+    return downloadPackage(cache, source, version, ctx);
   }
   const target =
     (await ctx.locks.recordedVersion(source)) ??

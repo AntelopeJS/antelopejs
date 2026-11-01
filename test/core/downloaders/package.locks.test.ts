@@ -1,5 +1,6 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import { maxSatisfying } from "semver";
 
 import {
   DownloaderRegistry,
@@ -52,7 +53,8 @@ async function createHarness(
       return { stdout: JSON.stringify(registryVersions), stderr: "", code: 0 };
     }
     if (command.startsWith("npm pack")) {
-      packed = command.slice(command.lastIndexOf("@") + 1, -1);
+      const spec = command.slice(command.lastIndexOf("@") + 1, -1);
+      packed = maxSatisfying(registryVersions, spec) ?? spec;
       return { stdout: "mod.tgz", stderr: "", code: 0 };
     }
     const folder = `/cache/${PKG}`;
@@ -233,6 +235,27 @@ describe("PackageDownloader module locks", () => {
 
     await harness.load("1.0.0", { ignoreCache: true });
 
+    expect(harness.lockAtInstall).to.deep.equal([RECORDED_LOCK]);
+  });
+
+  it("keeps a locked range on its recorded version when the source ignores the cache", async () => {
+    const harness = await createHarness("record", ["1.0.0", "1.1.0"]);
+    await harness.store.write(recorded("1.0.0", RECORDED_LOCK));
+
+    const version = await harness.load("^1.0.0", { ignoreCache: true });
+
+    expect(version).to.equal("1.0.0");
+    expect(harness.lockAtInstall).to.deep.equal([RECORDED_LOCK]);
+    expect(await harness.store.versions(PKG)).to.deep.equal(["1.0.0"]);
+  });
+
+  it("installs a locked range from its record in frozen mode when the source ignores the cache", async () => {
+    const harness = await createHarness("frozen", ["1.0.0", "1.1.0"]);
+    await harness.store.write(recorded("1.0.0", RECORDED_LOCK));
+
+    const version = await harness.load("^1.0.0", { ignoreCache: true });
+
+    expect(version).to.equal("1.0.0");
     expect(harness.lockAtInstall).to.deep.equal([RECORDED_LOCK]);
   });
 
