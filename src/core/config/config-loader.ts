@@ -5,7 +5,12 @@ import type {
 } from "@antelopejs/interface-core/config";
 
 import type { IFileSystem } from "../../types";
-import { mergeDeep } from "../../utils";
+import {
+  isObject,
+  isString,
+  mergeDeep,
+  type UnknownDictionary,
+} from "../../utils";
 import { ConfigParser, type ExpandedModuleConfig } from "./config-parser";
 import {
   DEFAULT_CACHE_DIR,
@@ -56,10 +61,7 @@ export class ConfigLoader {
     for (const moduleName of Object.keys(expandedModules)) {
       const moduleConfigPath = getModuleConfigPath(projectFolder, moduleName);
       if (await this.fs.exists(moduleConfigPath)) {
-        const moduleConfig =
-          await this.loadJsonFile<Parameters<typeof mergeDeep>[0]>(
-            moduleConfigPath,
-          );
+        const moduleConfig = await this.loadJsonFile(moduleConfigPath);
         expandedModules[moduleName].config = mergeDeep(
           // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
           (expandedModules[moduleName].config as Parameters<
@@ -100,8 +102,25 @@ export class ConfigLoader {
     return tsConfigFile.loadTsConfigFile(resolvedPath, environment, true);
   }
 
-  private async loadJsonFile<T>(filePath: string): Promise<T> {
+  /**
+   * Reads a module's `antelope.<module>.json` file as the entries to merge
+   * into its configuration. An object contributes its own keys, a string or an
+   * array its index keys, and `null`, a number or a boolean nothing, as the
+   * historic merge of the parsed value did.
+   */
+  private async loadJsonFile(filePath: string): Promise<UnknownDictionary> {
     const content = await this.fs.readFileString(filePath);
-    return JSON.parse(content);
+    const parsed: unknown = JSON.parse(content);
+    if (isObject(parsed)) {
+      return parsed;
+    }
+    if (isString(parsed)) {
+      return Object.fromEntries(parsed.split("").entries());
+    }
+    if (Array.isArray(parsed)) {
+      const items: unknown[] = parsed;
+      return Object.fromEntries(items.entries());
+    }
+    return {};
   }
 }

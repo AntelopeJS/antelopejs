@@ -18,7 +18,6 @@ import {
   registerPackageDownloader,
 } from "../../../../core/downloaders";
 import { NodeFileSystem } from "../../../../core/filesystem";
-import type { ModulePackageJson } from "../../../../core/modules";
 import {
   fetchLatestVersion,
   ModuleCache,
@@ -40,8 +39,10 @@ import {
 import { writeConfig } from "../../../common";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
-import { isObjectOrNull, isString } from "../../../../utils";
+import { isObject, isObjectOrNull, isString } from "../../../../utils";
 
+/** The key earlier versions stored for a local module whose package.json has no name. */
+const UNNAMED_MODULE_KEY = "undefined";
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
 const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];
 const DEFAULT_CACHE_FOLDER = ".antelope/cache";
@@ -344,12 +345,15 @@ handlers.set("local", async (module, options) => {
     `No package.json found in '${module}'`,
   );
 
-  const info: ModulePackageJson = JSON.parse(
-    (await readFile(packagePath)).toString(),
+  const info: unknown = JSON.parse((await readFile(packagePath)).toString());
+  const name = isObject(info) ? info.name : undefined;
+  ensure(
+    info !== null && (name === undefined || isString(name)),
+    `No package name found in the package.json of '${module}'`,
   );
 
   return [
-    info.name,
+    name ?? UNNAMED_MODULE_KEY,
     {
       source: {
         type: "local",

@@ -2,6 +2,9 @@ import { readFileSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { isObject, type UnknownDictionary } from "./object";
+import { isString } from "./type-guards";
+
 export interface ResolvedPackage {
   name: string;
   version: string;
@@ -102,9 +105,44 @@ export function isPathWithin(filePath: string, folderPath: string): boolean {
   return createPathWithinMatcher(folderPath)(filePath);
 }
 
+function readVersion({ version }: UnknownDictionary): string | undefined {
+  if (isString(version)) {
+    return version;
+  }
+  return version ? JSON.stringify(version) : undefined;
+}
+
+function readAntelopeJs({
+  antelopeJs,
+}: UnknownDictionary): PackageJson["antelopeJs"] {
+  if (isObject(antelopeJs)) {
+    return antelopeJs;
+  }
+  return antelopeJs ? {} : undefined;
+}
+
+/**
+ * Reads the fields the resolver needs. A truthy `version` that is not a string
+ * (npm installs a local package whose version is a number) stays resolvable as
+ * the text it prints as, which is no valid semver and never satisfies a range.
+ * A truthy `antelopeJs` that is not an object still marks an AntelopeJS package
+ * with nothing declared. Falsy values read as absent.
+ */
+function parsePackageJson(text: string): PackageJson | undefined {
+  const parsed: unknown = JSON.parse(text);
+  if (!isObject(parsed)) {
+    return undefined;
+  }
+  return {
+    name: isString(parsed.name) ? parsed.name : undefined,
+    version: readVersion(parsed),
+    antelopeJs: readAntelopeJs(parsed),
+  };
+}
+
 function readPackageJson(packageRoot: string): PackageJson | undefined {
   try {
-    return JSON.parse(
+    return parsePackageJson(
       readFileSync(path.join(packageRoot, "package.json"), "utf8"),
     );
   } catch {
