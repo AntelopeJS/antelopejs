@@ -44,11 +44,11 @@ function startWithinDeadline(module: Module): Promise<void> {
         );
       }, START_SLOW_WARNING_MS),
       setTimeout(() => {
-        reject(
-          new Error(
-            `Module '${module.id}' did not start within ${START_TIMEOUT_MS / MS_PER_SECOND} s`,
-          ),
+        const late = new Error(
+          `Module '${module.id}' did not start within ${START_TIMEOUT_MS / MS_PER_SECOND} s`,
         );
+        Logger.Error(late.message);
+        reject(late);
       }, START_TIMEOUT_MS),
     );
   });
