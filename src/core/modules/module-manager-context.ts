@@ -51,6 +51,11 @@ export interface InterfacePackageConsumer {
   resolvedPackage?: ResolvedPackage;
 }
 
+export interface StubbedInterfacePackage {
+  canonicalPackage: ResolvedPackage;
+  provider: string;
+}
+
 export interface InterfacePackagePlan {
   canonicalPackage: ResolvedPackage;
   provider?: string;
@@ -80,7 +85,7 @@ interface ManagerFields {
   selectedProviders: Map<string, Map<string, string>>;
   staticModules: ManagedModule[];
   loaded: Map<string, ManagedModule>;
-  stubbedInterfacePackages: Map<string, ResolvedPackage>;
+  stubbedInterfacePackages: Map<string, StubbedInterfacePackage>;
   interfacePackagePlans: Map<string, InterfacePackagePlan>;
   configVars: ConfigVarStore;
   pendingCleanup: ManagedModule[];

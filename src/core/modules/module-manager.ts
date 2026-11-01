@@ -1,4 +1,3 @@
-import { type ResolvedPackage } from "../../utils";
 import { ConfigVarStore } from "../config";
 import type { InterfaceRangeConflict } from "../output";
 import type { BindingGraph, UnresolvedInterface } from "../resolution";
@@ -14,6 +13,7 @@ import {
   bindOperations,
   type ManagerMethods,
   type ModuleConfig,
+  type StubbedInterfacePackage,
   operations,
   defineManagerContext,
 } from "./module-manager-context";
@@ -57,7 +57,7 @@ export class ModuleManager {
 
   private readonly stubbedInterfacePackages = new Map<
     string,
-    ResolvedPackage
+    StubbedInterfacePackage
   >();
 
   private readonly interfacePackagePlans = new Map<

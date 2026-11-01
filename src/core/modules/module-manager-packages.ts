@@ -24,8 +24,6 @@ import {
 } from "./module-manager-context";
 import { Logger } from "./module-manager-logger";
 
-const stubbedCopyProviders = new WeakMap<ResolvedPackage, string>();
-
 function compareModuleIds(left: string, right: string): number {
   return left.localeCompare(right);
 }
@@ -57,8 +55,10 @@ export function registerStubbedInterfacePackage(
   if (!canonicalPackage) {
     return;
   }
-  this.stubbedInterfacePackages.set(packageName, canonicalPackage);
-  stubbedCopyProviders.set(canonicalPackage, provider.moduleId);
+  this.stubbedInterfacePackages.set(packageName, {
+    canonicalPackage,
+    provider: provider.moduleId,
+  });
   this.interfacePackagePlans.set(packageName, {
     canonicalPackage,
     provider: provider.moduleId,
@@ -74,14 +74,14 @@ export function registerStubbedInterfacePackage(
 export function applyInterfaceStubs(this: ManagerContext): void {
   const implemented = this.collectImplementedInterfaces();
   const stubbed = Array.from(this.stubbedInterfacePackages);
-  for (const [interfaceName, resolvedPackage] of stubbed) {
+  for (const [interfaceName, { canonicalPackage }] of stubbed) {
     if (implemented.has(interfaceName)) {
       this.stubbedInterfacePackages.delete(interfaceName);
       this.resolver.stubbedInterfacePackages.delete(interfaceName);
       continue;
     }
     if (!this.resolver.interfacePackages.has(interfaceName)) {
-      this.registerInterfacePackage(interfaceName, resolvedPackage, true);
+      this.registerInterfacePackage(interfaceName, canonicalPackage, true);
     }
     this.neutralizeInstances(interfaceName);
   }
@@ -141,16 +141,16 @@ export function resolveInterfacePackagePaths(
     });
     this.registerInterfacePackage(ifacePkg, canonicalPackage, false);
   }
-  for (const [packageName, canonicalPackage] of this.stubbedInterfacePackages) {
+  for (const [packageName, stub] of this.stubbedInterfacePackages) {
     if (interfaceSources.has(packageName)) {
       continue;
     }
     this.interfacePackagePlans.set(packageName, {
-      canonicalPackage,
-      provider: stubbedCopyProviders.get(canonicalPackage),
+      canonicalPackage: stub.canonicalPackage,
+      provider: stub.provider,
       consumers: this.collectInterfacePackageConsumers(packageName),
     });
-    this.registerInterfacePackage(packageName, canonicalPackage, true);
+    this.registerInterfacePackage(packageName, stub.canonicalPackage, true);
   }
 }
 
