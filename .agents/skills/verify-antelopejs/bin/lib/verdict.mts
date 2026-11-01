@@ -5,6 +5,7 @@ import path from "node:path";
 import config, { type DoorKind } from "../../verify.config.ts";
 import { FEATURE_JOURNEYS } from "../journeys/index.mts";
 import { flaggedDoors } from "./doors.mts";
+import { field, isText, type Json, type JsonRead, parseJson } from "./json.mts";
 import { formalGate, readFormalResult, touchedFormalChecks } from "./formal.mts";
 import type { JourneyResult } from "./journey.mts";
 import { planFor, type Plan, SMOKE_FEATURE } from "./map.mts";
@@ -70,34 +71,79 @@ function doorKind(value: string, label: string): DoorKind {
   return value;
 }
 
-function parseFalsePositives(raw: JudgementFile): FalsePositive[] {
-  return (raw.doors?.falsePositives ?? []).map((entry, index) => {
-    if (!entry.location || !entry.reason?.trim()) {
-      throw new Error(`judgement.json: doors.falsePositives[${index}] needs location and reason`);
+/** A string member, `undefined` when the member is absent, and a thrown error when it holds anything else. */
+function optionalText(parent: JsonRead, key: string, label: string): string | undefined {
+  const found = field(parent, key);
+  if (found === undefined) {
+    return undefined;
+  }
+  if (!isText(found)) {
+    throw new Error(`judgement.json: ${label} must be a string`);
+  }
+  return found;
+}
+
+/** The items of an array member, none when the member is absent, and a thrown error when it holds anything else. */
+function optionalItems(parent: JsonRead, key: string, label: string): Json[] {
+  const found = field(parent, key);
+  if (found === undefined) {
+    return [];
+  }
+  if (!Array.isArray(found)) {
+    throw new Error(`judgement.json: ${label} must be an array`);
+  }
+  return found;
+}
+
+function optionalTexts(parent: JsonRead, key: string, label: string): string[] {
+  return optionalItems(parent, key, label).map((entry, index) => {
+    if (!isText(entry)) {
+      throw new Error(`judgement.json: ${label}[${index}] must be a string`);
     }
-    return { ...entry, kind: doorKind(entry.kind, `doors.falsePositives[${index}].kind`) };
+    return entry;
   });
 }
 
-function parseRows(raw: JudgementFile): DoorRow[] {
-  return (raw.doors?.rows ?? []).map((row, index) => {
-    if (!row.kind || !row.location || !row.irreversible || !row.containment) {
-      throw new Error(`judgement.json: doors.rows[${index}] needs kind, location, irreversible and containment`);
+function parseFalsePositives(doors: JsonRead): FalsePositive[] {
+  return optionalItems(doors, "falsePositives", "doors.falsePositives").map((entry, index) => {
+    const label = `doors.falsePositives[${index}]`;
+    const location = optionalText(entry, "location", `${label}.location`);
+    const reason = optionalText(entry, "reason", `${label}.reason`);
+    if (!location || !reason?.trim()) {
+      throw new Error(`judgement.json: ${label} needs location and reason`);
     }
-    return { ...row, kind: doorKind(row.kind, `doors.rows[${index}].kind`), containmentJourney: row.containmentJourney ?? "" };
+    return { kind: doorKind(optionalText(entry, "kind", `${label}.kind`) ?? "", `${label}.kind`), location, reason };
   });
 }
 
-interface JudgementFile {
-  notVerified?: string[];
-  attention?: string[];
-  verifier?: string;
-  docs?: { page: string; matches: boolean; note?: string }[];
-  doors?: {
-    none?: string;
-    rows?: (Omit<DoorRow, "kind" | "containmentJourney"> & { kind: string; containmentJourney?: string })[];
-    falsePositives?: (Omit<FalsePositive, "kind"> & { kind: string })[];
-  };
+function parseRows(doors: JsonRead): DoorRow[] {
+  return optionalItems(doors, "rows", "doors.rows").map((row, index) => {
+    const label = `doors.rows[${index}]`;
+    const kind = optionalText(row, "kind", `${label}.kind`);
+    const location = optionalText(row, "location", `${label}.location`);
+    const irreversible = optionalText(row, "irreversible", `${label}.irreversible`);
+    const containment = optionalText(row, "containment", `${label}.containment`);
+    if (!kind || !location || !irreversible || !containment) {
+      throw new Error(`judgement.json: ${label} needs kind, location, irreversible and containment`);
+    }
+    return {
+      kind: doorKind(kind, `${label}.kind`),
+      location,
+      irreversible,
+      containment,
+      containmentJourney: optionalText(row, "containmentJourney", `${label}.containmentJourney`) ?? "",
+    };
+  });
+}
+
+function parseDocs(raw: JsonRead): DocsJudgement[] {
+  return optionalItems(raw, "docs", "docs").map((entry, index) => {
+    const page = optionalText(entry, "page", `docs[${index}].page`);
+    if (page === undefined) {
+      throw new Error(`judgement.json: docs[${index}] needs page`);
+    }
+    return { page, matches: field(entry, "matches") === true, note: optionalText(entry, "note", `docs[${index}].note`) ?? "" };
+  });
 }
 
 /** Parses evidence/judgement.json. A verdict without a One-way doors section is void, so a missing one throws. */
@@ -105,25 +151,29 @@ export function readJudgement(file: string): Judgement {
   if (!existsSync(file)) {
     throw new Error(`${file} is missing: write the verifier's judgement before rendering the verdict`);
   }
-  const raw: JudgementFile = JSON.parse(readFileSync(file, "utf8"));
-  const rows = parseRows(raw);
-  const none = raw.doors?.none?.trim() || null;
+  const raw = parseJson(readFileSync(file, "utf8"));
+  if (raw === undefined) {
+    throw new Error(`judgement.json: ${file} is not JSON`);
+  }
+  const doors = field(raw, "doors");
+  const rows = parseRows(doors);
+  const none = optionalText(doors, "none", "doors.none")?.trim() || null;
   if (!none && rows.length === 0) {
     throw new Error("judgement.json: doors needs `none` with a reason or at least one row; a verdict without it is void");
   }
-  const verifier = raw.verifier?.trim();
+  const verifier = optionalText(raw, "verifier", "verifier")?.trim();
   if (!verifier) {
     throw new Error("judgement.json: verifier must say who judged this run, for example the verifier thread's URL");
   }
 
   return {
-    notVerified: raw.notVerified ?? [],
-    attention: raw.attention ?? [],
-    docs: (raw.docs ?? []).map((entry) => ({ page: entry.page, matches: entry.matches === true, note: entry.note ?? "" })),
+    notVerified: optionalTexts(raw, "notVerified", "notVerified"),
+    attention: optionalTexts(raw, "attention", "attention"),
+    docs: parseDocs(raw),
     doorsNone: none,
     verifier,
     doors: rows,
-    falsePositives: parseFalsePositives(raw),
+    falsePositives: parseFalsePositives(doors),
   };
 }
 

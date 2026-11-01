@@ -14,7 +14,7 @@ export function parseJson(text: string): JsonRead {
   }
 }
 
-function isRecord(value: JsonRead): value is { [key: string]: Json } {
+export function isRecord(value: JsonRead): value is { [key: string]: Json } {
   return value !== undefined && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 }
 
@@ -24,7 +24,7 @@ export function field(value: JsonRead, key: string): JsonRead {
 }
 
 /** Whether a JSON value is a string. */
-function isText(value: JsonRead): value is string {
+export function isText(value: JsonRead): value is string {
   return typeof value === "string";
 }
 
