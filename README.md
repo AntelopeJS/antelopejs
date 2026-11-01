@@ -81,7 +81,7 @@ When a plugin is missing, `ajs` offers to install it with the package manager th
 
 | Package                      | Supported        | Tested with                                                |
 | ---------------------------- | ---------------- | ---------------------------------------------------------- |
-| `@antelopejs/interface-core` | `>=0.4.0 <0.5.0` | `file:.campaign/tgz/antelopejs-interface-core-c1a7185.tgz` |
+| `@antelopejs/interface-core` | `>=0.4.0 <0.5.0` | `file:.campaign/tgz/antelopejs-interface-core-6a8b526.tgz` |
 
 <!-- antelopejs-docs-compat:end -->
 

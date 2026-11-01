@@ -137,7 +137,7 @@
     "overrides": {
       "@antelopejs/tooling-configs": "file:.campaign/tgz/antelopejs-tooling-configs-70050fb.tgz",
       "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz",
-      "@antelopejs/interface-core": "file:.campaign/tgz/antelopejs-interface-core-c1a7185.tgz"
+      "@antelopejs/interface-core": "file:.campaign/tgz/antelopejs-interface-core-6a8b526.tgz"
     }
   },
   "antelopeJs": {

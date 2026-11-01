@@ -6,6 +6,6 @@
   },
   "dependencies": {
     "@antelopejs/core": "link:..",
-    "@antelopejs/interface-core": "file:../.campaign/tgz/antelopejs-interface-core-c1a7185.tgz"
+    "@antelopejs/interface-core": "file:../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz"
   }
 }
