@@ -5,6 +5,7 @@ import path from "node:path";
 import config, { type DoorKind } from "../../verify.config.ts";
 import { FEATURE_JOURNEYS } from "../journeys/index.mts";
 import { flaggedDoors } from "./doors.mts";
+import { field, isPrintable, isText, type Json, type JsonRead, parseJson } from "./json.mts";
 import { formalGate, readFormalResult, touchedFormalChecks } from "./formal.mts";
 import type { JourneyResult } from "./journey.mts";
 import { planFor, type Plan, SMOKE_FEATURE } from "./map.mts";
@@ -70,34 +71,100 @@ function doorKind(value: string, label: string): DoorKind {
   return value;
 }
 
-function parseFalsePositives(raw: JudgementFile): FalsePositive[] {
-  return (raw.doors?.falsePositives ?? []).map((entry, index) => {
-    if (!entry.location || !entry.reason?.trim()) {
-      throw new Error(`judgement.json: doors.falsePositives[${index}] needs location and reason`);
+/** The text of a JSON value: a string as is, a number or a boolean as it prints, and a thrown error for anything else. */
+function textOf(value: Json, label: string): string {
+  if (isText(value)) {
+    return value;
+  }
+  if (isPrintable(value)) {
+    return String(value);
+  }
+  throw new Error(`judgement.json: ${label} must be a string`);
+}
+
+/** A string member the old reader trimmed, so a number or a boolean was never accepted: `undefined` when the member is absent or `null`, and a thrown error for anything but a string. */
+function optionalString(parent: JsonRead, key: string, label: string): string | undefined {
+  const found = field(parent, key);
+  if (found === undefined || found === null) {
+    return undefined;
+  }
+  if (!isText(found)) {
+    throw new Error(`judgement.json: ${label} must be a string`);
+  }
+  return found;
+}
+
+/** A text member, `undefined` when the member is absent or `null`, and a thrown error when it holds an object, an array or another unprintable value. */
+function optionalText(parent: JsonRead, key: string, label: string): string | undefined {
+  const found = field(parent, key);
+  if (found === undefined || found === null) {
+    return undefined;
+  }
+  return textOf(found, label);
+}
+
+/** A text member the old reader only tested for truthiness: `undefined` for an absent, `null`, empty, `0` or `false` member, the text of any other number, boolean or string, and a thrown error otherwise. */
+function presentText(parent: JsonRead, key: string, label: string): string | undefined {
+  const found = field(parent, key);
+  return found ? textOf(found, label) : undefined;
+}
+
+/** The items of an array member, none when the member is absent or `null`, and a thrown error when it holds anything else. */
+function optionalItems(parent: JsonRead, key: string, label: string): Json[] {
+  const found = field(parent, key);
+  if (found === undefined || found === null) {
+    return [];
+  }
+  if (!Array.isArray(found)) {
+    throw new Error(`judgement.json: ${label} must be an array`);
+  }
+  return found;
+}
+
+function optionalTexts(parent: JsonRead, key: string, label: string): string[] {
+  return optionalItems(parent, key, label).map((entry, index) => textOf(entry, `${label}[${index}]`));
+}
+
+function parseFalsePositives(doors: JsonRead): FalsePositive[] {
+  return optionalItems(doors, "falsePositives", "doors.falsePositives").map((entry, index) => {
+    const label = `doors.falsePositives[${index}]`;
+    const location = presentText(entry, "location", `${label}.location`);
+    const reason = optionalString(entry, "reason", `${label}.reason`);
+    if (!location || !reason?.trim()) {
+      throw new Error(`judgement.json: ${label} needs location and reason`);
     }
-    return { ...entry, kind: doorKind(entry.kind, `doors.falsePositives[${index}].kind`) };
+    return { kind: doorKind(optionalString(entry, "kind", `${label}.kind`) ?? "", `${label}.kind`), location, reason };
   });
 }
 
-function parseRows(raw: JudgementFile): DoorRow[] {
-  return (raw.doors?.rows ?? []).map((row, index) => {
-    if (!row.kind || !row.location || !row.irreversible || !row.containment) {
-      throw new Error(`judgement.json: doors.rows[${index}] needs kind, location, irreversible and containment`);
+function parseRows(doors: JsonRead): DoorRow[] {
+  return optionalItems(doors, "rows", "doors.rows").map((row, index) => {
+    const label = `doors.rows[${index}]`;
+    const kind = optionalString(row, "kind", `${label}.kind`);
+    const location = presentText(row, "location", `${label}.location`);
+    const irreversible = presentText(row, "irreversible", `${label}.irreversible`);
+    const containment = presentText(row, "containment", `${label}.containment`);
+    if (!kind || !location || !irreversible || !containment) {
+      throw new Error(`judgement.json: ${label} needs kind, location, irreversible and containment`);
     }
-    return { ...row, kind: doorKind(row.kind, `doors.rows[${index}].kind`), containmentJourney: row.containmentJourney ?? "" };
+    return {
+      kind: doorKind(kind, `${label}.kind`),
+      location,
+      irreversible,
+      containment,
+      containmentJourney: presentText(row, "containmentJourney", `${label}.containmentJourney`) ?? "",
+    };
   });
 }
 
-interface JudgementFile {
-  notVerified?: string[];
-  attention?: string[];
-  verifier?: string;
-  docs?: { page: string; matches: boolean; note?: string }[];
-  doors?: {
-    none?: string;
-    rows?: (Omit<DoorRow, "kind" | "containmentJourney"> & { kind: string; containmentJourney?: string })[];
-    falsePositives?: (Omit<FalsePositive, "kind"> & { kind: string })[];
-  };
+function parseDocs(raw: JsonRead): DocsJudgement[] {
+  return optionalItems(raw, "docs", "docs").map((entry, index) => {
+    const page = optionalText(entry, "page", `docs[${index}].page`);
+    if (page === undefined) {
+      throw new Error(`judgement.json: docs[${index}] needs page`);
+    }
+    return { page, matches: field(entry, "matches") === true, note: presentText(entry, "note", `docs[${index}].note`) ?? "" };
+  });
 }
 
 /** Parses evidence/judgement.json. A verdict without a One-way doors section is void, so a missing one throws. */
@@ -105,25 +172,29 @@ export function readJudgement(file: string): Judgement {
   if (!existsSync(file)) {
     throw new Error(`${file} is missing: write the verifier's judgement before rendering the verdict`);
   }
-  const raw: JudgementFile = JSON.parse(readFileSync(file, "utf8"));
-  const rows = parseRows(raw);
-  const none = raw.doors?.none?.trim() || null;
+  const raw = parseJson(readFileSync(file, "utf8"));
+  if (raw === undefined) {
+    throw new Error(`judgement.json: ${file} is not JSON`);
+  }
+  const doors = field(raw, "doors");
+  const rows = parseRows(doors);
+  const none = optionalString(doors, "none", "doors.none")?.trim() || null;
   if (!none && rows.length === 0) {
     throw new Error("judgement.json: doors needs `none` with a reason or at least one row; a verdict without it is void");
   }
-  const verifier = raw.verifier?.trim();
+  const verifier = optionalString(raw, "verifier", "verifier")?.trim();
   if (!verifier) {
     throw new Error("judgement.json: verifier must say who judged this run, for example the verifier thread's URL");
   }
 
   return {
-    notVerified: raw.notVerified ?? [],
-    attention: raw.attention ?? [],
-    docs: (raw.docs ?? []).map((entry) => ({ page: entry.page, matches: entry.matches === true, note: entry.note ?? "" })),
+    notVerified: optionalTexts(raw, "notVerified", "notVerified"),
+    attention: optionalTexts(raw, "attention", "attention"),
+    docs: parseDocs(raw),
     doorsNone: none,
     verifier,
     doors: rows,
-    falsePositives: parseFalsePositives(raw),
+    falsePositives: parseFalsePositives(doors),
   };
 }
 
