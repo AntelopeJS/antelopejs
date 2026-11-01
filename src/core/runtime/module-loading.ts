@@ -16,6 +16,9 @@ import {
 import {
   activateLoadedModules as activateModules,
   ensureGraphIsValid as validateGraph,
+  ensureNoRangeConflicts as throwRangeConflicts,
+  findEntryRangeConflicts as findEntryConflicts,
+  planInterfacePackages as planPackages,
 } from "./module-interfaces";
 import { moduleLoadFailure } from "./module-load-failure";
 import { reloadWatchedModule as reloadModule } from "./module-reloading";
@@ -27,7 +30,7 @@ import type {
   ModuleOverrideMap,
   NormalizedLoadedConfig,
 } from "./runtime-types";
-import type { FailureTranslator } from "../output";
+import type { FailureTranslator, InterfaceRangeConflict } from "../output";
 
 const Logger = new Logging.Channel("loader");
 
@@ -227,7 +230,11 @@ export async function reloadWatchedModule(
   return reloadModule(manager, moduleId, loaderContext);
 }
 
-export async function loadModuleEntriesForManager(
+/**
+ * Registers the core interfaces on `manager` and loads the entries of the
+ * project without adding them to it.
+ */
+export async function createModuleEntriesForManager(
   manager: ModuleManager,
   config: NormalizedLoadedConfig,
   runtimeInterface: boolean,
@@ -240,7 +247,21 @@ export async function loadModuleEntriesForManager(
   }
 
   await registerCoreInterfaces(manager);
-  const entries = await buildModuleConfigs(config, resolvedLoaderContext);
+  return buildModuleConfigs(config, resolvedLoaderContext);
+}
+
+export async function loadModuleEntriesForManager(
+  manager: ModuleManager,
+  config: NormalizedLoadedConfig,
+  runtimeInterface: boolean,
+  loaderContext?: LoaderContext,
+): Promise<ModuleManifestEntry[]> {
+  const entries = await createModuleEntriesForManager(
+    manager,
+    config,
+    runtimeInterface,
+    loaderContext,
+  );
   manager.addModules(entries);
   return entries;
 }
@@ -281,4 +302,22 @@ export async function destroyModulesAfterFailure(
 
 export function ensureGraphIsValid(manager: ModuleManager): void {
   return validateGraph(manager);
+}
+
+export function ensureNoRangeConflicts(
+  rangeConflicts: InterfaceRangeConflict[],
+): void {
+  return throwRangeConflicts(rangeConflicts);
+}
+
+export function findEntryRangeConflicts(
+  manager: ModuleManager,
+  entries: ModuleManifestEntry[],
+  planRequired: (manager: ModuleManager) => void,
+): Promise<InterfaceRangeConflict[]> {
+  return findEntryConflicts(manager, entries, planRequired);
+}
+
+export function planInterfacePackages(manager: ModuleManager): void {
+  return planPackages(manager);
 }

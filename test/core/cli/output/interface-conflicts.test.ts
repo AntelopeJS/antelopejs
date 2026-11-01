@@ -80,6 +80,20 @@ describe("interface conflict translation", () => {
     expect(problem?.details?.[2]).to.equal("  copy of legacy: not installed");
   });
 
+  it("names the module the shared copy was resolved from", () => {
+    const problem = translateFailure(
+      resolutionError([rangeConflict({ provider: "core-provider" })]),
+    );
+
+    expect(problem?.details?.[0]).to.equal(
+      "legacy requires @antelopejs/interface-core@^0.0.3, but the shared copy is 0.1.1 (provided by core-provider)",
+    );
+    expect(problem?.fixes).to.deep.equal([
+      UPDATE_LEGACY_FIX,
+      WIDEN_LEGACY_RANGE_FIX,
+    ]);
+  });
+
   it("names the file of a copy loaded before the shared one", () => {
     const problem = translateFailure(resolutionError([], [preloadedCopy()]));
 
@@ -167,6 +181,16 @@ describe("InterfaceResolutionError", () => {
       `  - legacy requires @antelopejs/interface-core@^0.0.3, but the canonical package is 0.1.1 at ${SHARED_COPY.root} (consumer copy: 0.0.3 at ${LEGACY_COPY.root})`,
       `  - @antelopejs/interface-core@0.0.3 was loaded from ${LEGACY_COPY.root} before the canonical copy at ${SHARED_COPY.root}; preloaded interface copies cannot be redirected (${LEGACY_COPY.root}/dist/index.js)`,
     ]);
+  });
+
+  it("names the module the canonical package was resolved from", () => {
+    const error = resolutionError([
+      rangeConflict({ provider: "core-provider" }),
+    ]);
+
+    expect(error.message).to.include(
+      "but the canonical package is 0.1.1 (provided by core-provider) at ",
+    );
   });
 
   it("says when the consumer has no copy installed", () => {

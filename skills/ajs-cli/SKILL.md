@@ -16,7 +16,7 @@ ajs project dev --watch      # reload modules when their files change (-w)
 ajs project dev -e production    # select an environment of antelope.config.ts (env: ANTELOPEJS_LAUNCH_ENV)
 ajs project dev -i           # REPL with the project loaded
 ajs project dev --inspect    # Node inspector (default 127.0.0.1:9229)
-ajs project build            # download & install modules, check they load, write .antelope/build/build.json
+ajs project build            # download & install modules, check they load and interface ranges, write .antelope/build/build.json
 ajs project start            # launch from the build artifact; --refresh-config re-resolves the config at start
 ajs project logging show|set # view/change logging settings
 ```
@@ -37,7 +37,9 @@ ajs project modules install              # add a provider module for every unres
 
 `add` in package mode accepts `<name>@<exact|range|dist-tag>`; without a spec it writes a caret range of the latest version. `add` does no interface resolution.
 
-`modules install` (not `add`) fixes **unresolved imports**, and despite its name it installs no npm dependencies: it finds the interfaces no loaded module implements, looks up their implementing modules in the interface repository, and writes the chosen one into `antelope.config.ts`. A single implementer is added without a question; with several it asks, or takes the first with `-y`.
+`modules install` (not `add`) fixes **unresolved imports**, and despite its name it installs no npm dependencies: it finds the interfaces no loaded module implements, looks up their implementing modules in the interface repository, and writes the chosen one into `antelope.config.ts`. A single implementer is added without a question; with several it asks, or takes the first with `-y`. It then checks interface ranges like `build`.
+
+`build` and `modules install` fail (exit `1`, no `build.json` written) with `Incompatible interface package resolution` when a module's declared range of an interface package excludes the shared copy, the same error `start` and `dev` raise. Fix it as the error says: update that module, or widen its range to the shared version (`^<version>`) and reinstall, or keep the module that provides the shared copy on a version within the range. Do not skip the build check. A module marked `optional: true` that would conflict only produces a warning, as `start` runs without it.
 
 Modules declared in `antelope.config.ts` are downloaded into `.antelope/cache` by `dev`, `build`, and `modules add`; a module's own npm dependencies install inside its cache folder.
 
