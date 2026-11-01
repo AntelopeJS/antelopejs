@@ -27,6 +27,8 @@ const START_SLOW_WARNING_MS = 10 * MS_PER_SECOND;
  */
 const START_TIMEOUT_MS = 120 * MS_PER_SECOND;
 
+const DESTROY_TIMEOUT_MS = 10 * MS_PER_SECOND;
+
 /**
  * Starts a module, warning once it is slow and failing it once it is late.
  * The module's own `start` keeps running: its lifecycle queue holds any later
@@ -51,6 +53,24 @@ function startWithinDeadline(module: Module): Promise<void> {
     );
   });
   return Promise.race([module.start(), deadline]).finally(() => {
+    timers.forEach(clearTimeout);
+  });
+}
+
+function destroyWithinDeadline(module: Module): Promise<void> {
+  const timers: NodeJS.Timeout[] = [];
+  const deadline = new Promise<never>((_, reject) => {
+    timers.push(
+      setTimeout(() => {
+        reject(
+          new Error(
+            `Module '${module.id}' did not stop within ${DESTROY_TIMEOUT_MS / MS_PER_SECOND} s`,
+          ),
+        );
+      }, DESTROY_TIMEOUT_MS),
+    );
+  });
+  return Promise.race([module.destroy(), deadline]).finally(() => {
     timers.forEach(clearTimeout);
   });
 }
@@ -126,8 +146,9 @@ export async function stopAll(this: ManagerContext): Promise<void> {
 export async function destroyAll(this: ManagerContext): Promise<void> {
   announceModulesStopping();
   const modules = this.getReverseLifecycleModules();
-  const results = await runTrackedModuleOperations(modules, (module) =>
-    module.destroy(),
+  const results = await runTrackedModuleOperations(
+    modules,
+    destroyWithinDeadline,
   );
   this.pendingCleanup = results.failed.filter(
     ({ module }) => module.state !== ModuleState.Loaded,
