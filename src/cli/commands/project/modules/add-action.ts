@@ -10,24 +10,19 @@ import {
   TS_CONFIG_FILE,
   type LoadedConfig,
 } from "../../../../core/config";
-import {
-  DownloaderRegistry,
-  registerGitDownloader,
-  registerLocalDownloader,
-  registerLocalFolderDownloader,
-  registerPackageDownloader,
-} from "../../../../core/downloaders";
+import type { DownloaderRegistry } from "../../../../core/downloaders";
 import { NodeFileSystem } from "../../../../core/filesystem";
-import type { ModulePackageJson } from "../../../../core/modules";
 import {
   fetchLatestVersion,
-  ModuleCache,
+  ModuleLockStore,
+  reportRecordedLocks,
   toFloatingSpec,
   validateVersionSpec,
+  type ModuleCache,
+  type ModulePackageJson,
 } from "../../../../core/modules";
 import {
   CliError,
-  ExecuteCMD,
   FAILURE_EXIT_CODE,
   getProcessPalette,
   getProcessTasks,
@@ -41,10 +36,10 @@ import { writeConfig } from "../../../common";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import { isObjectOrNull, isString } from "../../../../utils";
+import { createModuleRegistry, openModuleCache } from "./module-locks";
 
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
 const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];
-const DEFAULT_CACHE_FOLDER = ".antelope/cache";
 const INSTALL_COMMAND = "ajs project modules install";
 const INSTALL_DESCRIPTION = "resolve the interfaces they need";
 
@@ -98,30 +93,18 @@ function sourceReference(moduleConfig: AntelopeModuleConfig | string): string {
   return source.version ?? source.remote ?? source.path ?? "";
 }
 
-function createRegistry(): DownloaderRegistry {
-  const fs = new NodeFileSystem();
-  const registry = new DownloaderRegistry();
-  registerLocalDownloader(registry, { fs, exec: ExecuteCMD });
-  registerLocalFolderDownloader(registry, { fs });
-  registerPackageDownloader(registry, { fs, exec: ExecuteCMD });
-  registerGitDownloader(registry, { fs, exec: ExecuteCMD });
-  return registry;
-}
-
 async function createAddContext(
   options: AddOptions,
   config: AntelopeConfig,
   environment: string,
+  locks: ModuleLockStore,
 ): Promise<AddContext> {
   const loader = new ConfigLoader(new NodeFileSystem());
   const antelopeConfig = await loader.load(options.project, environment);
-  const cacheFolder = config.cacheFolder ?? DEFAULT_CACHE_FOLDER;
-  const cache = new ModuleCache(path.resolve(options.project, cacheFolder));
-  await cache.load();
   return {
     options,
-    registry: createRegistry(),
-    cache,
+    registry: createModuleRegistry(locks, "record"),
+    cache: await openModuleCache(options.project, config),
     existingModules: antelopeConfig.modules,
   };
 }
@@ -211,16 +194,23 @@ function groupOutcomes(outcomes: ModuleAddOutcome[]): AddCommandResult {
 /**
  * Adds modules to the project configuration, one line per module, and
  * writes the configuration when at least one was added. Prints no summary,
- * so other commands can add modules as one of their steps.
+ * so other commands can add modules as one of their steps. The module locks
+ * it records stay in `locks` for the caller to report.
  */
 export async function addModules(
   modules: string[],
   options: AddOptions,
+  locks = new ModuleLockStore(path.resolve(options.project)),
 ): Promise<AddCommandResult> {
   const addOptions = { ...options, project: path.resolve(options.project) };
   const { config, environment, environmentConfig } =
     await resolveProjectContext(addOptions.project, options.env);
-  const context = await createAddContext(addOptions, config, environment);
+  const context = await createAddContext(
+    addOptions,
+    config,
+    environment,
+    locks,
+  );
   const outcomes = await Promise.all(
     modules.map((module) => addModule(module, context)),
   );
@@ -273,7 +263,9 @@ export async function projectModulesAddCommand(
   options: AddOptions,
 ): Promise<AddCommandResult | undefined> {
   const startedAt = Date.now();
-  const result = await addModules(modules, options);
+  const locks = new ModuleLockStore(path.resolve(options.project));
+  const result = await addModules(modules, options, locks);
+  reportRecordedLocks(locks);
   getProcessUi().summary({
     headline: addHeadline(result),
     durationMs: Date.now() - startedAt,

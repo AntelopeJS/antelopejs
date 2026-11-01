@@ -1,0 +1,293 @@
+import { expect } from "chai";
+
+import path from "node:path";
+import sinon from "sinon";
+
+import { ModuleLockStore, reportRecordedLocks } from "../../src/core/modules";
+import { NodeFileSystem } from "../../src/core/filesystem";
+import type { IFileSystem } from "../../src/types";
+import { getProcessUi } from "../../src/core/output";
+import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
+import { cleanupTempDir, makeTempDir } from "../helpers/temp";
+
+const API = { package: "@antelopejs/api", version: "1.5.0" };
+
+function lockRecord(version: string, content: string, pkg = API.package) {
+  return { package: pkg, version, lockfile: "pnpm-lock.yaml", content };
+}
+
+describe("ModuleLockStore", () => {
+  it("keeps a scoped module's lockfile under its scope folder, named after the package and version", async () => {
+    const fs = new InMemoryFileSystem();
+    const store = new ModuleLockStore("/project", fs);
+
+    await store.write(lockRecord("1.5.0", "lock: a"));
+
+    expect(
+      await fs.exists(
+        "/project/antelope-lock/@antelopejs/api@1.5.0/pnpm-lock.yaml",
+      ),
+    ).to.equal(true);
+    expect(await store.read(API)).to.deep.equal(lockRecord("1.5.0", "lock: a"));
+  });
+
+  it("reads back an npm module's package-lock.json under its own name", async () => {
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+    const record = {
+      package: "dms",
+      version: "0.11.1",
+      lockfile: "package-lock.json",
+      content: "{}",
+    };
+
+    await store.write(record);
+
+    expect(await store.read(record)).to.deep.equal(record);
+  });
+
+  it("says whether a write added, changed or left a record as it was", async () => {
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+
+    const changes = [
+      await store.write(lockRecord("1.5.0", "lock: a")),
+      await store.write(lockRecord("1.5.0", "lock: a")),
+      await store.write(lockRecord("1.5.0", "lock: b")),
+    ];
+
+    expect(changes).to.deep.equal(["added", "unchanged", "changed"]);
+  });
+
+  it("reads and writes the same record under a v-prefixed and a clean version", async () => {
+    const fs = new InMemoryFileSystem();
+    const store = new ModuleLockStore("/project", fs);
+
+    const changes = [
+      await store.write(lockRecord("v1.5.0", "lock: a")),
+      await store.write(lockRecord("1.5.0", "lock: a")),
+    ];
+
+    expect(changes).to.deep.equal(["added", "unchanged"]);
+    expect(await store.list()).to.deep.equal([API]);
+    expect(await store.read({ ...API, version: "v1.5.0" })).to.deep.equal(
+      lockRecord("1.5.0", "lock: a"),
+    );
+    expect(
+      ModuleLockStore.relativePath({ ...API, version: "v1.5.0" }),
+    ).to.equal("antelope-lock/@antelopejs/api@1.5.0");
+  });
+
+  it("has no record for a version it never wrote, nor for a folder without a lockfile", async () => {
+    const fs = new InMemoryFileSystem();
+    const store = new ModuleLockStore("/project", fs);
+    await store.write(lockRecord("1.5.0", "lock: a"));
+    await fs.writeFile("/project/antelope-lock/other@1.0.0/README.md", "notes");
+
+    expect(await store.read({ ...API, version: "1.6.0" })).to.equal(undefined);
+    expect(await store.read({ package: "other", version: "1.0.0" })).to.equal(
+      undefined,
+    );
+  });
+
+  it("refuses a package name or a version that would leave the lock folder", async () => {
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+
+    const attempts = [
+      { package: "../escape", version: "1.0.0" },
+      { package: "@scope/../../escape", version: "1.0.0" },
+      { package: "pkg", version: "../../1.0.0" },
+    ];
+    const errors = await Promise.all(
+      attempts.map((key) =>
+        store.read(key).then(
+          () => undefined,
+          (error) => error,
+        ),
+      ),
+    );
+
+    expect(errors.map((error) => error instanceof Error)).to.deep.equal([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it("lists scoped and unscoped records and skips entries that are not records", async () => {
+    const fs = new InMemoryFileSystem();
+    const store = new ModuleLockStore("/project", fs);
+    await store.write(lockRecord("1.5.0", "a"));
+    await store.write(lockRecord("2.0.0", "b", "plain"));
+    await fs.writeFile("/project/antelope-lock/README.md", "notes");
+
+    const listed = await store.list();
+
+    expect(listed).to.have.deep.members([
+      API,
+      { package: "plain", version: "2.0.0" },
+    ]);
+    expect(await store.versions(API.package)).to.deep.equal(["1.5.0"]);
+  });
+
+  it("lists nothing when the project has no lock folder", async () => {
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+
+    expect(await store.list()).to.deep.equal([]);
+  });
+});
+
+describe("ModuleLockStore atomic write", () => {
+  let project = "";
+
+  beforeEach(() => {
+    project = makeTempDir("ajs-lock-store-");
+  });
+
+  afterEach(() => {
+    cleanupTempDir(project);
+  });
+
+  it("keeps the previous record and leaves no debris when writing the new one fails", async () => {
+    class InterruptedFileSystem extends NodeFileSystem {
+      async writeFile(
+        filePath: string,
+        data: Parameters<IFileSystem["writeFile"]>[1],
+      ): Promise<void> {
+        if (data === "lock: b") {
+          throw new Error("disk full");
+        }
+        return super.writeFile(filePath, data);
+      }
+    }
+    await new ModuleLockStore(project).write(lockRecord("1.5.0", "lock: a"));
+    const store = new ModuleLockStore(project, new InterruptedFileSystem());
+
+    const failure = await store
+      .write(lockRecord("1.5.0", "lock: b"))
+      .catch((error) => error);
+
+    expect(failure).to.be.instanceOf(Error);
+    expect(await store.read(API)).to.deep.equal(lockRecord("1.5.0", "lock: a"));
+    expect(
+      await new NodeFileSystem().readdir(
+        path.join(project, "antelope-lock", "@antelopejs"),
+      ),
+    ).to.deep.equal(["api@1.5.0"]);
+  });
+
+  it("replaces a record whose lockfile name changed", async () => {
+    const store = new ModuleLockStore(project);
+    await store.write(lockRecord("1.5.0", "lock: a"));
+
+    await store.write({
+      ...lockRecord("1.5.0", "{}"),
+      lockfile: "package-lock.json",
+    });
+
+    expect(
+      await new NodeFileSystem().readdir(
+        path.join(store.folder, "@antelopejs", "api@1.5.0"),
+      ),
+    ).to.deep.equal(["package-lock.json"]);
+  });
+});
+
+describe("ModuleLockStore prune", () => {
+  it("prunes the versions no requirement keeps: exact pins keep theirs, a range only its highest match", async () => {
+    const fs = new InMemoryFileSystem();
+    const store = new ModuleLockStore("/project", fs);
+    await store.write(lockRecord("1.5.0", "a"));
+    await store.write(lockRecord("1.5.1", "b"));
+    await store.write(lockRecord("1.0.0", "c", "pinned"));
+    await store.write(lockRecord("1.1.0", "d", "pinned"));
+    await store.write(lockRecord("3.0.0", "e", "@gone/module"));
+
+    const removed = await store.prune([
+      { package: API.package, spec: "^1.5.0" },
+      { package: "pinned", spec: "1.0.0" },
+    ]);
+
+    expect(removed).to.have.deep.members([
+      { ...API, version: "1.5.0" },
+      { package: "pinned", version: "1.1.0" },
+      { package: "@gone/module", version: "3.0.0" },
+    ]);
+    expect(await store.list()).to.have.deep.members([
+      { ...API, version: "1.5.1" },
+      { package: "pinned", version: "1.0.0" },
+    ]);
+    expect(await fs.exists("/project/antelope-lock/@gone")).to.equal(false);
+  });
+
+  it("keeps every version of a module asked for by dist-tag, which only the registry resolves", async () => {
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+    await store.write(lockRecord("1.5.0", "a"));
+    await store.write(lockRecord("1.6.0", "b"));
+
+    const removed = await store.prune([
+      { package: API.package, spec: "latest" },
+    ]);
+
+    expect(removed).to.deep.equal([]);
+  });
+
+  it("keeps the record of each version two environments ask for", async () => {
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+    await store.write(lockRecord("1.5.0", "a"));
+    await store.write(lockRecord("1.6.0", "b"));
+
+    const removed = await store.prune([
+      { package: API.package, spec: "1.5.0" },
+      { package: API.package, spec: "1.6.0" },
+    ]);
+
+    expect(removed).to.deep.equal([]);
+  });
+
+  it("keeps the record of a version pinned with a v prefix", async () => {
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+    await store.write(lockRecord("1.5.0", "a"));
+
+    const removed = await store.prune([
+      { package: API.package, spec: "v1.5.0" },
+    ]);
+
+    expect(removed).to.deep.equal([]);
+    expect(await store.list()).to.deep.equal([API]);
+  });
+
+  it("names the record folder relative to the project", () => {
+    expect(ModuleLockStore.relativePath(API)).to.equal(
+      "antelope-lock/@antelopejs/api@1.5.0",
+    );
+  });
+});
+
+describe("reportRecordedLocks", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("prints one line for every record written since the last report", async () => {
+    const message = sinon.stub(getProcessUi(), "message");
+    const store = new ModuleLockStore("/project", new InMemoryFileSystem());
+    await store.write(lockRecord("1.5.0", "a"));
+    await store.write(lockRecord("1.6.0", "b"));
+    await store.write(lockRecord("1.6.0", "b"));
+
+    reportRecordedLocks(store);
+    reportRecordedLocks(store);
+
+    expect(message.callCount).to.equal(1);
+    expect(message.firstCall.args[1]).to.include("Recorded 2 module locks");
+  });
+
+  it("prints nothing when no record was written", () => {
+    const message = sinon.stub(getProcessUi(), "message");
+
+    reportRecordedLocks(
+      new ModuleLockStore("/project", new InMemoryFileSystem()),
+    );
+
+    expect(message.called).to.equal(false);
+  });
+});

@@ -99,6 +99,21 @@
         "acceptable": ["antelopejs"],
         "mustMention": ["ajs project build", "ajs project start"]
       }
+    },
+    {
+      "id": "ajs-cli-module-locks-ci",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "My antelope.config.ts pins @antelopejs/api to an exact version, yet a clean CI build installs newer interface packages than my laptop did yesterday. How do I make module installs reproducible?",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"],
+        "mustMention": [
+          "antelope-lock",
+          "--frozen-modules",
+          "ajs project modules update"
+        ]
+      }
     }
   ]
 }

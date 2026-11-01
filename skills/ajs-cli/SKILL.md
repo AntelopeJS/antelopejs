@@ -16,7 +16,7 @@ ajs project dev --watch      # reload modules when their files change (-w)
 ajs project dev -e production    # select an environment of antelope.config.ts (env: ANTELOPEJS_LAUNCH_ENV)
 ajs project dev -i           # REPL with the project loaded
 ajs project dev --inspect    # Node inspector (default 127.0.0.1:9229)
-ajs project build            # download & install modules, check they load and interface ranges, write .antelope/build/build.json
+ajs project build            # download & install modules, check they load and interface ranges, write .antelope/build/build.json (--frozen-modules in CI)
 ajs project start            # launch from the build artifact; --refresh-config re-resolves the config at start
 ajs project logging show|set # view/change logging settings
 ```
@@ -31,7 +31,7 @@ ajs project logging show|set # view/change logging settings
 ajs project modules list                 # configured modules + their sources (alias: ls; -j for JSON)
 ajs project modules add <modules...>     # add & download modules you name (-m, --mode package|git|local|dir; default package = npm)
 ajs project modules remove <modules...>  # remove from config (alias: rm; -f, --force)
-ajs project modules update [modules...]  # bump npm modules to their latest versions (--dry-run)
+ajs project modules update [modules...]  # bump npm modules to their latest versions and resolve their locks again (--dry-run)
 ajs project modules install              # add a provider module for every unresolved interface (-y: never ask)
 ```
 
@@ -42,6 +42,8 @@ ajs project modules install              # add a provider module for every unres
 `build` and `modules install` fail (exit `1`, no `build.json` written) with `Incompatible interface package resolution` when a module's declared range of an interface package excludes the shared copy, the same error `start` and `dev` raise. Fix it as the error says: update that module, or widen its range to the shared version (`^<version>`) and reinstall, or keep the module that provides the shared copy on a version within the range. Do not skip the build check. A module marked `optional: true` that would conflict only produces a warning, as `start` runs without it.
 
 Modules declared in `antelope.config.ts` are downloaded into `.antelope/cache` by `dev`, `build`, and `modules add`; a module's own npm dependencies install inside its cache folder.
+
+**Module locks.** The lockfile an npm module's package manager writes in its cache folder is recorded in `antelope-lock/<package>@<version>/` (`pnpm-lock.yaml`, `package-lock.json` or `yarn.lock`), and replayed on every later install, so the same commit installs the same dependency versions on every machine and every day. Commit `antelope-lock/` with `antelope.config.ts`. A locked range (`^1.0.0`) stays on its recorded version. Only `modules update` resolves the dependencies again (and drops the locks no environment uses, as `modules remove` does): that is how a dependency fix reaches the project, and its diff is the review. In CI and image builds run `ajs project build --frozen-modules` (env `ANTELOPEJS_FROZEN_MODULES`): it installs only from the locks and fails on an npm module without one. Git and local modules carry their own lockfiles and are not locked here.
 
 ## Embedded mode: no `ajs project`
 

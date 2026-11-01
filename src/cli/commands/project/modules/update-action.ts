@@ -22,6 +22,12 @@ import {
 } from "../../../../core/output";
 import { writeConfig } from "../../../common";
 import { formatNames } from "../../shared/names";
+import {
+  isChangedLock,
+  type LockedModule,
+  pruneModuleLocks,
+  refreshModuleLocks,
+} from "./module-locks";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 
@@ -56,6 +62,26 @@ function applyUpdates(
     };
   }
 }
+/**
+ * The package modules of `selected`, at the version `modules update` moves
+ * them to.
+ */
+function lockedModules(
+  selected: Record<string, ExpandedModuleConfig>,
+  outdated: OutdatedModule[],
+): LockedModule[] {
+  return Object.entries(selected).flatMap(([id, { source }]) => {
+    if (!isPackageSource(source)) {
+      return [];
+    }
+    const update = outdated.find((entry) => entry.name === id);
+    const version = update
+      ? bumpVersionSpec(update.current, update.latest)
+      : source.version;
+    return [{ id, source: { ...source, version } }];
+  });
+}
+
 const UPDATE_COMMAND = "ajs project modules update";
 const DEV_COMMAND = "ajs project dev";
 
@@ -63,6 +89,7 @@ interface UpdateReport {
   modules: string[];
   outdated: OutdatedModule[];
   checkedCount: number;
+  changedLocks: number;
   options: UpdateOptions;
   durationMs: number;
 }
@@ -86,7 +113,10 @@ function updateHeadline(report: UpdateReport): string {
   if (report.checkedCount === 0) {
     return "Nothing to update: no module comes from npm";
   }
-  return `Everything is up to date (${pluralize(report.checkedCount, "npm module")} checked)`;
+  const checked = `${pluralize(report.checkedCount, "npm module")} checked`;
+  return report.changedLocks > 0
+    ? `Versions up to date (${checked}), ${pluralize(report.changedLocks, "module lock")} resolved again`
+    : `Everything is up to date (${checked})`;
 }
 
 function updateNextSteps(report: UpdateReport): NextStep[] {
@@ -177,14 +207,25 @@ export async function updateModules(
   }
 
   const outdated = await checkOutdatedModules(selectedModules);
-  if (outdated.length > 0 && !options.dryRun) {
-    applyUpdates(env.modules, outdated, antelopeConfig.modules);
-    await writeConfig(options.project, config);
+  let changedLocks = 0;
+  if (!options.dryRun) {
+    const refreshed = await refreshModuleLocks(
+      options.project,
+      config,
+      lockedModules(selectedModules, outdated),
+    );
+    changedLocks = refreshed.filter(isChangedLock).length;
+    if (outdated.length > 0) {
+      applyUpdates(env.modules, outdated, antelopeConfig.modules);
+      await writeConfig(options.project, config);
+    }
+    await pruneModuleLocks(options.project, config);
   }
   displayResults({
     modules,
     outdated,
     checkedCount: countPackageModules(selectedModules),
+    changedLocks,
     options,
     durationMs: Date.now() - startedAt,
   });

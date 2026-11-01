@@ -101,6 +101,7 @@ function resolveRuntimeLoaderConfig(
     cacheFolder: cacheIsInsideProject
       ? path.join(runtimeFolder, cacheRelativeToBuild)
       : artifactConfig.cacheFolder,
+    moduleLocks: "replay",
   };
 }
 

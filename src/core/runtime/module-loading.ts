@@ -7,7 +7,14 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { ExpandedModuleConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { ManagedModule, ModuleConfig, ModuleManager } from "../modules";
-import { ModuleCache, ModuleManifest, unpackErrors } from "../modules";
+import {
+  MissingModuleLockError,
+  ModuleCache,
+  ModuleLockStore,
+  ModuleManifest,
+  reportRecordedLocks,
+  unpackErrors,
+} from "../modules";
 import { pluralize, runTask } from "../output";
 import {
   registerCoreInterfaces as registerInterfaces,
@@ -49,10 +56,14 @@ export async function createLoaderContext(
   const cache = new ModuleCache(config.cacheFolder, fs);
   await cache.load();
 
+  const locks = new ModuleLockStore(config.projectFolder, fs);
   const registry = new DownloaderRegistry();
   local.registerLocalDownloader(registry, { fs });
   localFolder.registerLocalFolderDownloader(registry, { fs });
-  packageDownloader.registerPackageDownloader(registry, { fs });
+  packageDownloader.registerPackageDownloader(registry, {
+    fs,
+    lock: { store: locks, mode: config.moduleLocks ?? "record" },
+  });
   git.registerGitDownloader(registry, { fs });
 
   return {
@@ -60,6 +71,7 @@ export async function createLoaderContext(
     cache,
     registry,
     projectFolder: config.projectFolder,
+    locks,
   };
 }
 
@@ -167,7 +179,10 @@ async function loadModuleEntries(
   results.forEach((result, index) => {
     if (result.status === "fulfilled") return;
     const [id, moduleConfig] = declared[index];
-    if (moduleConfig.optional) {
+    if (
+      moduleConfig.optional &&
+      !(result.reason instanceof MissingModuleLockError)
+    ) {
       skipOptionalModule(id, result.reason);
       return;
     }
@@ -203,7 +218,11 @@ export async function buildModuleConfigs(
     "Loading modules",
     () => loadModuleEntries(config.modules, loaderContext),
     { done: `Loaded ${pluralize(moduleCount, "module")}` },
-  );
+  ).finally(() => {
+    if (loaderContext.locks) {
+      reportRecordedLocks(loaderContext.locks);
+    }
+  });
   validateModuleNameCollisions(modules);
   return modules;
 }
