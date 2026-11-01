@@ -5,12 +5,13 @@ import { maxSatisfying, valid, validRange } from "semver";
 
 import type { IFileSystem } from "../../types";
 import {
+  MissingModuleLockError,
   ModuleLockStore,
   type ModuleLockKey,
   type ModuleLockMode,
   type ModuleLockRecord,
 } from "../modules";
-import { CliError, findModuleLockfile } from "../output";
+import { findModuleLockfile } from "../output";
 
 /** The module locks a package downloader replays and records. */
 export interface PackageLockPolicy {
@@ -19,20 +20,6 @@ export interface PackageLockPolicy {
 }
 
 const Logger = new Logging.Channel("loader.package");
-
-const BUILD_COMMAND = "ajs project build";
-const UPDATE_COMMAND = "ajs project modules update";
-
-function missingLockError(key: ModuleLockKey): CliError {
-  const label = `${key.package}@${key.version}`;
-  return new CliError({
-    title: `No module lock for ${label}`,
-    reason: `--frozen-modules installs only from ${ModuleLockStore.relativePath(key)}, and the project has none.`,
-    fixes: [
-      `Run ${BUILD_COMMAND} without --frozen-modules (or ${UPDATE_COMMAND} ${key.package}) and commit the lock it writes`,
-    ],
-  });
-}
 
 /**
  * Applies a {@link PackageLockPolicy} to package modules: which version a
@@ -81,7 +68,7 @@ export class PackageLocks {
     }
     const record = await this.policy.store.read(key);
     if (!record && this.policy.mode === "frozen") {
-      throw missingLockError(key);
+      throw new MissingModuleLockError(key);
     }
     return record;
   }

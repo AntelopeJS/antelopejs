@@ -3,7 +3,7 @@ import { maxSatisfying, valid, validRange } from "semver";
 
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import { MODULE_LOCKFILE_NAMES } from "../output";
+import { CliError, MODULE_LOCKFILE_NAMES } from "../output";
 
 /** Folder of the project, next to `antelope.config.ts`, that holds the module locks. */
 export const MODULE_LOCK_FOLDER = "antelope-lock";
@@ -34,6 +34,25 @@ export interface ModuleLockRecord extends ModuleLockKey {
 
 /** What writing a record did to the project. */
 export type ModuleLockChange = "added" | "changed" | "unchanged";
+
+const BUILD_COMMAND = "ajs project build";
+const UPDATE_COMMAND = "ajs project modules update";
+
+/**
+ * A `frozen` install of a package module the project has no lock for. Fatal
+ * even for an optional module: a frozen build must not drop it silently.
+ */
+export class MissingModuleLockError extends CliError {
+  constructor(key: ModuleLockKey) {
+    super({
+      title: `No module lock for ${key.package}${VERSION_SEPARATOR}${key.version}`,
+      reason: `--frozen-modules installs only from ${ModuleLockStore.relativePath(key)}, and the project has none.`,
+      fixes: [
+        `Run ${BUILD_COMMAND} without --frozen-modules (or ${UPDATE_COMMAND} ${key.package}) and commit the lock it writes`,
+      ],
+    });
+  }
+}
 
 /** A package module of the configuration, with the version or range it asks for. */
 export interface ModuleLockRequirement {

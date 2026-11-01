@@ -8,6 +8,7 @@ import type { ExpandedModuleConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { ManagedModule, ModuleConfig, ModuleManager } from "../modules";
 import {
+  MissingModuleLockError,
   ModuleCache,
   ModuleLockStore,
   ModuleManifest,
@@ -175,7 +176,10 @@ async function loadModuleEntries(
   results.forEach((result, index) => {
     if (result.status === "fulfilled") return;
     const [id, moduleConfig] = declared[index];
-    if (moduleConfig.optional) {
+    if (
+      moduleConfig.optional &&
+      !(result.reason instanceof MissingModuleLockError)
+    ) {
       skipOptionalModule(id, result.reason);
       return;
     }

@@ -2,12 +2,19 @@ import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
+import {
+  DownloaderRegistry,
+  registerPackageDownloader,
+} from "../../../src/core/downloaders";
+import { NodeFileSystem } from "../../../src/core/filesystem";
+import { ModuleCache, ModuleLockStore } from "../../../src/core/modules";
 import { CliError, getProcessTasks } from "../../../src/core/output";
 import {
   buildModuleConfigs,
   registerCoreModuleInterface,
 } from "../../../src/core/runtime";
 import { ModuleState } from "../../../src/types";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
   loadedConfigFixture,
   loaderFixture,
@@ -238,5 +245,42 @@ describe("runtime module-loading", () => {
     expect(messageStub.calledOnceWith("success", "Loaded 1 module")).to.equal(
       true,
     );
+  });
+});
+
+describe("runtime module-loading: frozen module locks", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("fails the load of an optional npm module that has no lock instead of skipping it", async () => {
+    sinon.stub(getProcessTasks().ui, "message");
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    const registry = new DownloaderRegistry();
+    registerPackageDownloader(registry, {
+      fs,
+      exec: async () => ({ stdout: "", stderr: "", code: 0 }),
+      lock: { store: new ModuleLockStore("/project", fs), mode: "frozen" },
+    });
+    const config = loadedConfigFixture({
+      modules: {
+        extra: {
+          source: { type: "package", package: "extra", version: "1.0.0" },
+          optional: true,
+        },
+      },
+    });
+
+    const caught = await buildModuleConfigs(config, {
+      fs: new NodeFileSystem(),
+      cache,
+      registry,
+      projectFolder: "/project",
+    }).catch((err) => err);
+
+    expect(caught).to.be.instanceOf(CliError);
+    expect(caught.message).to.equal("No module lock for extra@1.0.0");
   });
 });
