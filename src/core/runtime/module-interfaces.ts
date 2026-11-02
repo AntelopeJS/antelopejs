@@ -6,6 +6,7 @@ import {
   type InterfaceResolutionResult,
   type UnresolvedInterface,
 } from "../resolution";
+import { isString } from "../../utils";
 
 /**
  * Checks the interfaces of modules `LoadModule` just added, then constructs
@@ -51,7 +52,8 @@ function collectStaticPackages(manager: ModuleManager): string[] {
     .flatMap(({ module }) => [
       module.manifest.manifest.name,
       ...Object.keys(module.manifest.manifest.dependencies ?? {}),
-    ]);
+    ])
+    .filter(isString);
 }
 
 function toInterfaceConsumer({ module }: ManagedModule): InterfaceConsumer {

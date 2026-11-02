@@ -9,7 +9,7 @@ import path from "node:path";
 import type { IFileSystem } from "../../types";
 import { ConfigLoader, type LoadedConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
-import type { ModulePackageJson } from "./module-manifest";
+import type { ModulePackageJson } from "./module-package-json";
 import { isObjectOrNull } from "../../utils";
 
 const BUILD_ARTIFACT_VERSION = "1";
@@ -46,7 +46,7 @@ export interface BuildModuleEntry {
   folder: string;
   source: ModuleSource;
   name: string;
-  version: string;
+  version?: string;
   main: string;
   manifest: ModulePackageJson;
   implements?: string[];

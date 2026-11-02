@@ -237,7 +237,8 @@ export function findRangeConflicts(
 ): InterfaceRangeConflict[] {
   return plan.consumers.flatMap((consumer) => {
     const range = validRange(consumer.range);
-    if (!range || satisfies(plan.canonicalPackage.version, range)) {
+    const { version } = plan.canonicalPackage;
+    if (!range || (version !== undefined && satisfies(version, range))) {
       return [];
     }
     return [
