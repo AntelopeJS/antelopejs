@@ -209,12 +209,14 @@ export function decodeModulePackageJson(
   antelopeModuleJsonText?: string,
 ): ModulePackageJson {
   const parsed: unknown = JSON.parse(packageJsonText);
+  const antelopeJs: unknown =
+    antelopeModuleJsonText === undefined
+      ? undefined
+      : JSON.parse(antelopeModuleJsonText);
   const document: unknown =
     antelopeModuleJsonText === undefined
       ? parsed
-      : Object.assign({}, parsed, {
-          antelopeJs: JSON.parse(antelopeModuleJsonText),
-        });
+      : Object.assign({}, parsed, { antelopeJs });
   if (!isObject(document)) {
     throw new Error(
       `Invalid module manifest in '${where}': the file must hold a JSON object.`,
