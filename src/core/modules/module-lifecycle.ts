@@ -39,44 +39,29 @@ export class ModuleLifecycle {
    */
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- ModuleLifecycle is emitted in the published declarations through Module.state, so provide keeps its unknown application config parameter.
   provide(config: unknown): Promise<ConfigVars | void> {
-    return this.enqueue(() => this.runProvide(config));
-  }
+    return this.enqueue(async () => {
+      if (this._state !== ModuleState.Loaded) {
+        return undefined;
+      }
 
-  private async runProvide(
-    config: Parameters<ModuleLifecycle["provide"]>[0],
-  ): Promise<ConfigVars | void> {
-    if (this._state !== ModuleState.Loaded) {
-      return undefined;
-    }
-
-    return this.callbacks?.provide?.(config) ?? undefined;
+      return this.callbacks?.provide?.(config) ?? undefined;
+    });
   }
 
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- ModuleLifecycle is emitted in the published declarations through Module.state, so construct keeps its unknown application config parameter.
   construct(config: unknown): Promise<void> {
-    return this.enqueue(() => this.runConstruct(config));
-  }
+    return this.enqueue(() => {
+      if (this._state !== ModuleState.Loaded) {
+        return Promise.resolve();
+      }
 
-  private runConstruct(
-    config: Parameters<ModuleLifecycle["construct"]>[0],
-  ): Promise<void> {
-    if (this._state !== ModuleState.Loaded) {
-      return Promise.resolve();
-    }
+      return ModuleDiagnostics.construct.tracePromise(async () => {
+        this._state = ModuleState.Constructed;
+        await this.callbacks?.construct?.(config);
 
-    return ModuleDiagnostics.construct.tracePromise(
-      () => this.applyConstruct(config),
-      this.diagnosticsContext(),
-    );
-  }
-
-  private async applyConstruct(
-    config: Parameters<ModuleLifecycle["construct"]>[0],
-  ): Promise<void> {
-    this._state = ModuleState.Constructed;
-    await this.callbacks?.construct?.(config);
-
-    Events.ModuleConstructed.emit(this.moduleId);
+        Events.ModuleConstructed.emit(this.moduleId);
+      }, this.diagnosticsContext());
+    });
   }
 
   start(): Promise<void> {
