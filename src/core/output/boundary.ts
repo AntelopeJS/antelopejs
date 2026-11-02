@@ -22,11 +22,6 @@ interface CommanderExit {
   exitCode: number;
 }
 
-interface FailureHandler {
-  matches(error: Parameters<typeof handleFailure>[0]): boolean;
-  handle(error: Parameters<typeof handleFailure>[0]): number;
-}
-
 const COMMANDER_CODE_PREFIX = "commander.";
 
 function reportCancelledRun(): number {
@@ -57,25 +52,6 @@ function commanderExitCode(error: CommanderExit): number {
     : USAGE_EXIT_CODE;
 }
 
-const FAILURE_HANDLERS: FailureHandler[] = [
-  { matches: isPromptCancellation, handle: reportCancelledRun },
-  { matches: isCommanderExit, handle: commanderExitCode },
-];
-
-async function handleFailure(
-  error: Parameters<FailureTranslator>[0],
-  options: BoundaryOptions,
-): Promise<number> {
-  const handler = FAILURE_HANDLERS.find((candidate) =>
-    candidate.matches(error),
-  );
-  if (handler) {
-    return handler.handle(error);
-  }
-  const { reportFailure } = await import("./failures");
-  return reportFailure(error, options.ui, options.verbose, options.translate);
-}
-
 /**
  * Runs the CLI and reports whatever it throws exactly once: a cancelled
  * prompt as `Cancelled` (exit 130), commander's help and version exits with
@@ -91,6 +67,20 @@ export async function runWithErrorBoundary(
   try {
     await main();
   } catch (error) {
-    process.exitCode = await handleFailure(error, options);
+    if (isPromptCancellation(error)) {
+      process.exitCode = reportCancelledRun();
+      return;
+    }
+    if (isCommanderExit(error)) {
+      process.exitCode = commanderExitCode(error);
+      return;
+    }
+    const { reportFailure } = await import("./failures");
+    process.exitCode = reportFailure(
+      error,
+      options.ui,
+      options.verbose,
+      options.translate,
+    );
   }
 }

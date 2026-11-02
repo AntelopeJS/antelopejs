@@ -29,24 +29,9 @@ function commandOutputTail(error: ExecError): string[] {
   return [OUTPUT_HEADING, ...lines.map((line) => `${OUTPUT_INDENT}${line}`)];
 }
 
-function genericProblem(
-  error: Parameters<typeof describeFailure>[0],
-): CliProblem {
-  if (error instanceof Error) {
-    const [headline] = stripAnsiCodes(error.message).split(LINE_BREAK_PATTERN);
-    return { title: headline || error.name };
-  }
-  return { title: String(error) };
-}
-
-function causeChain(error: Error["cause"]): unknown[] {
-  const chain: unknown[] = [];
-  let current: unknown = error;
-  while (current !== undefined && !chain.includes(current)) {
-    chain.push(current);
-    current = current instanceof Error ? current.cause : undefined;
-  }
-  return chain;
+function headlineProblem(error: Error): CliProblem {
+  const [headline] = stripAnsiCodes(error.message).split(LINE_BREAK_PATTERN);
+  return { title: headline || error.name };
 }
 
 function isTraceable(error: unknown): error is Error {
@@ -79,13 +64,6 @@ function untranslatedOutputTail(chain: unknown[]): string[] {
     .flatMap(commandOutputTail);
 }
 
-function explainFailure(
-  error: Parameters<FailureTranslator>[0],
-  translate?: FailureTranslator,
-): CliProblem | undefined {
-  return translate?.(error) ?? translateFailure(error);
-}
-
 function hasHiddenOutput(error: ExecError): boolean {
   const shownLineCount =
     translateExecError(error) === undefined ? OUTPUT_TAIL_LINE_COUNT : 0;
@@ -103,7 +81,8 @@ function verboseHint(
   }
   const hasUnexplainedTrace = chain.some(
     (error) =>
-      isTraceable(error) && explainFailure(error, translate) === undefined,
+      isTraceable(error) &&
+      (translate?.(error) ?? translateFailure(error)) === undefined,
   );
   return hasUnexplainedTrace ? [STACK_TRACE_HINT] : [];
 }
@@ -125,8 +104,17 @@ export function describeFailure(
   const problem =
     error instanceof CliError
       ? error.problem
-      : (explainFailure(error, translate) ?? genericProblem(error));
-  const chain = causeChain(error);
+      : (translate?.(error) ??
+        translateFailure(error) ??
+        (error instanceof Error
+          ? headlineProblem(error)
+          : { title: String(error) }));
+  const chain: unknown[] = [];
+  let current = error;
+  while (current !== undefined && !chain.includes(current)) {
+    chain.push(current);
+    current = current instanceof Error ? current.cause : undefined;
+  }
   const diagnostics = verbose
     ? verboseDetails(chain)
     : [...untranslatedOutputTail(chain), ...verboseHint(chain, translate)];
