@@ -15,6 +15,7 @@ import { LEVEL_COLORS, selectSymbols } from "./symbols";
 import type {
   CliProblem,
   DetailEntry,
+  JsonValue,
   MessageLevel,
   MessageOptions,
   NextStep,
@@ -192,7 +193,7 @@ class StreamUi implements Ui {
     this.writeLine("result", text);
   }
 
-  json(data: Parameters<Ui["json"]>[0]): void {
+  json<Data>(data: Data & JsonValue<Data>): void {
     this.writeLine("result", JSON.stringify(data, null, JSON_INDENTATION));
   }
 
