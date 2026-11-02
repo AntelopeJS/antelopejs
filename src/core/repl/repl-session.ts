@@ -1,6 +1,11 @@
 import repl, { type REPLServer } from "node:repl";
 
-import type { UnknownDictionary } from "../../utils";
+import type { ModuleManager } from "../modules";
+
+/** The values an interactive session exposes as REPL globals. */
+export interface ReplContext {
+  moduleManager: ModuleManager;
+}
 
 export type ReplFactory = (prompt?: string) => REPLServer;
 
@@ -8,7 +13,7 @@ export class ReplSession {
   private server?: REPLServer;
 
   constructor(
-    private context: UnknownDictionary = {},
+    private context: ReplContext,
     private createRepl: ReplFactory = repl.start,
   ) {}
 
