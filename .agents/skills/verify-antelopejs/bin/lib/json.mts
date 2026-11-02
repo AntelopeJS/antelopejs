@@ -4,14 +4,25 @@ export type Json = string | number | boolean | null | Json[] | { [key: string]: 
 /** A JSON value, or `undefined` when the text was not JSON or a key was missing. */
 export type JsonRead = Json | undefined;
 
+function isJson(value: unknown): value is Json {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.every(isJson);
+  }
+  return typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype && Object.values(value).every(isJson);
+}
+
 /** Parses a CLI's JSON output, or returns undefined when it is not JSON. */
 export function parseJson(text: string): JsonRead {
+  let value: unknown;
   try {
-    const value: Json = JSON.parse(text);
-    return value;
+    value = JSON.parse(text);
   } catch {
     return undefined;
   }
+  return isJson(value) ? value : undefined;
 }
 
 export function isRecord(value: JsonRead): value is { [key: string]: Json } {
