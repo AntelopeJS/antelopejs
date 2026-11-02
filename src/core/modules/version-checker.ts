@@ -164,18 +164,6 @@ function isPackageModule(entry: ModuleEntry): entry is PackageModuleEntry {
   return entry[1].source?.type === "package";
 }
 
-function warnUncheckedPackage(
-  packageName: string,
-  reason: Parameters<typeof describeFailure>[0],
-): void {
-  const truncated = truncate(
-    describeFailure(reason, false).title,
-    MAX_REASON_LENGTH,
-    getProcessUi().symbols.ellipsis,
-  );
-  warning(`Could not check latest version of ${packageName}: ${truncated}`);
-}
-
 function collectOutdatedModules(
   packageModules: PackageModuleEntry[],
   results: PromiseSettledResult<string>[],
@@ -185,7 +173,14 @@ function collectOutdatedModules(
       const result = results[index];
       const { source } = info;
       if (result.status === "rejected") {
-        warnUncheckedPackage(source.package, result.reason);
+        const truncated = truncate(
+          describeFailure(result.reason, false).title,
+          MAX_REASON_LENGTH,
+          getProcessUi().symbols.ellipsis,
+        );
+        warning(
+          `Could not check latest version of ${source.package}: ${truncated}`,
+        );
         return outdated;
       }
       if (result.value && !isUpToDate(source.version, result.value)) {

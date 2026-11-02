@@ -147,6 +147,31 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
           restoreProcessListeners(originalListeners);
         }
       });
+
+      it("shuts down on a thrown value that is not an Error, even while tolerating invalidated work", () => {
+        const originalListeners = snapshotProcessListeners();
+        const shutdownManager = new ShutdownManager();
+        const shutdownStub = sinon.stub(shutdownManager, "shutdown").resolves();
+        sinon.stub(Logging, "Error");
+        const invalidatedCode = new ModuleContextInvalidatedError("dms").code;
+
+        try {
+          bootstrap.setupProcessHandlers(shutdownManager);
+          const withdraw = bootstrap.tolerateInvalidatedModuleWork();
+          const uncaught = snapshotProcessListeners().uncaughtException.at(-1);
+          assert.ok(uncaught);
+
+          uncaught("str");
+          uncaught(null);
+          uncaught({ code: invalidatedCode });
+          expect(shutdownStub.callCount).to.equal(3);
+          expect(shutdownStub.alwaysCalledWith(1)).to.equal(true);
+          withdraw();
+        } finally {
+          bootstrap.releaseProcessShutdownManager(shutdownManager);
+          restoreProcessListeners(originalListeners);
+        }
+      });
     };
 
   const checkCallsShutdownManagerOnUncaughtException: (

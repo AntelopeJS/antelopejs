@@ -4,14 +4,38 @@ export type Json = string | number | boolean | null | Json[] | { [key: string]: 
 /** A JSON value, or `undefined` when the text was not JSON or a key was missing. */
 export type JsonRead = Json | undefined;
 
+function isJson(value: unknown): value is Json {
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (next === null || typeof next === "string" || typeof next === "number" || typeof next === "boolean") {
+      continue;
+    }
+    if (Array.isArray(next)) {
+      for (const item of next) {
+        pending.push(item);
+      }
+      continue;
+    }
+    if (typeof next !== "object" || Object.getPrototypeOf(next) !== Object.prototype) {
+      return false;
+    }
+    for (const item of Object.values(next)) {
+      pending.push(item);
+    }
+  }
+  return true;
+}
+
 /** Parses a CLI's JSON output, or returns undefined when it is not JSON. */
 export function parseJson(text: string): JsonRead {
+  let value: unknown;
   try {
-    const value: Json = JSON.parse(text);
-    return value;
+    value = JSON.parse(text);
   } catch {
     return undefined;
   }
+  return isJson(value) ? value : undefined;
 }
 
 export function isRecord(value: JsonRead): value is { [key: string]: Json } {

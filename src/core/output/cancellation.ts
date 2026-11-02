@@ -1,13 +1,16 @@
-import type { FailureTranslator } from "./types";
 import { CANCELLED_EXIT_CODE } from "./exit-codes";
 import { isObjectOrNull } from "../../utils";
 
 export const CANCELLED_ERROR_NAME = "CancelledError";
 export const CANCELLED_MESSAGE = "Cancelled";
 
+interface PromptCancellation {
+  name: typeof CANCELLED_ERROR_NAME;
+}
+
 export function isPromptCancellation(
-  error: Parameters<FailureTranslator>[0],
-): boolean {
+  error: unknown,
+): error is PromptCancellation {
   return (
     error !== null &&
     isObjectOrNull(error) &&
