@@ -3,7 +3,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import type { JourneyResult } from "./journey.mts";
+import { type JourneyResult, parseJourneyResults } from "./journey.mts";
 import { REPO_DIR, SKILL_DIR } from "./run.mts";
 
 /** The outcome of one feature's seeded break, judged against an unpatched control run. */
@@ -51,7 +51,7 @@ function runFeatureIn(worktree: string, feature: string, baseRef: string): Featu
   const run = inWorktree(worktree, process.execPath, [cli, "new", "--no-build", "--base", baseRef]);
   const journeys = spawnSync(process.execPath, [cli, "journey", run, feature], { cwd: worktree, encoding: "utf8" });
   const file = path.join(run, "evidence", feature, "feature.json");
-  const results: JourneyResult[] = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : [];
+  const results = existsSync(file) ? parseJourneyResults(readFileSync(file, "utf8")) : [];
   return { run, results, output: `${journeys.stdout}${journeys.stderr}` };
 }
 
