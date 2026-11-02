@@ -1,7 +1,36 @@
-import type { AntelopeModuleConfig } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeModuleConfig,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 
-import { ConfigParser } from "../../../src/core/config";
+import { ConfigParser, type ProjectConfig } from "../../../src/core/config";
+
+const ALLOWED_ORIGIN = /^https:\/\/[^/]+\.example\.dev$/;
+
+function projectConfig(): ProjectConfig {
+  const source: ModuleSourcePackage = {
+    type: "package",
+    package: "api",
+    version: "1.0.0",
+  };
+  return {
+    name: "app",
+    modules: {
+      api: {
+        source,
+        config: {
+          cors: { allowedOrigins: [ALLOWED_ORIGIN] },
+          database: { host: "localhost" },
+          api: { key: "default" },
+          auth: { key: "default" },
+        },
+        importOverrides: [],
+        disabledExports: [],
+      },
+    },
+  };
+}
 
 {
   let registerConfigParser: (this: Mocha.Suite) => void;
@@ -21,7 +50,7 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.path).to.equal("my-project/data");
+        expect(result).to.have.nested.property("path", "my-project/data");
       });
 
       it("should handle nested templates", () => {
@@ -33,7 +62,7 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.fullPath).to.equal("/home/project/src");
+        expect(result).to.have.nested.property("fullPath", "/home/project/src");
       });
 
       it("should process nested objects", () => {
@@ -46,7 +75,7 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.nested.value).to.equal("test-nested");
+        expect(result).to.have.nested.property("nested.value", "test-nested");
       });
 
       it("should process arrays and mixed values", () => {
@@ -57,7 +86,7 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.items).to.deep.equal([
+        expect(result).to.have.deep.nested.property("items", [
           "demo",
           2,
           true,
@@ -74,7 +103,10 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.sum).to.equal("${Number(a) + Number(b)}");
+        expect(result).to.have.nested.property(
+          "sum",
+          "${Number(a) + Number(b)}",
+        );
       });
 
       it("does not execute expressions in pure templates", () => {
@@ -84,7 +116,10 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.value).to.equal("${globalThis.process?.env?.PATH}");
+        expect(result).to.have.nested.property(
+          "value",
+          "${globalThis.process?.env?.PATH}",
+        );
       });
 
       it("should parse JSON when pure template matches JSON value", () => {
@@ -95,7 +130,10 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.parsed).to.deep.equal({ enabled: true, count: 2 });
+        expect(result).to.have.deep.nested.property("parsed", {
+          enabled: true,
+          count: 2,
+        });
       });
 
       it("returns original string when expression evaluation fails", () => {
@@ -105,7 +143,7 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.value).to.equal("${invalid+}");
+        expect(result).to.have.nested.property("value", "${invalid+}");
       });
 
       it("replaces missing inline template values with empty string", () => {
@@ -115,7 +153,7 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.value).to.equal("hello ");
+        expect(result).to.have.nested.property("value", "hello ");
       });
 
       it("keeps values it cannot rebuild, RegExp included", () => {
@@ -130,9 +168,12 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.processTemplates(config);
 
-        expect(result.cors.allowedOrigins[0]).to.equal(allowedOrigin);
-        expect(result.createdAt).to.equal(createdAt);
-        expect(result.label).to.equal("demo");
+        expect(result).to.have.nested.property(
+          "cors.allowedOrigins[0]",
+          allowedOrigin,
+        );
+        expect(result).to.have.nested.property("createdAt", createdAt);
+        expect(result).to.have.nested.property("label", "demo");
       });
     };
 
@@ -149,11 +190,13 @@ import { ConfigParser } from "../../../src/core/config";
 
           const result = parser.processTemplates(config);
 
-          expect(result.apiBaseUrl).to.equal(
+          expect(result).to.have.nested.property(
+            "apiBaseUrl",
             "http://127.0.0.1:${@api.API_PORT}",
           );
-          expect(result.rawPort).to.equal("${@api.API_PORT}");
-          expect(result.servers[0].url).to.equal(
+          expect(result).to.have.nested.property("rawPort", "${@api.API_PORT}");
+          expect(result).to.have.nested.property(
+            "servers[0].url",
             "http://127.0.0.1:${@api.API_PORT}",
           );
         });
@@ -165,7 +208,7 @@ import { ConfigParser } from "../../../src/core/config";
 
           const result = parser.processTemplates(config);
 
-          expect(result.value).to.equal("${@api}");
+          expect(result).to.have.nested.property("value", "${@api}");
         });
       };
 
@@ -184,55 +227,69 @@ import { ConfigParser } from "../../../src/core/config";
   {
     registerApplyEnvOverrides = () => {
       it("keeps values it cannot rebuild while cloning", () => {
-        const allowedOrigin = /^https:\/\/[^/]+\.example\.dev$/;
-        const config = { cors: { allowedOrigins: [allowedOrigin] } };
+        const config = projectConfig();
 
         const result = parser.applyEnvOverrides(config, {});
 
-        expect(result.cors.allowedOrigins[0]).to.equal(allowedOrigin);
+        expect(result).to.have.nested.property(
+          "modules.api.config.cors.allowedOrigins[0]",
+          ALLOWED_ORIGIN,
+        );
       });
 
       it("should override config values from env vars", () => {
-        const config = {
-          database: { host: "localhost" },
-        };
-        const overrides = { DB_HOST: "database.host" };
+        const config = projectConfig();
+        const overrides = { DB_HOST: "modules.api.config.database.host" };
 
         process.env.DB_HOST = "production-db.example.com";
 
         try {
           const result = parser.applyEnvOverrides(config, overrides);
-          expect(result.database.host).to.equal("production-db.example.com");
+          expect(result).to.have.nested.property(
+            "modules.api.config.database.host",
+            "production-db.example.com",
+          );
         } finally {
           delete process.env.DB_HOST;
         }
       });
 
       it("should handle array of paths", () => {
-        const config = {
-          api: { key: "default" },
-          auth: { key: "default" },
+        const config = projectConfig();
+        const overrides = {
+          API_KEY: [
+            "modules.api.config.api.key",
+            "modules.api.config.auth.key",
+          ],
         };
-        const overrides = { API_KEY: ["api.key", "auth.key"] };
 
         process.env.API_KEY = "secret-key";
 
         try {
           const result = parser.applyEnvOverrides(config, overrides);
-          expect(result.api.key).to.equal("secret-key");
-          expect(result.auth.key).to.equal("secret-key");
+          expect(result).to.have.nested.property(
+            "modules.api.config.api.key",
+            "secret-key",
+          );
+          expect(result).to.have.nested.property(
+            "modules.api.config.auth.key",
+            "secret-key",
+          );
         } finally {
           delete process.env.API_KEY;
         }
       });
 
       it("should ignore overrides when env var is missing", () => {
-        const config = { api: { key: "default" } };
-        const overrides = { API_KEY: "api.key" };
+        const config = projectConfig();
+        const overrides = { API_KEY: "modules.api.config.api.key" };
 
         const result = parser.applyEnvOverrides(config, overrides);
 
-        expect(result.api.key).to.equal("default");
+        expect(result).to.have.nested.property(
+          "modules.api.config.api.key",
+          "default",
+        );
         expect(result).to.not.equal(config);
       });
     };
@@ -268,7 +325,7 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.expandModuleShorthand(modules);
 
-        expect(result.mod).to.deep.equal({
+        expect(result).to.have.deep.nested.property("mod", {
           source: { type: "package", package: "mod", version: "2.0.0" },
           config: { enabled: true },
           importOverrides: [
@@ -288,10 +345,10 @@ import { ConfigParser } from "../../../src/core/config";
 
         const result = parser.expandModuleShorthand(modules);
 
-        expect(result.mod.importOverrides).to.deep.equal([
+        expect(result).to.have.deep.nested.property("mod.importOverrides", [
           { interface: "core", source: "local" },
         ]);
-        expect(result.mod.disabledExports).to.deep.equal([]);
+        expect(result).to.have.deep.nested.property("mod.disabledExports", []);
       });
 
       it("keeps an import override without a source, the declared connection to a self-hosted interface", () => {
@@ -302,7 +359,7 @@ import { ConfigParser } from "../../../src/core/config";
           },
         });
 
-        expect(result.mod.importOverrides).to.deep.equal([
+        expect(result).to.have.deep.nested.property("mod.importOverrides", [
           { interface: "data-api", id: "client" },
         ]);
       });
@@ -312,7 +369,9 @@ import { ConfigParser } from "../../../src/core/config";
           mongodb: { version: "1.0.0", exportPriority: { database: 1 } },
         });
 
-        expect(result.mongodb.exportPriority).to.deep.equal({ database: 1 });
+        expect(result).to.have.deep.nested.property("mongodb.exportPriority", {
+          database: 1,
+        });
       });
 
       it("rejects an export priority that is not an integer", () => {
@@ -379,9 +438,27 @@ describe("ConfigParser templates named like Object.prototype members", () => {
 
     const result = parser.processTemplates(config);
 
-    expect(result.a).to.equal("mine");
-    expect(result.b).to.equal('x {"ok":true}');
-    expect(result.c).to.deep.equal({ ok: true });
-    expect(result.d).to.equal("own");
+    expect(result).to.have.nested.property("a", "mine");
+    expect(result).to.have.nested.property("b", 'x {"ok":true}');
+    expect(result).to.have.deep.nested.property("c", { ok: true });
+    expect(result).to.have.nested.property("d", "own");
+  });
+
+  it("keeps an own __proto__ key of a parsed module file as an own key", () => {
+    const parsed: unknown = JSON.parse(
+      '{"__proto__":{"label":"${name}"},"name":"shop"}',
+    );
+
+    const templated = parser.processTemplates(parsed);
+    const project = projectConfig();
+    project.modules.api.config = parsed;
+    const cloned = parser.applyEnvOverrides(project, {});
+
+    expect(
+      Object.getOwnPropertyDescriptor(templated, "__proto__")?.value,
+    ).to.deep.equal({ label: "shop" });
+    expect(Object.getPrototypeOf(templated)).to.equal(Object.prototype);
+    expect(cloned).to.have.deep.nested.property("modules.api.config", parsed);
+    expect(cloned).to.have.nested.property("modules.api.config.name", "shop");
   });
 });

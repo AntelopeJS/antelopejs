@@ -3,6 +3,7 @@ import type {
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import assert from "node:assert/strict";
 import { promises as nodeFs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -429,5 +430,103 @@ export default defineConfig({
     } finally {
       await nodeFs.rm(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe("ConfigLoader typed fields after templates and overrides", () => {
+  let loader: ConfigLoader;
+  let loadTsConfigFileStub: sinon.SinonStub;
+
+  beforeEach(async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/antelope.config.ts", "");
+    loader = new ConfigLoader(fs);
+    loadTsConfigFileStub = sinon.stub(tsConfigFile, "loadTsConfigFile");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+    delete process.env.AJS_TEST_LOGGING;
+  });
+
+  it("refuses a project name that a pure template turned into a number", async () => {
+    loadTsConfigFileStub.resolves({
+      name: "${port}",
+      modules: { api: { version: "1.0.0", config: { port: 8080 } } },
+    });
+
+    await assert.rejects(loader.load("/project"), {
+      message:
+        "Configuration field 'name' does not hold a string after templates and environment overrides.",
+    });
+  });
+
+  it("refuses a module source version that a pure template turned into a number", async () => {
+    loadTsConfigFileStub.resolves({
+      name: "app",
+      modules: {
+        api: {
+          source: { type: "package", package: "api", version: "${release}" },
+          config: { release: 2 },
+        },
+      },
+    });
+
+    await assert.rejects(loader.load("/project"), {
+      message:
+        "Configuration field 'modules.api.source.version' does not hold a string after templates and environment overrides.",
+    });
+  });
+
+  it("refuses a boolean logging field that an environment override set to a string", async () => {
+    process.env.AJS_TEST_LOGGING = "false";
+    loadTsConfigFileStub.resolves({
+      name: "app",
+      logging: { enabled: true },
+      envOverrides: { AJS_TEST_LOGGING: "logging.enabled" },
+    });
+
+    await assert.rejects(loader.load("/project"), {
+      message:
+        "Configuration field 'logging.enabled' does not hold a boolean after templates and environment overrides.",
+    });
+  });
+
+  it("keeps a pure template that resolves to a number inside a module config", async () => {
+    loadTsConfigFileStub.resolves({
+      name: "app",
+      modules: {
+        api: { version: "1.0.0", config: { port: 8080, copy: "${port}" } },
+      },
+    });
+
+    const config = await loader.load("/project");
+
+    expect(config.modules.api.config).to.deep.equal({ port: 8080, copy: 8080 });
+  });
+
+  it("keeps a template that resolves to text in a typed field", async () => {
+    loadTsConfigFileStub.resolves({
+      name: "${label}",
+      modules: { api: { version: "1.0.0", config: { label: "shop" } } },
+    });
+
+    const config = await loader.load("/project");
+
+    expect(config.name).to.equal("shop");
+  });
+
+  it("keeps loading a typed field the configuration file itself gives another type", async () => {
+    loadTsConfigFileStub.resolves({
+      name: "app",
+      logging: { enabled: "yes", moduleTracking: { includes: "api" } },
+    });
+
+    const config = await loader.load("/project");
+
+    expect(config.logging).to.deep.equal({
+      enabled: "yes",
+      moduleTracking: { includes: "api" },
+    });
   });
 });
