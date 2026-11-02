@@ -144,6 +144,9 @@
     ],
     "skills": [
       "./skills"
-    ]
+    ],
+    "docs": {
+      "standard": true
+    }
   }
 }

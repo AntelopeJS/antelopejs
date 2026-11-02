@@ -1,19 +1,20 @@
 ---
 title: Concepts
-description: Choose the concept you need to design contracts, assemble providers, or operate modules safely.
+description: Find the concept page that answers your question about contracts, providers, configuration, or running modules.
+mode: reference
 navigation: false
 ---
 
-Start with [Architecture](/docs/get-started/architecture) for the overall model. Read these concepts when a design decision needs more detail; you do not need to read every reference before writing a module.
+[Architecture](/docs/get-started/architecture) describes the overall model. The concept pages add detail for one design decision each. You do not need to read them all before you write a module.
 
 | Your question | Read |
 | --- | --- |
 | What should another module import? | [Interfaces](/docs/concepts/interfaces) |
 | When can I initialize or release a resource? | [Modules](/docs/concepts/modules) |
-| Should this capability be a call, event, or registration? | [Proxies](/docs/concepts/proxies) |
+| Should this capability be a call, an event, or a registration? | [Proxies](/docs/concepts/proxies) |
 | Which provider receives a call? | [Interface bindings](/docs/concepts/configuration#interface-bindings) |
 | How do I supply deployment-specific values? | [Configuration](/docs/concepts/configuration) |
-| Who owns signals, logs and shutdown? | [Embedded Runtime](/docs/concepts/embedded-runtime) |
+| Who owns signals, logs, and shutdown? | [Embedded runtime](/docs/concepts/embedded-runtime) |
 
 ## Concept reference
 
@@ -21,48 +22,48 @@ Start with [Architecture](/docs/get-started/architecture) for the overall model.
 
 ::card-group
 ::card{icon="i-ph-brackets-curly" title="Interfaces" to="/docs/concepts/interfaces"}
-Understand interface contracts and how modules communicate through well-defined boundaries.
+Interface contracts, and how modules call each other through them without knowing the provider.
 ::
 
 ::card{icon="i-ph-cube" title="Modules" to="/docs/concepts/modules"}
-Explore module structure, lifecycle states, and runtime management functions.
+Module structure, lifecycle states, and the functions that manage modules at run time.
 ::
 
 ::card{icon="i-ph-arrows-left-right" title="Proxies" to="/docs/concepts/proxies"}
-Learn about AsyncProxy, EventProxy, and RegisteringProxy — the communication backbone of Antelopejs.
+`AsyncProxy`, `EventProxy`, and `RegisteringProxy`, which carry every call, event, and registration between AntelopeJS modules.
 ::
 
 ::card{icon="i-ph-gear" title="Configuration" to="/docs/concepts/configuration"}
-Configure your project with antelope.config.ts, module sources, environment overrides, and more.
+The `antelope.config.ts` file, module sources, environment overrides, and interface bindings.
 ::
 
 ::card{icon="i-ph-book-open-text" title="Glossary" to="/docs/concepts/glossary"}
-Look up a term without leaving the learning path to read an API reference.
+Short definitions of AntelopeJS terms, without the API detail.
 ::
 ::
 
 ### Operations and tooling reference
 
-Use logging when diagnosing an application. The other references below are for custom tooling, instrumentation, or embedding the runtime; none is required to complete Quick Start.
+Logging helps you diagnose an application. The other pages in this group are for custom tooling, instrumentation, or embedding the runtime. You do not need any of them to complete the quick start.
 
 ::card-group
 ::card{icon="i-ph-list-bullets" title="Logging" to="/docs/concepts/logging"}
-Use the built-in logging system with severity levels, custom channels, and configurable output.
+The built-in logging system, with severity levels, custom channels, and configurable output.
 ::
 
-::card{icon="i-ph-wrench" title="Core Utilities" to="/docs/concepts/core-utilities"}
-Discover utility functions for interface declarations, implementations, decorators, and module introspection.
+::card{icon="i-ph-wrench" title="Core utilities" to="/docs/concepts/core-utilities"}
+Utility functions for interface declarations, implementations, decorators, and module introspection.
 ::
 
 ::card{icon="i-ph-cpu" title="Runtime" to="/docs/concepts/runtime"}
-Inspect the runtime environment and register development servers for discovery by external tooling.
+Inspect the runtime environment, and register development servers so external tools can find them.
 ::
 
 ::card{icon="i-ph-pulse" title="Diagnostics" to="/docs/concepts/diagnostics"}
-Subscribe to module lifecycle spans on node:diagnostics_channel for tracing and metrics, and to the project lifecycle events.
+Module lifecycle spans on `node:diagnostics_channel` for tracing and metrics, and the project lifecycle events.
 ::
 
-::card{icon="i-ph-plugs-connected" title="Embedded Runtime" to="/docs/concepts/embedded-runtime"}
-Run AntelopeJS modules inside an application that owns the process, and compare it with the standalone mode.
+::card{icon="i-ph-plugs-connected" title="Embedded runtime" to="/docs/concepts/embedded-runtime"}
+Run AntelopeJS modules inside an application that owns the process, compared with the standalone mode.
 ::
 ::
