@@ -4,8 +4,8 @@ contact_links:
     url: https://antelopejs.com/
     about: Read the documentation before opening a usage issue.
   - name: Questions and ideas
-    url: https://github.com/AntelopeJS/antelopejs/discussions
-    about: Ask for help or discuss an idea with the community.
+    url: https://discord.gg/g4pFt6eXqu
+    about: Ask for help or share an idea in #support on the AntelopeJS Discord.
   - name: Security vulnerability
     url: https://github.com/AntelopeJS/.github/blob/main/SECURITY.md
     about: Read the private reporting instructions. Do not open a public issue.
