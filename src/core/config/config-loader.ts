@@ -1,12 +1,7 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import type { IFileSystem } from "../../types";
-import {
-  isObject,
-  isString,
-  mergeDeep,
-  type UnknownDictionary,
-} from "../../utils";
+import { isObject, isString, mergeDeep } from "../../utils";
 import { assertLoadedConfig, type LoadedConfig } from "./config-fields";
 import { ConfigParser } from "./config-parser";
 import {
@@ -105,7 +100,10 @@ export class ConfigLoader {
    * array its index keys, and `null`, a number or a boolean nothing, as the
    * historic merge of the parsed value did.
    */
-  private async loadJsonFile(filePath: string): Promise<UnknownDictionary> {
+  private async loadJsonFile(
+    filePath: string,
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- an antelope.<module>.json merged into a module config whose values are user data of any shape
+  ): Promise<Record<string, unknown>> {
     const content = await this.fs.readFileString(filePath);
     const parsed: unknown = JSON.parse(content);
     if (isObject(parsed)) {

@@ -1,5 +1,3 @@
-import type { FailureTranslator } from "../output";
-
 export function collectRejectedErrors(
   results: PromiseSettledResult<unknown>[],
 ): unknown[] {
@@ -8,9 +6,8 @@ export function collectRejectedErrors(
   );
 }
 
-export function unpackErrors(
-  error: Parameters<FailureTranslator>[0],
-): unknown[] {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- unpacks a thrown value into its causes; JS can throw any value
+export function unpackErrors(error: unknown): unknown[] {
   return error instanceof AggregateError ? error.errors : [error];
 }
 

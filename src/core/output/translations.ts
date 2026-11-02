@@ -2,7 +2,7 @@ import { ExecError } from "./command";
 import { describeInterfaceConflicts } from "./interface-conflicts";
 import { InterfaceResolutionError } from "./interface-resolution-error";
 import { stripAnsiCodes } from "./logging-utils";
-import type { CliProblem, FailureTranslator } from "./types";
+import type { CliProblem } from "./types";
 import { isString } from "../../utils";
 
 interface ExecTranslation {
@@ -109,9 +109,7 @@ const SYSTEM_ERROR_TRANSLATIONS = new Map<string, SystemErrorTranslation>([
   ["EPERM", permissionDenied],
 ]);
 
-function isSystemError(
-  error: Parameters<FailureTranslator>[0],
-): error is NodeJS.ErrnoException {
+function isSystemError(error: unknown): error is NodeJS.ErrnoException {
   if (!(error instanceof Error)) {
     return false;
   }
@@ -144,9 +142,8 @@ export function translateExecError(error: ExecError): CliProblem | undefined {
  * an unreachable registry, a git clone that was refused, incompatible
  * interface packages) into a problem that names the cause and the fix. Returns `undefined` for anything else.
  */
-export function translateFailure(
-  error: Parameters<FailureTranslator>[0],
-): CliProblem | undefined {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- translates a thrown value; JS can throw any value
+export function translateFailure(error: unknown): CliProblem | undefined {
   if (error instanceof ExecError) {
     return translateExecError(error);
   }

@@ -22,7 +22,8 @@ interface WatchedFile {
 const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
 const VANISHED_PATH_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
 
-function isVanishedPathError(error: PromiseRejectedResult["reason"]): boolean {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- tests a thrown fs error by code; JS can throw any value
+function isVanishedPathError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
   }

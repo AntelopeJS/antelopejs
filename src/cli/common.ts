@@ -1,7 +1,4 @@
-import type {
-  AntelopeConfig,
-  AntelopeModuleConfig,
-} from "@antelopejs/interface-core/config";
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { mkdirSync } from "node:fs";
 import { stat, writeFile as writeFileNode } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -148,11 +145,8 @@ async function getTsConfigWriteMeta(
 
 const SAFE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
-function serializeToJs(
-  value: AntelopeModuleConfig["config"],
-  indent: string,
-  depth: number,
-): string {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- serializes a module config value, user JS data that can hold any value, into config source
+function serializeToJs(value: unknown, indent: string, depth: number): string {
   if (value === null || value === undefined) {
     return String(value);
   }

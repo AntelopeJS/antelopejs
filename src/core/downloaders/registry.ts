@@ -22,7 +22,7 @@ type WaitingType = {
   source: ModuleSource;
   options?: LoadOptions;
   resolve: (info: ModuleManifest[]) => void;
-  reject: (error?: PromiseRejectedResult["reason"]) => void;
+  reject: (error?: unknown) => void;
 };
 
 interface KnownDownloader {

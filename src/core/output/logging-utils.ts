@@ -163,10 +163,8 @@ function indentCause(text: string): string {
     .join("\n");
 }
 
-function serializeInnerError(
-  value: Error["cause"],
-  ancestors: Set<Error>,
-): string {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- serializes an aggregate member or cause, which JS lets be any value
+function serializeInnerError(value: unknown, ancestors: Set<Error>): string {
   if (!(value instanceof Error)) {
     return serializeLogValue(value);
   }

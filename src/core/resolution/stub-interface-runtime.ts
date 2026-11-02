@@ -57,7 +57,8 @@ function neutralizeRegisteringProxy(
 }
 
 function walk(
-  value: Parameters<typeof neutralizeInterfaceAsyncProxies>[0],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks an interface module export graph loaded by Node require
+  value: unknown,
   interfaceName: string,
   seen: WeakSet<object>,
   reason: string,
@@ -95,17 +96,14 @@ function walk(
 
   for (const key of Object.keys(value)) {
     // SAFETY: the null and primitive branches returned above; string-key access on the remaining object is exposed only as unknown, without claiming a property's contents.
-    walk(
-      (value as Record<string, Parameters<typeof walk>[0]>)[key],
-      interfaceName,
-      seen,
-      reason,
-    );
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- walks an interface module export graph loaded by Node require
+    walk((value as Record<string, unknown>)[key], interfaceName, seen, reason);
   }
 }
 
 export function neutralizeInterfaceAsyncProxies(
-  exports: PromiseFulfilledResult<unknown>["value"],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks an interface module export graph loaded by Node require
+  exports: unknown,
   interfaceName: string,
   reason: string = NO_PROVIDER_REASON,
 ): void {

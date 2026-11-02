@@ -27,7 +27,6 @@ import type {
   ModuleOverrideMap,
   NormalizedLoadedConfig,
 } from "./runtime-types";
-import type { FailureTranslator } from "../output";
 
 const Logger = new Logging.Channel("loader");
 
@@ -251,7 +250,8 @@ export async function constructAndStartModules(
 
 export async function destroyModulesAfterFailure(
   manager: ModuleManager,
-  error: Parameters<FailureTranslator>[0],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rethrows the startup failure after cleanup; JS can throw any value
+  error: unknown,
 ): Promise<never> {
   try {
     await manager.destroyAll();

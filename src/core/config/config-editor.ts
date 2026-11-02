@@ -3,13 +3,6 @@ import { isObjectOrNull } from "../../utils";
 
 type TS = typeof TypeScript;
 
-/**
- * The fields of a module entry to write. A field set to `undefined` or `null`
- * is removed from the entry.
- */
-// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Callers write module fields the runtime does not declare, such as module-specific settings, so the changes cannot be limited to ModuleDeclaration keys.
-export type ModuleEntryChanges = Record<string, unknown>;
-
 interface EditContext {
   ts: TS;
   fileName: string;
@@ -100,19 +93,13 @@ function lineIndent(source: string, position: number): string {
 }
 
 /** `value` as source text, its continuation lines indented by `indent`. */
-function serializeValue(
-  value: ModuleEntryChanges[string],
-  unit: string,
-  indent: string,
-): string {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
+function serializeValue(value: unknown, unit: string, indent: string): string {
   return serializeAt(value, unit, 0).split(NEWLINE).join(`${NEWLINE}${indent}`);
 }
 
-function serializeAt(
-  value: ModuleEntryChanges[string],
-  unit: string,
-  depth: number,
-): string {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
+function serializeAt(value: unknown, unit: string, depth: number): string {
   if (value === null || !isObjectOrNull(value)) {
     return JSON.stringify(value) ?? "undefined";
   }
@@ -149,7 +136,8 @@ function insertProperty(
   source: string,
   object: TypeScript.ObjectLiteralExpression,
   key: string,
-  value: ModuleEntryChanges[string],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
+  value: unknown,
 ): TextEdit {
   const close = closingBrace(object);
   const closeIndent = lineIndent(source, close);
@@ -173,7 +161,8 @@ function replaceValue(
   context: EditContext,
   source: string,
   property: TypeScript.PropertyAssignment,
-  value: ModuleEntryChanges[string],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
+  value: unknown,
 ): TextEdit {
   const indent = lineIndent(source, property.getStart());
   return {
@@ -268,7 +257,8 @@ function setEntryField(
   source: string,
   key: string,
   field: string,
-  value: ModuleEntryChanges[string],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
+  value: unknown,
 ): string {
   const object = entryObject(context, source, key);
   const property = findProperty(context, object, field);
@@ -305,7 +295,11 @@ function expandShorthand(
   return applyEdit(source, replaceValue(context, source, entry, expanded));
 }
 
-function definedFields(changes: ModuleEntryChanges): ModuleEntryChanges {
+function definedFields(
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
+  changes: Record<string, unknown>,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
+): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(changes).filter(
       ([, value]) => value !== undefined && value !== null,
@@ -317,7 +311,8 @@ function addEntry(
   context: EditContext,
   source: string,
   key: string,
-  changes: ModuleEntryChanges,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
+  changes: Record<string, unknown>,
 ): string {
   const file = parse(context, source);
   const modules = modulesObject(context, file);
@@ -334,7 +329,8 @@ function ensureEntry(
   context: EditContext,
   source: string,
   key: string,
-  changes: ModuleEntryChanges,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
+  changes: Record<string, unknown>,
 ): EnsuredEntry {
   const modules = modulesObject(context, parse(context, source));
   const entry = modules && findProperty(context, modules, key);
@@ -366,7 +362,8 @@ export function setModuleEntry(
   fileName: string,
   source: string,
   key: string,
-  changes: ModuleEntryChanges,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
+  changes: Record<string, unknown>,
 ): string {
   const context = createContext(ts, fileName, source);
   const ensured = ensureEntry(context, source, key, changes);

@@ -22,7 +22,9 @@ const MODULE_OWNER_SEPARATOR = "#";
 let nextModuleOwner = 1;
 
 async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
+  // oxlint-disable-next-line typescript/no-unsafe-assignment -- import() of a module main, which TS types as any
   const mod = await import(mainPath);
+  // oxlint-disable-next-line typescript/no-unsafe-return -- import() of a module main, which TS types as any
   return mod;
 }
 

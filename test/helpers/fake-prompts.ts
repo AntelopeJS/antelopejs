@@ -15,7 +15,7 @@ interface AskedOptions {
     hint?: string;
     disabled?: boolean;
   }>;
-  initialValue?: Parameters<PromptBackend["select"]>[0]["initialValue"];
+  initialValue?: unknown;
 }
 
 interface AskedPrompt {

@@ -4,7 +4,7 @@ import { isObjectOrNull } from "./type-guards";
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The result of a plain-object guard: its keys are known to be strings and its leaves are what the guard's caller goes on to decode.
 export type UnknownDictionary = Record<string, unknown>;
 
-export function isObject(item: unknown): item is UnknownDictionary {
+export function isObject(item: unknown): item is Record<string, unknown> {
   return isObjectOrNull(item) && item !== null && !Array.isArray(item);
 }
 
@@ -16,7 +16,7 @@ export function isObject(item: unknown): item is UnknownDictionary {
  * empty husk. Configuration holds such values, so every traversal that clones
  * has to tell them apart from the object literals it may safely copy.
  */
-export function isPlainObject(item: unknown): item is UnknownDictionary {
+export function isPlainObject(item: unknown): item is Record<string, unknown> {
   if (!isObject(item)) {
     return false;
   }
@@ -24,7 +24,8 @@ export function isPlainObject(item: unknown): item is UnknownDictionary {
   return prototype === Object.prototype || prototype === null;
 }
 
-function ownDataProperty(value: UnknownDictionary[string]) {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- merges and sets paths in user config data of any shape
+function ownDataProperty(value: unknown) {
   return {
     value,
     enumerable: true,
@@ -73,7 +74,8 @@ type ObjectEntry = [string, unknown];
 export function diffDeep<T extends object>(
   before: T,
   after: T,
-): UnknownDictionary {
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
+): Record<string, unknown> {
   const entries: ObjectEntry[] = Object.entries(after);
   return Object.fromEntries(
     entries.flatMap(([key, value]): ObjectEntry[] => {
@@ -91,9 +93,11 @@ export function diffDeep<T extends object>(
 }
 
 function assignKey(
-  target: UnknownDictionary,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
+  target: Record<string, unknown>,
   key: string,
-  value: UnknownDictionary[string],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- merges and sets paths in user config data of any shape
+  value: unknown,
 ): void {
   if (key === "__proto__") {
     Object.defineProperty(target, key, ownDataProperty(value));
@@ -103,9 +107,11 @@ function assignKey(
 }
 
 export function set(
-  obj: UnknownDictionary,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
+  obj: Record<string, unknown>,
   path: string,
-  value: UnknownDictionary[string],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- merges and sets paths in user config data of any shape
+  value: unknown,
 ): void {
   const keys = path.split(".");
   let current = obj;
@@ -118,7 +124,8 @@ export function set(
     if (present && isObject(existing)) {
       current = existing;
     } else {
-      const created: UnknownDictionary = {};
+      // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
+      const created: Record<string, unknown> = {};
       assignKey(current, key, created);
       current = created;
     }

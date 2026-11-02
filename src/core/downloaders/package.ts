@@ -36,6 +36,7 @@ interface InlyExtraction {
   on(event: "end", listener: () => void): void;
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-assignment -- inly is an untyped CommonJS module and require returns any
 const inly: (from: string, to: string) => InlyExtraction = require("inly");
 
 const Logger = new Logging.Channel("loader.package");
@@ -82,6 +83,7 @@ async function fetchRegistryVersion(
     return undefined;
   }
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-assignment -- npm view --json prints one version or a list of them, read as npm prints it, because narrowing the parse changes which version real registry output selects (#323)
     const parsed: string | string[] = JSON.parse(output);
     const versions = Array.isArray(parsed) ? parsed : [parsed];
     return pickBestVersion(versions, spec);
@@ -203,6 +205,7 @@ async function downloadPackage(
   await ctx.extract(path.join(tmp, filename), tmp);
 
   const tmpPackage = path.join(tmp, "package");
+  // oxlint-disable-next-line typescript/no-unsafe-assignment -- the package.json npm packed into the downloaded tarball, read as published, because narrowing it changes how real published manifests load (#323)
   const manifest: ModulePackageJson = JSON.parse(
     await ctx.fs.readFileString(path.join(tmpPackage, PACKAGE_JSON)),
   );

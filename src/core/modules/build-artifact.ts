@@ -1,6 +1,5 @@
 import type {
   AntelopeLogging,
-  ConfigVarProvider,
   ModuleSource,
 } from "@antelopejs/interface-core/config";
 import crypto from "node:crypto";
@@ -96,19 +95,12 @@ export interface BuildArtifactInput {
   buildTime?: string;
 }
 
-interface RawProjectConfig {
-  [key: string]: Parameters<typeof toStableJson>[0];
-}
-
-function isRawProjectConfig(
-  value: Parameters<typeof toStableJson>[0],
-): value is RawProjectConfig {
+function isRawProjectConfig(value: unknown): value is Record<string, unknown> {
   return isObjectOrNull(value) && value !== null;
 }
 
-function toStableHashValue(
-  value: Parameters<typeof toStableJson>[0],
-): Parameters<typeof toStableJson>[0] {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- hashes the resolved project config, user JS data of any shape
+function toStableHashValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => toStableHashValue(item));
   }
@@ -125,7 +117,8 @@ function toStableHashValue(
  * Serialise a value with object keys sorted, so equal values always produce
  * the same string whatever their key insertion order.
  */
-export function toStableJson(value: Parameters<ConfigVarProvider>[0]): string {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- hashes the resolved project config, user JS data of any shape
+export function toStableJson(value: unknown): string {
   return JSON.stringify(toStableHashValue(value));
 }
 

@@ -34,7 +34,8 @@ export class ConfigVarStore {
   }
 
   /** The consumer configuration with every reference replaced by its value. */
-  resolve(consumerId: string, config: Parameters<ConfigVarProvider>[0]) {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- substitutes config variables into a module config, user JS data that can hold RegExp and functions
+  resolve(consumerId: string, config: unknown) {
     return substituteConfigVars(config, (reference) =>
       this.lookup(consumerId, reference),
     );

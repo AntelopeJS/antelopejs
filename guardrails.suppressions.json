@@ -2,15 +2,17 @@
   "rules": {
     "anti-slop/no-known-value-widening": 2,
     "anti-slop/no-runtime-typeof": 1,
-    "anti-slop/no-unknown-parameters": 11,
-    "anti-slop/no-unknown-returns": 6,
-    "anti-slop/no-unsafe-dictionary-type": 2,
+    "anti-slop/no-unknown-parameters": 43,
+    "anti-slop/no-unknown-returns": 8,
+    "anti-slop/no-unsafe-dictionary-type": 14,
     "anti-slop/require-safety-comment-for-type-assertion": 6,
     "eslint/no-control-regex": 1,
     "import/no-cycle": 0,
     "import/no-self-import": 0,
     "typescript/no-base-to-string": 1,
-    "typescript/no-redundant-type-constituents": 2
+    "typescript/no-redundant-type-constituents": 2,
+    "typescript/no-unsafe-assignment": 15,
+    "typescript/no-unsafe-return": 4
   },
   "tsExpectError": 12,
   "tsIgnore": 0,
