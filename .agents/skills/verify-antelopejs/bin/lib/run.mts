@@ -9,6 +9,8 @@ import {
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
+import { parseJson, requireItems, requireNumber, requireText, type Json } from "./json.mts";
+
 /** The skill folder, `.agents/skills/verify-antelopejs`. */
 export const SKILL_DIR = path.resolve(import.meta.dirname, "..", "..");
 
@@ -72,14 +74,42 @@ function stateFile(dir: string): string {
   return path.join(dir, "run.json");
 }
 
+function parseProcessRecord(value: Json): ProcessRecord {
+  return {
+    name: requireText(value, "name", "run.json process"),
+    pid: requireNumber(value, "pid", "run.json process"),
+    port: requireNumber(value, "port", "run.json process"),
+    cwd: requireText(value, "cwd", "run.json process"),
+    startedAt: requireText(value, "startedAt", "run.json process"),
+  };
+}
+
+/** Decodes the text of run.json; throws, naming the field, when it does not hold a run. */
+export function parseRunState(text: string): RunState {
+  const raw = parseJson(text);
+  return {
+    id: requireText(raw, "id", "run.json"),
+    dir: requireText(raw, "dir", "run.json"),
+    home: requireText(raw, "home", "run.json"),
+    work: requireText(raw, "work", "run.json"),
+    evidence: requireText(raw, "evidence", "run.json"),
+    manifestUrl: requireText(raw, "manifestUrl", "run.json"),
+    createdAt: requireText(raw, "createdAt", "run.json"),
+    headSha: requireText(raw, "headSha", "run.json"),
+    baseRef: requireText(raw, "baseRef", "run.json"),
+    baseSha: requireText(raw, "baseSha", "run.json"),
+    baseCli: requireText(raw, "baseCli", "run.json"),
+    processes: requireItems(raw, "processes", "run.json").map(parseProcessRecord),
+  };
+}
+
 /** Reads a run created by `verify-ajs new`, failing with the reason when it is missing. */
 export function loadRun(dir: string): RunState {
   const file = stateFile(path.resolve(dir));
   if (!existsSync(file)) {
     throw new Error(`No run at ${dir}: run.json is missing. Create one with verify-ajs new.`);
   }
-  const state: RunState = JSON.parse(readFileSync(file, "utf8"));
-  return state;
+  return parseRunState(readFileSync(file, "utf8"));
 }
 
 /** Persists the run state. */

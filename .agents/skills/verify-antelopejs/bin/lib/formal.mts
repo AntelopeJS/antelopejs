@@ -4,6 +4,7 @@ import path from "node:path";
 
 import config, { type FormalCheck } from "../../verify.config.ts";
 import { type BehaviourChange, behaviourChange, type Commits, inWorktree } from "./behaviour.mts";
+import { field, type Json, type JsonRead, parseJson, requireBoolean, requireExitCode, requireText, requireTexts } from "./json.mts";
 import { REPO_DIR, type RunState } from "./run.mts";
 
 /**
@@ -162,12 +163,65 @@ export function formalGate(result: FormalResult): FormalWeight {
   return { fails: true, outcome: `covered behaviour changed (${result.behaviour.method}), violated ${result.violated.join(", ")}${fixed}` };
 }
 
+function parseCommits(value: Json): Commits {
+  return {
+    baseSha: requireText(value, "baseSha", "formal result commits"),
+    headSha: requireText(value, "headSha", "formal result commits"),
+  };
+}
+
+function parseBehaviour(value: Json): BehaviourChange {
+  return {
+    method: requireText(value, "method", "formal result behaviour"),
+    changed: requireBoolean(value, "changed", "formal result behaviour"),
+    removed: requireTexts(value, "removed", "formal result behaviour"),
+    added: requireTexts(value, "added", "formal result behaviour"),
+  };
+}
+
+function parseRules(value: Json): Rules {
+  return {
+    exitCode: requireExitCode(value, "exitCode", "formal result base"),
+    violated: requireTexts(value, "violated", "formal result base"),
+    passing: requireTexts(value, "passing", "formal result base"),
+  };
+}
+
+function optionalTexts(raw: JsonRead, key: string): string[] | undefined {
+  return field(raw, key) === undefined ? undefined : requireTexts(raw, key, "formal result");
+}
+
+function optionalMember<Member>(value: JsonRead, parse: (found: Json) => Member): Member | undefined {
+  return value === undefined ? undefined : parse(value);
+}
+
+function parseBase(value: Json): Rules | null {
+  return value === null ? null : parseRules(value);
+}
+
+/** Decodes the text of a formal check's result.json; throws, naming the field, when it does not hold a result. */
+export function parseFormalResult(text: string): FormalResult {
+  const raw = parseJson(text);
+  return {
+    name: requireText(raw, "name", "formal result"),
+    exitCode: requireExitCode(raw, "exitCode", "formal result"),
+    violated: requireTexts(raw, "violated", "formal result"),
+    passing: optionalTexts(raw, "passing"),
+    folder: requireText(raw, "folder", "formal result"),
+    commits: optionalMember(field(raw, "commits"), parseCommits),
+    behaviour: optionalMember(field(raw, "behaviour"), parseBehaviour),
+    checkChanged: field(raw, "checkChanged") === undefined ? undefined : requireBoolean(raw, "checkChanged", "formal result"),
+    base: optionalMember(field(raw, "base"), parseBase),
+    fixed: optionalTexts(raw, "fixed"),
+    missing: optionalTexts(raw, "missing"),
+  };
+}
+
 /** The recorded result of a formal check in a run, if it ran. */
 export function readFormalResult(state: RunState, name: string): FormalResult | undefined {
   const file = path.join(state.evidence, "formal", name, "result.json");
   if (!existsSync(file)) {
     return undefined;
   }
-  const result: FormalResult = JSON.parse(readFileSync(file, "utf8"));
-  return result;
+  return parseFormalResult(readFileSync(file, "utf8"));
 }

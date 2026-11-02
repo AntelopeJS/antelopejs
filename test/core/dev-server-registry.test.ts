@@ -148,6 +148,16 @@ async function expectRegistry(fs: InMemoryFileSystem) {
         expect(await fs.exists(REGISTRY_PATH)).to.equal(true);
       });
 
+      it("removes a registry that names no numeric owner pid", async () => {
+        for (const content of ["null", "5", "[]", '{"pid":"12"}', "{}"]) {
+          const fs = new InMemoryFileSystem();
+          await fs.writeFile(REGISTRY_PATH, content);
+          const store = createStore(fs, () => true);
+          await store.removeOrphanRegistry();
+          expect(await fs.exists(REGISTRY_PATH)).to.equal(false);
+        }
+      });
+
       it("removes a corrupt registry file", async () => {
         const fs = new InMemoryFileSystem();
         await fs.writeFile(REGISTRY_PATH, "not-json");

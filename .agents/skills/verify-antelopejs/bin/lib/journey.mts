@@ -12,6 +12,7 @@ import {
   runRecorded,
   startRecorded,
 } from "./evidence.mts";
+import { field, parseJson, requireBoolean, requireItems, requireText, type Json } from "./json.mts";
 import { CLI_ENTRY, isolatedEnv, type RunState, saveRun } from "./run.mts";
 
 /** One expectation a step met or missed, with what was observed. */
@@ -38,6 +39,53 @@ export interface JourneyResult {
   steps: StepRecord[];
   error: string | null;
   folder: string;
+}
+
+function parseCheck(value: Json): Check {
+  return {
+    name: requireText(value, "name", "feature.json check"),
+    pass: requireBoolean(value, "pass", "feature.json check"),
+    detail: requireText(value, "detail", "feature.json check"),
+  };
+}
+
+function parseStep(value: Json): StepRecord {
+  return {
+    name: requireText(value, "name", "feature.json step"),
+    folder: requireText(value, "folder", "feature.json step"),
+    checks: requireItems(value, "checks", "feature.json step").map(parseCheck),
+  };
+}
+
+function parseStatus(value: Json): JourneyResult["status"] {
+  const status = requireText(value, "status", "feature.json result");
+  if (status !== "PASS" && status !== "FAIL") {
+    throw new Error(`feature.json result: status must be PASS or FAIL, got ${status}`);
+  }
+  return status;
+}
+
+function parseJourneyResult(value: Json): JourneyResult {
+  const error = field(value, "error");
+  return {
+    feature: requireText(value, "feature", "feature.json result"),
+    journey: requireText(value, "journey", "feature.json result"),
+    title: requireText(value, "title", "feature.json result"),
+    entryPoint: requireText(value, "entryPoint", "feature.json result"),
+    status: parseStatus(value),
+    steps: requireItems(value, "steps", "feature.json result").map(parseStep),
+    error: error === null ? null : requireText(value, "error", "feature.json result"),
+    folder: requireText(value, "folder", "feature.json result"),
+  };
+}
+
+/** Decodes the text of a feature.json; throws, naming the field, when it does not hold journey results. */
+export function parseJourneyResults(text: string): JourneyResult[] {
+  const raw = parseJson(text);
+  if (!Array.isArray(raw)) {
+    throw new Error("feature.json: expected a list of journey results");
+  }
+  return raw.map(parseJourneyResult);
 }
 
 /** A background `ajs` process with the port its fixture module listens on. */

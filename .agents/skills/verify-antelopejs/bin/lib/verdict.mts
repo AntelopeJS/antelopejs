@@ -7,7 +7,7 @@ import { FEATURE_JOURNEYS } from "../journeys/index.mts";
 import { flaggedDoors } from "./doors.mts";
 import { field, isPrintable, isText, type Json, type JsonRead, parseJson } from "./json.mts";
 import { formalGate, readFormalResult, touchedFormalChecks } from "./formal.mts";
-import type { JourneyResult } from "./journey.mts";
+import { type JourneyResult, parseJourneyResults } from "./journey.mts";
 import { planFor, type Plan, SMOKE_FEATURE } from "./map.mts";
 import { REPO_DIR, type RunState, SKILL_DIR } from "./run.mts";
 
@@ -203,8 +203,7 @@ function readResults(state: RunState, feature: string): JourneyResult[] | undefi
   if (!existsSync(file)) {
     return undefined;
   }
-  const results: JourneyResult[] = JSON.parse(readFileSync(file, "utf8"));
-  return results;
+  return parseJourneyResults(readFileSync(file, "utf8"));
 }
 
 function git(args: string[]): string {

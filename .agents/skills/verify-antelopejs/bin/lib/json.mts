@@ -49,6 +49,68 @@ export function items(value: JsonRead): Json[] {
   return Array.isArray(value) ? value : [];
 }
 
+function isFlag(value: JsonRead): value is boolean {
+  return typeof value === "boolean";
+}
+
+function isCount(value: JsonRead): value is number {
+  return typeof value === "number";
+}
+
+/** A required string member of a JSON object; throws, naming `what`, when it is missing or not a string. */
+export function requireText(value: JsonRead, key: string, what: string): string {
+  const found = textField(value, key);
+  if (found === undefined) {
+    throw new Error(`${what}: ${key} must be a string`);
+  }
+  return found;
+}
+
+/** A required array member of a JSON object; throws, naming `what`, when it is missing or not an array. */
+export function requireItems(value: JsonRead, key: string, what: string): Json[] {
+  const found = field(value, key);
+  if (!Array.isArray(found)) {
+    throw new Error(`${what}: ${key} must be a list`);
+  }
+  return found;
+}
+
+/** A required array of strings in a JSON object; throws, naming `what`, when it is missing or holds anything else. */
+export function requireTexts(value: JsonRead, key: string, what: string): string[] {
+  const found = field(value, key);
+  if (!Array.isArray(found) || !found.every(isText)) {
+    throw new Error(`${what}: ${key} must be a list of strings`);
+  }
+  return found;
+}
+
+/** A required boolean member of a JSON object; throws, naming `what`, when it is missing or not a boolean. */
+export function requireBoolean(value: JsonRead, key: string, what: string): boolean {
+  const found = field(value, key);
+  if (!isFlag(found)) {
+    throw new Error(`${what}: ${key} must be a boolean`);
+  }
+  return found;
+}
+
+/** A required number member of a JSON object; throws, naming `what`, when it is missing or not a number. */
+export function requireNumber(value: JsonRead, key: string, what: string): number {
+  const found = field(value, key);
+  if (!isCount(found)) {
+    throw new Error(`${what}: ${key} must be a number`);
+  }
+  return found;
+}
+
+/** A number-or-null member of a JSON object, as a process exit code is recorded; throws, naming `what`, on anything else. */
+export function requireExitCode(value: JsonRead, key: string, what: string): number | null {
+  const found = field(value, key);
+  if (found === null) {
+    return null;
+  }
+  return requireNumber(value, key, what);
+}
+
 /** The last line of a stream parsed as JSON, where a host prints its observations. */
 export function lastJsonLine(text: string): JsonRead {
   const lines = text.trim().split("\n");
