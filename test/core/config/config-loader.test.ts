@@ -143,7 +143,7 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         it(`loads a module config file holding ${label} as the historic merge does`, async () => {
           await mockTsConfig({
             name: "test",
-            modules: { database: { config: { base: 1 } } },
+            modules: { database: { version: "1.0.0", config: { base: 1 } } },
           });
           await fs.writeFile("/project/antelope.database.json", document);
 

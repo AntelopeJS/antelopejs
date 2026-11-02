@@ -411,6 +411,7 @@ export function emitFingerprint(
   sha: string,
   files: string[],
 ): EmitFingerprint {
+  // oxlint-disable-next-line typescript/no-unsafe-assignment -- loads the verified repository's own typescript through createRequire, whose result Node types as any
   ts = createRequire(join(REPO_DIR, "package.json"))("typescript");
   const fingerprint: EmitFingerprint = { functions: [], files: {} };
   const parsed = files.flatMap((path) => {

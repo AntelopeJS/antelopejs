@@ -41,6 +41,7 @@ check(
   true,
 );
 
+// oxlint-disable-next-line typescript/no-unsafe-assignment -- an ESM JS host fixture; values from the runtime are untyped in JS
 const greeting = await Promise.race([
   greeter.Greeter.greet("esm"),
   new Promise((_, reject) => setTimeout(() => reject(new Error("HANG")), 5000)),

@@ -11,22 +11,6 @@ function normalizeCommands(installCommand?: ModuleInstallCommand): string[] {
   return Array.isArray(installCommand) ? installCommand : [installCommand];
 }
 
-function toExecError(
-  err: PromiseRejectedResult["reason"],
-  command: string,
-): ExecError {
-  if (err instanceof ExecError) {
-    return err;
-  }
-  const stderr = err instanceof Error ? err.message : String(err);
-  return new ExecError({
-    command,
-    stdout: "",
-    stderr,
-    code: FAILURE_EXIT_CODE,
-  });
-}
-
 async function runInstallCommand(
   exec: CommandRunner,
   folder: string,
@@ -38,7 +22,15 @@ async function runInstallCommand(
       ? undefined
       : new ExecError({ ...result, command });
   } catch (err) {
-    return toExecError(err, command);
+    if (err instanceof ExecError) {
+      return err;
+    }
+    return new ExecError({
+      command,
+      stdout: "",
+      stderr: err instanceof Error ? err.message : String(err),
+      code: FAILURE_EXIT_CODE,
+    });
   }
 }
 

@@ -11,9 +11,6 @@ pre-commit:
     antelopejs-suppressions:
       glob: "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,vue}"
       run: pnpm exec antelopejs-suppressions --staged
-    antelopejs-ratchet:
-      glob: "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,vue}"
-      run: pnpm exec antelopejs-ratchet --staged {staged_files}
 pre-push:
   commands:
     antelopejs-typecheck:

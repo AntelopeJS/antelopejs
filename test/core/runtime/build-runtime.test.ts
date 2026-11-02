@@ -314,3 +314,77 @@ function createArtifact(
     registerRuntimeBuildRuntime.call(this);
   });
 }
+
+describe("readBuildArtifactOrThrow on a build file of the wrong shape", () => {
+  async function readStored(text: string): Promise<BuildArtifact | Error> {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/.antelope/build/build.json", text);
+    try {
+      return await readBuildArtifactOrThrow("/project", fs);
+    } catch (error) {
+      return error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  function noBuildFound(read: BuildArtifact | Error): boolean {
+    return read instanceof Error && read.message.includes("No build found");
+  }
+
+  it("reports a build file that is not an artifact as a missing build", async () => {
+    expect(noBuildFound(await readStored('{"version":"1"}'))).to.equal(true);
+    expect(noBuildFound(await readStored("[]"))).to.equal(true);
+  });
+
+  it("reports a module entry whose paths are not a list as a missing build", async () => {
+    const entry = createBuildModuleEntry();
+    const stored = createArtifact({});
+    const text = JSON.stringify({
+      ...stored,
+      modules: { alpha: { ...entry, paths: "src" } },
+    });
+
+    expect(noBuildFound(await readStored(text))).to.equal(true);
+  });
+
+  it("reports a module entry without a manifest as a missing build", async () => {
+    const entry = Object.fromEntries(
+      Object.entries(createBuildModuleEntry()).filter(
+        ([key]) => key !== "manifest",
+      ),
+    );
+    const text = JSON.stringify({
+      ...createArtifact({}),
+      modules: { alpha: entry },
+    });
+
+    expect(noBuildFound(await readStored(text))).to.equal(true);
+  });
+
+  it("reads back a full artifact the build wrote", async () => {
+    const artifact = createArtifact({
+      alpha: createBuildModuleEntry({
+        source: { type: "local" },
+        implements: ["db@beta"],
+        paths: [{ key: "@alpha/*", values: ["src/*"] }],
+        srcAliases: [{ alias: "~", replace: "src" }],
+        config: { port: 8080, pattern: "^a" },
+        importOverrides: [{ interface: "db@beta", source: "rethinkdb" }],
+        disabledExports: ["core@beta"],
+        exportPriority: { "db@beta": 2 },
+        optional: true,
+      }),
+    });
+    artifact.config.logging = {
+      enabled: true,
+      moduleTracking: { enabled: false, includes: ["alpha"] },
+      channelFilter: { loader: "debug", default: 2 },
+      formatter: { default: "{{message}}" },
+      dateFormat: "HH:mm",
+    };
+
+    const read = await readStored(JSON.stringify(artifact));
+
+    expect(read).to.not.be.instanceOf(Error);
+    expect(JSON.parse(JSON.stringify(read))).to.deep.equal(artifact);
+  });
+});

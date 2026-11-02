@@ -4,7 +4,7 @@
   "private": true,
   "main": "dist/index.js",
   "dependencies": {
-    "@antelopejs/interface-core": "file:../../../../../.campaign/tgz/antelopejs-interface-core-2f5027a.tgz"
+    "@antelopejs/interface-core": "file:../../../../../.campaign/tgz/antelopejs-interface-core-8fd200f.tgz"
   },
   "devDependencies": {
     "@types/node": "22.19.15",
@@ -16,7 +16,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@antelopejs/interface-core": "file:../../../../../.campaign/tgz/antelopejs-interface-core-2f5027a.tgz"
+      "@antelopejs/interface-core": "file:../../../../../.campaign/tgz/antelopejs-interface-core-8fd200f.tgz"
     }
   }
 }

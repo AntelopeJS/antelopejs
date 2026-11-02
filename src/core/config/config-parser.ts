@@ -1,4 +1,5 @@
 import type {
+  AntelopeConfig,
   AntelopeModuleConfig,
   ImportOverride,
   ModuleSource,
@@ -16,6 +17,11 @@ import {
   isString,
 } from "../../utils";
 import { isConfigVarKey } from "./config-vars";
+
+/** A project configuration with its module shorthands expanded. */
+export interface ProjectConfig extends Omit<AntelopeConfig, "modules"> {
+  modules: Record<string, ExpandedModuleConfig>;
+}
 
 export interface ExpandedModuleConfig {
   source: ModuleSource;
@@ -39,81 +45,98 @@ function readExportPriority(name: string, priorities: Record<string, number>) {
 }
 
 export class ConfigParser {
-  processTemplates<T extends Record<string, any>>(config: T): T {
+  /**
+   * Replaces `${key}` templates in every string of `config`. A pure template
+   * whose value parses as JSON takes the parsed value, so a leaf can change
+   * type: the result is `unknown` until a caller checks the fields it reads.
+   */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- takes the project fields with their module config, user JS data of any shape, and a pure template can retype any leaf, so the loader decodes the result in config-fields.ts
+  processTemplates(config: unknown): unknown {
     const flatValues = this.flattenConfig(config);
     return this.processObject(config, flatValues);
   }
 
   private flattenConfig(
-    obj: Parameters<ConfigParser["processTemplates"]>[0],
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks the project fields with their module config, user JS data of any shape, collecting text, number and boolean leaves
+    value: unknown,
     prefix = "",
     result = new Map<string, string>(),
   ) {
-    for (const [key, value] of Object.entries(obj)) {
+    if (!isObject(value)) {
+      return result;
+    }
+    for (const [key, item] of Object.entries(value)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
 
-      if (isString(value) || isNumber(value) || isBoolean(value)) {
-        result.set(key, String(value));
-        result.set(fullKey, String(value));
-      } else if (isObject(value)) {
-        this.flattenConfig(value, fullKey, result);
+      if (isString(item) || isNumber(item) || isBoolean(item)) {
+        result.set(key, String(item));
+        result.set(fullKey, String(item));
+      } else if (isObject(item)) {
+        this.flattenConfig(item, fullKey, result);
       }
     }
 
     return result;
   }
 
-  private processObject(obj: any, values: Map<string, string>): any {
-    if (isString(obj)) {
-      return this.processString(obj, values);
-    }
-
-    if (Array.isArray(obj)) {
-      return obj.map((item) => this.processObject(item, values));
-    }
-
-    if (isPlainObject(obj)) {
-      const result: Parameters<ConfigParser["processTemplates"]>[0] = {};
-      for (const [key, value] of Object.entries(obj)) {
-        result[key] = this.processObject(value, values);
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- rewrites the string leaves of user JS config data of any shape, and a pure template can turn a leaf into any JSON value
+  private processObject(value: unknown, values: Map<string, string>): unknown {
+    if (isString(value)) {
+      const pureMatch = value.match(/^\$\{([^}]+)\}$/);
+      if (!pureMatch) {
+        return value.replace(/\$\{([^}]+)\}/g, (token: string, key: string) =>
+          isConfigVarKey(key) ? token : (values.get(key) ?? ""),
+        );
       }
+      const key = pureMatch[1];
+      const text = isConfigVarKey(key) ? undefined : values.get(key);
+      if (text === undefined) {
+        return value;
+      }
+      try {
+        const parsed: unknown = JSON.parse(text);
+        return parsed;
+      } catch {
+        return text;
+      }
+    }
+
+    if (Array.isArray(value)) {
+      const items: unknown[] = value;
+      return items.map((item) => this.processObject(item, values));
+    }
+
+    if (isPlainObject(value)) {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+          key,
+          this.processObject(item, values),
+        ]),
+      );
+    }
+
+    return value;
+  }
+
+  /**
+   * A copy of `config` with each overridden path set to its environment
+   * variable's text, as `readOverride` decodes it for that path. A path can
+   * reach any field, so the result is `unknown` until a caller checks the
+   * fields it reads.
+   */
+  applyEnvOverrides(
+    config: ProjectConfig,
+    overrides: Record<string, string | string[]>,
+    readOverride: (path: string, text: string) => string | number | boolean = (
+      _path,
+      text,
+    ) => text,
+    // oxlint-disable-next-line anti-slop/no-unknown-returns -- an override path can reach and retype any field, so the loader decodes the copy in config-fields.ts
+  ): unknown {
+    const result = this.cloneValue(config);
+    if (!isObject(result)) {
       return result;
     }
-
-    return obj;
-  }
-
-  private processString(str: string, values: Map<string, string>): any {
-    const pureMatch = str.match(/^\$\{([^}]+)\}$/);
-    if (pureMatch) {
-      const key = pureMatch[1];
-      if (isConfigVarKey(key)) {
-        return str;
-      }
-      const value = values.get(key);
-      if (value !== undefined) {
-        try {
-          return JSON.parse(value);
-        } catch {
-          return value;
-        }
-      }
-      return str;
-    }
-
-    return str.replace(/\$\{([^}]+)\}/g, (token: string, key: string) => {
-      if (isConfigVarKey(key)) {
-        return token;
-      }
-      return values.get(key) ?? "";
-    });
-  }
-
-  applyEnvOverrides<T extends Record<string, any>>(
-    config: T,
-    overrides: Record<string, string | string[]>,
-  ): T {
-    const result = this.cloneValue(config);
 
     for (const [envVar, paths] of Object.entries(overrides)) {
       const value = process.env[envVar];
@@ -121,25 +144,27 @@ export class ConfigParser {
 
       const pathList = Array.isArray(paths) ? paths : [paths];
       for (const path of pathList) {
-        set(result, path, value);
+        set(result, path, readOverride(path, value));
       }
     }
 
     return result;
   }
 
-  private cloneValue<T>(value: T): T;
-  private cloneValue(value: any): any {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- copies user JS config data of any shape, keeping RegExp, functions and class instances by identity
+  private cloneValue(value: unknown): unknown {
     if (Array.isArray(value)) {
-      return value.map((item) => this.cloneValue(item));
+      const items: unknown[] = value;
+      return items.map((item) => this.cloneValue(item));
     }
 
     if (isPlainObject(value)) {
-      const result: Parameters<ConfigParser["processTemplates"]>[0] = {};
-      for (const [key, item] of Object.entries(value)) {
-        result[key] = this.cloneValue(item);
-      }
-      return result;
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+          key,
+          this.cloneValue(item),
+        ]),
+      );
     }
 
     return value;

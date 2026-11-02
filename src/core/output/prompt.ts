@@ -65,7 +65,7 @@ export function missingFlags<Options>(
 
 function isCancellation(
   backend: PromptBackend,
-  answer: Parameters<PromptBackend["isCancel"]>[0],
+  answer: unknown,
 ): answer is symbol {
   return backend.isCancel(answer);
 }

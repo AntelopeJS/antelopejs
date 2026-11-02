@@ -17,7 +17,7 @@ import {
   activateLoadedModules as activateModules,
   ensureGraphIsValid as validateGraph,
 } from "./module-interfaces";
-import { moduleLoadFailure } from "./module-load-failure";
+import { throwModuleLoadFailure } from "./module-load-failure";
 import { reloadWatchedModule as reloadModule } from "./module-reloading";
 import type {
   LoaderConfig,
@@ -27,7 +27,6 @@ import type {
   ModuleOverrideMap,
   NormalizedLoadedConfig,
 } from "./runtime-types";
-import type { FailureTranslator } from "../output";
 
 const Logger = new Logging.Channel("loader");
 
@@ -136,20 +135,6 @@ async function loadModuleEntry(
   return buildManifestEntries(manifests, moduleConfig);
 }
 
-/**
- * Logs that optional module `id` could not be downloaded: the project starts
- * without it.
- */
-function skipOptionalModule(
-  id: string,
-  reason: PromiseRejectedResult["reason"],
-): void {
-  Logger.Error(
-    `Optional module ${id} could not be loaded; starting without it`,
-    reason,
-  );
-}
-
 async function loadModuleEntries(
   modules: Record<string, ExpandedModuleConfig>,
   context: LoaderContext,
@@ -165,13 +150,16 @@ async function loadModuleEntries(
     if (result.status === "fulfilled") return;
     const [id, moduleConfig] = declared[index];
     if (moduleConfig.optional) {
-      skipOptionalModule(id, result.reason);
+      Logger.Error(
+        `Optional module ${id} could not be loaded; starting without it`,
+        result.reason,
+      );
       return;
     }
     failures.push(result.reason);
   });
   if (failures.length > 0) {
-    throw moduleLoadFailure(failures, results.length);
+    throwModuleLoadFailure(failures, results.length);
   }
   return results.flatMap((result) =>
     result.status === "fulfilled" ? result.value : [],
@@ -262,7 +250,8 @@ export async function constructAndStartModules(
 
 export async function destroyModulesAfterFailure(
   manager: ModuleManager,
-  error: Parameters<FailureTranslator>[0],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rethrows the startup failure after cleanup; JS can throw any value
+  error: unknown,
 ): Promise<never> {
   try {
     await manager.destroyAll();

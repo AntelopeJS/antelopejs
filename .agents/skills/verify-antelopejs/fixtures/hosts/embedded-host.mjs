@@ -19,7 +19,9 @@ async function fixtureMessage() {
   }
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
 const { createRuntime } = await import(pathToFileURL(coreEntry).href);
+// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
 const runtime = createRuntime({
   projectFolder: hostFolder,
   modules: {
@@ -30,11 +32,14 @@ const runtime = createRuntime({
 });
 const sigintListeners = process.listenerCount("SIGINT");
 await runtime.start();
+// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
 observations.runningAfterStart = runtime.isRunning;
+// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
 observations.greeting = await runtime.use("verify-greeter").Greeter.greet("host");
 observations.fixtureWhileRunning = await fixtureMessage();
 observations.hostKeptSigint = process.listenerCount("SIGINT") === sigintListeners;
 await runtime.stop();
+// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
 observations.runningAfterStop = runtime.isRunning;
 observations.fixtureAfterStop = await fixtureMessage();
 process.stdout.write(`${JSON.stringify(observations)}\n`);

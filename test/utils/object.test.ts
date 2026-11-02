@@ -1,20 +1,20 @@
 import { expect } from "chai";
 
-import {
-  diffDeep,
-  mergeDeep,
-  set,
-  type UnknownDictionary,
-} from "../../src/utils";
+import { diffDeep, mergeDeep, set } from "../../src/utils";
 
-const merge = mergeDeep<UnknownDictionary>;
-const diff = diffDeep<UnknownDictionary>;
+interface Tree {
+  readonly [key: string]: Leaf | undefined;
+}
+type Leaf = number | string | boolean | readonly number[] | Tree;
+
+const merge = mergeDeep<Tree>;
+const diff = diffDeep<Tree>;
 
 describe("Object Utilities", () => {
   describe("mergeDeep", () => {
     it("should merge nested objects", () => {
-      const target: UnknownDictionary = { a: { b: 1, c: 2 } };
-      const source: UnknownDictionary = { a: { c: 3, d: 4 } };
+      const target: Tree = { a: { b: 1, c: 2 } };
+      const source: Tree = { a: { c: 3, d: 4 } };
 
       const result = merge(target, source);
 
@@ -22,8 +22,8 @@ describe("Object Utilities", () => {
     });
 
     it("should replace arrays instead of merging", () => {
-      const target: UnknownDictionary = { arr: [1, 2] };
-      const source: UnknownDictionary = { arr: [3, 4, 5] };
+      const target: Tree = { arr: [1, 2] };
+      const source: Tree = { arr: [3, 4, 5] };
 
       const result = merge(target, source);
 

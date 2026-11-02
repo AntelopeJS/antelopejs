@@ -13,20 +13,23 @@ function uniqueFixes(failures: unknown[]): string[] {
 }
 
 /**
- * One error for every module that failed to load. A single failure is
+ * Throws one error for every module that failed to load. A single failure is
  * thrown as is; several are each listed once, by title and reason, and
  * summed up by one error carrying their fixes and the first one as cause.
  */
-export function moduleLoadFailure(failures: unknown[], total: number) {
+export function throwModuleLoadFailure(
+  failures: unknown[],
+  total: number,
+): never {
   if (failures.length === 1) {
-    return failures[0];
+    throw failures[0];
   }
   const tasks = getProcessTasks();
   failures.forEach((failure) => {
     const problem = describeFailure(failure, false);
     tasks.message("error", problem.title, { detail: problem.reason });
   });
-  return new CliError(
+  throw new CliError(
     {
       title: `Could not load ${failures.length} of ${pluralize(total, "module")}`,
       fixes: uniqueFixes(failures),

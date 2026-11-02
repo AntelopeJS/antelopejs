@@ -1,7 +1,4 @@
-import type {
-  ConfigVarProvider,
-  ConfigVarValue,
-} from "@antelopejs/interface-core/config";
+import type { ConfigVarValue } from "@antelopejs/interface-core/config";
 
 import { isPlainObject, isString } from "../../utils";
 
@@ -43,9 +40,8 @@ export function declaredConfigVars(source?: {
 }
 
 /** Every config variable reference a configuration holds, at any depth. */
-export function scanConfigVars(
-  config: Parameters<ConfigVarProvider>[0],
-): ConfigVarScan {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, to collect its config variable references
+export function scanConfigVars(config: unknown): ConfigVarScan {
   const references = new Map<string, ConfigVarReference>();
   const malformed = new Set<string>();
 
@@ -72,9 +68,11 @@ export function scanConfigVars(
  * came in.
  */
 export function substituteConfigVars(
-  config: Parameters<ConfigVarProvider>[0],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+  config: unknown,
   lookup: ConfigVarLookup,
-) {
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+): unknown {
   if (isString(config)) {
     return substituteString(config, lookup);
   }
@@ -100,9 +98,11 @@ function substituteArray(
 }
 
 function substituteObject(
-  config: Record<string, Parameters<typeof substituteConfigVars>[0]>,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+  config: Record<string, unknown>,
   lookup: ConfigVarLookup,
-): ReturnType<typeof Object.fromEntries<unknown>> {
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+): Record<string, unknown> {
   const original = Object.entries(config);
   const entries = original.map(
     ([key, value]) => [key, substituteConfigVars(value, lookup)] as const,
@@ -139,10 +139,8 @@ function matchReferences(value: string): ConfigVarReference[] {
   );
 }
 
-function visitStrings(
-  value: Parameters<typeof scanConfigVars>[0],
-  visit: (value: string) => void,
-): void {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, visiting each string it holds
+function visitStrings(value: unknown, visit: (value: string) => void): void {
   if (isString(value)) {
     visit(value);
     return;

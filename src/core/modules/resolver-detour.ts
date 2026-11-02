@@ -83,7 +83,8 @@ class ResolverDetourCoordinator {
     request: string,
     parent: ResolveParent,
     isMain?: boolean,
-  ): ReturnType<ModuleLoader> {
+    // oxlint-disable-next-line anti-slop/no-unknown-returns -- Node Module._load hook returns what the original loader returns, any
+  ): unknown {
     const activeResolver = this.findResolver(request, parent);
     const instance = activeResolver?.instanceToLoad(
       request,
@@ -112,6 +113,7 @@ class ResolverDetourCoordinator {
       if (entry) {
         this.originalLoader?.(entry, parent, isMain);
       }
+      // oxlint-disable-next-line typescript/no-unsafe-return -- Node Module._load hook returns what the original loader returns, any
       return this.originalLoader?.(resolvedPath, parent, isMain);
     });
   }
