@@ -9,8 +9,27 @@ import path from "node:path";
 import type { IFileSystem } from "../../types";
 import { ConfigLoader, type LoadedConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
-import type { ModulePackageJson } from "./module-package-json";
-import { isObjectOrNull } from "../../utils";
+import {
+  decodeModulePackageJson,
+  type ModulePackageJson,
+} from "./module-package-json";
+import {
+  anyValue,
+  type FieldCheck,
+  flag,
+  isObjectOrNull,
+  isString,
+  leaf,
+  listOf,
+  mapOf,
+  number,
+  optional,
+  section,
+  text,
+  textOrList,
+  texts,
+} from "../../utils";
+import { importOverride, logging } from "../config/config-fields";
 
 const BUILD_ARTIFACT_VERSION = "1";
 const BUILD_FOLDER = ".antelope/build";
@@ -170,11 +189,101 @@ export async function writeBuildArtifact(
   );
 }
 
+/** A module entry as `build.json` stores it, its manifest not yet decoded. */
+interface StoredModuleEntry extends Omit<BuildModuleEntry, "manifest"> {
+  manifest?: unknown;
+}
+
+interface StoredArtifact extends Omit<BuildArtifact, "modules"> {
+  modules: Record<string, StoredModuleEntry>;
+}
+
+const MODULE_SOURCE_TYPES = new Set([
+  "local",
+  "git",
+  "package",
+  "local-folder",
+]);
+
+function isModuleSourceType(value: unknown): value is ModuleSource["type"] {
+  return isString(value) && MODULE_SOURCE_TYPES.has(value);
+}
+
+const storedModuleEntry = section<StoredModuleEntry>("a build module entry", {
+  folder: text,
+  source: section<ModuleSource>("a module source", {
+    type: leaf("a module source type", isModuleSourceType),
+    id: optional(text),
+    ignoreCache: optional(flag),
+  }),
+  name: text,
+  version: optional(text),
+  main: text,
+  manifest: anyValue,
+  implements: optional(texts),
+  baseUrl: text,
+  paths: listOf(
+    "a list of path entries",
+    section<BuildPathEntry>("a path entry", { key: text, values: texts }),
+  ),
+  srcAliases: optional(
+    listOf(
+      "a list of source aliases",
+      section<BuildAliasEntry>("a source alias", {
+        alias: text,
+        replace: text,
+      }),
+    ),
+  ),
+  config: anyValue,
+  importOverrides: optional(
+    listOf("a list of import overrides", importOverride),
+  ),
+  disabledExports: optional(texts),
+  exportPriority: optional(mapOf("a map of export priorities", number)),
+  optional: optional(flag),
+});
+
+const storedArtifact: FieldCheck<StoredArtifact> = section("a build artifact", {
+  version: text,
+  buildTime: text,
+  configHash: text,
+  env: text,
+  config: section<BuildArtifactConfig>("a build configuration", {
+    name: text,
+    cacheFolder: text,
+    projectFolder: text,
+    logging: optional(logging),
+    envOverrides: mapOf("a map of environment overrides", textOrList),
+  }),
+  modules: mapOf("a map of build module entries", storedModuleEntry),
+});
+
+/**
+ * Reads `build.json` back. The build wrote it, but it can be edited or come
+ * from another core: a document whose fields do not hold their declared types
+ * is refused with a {@link FieldError}, and each module's manifest goes through
+ * the same decoder as a module's `package.json`.
+ */
 export async function readBuildArtifact(
   projectFolder: string,
   fs: IFileSystem = new NodeFileSystem(),
 ): Promise<BuildArtifact> {
   const artifactPath = getBuildArtifactPath(projectFolder);
   const content = await fs.readFileString(artifactPath, "utf-8");
-  return JSON.parse(content);
+  const stored: unknown = JSON.parse(content);
+  storedArtifact(stored, undefined, "");
+  const modules = Object.entries(stored.modules).map(
+    ([id, entry]): [string, BuildModuleEntry] => [
+      id,
+      {
+        ...entry,
+        manifest: decodeModulePackageJson(
+          JSON.stringify(entry.manifest),
+          entry.folder,
+        ),
+      },
+    ],
+  );
+  return { ...stored, modules: Object.fromEntries(modules) };
 }
