@@ -92,8 +92,9 @@ export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
   }
 
   processHandlersReady = true;
-  process.on("uncaughtException", (error: Error) => {
+  process.on("uncaughtException", (error) => {
     if (
+      error instanceof Error &&
       isInvalidatedModuleWork(error) &&
       reportInvalidatedModuleWork("Uncaught exception", error)
     ) {
