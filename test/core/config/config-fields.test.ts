@@ -180,3 +180,61 @@ describe("ConfigLoader environment overrides of typed fields", () => {
     expect(config.modules.api.config).to.deep.equal({ port: "8080" });
   });
 });
+
+describe("ConfigLoader test section", () => {
+  let loader: ConfigLoader;
+  let loadTsConfigFileStub: sinon.SinonStub;
+  const setup = (): void => {};
+
+  class TestHooks {
+    folder = "test";
+    setup(): void {}
+  }
+
+  beforeEach(async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/antelope.config.ts", "");
+    loader = new ConfigLoader(fs);
+    loadTsConfigFileStub = sinon.stub(tsConfigFile, "loadTsConfigFile");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("loads a test section that is a class instance with a setup method", async () => {
+    loadTsConfigFileStub.resolves({
+      name: "app",
+      modules: {},
+      test: new TestHooks(),
+    });
+
+    const config = await loader.load("/project");
+
+    expect(config.test?.folder).to.equal("test");
+  });
+
+  it("loads a test section whose setup comes from its prototype", async () => {
+    const test: unknown = Object.create({ setup });
+    loadTsConfigFileStub.resolves({ name: "app", modules: {}, test });
+
+    await assert.doesNotReject(loader.load("/project"));
+  });
+
+  it("refuses a test section whose setup is a getter", async () => {
+    loadTsConfigFileStub.resolves({
+      name: "app",
+      modules: {},
+      test: {
+        get setup() {
+          return setup;
+        },
+      },
+    });
+
+    await assert.rejects(loader.load("/project"), {
+      message:
+        "Configuration field 'test.setup' does not hold the setup function the configuration file gave after templates and environment overrides.",
+    });
+  });
+});

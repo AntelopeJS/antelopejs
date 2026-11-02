@@ -152,7 +152,7 @@ function testSection(
     if (
       !isDeepStrictEqual(
         Object.getOwnPropertyDescriptor(value, "setup")?.value,
-        loaded?.setup,
+        loaded && Object.getOwnPropertyDescriptor(loaded, "setup")?.value,
       )
     ) {
       throw new FieldError(
@@ -163,7 +163,7 @@ function testSection(
     if (
       !isDeepStrictEqual(
         Object.getOwnPropertyDescriptor(value, "cleanup")?.value,
-        loaded?.cleanup,
+        loaded && Object.getOwnPropertyDescriptor(loaded, "cleanup")?.value,
       )
     ) {
       throw new FieldError(
