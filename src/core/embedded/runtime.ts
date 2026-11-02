@@ -41,6 +41,14 @@ function findInterfacePackage(
   );
 }
 
+function requireProvided(started: StartedProject, request: string): void {
+  if (!findInterfacePackage(started, request)) {
+    throw new Error(
+      `Interface '${request}' is not provided by any loaded module. Declare it in 'uses' and load a module that implements it.`,
+    );
+  }
+}
+
 const NOT_STARTED_MESSAGE =
   "The embedded runtime has not been started. Call start() first.";
 
@@ -156,17 +164,8 @@ export class AntelopeRuntime {
   use<Request extends Extract<keyof EmbeddedInterfaces, string>>(
     request: Request,
   ): EmbeddedInterfaces[Request] {
-    this.requireProvided(request);
+    requireProvided(this.requireStarted(), request);
     return this.hostModule().runInContext(() => require(request));
-  }
-
-  private requireProvided(request: string): void {
-    const started = this.requireStarted();
-    if (!findInterfacePackage(started, request)) {
-      throw new Error(
-        `Interface '${request}' is not provided by any loaded module. Declare it in 'uses' and load a module that implements it.`,
-      );
-    }
   }
 
   /** Implements an interface from host code, released through the returned handle. */
@@ -177,7 +176,7 @@ export class AntelopeRuntime {
         `Interface '${packageName}' is not declared in 'provides', so nothing routes to a host implementation of it. Add it to 'provides' before calling provide().`,
       );
     }
-    this.requireProvided(packageName);
+    requireProvided(this.requireStarted(), packageName);
     let loaded: unknown;
     this.hostModule().runInContext(() => {
       loaded = require(packageName);
