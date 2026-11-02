@@ -27,8 +27,20 @@ function createStubFunction(): StubCallable {
   return callable;
 }
 
-const propertyHandler: ProxyHandler<object> = {
-  get: (_target, property) => {
+/** A named export of a stubbed interface: every member is a stub function, and `__esModule` is `true`. */
+interface StubNamespace {
+  readonly [member: string]: StubCallable | true;
+  readonly [key: symbol]: undefined;
+}
+
+/** A stubbed interface module: every named export is a {@link StubNamespace}, and `__esModule` is `true`. */
+interface StubModule {
+  readonly [name: string]: StubNamespace | true;
+  readonly [key: symbol]: undefined;
+}
+
+const propertyHandler: ProxyHandler<StubNamespace> = {
+  get: (_target, property): StubCallable | true | undefined => {
     if (isSymbol(property)) {
       return undefined;
     }
@@ -39,16 +51,19 @@ const propertyHandler: ProxyHandler<object> = {
   },
 };
 
-const moduleHandler: ProxyHandler<object> = {
-  get: (_target, property) => {
+const moduleHandler: ProxyHandler<StubModule> = {
+  get: (_target, property): StubNamespace | true | undefined => {
     if (isSymbol(property)) {
       return undefined;
     }
     if (property === "__esModule") {
       return true;
     }
-    return new Proxy({}, propertyHandler);
+    const namespace: StubNamespace = {};
+    return new Proxy(namespace, propertyHandler);
   },
 };
 
-export = new Proxy({}, moduleHandler);
+const stubModule: StubModule = {};
+
+export = new Proxy(stubModule, moduleHandler);
