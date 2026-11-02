@@ -6,7 +6,12 @@ import crypto from "node:crypto";
 import path from "node:path";
 
 import type { IFileSystem } from "../../types";
-import { ConfigLoader, type LoadedConfig } from "../config";
+import {
+  ConfigLoader,
+  importOverrideCheck,
+  type LoadedConfig,
+  loggingCheck,
+} from "../config";
 import { NodeFileSystem } from "../filesystem";
 import {
   decodeModulePackageJson,
@@ -28,7 +33,6 @@ import {
   textOrList,
   texts,
 } from "../../utils";
-import { importOverride, logging } from "../config/config-fields";
 
 const BUILD_ARTIFACT_VERSION = "1";
 const BUILD_FOLDER = ".antelope/build";
@@ -230,7 +234,7 @@ const storedModuleEntry = section<StoredModuleEntry>("a build module entry", {
   ),
   config: anyValue,
   importOverrides: optional(
-    listOf("a list of import overrides", importOverride),
+    listOf("a list of import overrides", importOverrideCheck),
   ),
   disabledExports: optional(texts),
   exportPriority: optional(mapOf("a map of export priorities", number)),
@@ -246,7 +250,7 @@ const storedArtifact: FieldCheck<StoredArtifact> = section("a build artifact", {
     name: text,
     cacheFolder: text,
     projectFolder: text,
-    logging: optional(logging),
+    logging: optional(loggingCheck),
     envOverrides: mapOf("a map of environment overrides", textOrList),
   }),
   modules: mapOf("a map of build module entries", storedModuleEntry),

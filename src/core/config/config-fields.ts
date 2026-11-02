@@ -102,23 +102,27 @@ const moduleSource: FieldCheck<ModuleSource> = (value, loaded, field) => {
   }
 };
 
-export const importOverride = section<ImportOverride>("an import override", {
-  interface: text,
-  source: optional(text),
-  id: optional(text),
-});
+/** Checks the declared fields of an import override. */
+export const importOverrideCheck = section<ImportOverride>(
+  "an import override",
+  {
+    interface: text,
+    source: optional(text),
+    id: optional(text),
+  },
+);
 
 const moduleEntry = section<ExpandedModuleConfig>("a module entry", {
   source: moduleSource,
   config: anyValue,
-  importOverrides: listOf("a list of import overrides", importOverride),
+  importOverrides: listOf("a list of import overrides", importOverrideCheck),
   disabledExports: texts,
   exportPriority: optional(mapOf("a map of export priorities", number)),
   optional: optional(flag),
 });
 
-/** The declared fields of a logging section. */
-export const logging = section<AntelopeLogging>("a logging section", {
+/** Checks the declared fields of a logging section. */
+export const loggingCheck = section<AntelopeLogging>("a logging section", {
   enabled: optional(flag),
   moduleTracking: optional(
     section<NonNullable<AntelopeLogging["moduleTracking"]>>(
@@ -145,7 +149,7 @@ const projectFields: FieldChecks<LoadedConfig> = {
   name: text,
   cacheFolder: text,
   modules: mapOf("a map of module entries", moduleEntry),
-  logging: optional(logging),
+  logging: optional(loggingCheck),
   envOverrides: mapOf("a map of environment overrides", textOrList),
   test: optional(testSection),
 };
