@@ -136,20 +136,6 @@ async function loadModuleEntry(
   return buildManifestEntries(manifests, moduleConfig);
 }
 
-/**
- * Logs that optional module `id` could not be downloaded: the project starts
- * without it.
- */
-function skipOptionalModule(
-  id: string,
-  reason: PromiseRejectedResult["reason"],
-): void {
-  Logger.Error(
-    `Optional module ${id} could not be loaded; starting without it`,
-    reason,
-  );
-}
-
 async function loadModuleEntries(
   modules: Record<string, ExpandedModuleConfig>,
   context: LoaderContext,
@@ -165,7 +151,10 @@ async function loadModuleEntries(
     if (result.status === "fulfilled") return;
     const [id, moduleConfig] = declared[index];
     if (moduleConfig.optional) {
-      skipOptionalModule(id, result.reason);
+      Logger.Error(
+        `Optional module ${id} could not be loaded; starting without it`,
+        result.reason,
+      );
       return;
     }
     failures.push(result.reason);
