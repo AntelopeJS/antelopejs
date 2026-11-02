@@ -5,6 +5,11 @@ import { satisfies } from "semver";
 
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
+import { isPlainObject, isString } from "../../utils";
+
+function isVersionManifest(value: unknown): value is Record<string, string> {
+  return isPlainObject(value) && Object.values(value).every(isString);
+}
 
 export class ModuleCache {
   private manifest: Record<string, string> = {};
@@ -22,7 +27,8 @@ export class ModuleCache {
     if (await this.fs.exists(manifestPath)) {
       try {
         const data = await this.fs.readFileString(manifestPath);
-        this.manifest = JSON.parse(data) || {};
+        const parsed: unknown = JSON.parse(data);
+        this.manifest = isVersionManifest(parsed) ? parsed : {};
       } catch {
         this.manifest = {};
       }

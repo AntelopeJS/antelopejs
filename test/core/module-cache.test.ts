@@ -175,3 +175,22 @@ describe("ModuleCache packages named like Object.prototype members", () => {
     expect(cache.hasVersion("constructor", "^1.0.0")).to.equal(true);
   });
 });
+
+describe("ModuleCache manifest file", () => {
+  it("starts empty when the manifest file does not map names to versions", async () => {
+    for (const content of ["not json", "null", "5", "[]", '{"test":1}']) {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile("/cache/manifest.json", content);
+      const cache = new ModuleCache("/cache", fs);
+
+      await cache.load();
+      cache.setVersion("other", "1.0.0");
+      await cache.save();
+
+      expect(cache.getVersion("test")).to.equal(undefined);
+      expect(
+        JSON.parse(await fs.readFileString("/cache/manifest.json")),
+      ).to.deep.equal({ other: "1.0.0" });
+    }
+  });
+});
