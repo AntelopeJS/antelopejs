@@ -6,8 +6,8 @@ import { isBoolean, isNumber, isString } from "./type-guards";
 /**
  * Checks one declared field of a decoded document and throws a
  * {@link FieldError} naming it when the value does not hold the field's type.
- * `loaded` is the same field as an earlier, already typed copy gave it: a
- * value equal to it passes as it was. Pass `undefined` to check strictly.
+ * `loaded` is the same field as an earlier, already typed copy gave it; only
+ * {@link asLoaded} reads it, for a field whose type no check can establish.
  * `declared` lets the compiler match each check to the field type it stands
  * for.
  */
@@ -39,8 +39,8 @@ export function leaf<T>(
   takes: string,
   holds: (value: unknown) => value is T,
 ): FieldCheck<T> {
-  return (value, loaded, field) => {
-    if (holds(value) || isDeepStrictEqual(value, loaded)) return;
+  return (value, _loaded, field) => {
+    if (holds(value)) return;
     refuse(field, takes);
   };
 }
@@ -58,7 +58,6 @@ function isContainer(value: unknown): value is object {
 export function listOf<T>(takes: string, item: FieldCheck<T>): FieldCheck<T[]> {
   return (value, loaded, field) => {
     if (!Array.isArray(value)) {
-      if (isDeepStrictEqual(value, loaded)) return;
       refuse(field, takes);
     }
     const items: unknown[] = value;
@@ -80,7 +79,6 @@ export function mapOf<T>(
 ): FieldCheck<Record<string, T>> {
   return (value, loaded, field) => {
     if (!isObject(value)) {
-      if (isDeepStrictEqual(value, loaded)) return;
       refuse(field, takes);
     }
     for (const [key, item] of Object.entries(value)) {
@@ -102,7 +100,6 @@ export function section<T>(
   const checks: [string, FieldCheck<unknown>][] = Object.entries(fields);
   return (value, loaded, field) => {
     if (!isObject(value)) {
-      if (isDeepStrictEqual(value, loaded)) return;
       refuse(field, takes);
     }
     for (const [key, entry] of checks) {

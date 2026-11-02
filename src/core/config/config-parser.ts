@@ -120,12 +120,17 @@ export class ConfigParser {
 
   /**
    * A copy of `config` with each overridden path set to its environment
-   * variable's text. A path can reach any field, so the result is `unknown`
-   * until a caller checks the fields it reads.
+   * variable's text, as `readOverride` decodes it for that path. A path can
+   * reach any field, so the result is `unknown` until a caller checks the
+   * fields it reads.
    */
   applyEnvOverrides(
     config: ProjectConfig,
     overrides: Record<string, string | string[]>,
+    readOverride: (path: string, text: string) => string | number | boolean = (
+      _path,
+      text,
+    ) => text,
     // oxlint-disable-next-line anti-slop/no-unknown-returns -- an override path can reach and retype any field, so the loader decodes the copy in config-fields.ts
   ): unknown {
     const result = this.cloneValue(config);
@@ -139,7 +144,7 @@ export class ConfigParser {
 
       const pathList = Array.isArray(paths) ? paths : [paths];
       for (const path of pathList) {
-        set(result, path, value);
+        set(result, path, readOverride(path, value));
       }
     }
 

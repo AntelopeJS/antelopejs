@@ -8,8 +8,6 @@ import type {
   ModuleSourceLocalFolder,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
-import { isDeepStrictEqual } from "node:util";
-
 import {
   anyValue,
   asLoaded,
@@ -97,7 +95,7 @@ const moduleSource: FieldCheck<ModuleSource> = (value, loaded, field) => {
     packageSource(value, loaded, field);
   } else if (type === "local-folder") {
     localFolderSource(value, loaded, field);
-  } else if (!isDeepStrictEqual(value, loaded)) {
+  } else {
     throw new FieldError(field, SOURCE_TAKES);
   }
 };
@@ -171,11 +169,69 @@ export function assertLoadedConfig(
     checkProjectFields(value, loaded);
   } catch (error) {
     if (!(error instanceof FieldError)) throw error;
-    throw new Error(
-      `Configuration field '${error.field}' does not hold ${error.takes} after templates and environment overrides.`,
-      { cause: error },
-    );
+    throw configFieldError(error.field, error.takes, error);
   }
+}
+
+function configFieldError(field: string, takes: string, cause?: Error) {
+  return new Error(
+    `Configuration field '${field}' does not hold ${takes} after templates and environment overrides.`,
+    { cause },
+  );
+}
+
+/** A value an environment override can write: its text, or the text decoded. */
+export type OverrideValue = string | number | boolean;
+
+type OverrideDecoder = (text: string) => boolean | number | undefined;
+
+const FLAG_TEXTS = new Map([
+  ["true", true],
+  ["false", false],
+]);
+
+const readFlag: OverrideDecoder = (text) => FLAG_TEXTS.get(text);
+
+const readNumber: OverrideDecoder = (text) => {
+  const read = Number(text);
+  return text.trim() !== "" && Number.isFinite(read) ? read : undefined;
+};
+
+/**
+ * The declared fields of a project configuration that hold a boolean or a
+ * number, by path pattern (`*` matches one segment). An override of another
+ * field keeps its text, which {@link assertLoadedConfig} then checks.
+ */
+const TYPED_OVERRIDES: readonly [string[], string, OverrideDecoder][] = [
+  [["logging", "enabled"], "a boolean", readFlag],
+  [["logging", "moduleTracking", "enabled"], "a boolean", readFlag],
+  [["modules", "*", "optional"], "a boolean", readFlag],
+  [["modules", "*", "source", "ignoreCache"], "a boolean", readFlag],
+  [["modules", "*", "exportPriority", "*"], "a number", readNumber],
+];
+
+/**
+ * Decodes an environment override's text for the field at `path`: a boolean
+ * field takes exactly `true` or `false`, a number field finite numeric text,
+ * and any other field the text itself. Throws an error naming the field when
+ * the text does not decode.
+ */
+export function decodeOverride(path: string, text: string): OverrideValue {
+  const segments = path.split(".");
+  const typed = TYPED_OVERRIDES.find(
+    ([pattern]) =>
+      pattern.length === segments.length &&
+      pattern.every((part, index) => part === "*" || part === segments[index]),
+  );
+  if (!typed) {
+    return text;
+  }
+  const [, takes, decode] = typed;
+  const read = decode(text);
+  if (read === undefined) {
+    throw configFieldError(path, takes);
+  }
+  return read;
 }
 
 function checkProjectFields(

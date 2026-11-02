@@ -2,7 +2,11 @@ import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import type { IFileSystem } from "../../types";
 import { isObject, isString, mergeDeep } from "../../utils";
-import { assertLoadedConfig, type LoadedConfig } from "./config-fields";
+import {
+  assertLoadedConfig,
+  decodeOverride,
+  type LoadedConfig,
+} from "./config-fields";
 import { ConfigParser } from "./config-parser";
 import {
   DEFAULT_CACHE_DIR,
@@ -59,7 +63,11 @@ export class ConfigLoader {
 
     const envOverrides = config.envOverrides ?? {};
     const loaded = { ...config, modules: expandedModules };
-    const overridden = this.parser.applyEnvOverrides(loaded, envOverrides);
+    const overridden = this.parser.applyEnvOverrides(
+      loaded,
+      envOverrides,
+      decodeOverride,
+    );
     const fields = isObject(overridden) ? overridden : {};
 
     const processed = this.parser.processTemplates({
