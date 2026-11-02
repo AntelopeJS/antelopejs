@@ -16,7 +16,19 @@ export interface InterfaceRangeConflict {
   packageName: string;
   range: string;
   canonical: InterfacePackageCopy;
+  /** The module whose dependencies the shared copy was resolved from. */
+  provider?: string;
   consumerCopy?: InterfacePackageCopy;
+}
+
+/**
+ * Names the module the shared copy of a conflicting interface package was
+ * resolved from, as a suffix of the line that states its version.
+ */
+export function describeSharedCopyProvider(
+  conflict: InterfaceRangeConflict,
+): string {
+  return conflict.provider ? ` (provided by ${conflict.provider})` : "";
 }
 
 /**
@@ -41,7 +53,7 @@ function describeRangeConflict(conflict: InterfaceRangeConflict): string {
   const installed = consumerCopy
     ? `${consumerCopy.version} at ${consumerCopy.root}`
     : MISSING_CONSUMER_COPY;
-  return `  - ${conflict.moduleId} requires ${conflict.packageName}@${conflict.range}, but the canonical package is ${canonical.version} at ${canonical.root} (consumer copy: ${installed})`;
+  return `  - ${conflict.moduleId} requires ${conflict.packageName}@${conflict.range}, but the canonical package is ${canonical.version}${describeSharedCopyProvider(conflict)} at ${canonical.root} (consumer copy: ${installed})`;
 }
 
 function describePreloadedCopy(preloaded: PreloadedInterfaceCopy): string {

@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { answers, equal, exitIs, fileHas, has, lacks, unchanged } from "../lib/checks.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, FIXTURE_MODULE, initProject, installFixture, listModules, useOfflineManifest } from "../lib/project.mts";
+import { copyGreeter, FIXTURE_MODULE, initProject, installFixture, listModules, setConsumerRange, useOfflineManifest } from "../lib/project.mts";
 
 const EMPTY_CONFIG = `import { defineConfig } from "@antelopejs/interface-core/config";
 
@@ -142,6 +142,30 @@ export const journeys: Journey[] = [
       const ready = await context.waitReady("ready", dev);
       context.expect(ready.folder, [answers(ready, "greeting", "Hello, verifier")]);
       await context.stop("stop with SIGINT", dev);
+    },
+  },
+  {
+    id: "modules-install-range-conflict",
+    title: "install adds the provider, then fails naming the module whose range excludes the shared interface copy",
+    entryPoint: "ajs project modules install --git <offline manifest> --yes; consumer requires verify-greeter ^2.0.0",
+    async run(context) {
+      await useOfflineManifest(context);
+      const greeter = copyGreeter(context);
+      context.edit("keep only the consumer", path.join(greeter, "antelope.config.ts"), `import { defineConfig } from "@antelopejs/interface-core/config";\n\nexport default defineConfig({\n  name: "greeter",\n  modules: {\n    "greeter-consumer": { source: { type: "local", path: "./consumer" } },\n  },\n});\n`);
+      const packageFile = path.join(greeter, "consumer", "package.json");
+      const declared = readFileSync(packageFile, "utf8");
+      writeFileSync(packageFile, declared.replace('"^1.0.0"', '"file:../verify-greeter"'));
+      await installFixture(context, path.join(greeter, "consumer"));
+      writeFileSync(packageFile, declared);
+      setConsumerRange(greeter, "^2.0.0");
+      const install = await context.ajs("modules install", ["project", "modules", "install", "--git", context.state.manifestUrl, "--yes"], { cwd: greeter });
+      context.expect(install.folder, [
+        exitIs(install, 1),
+        has("stderr", install.stderr, /Incompatible interface package resolution/),
+        has("stderr", install.stderr, /greeter-consumer requires verify-greeter@\^2\.0\.0, but the shared copy is 1\.0\.0 \(provided by greeter-provider\)/),
+      ]);
+      const listed = await listModules(context, greeter, "modules list after install");
+      context.expect(listed.folder, [equal("the added provider stays", listed.names, ["greeter-consumer", "greeter-provider"])]);
     },
   },
   {

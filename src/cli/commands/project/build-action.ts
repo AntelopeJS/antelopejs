@@ -18,6 +18,17 @@ import {
 
 interface BuildCommandOptions extends ProjectCommandOptions {
   project: string;
+  frozenModules?: boolean;
+}
+
+const FROZEN_MODULES_ENV = "ANTELOPEJS_FROZEN_MODULES";
+const TRUTHY_ENV_VALUES = new Set(["1", "true"]);
+
+function isFrozenByEnvironment(): boolean {
+  const value = process.env[FROZEN_MODULES_ENV];
+  return (
+    value !== undefined && TRUTHY_ENV_VALUES.has(value.trim().toLowerCase())
+  );
 }
 
 const START_COMMAND = "ajs project start";
@@ -82,6 +93,9 @@ export async function runBuild(
   const startedAt = Date.now();
   await build(commandOptions.project, context.environment, {
     verbose: commandOptions.verbose,
+    frozenModules: isFrozenByEnvironment()
+      ? true
+      : commandOptions.frozenModules,
   });
   await displayBuildSummary(commandOptions, Date.now() - startedAt);
 }

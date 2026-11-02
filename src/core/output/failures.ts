@@ -34,6 +34,22 @@ function headlineProblem(error: Error): CliProblem {
   return { title: headline || error.name };
 }
 
+function aggregateDetails(chain: unknown[]): string[] {
+  const titles = chain
+    .filter(
+      (error) =>
+        !(error instanceof AggregateError) &&
+        chain.some(
+          (parent) =>
+            parent instanceof AggregateError && parent.errors.includes(error),
+        ),
+    )
+    .map((error) =>
+      error instanceof Error ? headlineProblem(error).title : String(error),
+    );
+  return [...new Set(titles)];
+}
+
 function isTraceable(error: unknown): error is Error {
   return (
     error instanceof Error &&
@@ -111,14 +127,27 @@ export function describeFailure(
           ? headlineProblem(error)
           : { title: String(error) }));
   const chain: unknown[] = [];
-  let current = error;
-  while (current !== undefined && !chain.includes(current)) {
+  const pending: unknown[] = [error];
+  while (pending.length > 0) {
+    const current = pending.shift();
+    if (current === undefined || chain.includes(current)) {
+      continue;
+    }
     chain.push(current);
-    current = current instanceof Error ? current.cause : undefined;
+    const inner: unknown[] =
+      current instanceof AggregateError ? current.errors : [];
+    pending.unshift(
+      ...inner,
+      ...(current instanceof Error ? [current.cause] : []),
+    );
   }
   const diagnostics = verbose
     ? verboseDetails(chain)
-    : [...untranslatedOutputTail(chain), ...verboseHint(chain, translate)];
+    : [
+        ...aggregateDetails(chain),
+        ...untranslatedOutputTail(chain),
+        ...verboseHint(chain, translate),
+      ];
   return { ...problem, details: [...(problem.details ?? []), ...diagnostics] };
 }
 

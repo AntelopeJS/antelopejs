@@ -4,7 +4,7 @@ covers:
   - src/core/test/**
   - src/core/resolution/stub-interface-runtime.ts
 docs:
-  - docs/5.cli/3.module.md
+  - docs/5.cli/4.module.md
   - docs/3.module-development/3.testing.md
 ---
 
@@ -35,4 +35,4 @@ Each journey's steps, checks and evidence are in `bin/journeys/` and under `$RUN
 
 ## Gotchas
 
-- Finding on main 9b81264: `module-test-file-docs-form` fails. `--file` paths go to mocha unresolved, so they resolve against the current folder, while `docs/5.cli/3.module.md` shows them relative to the module path. Either the code or the page must change; the journey follows the page until then.
+- Finding on main 9b81264: `module-test-file-docs-form` fails. `--file` paths go to mocha unresolved, so they resolve against the current folder, while `docs/5.cli/4.module.md` shows them relative to the module path. Either the code or the page must change; the journey follows the page until then.

@@ -4,6 +4,7 @@ import { buildJourneys, startJourneys } from "./project-build-start.mts";
 import { journeys as projectDev } from "./project-dev.mts";
 import { journeys as projectInit } from "./project-init.mts";
 import { journeys as projectLogging } from "./project-logging.mts";
+import { journeys as projectModuleLocks } from "./project-module-locks.mts";
 import { journeys as projectModules } from "./project-modules.mts";
 import { embeddedJourneys, launchJourneys, resolutionJourneys } from "./runtime.mts";
 import { configJourneys, pluginJourneys, shellJourneys } from "./settings.mts";
@@ -18,6 +19,7 @@ export const FEATURE_JOURNEYS = new Map(
   "project-build": buildJourneys,
   "project-start": startJourneys,
   "project-modules": projectModules,
+  "project-module-locks": projectModuleLocks,
   "project-logging": projectLogging,
   "module-init": moduleInit,
   "module-test": moduleTest,

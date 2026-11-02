@@ -64,10 +64,11 @@ const config: VerifyConfig = {
         "src/core/config/config-paths.ts",
         "src/cli/common.ts",
         "src/cli/version-check.ts",
+        "src/core/modules/module-locks.ts",
       ],
       funnels: [],
-      containments: ["project-start/start-base-build", "config/config-base-file"],
-      why: "build.json, the antelope.config.ts layout and ~/.antelopejs files must stay readable by the next version",
+      containments: ["project-start/start-base-build", "config/config-base-file", "project-module-locks/locks-record-replay"],
+      why: "build.json, the antelope.config.ts layout, antelope-lock/ and ~/.antelopejs files must stay readable by the next version",
     },
     contract: {
       globs: [
