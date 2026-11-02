@@ -5,13 +5,26 @@ export type Json = string | number | boolean | null | Json[] | { [key: string]: 
 export type JsonRead = Json | undefined;
 
 function isJson(value: unknown): value is Json {
-  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return true;
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (next === null || typeof next === "string" || typeof next === "number" || typeof next === "boolean") {
+      continue;
+    }
+    if (Array.isArray(next)) {
+      for (const item of next) {
+        pending.push(item);
+      }
+      continue;
+    }
+    if (typeof next !== "object" || Object.getPrototypeOf(next) !== Object.prototype) {
+      return false;
+    }
+    for (const item of Object.values(next)) {
+      pending.push(item);
+    }
   }
-  if (Array.isArray(value)) {
-    return value.every(isJson);
-  }
-  return typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype && Object.values(value).every(isJson);
+  return true;
 }
 
 /** Parses a CLI's JSON output, or returns undefined when it is not JSON. */
