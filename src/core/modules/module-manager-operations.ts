@@ -78,6 +78,7 @@ export const MANAGER_OPERATIONS: ManagerOperations = {
   collectInterfacePackageConsumers: packages.collectInterfacePackageConsumers,
   registerInterfacePackage: packages.registerInterfacePackage,
   validateInterfacePackages: packages.validateInterfacePackages,
+  findInterfaceRangeConflicts: packages.findInterfaceRangeConflicts,
   findRangeConflicts: packages.findRangeConflicts,
   findPreloadedCopies: packages.findPreloadedCopies,
   buildModuleAssociations: bindings.buildModuleAssociations,
@@ -170,6 +171,8 @@ export function bindOperations(context: ManagerContext): ManagerMethods {
       MANAGER_OPERATIONS.registerInterfacePackage.bind(context),
     validateInterfacePackages:
       MANAGER_OPERATIONS.validateInterfacePackages.bind(context),
+    findInterfaceRangeConflicts:
+      MANAGER_OPERATIONS.findInterfaceRangeConflicts.bind(context),
     findRangeConflicts: MANAGER_OPERATIONS.findRangeConflicts.bind(context),
     findPreloadedCopies: MANAGER_OPERATIONS.findPreloadedCopies.bind(context),
     buildModuleAssociations:

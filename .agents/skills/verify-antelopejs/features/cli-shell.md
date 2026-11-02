@@ -10,7 +10,7 @@ covers:
   - src/core/output/**
 docs:
   - docs/5.cli/1.introduction.md
-  - docs/5.cli/5.cheat-sheet.md
+  - docs/5.cli/6.cheat-sheet.md
 ---
 
 # Cli shell

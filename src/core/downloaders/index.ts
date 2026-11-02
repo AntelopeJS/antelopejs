@@ -6,6 +6,7 @@ export * from "./local-folder";
 export * as localFolderModule from "./local-folder";
 export * from "./package";
 export * as packageModule from "./package";
+export * from "./package-locks";
 export * from "./registry";
 export * as registryModule from "./registry";
 export * from "./types";

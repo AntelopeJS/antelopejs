@@ -54,6 +54,7 @@ export * from "./commands/project/modules/install-action";
 export * from "./commands/project/modules/list";
 export { default as commandsProjectModulesListCommand } from "./commands/project/modules/list";
 export * from "./commands/project/modules/list-action";
+export * as commandsProjectModulesLocksModule from "./commands/project/modules/module-locks";
 export * from "./commands/project/modules/remove";
 export * from "./commands/project/modules/remove-action";
 export * from "./commands/project/modules/update";

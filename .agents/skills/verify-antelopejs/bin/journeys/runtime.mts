@@ -1,10 +1,10 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { answers, equal, exitIs, exitFails, has, refused } from "../lib/checks.mts";
 import { field, lastJsonLine } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, initProject, installFixture } from "../lib/project.mts";
+import { copyGreeter, initProject, installFixture, setConsumerRange } from "../lib/project.mts";
 import { CORE_ENTRY } from "../lib/run.mts";
 import { FIXTURE_MESSAGE, FIXTURES_DIR } from "../lib/sources.mts";
 import { freePort } from "../lib/evidence.mts";
@@ -17,11 +17,6 @@ async function greeterWithHost(context: JourneyContext): Promise<string> {
   await installFixture(context, path.join(greeter, "provider"));
   await installFixture(context, path.join(greeter, "host"));
   return greeter;
-}
-
-function setConsumerRange(greeter: string, range: string): void {
-  const file = path.join(greeter, "consumer", "package.json");
-  writeFileSync(file, readFileSync(file, "utf8").replace('"^1.0.0"', JSON.stringify(range)));
 }
 
 /** `createRuntime` from `@antelopejs/core`: a host application embedding the runtime. */

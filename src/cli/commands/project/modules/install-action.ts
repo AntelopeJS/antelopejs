@@ -6,28 +6,29 @@ import type {
 } from "@antelopejs/interface-core/config";
 import path from "node:path";
 
+import { interfaceRangesModule } from "../../../../core/build";
 import {
   ConfigLoader,
   TS_CONFIG_FILE,
   type LoadedConfig,
 } from "../../../../core/config";
-import {
-  DownloaderRegistry,
-  registerGitDownloader,
-  registerLocalDownloader,
-  registerLocalFolderDownloader,
-  registerPackageDownloader,
-} from "../../../../core/downloaders";
+import type { DownloaderRegistry } from "../../../../core/downloaders";
 import { NodeFileSystem } from "../../../../core/filesystem";
-import { ModuleCache, ModuleManifest } from "../../../../core/modules";
+import {
+  type ModuleCache,
+  ModuleLockStore,
+  ModuleManifest,
+  reportRecordedLocks,
+} from "../../../../core/modules";
 import {
   CliError,
   createPrompter,
   describeFailure,
-  ExecuteCMD,
   getProcessPalette,
   getProcessUi,
   info,
+  type InterfaceRangeConflict,
+  InterfaceResolutionError,
   pluralize,
   runTask,
   warning,
@@ -46,6 +47,7 @@ import { requireCatalogMember } from "../../../catalog-manifest";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import { addModules, type AddCommandResult } from "./add-action";
+import { createModuleRegistry, openModuleCache } from "./module-locks";
 
 interface InstallOptions {
   project: string;
@@ -80,7 +82,6 @@ const PACKAGE_SOURCE_TYPE = "package";
 const INSTALL_COMMAND = "ajs project modules install";
 const YES_FLAG = "--yes";
 const DEFAULT_ENVIRONMENT = "default";
-const DEFAULT_CACHE_FOLDER = ".antelope/cache";
 const GROUP_KEY_SEPARATOR = ":";
 const DEV_COMMAND = "ajs project dev";
 const DEV_DESCRIPTION = "run the project with its new modules";
@@ -205,6 +206,7 @@ interface InstallContext {
   loader: ConfigLoader;
   registry: DownloaderRegistry;
   cache: ModuleCache;
+  locks: ModuleLockStore;
   modulesToInstall: ModuleToInstall[];
   unresolvedImportCount: number;
   unimplementedImportCount: number;
@@ -215,15 +217,6 @@ interface InstallOutcome {
   failed: number;
 }
 
-function createRegistry(fs: NodeFileSystem): DownloaderRegistry {
-  const registry = new DownloaderRegistry();
-  registerLocalDownloader(registry, { fs, exec: ExecuteCMD });
-  registerLocalFolderDownloader(registry, { fs });
-  registerPackageDownloader(registry, { fs, exec: ExecuteCMD });
-  registerGitDownloader(registry, { fs, exec: ExecuteCMD });
-  return registry;
-}
-
 async function createInstallContext(
   options: InstallOptions,
   baseConfig: AntelopeConfig,
@@ -232,9 +225,8 @@ async function createInstallContext(
   displayNonDefaultGitWarning(git);
   const gitManifest = await loadManifestFromGit(git);
   const fs = new NodeFileSystem();
-  const cacheFolder = baseConfig.cacheFolder ?? DEFAULT_CACHE_FOLDER;
-  const cache = new ModuleCache(path.resolve(options.project, cacheFolder));
-  await cache.load();
+  const cache = await openModuleCache(options.project, baseConfig);
+  const locks = new ModuleLockStore(options.project, fs);
   return {
     options,
     prompter: createPrompter({
@@ -246,8 +238,9 @@ async function createInstallContext(
     gitManifest,
     fs,
     loader: new ConfigLoader(fs),
-    registry: createRegistry(fs),
+    registry: createModuleRegistry(locks, "record", fs),
     cache,
+    locks,
     modulesToInstall: [],
     unresolvedImportCount: 0,
     unimplementedImportCount: 0,
@@ -391,6 +384,7 @@ async function installSelectedModules(
       await addModules(
         modules.map((module) => module.loaderIdentifier),
         { mode, project: context.options.project, env },
+        context.locks,
       ),
     );
   }
@@ -432,6 +426,49 @@ function installNextSteps(
   ];
 }
 
+function rangeConflictKey(conflict: InterfaceRangeConflict): string {
+  return JSON.stringify([
+    conflict.moduleId,
+    conflict.packageName,
+    conflict.range,
+    conflict.canonical.root,
+  ]);
+}
+
+/**
+ * Loads each environment's modules as `ajs project build` does and finds
+ * every module whose declared range of an interface package excludes the
+ * shared copy it would get at startup, so the conflict surfaces before a build
+ * or a deployment.
+ *
+ * @returns an InterfaceResolutionError naming every conflicting module once,
+ * or undefined when no range conflicts.
+ */
+async function findInterfaceRangeFailure(
+  project: string,
+  environments: string[],
+): Promise<InterfaceResolutionError | undefined> {
+  const conflicts = new Map<string, InterfaceRangeConflict>();
+  for (const env of environments) {
+    const found = await runTask(
+      `Checking interface versions in ${env}`,
+      () =>
+        interfaceRangesModule.findProjectInterfaceRangeConflicts(project, env),
+      { done: `Checked interface versions in ${env}` },
+    );
+    found.forEach((conflict) =>
+      conflicts.set(rangeConflictKey(conflict), conflict),
+    );
+  }
+  if (conflicts.size === 0) {
+    return undefined;
+  }
+  return new InterfaceResolutionError({
+    rangeConflicts: [...conflicts.values()],
+    preloadedCopies: [],
+  });
+}
+
 export async function installModules(options: InstallOptions): Promise<void> {
   const startedAt = Date.now();
   const { config: baseConfig, environment } = await resolveProjectContext(
@@ -439,13 +476,22 @@ export async function installModules(options: InstallOptions): Promise<void> {
     options.env,
   );
   const context = await createInstallContext(options, baseConfig);
-  for (const env of environmentsToAnalyze(options, baseConfig, environment)) {
+  const environments = environmentsToAnalyze(options, baseConfig, environment);
+  for (const env of environments) {
     await resolveEnvironment(context, env);
   }
   const outcome = await installSelectedModules(context);
+  reportRecordedLocks(context.locks);
+  const rangeFailure = await findInterfaceRangeFailure(
+    options.project,
+    environments,
+  );
   getProcessUi().summary({
     headline: installHeadline(context, outcome),
     durationMs: Date.now() - startedAt,
-    nextSteps: installNextSteps(context, outcome),
+    nextSteps: rangeFailure ? [] : installNextSteps(context, outcome),
   });
+  if (rangeFailure) {
+    throw rangeFailure;
+  }
 }

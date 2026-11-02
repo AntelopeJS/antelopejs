@@ -7,7 +7,14 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { ExpandedModuleConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { ManagedModule, ModuleConfig, ModuleManager } from "../modules";
-import { ModuleCache, ModuleManifest, unpackErrors } from "../modules";
+import {
+  MissingModuleLockError,
+  ModuleCache,
+  ModuleLockStore,
+  ModuleManifest,
+  reportRecordedLocks,
+  unpackErrors,
+} from "../modules";
 import { pluralize, runTask } from "../output";
 import {
   registerCoreInterfaces as registerInterfaces,
@@ -16,6 +23,9 @@ import {
 import {
   activateLoadedModules as activateModules,
   ensureGraphIsValid as validateGraph,
+  ensureNoRangeConflicts as throwRangeConflicts,
+  findEntryRangeConflicts as findEntryConflicts,
+  planInterfacePackages as planPackages,
 } from "./module-interfaces";
 import { throwModuleLoadFailure } from "./module-load-failure";
 import { reloadWatchedModule as reloadModule } from "./module-reloading";
@@ -27,6 +37,7 @@ import type {
   ModuleOverrideMap,
   NormalizedLoadedConfig,
 } from "./runtime-types";
+import type { InterfaceRangeConflict } from "../output";
 
 const Logger = new Logging.Channel("loader");
 
@@ -45,10 +56,14 @@ export async function createLoaderContext(
   const cache = new ModuleCache(config.cacheFolder, fs);
   await cache.load();
 
+  const locks = new ModuleLockStore(config.projectFolder, fs);
   const registry = new DownloaderRegistry();
   local.registerLocalDownloader(registry, { fs });
   localFolder.registerLocalFolderDownloader(registry, { fs });
-  packageDownloader.registerPackageDownloader(registry, { fs });
+  packageDownloader.registerPackageDownloader(registry, {
+    fs,
+    lock: { store: locks, mode: config.moduleLocks ?? "record" },
+  });
   git.registerGitDownloader(registry, { fs });
 
   return {
@@ -56,6 +71,7 @@ export async function createLoaderContext(
     cache,
     registry,
     projectFolder: config.projectFolder,
+    locks,
   };
 }
 
@@ -149,7 +165,10 @@ async function loadModuleEntries(
   results.forEach((result, index) => {
     if (result.status === "fulfilled") return;
     const [id, moduleConfig] = declared[index];
-    if (moduleConfig.optional) {
+    if (
+      moduleConfig.optional &&
+      !(result.reason instanceof MissingModuleLockError)
+    ) {
       Logger.Error(
         `Optional module ${id} could not be loaded; starting without it`,
         result.reason,
@@ -188,7 +207,11 @@ export async function buildModuleConfigs(
     "Loading modules",
     () => loadModuleEntries(config.modules, loaderContext),
     { done: `Loaded ${pluralize(moduleCount, "module")}` },
-  );
+  ).finally(() => {
+    if (loaderContext.locks) {
+      reportRecordedLocks(loaderContext.locks);
+    }
+  });
   validateModuleNameCollisions(modules);
   return modules;
 }
@@ -215,7 +238,11 @@ export async function reloadWatchedModule(
   return reloadModule(manager, moduleId, loaderContext);
 }
 
-export async function loadModuleEntriesForManager(
+/**
+ * Registers the core interfaces on `manager` and loads the entries of the
+ * project without adding them to it.
+ */
+export async function createModuleEntriesForManager(
   manager: ModuleManager,
   config: NormalizedLoadedConfig,
   runtimeInterface: boolean,
@@ -228,7 +255,21 @@ export async function loadModuleEntriesForManager(
   }
 
   await registerCoreInterfaces(manager);
-  const entries = await buildModuleConfigs(config, resolvedLoaderContext);
+  return buildModuleConfigs(config, resolvedLoaderContext);
+}
+
+export async function loadModuleEntriesForManager(
+  manager: ModuleManager,
+  config: NormalizedLoadedConfig,
+  runtimeInterface: boolean,
+  loaderContext?: LoaderContext,
+): Promise<ModuleManifestEntry[]> {
+  const entries = await createModuleEntriesForManager(
+    manager,
+    config,
+    runtimeInterface,
+    loaderContext,
+  );
   manager.addModules(entries);
   return entries;
 }
@@ -270,4 +311,22 @@ export async function destroyModulesAfterFailure(
 
 export function ensureGraphIsValid(manager: ModuleManager): void {
   return validateGraph(manager);
+}
+
+export function ensureNoRangeConflicts(
+  rangeConflicts: InterfaceRangeConflict[],
+): void {
+  return throwRangeConflicts(rangeConflicts);
+}
+
+export function findEntryRangeConflicts(
+  manager: ModuleManager,
+  entries: ModuleManifestEntry[],
+  planRequired: (manager: ModuleManager) => void,
+): Promise<InterfaceRangeConflict[]> {
+  return findEntryConflicts(manager, entries, planRequired);
+}
+
+export function planInterfacePackages(manager: ModuleManager): void {
+  return planPackages(manager);
 }

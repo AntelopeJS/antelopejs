@@ -121,7 +121,10 @@ export function prepareEmbedded(
       dev: false,
       logging: options.logging,
       loadContext: memoizeLoaderContext(() =>
-        createLoaderContext({ projectFolder, cacheFolder }, fs),
+        createLoaderContext(
+          { projectFolder, cacheFolder, moduleLocks: "replay" },
+          fs,
+        ),
       ),
       verify: async () => {},
       createEntries: () => createEmbeddedEntries(options, projectFolder, fs),

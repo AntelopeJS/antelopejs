@@ -2,6 +2,7 @@ import { expect } from "chai";
 import sinon from "sinon";
 
 import {
+  commandsProjectModulesLocksModule as moduleLocks,
   commandsProjectModulesUpdateCommand as cmdUpdate,
   commonModule as common,
 } from "../../../../../src/cli";
@@ -15,6 +16,11 @@ describe("project modules behavior: update-registry-failures", () => {
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;
+  });
+
+  beforeEach(() => {
+    sinon.stub(moduleLocks, "refreshModuleLocks").resolves([]);
+    sinon.stub(moduleLocks, "pruneModuleLocks").resolves([]);
   });
 
   it("skips modules silently when npm view fails", async () => {
