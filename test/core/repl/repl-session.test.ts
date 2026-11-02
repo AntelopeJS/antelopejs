@@ -2,12 +2,13 @@ import { expect } from "chai";
 import { REPLServer } from "node:repl";
 import sinon from "sinon";
 
-import { ReplSession } from "../../../src/core/repl";
+import { ModuleManager } from "../../../src/core/modules";
+import { type ReplContext, ReplSession } from "../../../src/core/repl";
 
 describe("ReplSession", () => {
   it("should start and close a repl session with context", () => {
     const closeSpy = sinon.spy();
-    const context: REPLServer["context"] = {};
+    const context: Partial<ReplContext> = {};
     let capturedPrompt = "";
 
     const replFactory = (prompt?: string) => {
@@ -18,12 +19,13 @@ describe("ReplSession", () => {
       });
     };
 
-    const session = new ReplSession({ moduleManager: "mm" }, replFactory);
+    const moduleManager = new ModuleManager();
+    const session = new ReplSession({ moduleManager }, replFactory);
     const server = session.start("> ");
 
     expect(server).to.not.equal(undefined);
     expect(capturedPrompt).to.equal("> ");
-    expect(context.moduleManager).to.equal("mm");
+    expect(context.moduleManager).to.equal(moduleManager);
 
     session.close();
     expect(closeSpy.calledOnce).to.equal(true);

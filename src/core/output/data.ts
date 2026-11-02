@@ -1,7 +1,8 @@
-import type { Ui } from "./types";
+import type { JsonValue, Ui } from "./types";
 
-export interface DataOutput {
-  data: unknown;
+/** What a data command produced. `data` is what `--json` prints. */
+export interface DataOutput<Data> {
+  data: Data & JsonValue<Data>;
   isJson?: boolean;
   render(ui: Ui): void;
 }
@@ -10,7 +11,7 @@ export interface DataOutput {
  * Writes what a data command produced: `data` as one JSON document on stdout
  * with `--json`, its human rendering otherwise.
  */
-export function writeData(ui: Ui, output: DataOutput): void {
+export function writeData<Data>(ui: Ui, output: DataOutput<Data>): void {
   if (output.isJson) {
     ui.json(output.data);
     return;

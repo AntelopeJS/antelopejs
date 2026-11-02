@@ -124,6 +124,22 @@ export interface UiOptions {
   isQuiet?: boolean;
 }
 
+/**
+ * `Data` when `JSON.stringify` writes it as itself, member by member, and
+ * `never` at any member it would drop or refuse (a function, a symbol, a
+ * bigint, or a value whose type is not known). A data command prints such a
+ * value with `--json`.
+ */
+export type JsonValue<Data> = Data extends string | number | boolean | null
+  ? Data
+  : Data extends readonly (infer Item)[]
+    ? readonly JsonValue<Item>[]
+    : Data extends (...args: never[]) => void
+      ? never
+      : Data extends object
+        ? { readonly [Key in keyof Data]: JsonValue<Data[Key]> }
+        : never;
+
 export interface Ui {
   readonly symbols: SymbolSet;
   /** The colors of a channel, plain text when that channel has no colors. */
@@ -136,8 +152,7 @@ export interface Ui {
   list(items: string[]): void;
   table<Row>(rows: Row[], columns: TableColumn<Row>[]): void;
   value(text: string): void;
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Published Ui.json accepts every value supported by JSON.stringify; a domain schema would narrow that contract.
-  json(data: unknown): void;
+  json<Data>(data: Data & JsonValue<Data>): void;
 }
 
 /**

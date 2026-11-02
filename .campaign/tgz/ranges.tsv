@@ -7,3 +7,4 @@
 @antelopejs/interface-core	playground/package.json	dependencies	>=0.2.5 <1.0.0
 @antelopejs/interface-core	package.json	pnpm.overrides	
 @antelopejs/interface-core	.agents/skills/verify-antelopejs/fixtures/template-verify-http/package.json	pnpm.overrides	
+@antelopejs/interface-core	playground/package.json	pnpm.overrides	

@@ -49,6 +49,7 @@ export type {
   ColorName,
   DetailEntry,
   FailureTranslator,
+  JsonValue,
   MessageLevel,
   MessageOptions,
   MissingInput,

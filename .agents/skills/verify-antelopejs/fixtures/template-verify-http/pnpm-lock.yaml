@@ -5,15 +5,15 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@antelopejs/interface-core': file:../../../../../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz
+  '@antelopejs/interface-core': file:../../../../../.campaign/tgz/antelopejs-interface-core-2f5027a.tgz
 
 importers:
 
   .:
     dependencies:
       '@antelopejs/interface-core':
-        specifier: file:../../../../../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz
-        version: file:../../../../../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz
+        specifier: file:../../../../../.campaign/tgz/antelopejs-interface-core-2f5027a.tgz
+        version: file:../../../../../.campaign/tgz/antelopejs-interface-core-2f5027a.tgz
     devDependencies:
       '@types/node':
         specifier: 22.19.15
@@ -24,8 +24,8 @@ importers:
 
 packages:
 
-  '@antelopejs/interface-core@file:../../../../../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz':
-    resolution: {integrity: sha512-ur2KLvtD8h4SCZ0VSoQDc1pg+E9Bk/py3EW3qHHdoo3i6RvKWrrDKsX2khVdqQESuF2QMc1sJ6B+7ISjx5TvpQ==, tarball: file:../../../../../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz}
+  '@antelopejs/interface-core@file:../../../../../.campaign/tgz/antelopejs-interface-core-2f5027a.tgz':
+    resolution: {integrity: sha512-cfZxcx6teyS2JBQjrKz/A2pZpqsm2RfR2O38rJGBv6de5Yp2GgmVjotV+4YK2nn6w4/mw0EfEIOVai9sN4TFug==, tarball: file:../../../../../.campaign/tgz/antelopejs-interface-core-2f5027a.tgz}
     version: 0.4.0
 
   '@types/node@22.19.15':
@@ -44,7 +44,7 @@ packages:
 
 snapshots:
 
-  '@antelopejs/interface-core@file:../../../../../.campaign/tgz/antelopejs-interface-core-6a8b526.tgz':
+  '@antelopejs/interface-core@file:../../../../../.campaign/tgz/antelopejs-interface-core-2f5027a.tgz':
     dependencies:
       reflect-metadata: 0.2.2
 
