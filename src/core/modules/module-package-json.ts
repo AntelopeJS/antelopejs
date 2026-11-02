@@ -1,4 +1,4 @@
-import { isObject, isString, type UnknownDictionary } from "../../utils";
+import { isObject, isString } from "../../utils";
 
 /** The members of a module's `package.json` that the core reads. Other members are kept as written. */
 export interface ModulePackageJson {
@@ -39,9 +39,28 @@ export interface ModulePackageJson {
 
 type ModuleAntelopeJsManifest = NonNullable<ModulePackageJson["antelopeJs"]>;
 
-type MemberValue = UnknownDictionary[string];
+interface RawManifest {
+  name?: unknown;
+  dependencies?: unknown;
+  optionalDependencies?: unknown;
+  antelopeJs?: unknown;
+  _moduleAliases?: unknown;
+}
 
-function isStringList(value: MemberValue): value is string[] {
+interface RawAntelopeJs {
+  implements?: unknown;
+  baseUrl?: unknown;
+  paths?: unknown;
+  moduleAliases?: unknown;
+  configVars?: unknown;
+}
+
+interface RawAliasHolder {
+  _moduleAliases?: unknown;
+  moduleAliases?: unknown;
+}
+
+function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(isString);
 }
 
@@ -59,7 +78,8 @@ class ManifestReader {
     );
   }
 
-  name(value: MemberValue): string | undefined {
+  name(manifest: RawManifest): string | undefined {
+    const value = manifest.name;
     if (value === undefined || isString(value)) {
       return value;
     }
@@ -67,9 +87,10 @@ class ManifestReader {
   }
 
   dependencies(
-    member: string,
-    value: MemberValue,
+    member: "dependencies" | "optionalDependencies",
+    manifest: RawManifest,
   ): Record<string, string> | undefined {
+    const value = manifest[member];
     if (value === undefined || value === null || Array.isArray(value)) {
       return undefined;
     }
@@ -92,8 +113,10 @@ class ManifestReader {
    */
   aliases(
     member: string,
-    value: MemberValue,
+    holder: RawAliasHolder,
+    key: keyof RawAliasHolder,
   ): Record<string, string> | undefined {
+    const value = holder[key];
     if (isString(value) || isStringList(value)) {
       return Object.fromEntries(Object.entries(value));
     }
@@ -117,7 +140,8 @@ class ManifestReader {
    * The implemented interfaces. A string is read character by character, as
    * the runtime always has; an entry that is not a string names no interface.
    */
-  implements(value: MemberValue): string[] | undefined {
+  implements(antelopeJs: RawAntelopeJs): string[] | undefined {
+    const value = antelopeJs.implements;
     if (value === undefined || value === null) {
       return undefined;
     }
@@ -130,7 +154,8 @@ class ManifestReader {
     return value.filter(isString);
   }
 
-  baseUrl(value: MemberValue): string | undefined {
+  baseUrl(antelopeJs: RawAntelopeJs): string | undefined {
+    const value = antelopeJs.baseUrl;
     if (value === undefined || value === null) {
       return undefined;
     }
@@ -140,7 +165,8 @@ class ManifestReader {
     return value;
   }
 
-  paths(value: MemberValue): Record<string, string[]> | undefined {
+  paths(antelopeJs: RawAntelopeJs): Record<string, string[]> | undefined {
+    const value = antelopeJs.paths;
     if (isObject(value)) {
       const paths: Record<string, string[]> = {};
       for (const [key, targets] of Object.entries(value)) {
@@ -160,7 +186,8 @@ class ManifestReader {
     return undefined;
   }
 
-  configVars(value: MemberValue): string[] | undefined {
+  configVars(antelopeJs: RawAntelopeJs): string[] | undefined {
+    const value = antelopeJs.configVars;
     if (!Array.isArray(value)) {
       return undefined;
     }
@@ -170,20 +197,22 @@ class ManifestReader {
     return value;
   }
 
-  antelopeJs(value: MemberValue): ModuleAntelopeJsManifest | undefined {
+  antelopeJs(manifest: RawManifest): ModuleAntelopeJsManifest | undefined {
+    const value = manifest.antelopeJs;
     if (!isObject(value)) {
       return undefined;
     }
     return {
       ...value,
-      implements: this.implements(value.implements),
-      baseUrl: this.baseUrl(value.baseUrl),
-      paths: this.paths(value.paths),
+      implements: this.implements(value),
+      baseUrl: this.baseUrl(value),
+      paths: this.paths(value),
       moduleAliases: this.aliases(
         "antelopeJs.moduleAliases",
-        value.moduleAliases,
+        value,
+        "moduleAliases",
       ),
-      configVars: this.configVars(value.configVars),
+      configVars: this.configVars(value),
       configVarsFile: isString(value.configVarsFile)
         ? value.configVarsFile
         : undefined,
@@ -226,7 +255,7 @@ export function decodeModulePackageJson(
   const reader = new ManifestReader(where);
   return {
     ...document,
-    name: reader.name(document.name),
+    name: reader.name(document),
     version: isString(document.version) ? document.version : undefined,
     description: isString(document.description)
       ? document.description
@@ -235,12 +264,13 @@ export function decodeModulePackageJson(
       isString(document.author) || isStringList(document.author)
         ? document.author
         : undefined,
-    dependencies: reader.dependencies("dependencies", document.dependencies),
-    optionalDependencies: reader.dependencies(
-      "optionalDependencies",
-      document.optionalDependencies,
+    dependencies: reader.dependencies("dependencies", document),
+    optionalDependencies: reader.dependencies("optionalDependencies", document),
+    antelopeJs: reader.antelopeJs(document),
+    _moduleAliases: reader.aliases(
+      "_moduleAliases",
+      document,
+      "_moduleAliases",
     ),
-    antelopeJs: reader.antelopeJs(document.antelopeJs),
-    _moduleAliases: reader.aliases("_moduleAliases", document._moduleAliases),
   };
 }
