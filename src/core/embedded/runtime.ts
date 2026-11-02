@@ -1,4 +1,7 @@
-import { ImplementInterface } from "@antelopejs/interface-core";
+import {
+  ImplementInterface,
+  type InterfaceToImpl,
+} from "@antelopejs/interface-core";
 import { Logging } from "@antelopejs/interface-core/logging";
 
 import { DEFAULT_ENV } from "../config";
@@ -18,16 +21,6 @@ import type {
   ProvideHandle,
 } from "./types";
 import { isObject } from "../../utils";
-
-type InterfaceDeclaration = Parameters<typeof ImplementInterface>[0];
-
-type InterfaceAttacher = (
-  declaration: InterfaceDeclaration,
-  implementation: Parameters<AntelopeRuntime["provide"]>[1],
-) => void;
-
-// SAFETY: ImplementInterface validates objects, cycles, and required handlers before attaching; widening its input delegates rejection to those existing checks, and this caller ignores its return value.
-const attachImplementation = ImplementInterface as InterfaceAttacher;
 
 const Logger = new Logging.Channel("loader.embedded");
 
@@ -169,19 +162,17 @@ export class AntelopeRuntime {
   }
 
   /** Implements an interface from host code, released through the returned handle. */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Published provide accepts arbitrary implementation objects; narrowing changes its declaration and bypasses existing runtime validation.
-  provide(packageName: string, implementation: unknown): ProvideHandle {
-    if (!this.options.provides?.includes(packageName)) {
+  provide<Request extends Extract<keyof EmbeddedInterfaces, string>>(
+    packageName: Request,
+    implementation: InterfaceToImpl<EmbeddedInterfaces[Request]>,
+  ): ProvideHandle {
+    const name: string = packageName;
+    if (!this.options.provides?.includes(name)) {
       throw new Error(
-        `Interface '${packageName}' is not declared in 'provides', so nothing routes to a host implementation of it. Add it to 'provides' before calling provide().`,
+        `Interface '${name}' is not declared in 'provides', so nothing routes to a host implementation of it. Add it to 'provides' before calling provide().`,
       );
     }
-    requireProvided(this.requireStarted(), packageName);
-    let loaded: unknown;
-    this.hostModule().runInContext(() => {
-      loaded = require(packageName);
-    });
-    const declaration = loaded;
+    const declaration = this.use(packageName);
     if (!isObject(declaration)) {
       throw new TypeError(
         "Interface declaration and implementation must be objects.",
@@ -189,7 +180,7 @@ export class AntelopeRuntime {
     }
     const release = this.hostModule().runInContext(() =>
       captureOwnedProxies(() => {
-        attachImplementation(declaration, implementation);
+        ImplementInterface(declaration, implementation);
       }),
     );
     return { detach: release };
