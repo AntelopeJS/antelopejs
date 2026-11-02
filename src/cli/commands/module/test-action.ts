@@ -74,12 +74,13 @@ export async function moduleTestCommand(
   if (!moduleManifest) {
     throw await invalidModuleError(resolvedPath);
   }
+  const moduleName = moduleManifest.name ?? path.basename(resolvedPath);
   if (!hasTestConfig(moduleManifest)) {
-    throw missingTestConfigError(moduleManifest.name);
+    throw missingTestConfigError(moduleName);
   }
   getProcessUi().message(
     "success",
-    `Valid module found: ${getProcessPalette().bold(moduleManifest.name)}`,
+    `Valid module found: ${getProcessPalette().bold(moduleName)}`,
   );
 
   const failures = await TestModule(resolvedPath, options.file);

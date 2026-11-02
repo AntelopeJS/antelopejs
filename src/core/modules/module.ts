@@ -28,7 +28,7 @@ async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
 
 export class Module {
   public readonly id: string;
-  public version: string;
+  public version: string | undefined;
 
   private callbacks?: ModuleCallbacks;
   private lifecycle: ModuleLifecycle;

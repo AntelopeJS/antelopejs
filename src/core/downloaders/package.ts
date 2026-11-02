@@ -219,7 +219,9 @@ async function downloadPackage(
       new ExecError({ ...installResult, command: cmd }),
     );
   }
-  await cache.commitVersion(source.package, manifest.version);
+  if (manifest.version !== undefined) {
+    await cache.commitVersion(source.package, manifest.version);
+  }
   return folder;
 }
 
