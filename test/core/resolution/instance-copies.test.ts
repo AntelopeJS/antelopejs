@@ -17,6 +17,7 @@ import {
   pruneStaleInstanceCopies,
   removeInstanceCopy,
 } from "../../../src/core/resolution";
+import { isNumber, isObject } from "../../../src/utils";
 import { readText } from "../../helpers/temp";
 
 interface StatefulModule {
@@ -55,8 +56,23 @@ function writeDependency(folder: string): void {
   );
 }
 
+function hasNumericId(value: unknown): value is { id: number } {
+  return isObject(value) && isNumber(value.id);
+}
+
+function isStatefulModule(value: unknown): value is StatefulModule {
+  return (
+    isObject(value) &&
+    hasNumericId(value.state) &&
+    hasNumericId(value.dependency)
+  );
+}
+
 function load(folder: string): StatefulModule {
-  const loaded: StatefulModule = require(path.join(folder, "index.js"));
+  const loaded: unknown = require(path.join(folder, "index.js"));
+  if (!isStatefulModule(loaded)) {
+    throw new Error(`${folder} does not export a state and a dependency`);
+  }
   return loaded;
 }
 
