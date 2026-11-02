@@ -4,39 +4,40 @@ import { isObject, isString, type UnknownDictionary } from "../../utils";
 export interface ModulePackageJson {
   name?: string;
   version?: string;
+  description?: string;
+  author?: string | string[];
 
   dependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;
 
-  antelopeJs?: ModuleAntelopeJsManifest;
+  antelopeJs?: {
+    implements?: string[];
+
+    baseUrl?: string;
+    paths?: Record<string, string[]>;
+
+    moduleAliases?: Record<string, string>;
+
+    /** Copied verbatim into a project's module configuration, whatever it holds. */
+    defaultConfig?: unknown;
+
+    configVars?: string[];
+
+    /**
+     * A file exporting `configVars(config)`, the pure function computing the
+     * declared config variables from the module's configuration. Tools that
+     * read a project without running it resolve `${@<module>.<VAR>}` with it;
+     * the runtime still publishes through `provide`.
+     */
+    configVarsFile?: string;
+
+    test?: string;
+  };
 
   _moduleAliases?: Record<string, string>;
 }
 
-/** The `antelopeJs` member of a package manifest, or the content of `antelope.module.json`. */
-export interface ModuleAntelopeJsManifest {
-  implements?: string[];
-
-  baseUrl?: string;
-  paths?: Record<string, string[]>;
-
-  moduleAliases?: Record<string, string>;
-
-  /** Copied verbatim into a project's module configuration, whatever it holds. */
-  defaultConfig?: unknown;
-
-  configVars?: string[];
-
-  /**
-   * A file exporting `configVars(config)`, the pure function computing the
-   * declared config variables from the module's configuration. Tools that
-   * read a project without running it resolve `${@<module>.<VAR>}` with it;
-   * the runtime still publishes through `provide`.
-   */
-  configVarsFile?: string;
-
-  test?: string;
-}
+type ModuleAntelopeJsManifest = NonNullable<ModulePackageJson["antelopeJs"]>;
 
 type MemberValue = UnknownDictionary[string];
 
@@ -227,6 +228,13 @@ export function decodeModulePackageJson(
     ...document,
     name: reader.name(document.name),
     version: isString(document.version) ? document.version : undefined,
+    description: isString(document.description)
+      ? document.description
+      : undefined,
+    author:
+      isString(document.author) || isStringList(document.author)
+        ? document.author
+        : undefined,
     dependencies: reader.dependencies("dependencies", document.dependencies),
     optionalDependencies: reader.dependencies(
       "optionalDependencies",
