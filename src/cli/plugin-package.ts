@@ -2,7 +2,7 @@ import { readFile, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type { PackageManagerName } from "../core/output";
-import { isObject, isString, type UnknownDictionary } from "../utils";
+import { isObject, isString } from "../utils";
 import { CORE_PACKAGE_NAME } from "./core-version";
 import {
   PATH_EXECUTABLE_SOURCE,
@@ -40,31 +40,22 @@ const nodePluginPackageReader: PluginPackageReader = {
   readFile: (target) => readFile(target, "utf8"),
 };
 
-function parsePeerRanges(
-  peerDependencies: UnknownDictionary,
-): Record<string, string> | undefined {
-  const ranges: Record<string, string> = {};
-  for (const [packageName, range] of Object.entries(peerDependencies)) {
-    if (isString(range)) {
-      ranges[packageName] = range;
-    } else if (packageName === CORE_PACKAGE_NAME && range) {
-      return undefined;
-    }
-  }
-  return ranges;
-}
-
 function parsePluginPackage(text: string): PluginPackage | undefined {
   const parsed: unknown = JSON.parse(text);
   if (!isObject(parsed)) {
     return undefined;
   }
   const { name, version, peerDependencies } = parsed;
-  const ranges = isObject(peerDependencies)
-    ? parsePeerRanges(peerDependencies)
-    : undefined;
-  if (isObject(peerDependencies) && !ranges) {
-    return undefined;
+  let ranges: Record<string, string> | undefined;
+  if (isObject(peerDependencies)) {
+    ranges = {};
+    for (const [packageName, range] of Object.entries(peerDependencies)) {
+      if (isString(range)) {
+        ranges[packageName] = range;
+      } else if (packageName === CORE_PACKAGE_NAME && range) {
+        return undefined;
+      }
+    }
   }
   return {
     name: isString(name) ? name : undefined,
