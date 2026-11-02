@@ -2,9 +2,9 @@
   "rules": {
     "anti-slop/no-known-value-widening": 2,
     "anti-slop/no-runtime-typeof": 1,
-    "anti-slop/no-unknown-parameters": 43,
+    "anti-slop/no-unknown-parameters": 39,
     "anti-slop/no-unknown-returns": 8,
-    "anti-slop/no-unsafe-dictionary-type": 14,
+    "anti-slop/no-unsafe-dictionary-type": 9,
     "anti-slop/require-safety-comment-for-type-assertion": 6,
     "eslint/no-control-regex": 1,
     "import/no-cycle": 0,
@@ -16,7 +16,7 @@
   },
   "tsExpectError": 12,
   "tsIgnore": 0,
-  "safety": 7,
+  "safety": 6,
   "config": {},
   "agentFiles": true
 }

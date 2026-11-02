@@ -121,8 +121,7 @@ function toStableHashValue(value: unknown): unknown {
  * Serialise a value with object keys sorted, so equal values always produce
  * the same string whatever their key insertion order.
  */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- hashes the resolved project config, user JS data of any shape
-export function toStableJson(value: unknown): string {
+export function toStableJson(value: LoadedConfig | ModuleSource): string {
   return JSON.stringify(toStableHashValue(value));
 }
 
@@ -269,7 +268,7 @@ export async function readBuildArtifact(
   const artifactPath = getBuildArtifactPath(projectFolder);
   const content = await fs.readFileString(artifactPath, "utf-8");
   const stored: unknown = JSON.parse(content);
-  storedArtifact(stored, undefined, "");
+  storedArtifact(stored, "");
   const modules = Object.entries(stored.modules).map(
     ([id, entry]): [string, BuildModuleEntry] => [
       id,

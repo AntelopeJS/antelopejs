@@ -110,8 +110,7 @@ export function set(
   // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
   obj: Record<string, unknown>,
   path: string,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- merges and sets paths in user config data of any shape
-  value: unknown,
+  value: string | number | boolean,
 ): void {
   const keys = path.split(".");
   let current = obj;

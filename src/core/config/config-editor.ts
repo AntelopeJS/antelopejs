@@ -1,5 +1,6 @@
 import type * as TypeScript from "typescript";
 import { isObjectOrNull } from "../../utils";
+import type { ModuleDeclarationChanges } from "./module-entry";
 
 type TS = typeof TypeScript;
 
@@ -296,9 +297,8 @@ function expandShorthand(
 }
 
 function definedFields(
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
-  changes: Record<string, unknown>,
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
+  changes: ModuleDeclarationChanges,
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Object.fromEntries rebuilds the defined fields, module config user data included, with unknown values; typing it as the all-optional changes type would be an unchecked claim
 ): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(changes).filter(
@@ -311,8 +311,7 @@ function addEntry(
   context: EditContext,
   source: string,
   key: string,
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
-  changes: Record<string, unknown>,
+  changes: ModuleDeclarationChanges,
 ): string {
   const file = parse(context, source);
   const modules = modulesObject(context, file);
@@ -329,8 +328,7 @@ function ensureEntry(
   context: EditContext,
   source: string,
   key: string,
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
-  changes: Record<string, unknown>,
+  changes: ModuleDeclarationChanges,
 ): EnsuredEntry {
   const modules = modulesObject(context, parse(context, source));
   const entry = modules && findProperty(context, modules, key);
@@ -362,8 +360,7 @@ export function setModuleEntry(
   fileName: string,
   source: string,
   key: string,
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes module fields a caller chooses, user config data of any shape, as source text
-  changes: Record<string, unknown>,
+  changes: ModuleDeclarationChanges,
 ): string {
   const context = createContext(ts, fileName, source);
   const ensured = ensureEntry(context, source, key, changes);

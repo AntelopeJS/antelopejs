@@ -27,7 +27,7 @@ export default defineConfig({
 `;
 
 const LANG_SOURCE = {
-  type: "package",
+  type: "package" as const,
   package: "@antelopejs/dms-lang",
   version: "^0.1.1",
 };

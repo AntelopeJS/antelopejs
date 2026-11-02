@@ -22,11 +22,7 @@ interface WatchedFile {
 const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
 const VANISHED_PATH_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- tests a thrown fs error by code; JS can throw any value
-function isVanishedPathError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
+function isVanishedPathError(error: Error): boolean {
   const systemError: NodeJS.ErrnoException = error;
   const { code } = systemError;
   return code !== undefined && VANISHED_PATH_ERROR_CODES.has(code);
@@ -176,7 +172,7 @@ export class FileWatcher {
     try {
       await this.processFileChange(filePath);
     } catch (error) {
-      if (!isVanishedPathError(error)) {
+      if (!(error instanceof Error && isVanishedPathError(error))) {
         throw error;
       }
       this.handleRemovedPath(filePath);
@@ -340,7 +336,7 @@ export class FileWatcher {
     try {
       await this.addEntry(moduleId, fullPath);
     } catch (error) {
-      if (!isVanishedPathError(error)) {
+      if (!(error instanceof Error && isVanishedPathError(error))) {
         throw error;
       }
       this.pruneDir(fullPath);

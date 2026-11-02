@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 import type {
   AntelopeLogging,
   AntelopeTestConfig,
@@ -10,7 +12,6 @@ import type {
 } from "@antelopejs/interface-core/config";
 import {
   anyValue,
-  asLoaded,
   type FieldCheck,
   FieldError,
   type FieldChecks,
@@ -85,16 +86,16 @@ const localFolderSource: FieldCheck<ModuleSourceLocalFolder> = section(
 const SOURCE_TAKES =
   "a module source of type local, git, package or local-folder";
 
-const moduleSource: FieldCheck<ModuleSource> = (value, loaded, field) => {
+const moduleSource: FieldCheck<ModuleSource> = (value, field) => {
   const type: unknown = isObject(value) ? value.type : undefined;
   if (type === "local") {
-    localSource(value, loaded, field);
+    localSource(value, field);
   } else if (type === "git") {
-    gitSource(value, loaded, field);
+    gitSource(value, field);
   } else if (type === "package") {
-    packageSource(value, loaded, field);
+    packageSource(value, field);
   } else if (type === "local-folder") {
-    localFolderSource(value, loaded, field);
+    localFolderSource(value, field);
   } else {
     throw new FieldError(field, SOURCE_TAKES);
   }
@@ -137,20 +138,52 @@ export const loggingCheck = section<AntelopeLogging>("a logging section", {
   dateFormat: optional(text),
 });
 
-const testSection = section<AntelopeTestConfig>("a test section", {
-  folder: optional(text),
-  setup: asLoaded("the setup function the configuration file gave"),
-  cleanup: asLoaded("the cleanup function the configuration file gave"),
-});
+const testFolder: FieldCheck<string | undefined> = optional(text);
 
-const projectFields: FieldChecks<LoadedConfig> = {
-  name: text,
-  cacheFolder: text,
-  modules: mapOf("a map of module entries", moduleEntry),
-  logging: optional(loggingCheck),
-  envOverrides: mapOf("a map of environment overrides", textOrList),
-  test: optional(testSection),
-};
+function testSection(
+  loaded: AntelopeTestConfig | undefined,
+): FieldCheck<AntelopeTestConfig> {
+  return (value, field) => {
+    if (!isObject(value)) throw new FieldError(field, "a test section");
+    testFolder(
+      Object.getOwnPropertyDescriptor(value, "folder")?.value,
+      `${field}.folder`,
+    );
+    if (
+      !isDeepStrictEqual(
+        Object.getOwnPropertyDescriptor(value, "setup")?.value,
+        loaded?.setup,
+      )
+    ) {
+      throw new FieldError(
+        `${field}.setup`,
+        "the setup function the configuration file gave",
+      );
+    }
+    if (
+      !isDeepStrictEqual(
+        Object.getOwnPropertyDescriptor(value, "cleanup")?.value,
+        loaded?.cleanup,
+      )
+    ) {
+      throw new FieldError(
+        `${field}.cleanup`,
+        "the cleanup function the configuration file gave",
+      );
+    }
+  };
+}
+
+function projectFields(loaded: LoadedConfig): FieldChecks<LoadedConfig> {
+  return {
+    name: text,
+    cacheFolder: text,
+    modules: mapOf("a map of module entries", moduleEntry),
+    logging: optional(loggingCheck),
+    envOverrides: mapOf("a map of environment overrides", textOrList),
+    test: optional(testSection(loaded.test)),
+  };
+}
 
 /**
  * Asserts that templates and environment overrides left every declared
@@ -240,18 +273,11 @@ function checkProjectFields(
 ): asserts value is LoadedConfig {
   if (!isObject(value))
     throw new FieldError("project", "a project configuration");
-  projectFields.name(value.name, loaded.name, "name");
-  projectFields.cacheFolder(
-    value.cacheFolder,
-    loaded.cacheFolder,
-    "cacheFolder",
-  );
-  projectFields.modules(value.modules, loaded.modules, "modules");
-  projectFields.logging(value.logging, loaded.logging, "logging");
-  projectFields.envOverrides(
-    value.envOverrides,
-    loaded.envOverrides,
-    "envOverrides",
-  );
-  projectFields.test(value.test, loaded.test, "test");
+  const checks: FieldChecks<LoadedConfig> = projectFields(loaded);
+  checks.name(value.name, "name");
+  checks.cacheFolder(value.cacheFolder, "cacheFolder");
+  checks.modules(value.modules, "modules");
+  checks.logging(value.logging, "logging");
+  checks.envOverrides(value.envOverrides, "envOverrides");
+  checks.test(value.test, "test");
 }

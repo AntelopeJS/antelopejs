@@ -94,10 +94,9 @@ function walk(
     return;
   }
 
-  for (const key of Object.keys(value)) {
-    // SAFETY: the null and primitive branches returned above; string-key access on the remaining object is exposed only as unknown, without claiming a property's contents.
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- walks an interface module export graph loaded by Node require
-    walk((value as Record<string, unknown>)[key], interfaceName, seen, reason);
+  const items: unknown[] = Object.values(value);
+  for (const item of items) {
+    walk(item, interfaceName, seen, reason);
   }
 }
 
