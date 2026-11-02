@@ -12,7 +12,12 @@ import {
 } from "../runtime";
 import { HOST_MODULE_ID, prepareEmbedded } from "./prepare-embedded";
 import { captureOwnedProxies } from "./proxy-ownership";
-import type { EmbeddedRuntimeOptions, ProvideHandle } from "./types";
+import type {
+  EmbeddedInterfaces,
+  EmbeddedRuntimeOptions,
+  ProvideHandle,
+} from "./types";
+import { isObject } from "../../utils";
 
 type InterfaceDeclaration = Parameters<typeof ImplementInterface>[0];
 
@@ -34,6 +39,14 @@ function findInterfacePackage(
     (packageName) =>
       request === packageName || request.startsWith(`${packageName}/`),
   );
+}
+
+function requireProvided(started: StartedProject, request: string): void {
+  if (!findInterfacePackage(started, request)) {
+    throw new Error(
+      `Interface '${request}' is not provided by any loaded module. Declare it in 'uses' and load a module that implements it.`,
+    );
+  }
 }
 
 const NOT_STARTED_MESSAGE =
@@ -147,14 +160,11 @@ export class AntelopeRuntime {
     }
   }
 
-  /** Returns the runtime's own copy of an interface package or one of its subpaths, provider-bound for the host. */
-  use<T>(request: string): T {
-    const started = this.requireStarted();
-    if (!findInterfacePackage(started, request)) {
-      throw new Error(
-        `Interface '${request}' is not provided by any loaded module. Declare it in 'uses' and load a module that implements it.`,
-      );
-    }
+  /** Returns the runtime's own copy of an interface package or one of its subpaths, provider-bound for the host, typed as the host declared it in {@link EmbeddedInterfaces}. */
+  use<Request extends Extract<keyof EmbeddedInterfaces, string>>(
+    request: Request,
+  ): EmbeddedInterfaces[Request] {
+    requireProvided(this.requireStarted(), request);
     return this.hostModule().runInContext(() => require(request));
   }
 
@@ -166,7 +176,17 @@ export class AntelopeRuntime {
         `Interface '${packageName}' is not declared in 'provides', so nothing routes to a host implementation of it. Add it to 'provides' before calling provide().`,
       );
     }
-    const declaration = this.use<InterfaceDeclaration>(packageName);
+    requireProvided(this.requireStarted(), packageName);
+    let loaded: unknown;
+    this.hostModule().runInContext(() => {
+      loaded = require(packageName);
+    });
+    const declaration = loaded;
+    if (!isObject(declaration)) {
+      throw new TypeError(
+        "Interface declaration and implementation must be objects.",
+      );
+    }
     const release = this.hostModule().runInContext(() =>
       captureOwnedProxies(() => {
         attachImplementation(declaration, implementation);
