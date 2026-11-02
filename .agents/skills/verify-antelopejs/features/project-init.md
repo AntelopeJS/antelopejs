@@ -3,6 +3,7 @@ covers:
   - src/cli/commands/project/init*.ts
   - src/cli/commands/shared/names.ts
   - src/cli/commands/shared/next-steps.ts
+  - src/cli/catalog-manifest.ts
   - src/cli/git-operations.ts
   - src/cli/git-url.ts
   - src/core/output/prompt.ts

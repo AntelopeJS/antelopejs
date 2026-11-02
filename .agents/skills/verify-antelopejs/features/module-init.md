@@ -2,6 +2,7 @@
 covers:
   - src/cli/commands/module/index.ts
   - src/cli/commands/module/init*.ts
+  - src/cli/catalog-manifest.ts
   - src/cli/git-operations.ts
   - src/cli/git-url.ts
   - src/core/output/prompt.ts
