@@ -2,7 +2,7 @@
   "rules": {
     "anti-slop/no-known-value-widening": 2,
     "anti-slop/no-runtime-typeof": 1,
-    "anti-slop/no-unknown-parameters": 7,
+    "anti-slop/no-unknown-parameters": 6,
     "anti-slop/no-unknown-returns": 2,
     "anti-slop/no-unsafe-dictionary-type": 2,
     "anti-slop/require-safety-comment-for-type-assertion": 6,
@@ -14,7 +14,7 @@
   },
   "tsExpectError": 12,
   "tsIgnore": 0,
-  "safety": 8,
+  "safety": 7,
   "config": {},
   "agentFiles": true
 }
