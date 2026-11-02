@@ -11,6 +11,8 @@ export function unpackErrors(error: unknown): unknown[] {
   return error instanceof AggregateError ? error.errors : [error];
 }
 
-export function aggregateErrors(errors: unknown[], message: string) {
-  return errors.length === 1 ? errors[0] : new AggregateError(errors, message);
+/** Throws a single error as it is, or several as one AggregateError. */
+export function throwErrors(errors: unknown[], message: string): never {
+  if (errors.length === 1) throw errors[0];
+  throw new AggregateError(errors, message);
 }

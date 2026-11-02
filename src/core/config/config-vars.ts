@@ -67,8 +67,12 @@ export function scanConfigVars(config: unknown): ConfigVarScan {
  * back by identity. A configuration that holds no reference is returned as it
  * came in.
  */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
-export function substituteConfigVars(config: unknown, lookup: ConfigVarLookup) {
+export function substituteConfigVars(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+  config: unknown,
+  lookup: ConfigVarLookup,
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+): unknown {
   if (isString(config)) {
     return substituteString(config, lookup);
   }

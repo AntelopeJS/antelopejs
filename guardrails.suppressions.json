@@ -3,7 +3,7 @@
     "anti-slop/no-known-value-widening": 2,
     "anti-slop/no-runtime-typeof": 1,
     "anti-slop/no-unknown-parameters": 39,
-    "anti-slop/no-unknown-returns": 8,
+    "anti-slop/no-unknown-returns": 10,
     "anti-slop/no-unsafe-dictionary-type": 9,
     "anti-slop/require-safety-comment-for-type-assertion": 6,
     "eslint/no-control-regex": 1,

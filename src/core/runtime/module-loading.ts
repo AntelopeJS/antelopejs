@@ -17,7 +17,7 @@ import {
   activateLoadedModules as activateModules,
   ensureGraphIsValid as validateGraph,
 } from "./module-interfaces";
-import { moduleLoadFailure } from "./module-load-failure";
+import { throwModuleLoadFailure } from "./module-load-failure";
 import { reloadWatchedModule as reloadModule } from "./module-reloading";
 import type {
   LoaderConfig,
@@ -159,7 +159,7 @@ async function loadModuleEntries(
     failures.push(result.reason);
   });
   if (failures.length > 0) {
-    throw moduleLoadFailure(failures, results.length);
+    throwModuleLoadFailure(failures, results.length);
   }
   return results.flatMap((result) =>
     result.status === "fulfilled" ? result.value : [],

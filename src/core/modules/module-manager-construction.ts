@@ -7,7 +7,7 @@ import {
   declaredConfigVars,
 } from "../config";
 import { neutralizeInterfacePackage } from "../resolution";
-import { aggregateErrors, collectRejectedErrors } from "./module-errors";
+import { collectRejectedErrors, throwErrors } from "./module-errors";
 import {
   type ManagedModule,
   type ManagerContext,
@@ -29,7 +29,7 @@ export async function constructAll(this: ManagerContext): Promise<void> {
     provided = await this.runProvidePhase(modules, plan);
   } catch (error) {
     if (leaseAcquired) {
-      throw aggregateErrors(
+      throwErrors(
         [error, ...this.releaseRuntimeState()],
         "Failed to construct modules",
       );
@@ -78,7 +78,7 @@ export async function constructModules(
     await Promise.all(modules.map((entry) => this.constructEntry(entry)));
   } catch (error) {
     if (leaseAcquired) {
-      throw aggregateErrors(
+      throwErrors(
         [error, ...this.releaseRuntimeState()],
         "Failed to construct modules",
       );
