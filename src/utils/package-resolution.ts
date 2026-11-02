@@ -2,7 +2,7 @@ import { readFileSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import { isObject, type UnknownDictionary } from "./object";
+import { isObject } from "./object";
 import { isString } from "./type-guards";
 
 export interface ResolvedPackage {
@@ -105,20 +105,23 @@ export function isPathWithin(filePath: string, folderPath: string): boolean {
   return createPathWithinMatcher(folderPath)(filePath);
 }
 
-function readVersion({ version }: UnknownDictionary): string | undefined {
-  if (isString(version)) {
-    return version;
-  }
-  return version ? JSON.stringify(version) : undefined;
+interface RawPackageJson {
+  version?: unknown;
+  antelopeJs?: unknown;
 }
 
-function readAntelopeJs({
-  antelopeJs,
-}: UnknownDictionary): PackageJson["antelopeJs"] {
-  if (isObject(antelopeJs)) {
-    return antelopeJs;
+function readVersion(manifest: RawPackageJson): string | undefined {
+  if (isString(manifest.version)) {
+    return manifest.version;
   }
-  return antelopeJs ? {} : undefined;
+  return manifest.version ? JSON.stringify(manifest.version) : undefined;
+}
+
+function readAntelopeJs(manifest: RawPackageJson): PackageJson["antelopeJs"] {
+  if (isObject(manifest.antelopeJs)) {
+    return manifest.antelopeJs;
+  }
+  return manifest.antelopeJs ? {} : undefined;
 }
 
 /**
