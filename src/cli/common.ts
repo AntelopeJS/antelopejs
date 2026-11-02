@@ -14,10 +14,13 @@ import {
   TS_CONFIG_FILE,
 } from "../core/config";
 import { NodeFileSystem } from "../core/filesystem";
-import type { ModulePackageJson } from "../core/modules";
+import {
+  decodeModulePackageJson,
+  type ModulePackageJson,
+} from "../core/modules";
 import { CliError, getProcessUi } from "../core/output";
 import type { IFileSystem } from "../types";
-import { isObjectOrNull, isString } from "../utils";
+import { isObject, isObjectOrNull, isString } from "../utils";
 
 const DEFAULT_INDENTATION = "  ";
 const DEFINE_CONFIG_IMPORT_LINE =
@@ -74,14 +77,14 @@ async function writeJsonFile(
   );
 }
 
-async function readJsonFile<T>(
+async function readTextFile(
   filePath: string,
   fileSystem: IFileSystem = new NodeFileSystem(),
-): Promise<T | undefined> {
+): Promise<string | undefined> {
   if (!(await fileSystem.exists(filePath))) {
     return undefined;
   }
-  return JSON.parse(await fileSystem.readFileString(filePath));
+  return fileSystem.readFileString(filePath);
 }
 
 function getDefaultExportExpression(
@@ -257,14 +260,41 @@ export async function readModuleManifest(
   module: string,
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<ModulePackageJson | undefined> {
-  return readJsonFile<ModulePackageJson>(
+  const text = await readTextFile(
     path.join(module, "package.json"),
     fileSystem,
   );
+  const parsed: unknown = text === undefined ? null : JSON.parse(text);
+  return text === undefined || parsed === null
+    ? undefined
+    : decodeModulePackageJson(text, module);
 }
 
 export interface UserConfig {
   git: string;
+}
+
+/**
+ * Decodes the CLI's own `config.json`. `null` holds the defaults; any other
+ * content that is not an object with a string `git` is refused, since only
+ * `ajs config` writes this file.
+ *
+ * @param text - The text of the file.
+ * @param where - The file named by a refusal.
+ */
+export function decodeUserConfig(text: string, where: string): UserConfig {
+  const content: unknown = JSON.parse(text);
+  if (content === null) {
+    return getDefaultUserConfig();
+  }
+  if (!isObject(content) || !isString(content.git)) {
+    throw new CliError({
+      title: `Invalid CLI configuration in ${where}`,
+      reason: "The file must hold an object whose git value is a string.",
+      fixes: ["Run ajs config reset to write the default configuration"],
+    });
+  }
+  return { ...content, git: content.git };
 }
 
 export function getDefaultUserConfig(): UserConfig {
@@ -291,9 +321,8 @@ export async function readUserConfig(): Promise<UserConfig> {
   if (!(await stat(configPath).catch(() => false))) {
     return getDefaultUserConfig();
   }
-  const config = await readJsonFile<UserConfig>(
-    configPath,
-    new NodeFileSystem(),
-  );
-  return config ?? getDefaultUserConfig();
+  const text = await readTextFile(configPath, new NodeFileSystem());
+  return text === undefined
+    ? getDefaultUserConfig()
+    : decodeUserConfig(text, configPath);
 }

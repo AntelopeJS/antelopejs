@@ -33,6 +33,7 @@ import {
   loadManifestFromGit,
   type Template,
 } from "../../git-operations";
+import { requireCatalogMember } from "../../catalog-manifest";
 import { isObject } from "../../../utils";
 
 export interface ModuleInitOptions {
@@ -58,6 +59,8 @@ interface ModuleInitAnswers {
 
 type InterfaceCatalog = Record<string, InterfaceInfo>;
 
+type TemplateCatalog = GitManifest & { templates: Template[] };
+
 const TEMPLATE_OPTION = "--template";
 const INTERFACES_OPTION = "--interfaces";
 export const TEMPLATE_FLAG = `${TEMPLATE_OPTION} <name>`;
@@ -81,9 +84,13 @@ const MODULE_ANSWER_FLAGS: AnswerFlag<ModuleInitOptions>[] = [
   { option: "gitInit", flag: GIT_INIT_FLAG },
 ];
 
-async function loadTemplates(git: string): Promise<GitManifest> {
+async function loadTemplates(git: string): Promise<TemplateCatalog> {
   try {
-    return await loadManifestFromGit(git);
+    const manifest = await loadManifestFromGit(git);
+    return {
+      ...manifest,
+      templates: requireCatalogMember(manifest, "templates", git),
+    };
   } catch (err) {
     const cause = translateFailure(err);
     throw new CliError(
@@ -185,7 +192,10 @@ async function loadInterfaceCatalog(
 ): Promise<InterfaceCatalog> {
   const interfaceSpinner = new Spinner("Loading available interfaces");
   await interfaceSpinner.start();
-  const catalog = await loadInterfacesFromGit(git, manifest.starredInterfaces);
+  const catalog = await loadInterfacesFromGit(
+    git,
+    requireCatalogMember(manifest, "starredInterfaces", git),
+  );
   await interfaceSpinner.succeed(
     `Found ${Object.keys(catalog).length} available interfaces`,
   );
@@ -299,7 +309,7 @@ async function askModuleAnswers(
   prompter: Prompter,
   options: ModuleInitOptions,
   git: string,
-  manifest: GitManifest,
+  manifest: TemplateCatalog,
   isFromProject: boolean,
 ): Promise<ModuleInitAnswers> {
   if (!isFromProject) {

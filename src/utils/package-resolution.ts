@@ -7,7 +7,7 @@ import { isString } from "./type-guards";
 
 export interface ResolvedPackage {
   name: string;
-  version: string;
+  version: string | undefined;
   root: string;
   realRoot: string;
   entry: string;
@@ -208,7 +208,7 @@ export function resolvePackage(
 export function resolvePackageAtRoot(
   packageName: string,
   packageRoot: string,
-  version: string,
+  version: string | undefined,
 ): ResolvedPackage {
   const root = path.resolve(packageRoot);
   return {
