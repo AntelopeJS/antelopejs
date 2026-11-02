@@ -96,7 +96,7 @@ function assignKey(
   // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
   target: Record<string, unknown>,
   key: string,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- merges and sets paths in user config data of any shape
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- takes an override value or the empty container set creates for a missing segment; the union with that container moves the row to no-unsafe-dictionary-type and object trips no-object-parameters
   value: unknown,
 ): void {
   if (key === "__proto__") {

@@ -40,7 +40,7 @@ export function declaredConfigVars(source?: {
 }
 
 /** Every config variable reference a configuration holds, at any depth. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, to collect its config variable references
 export function scanConfigVars(config: unknown): ConfigVarScan {
   const references = new Map<string, ConfigVarReference>();
   const malformed = new Set<string>();
@@ -139,7 +139,7 @@ function matchReferences(value: string): ConfigVarReference[] {
   );
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, visiting each string it holds
 function visitStrings(value: unknown, visit: (value: string) => void): void {
   if (isString(value)) {
     visit(value);
