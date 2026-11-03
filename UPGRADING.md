@@ -6,6 +6,11 @@ Each section is the upgrade-notes block of one release. Paste it into the GitHub
 
 1.20.0 is a minor release, and it carries the compile breaks below. Ranges such as `<2` accept it.
 
+### Requirements
+
+- **Node.js `^20.19.0 || >=22.12.0`.** `engines.node` was `>=20.19`, which admitted Node 21 and 22.0 to 22.11, where the CLI prompt layer is not guaranteed to load. Those versions are now outside the range, so a package manager warns or refuses on upgrade ([#337](https://github.com/AntelopeJS/antelopejs/pull/337)).
+- **`@antelopejs/interface-core` `>=0.4.0 <0.5.0`** (was `>=0.3.0 <0.4.0`). Core 1.20.0 implements interface-core 0.4.0, so 0.4.0 must be on npm before core 1.20.0 ([#356](https://github.com/AntelopeJS/antelopejs/pull/356)).
+
 ### Configuration checks at load
 
 - **(a) Every typed project field is checked when `antelope.config.ts` loads.** The fields are `name`, `cacheFolder`, a module's `source`, `importOverrides`, `disabledExports`, `exportPriority` and `optional`, `logging`, `envOverrides` and `test.folder`. A value of the wrong type fails the load with an error naming the field, for example `Configuration field 'name' does not hold a string after templates and environment overrides.` This holds whether the file wrote the value that way, a template resolved it, or an environment override set it ([#367](https://github.com/AntelopeJS/antelopejs/pull/367)).
@@ -16,7 +21,7 @@ Each section is the upgrade-notes block of one release. Paste it into the GitHub
 
 ### Templates
 
-- `processTemplates` no longer claims to return its input type. A pure `${key}` template takes the JSON-parsed value of the key, so it can turn a typed project field into another type, for example `name` into a number. The loader now refuses that field with the error of (a) instead of loading it. Module `config` is unaffected ([#367](https://github.com/AntelopeJS/antelopejs/pull/367)).
+- A pure `${key}` template takes the JSON-parsed value of the key, so it can turn a typed project field into another type, for example `name` into a number. The loader now refuses that field with the error of (a) instead of loading it. Module `config` is unaffected ([#367](https://github.com/AntelopeJS/antelopejs/pull/367)).
 
 ### Embedded runtime: `use()` and `provide()` read an interface map
 
@@ -43,4 +48,4 @@ Each section is the upgrade-notes block of one release. Paste it into the GitHub
 ### Other type changes
 
 - `Ui.json`, `writeData` and `DataOutput` from `@antelopejs/core/cli` refuse data that is not JSON at compile time: a function, a symbol, a bigint or a value typed `unknown`. `DataOutput` takes a type argument, which callers that pass object literals or typed values infer ([#366](https://github.com/AntelopeJS/antelopejs/pull/366)).
-- `DownloaderRegistry.getLoaderIdentifier` returns `string | undefined`. A custom downloader whose identifier field holds a non-string is now skipped by `modules add` and `modules install` ([#345](https://github.com/AntelopeJS/antelopejs/pull/345)).
+- `DownloaderRegistry.getLoaderIdentifier` returns `string | undefined`. A custom downloader whose identifier field holds a non-string is now skipped by `modules add` and `modules install`, and an inherited identifier field is no longer read ([#345](https://github.com/AntelopeJS/antelopejs/pull/345)).
