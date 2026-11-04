@@ -1,11 +1,25 @@
 import path from "node:path";
 
 import { absent, equal, exists, exitIs, fileHas, has, interrupted, unchanged } from "../lib/checks.mts";
-import type { Journey } from "../lib/journey.mts";
+import type { Journey, JourneyContext } from "../lib/journey.mts";
 import { FIXTURE_MODULE, initProject, listModules, useOfflineManifest } from "../lib/project.mts";
 import { TEMPLATE_NAME } from "../lib/sources.mts";
 
 const FLAGS = ["--template", TEMPLATE_NAME, "--pm", "pnpm"];
+
+async function initFromOtherRepository(
+  context: JourneyContext,
+  source: { args: string[]; env: Record<string, string> },
+): Promise<void> {
+  const missing = `file://${path.join(context.work, "missing.git")}`;
+  const set = await context.ajs("config set git to a missing repository", ["config", "set", "git", missing]);
+  context.expect(set.folder, [exitIs(set, 0)], { critical: true });
+  const project = path.join(context.work, "app");
+  const init = await context.ajs("project init", ["project", "init", "app", ...source.args, ...FLAGS, "--no-git-init"], { env: source.env });
+  context.expect(init.folder, [exitIs(init, 0), has("stderr", init.stderr, /Created project/), exists(path.join(project, "antelope.config.ts"))], { critical: true });
+  const listed = await listModules(context, project);
+  context.expect(listed.folder, [exitIs(listed, 0), equal("modules read back", listed.names, [FIXTURE_MODULE])]);
+}
 
 /** `ajs project init`: scaffold a project from a template of the interface repository. */
 export const journeys: Journey[] = [
@@ -49,6 +63,28 @@ export const journeys: Journey[] = [
       context.expect(init.folder, [exitIs(init, 0), exists(path.join(project, "antelope.config.ts"))], { critical: true });
       const listed = await listModules(context, project);
       context.expect(listed.folder, [exitIs(listed, 0), equal("modules read back", listed.names, [FIXTURE_MODULE])]);
+    },
+  },
+  {
+    id: "init-git-option",
+    title: "--git reads the templates of another repository than the git setting",
+    entryPoint: "ajs project init app --git <repository> (git setting: a missing repository)",
+    async run(context) {
+      await initFromOtherRepository(context, {
+        args: ["--git", context.state.manifestUrl],
+        env: {},
+      });
+    },
+  },
+  {
+    id: "init-git-env",
+    title: "ANTELOPEJS_GIT reads the templates of another repository than the git setting",
+    entryPoint: "ANTELOPEJS_GIT=<repository> ajs project init app (git setting: a missing repository)",
+    async run(context) {
+      await initFromOtherRepository(context, {
+        args: [],
+        env: { ANTELOPEJS_GIT: context.state.manifestUrl },
+      });
     },
   },
   {
