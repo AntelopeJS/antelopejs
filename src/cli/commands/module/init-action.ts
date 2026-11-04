@@ -1,5 +1,4 @@
-import * as childProcess from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -8,8 +7,6 @@ import {
   createPrompter,
   DEFAULT_PACKAGE_MANAGER,
   displayPath,
-  ExecuteCMD,
-  getInstallCommand,
   getProcessPalette,
   getProcessUi,
   missingFlags,
@@ -17,16 +14,13 @@ import {
   type PackageManagerName,
   type Prompter,
   runTask,
-  savePackageManagerToPackageJson,
   Spinner,
-  success,
   translateFailure,
   USAGE_EXIT_CODE,
-  warning,
 } from "../../../core/output";
 import { displayNonDefaultGitWarning, resolveGit } from "../../common";
+import { createModule, type ModuleInitAnswers } from "./create-module";
 import {
-  copyTemplate,
   findTemplate,
   type GitManifest,
   type InterfaceInfo,
@@ -50,13 +44,6 @@ export interface ModuleInitContext {
   prompter?: Prompter;
 }
 
-interface ModuleInitAnswers {
-  template: Template;
-  interfaces: InterfaceInfo[];
-  packageManager: PackageManagerName;
-  isGitInitialized: boolean;
-}
-
 type InterfaceCatalog = Record<string, InterfaceInfo>;
 
 const TEMPLATE_OPTION = "--template";
@@ -68,8 +55,6 @@ export const YES_FLAG = "--yes";
 export const GIT_INIT_FLAG = "--[no-]git-init";
 const MODULE_INIT_COMMAND = "ajs module init";
 const CURRENT_DIRECTORY = ".";
-const LATEST_VERSION = "latest";
-const JSON_INDENTATION = 2;
 
 const CHECK_REPOSITORY_FIX =
   "Check the URL passed with --git or saved with ajs config set git";
@@ -226,11 +211,18 @@ async function askInterfaces(
   return names.map((name) => catalog[name]);
 }
 
+function installsOnHost(template?: Template): boolean {
+  return template?.install !== false;
+}
+
 function askPackageManager(
   prompter: Prompter,
   options: ModuleInitOptions,
   template: Template,
-): Promise<PackageManagerName> {
+): Promise<PackageManagerName | undefined> {
+  if (!installsOnHost(template)) {
+    return Promise.resolve(undefined);
+  }
   if (template.packageManager) {
     if (options.pm && options.pm !== template.packageManager) {
       throw new CliError({
@@ -313,7 +305,9 @@ async function askModuleAnswers(
   prompter.requireAnswers(
     missingFlags(
       { ...options, pm: options.pm ?? selected?.packageManager },
-      MODULE_ANSWER_FLAGS,
+      MODULE_ANSWER_FLAGS.filter(
+        ({ option }) => option !== "pm" || installsOnHost(selected),
+      ),
     ),
   );
   const template = await askTemplate(
@@ -332,84 +326,6 @@ async function askModuleAnswers(
   const packageManager = await askPackageManager(prompter, options, template);
   const isGitInitialized = await askGitInit(prompter, options);
   return { template, interfaces, packageManager, isGitInitialized };
-}
-
-function addInterfaceDependencies(
-  modulePath: string,
-  interfaces: InterfaceInfo[],
-): void {
-  const packages = interfaces
-    .map((entry) => entry.manifest.package)
-    .filter((name): name is string => Boolean(name));
-  if (packages.length === 0) {
-    return;
-  }
-  const pkgJsonPath = path.resolve(modulePath, "package.json");
-  const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-  pkgJson.dependencies ??= {};
-  packages.forEach((name) => {
-    pkgJson.dependencies[name] ??= LATEST_VERSION;
-  });
-  writeFileSync(
-    pkgJsonPath,
-    `${JSON.stringify(pkgJson, null, JSON_INDENTATION)}\n`,
-  );
-  success(`Added ${interfaces.length} interface(s) to dependencies`);
-}
-
-async function installDependencies(
-  modulePath: string,
-  packageManager: PackageManagerName,
-): Promise<void> {
-  const moduleRoot = path.resolve(modulePath);
-  savePackageManagerToPackageJson(packageManager, moduleRoot);
-  const installSpinner = new Spinner("Installing dependencies");
-  await installSpinner.start();
-  const installCmd = await getInstallCommand(
-    moduleRoot,
-    false,
-    undefined,
-    "update",
-  );
-  await ExecuteCMD(installCmd, { cwd: moduleRoot });
-  await installSpinner.succeed("Dependencies installed");
-}
-
-async function initializeGitRepository(modulePath: string): Promise<void> {
-  const gitInitSpinner = new Spinner("Initializing git repository");
-  await gitInitSpinner.start();
-  try {
-    childProcess.execSync("git init", {
-      cwd: path.resolve(modulePath),
-      stdio: "ignore",
-    });
-    await gitInitSpinner.succeed("Git repository initialized");
-  } catch (gitErr) {
-    await gitInitSpinner.fail("Failed to initialize git repository");
-    warning(
-      "Could not initialize git repository. You can do it manually later.",
-    );
-    if (gitErr instanceof Error) {
-      warning(gitErr);
-    }
-  }
-}
-
-async function createModule(
-  modulePath: string,
-  answers: ModuleInitAnswers,
-): Promise<void> {
-  const copySpinner = new Spinner(`Creating module from template`);
-  await copySpinner.start();
-  await copyTemplate(answers.template, modulePath);
-  await copySpinner.succeed(
-    `Module created successfully at ${getProcessPalette().dim(path.resolve(modulePath))}`,
-  );
-  addInterfaceDependencies(modulePath, answers.interfaces);
-  await installDependencies(modulePath, answers.packageManager);
-  if (answers.isGitInitialized) {
-    await initializeGitRepository(modulePath);
-  }
 }
 
 function displayModuleCreated(
