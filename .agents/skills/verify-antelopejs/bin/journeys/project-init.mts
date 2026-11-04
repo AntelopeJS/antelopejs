@@ -3,16 +3,16 @@ import path from "node:path";
 import { absent, equal, exists, exitIs, fileHas, has, interrupted, unchanged } from "../lib/checks.mts";
 import type { Journey } from "../lib/journey.mts";
 import { FIXTURE_MODULE, initProject, listModules, useOfflineManifest } from "../lib/project.mts";
-import { TEMPLATE_NAME } from "../lib/sources.mts";
+import { TEMPLATE_SLUG } from "../lib/sources.mts";
 
-const FLAGS = ["--template", TEMPLATE_NAME, "--pm", "pnpm"];
+const FLAGS = ["--template", TEMPLATE_SLUG, "--pm", "pnpm"];
 
 /** `ajs project init`: scaffold a project from a template of the interface repository. */
 export const journeys: Journey[] = [
   {
     id: "init-flags",
     title: "every answer as a flag creates the project, its module and its configuration",
-    entryPoint: "ajs project init app --template 'Verify HTTP' --pm pnpm --no-git-init",
+    entryPoint: "ajs project init app --template verify-http --pm pnpm --no-git-init",
     async run(context) {
       const project = await initProject(context, "app");
       const config = path.join(project, "antelope.config.ts");
@@ -61,7 +61,7 @@ export const journeys: Journey[] = [
       context.expect(init.folder, [
         exitIs(init, 2),
         has("stderr", init.stderr, /Cannot prompt/),
-        has("stderr", init.stderr, /--template <name>/),
+        has("stderr", init.stderr, /--template <slug>/),
         absent(path.join(context.work, "app")),
       ]);
     },
@@ -76,7 +76,7 @@ export const journeys: Journey[] = [
       context.expect(init.folder, [
         exitIs(init, 2),
         has("stderr", init.stderr, /Unknown template 'Nope'/),
-        has("stderr", init.stderr, /Available: Verify HTTP/),
+        has("stderr", init.stderr, /Available: verify-http/),
         absent(path.join(context.work, "app")),
       ]);
     },
