@@ -4,14 +4,16 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import sinon from "sinon";
 
-import { commandsProjectInitCommand as cmdInit } from "../../../../../src/cli";
+import {
+  commandsProjectInitCommand as cmdInit,
+  gitOperationsModule as gitOps,
+} from "../../../../../src/cli";
 import {
   commandModule as command,
   cliUiModule as cliUi,
   NeedsInputError,
 } from "../../../../../src/core/output";
 import { collectStderr } from "../../../../helpers/capture-output";
-import { templateSlug } from "../../../../../src/cli/git-operations";
 import { fakePrompts } from "../../../../helpers/fake-prompts";
 import {
   buildRegistry,
@@ -25,6 +27,12 @@ import {
 } from "../../../../helpers/temp";
 
 const INSTALL_COMMAND = /\b(?:npm|pnpm|yarn)\S* (?:install|ci)\b/;
+
+const SELECTORS = [TEMPLATE_NAME, gitOps.templateSlug({ name: TEMPLATE_NAME })];
+
+function selfInstalling(root: string): string {
+  return buildRegistry(root, { install: false, packageManager: "pnpm" });
+}
 
 describe("project init for a template that installs itself", function () {
   this.timeout(60_000);
@@ -95,15 +103,11 @@ describe("project init for a template that installs itself", function () {
     );
   });
 
-  [TEMPLATE_NAME, templateSlug({ name: TEMPLATE_NAME })].forEach((selector) => {
+  SELECTORS.forEach((selector) => {
     it(`copies the template and installs nothing on the host with install: false, selected as ${selector}`, async () => {
       recordCommands();
-      const registry = buildRegistry(root, {
-        install: false,
-        packageManager: "pnpm",
-      });
 
-      await initWith(registry, "--yes", "--template", selector);
+      await initWith(selfInstalling(root), "--yes", "--template", selector);
 
       expect(installs()).to.deep.equal([]);
       expect(readText(path.join(projectDir, "package.json"))).to.equal(
