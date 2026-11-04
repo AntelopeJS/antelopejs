@@ -304,6 +304,16 @@ function readDependencies(moduleDir: string): Record<string, string> {
         expect(stubs.copy.called).to.equal(false);
       });
 
+      it("prints no next steps for a template that has none, so no command assumes a global ajs", async () => {
+        const stubs = stubModuleInit(INTERFACE_CATALOG);
+        fakePrompts({ isInteractive: false });
+
+        await cmdModuleInit().parseAsync(["node", "init", moduleDir, "--yes"]);
+
+        expect(stubs.output()).to.not.include("Next steps");
+        expect(stubs.output()).to.not.match(/^\s*ajs /m);
+      });
+
       it("takes the defaults with --yes", async () => {
         const stubs = stubModuleInit(INTERFACE_CATALOG);
         const prompts = fakePrompts({ isInteractive: false });
@@ -333,7 +343,7 @@ function readDependencies(moduleDir: string): Record<string, string> {
         expect(failure).to.be.instanceOf(NeedsInputError);
         expect(failure.exitCode).to.equal(USAGE_EXIT_CODE);
         expect(failure.problem.fixes).to.deep.equal([
-          `Pass them as flags: ajs module init ${moduleDir} --template <name> --[no-]git-init`,
+          `Pass them as flags: ajs module init ${moduleDir} --template <slug> --[no-]git-init`,
           `Or accept the defaults: ajs module init ${moduleDir} --yes`,
         ]);
         expect(stubs.manifest.calledOnce).to.equal(true);

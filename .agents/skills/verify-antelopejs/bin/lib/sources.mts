@@ -12,6 +12,9 @@ export const FIXTURES_DIR = path.join(SKILL_DIR, "fixtures");
 /** The template name the offline manifest lists. */
 export const TEMPLATE_NAME = "Verify HTTP";
 
+/** The slug `--template` accepts for the same template. */
+export const TEMPLATE_SLUG = "verify-http";
+
 /** The message the fixture module answers with before any edit. */
 export const FIXTURE_MESSAGE = "hello from the fixture";
 
