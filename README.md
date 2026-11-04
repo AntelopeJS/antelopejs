@@ -36,12 +36,12 @@ pnpm add -g @antelopejs/core
 
 ## Quick start
 
-Create a project with a first module, then run it in development mode. The project depends on `@antelopejs/core`, so `pnpm exec ajs` runs the CLI inside it:
+Create a project with a first module, then run it in development mode. Inside a project that lists `@antelopejs/core` as a dependency, npx runs that installed copy:
 
 ```bash
 npx @antelopejs/core project init my-app --template blank-typescript --pm pnpm --no-git-init
 cd my-app
-pnpm exec ajs project dev --watch
+npx @antelopejs/core project dev --watch
 ```
 
 Leave out the flags to choose a template interactively. Templates are named by slug, for example `blank-typescript` and `dms-demo`.
@@ -49,8 +49,8 @@ Leave out the flags to choose a template interactively. Templates are named by s
 Add a provider for an interface your module uses, or let the CLI find one for every unresolved interface:
 
 ```bash
-pnpm exec ajs project modules add @antelopejs/mongodb
-pnpm exec ajs project modules install
+npx @antelopejs/core project modules add @antelopejs/mongodb
+npx @antelopejs/core project modules install
 ```
 
 ## Plugins

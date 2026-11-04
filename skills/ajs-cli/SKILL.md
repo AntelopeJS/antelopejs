@@ -5,7 +5,7 @@ description: Guides running the `ajs` CLI (projects, modules, config, plugins, u
 
 # The `ajs` CLI
 
-`ajs` is the entry point to the AntelopeJS core (the `@antelopejs/core` package). Without a global install, run it as `npx @antelopejs/core <command>`, or `pnpm exec ajs <command>` inside a project that depends on `@antelopejs/core`; the examples below write `ajs`. Create the first project or module with `npx @antelopejs/core project init <path> --template <slug>`. Command groups: `project`, `module`, `config`, plus `update` and `plugins`. Run any command with `--help` for current flags and examples; this skill covers the workflows. **Always pnpm**, never npm/yarn, in these projects.
+`ajs` is the entry point to the AntelopeJS core (the `@antelopejs/core` package). Without a global install, run it as `npx @antelopejs/core <command>`; inside a project that lists `@antelopejs/core` as a dependency, npx runs that installed copy. The examples below write `ajs`. Create the first project or module with `npx @antelopejs/core project init <path> --template <slug>`. Command groups: `project`, `module`, `config`, plus `update` and `plugins`. Run any command with `--help` for current flags and examples; this skill covers the workflows. **Always pnpm**, never npm/yarn, in these projects.
 
 ## Projects
 
