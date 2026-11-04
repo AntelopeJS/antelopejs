@@ -24,7 +24,7 @@ import {
   USAGE_EXIT_CODE,
   warning,
 } from "../../../core/output";
-import { displayNonDefaultGitWarning, readUserConfig } from "../../common";
+import { displayNonDefaultGitWarning, resolveGit } from "../../common";
 import {
   copyTemplate,
   findTemplate,
@@ -461,7 +461,7 @@ export async function moduleInitCommand(
 ) {
   const prompter = modulePrompter(modulePath, options, context);
   await ensureDirectoryUsable(modulePath, Boolean(context.isFromProject));
-  const git = options.git || (await readUserConfig()).git;
+  const git = await resolveGit(options);
   displayNonDefaultGitWarning(git);
   const manifest = await runTask(
     "Loading templates",

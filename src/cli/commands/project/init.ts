@@ -17,6 +17,7 @@ export default function () {
         "Name of the project (default: the directory name)",
       ),
     )
+    .addOption(Options.git)
     .addOption(Options.template)
     .addOption(Options.interfaces)
     .addOption(Options.packageManager)
@@ -36,6 +37,11 @@ export default function () {
     {
       description: "Accept every default",
       command: "ajs project init my-app --yes",
+    },
+    {
+      description: "Read the templates from another interface repository",
+      command:
+        "ajs project init my-app --git https://github.com/acme/interfaces.git",
     },
     {
       description: "Answer every question with a flag, for scripts and CI",

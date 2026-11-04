@@ -269,6 +269,8 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
           projectDir,
           "--name",
           "shop",
+          "--git",
+          "https://example.com/interfaces.git",
           "--template",
           "basic",
           "--interfaces",
@@ -283,6 +285,7 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
           stubs.moduleInit.firstCall.args;
         expect(modulePath).to.equal(path.resolve(projectDir));
         expect(moduleOptions).to.deep.equal({
+          git: "https://example.com/interfaces.git",
           template: "basic",
           interfaces: ["api", "auth"],
           pm: "pnpm",

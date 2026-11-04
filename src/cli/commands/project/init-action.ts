@@ -27,6 +27,7 @@ import { addModules, handlers } from "./modules/add-action";
 
 export interface ProjectInitOptions {
   name?: string;
+  git?: string;
   template?: string;
   interfaces?: string[];
   pm?: PackageManagerName;
@@ -150,6 +151,7 @@ async function importAppModule(
 
 function moduleOptions(options: ProjectInitOptions): ModuleInitOptions {
   return {
+    git: options.git,
     template: options.template,
     interfaces: options.interfaces,
     pm: options.pm,
