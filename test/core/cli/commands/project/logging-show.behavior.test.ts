@@ -148,13 +148,17 @@ describe("project logging show behavior", () => {
 
     const { result, feedback } = await runShow(["--json"]);
 
-    const logging = JSON.parse(result.text);
-    expect(logging.enabled).to.equal(false);
-    expect(logging.formatter["20"]).to.equal("{{ARGS}}");
-    expect(logging.formatter["0"]).to.equal(
+    const logging: unknown = JSON.parse(result.text);
+    expect(logging).to.have.property("enabled", false);
+    expect(logging).to.have.nested.property("formatter.20", "{{ARGS}}");
+    expect(logging).to.have.nested.property(
+      "formatter.0",
       defaultConfigLogging.formatter?.["0"],
     );
-    expect(logging.dateFormat).to.equal(defaultConfigLogging.dateFormat);
+    expect(logging).to.have.property(
+      "dateFormat",
+      defaultConfigLogging.dateFormat,
+    );
     expect(feedback.text).to.equal("");
   });
 });

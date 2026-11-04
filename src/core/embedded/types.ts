@@ -36,3 +36,18 @@ export interface EmbeddedRuntimeOptions {
 export interface ProvideHandle {
   detach(): void;
 }
+
+/**
+ * The interface packages, and subpaths, a host reaches through
+ * `AntelopeRuntime.use`, keyed by request. A host declares each one it uses,
+ * with the type it expects, by augmenting this interface:
+ *
+ * ```ts
+ * declare module "@antelopejs/core" {
+ *   interface EmbeddedInterfaces {
+ *     "@antelopejs/interface-dms": DmsPages;
+ *   }
+ * }
+ * ```
+ */
+export interface EmbeddedInterfaces {}

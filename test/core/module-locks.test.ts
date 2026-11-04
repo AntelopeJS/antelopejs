@@ -100,7 +100,7 @@ describe("ModuleLockStore", () => {
       attempts.map((key) =>
         store.read(key).then(
           () => undefined,
-          (error) => error,
+          (error: unknown) => error,
         ),
       ),
     );
@@ -163,7 +163,7 @@ describe("ModuleLockStore atomic write", () => {
 
     const failure = await store
       .write(lockRecord("1.5.0", "lock: b"))
-      .catch((error) => error);
+      .catch((error: unknown) => error);
 
     expect(failure).to.be.instanceOf(Error);
     expect(await store.read(API)).to.deep.equal(lockRecord("1.5.0", "lock: a"));

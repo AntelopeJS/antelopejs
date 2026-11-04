@@ -115,6 +115,18 @@ describe("saved logging formats", () => {
     expect(output.stdout).to.equal("plain\n");
   });
 
+  it("keeps a placeholder named like an Object.prototype member as written", () => {
+    setupWithFormatter({
+      "20": "{{constructor}}|{{toString}}|{{__proto__}}|{{hasOwnProperty}} {{ARGS}}",
+    });
+
+    const output = captureOutput(() => Logging.Info("kept"));
+
+    expect(output.stdout).to.equal(
+      "{{constructor}}|{{toString}}|{{__proto__}}|{{hasOwnProperty}} kept\n",
+    );
+  });
+
   it("keeps unknown placeholders and styles as written", () => {
     setupWithFormatter({ "20": "{{UNKNOWN}} {{chalk.sparkly}} {{ARGS}}" });
 

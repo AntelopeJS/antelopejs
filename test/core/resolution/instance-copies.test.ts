@@ -17,6 +17,7 @@ import {
   pruneStaleInstanceCopies,
   removeInstanceCopy,
 } from "../../../src/core/resolution";
+import { isNumber, isObject } from "../../../src/utils";
 import { readText } from "../../helpers/temp";
 
 interface StatefulModule {
@@ -52,6 +53,18 @@ function writeDependency(folder: string): void {
   writeFile(
     path.join(folder, "index.js"),
     "module.exports = { id: Math.random() };",
+  );
+}
+
+function hasNumericId(value: unknown): value is { id: number } {
+  return isObject(value) && isNumber(value.id);
+}
+
+function isStatefulModule(value: unknown): value is StatefulModule {
+  return (
+    isObject(value) &&
+    hasNumericId(value.state) &&
+    hasNumericId(value.dependency)
   );
 }
 
@@ -95,13 +108,23 @@ function writePnpmDependency(original: string): void {
   );
 }
 
+function isLinkedDependency(value: unknown): value is LinkedDependency {
+  return isObject(value) && isNumber(value.id) && hasNumericId(value.nested);
+}
+
 function loadLinked(file: string): LinkedDependency {
-  const loaded: LinkedDependency = require(file);
+  const loaded: unknown = require(file);
+  if (!isLinkedDependency(loaded)) {
+    throw new Error(`${file} does not export an id and a nested dependency`);
+  }
   return loaded;
 }
 
 function load(folder: string): StatefulModule {
-  const loaded: StatefulModule = require(path.join(folder, "index.js"));
+  const loaded: unknown = require(path.join(folder, "index.js"));
+  if (!isStatefulModule(loaded)) {
+    throw new Error(`${folder} does not export a state and a dependency`);
+  }
   return loaded;
 }
 

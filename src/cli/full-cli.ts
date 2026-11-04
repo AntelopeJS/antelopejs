@@ -23,7 +23,7 @@ import cmdPlugins from "./commands/plugins";
 import cmdProject from "./commands/project/index";
 import cmdUpdate from "./commands/update";
 import { getCoreVersion } from "./core-version";
-import { Options } from "./options";
+import { Options, verboseChannelsOf } from "./options";
 import { formatOfficialPluginsHelp } from "./plugin-registry";
 import { reportAvailableUpdate, startUpdateCheck } from "./version-check";
 
@@ -107,7 +107,7 @@ export function coreCommandNames(
 }
 
 function applyVerboseChannels(program: Command): void {
-  const verbose: string[] | undefined = program.getOptionValue("verbose");
+  const verbose = verboseChannelsOf(program);
   if (verbose) {
     for (const channel of verbose) {
       addChannelFilter(channel, 0);

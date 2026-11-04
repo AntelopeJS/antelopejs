@@ -4,7 +4,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 
 import { FEATURE_JOURNEYS } from "./journeys/index.mts";
-import { runJourney, type JourneyResult } from "./lib/journey.mts";
+import { parseJourneyResults, runJourney, type JourneyResult } from "./lib/journey.mts";
 import { clean, doctor } from "./lib/lifecycle.mts";
 import { checkMap, planFor } from "./lib/map.mts";
 import { runSeededBreaks } from "./lib/seeded.mts";
@@ -85,7 +85,7 @@ async function runFeature(dir: string, feature: string, ids: string[]): Promise<
     }
   }
   const file = path.join(state.evidence, feature, "feature.json");
-  const earlier: JourneyResult[] = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : [];
+  const earlier = existsSync(file) ? parseJourneyResults(readFileSync(file, "utf8")) : [];
   const merged = journeys.flatMap((journey) => results.find((result) => result.journey === journey.id) ?? earlier.filter((result) => result.journey === journey.id));
   writeFileSync(file, `${JSON.stringify(merged, null, 2)}\n`);
   return results.every((result) => result.status === "PASS") ? 0 : 1;

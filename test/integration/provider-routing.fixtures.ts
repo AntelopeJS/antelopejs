@@ -1,6 +1,9 @@
+import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+
+import { isObject } from "../../src/utils";
 import {
   COMPATIBLE_NESTED_CORE_VERSION,
   CORE_INTERFACE_NAME,
@@ -9,6 +12,7 @@ import {
   RoutingProject,
 } from "./provider-routing.fixture-types";
 import { consumerSource, providerSource } from "./provider-routing.sources";
+import type { JsonValue } from "../helpers/json";
 
 export async function writeModule(
   folder: string,
@@ -77,7 +81,8 @@ async function linkInterfaceCore(
   }
   await fs.cp(interfaceCore, destination, { recursive: true });
   const manifestPath = path.join(destination, "package.json");
-  const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  const manifest: unknown = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  assert.ok(isObject(manifest));
   manifest.version = COMPATIBLE_NESTED_CORE_VERSION;
   await fs.writeFile(manifestPath, JSON.stringify(manifest));
   const dependencies = path.join(destination, "node_modules");
@@ -119,9 +124,9 @@ export function projectConfig() {
   };
 }
 
-export async function writeProjectConfig<Tconfig>(
+export async function writeProjectConfig(
   folder: string,
-  config: Tconfig,
+  config: JsonValue,
 ): Promise<void> {
   await fs.writeFile(
     path.join(folder, "antelope.config.ts"),

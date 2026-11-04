@@ -92,6 +92,7 @@ function formatCommanderItem(
   const isWideEnough =
     width - termWidth - ITEM_MARGIN_WIDTH >= MIN_DESCRIPTION_WIDTH;
   if (!description || isWideEnough) {
+    // oxlint-disable-next-line typescript/no-unsafe-assignment -- Object.getPrototypeOf on commander Help returns any; a value import of commander would load it on the light output entry
     const commanderHelp: Help = Object.getPrototypeOf(this);
     return commanderHelp.formatItem.call(
       this,

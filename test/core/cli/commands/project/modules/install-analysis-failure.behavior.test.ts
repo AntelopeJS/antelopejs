@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -20,7 +21,7 @@ describe("project modules install behavior: fails without exiting the process wh
   const fixture = installFixture();
 
   it("fails without exiting the process when dependency analysis fails", async () => {
-    const baseConfig: any = {
+    const baseConfig: AntelopeConfig = {
       name: "proj",
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },

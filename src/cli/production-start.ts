@@ -6,7 +6,6 @@ import {
   BUILD_MODULE_SET_CHANGED_EXIT_CODE,
   FAILURE_EXIT_CODE,
   USAGE_EXIT_CODE,
-  type FailureTranslator,
   normalizeVerboseArguments,
 } from "../core/output";
 import { launchFromBuild } from "../core/repl";
@@ -76,9 +75,8 @@ export async function startFromBuild(
  * Exit code a failed `ajs project start` reports, telling a module set that
  * no longer matches the build apart from any other failure.
  */
-export function startFailureExitCode(
-  error: Parameters<FailureTranslator>[0],
-): number {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- classifies a thrown value; JS can throw any value
+export function startFailureExitCode(error: unknown): number {
   return findBuildModuleSetChange(error)
     ? BUILD_MODULE_SET_CHANGED_EXIT_CODE
     : FAILURE_EXIT_CODE;

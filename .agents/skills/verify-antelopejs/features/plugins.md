@@ -9,7 +9,7 @@ covers:
   - src/cli/core-version.ts
 docs:
   - docs/5.cli/1.introduction.md
-  - docs/5.cli/6.plugin-api.md
+  - docs/5.cli/7.plugin-api.md
 ---
 
 # Plugins

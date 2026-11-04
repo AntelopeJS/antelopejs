@@ -10,6 +10,7 @@ import sinon from "sinon";
 
 import {
   ConfigLoader,
+  type ConfigParser,
   tsConfigFileModule as tsConfigFile,
 } from "../../../src/core/config";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
@@ -130,6 +131,30 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
           port: 5432,
         });
       });
+
+      for (const [label, document, expected] of [
+        ["null", "null", {}],
+        ["a number", "5", {}],
+        ["a boolean", "true", {}],
+        ["an empty array", "[]", {}],
+        ["a string", '"ab"', { 0: "a", 1: "b" }],
+        ["an array", '[1,{"x":2}]', { 0: 1, 1: { x: 2 } }],
+      ] as const) {
+        it(`loads a module config file holding ${label} as the historic merge does`, async () => {
+          await mockTsConfig({
+            name: "test",
+            modules: { database: { version: "1.0.0", config: { base: 1 } } },
+          });
+          await fs.writeFile("/project/antelope.database.json", document);
+
+          const config = await loader.load("/project");
+
+          expect(config.modules.database.config).to.deep.equal({
+            base: 1,
+            ...expected,
+          });
+        });
+      }
 
       it("processes template strings", async () => {
         await mockTsConfig({
@@ -276,10 +301,12 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
           sinon
             .stub(loader["parser"], "applyEnvOverrides")
-            .callsFake((config: any) => ({
-              ...config,
-              cacheFolder: undefined,
-            }));
+            .callsFake(
+              (config: Parameters<ConfigParser["applyEnvOverrides"]>[0]) => ({
+                ...config,
+                cacheFolder: undefined,
+              }),
+            );
 
           const config = await loader.load("/project");
 

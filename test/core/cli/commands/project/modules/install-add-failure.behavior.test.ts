@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -25,7 +26,7 @@ describe("project modules install behavior: reports failure when add resolves wi
   const fixture = installFixture();
 
   it("reports failure when add resolves with failed modules", async () => {
-    const baseConfig: any = {
+    const baseConfig: AntelopeConfig = {
       name: "proj",
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
@@ -69,9 +70,6 @@ describe("project modules install behavior: reports failure when add resolves wi
     sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
       interfaceInfo("iface", {
         description: "iface",
-        versions: ["1.0.0"],
-        files: {},
-        dependencies: {},
         modules: [MOD_A],
       }),
     );

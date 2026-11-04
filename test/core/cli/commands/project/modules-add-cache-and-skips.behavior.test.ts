@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -26,7 +27,7 @@ describe("project modules behavior: add-cache-and-skips", () => {
   });
 
   it("uses absolute cache folder when configured", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
       name: "proj",
       modules: {},
       cacheFolder: "/tmp/abs-cache",
@@ -55,7 +56,7 @@ describe("project modules behavior: add-cache-and-skips", () => {
   });
 
   it("skips modules and shows yellow summary when all skipped", async () => {
-    const config: any = { name: "proj", modules: {} };
+    const config: AntelopeConfig = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     stubLoadedConfig({ modules: { existing: {} } });
     sinon.stub(ModuleCache.prototype, "load").resolves();

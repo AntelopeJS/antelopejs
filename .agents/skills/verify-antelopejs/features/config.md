@@ -4,7 +4,7 @@ covers:
   - src/cli/common.ts
   - src/cli/git-url.ts
 docs:
-  - docs/5.cli/4.config.md
+  - docs/5.cli/5.config.md
 ---
 
 # Config

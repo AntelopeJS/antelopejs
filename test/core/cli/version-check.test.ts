@@ -15,7 +15,8 @@ import {
 import { cliUiModule as cliUi, stripAnsi } from "../../../src/core/output";
 import { useAsciiSymbols } from "../../helpers/ascii-symbols";
 import { captureOutputAsync } from "../../helpers/capture-output";
-import { readJson } from "../../helpers/temp";
+import { expectJsonFile } from "../../helpers/temp";
+import type { JsonValue } from "../../helpers/json";
 
 const NOW = Date.UTC(2026, 0, 2);
 const HOUR_MS = 60 * 60 * 1000;
@@ -30,7 +31,7 @@ const INTERACTIVE_CONTEXT: UpdateCheckContext = {
   isStderrTerminal: true,
 };
 
-function jsonResponse<T>(body: T, status = 200): Response {
+function jsonResponse(body: JsonValue, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
 }
 
@@ -53,13 +54,13 @@ function dependencies(
   return { fetch: fetchManifest, cachePath, now: () => now };
 }
 
-function writeCache<T>(content: T): void {
+function writeCache(content: JsonValue): void {
   fs.mkdirSync(path.dirname(cachePath), { recursive: true });
   fs.writeFileSync(cachePath, JSON.stringify(content));
 }
 
-function readCache(): { checkedAt: number; latestVersion?: string } {
-  return readJson(cachePath);
+function expectCache() {
+  return expectJsonFile(cachePath);
 }
 
 function useTemporaryCache(): void {
@@ -149,7 +150,7 @@ describe("startUpdateCheck", () => {
 
     expect(fetchStub.calledOnce).to.equal(true);
     expect(check?.latestVersion).to.equal("2.0.0");
-    expect(readCache()).to.have.property("latestVersion", "2.0.0");
+    expectCache().to.have.property("latestVersion", "2.0.0");
   });
 });
 
@@ -175,7 +176,7 @@ describe("UpdateCheck cache", () => {
 
     expect(fetchStub.firstCall.args[0]).to.equal(REGISTRY_LATEST_URL);
     expect(check.latestVersion).to.equal("2.0.0");
-    expect(readCache()).to.deep.equal({
+    expectCache().to.deep.equal({
       checkedAt: NOW,
       latestVersion: "2.0.0",
     });
@@ -184,7 +185,7 @@ describe("UpdateCheck cache", () => {
   it("records the attempt before the registry answers", () => {
     const check = new UpdateCheck(dependencies(pendingFetch()));
 
-    expect(readCache()).to.deep.equal({ checkedAt: NOW });
+    expectCache().to.deep.equal({ checkedAt: NOW });
     check.cancel();
   });
 
@@ -218,7 +219,7 @@ describe("UpdateCheck cache", () => {
     await check.completion;
 
     expect(check.latestVersion).to.equal("1.5.0");
-    expect(readCache()).to.deep.equal({
+    expectCache().to.deep.equal({
       checkedAt: NOW,
       latestVersion: "1.5.0",
     });
@@ -277,7 +278,7 @@ describe("UpdateCheck registry requests", () => {
     await check.completion;
 
     expect(check.latestVersion).to.equal(undefined);
-    expect(readCache()).to.deep.equal({ checkedAt: NOW });
+    expectCache().to.deep.equal({ checkedAt: NOW });
     expect(errorStub.called).to.equal(false);
   });
 
@@ -288,7 +289,7 @@ describe("UpdateCheck registry requests", () => {
     await check.completion;
 
     expect(check.latestVersion).to.equal(undefined);
-    expect(readCache()).to.deep.equal({ checkedAt: NOW });
+    expectCache().to.deep.equal({ checkedAt: NOW });
   });
 
   const invalidManifests = {

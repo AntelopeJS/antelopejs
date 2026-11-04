@@ -1,3 +1,4 @@
+import type { AntelopeModuleConfig } from "@antelopejs/interface-core/config";
 import assert from "node:assert/strict";
 import sinon from "sinon";
 
@@ -42,9 +43,7 @@ export function loadedConfig(
   };
 }
 
-function expandedModule(
-  overrides: Partial<ExpandedModuleConfig> = {},
-): ExpandedModuleConfig {
+function expandedModule(overrides: ModuleOverrides = {}): ExpandedModuleConfig {
   return {
     source: { type: "package" },
     config: {},
@@ -54,17 +53,26 @@ function expandedModule(
   };
 }
 
-export function stubLoadedConfig<
-  M extends Record<string, Partial<ExpandedModuleConfig>>,
->(overrides: Partial<Omit<LoadedConfig, "modules">> & { modules?: M } = {}) {
+type SourceConfig = NonNullable<AntelopeModuleConfig["source"]>;
+
+type ModuleOverrides = Partial<Omit<ExpandedModuleConfig, "source">> & {
+  source?: SourceConfig;
+};
+
+export function stubLoadedConfig(
+  overrides: Partial<Omit<LoadedConfig, "modules">> & {
+    modules?: Record<string, ModuleOverrides>;
+  } = {},
+) {
   const { modules = {}, ...rest } = overrides;
   return sinon.stub(ConfigLoader.prototype, "load").resolves(
     loadedConfig({
       ...rest,
       modules: Object.fromEntries(
-        Object.entries<Partial<ExpandedModuleConfig>>(modules).map(
-          ([name, entry]) => [name, expandedModule(entry)],
-        ),
+        Object.entries(modules).map(([name, entry]) => [
+          name,
+          expandedModule(entry),
+        ]),
       ),
     }),
   );
@@ -82,9 +90,9 @@ export function moduleManifest(
   });
 }
 
-export function interfaceInfo<M extends Partial<InterfaceManifest>>(
+export function interfaceInfo(
   name: string,
-  manifest: M,
+  manifest: Partial<InterfaceManifest>,
 ): InterfaceInfo {
   return {
     name,

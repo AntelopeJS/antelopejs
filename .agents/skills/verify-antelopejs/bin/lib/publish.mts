@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { isRecord, parseJson, textField } from "./json.mts";
 import { REPO_DIR, type RunState } from "./run.mts";
 import { originRepository, type Verdict } from "./verdict.mts";
 
@@ -76,6 +77,17 @@ export function setStatus(verdict: Verdict, targetUrl: string): void {
 
 /** Reads back the `verify` status GitHub holds for a SHA, so the write is checked through a second command. */
 export function readStatus(sha: string): string {
-  const statuses: { context: string; state: string }[] = JSON.parse(execFileSync("gh", ["api", `repos/${originRepository()}/commits/${sha}/statuses`], { cwd: REPO_DIR, encoding: "utf8" }));
-  return statuses.find((status) => status.context === "verify")?.state ?? "absent";
+  const statuses = parseJson(execFileSync("gh", ["api", `repos/${originRepository()}/commits/${sha}/statuses`], { cwd: REPO_DIR, encoding: "utf8" }));
+  if (!Array.isArray(statuses) || !statuses.every(isRecord)) {
+    throw new Error(`gh api statuses for ${sha} did not answer a JSON array of objects`);
+  }
+  const verify = statuses.find((status) => textField(status, "context") === "verify");
+  if (verify === undefined) {
+    return "absent";
+  }
+  const state = textField(verify, "state");
+  if (state === undefined) {
+    throw new Error(`gh api statuses for ${sha} holds a verify status without a string state`);
+  }
+  return state;
 }

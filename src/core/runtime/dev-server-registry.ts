@@ -11,7 +11,7 @@ import path from "node:path";
 
 import type { IFileSystem } from "../../types";
 import type { ShutdownManager } from "./shutdown/index";
-import { isNumber } from "../../utils";
+import { isNumber, isObject } from "../../utils";
 
 const TEMP_FILE_SUFFIX = ".tmp";
 const JSON_INDENT = 2;
@@ -58,8 +58,8 @@ export class DevRegistryStore {
       return;
     }
 
-    const existing = await this.readRegistry();
-    if (existing && this.isOwnerAlive(existing)) {
+    const ownerPid = await this.readOwnerPid();
+    if (ownerPid !== undefined && this.isOwnerAlive(ownerPid)) {
       return;
     }
 
@@ -81,17 +81,20 @@ export class DevRegistryStore {
     await this.options.fs.rm(this.registryFilePath, { force: true });
   }
 
-  private isOwnerAlive(registry: DevServerRegistry): boolean {
+  private isOwnerAlive(pid: number): boolean {
     const probe = this.options.isPidAlive ?? isProcessAlive;
-    return isNumber(registry.pid) && probe(registry.pid);
+    return probe(pid);
   }
 
-  private async readRegistry(): Promise<DevServerRegistry | undefined> {
+  private async readOwnerPid(): Promise<number | undefined> {
     try {
       const content = await this.options.fs.readFileString(
         this.registryFilePath,
       );
-      return JSON.parse(content);
+      const registry: unknown = JSON.parse(content);
+      return isObject(registry) && isNumber(registry.pid)
+        ? registry.pid
+        : undefined;
     } catch {
       return undefined;
     }

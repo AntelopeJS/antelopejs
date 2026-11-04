@@ -40,7 +40,22 @@ const MIXED_MODULES = {
   noSource: {},
 };
 
-type ModuleListFixture = (typeof MIXED_MODULES)[keyof typeof MIXED_MODULES];
+const PROTOTYPE_NAMED_SOURCES = {
+  asConstructor: { source: { type: "constructor", path: "modules/a" } },
+  asToString: { source: { type: "toString", path: "modules/b" } },
+  asProto: { source: { type: "__proto__", path: "modules/c" } },
+};
+
+const INCOMPLETE_SOURCES = {
+  noVersion: { source: { type: "package", package: "@scope/pkg" } },
+  noRemote: { source: { type: "git" } },
+  noPath: { source: { type: "local" } },
+};
+
+type ModuleListFixture =
+  | (typeof MIXED_MODULES)[keyof typeof MIXED_MODULES]
+  | (typeof INCOMPLETE_SOURCES)[keyof typeof INCOMPLETE_SOURCES]
+  | (typeof PROTOTYPE_NAMED_SOURCES)[keyof typeof PROTOTYPE_NAMED_SOURCES];
 
 function stubProject(
   modules: Record<string, ModuleListFixture>,
@@ -111,6 +126,32 @@ describe("project modules list behavior", () => {
       "",
     ]);
     expect(feedback.text).to.equal("ℹ 9 modules in test-project (staging)\n");
+  });
+
+  it("lists a source whose type is named like an Object.prototype member as unknown", async () => {
+    stubProject(PROTOTYPE_NAMED_SOURCES);
+
+    const { result } = await runList([]);
+
+    expect(result.text.split("\n")).to.deep.equal([
+      'asConstructor\tunknown\t{"type":"constructor","path":"modules/a"}',
+      'asToString\tunknown\t{"type":"toString","path":"modules/b"}',
+      'asProto\tunknown\t{"type":"__proto__","path":"modules/c"}',
+      "",
+    ]);
+  });
+
+  it("lists a source missing a field its type requires as unknown", async () => {
+    stubProject(INCOMPLETE_SOURCES);
+
+    const { result } = await runList([]);
+
+    expect(result.text.split("\n")).to.deep.equal([
+      'noVersion\tunknown\t{"type":"package","package":"@scope/pkg"}',
+      'noRemote\tunknown\t{"type":"git"}',
+      'noPath\tunknown\t{"type":"local"}',
+      "",
+    ]);
   });
 
   it("aligns the modules under a header on a terminal", async () => {

@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -39,7 +40,7 @@ describe("project modules behavior: remove-config", () => {
   });
 
   it("removes modules from the root config with the default environment", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
       name: "proj",
       modules: { foo: "1.0.0" },
       environments: { production: {} },

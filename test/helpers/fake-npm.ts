@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import type { PackageDownloaderDeps } from "../../src/core/downloaders";
+import { isObject, isString } from "../../src/utils";
 import { InMemoryFileSystem } from "./in-memory-filesystem";
 
 const LOCKFILE = "pnpm-lock.yaml";
@@ -29,9 +30,16 @@ export function fakeNpm(
         packed.set(cwd, { name, version });
         return { stdout: "package.tgz", stderr: "", code: 0 };
       }
-      const manifest = JSON.parse(
+      const manifest: unknown = JSON.parse(
         await fs.readFileString(path.join(cwd, "package.json")),
       );
+      if (
+        !isObject(manifest) ||
+        !isString(manifest.name) ||
+        !isString(manifest.version)
+      ) {
+        throw new Error(`${cwd}/package.json names no package and version`);
+      }
       await fs.writeFile(
         path.join(cwd, LOCKFILE),
         lockContent(manifest.name, manifest.version),

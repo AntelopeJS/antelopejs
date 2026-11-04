@@ -146,12 +146,16 @@ const STATE_LABELS: Record<PluginState, (report: PluginReport) => string> = {
     `needs ${CORE_PACKAGE_NAME} ${report.requiredCoreRange}`,
 };
 
-const UPDATE_HINTS = {
-  [SOURCE_LABELS[LOCAL_EXECUTABLE_SOURCE]]: (report) =>
-    `Update ${report.package} in this project's package.json`,
-  [SOURCE_LABELS[PATH_EXECUTABLE_SOURCE]]: (report) =>
-    `Run ${UPDATE_COMMAND} ${report.name} to update ${report.name}`,
-} satisfies Record<string, (report: PluginReport) => string>;
+const UPDATE_HINTS = new Map<string, (report: PluginReport) => string>([
+  [
+    SOURCE_LABELS[LOCAL_EXECUTABLE_SOURCE],
+    (report) => `Update ${report.package} in this project's package.json`,
+  ],
+  [
+    SOURCE_LABELS[PATH_EXECUTABLE_SOURCE],
+    (report) => `Run ${UPDATE_COMMAND} ${report.name} to update ${report.name}`,
+  ],
+]);
 
 const PLUGIN_COLUMNS: TableColumn<PluginReport>[] = [
   { header: "Plugin", value: (report) => report.name },
@@ -188,7 +192,7 @@ const PLUGIN_HINTS: Partial<Record<PluginState, PluginHint>> = {
   "not-installed": (report, installCommand) =>
     `Run ${installCommand(report.package)} to install ${report.name}`,
   incompatible: (report) =>
-    report.source ? UPDATE_HINTS[report.source](report) : undefined,
+    report.source ? UPDATE_HINTS.get(report.source)?.(report) : undefined,
 };
 
 function globalInstallCommand(packageName: string): string {

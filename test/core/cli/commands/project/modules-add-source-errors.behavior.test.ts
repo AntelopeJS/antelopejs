@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -19,7 +20,7 @@ describe("project modules behavior: add-source-errors", () => {
   });
 
   it("reports a module of an unknown source as failed", async () => {
-    const config: any = { name: "proj", modules: {} };
+    const config: AntelopeConfig = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();

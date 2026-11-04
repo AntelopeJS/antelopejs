@@ -21,10 +21,6 @@ export interface GlobalInstallRequest {
   processOptions?: InheritedProcessOptions;
 }
 
-function describeError(error: PromiseRejectedResult["reason"]): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 export async function runCommand(
   executable: string,
   args: string[],
@@ -34,7 +30,8 @@ export async function runCommand(
   try {
     return await runInheritedProcess(executable, args, processOptions);
   } catch (error) {
-    output.error(`Failed to run ${executable}: ${describeError(error)}`);
+    const reason = error instanceof Error ? error.message : String(error);
+    output.error(`Failed to run ${executable}: ${reason}`);
     return FAILURE_EXIT_CODE;
   }
 }

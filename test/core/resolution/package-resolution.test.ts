@@ -103,3 +103,95 @@ describe("package resolution", () => {
     );
   });
 });
+
+describe("package resolution of fields with the wrong type", () => {
+  it("resolves a package.json whose version is a number, as the text it prints as", () => {
+    const root = makeTempDir("ajs-package-version-");
+    try {
+      writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "numbered", version: 1 }),
+      );
+      const entry = path.join(root, "index.js");
+      writeFileSync(entry, "module.exports = {};");
+
+      expect(findPackageFromEntry(entry, "numbered", root)?.version).to.equal(
+        "1",
+      );
+    } finally {
+      cleanupTempDir(root);
+    }
+  });
+
+  it("does not resolve a package.json whose version is falsy", () => {
+    const root = makeTempDir("ajs-package-version-");
+    try {
+      const entry = path.join(root, "index.js");
+      writeFileSync(entry, "module.exports = {};");
+      for (const version of [0, "", false, null]) {
+        writeFileSync(
+          path.join(root, "package.json"),
+          JSON.stringify({ name: "numbered", version }),
+        );
+
+        expect(findPackageFromEntry(entry, "numbered", root)).to.equal(
+          undefined,
+        );
+      }
+    } finally {
+      cleanupTempDir(root);
+    }
+  });
+
+  it("stops at a same-named package whose version is falsy instead of resolving an outer one", () => {
+    const root = makeTempDir("ajs-package-outer-");
+    try {
+      const inner = path.join(root, "node_modules", "numbered");
+      mkdirSync(inner, { recursive: true });
+      writeFileSync(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "numbered", version: "9.9.9" }),
+      );
+      writeFileSync(
+        path.join(inner, "package.json"),
+        JSON.stringify({ name: "numbered", version: 0 }),
+      );
+      const entry = path.join(inner, "index.js");
+      writeFileSync(entry, "module.exports = {};");
+
+      expect(findPackageFromEntry(entry, "numbered", root)).to.equal(undefined);
+    } finally {
+      cleanupTempDir(root);
+    }
+  });
+
+  it("keeps a truthy antelopeJs that is not an object as an empty declaration", () => {
+    const root = makeTempDir("ajs-package-antelope-");
+    try {
+      const entry = path.join(root, "index.js");
+      writeFileSync(entry, "module.exports = {};");
+      for (const antelopeJs of ["x", [], true, 5]) {
+        writeFileSync(
+          path.join(root, "package.json"),
+          JSON.stringify({ name: "marked", version: "1.0.0", antelopeJs }),
+        );
+
+        expect(
+          findPackageFromEntry(entry, "marked", root)?.antelopeJs,
+        ).to.deep.equal({});
+      }
+      for (const antelopeJs of ["", 0, false, null]) {
+        writeFileSync(
+          path.join(root, "package.json"),
+          JSON.stringify({ name: "marked", version: "1.0.0", antelopeJs }),
+        );
+
+        expect(
+          findPackageFromEntry(entry, "marked", root)?.antelopeJs,
+        ).to.equal(undefined);
+      }
+    } finally {
+      cleanupTempDir(root);
+    }
+  });
+});

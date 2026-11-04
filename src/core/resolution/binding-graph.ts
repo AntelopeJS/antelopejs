@@ -433,8 +433,9 @@ class BindingGraphBuilder {
     interfaceName: string,
     carried: CarriedBinding,
   ): void {
-    const received = this.carried.get(moduleId) ?? new Map();
-    const list: CarriedBinding[] = received.get(interfaceName) ?? [];
+    const received =
+      this.carried.get(moduleId) ?? new Map<string, CarriedBinding[]>();
+    const list = received.get(interfaceName) ?? [];
     if (
       !list.some((existing) => carriedKey(existing) === carriedKey(carried))
     ) {

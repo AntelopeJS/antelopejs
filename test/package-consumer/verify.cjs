@@ -3,18 +3,29 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 const { createRequire } = require("node:module");
 
+/** @typedef {typeof import("../../src/index").launch} LaunchFunction */
+
 const INTERFACE = "package-consumer-interface";
 const RESULTS_KEY = "__antelopePackageConsumer";
 
+/** @param {string} packageName */
 function packageRoot(packageName) {
   return path.dirname(require.resolve(`${packageName}/package.json`));
 }
 
+/**
+ * @param {string} target
+ * @param {string} destination
+ */
 async function link(target, destination) {
   await fs.mkdir(path.dirname(destination), { recursive: true });
   await fs.symlink(target, destination, "dir");
 }
 
+/**
+ * @param {string} folder
+ * @param {string} name
+ */
 async function copyInterfaceCore(folder, name) {
   const destination = path.join(folder, name);
   await fs.cp(packageRoot("@antelopejs/interface-core"), destination, {
@@ -27,6 +38,11 @@ async function copyInterfaceCore(folder, name) {
   return destination;
 }
 
+/**
+ * @param {string} folder
+ * @param {string} corePath
+ * @param {string} version
+ */
 async function writeInterface(folder, corePath, version) {
   await fs.mkdir(folder, { recursive: true });
   await fs.writeFile(
@@ -39,6 +55,13 @@ async function writeInterface(folder, corePath, version) {
   );
 }
 
+/**
+ * @param {string} folder
+ * @param {string} name
+ * @param {string} interfaceFolder
+ * @param {string} source
+ * @param {boolean} isProvider
+ */
 async function writeModule(folder, name, interfaceFolder, source, isProvider) {
   await fs.mkdir(folder, { recursive: true });
   await fs.writeFile(
@@ -59,6 +82,10 @@ async function writeModule(folder, name, interfaceFolder, source, isProvider) {
   await link(interfaceFolder, path.join(folder, "node_modules", INTERFACE));
 }
 
+/**
+ * @param {string} value
+ * @param {number} delay
+ */
 function providerSource(value, delay) {
   return `
 const { ImplementInterface } = require("@antelopejs/interface-core");
@@ -79,10 +106,15 @@ exports.destroy = () => {};
 `;
 }
 
+/** @param {string} name */
 function localModule(name) {
   return { source: { type: "local", path: `./${name}`, main: "index.js" } };
 }
 
+/**
+ * @param {string} folder
+ * @param {string} [consumerOverride]
+ */
 async function writeConfig(folder, consumerOverride = "provider-a") {
   const config = {
     name: "tarball-consumer",
@@ -101,6 +133,10 @@ async function writeConfig(folder, consumerOverride = "provider-a") {
   );
 }
 
+/**
+ * @param {string} root
+ * @param {string[]} [versions]
+ */
 async function createProject(root, versions = ["1.0.0", "1.0.0"]) {
   const providerCore = await copyInterfaceCore(root, "provider-interface-core");
   const consumerCore = await copyInterfaceCore(root, "consumer-interface-core");
@@ -135,6 +171,10 @@ async function createProject(root, versions = ["1.0.0", "1.0.0"]) {
   return { consumerInterface };
 }
 
+/**
+ * @param {LaunchFunction} launch
+ * @param {string} root
+ */
 async function verifyCompatibleCopies(launch, root) {
   await createProject(root);
   let manager;
@@ -151,6 +191,10 @@ async function verifyCompatibleCopies(launch, root) {
   }
 }
 
+/**
+ * @param {LaunchFunction} launch
+ * @param {string} root
+ */
 async function verifyPreloadedCopyDiagnostic(launch, root) {
   const { consumerInterface } = await createProject(root, ["1.4.0", "1.2.0"]);
   createRequire(path.join(root, "consumer", "index.js"))(consumerInterface);
@@ -158,7 +202,7 @@ async function verifyPreloadedCopyDiagnostic(launch, root) {
   try {
     await launch(root);
   } catch (error) {
-    message = error.message;
+    message = error instanceof Error ? error.message : String(error);
   }
   if (!message.includes("preloaded interface copies cannot be redirected")) {
     throw new Error(
@@ -184,7 +228,8 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack ?? error}\n`);
+main().catch((/** @type {unknown} */ error) => {
+  const detail = error instanceof Error ? (error.stack ?? error) : error;
+  process.stderr.write(`${String(detail)}\n`);
   process.exitCode = 1;
 });

@@ -5,7 +5,7 @@ import {
   type Ui,
 } from "../../../core/output";
 import { readUserConfig } from "../../common";
-import { CONFIG_KEYS, invalidConfigKeyError } from "./keys";
+import { invalidConfigKeyError, isConfigKey } from "./keys";
 
 interface GetOptions {
   json?: boolean;
@@ -33,12 +33,11 @@ async function getConfigValue(
   options: GetOptions,
   ui: Ui,
 ): Promise<void> {
-  if (!CONFIG_KEYS.includes(key)) {
+  if (!isConfigKey(key)) {
     throw invalidConfigKeyError(key);
   }
-  const values = { ...(await readUserConfig()) };
-  const config: typeof values & Record<string, string> = values;
-  if (!(key in config)) {
+  const config = await readUserConfig();
+  if (!Object.hasOwn(config, key)) {
     throw missingKeyError(key);
   }
   const value = config[key];

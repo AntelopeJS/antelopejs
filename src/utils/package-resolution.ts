@@ -2,9 +2,12 @@ import { readFileSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { isObject } from "./object";
+import { isString } from "./type-guards";
+
 export interface ResolvedPackage {
   name: string;
-  version: string;
+  version: string | undefined;
   root: string;
   realRoot: string;
   entry: string;
@@ -102,9 +105,47 @@ export function isPathWithin(filePath: string, folderPath: string): boolean {
   return createPathWithinMatcher(folderPath)(filePath);
 }
 
+interface RawPackageJson {
+  version?: unknown;
+  antelopeJs?: unknown;
+}
+
+function readVersion(manifest: RawPackageJson): string | undefined {
+  if (isString(manifest.version)) {
+    return manifest.version;
+  }
+  return manifest.version ? JSON.stringify(manifest.version) : undefined;
+}
+
+function readAntelopeJs(manifest: RawPackageJson): PackageJson["antelopeJs"] {
+  if (isObject(manifest.antelopeJs)) {
+    return manifest.antelopeJs;
+  }
+  return manifest.antelopeJs ? {} : undefined;
+}
+
+/**
+ * Reads the fields the resolver needs. A truthy `version` that is not a string
+ * (npm installs a local package whose version is a number) stays resolvable as
+ * the text it prints as, which is no valid semver and never satisfies a range.
+ * A truthy `antelopeJs` that is not an object still marks an AntelopeJS package
+ * with nothing declared. Falsy values read as absent.
+ */
+function parsePackageJson(text: string): PackageJson | undefined {
+  const parsed: unknown = JSON.parse(text);
+  if (!isObject(parsed)) {
+    return undefined;
+  }
+  return {
+    name: isString(parsed.name) ? parsed.name : undefined,
+    version: readVersion(parsed),
+    antelopeJs: readAntelopeJs(parsed),
+  };
+}
+
 function readPackageJson(packageRoot: string): PackageJson | undefined {
   try {
-    return JSON.parse(
+    return parsePackageJson(
       readFileSync(path.join(packageRoot, "package.json"), "utf8"),
     );
   } catch {
@@ -170,7 +211,7 @@ export function resolvePackage(
 export function resolvePackageAtRoot(
   packageName: string,
   packageRoot: string,
-  version: string,
+  version: string | undefined,
 ): ResolvedPackage {
   const root = path.resolve(packageRoot);
   return {

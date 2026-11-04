@@ -2,13 +2,14 @@
 covers:
   - src/cli/commands/module/index.ts
   - src/cli/commands/module/init*.ts
+  - src/cli/catalog-manifest.ts
   - src/cli/commands/module/create-module.ts
   - src/cli/git-operations.ts
   - src/cli/git-url.ts
   - src/core/output/prompt.ts
   - src/core/output/package-manager*.ts
 docs:
-  - docs/5.cli/3.module.md
+  - docs/5.cli/4.module.md
   - docs/3.module-development/1.creating-a-module.md
 ---
 

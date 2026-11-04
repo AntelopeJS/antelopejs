@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 
 import { commandsProjectLoggingSetCommand as cmdSet } from "../../../../../src/cli";
@@ -18,7 +19,7 @@ describe("project logging set camelCase spellings", () => {
   useSetCommandSandbox(false);
 
   it("still applies the camelCase spellings", async () => {
-    const config: any = { name: "test-project" };
+    const config: AntelopeConfig = { name: "test-project" };
     stubSetCommand(config);
 
     await runSet(
@@ -29,9 +30,9 @@ describe("project logging set camelCase spellings", () => {
       "yyyy",
     );
 
-    expect(config.logging.moduleTracking).to.include({ enabled: true });
-    expect(config.logging.moduleTracking.includes).to.deep.equal(["modA"]);
-    expect(config.logging.dateFormat).to.equal("yyyy");
+    expect(config.logging?.moduleTracking).to.include({ enabled: true });
+    expect(config.logging?.moduleTracking?.includes).to.deep.equal(["modA"]);
+    expect(config.logging?.dateFormat).to.equal("yyyy");
   });
 
   it("warns that each camelCase spelling is deprecated", async () => {

@@ -22,14 +22,17 @@ export interface LogTemplateContext {
 
 type PlaceholderRenderer = (context: LogTemplateContext) => string;
 
-const PLACEHOLDERS = {
-  DATE: ({ log, dateFormat }) => formatDate(new Date(log.time), dateFormat),
-  ARGS: ({ log }) =>
-    log.args.map((arg) => serializeLogValue(arg)).join(ARGS_SEPARATOR),
-  CHANNEL: ({ log }) => log.channel,
-  MODULE: ({ module }) => module ?? "",
-  LEVEL_NAME: ({ levelName }) => levelName,
-} satisfies Record<string, PlaceholderRenderer>;
+const PLACEHOLDERS = new Map<string, PlaceholderRenderer>([
+  ["DATE", ({ log, dateFormat }) => formatDate(new Date(log.time), dateFormat)],
+  [
+    "ARGS",
+    ({ log }) =>
+      log.args.map((arg) => serializeLogValue(arg)).join(ARGS_SEPARATOR),
+  ],
+  ["CHANNEL", ({ log }) => log.channel],
+  ["MODULE", ({ module }) => module ?? ""],
+  ["LEVEL_NAME", ({ levelName }) => levelName],
+]);
 
 function areColorsEnabled(): boolean {
   return hasProcessColorSupport(process.stdout);
@@ -57,9 +60,7 @@ function renderPlaceholder(
   if (token.startsWith(STYLE_PREFIX)) {
     return renderStyle(token.slice(STYLE_PREFIX.length));
   }
-  const renderers: typeof PLACEHOLDERS & Record<string, PlaceholderRenderer> =
-    PLACEHOLDERS;
-  return renderers[token]?.(context);
+  return PLACEHOLDERS.get(token)?.(context);
 }
 
 /**

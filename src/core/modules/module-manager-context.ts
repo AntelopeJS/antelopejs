@@ -19,17 +19,12 @@ import {
 import { Module } from "./module";
 import { ModuleIsolation } from "./module-isolation";
 import type { ModuleManager } from "./module-manager";
-import * as bindings from "./module-manager-bindings";
-import * as cache from "./module-manager-cache";
-import * as construction from "./module-manager-construction";
-import * as lifecycle from "./module-manager-lifecycle";
-import * as packages from "./module-manager-packages";
-import * as records from "./module-manager-records";
 import { type ModuleManifest } from "./module-manifest";
 import { ModuleRegistry } from "./module-registry";
 import { ModuleTracker } from "./module-tracker";
 import { Resolver } from "./resolver";
 import { ResolverDetour } from "./resolver-detour";
+import { bindOperations } from "./module-manager-operations";
 
 export interface ModuleConfig {
   config?: unknown;
@@ -168,10 +163,7 @@ export interface ManagerMethods {
   startModules(modules: ManagedModule[]): Promise<void>;
   stopAll(): Promise<void>;
   destroyAll(): Promise<void>;
-  constructModule(
-    module: Module,
-    config: Parameters<Module["construct"]>[0],
-  ): Promise<void>;
+  constructModule(entry: ManagedModule): Promise<void>;
   planConfigVars(modules: ManagedModule[]): ConfigVarPlan;
   runProvidePhase(
     modules: ManagedModule[],
@@ -196,10 +188,7 @@ export interface ManagerMethods {
     failed: Set<string>,
   ): string | undefined;
   provideEntry(entry: ManagedModule): Promise<void>;
-  provideModule(
-    module: Module,
-    config: Parameters<Module["provide"]>[0],
-  ): Promise<ConfigVars | void>;
+  provideModule(entry: ManagedModule): Promise<ConfigVars | void>;
   constructEntry(entry: ManagedModule): Promise<void>;
   getReverseLifecycleModules(): ManagedModule[];
   clearManagedState(): unknown[];
@@ -418,91 +407,5 @@ function createContext({
     set startupOrder(value) {
       writers.startupOrder(value);
     },
-  };
-}
-export function bindOperations(context: ManagerContext): ManagerMethods {
-  return {
-    addStaticModule: records.addStaticModule.bind(context),
-    addModules: records.addModules.bind(context),
-    restoreModules: records.restoreModules.bind(context),
-    discardModules: records.discardModules.bind(context),
-    listModules: records.listModules.bind(context),
-    getModule: records.getModule.bind(context),
-    getModuleEntry: records.getModuleEntry.bind(context),
-    getLoadedModuleEntry: records.getLoadedModuleEntry.bind(context),
-    getLoadedModules: records.getLoadedModules.bind(context),
-    getAllManagedModules: records.getAllManagedModules.bind(context),
-    unrequireModuleFiles: cache.unrequireModuleFiles.bind(context),
-    evictModuleFiles: cache.evictModuleFiles.bind(context),
-    collectAvoidedFolders: cache.collectAvoidedFolders.bind(context),
-    belongsToInterfacePackageTree:
-      cache.belongsToInterfacePackageTree.bind(context),
-    setInstanceRoot: records.setInstanceRoot.bind(context),
-    placeModule: records.placeModule.bind(context),
-    checkReplacement: bindings.checkReplacement.bind(context),
-    discardPlacedModule: records.discardPlacedModule.bind(context),
-    replaceLoadedModule: records.replaceLoadedModule.bind(context),
-    refreshAssociations: bindings.refreshAssociations.bind(context),
-    hasResolvedInterface: bindings.hasResolvedInterface.bind(context),
-    registerStubbedInterfaces: packages.registerStubbedInterfaces.bind(context),
-    registerStubbedInterfacePackage:
-      packages.registerStubbedInterfacePackage.bind(context),
-    applyInterfaceStubs: packages.applyInterfaceStubs.bind(context),
-    neutralizeInstances: packages.neutralizeInstances.bind(context),
-    collectImplementedInterfaces:
-      packages.collectImplementedInterfaces.bind(context),
-    constructAll: construction.constructAll.bind(context),
-    constructModules: construction.constructModules.bind(context),
-    startAll: lifecycle.startAll.bind(context),
-    startModules: lifecycle.startModules.bind(context),
-    stopAll: lifecycle.stopAll.bind(context),
-    destroyAll: lifecycle.destroyAll.bind(context),
-    constructModule: construction.constructModule.bind(context),
-    planConfigVars: construction.planConfigVars.bind(context),
-    runProvidePhase: construction.runProvidePhase.bind(context),
-    constructReadyModules: construction.constructReadyModules.bind(context),
-    constructOrDisable: construction.constructOrDisable.bind(context),
-    rejectCallsIntoDeadModules:
-      construction.rejectCallsIntoDeadModules.bind(context),
-    orphanedInterfaces: construction.orphanedInterfaces.bind(context),
-    hasLiveImplementer: construction.hasLiveImplementer.bind(context),
-    rejectCallsInto: construction.rejectCallsInto.bind(context),
-    findFailedProvider: construction.findFailedProvider.bind(context),
-    provideEntry: construction.provideEntry.bind(context),
-    provideModule: construction.provideModule.bind(context),
-    constructEntry: construction.constructEntry.bind(context),
-    getReverseLifecycleModules:
-      lifecycle.getReverseLifecycleModules.bind(context),
-    clearManagedState: lifecycle.clearManagedState.bind(context),
-    releaseRuntimeState: lifecycle.releaseRuntimeState.bind(context),
-    trackModuleStart: lifecycle.trackModuleStart.bind(context),
-    getBindingGraph: bindings.getBindingGraph.bind(context),
-    rebuildAssociations: bindings.rebuildAssociations.bind(context),
-    buildBindings: bindings.buildBindings.bind(context),
-    runningBindings: bindings.runningBindings.bind(context),
-    logBindingWarnings: bindings.logBindingWarnings.bind(context),
-    bindablePackages: bindings.bindablePackages.bind(context),
-    collectBindingInterfaces: bindings.collectBindingInterfaces.bind(context),
-    collectBindingModules: bindings.collectBindingModules.bind(context),
-    collectInterfaceSources: bindings.collectInterfaceSources.bind(context),
-    resolveInterfacePackagePaths:
-      packages.resolveInterfacePackagePaths.bind(context),
-    resolveImplementedPackage: packages.resolveImplementedPackage.bind(context),
-    collectInterfacePackageConsumers:
-      packages.collectInterfacePackageConsumers.bind(context),
-    registerInterfacePackage: packages.registerInterfacePackage.bind(context),
-    validateInterfacePackages: packages.validateInterfacePackages.bind(context),
-    findInterfaceRangeConflicts:
-      packages.findInterfaceRangeConflicts.bind(context),
-    findRangeConflicts: packages.findRangeConflicts.bind(context),
-    findPreloadedCopies: packages.findPreloadedCopies.bind(context),
-    buildModuleAssociations: bindings.buildModuleAssociations.bind(context),
-    addDefaultAssociations: bindings.addDefaultAssociations.bind(context),
-    applyImportOverrides: bindings.applyImportOverrides.bind(context),
-    addInterfaceSource: bindings.addInterfaceSource.bind(context),
-    validateImportOverrides: bindings.validateImportOverrides.bind(context),
-    validateOverrideSource: bindings.validateOverrideSource.bind(context),
-    validateSelfHostedConnection:
-      bindings.validateSelfHostedConnection.bind(context),
   };
 }

@@ -43,6 +43,7 @@ import {
   type GitManifest,
   type ModuleInterfaceInfo,
 } from "../../../git-operations";
+import { requireCatalogMember } from "../../../catalog-manifest";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import { addModules, type AddCommandResult } from "./add-action";
@@ -289,7 +290,11 @@ async function findImplementations(
   context: InstallContext,
   interfaceName: string,
 ): Promise<ModuleInterfaceInfo[]> {
-  const interfaceDirName = context.gitManifest.interfaces[interfaceName];
+  const interfaceDirName = requireCatalogMember(
+    context.gitManifest,
+    "interfaces",
+    context.git,
+  )[interfaceName];
   if (!interfaceDirName) {
     return [];
   }

@@ -1,25 +1,30 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+import { isObject } from "../../utils";
+
 const DEPENDENCY_FIELDS = [
   "dependencies",
   "peerDependencies",
   "optionalDependencies",
 ] as const;
 
-type DependencyField = (typeof DEPENDENCY_FIELDS)[number];
-type DependencyManifest = Partial<
-  Record<DependencyField, Record<string, string>>
->;
-
-function readManifest(packageRoot: string): DependencyManifest {
+function readDependencyNames(packageRoot: string): string[] {
+  let manifest: unknown;
   try {
-    return JSON.parse(
+    manifest = JSON.parse(
       readFileSync(path.join(packageRoot, "package.json"), "utf8"),
     );
   } catch {
-    return {};
+    return [];
   }
+  if (!isObject(manifest)) {
+    return [];
+  }
+  return DEPENDENCY_FIELDS.flatMap((field) => {
+    const dependencies = manifest[field];
+    return isObject(dependencies) ? Object.keys(dependencies) : [];
+  });
 }
 
 /**
@@ -32,10 +37,7 @@ export function readInterfaceDependencies(
   packageRoot: string,
   interfacePackages: ReadonlySet<string>,
 ): string[] {
-  const manifest = readManifest(packageRoot);
-  const declared = DEPENDENCY_FIELDS.flatMap((field) =>
-    Object.keys(manifest[field] ?? {}),
-  );
+  const declared = readDependencyNames(packageRoot);
   return [...new Set(declared)].filter(
     (dependency) =>
       dependency !== packageName && interfacePackages.has(dependency),

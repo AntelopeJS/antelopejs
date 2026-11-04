@@ -19,7 +19,6 @@ import {
 } from "./build-runtime";
 import { toModuleConfig } from "./module-loading";
 import { isString } from "../../utils";
-import type { FailureTranslator } from "../output";
 
 const REBUILD_HINT = "Run 'ajs project build' to rebuild.";
 
@@ -47,7 +46,8 @@ export class BuildModuleSetChangedError extends Error {
  * the errors a failed launch aggregates.
  */
 export function findBuildModuleSetChange(
-  error: Parameters<FailureTranslator>[0],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- searches a thrown value and its aggregate members; JS can throw any value
+  error: unknown,
 ): BuildModuleSetChangedError | undefined {
   if (error instanceof BuildModuleSetChangedError) {
     return error;
@@ -117,16 +117,18 @@ function refreshModuleEntries(
   artifact: BuildArtifact,
   modules: ConfiguredModules,
 ): Record<string, BuildModuleEntry> {
+  const configured = new Map(Object.entries(modules));
   return Object.fromEntries(
-    Object.entries(artifact.modules).map(([name, entry]) => [
-      name,
-      {
-        ...entry,
-        ...serializeModuleConfig(
-          toModuleConfig(modules[entry.source.id ?? ""]),
-        ),
-      },
-    ]),
+    Object.entries(artifact.modules).map(([name, entry]) => {
+      const moduleConfig = configured.get(entry.source.id ?? "");
+      if (!moduleConfig) {
+        throw new BuildModuleSetChangedError([entry.name]);
+      }
+      return [
+        name,
+        { ...entry, ...serializeModuleConfig(toModuleConfig(moduleConfig)) },
+      ];
+    }),
   );
 }
 

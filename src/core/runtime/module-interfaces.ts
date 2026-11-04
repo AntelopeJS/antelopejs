@@ -12,6 +12,7 @@ import {
   type InterfaceResolutionResult,
   type UnresolvedInterface,
 } from "../resolution";
+import { isString } from "../../utils";
 import type { ModuleManifestEntry } from "./runtime-types";
 
 const Logger = new Logging.Channel("loader");
@@ -85,7 +86,8 @@ function collectStaticPackages(manager: ModuleManager): string[] {
     .flatMap(({ module }) => [
       module.manifest.manifest.name,
       ...Object.keys(module.manifest.manifest.dependencies ?? {}),
-    ]);
+    ])
+    .filter(isString);
 }
 
 function toInterfaceConsumer({ module }: ManagedModule): InterfaceConsumer {

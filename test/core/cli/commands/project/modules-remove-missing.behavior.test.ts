@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -31,7 +32,8 @@ describe("project modules behavior: remove-missing", () => {
   });
 
   it("errors when some modules are missing without force", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
+      name: "proj",
       modules: {
         foo: { source: { type: "package", package: "foo", version: "1.0.0" } },
         bar: { source: { type: "package", package: "bar", version: "1.0.0" } },

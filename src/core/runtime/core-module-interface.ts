@@ -24,11 +24,14 @@ import type {
 
 const CORE_MODULE_ID = "antelopejs";
 
-const MODULE_STATUS_MAP = {
-  loaded: "loaded",
-  constructed: "constructed",
-  active: "active",
-} satisfies Record<string, moduleInterfaceBeta.ModuleInfo["status"]>;
+const MODULE_STATUS_MAP = new Map<
+  string,
+  moduleInterfaceBeta.ModuleInfo["status"]
+>([
+  ["loaded", "loaded"],
+  ["constructed", "constructed"],
+  ["active", "active"],
+]);
 
 function mapImportOverrides(
   overrides?: Record<string, string[]>,
@@ -66,10 +69,7 @@ function exportImportOverrides(overrides?: ModuleOverrideMap) {
 function getModuleStatus(module: {
   state: string;
 }): moduleInterfaceBeta.ModuleInfo["status"] {
-  const statuses: typeof MODULE_STATUS_MAP &
-    Record<string, moduleInterfaceBeta.ModuleInfo["status"]> =
-    MODULE_STATUS_MAP;
-  return statuses[module.state] ?? "unknown";
+  return MODULE_STATUS_MAP.get(module.state) ?? "unknown";
 }
 
 type BetaModuleSource = moduleInterfaceBeta.ModuleDefinition["source"];

@@ -3,7 +3,11 @@ import {
   RunWithModuleContext,
 } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import sinon from "sinon";
+import { CliError } from "../../../src/core/output";
+import { NodeFileSystem } from "../../../src/core/filesystem";
 import { testModuleModule as testModule } from "../../../src/core/test";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
@@ -12,6 +16,9 @@ import {
   manifestFixture,
   moduleFixture,
 } from "../../helpers/module-fixtures";
+import type { JsonValue } from "../../helpers/json";
+import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
+import { expectInstanceOf, rejectionOf } from "../cli/fixtures";
 
 function runInLocalContext<T>(callback: () => T): T {
   return RunWithModuleContext({ module: "local", provider: "local" }, callback);
@@ -269,4 +276,104 @@ describe("test-module", () => {
       expect(result).to.deep.equal([]);
     });
   });
+});
+
+describe("test-module on a real module folder", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  let moduleRoot: string;
+
+  function writeTestFile(packageRoot: string): string {
+    const file = path.join(packageRoot, "dist", "tests", "a.test.js");
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, "");
+    return file;
+  }
+
+  function writePackage(root: string, name: string): void {
+    writeJson(path.join(root, "package.json"), { name, main: "dist/i.js" });
+    mkdirSync(path.join(root, "dist"), { recursive: true });
+    writeFileSync(path.join(root, "dist", "i.js"), "");
+  }
+
+  function writeModule(manifest: JsonValue): void {
+    writePackage(moduleRoot, "mod");
+    writeJson(path.join(moduleRoot, "package.json"), manifest);
+  }
+
+  beforeEach(() => {
+    moduleRoot = makeTempDir();
+  });
+
+  afterEach(() => {
+    cleanupTempDir(moduleRoot);
+  });
+
+  it("collects the test files of each implemented interface that resolves", async () => {
+    const iface = path.join(moduleRoot, "node_modules", "iface");
+    writePackage(iface, "iface");
+    const expected = writeTestFile(iface);
+    writeModule({
+      name: "mod",
+      main: "dist/i.js",
+      antelopeJs: { implements: ["missing-iface", 5, null, "iface"] },
+    });
+
+    const result = await testModule.collectInterfaceTestFiles(
+      moduleRoot,
+      null,
+      new NodeFileSystem(),
+    );
+
+    expect(result).to.deep.equal([expected]);
+  });
+
+  const NOT_OBJECTS: JsonValue[] = [
+    { implements: null },
+    { test: "x" },
+    5,
+    "implements",
+    [],
+    null,
+  ];
+  for (const antelopeJs of NOT_OBJECTS) {
+    it(`takes antelopeJs ${JSON.stringify(antelopeJs)} as implementing nothing`, async () => {
+      writeTestFile(moduleRoot);
+      writeModule({ name: "mod", main: "dist/i.js", antelopeJs });
+
+      const result = await testModule.collectInterfaceTestFiles(
+        moduleRoot,
+        null,
+        new NodeFileSystem(),
+      );
+
+      expect(result).to.deep.equal([]);
+    });
+  }
+
+  const NOT_ARRAYS: JsonValue[] = ["interface.x", "", 5, true, { iface: "1" }];
+  for (const declared of NOT_ARRAYS) {
+    it(`names antelopeJs.implements when it is ${JSON.stringify(declared)}`, async () => {
+      writeTestFile(moduleRoot);
+      writeModule({
+        name: "mod",
+        main: "dist/i.js",
+        antelopeJs: { implements: declared },
+      });
+
+      const failure = await rejectionOf(
+        testModule.collectInterfaceTestFiles(
+          moduleRoot,
+          null,
+          new NodeFileSystem(),
+        ),
+      );
+
+      expectInstanceOf(failure, CliError);
+      expect(failure.problem.title).to.include("antelopeJs.implements");
+      expect(failure.problem.reason).to.include("array");
+    });
+  }
 });

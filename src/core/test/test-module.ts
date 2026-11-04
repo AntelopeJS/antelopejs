@@ -7,10 +7,11 @@ import path from "node:path";
 
 import { setupAntelopeProjectLogging } from "../../logging";
 import type { IFileSystem } from "../../types";
-import { mergeDeep, isString } from "../../utils";
+import { isObject, isString, mergeDeep } from "../../utils";
 import { ConfigLoader, DEFAULT_ENV, type LoadedConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../modules";
+import { CliError } from "../output";
 import {
   constructAndStartModules,
   destroyModulesAfterFailure,
@@ -69,7 +70,7 @@ export async function loadTestConfig(
 ): Promise<LoadedTestConfig | undefined> {
   const packPath = path.join(moduleRoot, "package.json");
 
-  let pack: any;
+  let pack: unknown;
   try {
     const packContent = await fs.readFileString(packPath, "utf-8");
     pack = JSON.parse(packContent);
@@ -78,7 +79,8 @@ export async function loadTestConfig(
     return undefined;
   }
 
-  const testConfigPath = pack.antelopeJs?.test;
+  const antelopeJs = isObject(pack) ? pack.antelopeJs : undefined;
+  const testConfigPath = isObject(antelopeJs) ? antelopeJs.test : undefined;
   if (!testConfigPath || !isString(testConfigPath)) {
     console.error(
       "Missing or invalid antelopeJs.test config path in package.json",
@@ -135,20 +137,41 @@ export async function setupTestEnvironment(
   });
 }
 
-export async function collectInterfaceTestFiles(
+async function readImplementedInterfaces(
   moduleRoot: string,
-  manager: ModuleManager | null,
   fs: IFileSystem,
 ): Promise<string[]> {
   const packContent = await fs.readFileString(
     path.join(moduleRoot, "package.json"),
     "utf-8",
   );
-  const pack = JSON.parse(packContent);
-  const implementsList: string[] = pack.antelopeJs?.implements ?? [];
+  const pack: unknown = JSON.parse(packContent);
+  const antelopeJs = isObject(pack) ? pack.antelopeJs : undefined;
+  const declared = isObject(antelopeJs) ? antelopeJs.implements : undefined;
+  if (declared === undefined || declared === null) {
+    return [];
+  }
+  if (Array.isArray(declared)) {
+    return declared.filter(isString);
+  }
+  throw new CliError({
+    title: `antelopeJs.implements in ${path.join(moduleRoot, "package.json")} is not a list`,
+    reason:
+      "The field names the interface packages whose tests run against the module, so it must be an array of package names.",
+    fixes: [
+      'Write it as an array: "antelopeJs": { "implements": ["@antelopejs/interface-core"] }',
+    ],
+  });
+}
+
+export async function collectInterfaceTestFiles(
+  moduleRoot: string,
+  manager: ModuleManager | null,
+  fs: IFileSystem,
+): Promise<string[]> {
   const files: string[] = [];
 
-  for (const ifacePkg of implementsList) {
+  for (const ifacePkg of await readImplementedInterfaces(moduleRoot, fs)) {
     try {
       const ifaceEntry = require.resolve(ifacePkg, {
         paths: [moduleRoot],
@@ -255,7 +278,7 @@ function applySetupOverrides(
   overrides: Partial<AntelopeConfig>,
 ): LoadedConfig {
   // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Setup overrides can overwrite required fields; validating the historic merge would change accepted configuration (#228).
-  return mergeDeep(config, overrides) as LoadedConfig;
+  return mergeDeep<object>(config, overrides) as LoadedConfig;
 }
 
 function clearStubModulePath(manager: ModuleManager | null): void {

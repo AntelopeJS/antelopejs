@@ -81,4 +81,16 @@ describe("DownloaderRegistry", () => {
       undefined,
     );
   });
+
+  it("answers a string identifier and refuses any other value", () => {
+    type PortSource = ModuleSourceLocal & { port: number };
+    const registry = new DownloaderRegistry();
+    registry.register<PortSource>("local", "path", async () => []);
+
+    const named: PortSource = { type: "local", path: "mod", port: 80 };
+    expect(registry.getLoaderIdentifier(named)).to.equal("mod");
+
+    registry.register<PortSource>("local", "port", async () => []);
+    expect(registry.getLoaderIdentifier(named)).to.equal(undefined);
+  });
 });

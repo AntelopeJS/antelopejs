@@ -29,7 +29,7 @@ describe("ModuleManager", () => {
     const previous: NodeJS.Require["cache"] = {};
     for (const entry of cacheEntries) {
       previous[entry] = require.cache[entry];
-      require.cache[entry] = new (require("node:module"))(entry);
+      require.cache[entry] = new nodeModule(entry);
     }
 
     manager["loaded"].set("playground", {
@@ -64,7 +64,7 @@ describe("ModuleManager", () => {
     const previous: NodeJS.Require["cache"] = {};
     for (const entry of cacheEntries) {
       previous[entry] = require.cache[entry];
-      require.cache[entry] = new (require("node:module"))(entry);
+      require.cache[entry] = new nodeModule(entry);
     }
 
     manager["loaded"].set("self", {
@@ -344,15 +344,17 @@ describe("ModuleManager lifecycle signals", () => {
 
     const starting = manager
       .startModules([...manager["loaded"].values()])
-      .catch((error: AggregateError) => error);
+      .catch((error: unknown) => error);
     await clock.tickAsync(120_000);
     const error = await starting;
 
     expect(error).to.be.instanceOf(AggregateError);
     assert.ok(error instanceof AggregateError);
-    expect(error.errors.map((e) => e.message)).to.deep.equal([
+    expect(error.errors).to.have.lengthOf(1);
+    expect(error.errors[0]).to.have.property(
+      "message",
       "Module 'late' did not start within 120 s",
-    ]);
+    );
     expect(calls).to.not.include("started");
   });
 
@@ -378,7 +380,7 @@ describe("ModuleManager lifecycle signals", () => {
     const logError = sinon.stub(Logging.Channel.prototype, "Error");
 
     let thrown: unknown;
-    const starting = manager.startAll().catch((error: AggregateError) => {
+    const starting = manager.startAll().catch((error: unknown) => {
       thrown = error;
     });
     await clock.tickAsync(120_000);
@@ -390,7 +392,10 @@ describe("ModuleManager lifecycle signals", () => {
     await clock.tickAsync(10_000);
 
     assert.ok(thrown instanceof AggregateError);
-    expect(thrown.errors.map((error) => error.message)).to.deep.equal([
+    const errors: unknown[] = thrown.errors;
+    expect(
+      errors.map((error) => (error instanceof Error ? error.message : error)),
+    ).to.deep.equal([
       "Module 'late' did not start within 120 s",
       "Module 'late' did not stop within 10 s",
     ]);

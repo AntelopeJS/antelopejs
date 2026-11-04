@@ -42,7 +42,7 @@ async function run(): Promise<void> {
   }
 }
 
-run().catch((error) => {
+run().catch((error: unknown) => {
   console.error("[playground] Failed:", error);
   process.exit(1);
 });

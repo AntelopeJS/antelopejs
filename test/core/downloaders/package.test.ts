@@ -245,16 +245,9 @@ describe("PackageDownloader", () => {
     );
   });
 
-  it("re-downloads when the cached folder is missing node_modules despite declared dependencies", async () => {
+  async function loadWithCachedManifest(manifest: string): Promise<string[]> {
     const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/cache/pkg/package.json",
-      JSON.stringify({
-        name: "pkg",
-        version: "1.0.0",
-        dependencies: { dep: "^1.0.0" },
-      }),
-    );
+    await fs.writeFile("/cache/pkg/package.json", manifest);
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
     cache.setVersion("pkg", "1.0.0");
@@ -291,9 +284,31 @@ describe("PackageDownloader", () => {
       id: "pkg",
     };
     await registry.load("/project", cache, source);
+    return execCalls;
+  }
+
+  it("re-downloads when the cached folder is missing node_modules despite declared dependencies", async () => {
+    const execCalls = await loadWithCachedManifest(
+      JSON.stringify({
+        name: "pkg",
+        version: "1.0.0",
+        dependencies: { dep: "^1.0.0" },
+      }),
+    );
 
     expect(execCalls).to.include('npm pack "pkg@1.0.0"');
   });
+
+  for (const [label, manifest] of [
+    ["a JSON array", "[]"],
+    ["a dependencies value that is not an object", '{"dependencies":5}'],
+  ]) {
+    it(`re-downloads when the cached package.json is ${label}`, async () => {
+      const execCalls = await loadWithCachedManifest(manifest);
+
+      expect(execCalls).to.include('npm pack "pkg@1.0.0"');
+    });
+  }
 });
 
 describe("PackageDownloader", () => {

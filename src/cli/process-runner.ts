@@ -8,7 +8,7 @@ import {
 } from "../core/output";
 
 const FORWARDED_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
-const SIGNAL_NUMBERS: Record<string, number> = constants.signals;
+const SIGNAL_NUMBERS = new Map(Object.entries(constants.signals));
 
 export type ForwardedSignal = (typeof FORWARDED_SIGNALS)[number];
 
@@ -59,7 +59,7 @@ interface SignalForwarder {
 const nodeProcessRunner: ProcessRunner = { spawn };
 
 function exitCodeFromSignal(signal: string): number {
-  const signalNumber = SIGNAL_NUMBERS[signal];
+  const signalNumber = SIGNAL_NUMBERS.get(signal);
   return signalNumber
     ? SIGNAL_EXIT_CODE_OFFSET + signalNumber
     : FAILURE_EXIT_CODE;

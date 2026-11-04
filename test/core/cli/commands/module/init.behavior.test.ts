@@ -16,7 +16,6 @@ import {
   FAILURE_EXIT_CODE,
   getProcessUi,
   NeedsInputError,
-  packageManagerModule as pkgManager,
   runWithErrorBoundary,
   USAGE_EXIT_CODE,
 } from "../../../../../src/core/output";
@@ -24,108 +23,16 @@ import { collectStderr } from "../../../../helpers/capture-output";
 import { CANCEL, fakePrompts } from "../../../../helpers/fake-prompts";
 import {
   cleanupTempDir,
+  expectJsonFile,
   makeTempDir,
-  readJson,
 } from "../../../../helpers/temp";
+import {
+  INTERFACE_CATALOG,
+  stubModuleInit,
+} from "../../../../helpers/module-init-stubs";
 import { expectInstanceOf } from "../../fixtures";
 
 const { levels } = getProcessUi().symbols;
-
-const TEMPLATES: gitOps.Template[] = [
-  { name: "basic", repository: "", branch: "" },
-  {
-    name: "api",
-    repository: "",
-    branch: "",
-    nextSteps: [
-      { command: "pnpm run setup", description: "Prepare the frontend" },
-    ],
-  },
-];
-const PROJECT_TEMPLATES: gitOps.Template[] = [
-  {
-    name: "dashboard",
-    repository: "",
-    branch: "",
-    packageManager: "pnpm",
-  },
-];
-
-const INTERFACE_CATALOG = {
-  api: {
-    name: "api",
-    folderPath: "",
-    gitPath: "",
-    manifest: {
-      description: "HTTP API",
-      package: "@antelopejs/interface-api",
-      modules: [],
-    },
-  },
-} satisfies Record<string, gitOps.InterfaceInfo>;
-
-interface ModuleInitStubs {
-  manifest: sinon.SinonStub;
-  copy: sinon.SinonStub;
-  savePackageManager: sinon.SinonStub;
-  getInstallCommand: sinon.SinonStub;
-  exec: sinon.SinonStub;
-  gitInit: sinon.SinonStub;
-  spinnerFail: sinon.SinonStub;
-  warning: sinon.SinonStub;
-  output(): string;
-}
-
-function stubModuleInit(
-  catalog: Record<string, gitOps.InterfaceInfo> = {},
-): ModuleInitStubs {
-  sinon
-    .stub(common, "readUserConfig")
-    .resolves({ git: common.DEFAULT_GIT_REPO });
-  sinon.stub(common, "displayNonDefaultGitWarning").returns();
-  const manifest = sinon.stub(gitOps, "loadManifestFromGit").resolves({
-    templates: TEMPLATES,
-    projectTemplates: PROJECT_TEMPLATES,
-    interfaces: {},
-    starredInterfaces: Object.keys(catalog),
-  });
-  const copy = sinon
-    .stub(gitOps, "copyTemplate")
-    .callsFake(async (_template, target) => {
-      writeFileSync(path.join(target, "package.json"), "{}");
-    });
-  sinon.stub(gitOps, "loadInterfacesFromGit").resolves(catalog);
-  const savePackageManager = sinon
-    .stub(pkgManager, "savePackageManagerToPackageJson")
-    .returns();
-  const getInstallCommand = sinon
-    .stub(pkgManager, "getInstallCommand")
-    .resolves("npm install");
-  const exec = sinon
-    .stub(command, "ExecuteCMD")
-    .resolves({ code: 0, stdout: "", stderr: "" });
-  const gitInit = sinon.stub(require("node:child_process"), "execSync");
-  sinon.stub(cliUi.Spinner.prototype, "start").resolves();
-  sinon.stub(cliUi.Spinner.prototype, "succeed").resolves();
-  const spinnerFail = sinon.stub(cliUi.Spinner.prototype, "fail").resolves();
-  const output = collectStderr();
-  sinon.stub(cliUi, "info");
-  sinon.stub(cliUi, "success");
-  const warning = sinon.stub(cliUi, "warning");
-  sinon.stub(cliUi, "error");
-  sinon.stub(console, "log");
-  return {
-    manifest,
-    copy,
-    savePackageManager,
-    getInstallCommand,
-    exec,
-    gitInit,
-    spinnerFail,
-    warning,
-    output,
-  };
-}
 
 async function rejectionOf(promise: Promise<unknown>): Promise<CliError> {
   try {
@@ -137,10 +44,10 @@ async function rejectionOf(promise: Promise<unknown>): Promise<CliError> {
   throw new Error("Expected the module init to fail");
 }
 
-function readDependencies(moduleDir: string): Record<string, string> {
-  return readJson<{ dependencies: Record<string, string> }>(
-    path.join(moduleDir, "package.json"),
-  ).dependencies;
+function expectDependencies(moduleDir: string) {
+  return expectJsonFile(path.join(moduleDir, "package.json")).to.have.property(
+    "dependencies",
+  );
 }
 
 {
@@ -189,7 +96,7 @@ function readDependencies(moduleDir: string): Record<string, string> {
         await moduleInitCommand(moduleDir, {});
 
         expect(copiedAfterQuestions).to.equal(4);
-        expect(readDependencies(moduleDir)).to.deep.equal({
+        expectDependencies(moduleDir).to.deep.equal({
           "@antelopejs/interface-api": "latest",
         });
         expect(stubs.savePackageManager.calledWith("pnpm")).to.equal(true);
@@ -233,7 +140,7 @@ function readDependencies(moduleDir: string): Record<string, string> {
 
         expect(prompts.asked).to.deep.equal([]);
         expect(stubs.copy.firstCall.args[0].name).to.equal("api");
-        expect(readDependencies(moduleDir)).to.deep.equal({
+        expectDependencies(moduleDir).to.deep.equal({
           "@antelopejs/interface-api": "latest",
         });
         expect(stubs.savePackageManager.calledWith("yarn")).to.equal(true);
@@ -261,7 +168,7 @@ function readDependencies(moduleDir: string): Record<string, string> {
           yes: true,
         });
 
-        expect(readDependencies(moduleDir)).to.deep.equal({
+        expectDependencies(moduleDir).to.deep.equal({
           "@antelopejs/interface-api": ">=0.0.14 <0.1.0",
         });
       });
@@ -378,14 +285,14 @@ function readDependencies(moduleDir: string): Record<string, string> {
         const failure = await rejectionOf(
           moduleInitCommand(moduleDir, {
             template: "basic",
-            interfaces: ["api", "auth"],
+            interfaces: ["api", "auth", "constructor", "toString"],
             pm: "npm",
             gitInit: false,
           }),
         );
 
         expect(failure.problem.title).to.equal(
-          "Unknown interface 'api', 'auth'",
+          "Unknown interface 'api', 'auth', 'constructor', 'toString'",
         );
         expect(failure.problem.reason).to.equal("Available: none");
         expect(failure.problem.fixes).to.deep.equal([]);

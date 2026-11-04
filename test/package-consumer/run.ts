@@ -3,16 +3,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { isObject } from "../../src/utils";
+import { overriddenInterfaceCore } from "../helpers/interface-core-override";
 import { listDirectory } from "../helpers/temp";
-
-interface PackedManifest {
-  dependencies?: Record<string, string>;
-  antelopeJs?: PackedAntelopeJsManifest;
-}
-
-interface PackedAntelopeJsManifest {
-  skills?: string[];
-}
 
 const root = path.resolve(__dirname, "../..");
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "ajs-package-consumer-"));
@@ -22,7 +15,8 @@ const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const builtEntry = path.join(root, "dist", "index.js");
 const skillsFolder = "skills";
 const skillFile = "SKILL.md";
-const interfaceCoreTarball = process.env.ANTELOPE_INTERFACE_CORE_TARBALL;
+const interfaceCoreTarball =
+  process.env.ANTELOPE_INTERFACE_CORE_TARBALL ?? overriddenInterfaceCore(root);
 const interfaceCoreSpec = interfaceCoreTarball
   ? `file:${interfaceCoreTarball}`
   : "0.2.5";
@@ -68,10 +62,12 @@ function packCore(): string {
 
 function inspectManifest(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
-  const manifest: PackedManifest = JSON.parse(content);
-  if (
-    manifest.dependencies?.["@antelopejs/interface-core"] !== ">=0.3.0 <0.4.0"
-  ) {
+  const manifest: unknown = JSON.parse(content);
+  const dependencies = isObject(manifest) ? manifest.dependencies : undefined;
+  const interfaceCoreRange = isObject(dependencies)
+    ? dependencies["@antelopejs/interface-core"]
+    : undefined;
+  if (interfaceCoreRange !== ">=0.4.0 <0.5.0") {
     throw new Error(
       "Packed core does not pin interface-core to the minor it implements.",
     );
@@ -85,8 +81,10 @@ function inspectManifest(tarball: string): void {
 
 function inspectSkills(tarball: string): void {
   const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
-  const manifest: PackedManifest = JSON.parse(content);
-  if (!manifest.antelopeJs?.skills?.includes(`./${skillsFolder}`)) {
+  const manifest: unknown = JSON.parse(content);
+  const antelopeJs = isObject(manifest) ? manifest.antelopeJs : undefined;
+  const skills = isObject(antelopeJs) ? antelopeJs.skills : undefined;
+  if (!Array.isArray(skills) || !skills.includes(`./${skillsFolder}`)) {
     throw new Error("Packed core does not declare its agent skills.");
   }
   const packedFiles = run("tar", ["-tf", tarball], root).split("\n");

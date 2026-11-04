@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "rootDir": "..",
+    "baseUrl": "..",
+    "paths": {
+      "@antelopejs/core": ["src/index.ts"],
+      "@antelopejs/core/cli": ["src/core/cli/public.ts"]
+    }
+  },
+  "include": ["../src", "./**/*.ts"]
+}

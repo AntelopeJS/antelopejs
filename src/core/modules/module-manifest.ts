@@ -10,43 +10,11 @@ import type {
   BuildModuleEntry,
   BuildPathEntry,
 } from "./build-artifact";
+import {
+  decodeModulePackageJson,
+  type ModulePackageJson,
+} from "./module-package-json";
 import { isString } from "../../utils";
-
-export interface ModulePackageJson {
-  name: string;
-  version: string;
-  description?: string;
-  author?: string | string[];
-
-  dependencies?: Record<string, string>;
-  optionalDependencies?: Record<string, string>;
-
-  antelopeJs?: {
-    implements?: string[];
-
-    baseUrl?: string;
-    paths?: Record<string, string[]>;
-
-    moduleAliases?: Record<string, string>;
-
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Exported package manifests allow arbitrary application default configuration; narrowing changes the manifest contract.
-    defaultConfig?: Record<string, unknown>;
-
-    configVars?: string[];
-
-    /**
-     * A file exporting `configVars(config)`, the pure function computing the
-     * declared config variables from the module's configuration. Tools that
-     * read a project without running it resolve `${@<module>.<VAR>}` with it;
-     * the runtime still publishes through `provide`.
-     */
-    configVarsFile?: string;
-
-    test?: string;
-  };
-
-  _moduleAliases?: Record<string, string>;
-}
 
 export interface PathMapping {
   key: string;
@@ -197,7 +165,7 @@ const PUBLISHED_CONSTRUCTOR_LENGTH = 6;
 
 export class ModuleManifest {
   private fs: IFileSystem;
-  public version: string;
+  public version: string | undefined;
   public readonly folder: string;
   public readonly source: ModuleSource;
   public readonly name: string;
@@ -286,21 +254,15 @@ export class ModuleManifest {
       throw new Error(`Missing package.json in '${folder}'`);
     }
 
-    const packageJson: ModulePackageJson = JSON.parse(
-      await fs.readFileString(packageJsonPath),
+    const packageJsonText = await fs.readFileString(packageJsonPath);
+    const antelopeModuleJsonText = (await fs.exists(dedicatedJsonPath))
+      ? await fs.readFileString(dedicatedJsonPath)
+      : undefined;
+    return decodeModulePackageJson(
+      packageJsonText,
+      folder,
+      antelopeModuleJsonText,
     );
-
-    if (await fs.exists(dedicatedJsonPath)) {
-      const dedicatedJson: ModulePackageJson["antelopeJs"] = JSON.parse(
-        await fs.readFileString(dedicatedJsonPath),
-      );
-      return {
-        ...packageJson,
-        antelopeJs: dedicatedJson,
-      };
-    }
-
-    return packageJson;
   }
 
   serialize(): BuildModuleEntry {

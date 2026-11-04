@@ -136,9 +136,8 @@ const lookup = () => 5010;
           constructor(public readonly token: string) {}
         }
         const credentials = new Credentials("secret");
-        const nullPrototype = Object.assign(Object.create(null), {
-          keep: true,
-        });
+        const nullPrototype = { keep: true };
+        Reflect.setPrototypeOf(nullPrototype, null);
         const config = {
           date,
           map,

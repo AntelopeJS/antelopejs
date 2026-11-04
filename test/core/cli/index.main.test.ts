@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import { Command } from "commander";
 import fs from "node:fs";
+import Module from "node:module";
 import path from "node:path";
 import sinon from "sinon";
-const Module = require("node:module");
 
 import {
   FORCED_EXIT_GRACE_MS,

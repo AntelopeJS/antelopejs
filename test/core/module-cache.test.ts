@@ -15,8 +15,9 @@ describe("ModuleCache", () => {
     cache.setVersion("test", "1.2.3");
     await cache.save();
 
-    const data = JSON.parse(await fs.readFileString("/cache/manifest.json"));
-    expect(data.test).to.equal("1.2.3");
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.have.property("test", "1.2.3");
   });
 
   it("should check semantic versions", async () => {
@@ -76,8 +77,9 @@ describe("ModuleCache", () => {
 
     await cache.commitVersion("mod", "1.0.0");
 
-    const data = JSON.parse(await fs.readFileString("/cache/manifest.json"));
-    expect(data.mod).to.equal("1.0.0");
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.have.property("mod", "1.0.0");
   });
 
   it("removes a version through clearVersion", async () => {
@@ -89,8 +91,9 @@ describe("ModuleCache", () => {
     await cache.clearVersion("mod");
 
     expect(cache.getVersion("mod")).to.equal(undefined);
-    const data = JSON.parse(await fs.readFileString("/cache/manifest.json"));
-    expect(data.mod).to.equal(undefined);
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.not.have.property("mod");
   });
 
   it("loads existing manifest data when present", async () => {
@@ -147,6 +150,47 @@ describe("ModuleCache", () => {
       expect(stat.isDirectory()).to.equal(true);
     } finally {
       await fsPromises.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("ModuleCache packages named like Object.prototype members", () => {
+  it("knows no version for a package named like an Object.prototype member", async () => {
+    const cache = new ModuleCache("/cache", new InMemoryFileSystem());
+    await cache.load();
+
+    for (const name of ["constructor", "toString", "valueOf", "__proto__"]) {
+      expect(cache.getVersion(name), name).to.equal(undefined);
+      expect(cache.hasVersion(name, "^1.0.0"), name).to.equal(false);
+    }
+  });
+
+  it("keeps a version recorded for a package named like an Object.prototype member", async () => {
+    const cache = new ModuleCache("/cache", new InMemoryFileSystem());
+    await cache.load();
+
+    cache.setVersion("constructor", "1.2.0");
+
+    expect(cache.getVersion("constructor")).to.equal("1.2.0");
+    expect(cache.hasVersion("constructor", "^1.0.0")).to.equal(true);
+  });
+});
+
+describe("ModuleCache manifest file", () => {
+  it("starts empty when the manifest file does not map names to versions", async () => {
+    for (const content of ["not json", "null", "5", "[]", '{"test":1}']) {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile("/cache/manifest.json", content);
+      const cache = new ModuleCache("/cache", fs);
+
+      await cache.load();
+      cache.setVersion("other", "1.0.0");
+      await cache.save();
+
+      expect(cache.getVersion("test")).to.equal(undefined);
+      expect(
+        JSON.parse(await fs.readFileString("/cache/manifest.json")),
+      ).to.deep.equal({ other: "1.0.0" });
     }
   });
 });

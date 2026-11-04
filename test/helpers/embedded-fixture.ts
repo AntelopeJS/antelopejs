@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import type { JsonValue } from "./json";
 
 export const INTERFACE_PACKAGE = "iface-pkg";
 export const HOST_INTERFACE_PACKAGE = "host-pkg";
@@ -53,7 +54,7 @@ module.exports = {
 };
 `;
 
-async function writeJson<T>(filePath: string, value: T): Promise<void> {
+async function writeJson(filePath: string, value: JsonValue): Promise<void> {
   await fs.writeFile(filePath, JSON.stringify(value, null, 2));
 }
 

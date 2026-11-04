@@ -10,7 +10,7 @@ covers:
   - src/core/modules/module-manifest.ts
   - src/core/output/package-manager*.ts
 docs:
-  - docs/5.cli/2.project.md
+  - docs/5.cli/3.project-modules.md
   - docs/2.concepts/4.configuration.md
 ---
 

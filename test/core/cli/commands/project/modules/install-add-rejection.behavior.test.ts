@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -26,7 +27,7 @@ describe("project modules install behavior: lets a failing add reach the error b
   const fixture = installFixture();
 
   it("lets a failing add reach the error boundary", async () => {
-    const baseConfig: any = {
+    const baseConfig: AntelopeConfig = {
       name: "proj",
       modules: {
         app: { source: { type: "package", package: "app", version: "1.0.0" } },
@@ -70,9 +71,6 @@ describe("project modules install behavior: lets a failing add reach the error b
     sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
       interfaceInfo("iface", {
         description: "iface",
-        versions: ["1.0.0"],
-        files: {},
-        dependencies: {},
         modules: [MOD_A],
       }),
     );

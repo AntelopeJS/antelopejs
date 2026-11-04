@@ -1,4 +1,5 @@
 import * as fsSync from "node:fs";
+import sinon from "sinon";
 import * as path from "node:path";
 
 import type { IFileSystem } from "../../src/types";
@@ -117,11 +118,11 @@ export class InMemoryFileSystem implements IFileSystem {
       throw new Error(`ENOENT: no such file or directory: ${filePath}`);
     }
 
-    return Object.assign(Object.create(fsSync.Stats.prototype), {
-      isFile: () => node.type === "file",
-      isDirectory: () => node.type === "directory",
-      size: node.content?.length ?? 0,
-    });
+    const stats = sinon.createStubInstance(fsSync.Stats);
+    stats.isFile.returns(node.type === "file");
+    stats.isDirectory.returns(node.type === "directory");
+    stats.size = node.content?.length ?? 0;
+    return stats;
   }
 
   async mkdir(

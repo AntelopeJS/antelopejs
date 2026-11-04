@@ -29,30 +29,9 @@ function commandOutputTail(error: ExecError): string[] {
   return [OUTPUT_HEADING, ...lines.map((line) => `${OUTPUT_INDENT}${line}`)];
 }
 
-function genericProblem(
-  error: Parameters<typeof describeFailure>[0],
-): CliProblem {
-  if (error instanceof Error) {
-    const [headline] = stripAnsiCodes(error.message).split(LINE_BREAK_PATTERN);
-    return { title: headline || error.name };
-  }
-  return { title: String(error) };
-}
-
-function causeChain(error: Error["cause"], chain: unknown[] = []): unknown[] {
-  if (error === undefined || chain.includes(error)) {
-    return chain;
-  }
-  chain.push(error);
-  if (error instanceof AggregateError) {
-    for (const inner of error.errors) {
-      causeChain(inner, chain);
-    }
-  }
-  if (error instanceof Error) {
-    causeChain(error.cause, chain);
-  }
-  return chain;
+function headlineProblem(error: Error): CliProblem {
+  const [headline] = stripAnsiCodes(error.message).split(LINE_BREAK_PATTERN);
+  return { title: headline || error.name };
 }
 
 function aggregateDetails(chain: unknown[]): string[] {
@@ -65,7 +44,9 @@ function aggregateDetails(chain: unknown[]): string[] {
             parent instanceof AggregateError && parent.errors.includes(error),
         ),
     )
-    .map((error) => genericProblem(error).title);
+    .map((error) =>
+      error instanceof Error ? headlineProblem(error).title : String(error),
+    );
   return [...new Set(titles)];
 }
 
@@ -99,19 +80,7 @@ function untranslatedOutputTail(chain: unknown[]): string[] {
     .flatMap(commandOutputTail);
 }
 
-function explainFailure(
-  error: Parameters<FailureTranslator>[0],
-  translate?: FailureTranslator,
-): CliProblem | undefined {
-  return translate?.(error) ?? translateFailure(error);
-}
-
-function hasHiddenOutput(
-  error: Parameters<typeof describeFailure>[0],
-): boolean {
-  if (!(error instanceof ExecError)) {
-    return false;
-  }
+function hasHiddenOutput(error: ExecError): boolean {
   const shownLineCount =
     translateExecError(error) === undefined ? OUTPUT_TAIL_LINE_COUNT : 0;
   return outputLines(error).length > shownLineCount;
@@ -121,12 +90,15 @@ function verboseHint(
   chain: unknown[],
   translate?: FailureTranslator,
 ): string[] {
-  if (chain.some(hasHiddenOutput)) {
+  if (
+    chain.some((error) => error instanceof ExecError && hasHiddenOutput(error))
+  ) {
     return [COMMAND_OUTPUT_HINT];
   }
   const hasUnexplainedTrace = chain.some(
     (error) =>
-      isTraceable(error) && explainFailure(error, translate) === undefined,
+      isTraceable(error) &&
+      (translate?.(error) ?? translateFailure(error)) === undefined,
   );
   return hasUnexplainedTrace ? [STACK_TRACE_HINT] : [];
 }
@@ -141,15 +113,34 @@ function verboseHint(
  * show more than what is printed.
  */
 export function describeFailure(
-  error: Parameters<FailureTranslator>[0],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- describes a thrown value; JS can throw any value, and non-Error throws keep their String() title
+  error: unknown,
   verbose: boolean = isVerboseRun(),
   translate?: FailureTranslator,
 ): CliProblem {
   const problem =
     error instanceof CliError
       ? error.problem
-      : (explainFailure(error, translate) ?? genericProblem(error));
-  const chain = causeChain(error);
+      : (translate?.(error) ??
+        translateFailure(error) ??
+        (error instanceof Error
+          ? headlineProblem(error)
+          : { title: String(error) }));
+  const chain: unknown[] = [];
+  const pending: unknown[] = [error];
+  while (pending.length > 0) {
+    const current = pending.shift();
+    if (current === undefined || chain.includes(current)) {
+      continue;
+    }
+    chain.push(current);
+    const inner: unknown[] =
+      current instanceof AggregateError ? current.errors : [];
+    pending.unshift(
+      ...inner,
+      ...(current instanceof Error ? [current.cause] : []),
+    );
+  }
   const diagnostics = verbose
     ? verboseDetails(chain)
     : [
@@ -165,7 +156,8 @@ export function describeFailure(
  * code it calls for.
  */
 export function reportFailure(
-  error: Parameters<FailureTranslator>[0],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- describes a thrown value; JS can throw any value, and non-Error throws keep their String() title
+  error: unknown,
   ui: Ui = getProcessUi(),
   verbose: boolean = isVerboseRun(),
   translate?: FailureTranslator,

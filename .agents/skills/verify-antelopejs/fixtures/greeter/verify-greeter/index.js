@@ -1,3 +1,6 @@
 const { InterfaceFunction } = require("@antelopejs/interface-core");
 
-exports.Greeter = { greet: InterfaceFunction() };
+/** @type {typeof InterfaceFunction<(name: string) => string>} */
+const greet = InterfaceFunction;
+
+exports.Greeter = { greet: greet() };

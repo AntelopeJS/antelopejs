@@ -1,28 +1,28 @@
-type Detoured<T extends (...args: any[]) => any> = (
-  ...args: Parameters<T>
-) => ReturnType<T>;
+type Detoured<Args extends unknown[], Result> = (...args: Args) => Result;
 
-export function Detour<T extends (...args: any[]) => any>(
-  fn: T,
-  sideEffect: (...args: Parameters<T>) => void,
-): Detoured<T> {
-  return (...args: Parameters<T>) => {
+export function Detour<Args extends unknown[], Result>(
+  fn: (...args: Args) => Result,
+  sideEffect: (...args: Args) => void,
+): Detoured<Args, Result> {
+  return (...args: Args) => {
     sideEffect(...args);
     return fn(...args);
   };
 }
 
-export function CreateDetour<T extends (...args: any[]) => any>(fn: T) {
-  let currentSideEffect: ((...args: Parameters<T>) => void) | undefined;
+export function CreateDetour<Args extends unknown[], Result>(
+  fn: (...args: Args) => Result,
+) {
+  let currentSideEffect: ((...args: Args) => void) | undefined;
 
-  const wrapped: Detoured<T> = (...args: Parameters<T>) => {
+  const wrapped: Detoured<Args, Result> = (...args: Args) => {
     currentSideEffect?.(...args);
     return fn(...args);
   };
 
   return {
     fn: wrapped,
-    detour: (sideEffect: (...args: Parameters<T>) => void) => {
+    detour: (sideEffect: (...args: Args) => void) => {
       currentSideEffect = sideEffect;
     },
   };

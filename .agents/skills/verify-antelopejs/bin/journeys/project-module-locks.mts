@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { absent, equal, exists, exitIs, fileHas, has } from "../lib/checks.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
+import { parseJson, requireText } from "../lib/json.mts";
 import { LocalRegistry } from "../lib/registry.mts";
 
 const DEP = "verify-lock-dep";
@@ -70,7 +71,7 @@ const BOTH_MODULES = { [PNPM_MODULE]: "1.0.0", [NPM_MODULE]: "1.0.0" } satisfies
 
 function installedDep(project: string, module: string): string {
   const manifest = path.join(project, ".antelope", "cache", module, "node_modules", DEP, "package.json");
-  return existsSync(manifest) ? JSON.parse(readFileSync(manifest, "utf8")).version : "missing";
+  return existsSync(manifest) ? requireText(parseJson(readFileSync(manifest, "utf8")), "version", manifest) : "missing";
 }
 
 function lockFile(project: string, module: string, version: string): string {

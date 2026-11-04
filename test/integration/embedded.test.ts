@@ -26,6 +26,16 @@ interface ClockInterface {
   HostClock: { now(): Promise<string> };
 }
 
+declare module "../../src/core/embedded/types" {
+  interface EmbeddedInterfaces {
+    "iface-pkg": GreeterInterface;
+    "iface-pkg/greeting": GreeterInterface;
+    "host-pkg": ClockInterface;
+    "missing-pkg": GreeterInterface;
+    "missing-pkg/sub": GreeterInterface;
+  }
+}
+
 function startEmbedded(
   fixture: EmbeddedFixture,
   overrides: Partial<Parameters<typeof createRuntime>[0]> = {},
@@ -65,7 +75,7 @@ function withHangGuard<T>(promise: Promise<T>): Promise<T> {
         runtime = startEmbedded(fixture);
         await runtime.start();
 
-        const greeter = runtime.use<GreeterInterface>(INTERFACE_PACKAGE);
+        const greeter = runtime.use(INTERFACE_PACKAGE);
 
         expect(await withHangGuard(greeter.Greeter.greet("world"))).to.equal(
           "Hello world",
@@ -76,7 +86,7 @@ function withHangGuard<T>(promise: Promise<T>): Promise<T> {
         runtime = startEmbedded(fixture);
         await runtime.start();
 
-        const greeter = runtime.use<GreeterInterface>(
+        const greeter = runtime.use(
           `${INTERFACE_PACKAGE}/${INTERFACE_SUBPATH}`,
         );
 
@@ -126,7 +136,7 @@ function withHangGuard<T>(promise: Promise<T>): Promise<T> {
         await runtime.start();
 
         runtime.manager.refreshAssociations();
-        const greeter = runtime.use<GreeterInterface>(INTERFACE_PACKAGE);
+        const greeter = runtime.use(INTERFACE_PACKAGE);
 
         expect(await withHangGuard(greeter.Greeter.greet("again"))).to.equal(
           "Hello again",
@@ -174,9 +184,12 @@ function withHangGuard<T>(promise: Promise<T>): Promise<T> {
 
         const error = await runtime.start().then(
           () => undefined,
-          (reason: Error) => reason,
+          (reason: unknown) => reason,
         );
-        expect(error?.message).to.match(/not-installed-pkg/);
+        expect(error)
+          .to.be.instanceOf(Error)
+          .with.property("message")
+          .that.matches(/not-installed-pkg/);
       });
     };
 
@@ -191,7 +204,7 @@ function withHangGuard<T>(promise: Promise<T>): Promise<T> {
       runtime = startEmbedded(fixture);
       await runtime.start();
 
-      const greeter = runtime.use<GreeterInterface>(INTERFACE_PACKAGE);
+      const greeter = runtime.use(INTERFACE_PACKAGE);
       expect(await withHangGuard(greeter.Greeter.greet("beta"))).to.equal(
         "Hello beta",
       );
@@ -242,16 +255,18 @@ function withHangGuard<T>(promise: Promise<T>): Promise<T> {
         HostClock: { now: () => "host-time" },
       });
 
-      const clock = runtime.use<ClockInterface>(HOST_INTERFACE_PACKAGE);
+      const clock = runtime.use(HOST_INTERFACE_PACKAGE);
       expect(await withHangGuard(clock.HostClock.now())).to.equal("host-time");
 
       handle.detach();
 
       const afterDetach = await withHangGuard(clock.HostClock.now()).then(
         () => "resolved",
-        (error: Error) => error.message,
+        (error: unknown) => error,
       );
-      expect(afterDetach).to.equal("HANG");
+      expect(afterDetach)
+        .to.be.instanceOf(Error)
+        .with.property("message", "HANG");
     });
   };
 

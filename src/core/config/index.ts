@@ -1,4 +1,5 @@
 export * from "./config-editor";
+export { importOverrideCheck, loggingCheck } from "./config-fields";
 export * from "./config-loader";
 export * as configLoaderModule from "./config-loader";
 export * from "./config-parser";

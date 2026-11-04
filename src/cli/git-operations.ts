@@ -1,11 +1,23 @@
-import type { ModuleSource } from "@antelopejs/interface-core/config";
 import fs, { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import type { NextStep, PackageManagerName } from "../core/output";
 import { ExecError, ExecuteCMD } from "../core/output";
+import {
+  decodeGitManifest,
+  decodeInterfaceManifest,
+  type GitManifest,
+  type InterfaceManifest,
+  type Template,
+} from "./catalog-manifest";
+
+export type {
+  GitManifest,
+  InterfaceManifest,
+  ModuleInterfaceInfo,
+  Template,
+} from "./catalog-manifest";
 import { acquireLock } from "./lock";
 
 async function runGitCommand(command: string, cwd: string): Promise<void> {
@@ -53,28 +65,6 @@ async function loadGit(git: string, branch?: string): Promise<string> {
   return folderPath;
 }
 
-export interface GitManifest {
-  interfaces: Record<string, string>;
-  starredInterfaces: string[];
-  templates: Template[];
-  projectTemplates?: Template[];
-}
-export interface Template {
-  name: string;
-  repository: string;
-  branch: string;
-  description?: string;
-  packageManager?: PackageManagerName;
-  /**
-   * `false` when the template installs its own dependencies, for example
-   * inside its container. The CLI then copies the template and installs
-   * nothing on the host, so the package manager does not have to be
-   * installed. Absent or `true` installs the dependencies on the host.
-   */
-  install?: boolean;
-  nextSteps?: NextStep[];
-}
-
 /**
  * The short name of a template that `--template` accepts: its name in lower
  * case, with each run of characters other than letters and digits replaced by
@@ -106,8 +96,10 @@ export async function loadManifestFromGit(git: string): Promise<GitManifest> {
   try {
     const folderPath = await loadGit(git);
     const manifestPath = path.join(folderPath, "manifest.json");
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-    return manifest;
+    return decodeGitManifest(
+      fs.readFileSync(manifestPath, "utf8"),
+      manifestPath,
+    );
   } finally {
     await releaseLock();
   }
@@ -120,17 +112,6 @@ export interface InterfaceInfo {
   manifest: InterfaceManifest;
 }
 
-export interface InterfaceManifest {
-  description: string;
-  package: string;
-  modules: ModuleInterfaceInfo[];
-}
-
-export interface ModuleInterfaceInfo {
-  name: string;
-  source: ModuleSource;
-}
-
 async function getInterfaceInfo(
   gitPath: string,
   interface_: string,
@@ -141,11 +122,15 @@ async function getInterfaceInfo(
     return undefined;
   }
 
+  const manifestPath = path.join(iFolderPath, "manifest.json");
   return {
     name: interface_,
     folderPath: iFolderPath,
     gitPath,
-    manifest: require(path.join(iFolderPath, "manifest.json")),
+    manifest: decodeInterfaceManifest(
+      fs.readFileSync(manifestPath, "utf8"),
+      manifestPath,
+    ),
   };
 }
 
@@ -223,7 +208,7 @@ function scaffoldSparsePatterns(): string {
 }
 
 export async function copyTemplate(template: Template, distPath: string) {
-  await mkdirSync(distPath, { recursive: true });
+  mkdirSync(distPath, { recursive: true });
   await ExecuteCMD("git init", {
     cwd: distPath,
   });

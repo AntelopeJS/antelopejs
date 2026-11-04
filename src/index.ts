@@ -9,6 +9,7 @@ export { ConfigLoader, DEFAULT_ENV } from "./core/config";
 export { DownloaderRegistry } from "./core/downloaders";
 export { AntelopeRuntime, createRuntime } from "./core/embedded";
 export type {
+  EmbeddedInterfaces,
   EmbeddedModuleConfig,
   EmbeddedRuntimeOptions,
   ProvideHandle,

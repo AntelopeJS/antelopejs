@@ -12,25 +12,27 @@ export interface OfficialPlugin extends OfficialPluginDefinition {
   name: string;
 }
 
-const OFFICIAL_PLUGIN_DEFINITIONS = {
-  dms: {
-    package: "@antelopejs/dms-frontend",
-    bin: "ajs-dms",
-    description: "DMS frontend commands",
-  },
-} satisfies Record<string, OfficialPluginDefinition>;
+const OFFICIAL_PLUGIN_DEFINITIONS = new Map<string, OfficialPluginDefinition>([
+  [
+    "dms",
+    {
+      package: "@antelopejs/dms-frontend",
+      bin: "ajs-dms",
+      description: "DMS frontend commands",
+    },
+  ],
+]);
 
 export function findOfficialPlugin(name: string): OfficialPlugin | undefined {
-  const definitions: typeof OFFICIAL_PLUGIN_DEFINITIONS &
-    Record<string, OfficialPluginDefinition> = OFFICIAL_PLUGIN_DEFINITIONS;
-  const definition = definitions[name];
+  const definition = OFFICIAL_PLUGIN_DEFINITIONS.get(name);
   return definition ? { name, ...definition } : undefined;
 }
 
 export function listOfficialPlugins(): OfficialPlugin[] {
-  return Object.entries(OFFICIAL_PLUGIN_DEFINITIONS).map(
-    ([name, definition]) => ({ name, ...definition }),
-  );
+  return [...OFFICIAL_PLUGIN_DEFINITIONS].map(([name, definition]) => ({
+    name,
+    ...definition,
+  }));
 }
 
 export function officialPluginLabel(plugin: OfficialPlugin): string {
@@ -38,7 +40,7 @@ export function officialPluginLabel(plugin: OfficialPlugin): string {
 }
 
 export function officialPluginNames(): string[] {
-  return Object.keys(OFFICIAL_PLUGIN_DEFINITIONS);
+  return [...OFFICIAL_PLUGIN_DEFINITIONS.keys()];
 }
 
 export function formatOfficialPluginsHelp(width: number = helpWidth()): string {

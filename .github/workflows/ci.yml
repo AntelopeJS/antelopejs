@@ -4,13 +4,22 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch: null
 
 permissions:
   contents: read
 
 jobs:
   ci:
-    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
+    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1-campaign
+    with:
+      docs-files: |
+        README.md
+        docs
+      docs-typescript-project: docs/tsconfig.json
+      renovate-sync: false
+    permissions:
+      contents: read
 
   verify-map:
     runs-on: ubuntu-latest
@@ -33,6 +42,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -41,6 +52,7 @@ jobs:
         with:
           path: ~/.cache/antelopejs-formal
           key: tla2tools-1.7.4
+      - run: node --test .agents/skills/formal-module-lifecycle/*.test.mjs
       - run: node .agents/skills/formal-module-lifecycle/check.mjs
 
   checks:
@@ -51,3 +63,10 @@ jobs:
     steps:
       - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
         run: exit 1
+  renovate-sync:
+    if: >-
+      github.event_name == 'pull_request' && startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: write
+      actions: write
+    uses: AntelopeJS/.github/.github/workflows/ci-renovate-sync.yml@v1

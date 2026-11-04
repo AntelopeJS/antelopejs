@@ -1,6 +1,8 @@
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
+/** @typedef {typeof import("../../src/core/cli/public")} PublicCli */
+
 const PUBLIC_ENTRY = "@antelopejs/core/cli";
 const LOAD_BUDGET_MS = 30;
 const LOAD_SAMPLE_COUNT = 7;
@@ -23,6 +25,7 @@ process.stdout.write(JSON.stringify({
 }));
 `;
 
+/** @param {string} source */
 function runProbe(source) {
   return execFileSync(process.execPath, ["-e", source], {
     cwd: __dirname,
@@ -31,14 +34,16 @@ function runProbe(source) {
 }
 
 function memoryStream() {
+  /** @type {string[]} */
   const chunks = [];
   return {
     isTTY: false,
-    write: (chunk) => chunks.push(chunk),
+    write: (/** @type {string} */ chunk) => chunks.push(chunk),
     text: () => chunks.join(""),
   };
 }
 
+/** @param {PublicCli} cli */
 function memoryUi(cli) {
   const result = memoryStream();
   const feedback = memoryStream();
@@ -53,6 +58,11 @@ function memoryUi(cli) {
   return { ui, result, feedback };
 }
 
+/**
+ * @param {unknown} actual
+ * @param {unknown} expected
+ * @param {string} label
+ */
 function assertEqual(actual, expected, label) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(
@@ -70,6 +80,7 @@ function verifyResolution() {
   assertEqual(manifest.name, "@antelopejs/core", "package.json export");
 }
 
+/** @param {PublicCli} cli */
 function verifyExitCodes(cli) {
   assertEqual(
     [
@@ -83,6 +94,7 @@ function verifyExitCodes(cli) {
   );
 }
 
+/** @param {PublicCli} cli */
 function verifyOutput(cli) {
   const { ui, result, feedback } = memoryUi(cli);
   ui.message("success", "Built 2 modules");
@@ -96,6 +108,7 @@ function verifyOutput(cli) {
   assertEqual(result.text(), "api\n", "result output");
 }
 
+/** @param {PublicCli} cli */
 async function verifyErrorBoundary(cli) {
   const { ui, feedback } = memoryUi(cli);
   await cli.runWithErrorBoundary(
@@ -118,6 +131,7 @@ async function verifyErrorBoundary(cli) {
   assertEqual(process.exitCode, cli.USAGE_EXIT_CODE, "CliError exit code");
 }
 
+/** @param {PublicCli} cli */
 async function verifyTranslateHook(cli) {
   const { ui, feedback } = memoryUi(cli);
   await cli.runWithErrorBoundary(
@@ -136,6 +150,7 @@ async function verifyTranslateHook(cli) {
   assertEqual(process.exitCode, cli.FAILURE_EXIT_CODE, "failure exit code");
 }
 
+/** @param {PublicCli} cli */
 function verifyHelp(cli) {
   assertEqual(cli.helpWidth({ isTTY: false }), 80, "help width in a pipe");
   assertEqual(
@@ -150,8 +165,26 @@ function verifyHelp(cli) {
   );
 }
 
-function verifyStaysLight() {
+function readLoadedModules() {
+  /** @type {unknown} */
   const loaded = JSON.parse(runProbe(LOADED_MODULES_PROBE));
+  if (
+    !(loaded instanceof Object) ||
+    !("files" in loaded) ||
+    !("builtins" in loaded) ||
+    !Array.isArray(loaded.files) ||
+    !Array.isArray(loaded.builtins)
+  ) {
+    throw new Error(`${PUBLIC_ENTRY} probe printed an unexpected module list`);
+  }
+  return {
+    files: loaded.files.map(String),
+    builtins: loaded.builtins.map(String),
+  };
+}
+
+function verifyStaysLight() {
+  const loaded = readLoadedModules();
   const eager = [
     ...loaded.files.filter((file) =>
       EAGER_FORBIDDEN_MODULES.some((pattern) => pattern.test(file)),
@@ -165,6 +198,7 @@ function verifyStaysLight() {
   }
 }
 
+/** @param {number[]} values */
 function median(values) {
   const sorted = [...values].sort((left, right) => left - right);
   return sorted[Math.floor(sorted.length / 2)];
@@ -186,7 +220,7 @@ async function main() {
   verifyResolution();
   verifyStaysLight();
   verifyLoadBudget();
-  const cli = require(PUBLIC_ENTRY);
+  const cli = require("@antelopejs/core/cli");
   verifyExitCodes(cli);
   verifyOutput(cli);
   verifyHelp(cli);
@@ -195,7 +229,8 @@ async function main() {
   process.exitCode = 0;
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack ?? error}\n`);
+main().catch((/** @type {unknown} */ error) => {
+  const detail = error instanceof Error ? (error.stack ?? error) : error;
+  process.stderr.write(`${String(detail)}\n`);
   process.exitCode = 1;
 });

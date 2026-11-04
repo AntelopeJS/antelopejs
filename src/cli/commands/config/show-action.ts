@@ -5,6 +5,7 @@ import {
   type Ui,
 } from "../../../core/output";
 import { getDefaultUserConfig, readUserConfig } from "../../common";
+import { isConfigKey } from "./keys";
 
 interface ShowOptions {
   json?: boolean;
@@ -17,9 +18,7 @@ function describeValue(key: string, value: string): string {
   if (!value) {
     return NOT_SET;
   }
-  const defaultValues = { ...getDefaultUserConfig() };
-  const defaults: typeof defaultValues & Record<string, string> = defaultValues;
-  const isCustom = key in defaults && defaults[key] !== value;
+  const isCustom = isConfigKey(key) && getDefaultUserConfig()[key] !== value;
   return isCustom ? `${value} ${CUSTOM_MARKER}` : value;
 }
 

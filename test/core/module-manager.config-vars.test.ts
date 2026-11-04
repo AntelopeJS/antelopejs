@@ -14,12 +14,10 @@ interface FakeModuleOptions {
   declared?: string[];
   implements?: string[];
   config?: unknown;
-  provide?: (
-    config: import("../../src/core/modules").ModuleConfig["config"],
-  ) => Promise<ConfigVars | void>;
-  construct?: (
-    config: import("../../src/core/modules").ModuleConfig["config"],
-  ) => Promise<void>;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fake module callback receiving module config, user data typed unknown by the published ModuleCallbacks
+  provide?: (config: unknown) => Promise<ConfigVars | void>;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fake module callback receiving module config, user data typed unknown by the published ModuleCallbacks
+  construct?: (config: unknown) => Promise<void>;
 }
 
 interface FakeModule {
@@ -66,15 +64,13 @@ function addModule(
         antelopeJs: { configVars: options.declared ?? [] },
       },
     }),
-    provide: async (
-      config: import("../../src/core/modules").ModuleConfig["config"],
-    ) => {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fake module callback receiving module config, user data typed unknown by the published ModuleCallbacks
+    provide: async (config: unknown) => {
       module.providedWith = config;
       return options.provide?.(config);
     },
-    construct: async (
-      config: import("../../src/core/modules").ModuleConfig["config"],
-    ) => {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fake module callback receiving module config, user data typed unknown by the published ModuleCallbacks
+    construct: async (config: unknown) => {
       module.received = config;
       module.constructed = true;
       module.state = ModuleState.Constructed;
@@ -95,7 +91,11 @@ async function constructAllErrors(manager: ModuleManager): Promise<unknown[]> {
   try {
     await manager.constructAll();
   } catch (error) {
-    return error instanceof AggregateError ? error.errors : [error];
+    if (error instanceof AggregateError) {
+      const nested: unknown[] = error.errors;
+      return nested;
+    }
+    return [error];
   }
   return [];
 }

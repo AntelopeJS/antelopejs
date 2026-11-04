@@ -10,13 +10,13 @@ import { ModuleIsolation } from "./module-isolation";
 import {
   type InterfacePackagePlan,
   type ManagedModule,
-  bindOperations,
   type ManagerMethods,
   type ModuleConfig,
   type StubbedInterfacePackage,
   operations,
   defineManagerContext,
 } from "./module-manager-context";
+import { MANAGER_OPERATIONS } from "./module-manager-operations";
 import { type ModuleManifest } from "./module-manifest";
 import { ModuleRegistry } from "./module-registry";
 import { ModuleTracker } from "./module-tracker";
@@ -576,8 +576,7 @@ export class ModuleManager {
 }
 
 function preserveDelegateLengths(prototype: ModuleManager): void {
-  const template = bindOperations(Object.create(null));
-  for (const [name, operation] of Object.entries(template)) {
+  for (const [name, operation] of Object.entries(MANAGER_OPERATIONS)) {
     Object.defineProperty(
       Object.getOwnPropertyDescriptor(prototype, name)?.value,
       "length",

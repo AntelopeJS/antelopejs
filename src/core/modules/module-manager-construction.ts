@@ -7,8 +7,7 @@ import {
   declaredConfigVars,
 } from "../config";
 import { neutralizeInterfacePackage } from "../resolution";
-import { Module } from "./module";
-import { aggregateErrors, collectRejectedErrors } from "./module-errors";
+import { collectRejectedErrors, throwErrors } from "./module-errors";
 import {
   type ManagedModule,
   type ManagerContext,
@@ -30,7 +29,7 @@ export async function constructAll(this: ManagerContext): Promise<void> {
     provided = await this.runProvidePhase(modules, plan);
   } catch (error) {
     if (leaseAcquired) {
-      throw aggregateErrors(
+      throwErrors(
         [error, ...this.releaseRuntimeState()],
         "Failed to construct modules",
       );
@@ -79,7 +78,7 @@ export async function constructModules(
     await Promise.all(modules.map((entry) => this.constructEntry(entry)));
   } catch (error) {
     if (leaseAcquired) {
-      throw aggregateErrors(
+      throwErrors(
         [error, ...this.releaseRuntimeState()],
         "Failed to construct modules",
       );
@@ -90,11 +89,10 @@ export async function constructModules(
 
 export async function constructModule(
   this: ManagerContext,
-  module: Module,
-  config: Parameters<Module["construct"]>[0],
+  { module, config }: ManagedModule,
 ): Promise<void> {
   try {
-    await module.construct(config);
+    await module.construct(config.config);
   } catch (error) {
     Logger.Error(`Failed to construct module:`);
     Logger.Error(`  - ID: ${module.id}`);
@@ -290,7 +288,7 @@ export async function provideEntry(
 ): Promise<void> {
   const { module, config } = entry;
   config.config = this.configVars.resolve(module.id, config.config);
-  const published = await this.provideModule(module, config.config);
+  const published = await this.provideModule(entry);
   this.configVars.record(
     module.id,
     declaredConfigVars(module.manifest),
@@ -300,11 +298,10 @@ export async function provideEntry(
 
 export async function provideModule(
   this: ManagerContext,
-  module: Module,
-  config: Parameters<Module["provide"]>[0],
+  { module, config }: ManagedModule,
 ): Promise<ConfigVars | void> {
   try {
-    return await module.provide(config);
+    return await module.provide(config.config);
   } catch (error) {
     Logger.Error(`Failed to provide config variables:`);
     Logger.Error(`  - ID: ${module.id}`);
@@ -320,5 +317,5 @@ export async function constructEntry(
 ): Promise<void> {
   const { module, config } = entry;
   config.config = this.configVars.resolve(module.id, config.config);
-  await this.constructModule(module, config.config);
+  await this.constructModule(entry);
 }

@@ -45,7 +45,8 @@ function validateSource(source: ModuleSourceGit): void {
   }
 }
 
-function toCommandResult(err: PromiseRejectedResult["reason"]): CommandResult {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- turns a rejected exec value into a result; JS can reject with any value
+function toCommandResult(err: unknown): CommandResult {
   if (err instanceof ExecError) {
     return { stdout: err.stdout, stderr: err.stderr, code: err.exitCode };
   }

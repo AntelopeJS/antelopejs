@@ -10,6 +10,15 @@ import type {} from "../../node-module-internals";
 import { isFunction, isObjectOrNull } from "../../utils";
 
 const Logger = new Logging.Channel("loader");
+
+/**
+ * The proxy classes under the type their default type arguments name.
+ * `instanceof` against the generic class narrows to `AsyncProxy<any, any>`,
+ * which the helpers below, typed with the defaults, reject as unsafe.
+ */
+export const AsyncProxyClass: new (...args: never[]) => AsyncProxy = AsyncProxy;
+const RegisteringProxyClass: new (...args: never[]) => RegisteringProxy =
+  RegisteringProxy;
 const warned = new Set<string>();
 
 const NO_PROVIDER_REASON = "has no provider for this async method";
@@ -48,7 +57,8 @@ function neutralizeRegisteringProxy(
 }
 
 function walk(
-  value: Parameters<typeof neutralizeInterfaceAsyncProxies>[0],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks an interface module export graph loaded by Node require
+  value: unknown,
   interfaceName: string,
   seen: WeakSet<object>,
   reason: string,
@@ -59,7 +69,7 @@ function walk(
   if (isFunction(value)) {
     const callable: Function & { proxy?: unknown } = value;
     const maybeProxy = callable.proxy;
-    if (maybeProxy instanceof AsyncProxy) {
+    if (maybeProxy instanceof AsyncProxyClass) {
       neutralizeAsyncProxy(maybeProxy, interfaceName, reason);
     }
     return;
@@ -72,11 +82,11 @@ function walk(
   }
   seen.add(value);
 
-  if (value instanceof AsyncProxy) {
+  if (value instanceof AsyncProxyClass) {
     neutralizeAsyncProxy(value, interfaceName, reason);
     return;
   }
-  if (value instanceof RegisteringProxy) {
+  if (value instanceof RegisteringProxyClass) {
     neutralizeRegisteringProxy(value, interfaceName, reason);
     return;
   }
@@ -84,19 +94,15 @@ function walk(
     return;
   }
 
-  for (const key of Object.keys(value)) {
-    // SAFETY: the null and primitive branches returned above; string-key access on the remaining object is exposed only as unknown, without claiming a property's contents.
-    walk(
-      (value as Record<string, Parameters<typeof walk>[0]>)[key],
-      interfaceName,
-      seen,
-      reason,
-    );
+  const items: unknown[] = Object.values(value);
+  for (const item of items) {
+    walk(item, interfaceName, seen, reason);
   }
 }
 
 export function neutralizeInterfaceAsyncProxies(
-  exports: PromiseFulfilledResult<unknown>["value"],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks an interface module export graph loaded by Node require
+  exports: unknown,
   interfaceName: string,
   reason: string = NO_PROVIDER_REASON,
 ): void {

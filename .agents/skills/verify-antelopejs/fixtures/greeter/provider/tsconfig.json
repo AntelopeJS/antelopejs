@@ -4,7 +4,14 @@
     "checkJs": false,
     "noEmit": true,
     "module": "commonjs",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "verify-greeter": [
+        "../verify-greeter/index.js"
+      ]
+    }
   },
-  "files": ["index.js"]
+  "files": [
+    "index.js"
+  ]
 }

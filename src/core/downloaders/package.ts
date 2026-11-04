@@ -4,6 +4,7 @@ import * as path from "node:path";
 import { maxSatisfying, satisfies, valid, validRange } from "semver";
 
 import type { IFileSystem } from "../../types";
+import { isObject } from "../../utils";
 import { NodeFileSystem } from "../filesystem";
 import {
   ModuleCache,
@@ -40,6 +41,7 @@ interface InlyExtraction {
   on(event: "end", listener: () => void): void;
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-assignment -- inly is an untyped CommonJS module and require returns any
 const inly: (from: string, to: string) => InlyExtraction = require("inly");
 
 const Logger = new Logging.Channel("loader.package");
@@ -86,6 +88,7 @@ async function fetchRegistryVersion(
     return undefined;
   }
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-assignment -- npm view --json prints one version or a list of them, read as npm prints it, because narrowing the parse changes which version real registry output selects (#323)
     const parsed: string | string[] = JSON.parse(output);
     const versions = Array.isArray(parsed) ? parsed : [parsed];
     return pickBestVersion(versions, spec);
@@ -145,6 +148,19 @@ async function resolveTargetVersion(
   );
 }
 
+/** The number of dependencies a cached package.json declares, or `undefined` when its shape is not a manifest. */
+function countDeclaredDependencies(text: string): number | undefined {
+  const parsed: unknown = JSON.parse(text);
+  if (!isObject(parsed)) {
+    return undefined;
+  }
+  const { dependencies } = parsed;
+  if (dependencies === undefined || dependencies === null) {
+    return 0;
+  }
+  return isObject(dependencies) ? Object.keys(dependencies).length : undefined;
+}
+
 async function findCachedFolder(
   cache: ModuleCache,
   pkg: string,
@@ -156,12 +172,14 @@ async function findCachedFolder(
     return undefined;
   }
   try {
-    const manifest: ModulePackageJson = JSON.parse(
+    const dependencyCount = countDeclaredDependencies(
       await fs.readFileString(manifestPath),
     );
-    const hasDependencies = Object.keys(manifest.dependencies ?? {}).length > 0;
+    if (dependencyCount === undefined) {
+      return undefined;
+    }
     if (
-      hasDependencies &&
+      dependencyCount > 0 &&
       !(await fs.exists(path.join(folder, NODE_MODULES)))
     ) {
       return undefined;
@@ -192,10 +210,11 @@ async function downloadPackage(
   await ctx.extract(path.join(tmp, filename), tmp);
 
   const tmpPackage = path.join(tmp, "package");
+  // oxlint-disable-next-line typescript/no-unsafe-assignment -- the package.json npm packed into the downloaded tarball, read as published, because narrowing it changes how real published manifests load (#323)
   const manifest: ModulePackageJson = JSON.parse(
     await ctx.fs.readFileString(path.join(tmpPackage, PACKAGE_JSON)),
   );
-  const key = { package: source.package, version: manifest.version };
+  const key = { package: source.package, version: manifest.version ?? version };
   const record = await ctx.locks.find(key);
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);
   await cache.clearVersion(source.package);
@@ -211,7 +230,9 @@ async function downloadPackage(
       new ExecError({ ...installResult, command: cmd }),
     );
   }
-  await cache.commitVersion(source.package, manifest.version);
+  if (manifest.version !== undefined) {
+    await cache.commitVersion(source.package, manifest.version);
+  }
   await ctx.locks.keep(key, folder, record);
   return folder;
 }

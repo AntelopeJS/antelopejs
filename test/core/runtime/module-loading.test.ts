@@ -207,10 +207,12 @@ describe("runtime module-loading", () => {
       registry: { load },
     });
 
-    const caught = await buildModuleConfigs(config, context).catch((err) => {
-      assert.ok(err instanceof Error);
-      return err;
-    });
+    const caught = await buildModuleConfigs(config, context).catch(
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        return err;
+      },
+    );
 
     expect(caught).to.be.instanceOf(CliError);
     assert.ok(caught instanceof CliError);
@@ -279,9 +281,9 @@ describe("runtime module-loading: frozen module locks", () => {
       cache,
       registry,
       projectFolder: "/project",
-    }).catch((err) => err);
+    }).catch((err: unknown) => err);
 
-    expect(caught).to.be.instanceOf(CliError);
+    assert.ok(caught instanceof CliError);
     expect(caught.message).to.equal("No module lock for extra@1.0.0");
   });
 });

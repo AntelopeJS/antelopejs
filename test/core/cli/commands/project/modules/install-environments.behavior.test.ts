@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -18,7 +19,7 @@ describe("project modules install behavior: analyzes all environments when none 
   const fixture = installFixture();
 
   it("analyzes all environments when none is specified", async () => {
-    const baseConfig: any = {
+    const baseConfig: AntelopeConfig = {
       name: "proj",
       environments: { staging: {}, prod: {} },
       modules: {},
@@ -57,7 +58,7 @@ describe("project modules install behavior: analyzes all environments when none 
   });
 
   it("respects the env option when provided", async () => {
-    const baseConfig: any = {
+    const baseConfig: AntelopeConfig = {
       name: "proj",
       environments: { staging: {} },
       modules: {},

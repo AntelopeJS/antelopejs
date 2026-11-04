@@ -30,15 +30,12 @@ function shutdownProcess(exitCode: number): void {
   process.exit(exitCode);
 }
 
-function isInvalidatedModuleWork(
-  reason: Parameters<NodeJS.UnhandledRejectionListener>[0],
-): boolean {
-  return (
-    invalidatedWorkTolerance > 0 &&
-    reason instanceof Error &&
-    "code" in reason &&
-    reason.code === MODULE_CONTEXT_INVALIDATED_CODE
-  );
+interface InvalidatedModuleWork extends Error {
+  code: typeof MODULE_CONTEXT_INVALIDATED_CODE;
+}
+
+function isInvalidatedModuleWork(error: Error): error is InvalidatedModuleWork {
+  return "code" in error && error.code === MODULE_CONTEXT_INVALIDATED_CODE;
 }
 
 /**
@@ -47,9 +44,9 @@ function isInvalidatedModuleWork(
  */
 function reportInvalidatedModuleWork(
   kind: string,
-  reason: Parameters<NodeJS.UnhandledRejectionListener>[0],
+  reason: InvalidatedModuleWork,
 ): boolean {
-  if (!isInvalidatedModuleWork(reason)) {
+  if (invalidatedWorkTolerance <= 0) {
     return false;
   }
   Logging.Error(
@@ -95,16 +92,24 @@ export function setupProcessHandlers(shutdownManager?: ShutdownManager): void {
   }
 
   processHandlersReady = true;
-  process.on("uncaughtException", (error: Error) => {
-    if (reportInvalidatedModuleWork("Uncaught exception", error)) {
+  process.on("uncaughtException", (error) => {
+    if (
+      error instanceof Error &&
+      isInvalidatedModuleWork(error) &&
+      reportInvalidatedModuleWork("Uncaught exception", error)
+    ) {
       return;
     }
     Logging.Error("Uncaught exception:", error);
     shutdownProcess(EXIT_CODE_ERROR);
   });
 
-  process.on("unhandledRejection", (reason: any) => {
-    if (reportInvalidatedModuleWork("Unhandled rejection", reason)) {
+  process.on("unhandledRejection", (reason) => {
+    if (
+      reason instanceof Error &&
+      isInvalidatedModuleWork(reason) &&
+      reportInvalidatedModuleWork("Unhandled rejection", reason)
+    ) {
       return;
     }
     Logging.Error("Unhandled rejection:", reason);

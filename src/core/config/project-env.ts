@@ -10,20 +10,15 @@ const MISSING_FILE_ERROR_CODE = "ENOENT";
 
 const loadedFromEnvFiles = new Map<string, Map<string, string>>();
 
-function isMissingFileError(error: PromiseRejectedResult["reason"]): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-  const systemError: NodeJS.ErrnoException = error;
-  return systemError.code === MISSING_FILE_ERROR_CODE;
-}
-
 function readEnvFile(filePath: string): string | undefined {
   try {
     return readFileSync(filePath, ENV_ENCODING);
   } catch (error) {
-    if (isMissingFileError(error)) {
-      return undefined;
+    if (error instanceof Error) {
+      const systemError: NodeJS.ErrnoException = error;
+      if (systemError.code === MISSING_FILE_ERROR_CODE) {
+        return undefined;
+      }
     }
     throw error;
   }

@@ -1,6 +1,7 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { satisfies, validRange } from "semver";
 
+import { isObject, isString } from "../../utils";
 import type { ExpandedModuleConfig } from "../config";
 import {
   CliError,
@@ -75,11 +76,17 @@ async function viewPackage(
   return result;
 }
 
+function isStringEntry(entry: [string, unknown]): entry is [string, string] {
+  return isString(entry[1]);
+}
+
 export async function fetchDistTags(
   packageName: string,
 ): Promise<Record<string, string>> {
   const result = await viewPackage(packageName, DIST_TAGS_ARGUMENTS);
-  return JSON.parse(result.stdout);
+  const parsed: unknown = JSON.parse(result.stdout);
+  const entries = isObject(parsed) ? Object.entries(parsed) : [];
+  return Object.fromEntries(entries.filter(isStringEntry));
 }
 
 export async function validateVersionSpec(
@@ -157,18 +164,6 @@ function isPackageModule(entry: ModuleEntry): entry is PackageModuleEntry {
   return entry[1].source?.type === "package";
 }
 
-function warnUncheckedPackage(
-  packageName: string,
-  reason: Parameters<typeof describeFailure>[0],
-): void {
-  const truncated = truncate(
-    describeFailure(reason, false).title,
-    MAX_REASON_LENGTH,
-    getProcessUi().symbols.ellipsis,
-  );
-  warning(`Could not check latest version of ${packageName}: ${truncated}`);
-}
-
 function collectOutdatedModules(
   packageModules: PackageModuleEntry[],
   results: PromiseSettledResult<string>[],
@@ -178,7 +173,14 @@ function collectOutdatedModules(
       const result = results[index];
       const { source } = info;
       if (result.status === "rejected") {
-        warnUncheckedPackage(source.package, result.reason);
+        const truncated = truncate(
+          describeFailure(result.reason, false).title,
+          MAX_REASON_LENGTH,
+          getProcessUi().symbols.ellipsis,
+        );
+        warning(
+          `Could not check latest version of ${source.package}: ${truncated}`,
+        );
         return outdated;
       }
       if (result.value && !isUpToDate(source.version, result.value)) {

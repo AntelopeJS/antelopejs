@@ -4,6 +4,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import path from "node:path";
 
+import { items, parseJson, requireText } from "./json.mts";
+
 /** A package a {@link LocalRegistry} publishes: its package.json and its files. */
 export interface PublishedPackage {
   name: string;
@@ -19,6 +21,10 @@ interface PublishedManifest {
   main: string;
   dependencies: Record<string, string>;
   packageManager?: string;
+}
+
+interface PackumentVersion extends PublishedManifest {
+  dist: { tarball: string; shasum: string; integrity: string };
 }
 
 interface StoredVersion {
@@ -91,8 +97,9 @@ export class LocalRegistry {
     }
     const output = path.join(this.folder, "tarballs");
     mkdirSync(output, { recursive: true });
-    const packed = JSON.parse(execFileSync("npm", ["pack", source, "--pack-destination", output, "--json"], { encoding: "utf8", env: { ...process.env, npm_config_offline: "true" } }));
-    const tarball = readFileSync(path.join(output, packed[0].filename));
+    const packed = parseJson(execFileSync("npm", ["pack", source, "--pack-destination", output, "--json"], { encoding: "utf8", env: { ...process.env, npm_config_offline: "true" } }));
+    const [first] = items(packed);
+    const tarball = readFileSync(path.join(output, requireText(first, "filename", "npm pack --json")));
     const versions = this.packages.get(pkg.name) ?? new Map<string, StoredVersion>();
     versions.set(pkg.version, { manifest, tarball });
     this.packages.set(pkg.name, versions);
@@ -107,7 +114,7 @@ export class LocalRegistry {
     if (!versions) {
       return undefined;
     }
-    const entries = [...versions.entries()].map(([version, stored]) => [
+    const entries = [...versions.entries()].map(([version, stored]): [string, PackumentVersion] => [
       version,
       {
         ...stored.manifest,

@@ -111,7 +111,9 @@ describe("data commands with --json", () => {
     it(`${name} --json writes only one JSON document on stdout`, async () => {
       const output = await run([...args(projectDir), "--json"]);
 
-      expect(() => JSON.parse(output.stdout), output.stdout).to.not.throw();
+      expect(() => {
+        JSON.parse(output.stdout);
+      }, output.stdout).to.not.throw();
       expect(output.stdout).to.match(JSON_DOCUMENT_LAYOUT);
       expect(output.stderr).to.not.contain(UPDATE_NOTICE);
       expect(process.exitCode ?? 0).to.equal(0);

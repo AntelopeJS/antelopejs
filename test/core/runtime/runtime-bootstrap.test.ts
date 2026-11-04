@@ -11,6 +11,9 @@ import * as bootstrap from "../../../src/core/runtime";
 import { ShutdownManager } from "../../../src/core/runtime";
 import * as logging from "../../../src/logging";
 
+const CHILD_LIMIT_MS = 20000;
+const ASSERTION_MARGIN_MS = 5000;
+
 type ProcessEventName = "uncaughtException" | "unhandledRejection" | "warning";
 
 type ProcessListenerSnapshot = Record<
@@ -47,7 +50,8 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
 
   const checkRegistersProcessHandlersOnceAnd: (this: Mocha.Suite) => void =
     function () {
-      it("registers process handlers once and handles all branches", () => {
+      it("registers process handlers once and handles all branches", function () {
+        this.timeout(CHILD_LIMIT_MS + ASSERTION_MARGIN_MS);
         const result = spawnSync(
           process.execPath,
           [
@@ -85,7 +89,7 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
           {
             encoding: "utf8",
             env: { ...process.env, TS_NODE_TRANSPILE_ONLY: "true" },
-            timeout: 20000,
+            timeout: CHILD_LIMIT_MS,
           },
         );
         expect(result.status, result.stderr).to.equal(0);
@@ -138,6 +142,31 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
           withdraw();
           rejection(orphaned);
           expect(shutdownStub.calledTwice).to.equal(true);
+        } finally {
+          bootstrap.releaseProcessShutdownManager(shutdownManager);
+          restoreProcessListeners(originalListeners);
+        }
+      });
+
+      it("shuts down on a thrown value that is not an Error, even while tolerating invalidated work", () => {
+        const originalListeners = snapshotProcessListeners();
+        const shutdownManager = new ShutdownManager();
+        const shutdownStub = sinon.stub(shutdownManager, "shutdown").resolves();
+        sinon.stub(Logging, "Error");
+        const invalidatedCode = new ModuleContextInvalidatedError("dms").code;
+
+        try {
+          bootstrap.setupProcessHandlers(shutdownManager);
+          const withdraw = bootstrap.tolerateInvalidatedModuleWork();
+          const uncaught = snapshotProcessListeners().uncaughtException.at(-1);
+          assert.ok(uncaught);
+
+          uncaught("str");
+          uncaught(null);
+          uncaught({ code: invalidatedCode });
+          expect(shutdownStub.callCount).to.equal(3);
+          expect(shutdownStub.alwaysCalledWith(1)).to.equal(true);
+          withdraw();
         } finally {
           bootstrap.releaseProcessShutdownManager(shutdownManager);
           restoreProcessListeners(originalListeners);

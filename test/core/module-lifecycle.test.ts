@@ -299,7 +299,10 @@ describe("ModuleLifecycle", () => {
     await lifecycle.construct({});
     await lifecycle.start().then(
       () => expect.fail("start should have rejected"),
-      (err: Error) => expect(err.message).to.equal("boom"),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        expect(err.message).to.equal("boom");
+      },
     );
     expect(lifecycle.state).to.equal(ModuleState.Constructed);
 

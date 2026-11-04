@@ -11,6 +11,7 @@ export * from "./module-lifecycle";
 export * from "./module-locks";
 export * from "./module-manager";
 export * from "./module-manifest";
+export * from "./module-package-json";
 export * from "./module-registry";
 export * from "./module-tracker";
 export * from "./path-mapper";

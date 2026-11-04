@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -27,7 +28,7 @@ describe("project modules behavior: add-download-results", () => {
   });
 
   it("logs download success when registry returns no manifests", async () => {
-    const config: any = { name: "proj", modules: {} };
+    const config: AntelopeConfig = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();
@@ -50,7 +51,7 @@ describe("project modules behavior: add-download-results", () => {
   });
 
   it("errors and skips module when download fails with non-error", async () => {
-    const config: any = { name: "proj", modules: {} };
+    const config: AntelopeConfig = { name: "proj", modules: {} };
     sinon.stub(common, "readConfig").resolves(config);
     stubLoadedConfig();
     sinon.stub(ModuleCache.prototype, "load").resolves();

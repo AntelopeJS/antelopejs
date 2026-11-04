@@ -32,8 +32,8 @@ function renderHelp(command: Command): string {
   return output;
 }
 
-function commandNames(cmd: any): string[] {
-  return cmd.commands.map((c: any) => c.name()).sort();
+function commandNames(cmd: Command): string[] {
+  return cmd.commands.map((c) => c.name()).sort();
 }
 
 describe("CLI Entry Point", () => {

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 import launch, { type ModuleManager } from "../../src";
+import type { JsonValue } from "../helpers/json";
 
 interface TestGlobals {
   [REGISTRATIONS_KEY]?: Array<[string, string]>;
@@ -126,9 +127,9 @@ async function writeFixtureModule(
   );
 }
 
-async function writeProjectConfig<Tconfig>(
+async function writeProjectConfig(
   folder: string,
-  config: Tconfig,
+  config: JsonValue,
 ): Promise<void> {
   await fs.writeFile(
     path.join(folder, "antelope.config.ts"),

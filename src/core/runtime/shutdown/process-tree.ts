@@ -1,5 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 
+import { isObject } from "../../../utils";
+
 const PROC_PATH = "/proc";
 const PID_PATTERN = /^\d+$/;
 const LINUX_PLATFORM: NodeJS.Platform = "linux";
@@ -76,8 +78,7 @@ function isPermissionDenied(
       `Cannot read properties of ${String(thrown)} (reading 'code')`,
     );
   }
-  const candidate: { code?: unknown } = Object(thrown);
-  return candidate.code === PERMISSION_DENIED_CODE;
+  return isObject(thrown) && thrown.code === PERMISSION_DENIED_CODE;
 }
 
 function signal(pid: number, name: string, kill: ProcessKill): void {

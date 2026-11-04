@@ -65,7 +65,8 @@ export class InterfaceRegistry {
   }
 
   private getCurrentOwners(moduleId: string): Map<symbol, ModuleConnections> {
-    const owners = ownersByModule.get(moduleId) ?? new Map();
+    const owners =
+      ownersByModule.get(moduleId) ?? new Map<symbol, ModuleConnections>();
     const current = internal.interfaceConnections[moduleId];
     if (current && [...owners.values()].includes(current)) {
       return owners;

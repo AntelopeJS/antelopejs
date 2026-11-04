@@ -175,7 +175,7 @@ async function refreshModuleLock(
   );
   const key = {
     package: module.source.package,
-    version: manifest.manifest.version,
+    version: manifest.manifest.version ?? module.source.version,
   };
   const after = await store.read(key);
   return {

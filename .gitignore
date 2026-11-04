@@ -369,3 +369,5 @@ $RECYCLE.BIN/
 .pnpm-store
 
 .idea
+
+playground/node-compile-cache/

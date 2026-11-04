@@ -1,3 +1,4 @@
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -73,7 +74,7 @@ describe("project logging set --level and --format", () => {
   });
 
   it("saves only the template of the selected level", async () => {
-    const config: any = { name: "test-project" };
+    const config: AntelopeConfig = { name: "test-project" };
     const stubs = stubSetCommand(config);
 
     await runSet("--level", "debug", "--format", DEBUG_TEMPLATE);
@@ -85,18 +86,18 @@ describe("project logging set --level and --format", () => {
   });
 
   it("saves the fallback template under the default key", async () => {
-    const config: any = { name: "test-project" };
+    const config: AntelopeConfig = { name: "test-project" };
     stubSetCommand(config);
 
     await runSet("--level", "default", "--format", DEBUG_TEMPLATE);
 
-    expect(config.logging.formatter).to.deep.equal({
+    expect(config.logging?.formatter).to.deep.equal({
       default: DEBUG_TEMPLATE,
     });
   });
 
   it("does not write a template equal to the saved one", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
       name: "test-project",
       logging: { formatter: { "10": DEBUG_TEMPLATE } },
     };
@@ -114,7 +115,7 @@ describe("project logging set --level and --format", () => {
 
   const checkDoesNotWriteWhenEvery: (this: Mocha.Suite) => void = function () {
     it("does not write when every setting is already in place", async () => {
-      const config: any = { name: "test-project" };
+      const config: AntelopeConfig = { name: "test-project" };
       const stubs = stubSetCommand(config);
 
       await runSet("--enable", "--remove-include", "ghost");
@@ -129,7 +130,7 @@ describe("project logging set --level and --format", () => {
     });
 
     it("writes only the changed settings, never the built-in block", async () => {
-      const config: any = { name: "test-project" };
+      const config: AntelopeConfig = { name: "test-project" };
       const stubs = stubSetCommand(config);
 
       await runSet("--disable", "--include-module", "billing");
@@ -141,13 +142,17 @@ describe("project logging set --level and --format", () => {
       });
     });
 
-    it("treats empty logging entries as their defaults", async () => {
-      const config: any = {
+    it("tolerates null logging entries, keeping null enabled and dateFormat and setting only the new moduleTracking and formatter values", async () => {
+      const config: Partial<AntelopeConfig> = {
         name: "test-project",
         logging: {
+          // @ts-expect-error A null enabled flag is tolerated and stays null in the config after the command.
           enabled: null,
+          // @ts-expect-error A null moduleTracking entry is tolerated and afterwards holds only the included module.
           moduleTracking: null,
+          // @ts-expect-error A null formatter entry is tolerated and afterwards holds only the new level format.
           formatter: null,
+          // @ts-expect-error A null dateFormat is tolerated and stays null in the config after the command.
           dateFormat: null,
         },
       };
@@ -172,7 +177,7 @@ describe("project logging set --level and --format", () => {
     });
 
     it("applies every non-interactive setting", async () => {
-      const config: any = {
+      const config: AntelopeConfig = {
         name: "test-project",
         logging: {
           enabled: false,
@@ -225,7 +230,7 @@ describe("project logging set --level and --format", () => {
   const checkListsWhatChangedAndWhat: (this: Mocha.Suite) => void =
     function () {
       it("lists what changed and what did not in the summary", async () => {
-        const config: any = {
+        const config: AntelopeConfig = {
           name: "test-project",
           logging: {
             enabled: true,
@@ -250,8 +255,12 @@ describe("project logging set --level and --format", () => {
         expect(summary).to.include("Module tracking disabled");
         expect(summary).to.include("is already in the include list");
         expect(summary).to.include("is not in the exclude list");
-        expect(config.logging.moduleTracking.includes).to.deep.equal(["modA"]);
-        expect(config.logging.moduleTracking.excludes).to.deep.equal(["modB"]);
+        expect(config.logging?.moduleTracking?.includes).to.deep.equal([
+          "modA",
+        ]);
+        expect(config.logging?.moduleTracking?.excludes).to.deep.equal([
+          "modB",
+        ]);
       });
 
       it("reports a module tracking toggle that is already in place", async () => {
@@ -292,7 +301,7 @@ describe("project logging set with an environment", () => {
   useSetCommandSandbox(false);
 
   it("writes into the environment block, relative to the project block", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
       name: "test-project",
       logging: { enabled: false, moduleTracking: { includes: ["modA"] } },
       environments: { staging: {} },
@@ -302,11 +311,11 @@ describe("project logging set with an environment", () => {
     await runSet("--env", "staging", "--enable", "--include-module", "modB");
 
     expect(stubs.writeConfig.calledOnce).to.equal(true);
-    expect(config.environments.staging.logging).to.deep.equal({
+    expect(config.environments?.staging?.logging).to.deep.equal({
       enabled: true,
       moduleTracking: { includes: ["modA", "modB"] },
     });
-    expect(config.logging.enabled).to.equal(false);
+    expect(config.logging?.enabled).to.equal(false);
     expect(stubs.feedback()).to.include(
       "Saved the logging configuration of test-project (staging)",
     );
@@ -316,7 +325,7 @@ describe("project logging set with an environment", () => {
   });
 
   it("sees the project block's settings from an environment", async () => {
-    const config: any = {
+    const config: AntelopeConfig = {
       name: "test-project",
       logging: { enabled: false },
       environments: { staging: {} },
@@ -326,7 +335,7 @@ describe("project logging set with an environment", () => {
     await runSet("--env", "staging", "--disable");
 
     expect(stubs.writeConfig.called).to.equal(false);
-    expect(config.environments.staging).to.deep.equal({});
+    expect(config.environments?.staging).to.deep.equal({});
   });
 });
 

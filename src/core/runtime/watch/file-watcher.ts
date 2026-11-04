@@ -22,10 +22,7 @@ interface WatchedFile {
 const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
 const VANISHED_PATH_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
 
-function isVanishedPathError(error: PromiseRejectedResult["reason"]): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
+function isVanishedPathError(error: Error): boolean {
   const systemError: NodeJS.ErrnoException = error;
   const { code } = systemError;
   return code !== undefined && VANISHED_PATH_ERROR_CODES.has(code);
@@ -139,7 +136,7 @@ export class FileWatcher {
     const previous = this.changeChains.get(dir) ?? Promise.resolve();
     const next = previous
       .then(() => this.handleFileChange(filePath))
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error(`FileWatcher error handling ${filePath}:`, err);
       });
     this.changeChains.set(dir, next);
@@ -175,7 +172,7 @@ export class FileWatcher {
     try {
       await this.processFileChange(filePath);
     } catch (error) {
-      if (!isVanishedPathError(error)) {
+      if (!(error instanceof Error && isVanishedPathError(error))) {
         throw error;
       }
       this.handleRemovedPath(filePath);
@@ -339,7 +336,7 @@ export class FileWatcher {
     try {
       await this.addEntry(moduleId, fullPath);
     } catch (error) {
-      if (!isVanishedPathError(error)) {
+      if (!(error instanceof Error && isVanishedPathError(error))) {
         throw error;
       }
       this.pruneDir(fullPath);

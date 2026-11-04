@@ -1,5 +1,6 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import assert from "node:assert/strict";
 import { maxSatisfying } from "semver";
 
 import {
@@ -25,7 +26,10 @@ interface Harness {
   store: ModuleLockStore;
   calls: string[];
   lockAtInstall: Array<string | undefined>;
-  load(version: string, extra?: Partial<ModuleSourcePackage>): Promise<string>;
+  load(
+    version: string,
+    extra?: Partial<ModuleSourcePackage>,
+  ): Promise<string | undefined>;
 }
 
 const MANIFEST = (version: string) =>
@@ -39,6 +43,7 @@ const MANIFEST = (version: string) =>
 async function createHarness(
   mode: ModuleLockMode | undefined,
   registryVersions: string[] = ["1.0.0"],
+  manifest: (version: string) => string = MANIFEST,
 ): Promise<Harness> {
   const fs = new InMemoryFileSystem();
   const cache = new ModuleCache("/cache", fs);
@@ -75,7 +80,7 @@ async function createHarness(
     exec,
     getTemp: async () => "/tmp/pack",
     extract: async () => {
-      await fs.writeFile("/tmp/pack/package/package.json", MANIFEST(packed));
+      await fs.writeFile("/tmp/pack/package/package.json", manifest(packed));
     },
     getInstallCommand: async () => "pnpm install --prod",
     lock: mode ? { store, mode } : undefined,
@@ -117,6 +122,21 @@ describe("PackageDownloader module locks", () => {
     await harness.load("1.0.0");
 
     expect(harness.lockAtInstall).to.deep.equal([undefined]);
+    expect(
+      await harness.store.read({ package: PKG, version: "1.0.0" }),
+    ).to.deep.equal(recorded("1.0.0", RESOLVED_LOCK));
+  });
+
+  it("records the lock of a package whose package.json has no version under the version it was packed for", async () => {
+    const harness = await createHarness("record", ["1.0.0"], () =>
+      JSON.stringify({
+        name: PKG,
+        packageManager: "pnpm@10.6.5",
+        dependencies: { dep: "^1.0.0" },
+      }),
+    );
+
+    expect(await harness.load("1.0.0")).to.equal(undefined);
     expect(
       await harness.store.read({ package: PKG, version: "1.0.0" }),
     ).to.deep.equal(recorded("1.0.0", RESOLVED_LOCK));
@@ -182,10 +202,10 @@ describe("PackageDownloader module locks", () => {
 
     const failure = await harness.load("1.0.0").then(
       () => undefined,
-      (error) => error,
+      (error: unknown) => error,
     );
 
-    expect(failure).to.be.instanceOf(CliError);
+    assert.ok(failure instanceof CliError);
     expect(failure.message).to.equal(`No module lock for ${PKG}@1.0.0`);
     expect(harness.calls).to.deep.equal([]);
   });
@@ -196,7 +216,7 @@ describe("PackageDownloader module locks", () => {
 
     const failure = await harness.load("1.0.0").then(
       () => undefined,
-      (error) => error,
+      (error: unknown) => error,
     );
 
     expect(failure).to.be.instanceOf(CliError);

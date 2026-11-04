@@ -3,6 +3,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
+  CliError,
   displayPath,
   ExecuteCMD,
   getInstallCommand,
@@ -14,6 +15,7 @@ import {
   success,
   warning,
 } from "../../../core/output";
+import { isObject } from "../../../utils";
 import {
   copyTemplate,
   type InterfaceInfo,
@@ -30,6 +32,16 @@ export interface ModuleInitAnswers {
 const LATEST_VERSION = "latest";
 const JSON_INDENTATION = 2;
 
+function unusableManifest(pkgJsonPath: string, reason: string): CliError {
+  return new CliError({
+    title: `Cannot add the chosen interfaces to ${displayPath(pkgJsonPath)}`,
+    reason,
+    fixes: [
+      "Make the template's package.json a JSON object whose dependencies, when it has any, are an object of package names and version ranges",
+    ],
+  });
+}
+
 function addInterfaceDependencies(
   modulePath: string,
   interfaces: InterfaceInfo[],
@@ -41,10 +53,20 @@ function addInterfaceDependencies(
     return;
   }
   const pkgJsonPath = path.resolve(modulePath, "package.json");
-  const pkgJson = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-  pkgJson.dependencies ??= {};
+  const pkgJson: unknown = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+  if (!isObject(pkgJson)) {
+    throw unusableManifest(pkgJsonPath, "The file must hold a JSON object.");
+  }
+  const dependencies = pkgJson.dependencies ?? {};
+  if (!isObject(dependencies)) {
+    throw unusableManifest(
+      pkgJsonPath,
+      "Its dependencies field must be a JSON object.",
+    );
+  }
+  pkgJson.dependencies = dependencies;
   packages.forEach((name) => {
-    pkgJson.dependencies[name] ??= LATEST_VERSION;
+    dependencies[name] ??= LATEST_VERSION;
   });
   writeFileSync(
     pkgJsonPath,

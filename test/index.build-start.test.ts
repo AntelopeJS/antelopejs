@@ -19,10 +19,10 @@ import {
 import {
   cleanupTempDir,
   makeTempDir,
-  readJson,
   readText,
   writeJson,
 } from "./helpers/temp";
+import type { JsonValue } from "./helpers/json";
 
 interface TestGlobals {
   [RECORDED_CONFIG_KEY]?: {
@@ -52,17 +52,22 @@ function settlesOrPending<T>(
   return Promise.race([call, timeout]);
 }
 
-function detachProxy<Args extends unknown[], Result>(
-  fn: (...args: Args) => Result,
-): void {
-  interfaceProxy(fn).detach();
-}
-
-function writeTsConfig<Tconfig>(projectFolder: string, config: Tconfig): void {
+function writeTsConfig(projectFolder: string, config: JsonValue): void {
   const configPath = path.join(projectFolder, "antelope.config.ts");
   const configContent = `export default ${JSON.stringify(config, null, 2)};\n`;
   fs.writeFileSync(configPath, configContent, "utf-8");
   delete require.cache[configPath];
+}
+
+function writeArtifact(projectFolder: string, artifact: BuildArtifact): void {
+  const artifactPath = path.join(
+    projectFolder,
+    ".antelope",
+    "build",
+    "build.json",
+  );
+  fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
+  fs.writeFileSync(artifactPath, JSON.stringify(artifact, null, 2));
 }
 
 function createArtifact(
@@ -174,11 +179,11 @@ function readRecordedConfig() {
           "build",
           "build.json",
         );
-        const artifact = readJson<BuildArtifact>(artifactPath);
+        const artifact: unknown = JSON.parse(readText(artifactPath));
 
-        expect(artifact.env).to.equal("production");
-        expect(artifact.config.name).to.equal("sample");
-        expect(Object.keys(artifact.modules)).to.have.length(0);
+        expect(artifact).to.have.property("env", "production");
+        expect(artifact).to.have.nested.property("config.name", "sample");
+        expect(artifact).to.have.property("modules").that.deep.equals({});
       });
 
       it("launchFromBuild throws when build artifact is missing", async () => {
@@ -208,10 +213,7 @@ function readRecordedConfig() {
           modules: {},
         });
         const artifact = createArtifact(projectFolder, "outdated-hash");
-        writeJson(
-          path.join(projectFolder, ".antelope", "build", "build.json"),
-          artifact,
-        );
+        writeArtifact(projectFolder, artifact);
 
         const warnStub = sinon.stub(Logging, "Warn");
 
@@ -232,12 +234,9 @@ function readRecordedConfig() {
           modules: {},
         });
         const artifact = createArtifact(projectFolder, "abc123");
-        writeJson(
-          path.join(projectFolder, ".antelope", "build", "build.json"),
-          artifact,
-        );
+        writeArtifact(projectFolder, artifact);
 
-        detachProxy(ListModules);
+        interfaceProxy(ListModules).detach();
 
         await launchFromBuild(projectFolder);
 
@@ -254,10 +253,7 @@ function readRecordedConfig() {
         const projectFolder = makeTempDir("antelope-start-production-");
         tempDirs.push(projectFolder);
         writeTsConfig(projectFolder, { name: "sample", modules: {} });
-        writeJson(
-          path.join(projectFolder, ".antelope", "build", "build.json"),
-          createArtifact(projectFolder, "abc123"),
-        );
+        writeArtifact(projectFolder, createArtifact(projectFolder, "abc123"));
         const download = sinon.stub(DownloaderRegistry.prototype, "load");
         const watch = sinon.stub(FileWatcher.prototype, "startWatching");
 
@@ -282,10 +278,7 @@ function readRecordedConfig() {
         const artifact = createArtifact(projectFolder, "abc123", [
           { id: "alpha", folder: "/missing/alpha" },
         ]);
-        writeJson(
-          path.join(projectFolder, ".antelope", "build", "build.json"),
-          artifact,
-        );
+        writeArtifact(projectFolder, artifact);
 
         let thrown: unknown;
         try {
@@ -406,7 +399,7 @@ function readRecordedConfig() {
 
     afterEach(() => {
       sinon.restore();
-      detachProxy(ListModules);
+      interfaceProxy(ListModules).detach();
       delete testGlobals[RECORDED_CONFIG_KEY];
       delete process.env[TOKEN_VARIABLE];
       for (const dir of tempDirs.splice(0)) {

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import launch, { type ModuleManager } from "../../src";
+import { isObject } from "../../src/utils";
 
 const MARKER_TIMEOUT_MS = 8000;
 const MARKER_POLL_MS = 50;
@@ -38,9 +39,12 @@ async function expectRegistryAdd(
     const data = await readMarker(markerPath);
     if (!data) return false;
     try {
-      const parsed: Record<string, { add?: boolean } | undefined> =
-        JSON.parse(data);
-      return parsed.skins?.add === expected;
+      const parsed: unknown = JSON.parse(data);
+      return (
+        isObject(parsed) &&
+        isObject(parsed.skins) &&
+        parsed.skins.add === expected
+      );
     } catch {
       return false;
     }
@@ -201,10 +205,8 @@ describe("HMR propagates RegisteringProxy changes across module reloads", () => 
 
       const marker = await readMarker(markerPath);
       expect(marker).to.not.equal(undefined);
-      const final: {
-        skins?: { add?: boolean };
-      } = JSON.parse(marker ?? "null");
-      expect(final.skins?.add).to.equal(true);
+      const final: unknown = JSON.parse(marker ?? "null");
+      expect(final).to.have.nested.property("skins.add", true);
     } finally {
       if (manager) {
         await manager.stopAll();

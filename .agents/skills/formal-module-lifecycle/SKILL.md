@@ -13,7 +13,7 @@ The TLA+ spec models what `ajs project dev --watch` does to module generations: 
 node .agents/skills/formal-module-lifecycle/check.mjs
 ```
 
-It needs Node 24 and Java 11 or later (`$JAVA`, or `java` on PATH). The first run downloads TLC 1.7.4 into `~/.cache/antelopejs-formal` (or `$XDG_CACHE_HOME/antelopejs-formal`) and checks its SHA-256. A run takes about 55 s on 4 cores and explores 3,071,060 states. CI runs it as the `formal-module-lifecycle` job.
+It needs Node 24, `pnpm install` done (the runner comes from `@antelopejs/tooling-configs/formal`), and Java 11 or later from `$JAVA`, else `java` on PATH, else the `eclipse-temurin:21-jre` Docker image (set `TLC_DOCKER_PREFIX` to name the containers). The first run downloads TLC 1.7.4 into `~/.cache/antelopejs-formal` (or `$XDG_CACHE_HOME/antelopejs-formal`) and checks its SHA-256. A run takes about 55 s on 4 cores and explores 3,071,060 states. CI runs it as the `formal-module-lifecycle` job.
 
 - Exit 0 means every rule that held still holds, and each finding still breaks with its recorded counterexample length.
 - Exit 1 means a rule changed. `BROKEN` names a rule that held and now breaks. `CHANGED` names a finding whose shortest counterexample changed length. `HOLDS` names a finding that no longer breaks. The script keeps TLC's output in a temporary folder and prints its path.

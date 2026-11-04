@@ -14,6 +14,10 @@ import {
   stripAnsiCodes,
 } from "../../../src/core/output";
 
+interface SelfReferencing {
+  self?: SelfReferencing;
+}
+
 function setTTY(stdout: boolean, stderr: boolean, columns?: number) {
   const stdoutIsTTY = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
   const stderrIsTTY = Object.getOwnPropertyDescriptor(process.stderr, "isTTY");
@@ -304,7 +308,7 @@ function setTTY(stdout: boolean, stderr: boolean, columns?: number) {
       });
 
       it("should handle circular references", () => {
-        const value: any = {};
+        const value: SelfReferencing = {};
         value.self = value;
         expect(serializeLogValue(value)).to.equal("[object Object]");
       });

@@ -2,6 +2,7 @@ import { expect } from "chai";
 import sinon from "sinon";
 
 import { handlers } from "../../../../../src/cli";
+import type { JsonValue } from "../../../../helpers/json";
 import {
   cleanupTempDir,
   makeTempDir,
@@ -91,4 +92,53 @@ describe("project modules behavior: local-paths", () => {
       cleanupTempDir(tempDir);
     }
   });
+
+  async function addLocal(manifest: JsonValue): Promise<unknown[]> {
+    const tempDir = makeTempDir("antelope-mod-name-");
+    try {
+      writeJson(`${tempDir}/moduleA/package.json`, manifest);
+
+      return await handlers.get("local")!(`${tempDir}/moduleA`, {
+        mode: "local",
+        project: tempDir,
+      });
+    } finally {
+      cleanupTempDir(tempDir);
+    }
+  }
+
+  const unnamedManifests: Array<[string, JsonValue]> = [
+    ["has no name", { version: "1.0.0", private: true }],
+    ["is an empty object", {}],
+    ["is an array", []],
+  ];
+  for (const [label, manifest] of unnamedManifests) {
+    it(`local handler keeps the historic "undefined" key for a package.json that ${label}`, async () => {
+      const [key] = await addLocal(manifest);
+
+      expect(key).to.equal("undefined");
+    });
+  }
+
+  it("local handler keeps an empty name as the key", async () => {
+    const [key] = await addLocal({ name: "" });
+
+    expect(key).to.equal("");
+  });
+
+  const refusedManifests: Array<[string, JsonValue]> = [
+    ["names the module with a number", { name: 5 }],
+    ["names the module with null", { name: null }],
+    ["holds null", null],
+  ];
+  for (const [label, manifest] of refusedManifests) {
+    it(`local handler refuses a package.json that ${label}`, async () => {
+      const failure = await addLocal(manifest).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+
+      expect(failure).to.be.instanceOf(Error);
+    });
+  }
 });

@@ -1,4 +1,8 @@
-import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  AntelopeModuleConfig,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -27,9 +31,13 @@ import {
 
 export const ADDED_MOD_A = { added: ["modA"], skipped: [], failed: [] };
 
+type RangeCheckStub = sinon.SinonStubbedMember<
+  typeof interfaceRangesModule.findProjectInterfaceRangeConflicts
+>;
+
 interface TaskOutputStubs {
-  message: sinon.SinonStub;
-  summary: sinon.SinonStub;
+  message: sinon.SinonStubbedMember<ReturnType<typeof getProcessUi>["message"]>;
+  summary: sinon.SinonStubbedMember<ReturnType<typeof getProcessUi>["summary"]>;
 }
 
 export function stubTaskOutput(): TaskOutputStubs {
@@ -86,7 +94,7 @@ export function installFixture() {
     await rm(tempModuleDir, { recursive: true, force: true });
   });
 
-  let rangeCheck = sinon.stub();
+  let rangeCheck: RangeCheckStub = sinon.stub();
 
   beforeEach(() => {
     rangeCheck = sinon
@@ -100,12 +108,10 @@ export function installFixture() {
   });
 
   function stubUnresolvedImport(modules: gitOps.ModuleInterfaceInfo[]) {
-    const config: any = {
-      name: "proj",
-      modules: {
-        app: { source: { type: "package", package: "app", version: "1.0.0" } },
-      },
-    };
+    const appModules = {
+      app: { source: { type: "package", package: "app", version: "1.0.0" } },
+    } satisfies Record<string, AntelopeModuleConfig>;
+    const config: AntelopeConfig = { name: "proj", modules: appModules };
     sinon.stub(common, "readConfig").resolves(config);
     sinon
       .stub(common, "readUserConfig")
@@ -116,7 +122,7 @@ export function installFixture() {
       starredInterfaces: [],
       templates: [],
     });
-    stubLoadedConfig({ modules: config.modules });
+    stubLoadedConfig({ modules: appModules });
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(DownloaderRegistry.prototype, "load").resolves([
       moduleManifest({
@@ -132,8 +138,6 @@ export function installFixture() {
     sinon.stub(gitOps, "loadInterfaceFromGit").resolves(
       interfaceInfo(ifaceName, {
         description: "",
-        files: {},
-        dependencies: {},
         modules,
       }),
     );
@@ -151,7 +155,7 @@ export function installFixture() {
     get tempModuleDir() {
       return tempModuleDir;
     },
-    get rangeCheck(): sinon.SinonStub {
+    get rangeCheck(): RangeCheckStub {
       return rangeCheck;
     },
     ifaceName,

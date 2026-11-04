@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { CANCELLED_EXIT_CODE } from "../../src/core/output";
+import type { JsonValue } from "../helpers/json";
 
 const CLI_ENTRY = path.resolve(__dirname, "../../src/core/cli/index.ts");
 const TEST_TIMEOUT_MS = 90000;
@@ -80,7 +81,7 @@ exports.start = async () => {
   return projectFolder;
 }
 
-async function createProjectFolder<Tconfig>(config: Tconfig): Promise<string> {
+async function createProjectFolder(config: JsonValue): Promise<string> {
   const projectFolder = await fs.mkdtemp(
     path.join(os.tmpdir(), "ajs-dev-stop-"),
   );
