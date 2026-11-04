@@ -4,16 +4,13 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@antelopejs/interface-core': file:../../../../../.campaign/tgz/antelopejs-interface-core-8fd200f.tgz
-
 importers:
 
   .:
     dependencies:
       '@antelopejs/interface-core':
-        specifier: file:../../../../../.campaign/tgz/antelopejs-interface-core-8fd200f.tgz
-        version: file:../../../../../.campaign/tgz/antelopejs-interface-core-8fd200f.tgz
+        specifier: 0.4.0
+        version: 0.4.0
     devDependencies:
       '@types/node':
         specifier: 22.19.15
@@ -24,9 +21,8 @@ importers:
 
 packages:
 
-  '@antelopejs/interface-core@file:../../../../../.campaign/tgz/antelopejs-interface-core-8fd200f.tgz':
-    resolution: {integrity: sha512-cfZxcx6teyS2JBQjrKz/A2pZpqsm2RfR2O38rJGBv6de5Yp2GgmVjotV+4YK2nn6w4/mw0EfEIOVai9sN4TFug==, tarball: file:../../../../../.campaign/tgz/antelopejs-interface-core-8fd200f.tgz}
-    version: 0.4.0
+  '@antelopejs/interface-core@0.4.0':
+    resolution: {integrity: sha512-IPX6dtt3KHknclN4mLOYeRYL2Odz1Pts+dtaZul62NghsBUX/0OFHD4Qhoaf+Beva4hjInbaF918ajr4Z5HVWQ==}
 
   '@types/node@22.19.15':
     resolution: {integrity: sha512-F0R/h2+dsy5wJAUe3tAU6oqa2qbWY5TpNfL/RGmo1y38hiyO1w3x2jPtt76wmuaJI4DQnOBu21cNXQ2STIUUWg==}
@@ -44,7 +40,7 @@ packages:
 
 snapshots:
 
-  '@antelopejs/interface-core@file:../../../../../.campaign/tgz/antelopejs-interface-core-8fd200f.tgz':
+  '@antelopejs/interface-core@0.4.0':
     dependencies:
       reflect-metadata: 0.2.2
 
