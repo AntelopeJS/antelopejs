@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.20.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.19.0...v1.20.0)
+
+### 🚀 Enhancements
+
+- **cli:** Accept template slugs in --template ([#377](https://github.com/AntelopeJS/antelopejs/pull/377))
+- **cli:** Skip the host install for templates that install themselves ([#381](https://github.com/AntelopeJS/antelopejs/pull/381))
+
+### 🩹 Fixes
+
+- **cli:** Print next steps that run without a global ajs ([#379](https://github.com/AntelopeJS/antelopejs/pull/379))
+- **cli:** Let project init read another template registry ([#380](https://github.com/AntelopeJS/antelopejs/pull/380))
+
+### 📖 Documentation
+
+- Send questions and ideas to Discord ([#362](https://github.com/AntelopeJS/antelopejs/pull/362))
+- Create projects with npx @antelopejs/core ([#378](https://github.com/AntelopeJS/antelopejs/pull/378))
+- **readme:** Show the framework film and the provider swap GIF ([9386547](https://github.com/AntelopeJS/antelopejs/commit/9386547))
+
+### 🏡 Chore
+
+- Land the cleanup campaign on main ([#389](https://github.com/AntelopeJS/antelopejs/pull/389))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.19.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.18.2...v1.19.0)
