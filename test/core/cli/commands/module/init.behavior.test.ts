@@ -304,6 +304,16 @@ function readDependencies(moduleDir: string): Record<string, string> {
         expect(stubs.copy.called).to.equal(false);
       });
 
+      it("prints no next steps for a template that has none, so no command assumes a global ajs", async () => {
+        const stubs = stubModuleInit(INTERFACE_CATALOG);
+        fakePrompts({ isInteractive: false });
+
+        await cmdModuleInit().parseAsync(["node", "init", moduleDir, "--yes"]);
+
+        expect(stubs.output()).to.not.include("Next steps");
+        expect(stubs.output()).to.not.match(/^\s*ajs /m);
+      });
+
       it("takes the defaults with --yes", async () => {
         const stubs = stubModuleInit(INTERFACE_CATALOG);
         const prompts = fakePrompts({ isInteractive: false });

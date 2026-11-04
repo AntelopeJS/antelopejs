@@ -15,6 +15,7 @@ import {
   Spinner,
 } from "../../../core/output";
 import { readConfig, writeConfig } from "../../common";
+import { CORE_PACKAGE_NAME } from "../../core-version";
 import type { Template } from "../../git-operations";
 import {
   moduleInitCommand,
@@ -44,10 +45,11 @@ const DIRECTORY_SOURCE = "dir";
 const PROJECT_INIT_COMMAND = "ajs project init";
 const NAME_FLAG = "--name <name>";
 const CURRENT_DIRECTORY = ".";
-const INSTALL_COMMAND = "ajs project modules install";
+const RUN_CLI = `npx ${CORE_PACKAGE_NAME}`;
+const INSTALL_COMMAND = `${RUN_CLI} project modules install`;
 const INSTALL_DESCRIPTION =
   "add modules for the interfaces no module implements";
-const DEV_COMMAND = "ajs project dev --watch";
+const DEV_COMMAND = `${RUN_CLI} project dev --watch`;
 const DEV_DESCRIPTION = "run the project and reload it on changes";
 
 async function ensureProjectPathAvailable(projectPath: string): Promise<void> {
