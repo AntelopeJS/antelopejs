@@ -133,8 +133,7 @@
   "packageManager": "pnpm@10.6.5",
   "pnpm": {
     "overrides": {
-      "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz",
-      "@antelopejs/interface-core": "file:.campaign/tgz/antelopejs-interface-core-8fd200f.tgz"
+      "@antelopejs/interface-api": "file:.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz"
     }
   },
   "antelopeJs": {
