@@ -23,7 +23,9 @@ docs:
 - `init-flags`: every answer as a flag; the project, its installed module and its configuration exist; `ajs project modules list --json` reads the module back.
 - `init-name-git`: `--name` lands in the configuration and `--git-init` creates a repository that `git status` reads.
 - `init-yes`: `--yes` takes every default.
-- `init-needs-input`: empty path: no flags under `CI=1` exits 2, names `--template <name>`, writes nothing.
+- `init-git-option`: `--git <repository>` reads the templates of that repository although the git setting points at a missing one.
+- `init-git-env`: the same through `ANTELOPEJS_GIT`.
+- `init-needs-input`: empty path: no flags under `CI=1` exits 2, names `--template <slug>`, writes nothing.
 - `init-unknown-template`: error path: exit 2, lists the available templates, writes nothing.
 - `init-existing`: error path: a second init into the same project exits 1 and leaves the file tree identical.
 - `init-cancel`: cancel path: SIGINT during the install ends the command by SIGINT.

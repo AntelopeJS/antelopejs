@@ -5,11 +5,11 @@ mode: reference
 navigation: false
 ---
 
-Run `ajs <command> --help` for the options of your installed version. The CLI manages standalone projects. An [embedded host](/docs/concepts/embedded-runtime) manages its modules in code.
+Run `ajs <command> --help` for the options of your installed version. Without a global install, `npx @antelopejs/core <command>` runs the same command. The CLI manages standalone projects. An [embedded host](/docs/concepts/embedded-runtime) manages its modules in code.
 
 | Task | Command | Details |
 | --- | --- | --- |
-| Create a project | `ajs project init my-app` | [Project commands](/docs/cli/project) |
+| Create a project | `npx @antelopejs/core project init my-app` | [Project commands](/docs/cli/project) |
 | Run and reload local modules | `ajs project dev --watch` | [Development mode](/docs/cli/project#ajs-project-dev) |
 | Find missing providers | `ajs project modules install` | [Project module commands](/docs/cli/project-modules) |
 | Test a module | `ajs module test` | [Module commands](/docs/cli/module) |

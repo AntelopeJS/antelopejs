@@ -184,6 +184,20 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
         ).to.equal("pnpm@10.2.0");
       });
 
+      it("prints default next steps that run without a global ajs", async () => {
+        const stubs = stubInit();
+        fakePrompts({ isInteractive: false });
+
+        await cmdInit().parseAsync(["node", "test", projectDir, "--yes"]);
+
+        const printed = stubs.feedback();
+        expect(printed).to.include(
+          "npx @antelopejs/core project modules install",
+        );
+        expect(printed).to.include("npx @antelopejs/core project dev --watch");
+        expect(printed).to.not.match(/^\s*ajs /m);
+      });
+
       it("reports an existing project once, before any missing flag", async () => {
         sinon.stub(common, "readConfig").resolves({ name: "existing" });
         const writeStub = sinon.stub(common, "writeConfig").resolves();
@@ -234,6 +248,19 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
         expect(stubs.moduleInit.called).to.equal(false);
       });
 
+      it("prints next steps that run for an imported module, which has no package.json to install the CLI from", async () => {
+        const stubs = stubInit();
+        fakePrompts({
+          answers: ["my-project", true, "git", "https://example.com/repo.git"],
+        });
+
+        await cmdInit().parseAsync(["node", "test", projectDir]);
+
+        const printed = stubs.feedback();
+        expect(printed).to.include("npx @antelopejs/core project dev --watch");
+        expect(printed).to.not.match(/^\s*(ajs|pnpm exec|yarn) /m);
+      });
+
       it("passes the module flags and its prompter to module init", async () => {
         const stubs = stubInit();
         const prompts = fakePrompts({ isInteractive: false });
@@ -244,6 +271,8 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
           projectDir,
           "--name",
           "shop",
+          "--git",
+          "https://example.com/interfaces.git",
           "--template",
           "basic",
           "--interfaces",
@@ -258,6 +287,7 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
           stubs.moduleInit.firstCall.args;
         expect(modulePath).to.equal(path.resolve(projectDir));
         expect(moduleOptions).to.deep.equal({
+          git: "https://example.com/interfaces.git",
           template: "basic",
           interfaces: ["api", "auth"],
           pm: "pnpm",
@@ -366,7 +396,7 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
         const needsInput = failure;
         expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
         expect(needsInput.problem.fixes).to.deep.equal([
-          "Pass them as flags: ajs project init demo --template <name> --[no-]git-init",
+          "Pass them as flags: ajs project init demo --template <slug> --[no-]git-init",
           "Or accept the defaults: ajs project init demo --yes",
         ]);
         expect(copy.called).to.equal(false);

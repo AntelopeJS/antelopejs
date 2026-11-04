@@ -17,6 +17,7 @@ export default function () {
         "Name of the project (default: the directory name)",
       ),
     )
+    .addOption(Options.git)
     .addOption(Options.template)
     .addOption(Options.interfaces)
     .addOption(Options.packageManager)
@@ -38,9 +39,14 @@ export default function () {
       command: "ajs project init my-app --yes",
     },
     {
+      description: "Read the templates from another interface repository",
+      command:
+        "ajs project init my-app --git https://github.com/acme/interfaces.git",
+    },
+    {
       description: "Answer every question with a flag, for scripts and CI",
       command:
-        'ajs project init my-app --template "Blank Typescript" --pm pnpm --no-git-init',
+        "ajs project init my-app --template blank-typescript --pm pnpm --no-git-init",
     },
   ]);
 }
