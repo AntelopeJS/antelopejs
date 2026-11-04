@@ -1,5 +1,4 @@
-import * as childProcess from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -8,8 +7,6 @@ import {
   createPrompter,
   DEFAULT_PACKAGE_MANAGER,
   displayPath,
-  ExecuteCMD,
-  getInstallCommand,
   getProcessPalette,
   getProcessUi,
   missingFlags,
@@ -17,24 +14,22 @@ import {
   type PackageManagerName,
   type Prompter,
   runTask,
-  savePackageManagerToPackageJson,
   Spinner,
-  success,
   translateFailure,
   USAGE_EXIT_CODE,
-  warning,
 } from "../../../core/output";
-import { displayNonDefaultGitWarning, readUserConfig } from "../../common";
+import { displayNonDefaultGitWarning, resolveGit } from "../../common";
+import { createModule, type ModuleInitAnswers } from "./create-module";
 import {
-  copyTemplate,
+  findTemplate,
   type GitManifest,
   type InterfaceInfo,
   loadInterfacesFromGit,
   loadManifestFromGit,
   type Template,
+  templateSlug,
 } from "../../git-operations";
 import { requireCatalogMember } from "../../catalog-manifest";
-import { isObject } from "../../../utils";
 
 export interface ModuleInitOptions {
   git?: string;
@@ -50,28 +45,19 @@ export interface ModuleInitContext {
   prompter?: Prompter;
 }
 
-interface ModuleInitAnswers {
-  template: Template;
-  interfaces: InterfaceInfo[];
-  packageManager: PackageManagerName;
-  isGitInitialized: boolean;
-}
-
 type InterfaceCatalog = Record<string, InterfaceInfo>;
 
 type TemplateCatalog = GitManifest & { templates: Template[] };
 
 const TEMPLATE_OPTION = "--template";
 const INTERFACES_OPTION = "--interfaces";
-export const TEMPLATE_FLAG = `${TEMPLATE_OPTION} <name>`;
+export const TEMPLATE_FLAG = `${TEMPLATE_OPTION} <slug>`;
 export const PACKAGE_MANAGER_FLAG = `--pm <${PACKAGE_MANAGER_NAMES.join("|")}>`;
 const INTERFACES_FLAG = `${INTERFACES_OPTION} <names>`;
 export const YES_FLAG = "--yes";
 export const GIT_INIT_FLAG = "--[no-]git-init";
 const MODULE_INIT_COMMAND = "ajs module init";
 const CURRENT_DIRECTORY = ".";
-const LATEST_VERSION = "latest";
-const JSON_INDENTATION = 2;
 
 const CHECK_REPOSITORY_FIX =
   "Check the URL passed with --git or saved with ajs config set git";
@@ -163,24 +149,24 @@ async function askTemplate(
   templates: Template[],
   isFromProject: boolean,
 ): Promise<Template> {
-  const name = await prompter.select({
+  const answer = await prompter.select({
     message: `Choose a template for your ${isFromProject ? "project" : "module"}`,
     flag: TEMPLATE_FLAG,
     answer: options.template,
-    defaultAnswer: templates[0]?.name,
+    defaultAnswer: templates[0] && templateSlug(templates[0]),
     choices: templates.map((template) => ({
-      value: template.name,
+      value: templateSlug(template),
       label: template.name,
       hint: template.description,
     })),
   });
-  const template = templates.find((candidate) => candidate.name === name);
+  const template = findTemplate(templates, answer);
   if (!template) {
     throw unknownChoiceError({
       kind: "template",
       flagName: TEMPLATE_OPTION,
-      names: [name],
-      known: templates.map((candidate) => candidate.name),
+      names: [answer],
+      known: templates.map(templateSlug),
     });
   }
   return template;
@@ -236,11 +222,18 @@ async function askInterfaces(
   return names.flatMap((name) => available.get(name) ?? []);
 }
 
+function installsOnHost(template?: Template): boolean {
+  return template?.install !== false;
+}
+
 function askPackageManager(
   prompter: Prompter,
   options: ModuleInitOptions,
   template: Template,
-): Promise<PackageManagerName> {
+): Promise<PackageManagerName | undefined> {
+  if (!installsOnHost(template)) {
+    return Promise.resolve(undefined);
+  }
   if (template.packageManager) {
     if (options.pm && options.pm !== template.packageManager) {
       throw new CliError({
@@ -319,13 +312,13 @@ async function askModuleAnswers(
     ...manifest.templates,
     ...(isFromProject ? (manifest.projectTemplates ?? []) : []),
   ];
-  const selected = templates.find(
-    (template) => template.name === options.template,
-  );
+  const selected = findTemplate(templates, options.template);
   prompter.requireAnswers(
     missingFlags(
       { ...options, pm: options.pm ?? selected?.packageManager },
-      MODULE_ANSWER_FLAGS,
+      MODULE_ANSWER_FLAGS.filter(
+        ({ option }) => option !== "pm" || installsOnHost(selected),
+      ),
     ),
   );
   const template = await askTemplate(
@@ -344,104 +337,6 @@ async function askModuleAnswers(
   const packageManager = await askPackageManager(prompter, options, template);
   const isGitInitialized = await askGitInit(prompter, options);
   return { template, interfaces, packageManager, isGitInitialized };
-}
-
-function unusableManifest(pkgJsonPath: string, reason: string): CliError {
-  return new CliError({
-    title: `Cannot add the chosen interfaces to ${displayPath(pkgJsonPath)}`,
-    reason,
-    fixes: [
-      "Make the template's package.json a JSON object whose dependencies, when it has any, are an object of package names and version ranges",
-    ],
-  });
-}
-
-function addInterfaceDependencies(
-  modulePath: string,
-  interfaces: InterfaceInfo[],
-): void {
-  const packages = interfaces
-    .map((entry) => entry.manifest.package)
-    .filter((name): name is string => Boolean(name));
-  if (packages.length === 0) {
-    return;
-  }
-  const pkgJsonPath = path.resolve(modulePath, "package.json");
-  const pkgJson: unknown = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
-  if (!isObject(pkgJson)) {
-    throw unusableManifest(pkgJsonPath, "The file must hold a JSON object.");
-  }
-  const dependencies = pkgJson.dependencies ?? {};
-  if (!isObject(dependencies)) {
-    throw unusableManifest(
-      pkgJsonPath,
-      "Its dependencies field must be a JSON object.",
-    );
-  }
-  pkgJson.dependencies = dependencies;
-  packages.forEach((name) => {
-    dependencies[name] ??= LATEST_VERSION;
-  });
-  writeFileSync(
-    pkgJsonPath,
-    `${JSON.stringify(pkgJson, null, JSON_INDENTATION)}\n`,
-  );
-  success(`Added ${interfaces.length} interface(s) to dependencies`);
-}
-
-async function installDependencies(
-  modulePath: string,
-  packageManager: PackageManagerName,
-): Promise<void> {
-  const moduleRoot = path.resolve(modulePath);
-  savePackageManagerToPackageJson(packageManager, moduleRoot);
-  const installSpinner = new Spinner("Installing dependencies");
-  await installSpinner.start();
-  const installCmd = await getInstallCommand(
-    moduleRoot,
-    false,
-    undefined,
-    "update",
-  );
-  await ExecuteCMD(installCmd, { cwd: moduleRoot });
-  await installSpinner.succeed("Dependencies installed");
-}
-
-async function initializeGitRepository(modulePath: string): Promise<void> {
-  const gitInitSpinner = new Spinner("Initializing git repository");
-  await gitInitSpinner.start();
-  try {
-    childProcess.execSync("git init", {
-      cwd: path.resolve(modulePath),
-      stdio: "ignore",
-    });
-    await gitInitSpinner.succeed("Git repository initialized");
-  } catch (gitErr) {
-    await gitInitSpinner.fail("Failed to initialize git repository");
-    warning(
-      "Could not initialize git repository. You can do it manually later.",
-    );
-    if (gitErr instanceof Error) {
-      warning(gitErr);
-    }
-  }
-}
-
-async function createModule(
-  modulePath: string,
-  answers: ModuleInitAnswers,
-): Promise<void> {
-  const copySpinner = new Spinner(`Creating module from template`);
-  await copySpinner.start();
-  await copyTemplate(answers.template, modulePath);
-  await copySpinner.succeed(
-    `Module created successfully at ${getProcessPalette().dim(path.resolve(modulePath))}`,
-  );
-  addInterfaceDependencies(modulePath, answers.interfaces);
-  await installDependencies(modulePath, answers.packageManager);
-  if (answers.isGitInitialized) {
-    await initializeGitRepository(modulePath);
-  }
 }
 
 function displayModuleCreated(
@@ -493,7 +388,7 @@ export async function moduleInitCommand(
 ) {
   const prompter = modulePrompter(modulePath, options, context);
   await ensureDirectoryUsable(modulePath, Boolean(context.isFromProject));
-  const git = options.git || (await readUserConfig()).git;
+  const git = await resolveGit(options);
   displayNonDefaultGitWarning(git);
   const manifest = await runTask(
     "Loading templates",

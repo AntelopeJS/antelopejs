@@ -21,6 +21,13 @@ export interface Template {
   branch: string;
   description?: string;
   packageManager?: PackageManagerName;
+  /**
+   * `false` when the template installs its own dependencies, for example
+   * inside its container. The CLI then copies the template and installs
+   * nothing on the host, so the package manager does not have to be
+   * installed. Absent or `true` installs the dependencies on the host.
+   */
+  install?: boolean;
   nextSteps?: NextStep[];
 }
 
@@ -56,6 +63,7 @@ interface RawTemplate {
   branch?: unknown;
   description?: unknown;
   packageManager?: unknown;
+  install?: unknown;
   nextSteps?: unknown;
 }
 
@@ -92,6 +100,15 @@ class CatalogReader {
   ): asserts value is string | undefined {
     if (value !== undefined && !isString(value)) {
       throw this.refuse(member, "a string");
+    }
+  }
+
+  optionalBoolean(
+    member: string,
+    value: unknown,
+  ): asserts value is boolean | undefined {
+    if (value !== undefined && typeof value !== "boolean") {
+      throw this.refuse(member, "true or false");
     }
   }
 
@@ -180,6 +197,7 @@ class CatalogReader {
     this.string(`${at}.repository`, template.repository);
     this.string(`${at}.branch`, template.branch);
     this.optionalString(`${at}.description`, template.description);
+    this.optionalBoolean(`${at}.install`, template.install);
     const nextSteps = template.nextSteps;
     this.list(`${at}.nextSteps`, nextSteps);
     return {
@@ -188,6 +206,7 @@ class CatalogReader {
       branch: template.branch,
       description: template.description,
       packageManager: template.packageManager,
+      install: template.install,
       nextSteps: nextSteps?.map((step, index) => {
         const stepAt = `${at}.nextSteps[${index}]`;
         this.object(stepAt, step);

@@ -53,6 +53,14 @@ export async function detectIndentation(
 
 export const DEFAULT_GIT_REPO = "https://github.com/AntelopeJS/interfaces.git";
 
+/**
+ * The interface repository a command reads: its `--git` option or
+ * `ANTELOPEJS_GIT`, else the `git` key of the user configuration.
+ */
+export async function resolveGit(options: { git?: string }): Promise<string> {
+  return options.git || (await readUserConfig()).git;
+}
+
 export function displayNonDefaultGitWarning(gitUrl: string): void {
   if (gitUrl !== DEFAULT_GIT_REPO) {
     getProcessUi().message("warn", "Using a non-default git repository", {

@@ -36,7 +36,7 @@ import {
   type Prompter,
 } from "../../../../core/output";
 import { findUnresolvedInterfaces } from "../../../../core/resolution";
-import { displayNonDefaultGitWarning, readUserConfig } from "../../../common";
+import { displayNonDefaultGitWarning, resolveGit } from "../../../common";
 import {
   loadInterfaceFromGit,
   loadManifestFromGit,
@@ -221,7 +221,7 @@ async function createInstallContext(
   options: InstallOptions,
   baseConfig: AntelopeConfig,
 ): Promise<InstallContext> {
-  const git = options.git || (await readUserConfig()).git;
+  const git = await resolveGit(options);
   displayNonDefaultGitWarning(git);
   const gitManifest = await loadManifestFromGit(git);
   const fs = new NodeFileSystem();
