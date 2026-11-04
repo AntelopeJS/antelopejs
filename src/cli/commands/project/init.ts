@@ -46,7 +46,7 @@ export default function () {
     {
       description: "Answer every question with a flag, for scripts and CI",
       command:
-        'ajs project init my-app --template "Blank Typescript" --pm pnpm --no-git-init',
+        "ajs project init my-app --template blank-typescript --pm pnpm --no-git-init",
     },
   ]);
 }

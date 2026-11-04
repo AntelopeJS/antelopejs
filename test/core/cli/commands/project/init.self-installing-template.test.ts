@@ -11,6 +11,7 @@ import {
   NeedsInputError,
 } from "../../../../../src/core/output";
 import { collectStderr } from "../../../../helpers/capture-output";
+import { templateSlug } from "../../../../../src/cli/git-operations";
 import { fakePrompts } from "../../../../helpers/fake-prompts";
 import {
   buildRegistry,
@@ -94,20 +95,22 @@ describe("project init for a template that installs itself", function () {
     );
   });
 
-  it("copies the template and installs nothing on the host with install: false", async () => {
-    recordCommands();
-    const registry = buildRegistry(root, {
-      install: false,
-      packageManager: "pnpm",
+  [TEMPLATE_NAME, templateSlug({ name: TEMPLATE_NAME })].forEach((selector) => {
+    it(`copies the template and installs nothing on the host with install: false, selected as ${selector}`, async () => {
+      recordCommands();
+      const registry = buildRegistry(root, {
+        install: false,
+        packageManager: "pnpm",
+      });
+
+      await initWith(registry, "--yes", "--template", selector);
+
+      expect(installs()).to.deep.equal([]);
+      expect(readText(path.join(projectDir, "package.json"))).to.equal(
+        '{"name":"custom-tpl"}\n',
+      );
+      expect(feedback()).to.include("Skipped the dependency install");
     });
-
-    await initWith(registry, "--yes");
-
-    expect(installs()).to.deep.equal([]);
-    expect(readText(path.join(projectDir, "package.json"))).to.equal(
-      '{"name":"custom-tpl"}\n',
-    );
-    expect(feedback()).to.include("Skipped the dependency install");
   });
 
   it("asks for no package manager when the template installs itself", async () => {

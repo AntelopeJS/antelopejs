@@ -65,8 +65,8 @@ export namespace Options {
     "Accept the default answer of every question no flag answers",
   );
   export const template = new Option(
-    "-t, --template <name>",
-    "Template of the module to create",
+    "-t, --template <slug>",
+    'Template of the module to create, by slug ("dms-demo") or exact name',
   );
   export const interfaces = new Option(
     "--interfaces <names>",

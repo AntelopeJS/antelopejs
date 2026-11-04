@@ -28,7 +28,7 @@ A replacement provider leaves consuming code unchanged only when it supports the
 
 ## Install
 
-AntelopeJS requires Node.js 20.19 or later. Install the CLI globally:
+AntelopeJS requires Node.js 20.19 or later. There is nothing to install first: the quick start below runs the CLI with `npx`. To get the `ajs` command on your `PATH`, install the CLI globally:
 
 ```bash
 pnpm add -g @antelopejs/core
@@ -36,19 +36,21 @@ pnpm add -g @antelopejs/core
 
 ## Quick start
 
-Create a project with a first module, then run it in development mode:
+Create a project with a first module, then run it in development mode. Inside a project that lists `@antelopejs/core` as a dependency, npx runs that installed copy:
 
 ```bash
-ajs project init my-app
+npx @antelopejs/core project init my-app --template blank-typescript --pm pnpm --no-git-init
 cd my-app
-ajs project dev --watch
+npx @antelopejs/core project dev --watch
 ```
+
+Leave out the flags to choose a template interactively. Templates are named by slug, for example `blank-typescript` and `dms-demo`.
 
 Add a provider for an interface your module uses, or let the CLI find one for every unresolved interface:
 
 ```bash
-ajs project modules add @antelopejs/mongodb
-ajs project modules install
+npx @antelopejs/core project modules add @antelopejs/mongodb
+npx @antelopejs/core project modules install
 ```
 
 ## Plugins
