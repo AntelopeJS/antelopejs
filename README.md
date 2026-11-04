@@ -14,7 +14,7 @@ If AntelopeJS saves you work, a ⭐ helps other developers find it.
 
 </div>
 
-![Screen recording from the AntelopeJS framework film. A hexagon labelled your code is surrounded by auth, mail, queue, database, payment and storage modules under the caption Hexagonal architecture, beyond your own code. In antelope.config.ts the nodemailer provider is replaced by brevo under the caption Change providers in one file. git diff --stat then reports 1 file changed, and a grid of the project's source files stays marked unchanged under the caption Your code stays the same.](./.github/assets/swap.gif)
+<img data-illustration alt="Screen recording from the AntelopeJS framework film. A hexagon labelled your code is surrounded by auth, mail, queue, database, payment and storage modules under the caption Hexagonal architecture, beyond your own code. In antelope.config.ts the nodemailer provider is replaced by brevo under the caption Change providers in one file. git diff --stat then reports 1 file changed, and a grid of the project's source files stays marked unchanged under the caption Your code stays the same." src="./.github/assets/swap.gif">
 
 **The AntelopeJS framework (3:41).** Contracts, providers you can swap, your own modules and one CLI.
 
