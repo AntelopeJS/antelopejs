@@ -8,15 +8,25 @@
 <a href="https://discord.gg/g4pFt6eXqu"><img data-illustration alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
 <a href="https://framework.antelopejs.com/docs/get-started/introduction"><img data-illustration alt="Docs" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
+[Docs](https://framework.antelopejs.com/docs/get-started/introduction) · [Quick start](#quick-start) · [Discord](https://discord.gg/g4pFt6eXqu)
+
+If AntelopeJS saves you work, a ⭐ helps other developers find it.
+
 </div>
 
+<img data-illustration alt="Screen recording from the AntelopeJS framework film. A hexagon labelled your code is surrounded by auth, mail, queue, database, payment and storage modules under the caption Hexagonal architecture, beyond your own code. In antelope.config.ts the nodemailer provider is replaced by brevo under the caption Change providers in one file. git diff --stat then reports 1 file changed, and a grid of the project's source files stays marked unchanged under the caption Your code stays the same." src="./.github/assets/swap.gif">
+
+**The AntelopeJS framework (3:41).** Contracts, providers you can swap, your own modules and one CLI.
+
+https://github.com/user-attachments/assets/c632616c-e48d-4c7e-9306-22ad0f4a6351
+
 AntelopeJS is a TypeScript framework and CLI for Node.js applications. It extends the ports-and-adapters model from your own code to the modules you install: business modules depend on contracts, provider modules implement them, and the application picks which provider runs. The open-source back office [AntelopeJS DMS](https://github.com/AntelopeJS/dms) is built on it.
+
+## Why AntelopeJS
 
 <p align="center">
   <img data-illustration src="./.github/assets/contract-model.svg" alt="A business module depends on the database contract; the MongoDB and RethinkDB modules implement it; antelope.config.ts selects MongoDB." width="880">
 </p>
-
-## Why AntelopeJS
 
 - **Contracts, not imports.** A module imports interface packages such as [`@antelopejs/interface-database`](https://github.com/AntelopeJS/interface-database), never another module's files.
 - **Providers you can swap.** [`@antelopejs/postgres`](https://github.com/AntelopeJS/postgres), [`@antelopejs/mongodb`](https://github.com/AntelopeJS/mongodb), and [`@antelopejs/rethinkdb`](https://github.com/AntelopeJS/rethinkdb) implement the same database contract. `antelope.config.ts` chooses one, from npm, Git, or a local folder.
