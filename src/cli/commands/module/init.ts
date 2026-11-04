@@ -33,7 +33,7 @@ export default function () {
     {
       description: "Answer every question with a flag, for scripts and CI",
       command:
-        'ajs module init ./modules/my-module --template "Blank Typescript" --pm pnpm --no-git-init',
+        "ajs module init ./modules/my-module --template blank-typescript --pm pnpm --no-git-init",
     },
   ]);
 }

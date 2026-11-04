@@ -27,11 +27,13 @@ import {
 import { displayNonDefaultGitWarning, readUserConfig } from "../../common";
 import {
   copyTemplate,
+  findTemplate,
   type GitManifest,
   type InterfaceInfo,
   loadInterfacesFromGit,
   loadManifestFromGit,
   type Template,
+  templateSlug,
 } from "../../git-operations";
 
 export interface ModuleInitOptions {
@@ -59,7 +61,7 @@ type InterfaceCatalog = Record<string, InterfaceInfo>;
 
 const TEMPLATE_OPTION = "--template";
 const INTERFACES_OPTION = "--interfaces";
-export const TEMPLATE_FLAG = `${TEMPLATE_OPTION} <name>`;
+export const TEMPLATE_FLAG = `${TEMPLATE_OPTION} <slug>`;
 export const PACKAGE_MANAGER_FLAG = `--pm <${PACKAGE_MANAGER_NAMES.join("|")}>`;
 const INTERFACES_FLAG = `${INTERFACES_OPTION} <names>`;
 export const YES_FLAG = "--yes";
@@ -155,24 +157,24 @@ async function askTemplate(
   templates: Template[],
   isFromProject: boolean,
 ): Promise<Template> {
-  const name = await prompter.select({
+  const answer = await prompter.select({
     message: `Choose a template for your ${isFromProject ? "project" : "module"}`,
     flag: TEMPLATE_FLAG,
     answer: options.template,
-    defaultAnswer: templates[0]?.name,
+    defaultAnswer: templates[0] && templateSlug(templates[0]),
     choices: templates.map((template) => ({
-      value: template.name,
+      value: templateSlug(template),
       label: template.name,
       hint: template.description,
     })),
   });
-  const template = templates.find((candidate) => candidate.name === name);
+  const template = findTemplate(templates, answer);
   if (!template) {
     throw unknownChoiceError({
       kind: "template",
       flagName: TEMPLATE_OPTION,
-      names: [name],
-      known: templates.map((candidate) => candidate.name),
+      names: [answer],
+      known: templates.map(templateSlug),
     });
   }
   return template;
@@ -307,9 +309,7 @@ async function askModuleAnswers(
     ...manifest.templates,
     ...(isFromProject ? (manifest.projectTemplates ?? []) : []),
   ];
-  const selected = templates.find(
-    (template) => template.name === options.template,
-  );
+  const selected = findTemplate(templates, options.template);
   prompter.requireAnswers(
     missingFlags(
       { ...options, pm: options.pm ?? selected?.packageManager },

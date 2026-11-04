@@ -68,6 +68,32 @@ export interface Template {
   nextSteps?: NextStep[];
 }
 
+/**
+ * The short name of a template that `--template` accepts: its name in lower
+ * case, with each run of characters other than letters and digits replaced by
+ * one `-` and none left at either end ("DMS Demo" becomes "dms-demo").
+ */
+export function templateSlug(template: Pick<Template, "name">): string {
+  return template.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Finds the template an answer designates: by its exact name, which older
+ * scripts pass, or else by its slug.
+ */
+export function findTemplate(
+  templates: Template[],
+  answer: string | undefined,
+): Template | undefined {
+  return (
+    templates.find((template) => template.name === answer) ??
+    templates.find((template) => templateSlug(template) === answer)
+  );
+}
+
 export async function loadManifestFromGit(git: string): Promise<GitManifest> {
   const releaseLock = await acquireLock(`git-${git}`);
   try {

@@ -23,7 +23,7 @@ ajs project logging show|set # view/change logging settings
 
 `dev` resolves and wires the module graph every run; `start` trusts a prior `build`. Use `build` + `start` in production/CI, `dev --watch` while developing. `dev` and `start` accept `-c, --concurrency <number>`. `start --refresh-config` exits with code `3` when the configured module set differs from the build: rebuild then.
 
-`init` asks its questions interactively; in scripts and CI answer them with flags (`--name`, `-t/--template`, `--interfaces a,b`, `--pm pnpm`, `--git-init`/`--no-git-init`) or accept defaults with `-y`. Without a terminal, an unanswered question exits with code `2` before anything is written.
+`init` asks its questions interactively; in scripts and CI answer them with flags (`--name`, `-t/--template <slug>`, `--interfaces a,b`, `--pm pnpm`, `--git-init`/`--no-git-init`) or accept defaults with `-y`. `--template` takes a template slug (its name in lower case, runs of other characters as `-`: "DMS Demo" is `dms-demo`) or the exact name; an unknown template exits with code `2` and lists the slugs. Without a terminal, an unanswered question exits with code `2` before anything is written.
 
 ## Modules in a project
 
