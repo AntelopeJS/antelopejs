@@ -65,6 +65,13 @@ export interface Template {
   branch: string;
   description?: string;
   packageManager?: PackageManagerName;
+  /**
+   * `false` when the template installs its own dependencies, for example
+   * inside its container. The CLI then copies the template and installs
+   * nothing on the host, so the package manager does not have to be
+   * installed. Absent or `true` installs the dependencies on the host.
+   */
+  install?: boolean;
   nextSteps?: NextStep[];
 }
 
