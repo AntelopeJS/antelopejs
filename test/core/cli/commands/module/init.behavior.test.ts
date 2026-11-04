@@ -333,7 +333,7 @@ function readDependencies(moduleDir: string): Record<string, string> {
         expect(failure).to.be.instanceOf(NeedsInputError);
         expect(failure.exitCode).to.equal(USAGE_EXIT_CODE);
         expect(failure.problem.fixes).to.deep.equal([
-          `Pass them as flags: ajs module init ${moduleDir} --template <name> --[no-]git-init`,
+          `Pass them as flags: ajs module init ${moduleDir} --template <slug> --[no-]git-init`,
           `Or accept the defaults: ajs module init ${moduleDir} --yes`,
         ]);
         expect(stubs.manifest.calledOnce).to.equal(true);

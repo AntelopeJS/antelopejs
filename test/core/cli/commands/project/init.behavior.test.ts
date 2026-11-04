@@ -364,7 +364,7 @@ export default () => ({ name: "dashboard", modules: { mongodb: { config: { datab
         const needsInput = failure;
         expect(needsInput.exitCode).to.equal(USAGE_EXIT_CODE);
         expect(needsInput.problem.fixes).to.deep.equal([
-          "Pass them as flags: ajs project init demo --template <name> --[no-]git-init",
+          "Pass them as flags: ajs project init demo --template <slug> --[no-]git-init",
           "Or accept the defaults: ajs project init demo --yes",
         ]);
         expect(copy.called).to.equal(false);

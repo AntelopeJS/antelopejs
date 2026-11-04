@@ -76,7 +76,7 @@ export const initJourneys: Journey[] = [
     entryPoint: "ajs module init mod --template Nope",
     async run(context) {
       const init = await context.ajs("module init unknown template", ["module", "init", "mod", "--git", context.state.manifestUrl, "--template", "Nope", "--pm", "pnpm", "--no-git-init"]);
-      context.expect(init.folder, [exitIs(init, 2), has("stderr", init.stderr, /Unknown template 'Nope'/), absent(path.join(context.work, "mod"))]);
+      context.expect(init.folder, [exitIs(init, 2), has("stderr", init.stderr, /Unknown template 'Nope'/), has("stderr", init.stderr, /Available: verify-http/), absent(path.join(context.work, "mod"))]);
     },
   },
   {
