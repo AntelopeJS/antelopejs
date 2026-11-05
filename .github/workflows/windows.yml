@@ -55,7 +55,7 @@ jobs:
       - name: ajs project dev --watch reloads on a change
         working-directory: ${{ runner.temp }}/app
         run: |
-          $process = Start-Process -FilePath (Get-Command ajs).Source -ArgumentList "project", "dev", "--watch" -RedirectStandardOutput dev.out -RedirectStandardError dev.err -PassThru -NoNewWindow
+          $process = Start-Process -FilePath (Get-Command ajs.cmd).Source -ArgumentList "project", "dev", "--watch" -RedirectStandardOutput dev.out -RedirectStandardError dev.err -PassThru -NoNewWindow
           Start-Sleep -Seconds 25
           Add-Content -Path src/index.ts -Value "export const windowsReload = true;"
           Start-Sleep -Seconds 25
