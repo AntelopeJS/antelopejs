@@ -99,12 +99,17 @@ function inspectSkills(tarball: string): void {
   if (!Array.isArray(skills) || !skills.includes(`./${skillsFolder}`)) {
     throw new Error("Packed core does not declare its agent skills.");
   }
-  const packedFiles = run("tar", ["-tf", tarball], root).split("\n");
+  const packedFiles = run("tar", ["-tf", tarball], root).split(/\r?\n/);
   const missing = listDirectory(path.join(root, skillsFolder))
     .map((skill) => `package/${skillsFolder}/${skill}/${skillFile}`)
     .filter((file) => !packedFiles.includes(file));
   if (missing.length > 0) {
-    throw new Error(`Packed core misses agent skills: ${missing.join(", ")}`);
+    const packedSkills = packedFiles.filter((file) =>
+      file.includes(`/${skillsFolder}/`),
+    );
+    throw new Error(
+      `Packed core misses agent skills: ${missing.join(", ")}; packed: ${JSON.stringify(packedSkills)}`,
+    );
   }
 }
 
