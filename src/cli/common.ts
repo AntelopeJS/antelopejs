@@ -17,11 +17,12 @@ import {
 } from "../core/modules";
 import { CliError, getProcessUi } from "../core/output";
 import type { IFileSystem } from "../types";
-import { isObject, isObjectOrNull, isString } from "../utils";
+import { isObject, isString } from "../utils";
+import { toConfigSource } from "./config-layout";
 
 const DEFAULT_INDENTATION = "  ";
 const DEFINE_CONFIG_IMPORT_LINE =
-  "import { defineConfig } from '@antelopejs/interface-core/config';";
+  'import { defineConfig } from "@antelopejs/interface-core/config";';
 const FUNCTION_BASED_TS_CONFIG_ERROR =
   "Cannot update antelope.config.ts automatically when default export is function-based.";
 
@@ -151,44 +152,12 @@ async function getTsConfigWriteMeta(
   };
 }
 
-const SAFE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
-
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- serializes a module config value, user JS data that can hold any value, into config source
-function serializeToJs(value: unknown, indent: string, depth: number): string {
-  if (value === null || value === undefined) {
-    return String(value);
-  }
-  if (isString(value)) {
-    return JSON.stringify(value);
-  }
-  if (!isObjectOrNull(value)) {
-    // oxlint-disable-next-line typescript/no-base-to-string -- The preceding checks exclude null and objects; String deliberately serializes remaining primitives and callable values into config source.
-    return String(value);
-  }
-  const currentIndent = indent.repeat(depth);
-  const nextIndent = indent.repeat(depth + 1);
-  if (Array.isArray(value)) {
-    if (value.length === 0) return "[]";
-    const items = value.map(
-      (item) => `${nextIndent}${serializeToJs(item, indent, depth + 1)}`,
-    );
-    return `[\n${items.join(",\n")}\n${currentIndent}]`;
-  }
-  const entries = Object.entries(value);
-  if (entries.length === 0) return "{}";
-  const props = entries.map(([key, val]) => {
-    const formattedKey = SAFE_KEY_RE.test(key) ? key : JSON.stringify(key);
-    return `${nextIndent}${formattedKey}: ${serializeToJs(val, indent, depth + 1)}`;
-  });
-  return `{\n${props.join(",\n")}\n${currentIndent}}`;
-}
-
 function createTsConfigContent(
   data: Partial<AntelopeConfig>,
   indentation: string,
   useDefineConfig: boolean,
 ): string {
-  const serialized = serializeToJs(data, indentation, 0);
+  const serialized = toConfigSource(data, indentation);
   if (!useDefineConfig) {
     return `export default ${serialized};\n`;
   }
