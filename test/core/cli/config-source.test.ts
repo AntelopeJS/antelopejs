@@ -111,6 +111,80 @@ function printableCodePoints(): string[] {
   );
 }
 
+const PIECES = ["a", "b", "-", " ", "'", '"', "\\", "日", "é", "/", "@", "1"];
+const SCALARS = [true, false, null, undefined, NaN, Infinity, 1e21, -0];
+
+type GeneratedValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | GeneratedValue[]
+  | { [key: string]: GeneratedValue };
+
+/** A seeded pseudo-random source, so a failure reproduces on every run. */
+function seeded(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state * 1_103_515_245 + 12_345) % 2 ** 31;
+    return state / 2 ** 31;
+  };
+}
+
+/** A config value of mixed shape whose strings and keys land near column 80. */
+function generatedValue(random: () => number, depth: number): GeneratedValue {
+  const below = (limit: number) => Math.floor(random() * limit);
+  const text = (max: number) =>
+    Array.from(
+      { length: 1 + below(max) },
+      () => PIECES[below(PIECES.length)],
+    ).join("");
+  const roll = random();
+  if (depth > 3 || roll < 0.45) {
+    const scalars = [
+      () => text(70),
+      () => text(4),
+      () => below(10 ** below(12)),
+      () => -below(1000),
+      () => random() * 100,
+      () => SCALARS[below(SCALARS.length)],
+      () => (random() < 0.5 ? {} : []),
+    ];
+    return scalars[below(scalars.length)]();
+  }
+  const size = below(6);
+  if (roll < 0.6) {
+    return Array.from({ length: size + 10 }, () => below(10 ** below(6)));
+  }
+  if (roll < 0.75) {
+    return Array.from({ length: size }, () =>
+      generatedValue(random, depth + 1),
+    );
+  }
+  return Object.fromEntries(
+    Array.from({ length: size }, () => [
+      text(random() < 0.3 ? 70 : 6),
+      generatedValue(random, depth + 1),
+    ]),
+  );
+}
+
+function generatedConfig(seed: number, count: number): Partial<AntelopeConfig> {
+  const random = seeded(seed);
+  const modules = Object.fromEntries(
+    Array.from({ length: count }, (_, index) => [
+      `module-${index}`,
+      { config: generatedValue(random, 0) },
+    ]),
+  );
+  return { name: "app", modules };
+}
+
+function nested(depth: number): GeneratedValue {
+  return depth === 0 ? { empty: {}, list: [] } : { level: nested(depth - 1) };
+}
+
 function localModule(watchDir: string[]): Partial<AntelopeConfig> {
   return {
     name: "app",
@@ -159,6 +233,18 @@ const CASES = {
       },
     },
   },
+  "rows of one item and empty containers past column 78": {
+    name: "app",
+    modules: { app: { config: { rows: [[1], [2]], deep: nested(38) } } },
+  },
+  "keys short in UTF-16 units but wide in columns, and the reverse": {
+    name: "app",
+    modules: {
+      app: {
+        config: { 日本語: "x".repeat(66), ["a\u0301bcd"]: "x".repeat(66) },
+      },
+    },
+  },
 } satisfies Record<string, Partial<AntelopeConfig>>;
 
 describe("antelope.config.ts written by the CLI", () => {
@@ -168,6 +254,11 @@ describe("antelope.config.ts written by the CLI", () => {
       expect(source).to.equal(oxfmt(source));
     });
   }
+
+  it("lays out generated configs of every shape the way oxfmt does", async () => {
+    const source = await writtenConfig(generatedConfig(7, 400));
+    expect(firstDifference(source, oxfmt(source))).to.equal("");
+  });
 
   it("measures printable code points the way oxfmt does", async function () {
     this.timeout(120_000);

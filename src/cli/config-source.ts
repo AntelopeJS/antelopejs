@@ -5,7 +5,7 @@ import { textWidth } from "./text-width";
 
 const PRINT_WIDTH = 80;
 const TAB_WIDTH = 2;
-const SHORT_KEY_WIDTH = 5;
+const SHORT_KEY_LENGTH = 5;
 const TAB = "\t";
 const SAFE_KEY_RE = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u;
 const ESCAPE_OR_SINGLE_QUOTE_RE = /\\.|'/g;
@@ -144,7 +144,7 @@ function printProperty(
   const printedKey = SAFE_KEY_RE.test(key) ? key : quote(key);
   const column = indentWidth(unit, depth) + textWidth(printedKey) + 2;
   const keepsLine =
-    textWidth(printedKey) < SHORT_KEY_WIDTH ||
+    printedKey.length < SHORT_KEY_LENGTH ||
     (value.kind === "literal" && value.keepsKeyLine) ||
     column + textWidth(head(value)) <= PRINT_WIDTH;
   if (keepsLine) {
@@ -184,8 +184,8 @@ function print(
   depth: number,
   column: number,
 ): string {
-  if (node.kind === "literal") {
-    return node.text;
+  if (node.kind === "literal" || isEmpty(node)) {
+    return flat(node) ?? "";
   }
   const oneLine = flat(node);
   if (oneLine !== undefined && column + textWidth(oneLine) + 1 <= PRINT_WIDTH) {
