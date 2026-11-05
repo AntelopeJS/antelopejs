@@ -37,6 +37,8 @@ ajs project modules install              # add a provider module for every unres
 
 `add` in package mode accepts `<name>@<exact|range|dist-tag>`; without a spec it writes a caret range of the latest version. `add` does no interface resolution.
 
+`modules add|remove|update|install` and `logging set` edit only the values they change in `antelope.config.ts` and keep the rest of the source. They change a value only when it is a plain literal. On an expression (`version: CORE_VERSION`, `process.env.X ?? "1.0.0"`) they fail, name the value to edit by hand, and leave the file unchanged: make that edit, do not inline the expression to silence the error.
+
 `modules install` (not `add`) fixes **unresolved imports**, and despite its name it installs no npm dependencies: it finds the interfaces no loaded module implements, looks up their implementing modules in the interface repository, and writes the chosen one into `antelope.config.ts`. A single implementer is added without a question; with several it asks, or takes the first with `-y`. It then checks interface ranges like `build`.
 
 `build` and `modules install` fail (exit `1`, no `build.json` written) with `Incompatible interface package resolution` when a module's declared range of an interface package excludes the shared copy, the same error `start` and `dev` raise. Fix it as the error says: update that module, or widen its range to the shared version (`^<version>`) and reinstall, or keep the module that provides the shared copy on a version within the range. Do not skip the build check. A module marked `optional: true` that would conflict only produces a warning, as `start` runs without it.

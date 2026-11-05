@@ -8,6 +8,7 @@ import type {
 import type { ModuleEntryConfig } from "./module-entry";
 
 import {
+  cloneValue,
   isObject,
   isPlainObject,
   set,
@@ -133,7 +134,7 @@ export class ConfigParser {
     ) => text,
     // oxlint-disable-next-line anti-slop/no-unknown-returns -- an override path can reach and retype any field, so the loader decodes the copy in config-fields.ts
   ): unknown {
-    const result = this.cloneValue(config);
+    const result = cloneValue(config);
     if (!isObject(result)) {
       return result;
     }
@@ -149,25 +150,6 @@ export class ConfigParser {
     }
 
     return result;
-  }
-
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- copies user JS config data of any shape, keeping RegExp, functions and class instances by identity
-  private cloneValue(value: unknown): unknown {
-    if (Array.isArray(value)) {
-      const items: unknown[] = value;
-      return items.map((item) => this.cloneValue(item));
-    }
-
-    if (isPlainObject(value)) {
-      return Object.fromEntries(
-        Object.entries(value).map(([key, item]) => [
-          key,
-          this.cloneValue(item),
-        ]),
-      );
-    }
-
-    return value;
   }
 
   expandModuleShorthand(

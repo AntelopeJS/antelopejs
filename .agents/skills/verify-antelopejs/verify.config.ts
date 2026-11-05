@@ -47,6 +47,7 @@ const config: VerifyConfig = {
     data: {
       globs: [
         "src/cli/common.ts",
+        "src/cli/config-source*.ts",
         "src/core/config/config-editor.ts",
         "src/core/config/config-writes.ts",
         "src/cli/commands/config/reset*.ts",
@@ -63,6 +64,7 @@ const config: VerifyConfig = {
         "src/core/runtime/build-runtime.ts",
         "src/core/config/config-paths.ts",
         "src/cli/common.ts",
+        "src/cli/config-source*.ts",
         "src/cli/version-check.ts",
         "src/core/modules/module-locks.ts",
       ],

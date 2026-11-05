@@ -24,6 +24,26 @@ export function isPlainObject(item: unknown): item is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null;
 }
 
+/**
+ * A deep copy of `value`: arrays and plain objects are rebuilt, and every other
+ * value, such as a RegExp, a function or a class instance, is kept by identity.
+ */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- copies user JS config data of any shape, keeping RegExp, functions and class instances by identity
+export function cloneValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    const items: unknown[] = value;
+    return items.map((item) => cloneValue(item));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, cloneValue(item)]),
+    );
+  }
+
+  return value;
+}
+
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- merges and sets paths in user config data of any shape
 function ownDataProperty(value: unknown) {
   return {
