@@ -2,7 +2,7 @@
 covers:
   - src/cli/commands/config/**
   - src/cli/common.ts
-  - src/cli/config-source.ts
+  - src/cli/config-layout.ts
   - src/cli/text-width*.ts
   - src/cli/git-url.ts
 docs:

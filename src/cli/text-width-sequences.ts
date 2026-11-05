@@ -1,6 +1,6 @@
 /**
  * Generated from the tables of the unicode-width 0.2.2 crate, which oxfmt 0.66
- * uses to measure text. `config-source.test.ts` checks the result against oxfmt.
+ * uses to measure text. `config-layout.test.ts` checks the result against oxfmt.
  * @module
  */
 

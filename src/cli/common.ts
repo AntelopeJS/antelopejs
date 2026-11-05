@@ -18,7 +18,7 @@ import {
 import { CliError, getProcessUi } from "../core/output";
 import type { IFileSystem } from "../types";
 import { isObject, isString } from "../utils";
-import { toConfigSource } from "./config-source";
+import { toConfigSource } from "./config-layout";
 
 const DEFAULT_INDENTATION = "  ";
 const DEFINE_CONFIG_IMPORT_LINE =
