@@ -1,8 +1,9 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { buildProcessInvocation } from "../../src/core/output";
 import { isObject } from "../../src/utils";
 import { overriddenInterfaceCore } from "../helpers/interface-core-override";
 import { listDirectory } from "../helpers/temp";
@@ -22,11 +23,22 @@ const interfaceCoreSpec = interfaceCoreTarball
   : "0.2.5";
 
 function run(command: string, args: string[], cwd: string): string {
-  return execFileSync(command, args, {
+  const invocation = buildProcessInvocation(command, args);
+  const result = spawnSync(invocation.executable, invocation.args, {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "inherit"],
+    windowsVerbatimArguments: invocation.windowsVerbatimArguments,
   });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(
+      `${command} ${args.join(" ")} exited with ${result.status ?? result.signal}`,
+    );
+  }
+  return result.stdout;
 }
 
 function assertBuilt(): void {
@@ -87,12 +99,17 @@ function inspectSkills(tarball: string): void {
   if (!Array.isArray(skills) || !skills.includes(`./${skillsFolder}`)) {
     throw new Error("Packed core does not declare its agent skills.");
   }
-  const packedFiles = run("tar", ["-tf", tarball], root).split("\n");
+  const packedFiles = run("tar", ["-tf", tarball], root).split(/\r?\n/);
   const missing = listDirectory(path.join(root, skillsFolder))
     .map((skill) => `package/${skillsFolder}/${skill}/${skillFile}`)
     .filter((file) => !packedFiles.includes(file));
   if (missing.length > 0) {
-    throw new Error(`Packed core misses agent skills: ${missing.join(", ")}`);
+    const packedSkills = packedFiles.filter((file) =>
+      file.includes(`/${skillsFolder}/`),
+    );
+    throw new Error(
+      `Packed core misses agent skills: ${missing.join(", ")}; packed: ${JSON.stringify(packedSkills)}`,
+    );
   }
 }
 

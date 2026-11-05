@@ -4,6 +4,7 @@ import * as path from "node:path";
 
 import type { ModuleCache, ModuleManifest } from "../modules";
 import { isString } from "../../utils";
+import { expandHome } from "./utils";
 
 const Logger = new Logging.Channel("loader.common");
 
@@ -65,11 +66,11 @@ export class DownloaderRegistry {
       if (type.loaderIdentifier === "path") {
         const pathSource: ModuleSource & { path?: unknown } = source;
         const pathValue = pathSource[type.loaderIdentifier];
-        if (isString(pathValue) && !path.isAbsolute(pathValue)) {
-          pathSource[type.loaderIdentifier] = path.resolve(
-            projectFolder,
-            pathValue,
-          );
+        if (isString(pathValue)) {
+          const expanded = expandHome(pathValue);
+          pathSource[type.loaderIdentifier] = path.isAbsolute(expanded)
+            ? expanded
+            : path.resolve(projectFolder, expanded);
         }
       }
       return type.loader(cache, source, options);
