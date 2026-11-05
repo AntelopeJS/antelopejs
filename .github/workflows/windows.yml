@@ -1,0 +1,95 @@
+name: Windows
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: null
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  tooling:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      AJS_NO_UPDATE_CHECK: "1"
+      CI: "1"
+      TERM: xterm-256color
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - name: Windows version
+        run: |
+          [System.Environment]::OSVersion.VersionString
+          (Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List | Out-String).Trim()
+          "node $(node --version), pnpm $(pnpm --version), npm $(npm --version), git $(git --version)"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Install the packed CLI globally
+        run: |
+          $tarball = npm pack --silent --pack-destination $env:RUNNER_TEMP
+          npm install --global (Join-Path $env:RUNNER_TEMP $tarball)
+          (Get-Command ajs).Source
+          ajs --version
+      - name: ajs project init
+        working-directory: ${{ runner.temp }}
+        run: ajs project init app --yes --pm pnpm --no-git-init
+      - name: ajs project dev
+        working-directory: ${{ runner.temp }}/app
+        run: ajs project dev
+      - name: ajs project build
+        working-directory: ${{ runner.temp }}/app
+        run: ajs project build
+      - name: ajs project start
+        working-directory: ${{ runner.temp }}/app
+        run: ajs project start
+      - name: ajs project dev --watch reloads on a change
+        working-directory: ${{ runner.temp }}/app
+        run: |
+          $process = Start-Process -FilePath (Get-Command ajs).Source -ArgumentList "project", "dev", "--watch" -RedirectStandardOutput dev.out -RedirectStandardError dev.err -PassThru -NoNewWindow
+          Start-Sleep -Seconds 25
+          Add-Content -Path src/index.ts -Value "export const windowsReload = true;"
+          Start-Sleep -Seconds 25
+          $alive = -not $process.HasExited
+          taskkill /PID $process.Id /T /F | Out-Null
+          Get-Content dev.out, dev.err
+          if (-not $alive) { throw "ajs project dev --watch exited before it was stopped" }
+          if (-not (Select-String -Path dist/index.js -Pattern "windowsReload" -Quiet)) { throw "the reload command did not rebuild dist/index.js after src/index.ts changed" }
+      - name: ajs project modules list
+        working-directory: ${{ runner.temp }}/app
+        run: ajs project modules list
+      - name: ajs config
+        run: |
+          ajs config show
+          ajs config set git https://github.com/AntelopeJS/interfaces.git
+          ajs config get git
+          ajs config reset --yes
+      - name: ajs module init
+        working-directory: ${{ runner.temp }}
+        run: ajs module init mod --yes --pm npm --no-git-init
+      - name: ajs module test
+        working-directory: ${{ runner.temp }}/mod
+        run: ajs module test
+      - name: Unit tests
+        if: ${{ !cancelled() }}
+        run: pnpm run test:unit
+      - name: Embedded runtime suite
+        if: ${{ !cancelled() }}
+        run: pnpm exec ts-node test/embedded/run.ts
+      - name: Package consumer suite
+        if: ${{ !cancelled() }}
+        run: pnpm exec ts-node test/package-consumer/run.ts
+      - name: Playground suite
+        if: ${{ !cancelled() }}
+        run: |
+          pnpm --dir playground install
+          pnpm exec ts-node playground/test-playground.ts
