@@ -1,6 +1,8 @@
 import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import os from "node:os";
 import * as path from "node:path";
+import sinon from "sinon";
 import { manifestFixture } from "../../helpers/module-fixtures";
 
 import { DownloaderRegistry } from "../../../src/core/downloaders";
@@ -72,6 +74,32 @@ describe("DownloaderRegistry", () => {
     await registry.load("/project", cache, source);
 
     expect(capturedPath).to.equal(path.resolve("/project", "modules/mod"));
+  });
+
+  it("starts a path with a leading tilde in the home folder, not in the project", async () => {
+    sinon.stub(os, "homedir").returns("/home/alice");
+    const registry = new DownloaderRegistry();
+    const cache = new ModuleCache("/cache", new InMemoryFileSystem());
+    await cache.load();
+
+    let capturedPath = "";
+    registry.register(
+      "local",
+      "path",
+      async (_cache: ModuleCache, source: ModuleSourceLocal) => {
+        capturedPath = source.path;
+        return [];
+      },
+    );
+
+    const source: ModuleSourceLocal = { type: "local", path: "~/modules/api" };
+    try {
+      await registry.load("/home/alice/projects/app", cache, source);
+    } finally {
+      sinon.restore();
+    }
+
+    expect(capturedPath).to.equal("/home/alice/modules/api");
   });
 
   it("returns undefined when loader is not registered", () => {
