@@ -204,7 +204,17 @@ function median(values) {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+/**
+ * Checks the median load time of the public CLI entry against the budget.
+ * Windows is skipped: there the file system and antivirus scanning alone put
+ * the light entry near the budget, so the time no longer tells an eager import
+ * apart from noise. `verifyStaysLight` still checks the eager imports there,
+ * and the Linux CI run enforces the budget.
+ */
 function verifyLoadBudget() {
+  if (process.platform === "win32") {
+    return;
+  }
   const samples = Array.from({ length: LOAD_SAMPLE_COUNT }, () =>
     Number(runProbe(LOAD_TIME_PROBE)),
   );
