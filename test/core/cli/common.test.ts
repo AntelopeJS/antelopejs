@@ -166,7 +166,7 @@ import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
         await writeConfig("/project", { name: "demo" }, fs);
         const contents = await fs.readFileString("/project/antelope.config.ts");
         expect(contents).to.include(
-          "import { defineConfig } from '@antelopejs/interface-core/config';",
+          'import { defineConfig } from "@antelopejs/interface-core/config";',
         );
         expect(contents).to.include("export default defineConfig({");
         expect(contents).to.include('name: "demo"');
@@ -193,7 +193,7 @@ import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
         await writeConfig("/project", { name: "updated" }, fs);
         const contents = await fs.readFileString("/project/antelope.config.ts");
         expect(contents).to.include(
-          "import { defineConfig } from '@antelopejs/interface-core/config';",
+          'import { defineConfig } from "@antelopejs/interface-core/config";',
         );
         expect(contents).to.include("export default defineConfig({");
         expect(contents).to.include('name: "updated"');

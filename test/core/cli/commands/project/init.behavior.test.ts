@@ -142,7 +142,7 @@ async function failureOf<T>(run: () => Promise<T>): Promise<Error> {
           "utf-8",
         );
         expect(configContent).to.include(
-          "import { defineConfig } from '@antelopejs/interface-core/config';",
+          'import { defineConfig } from "@antelopejs/interface-core/config";',
         );
         expect(configContent).to.include("export default defineConfig({");
         expect(configContent).to.include('name: "my-project"');
