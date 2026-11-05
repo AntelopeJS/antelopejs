@@ -32,7 +32,7 @@ jobs:
           [System.Environment]::OSVersion.VersionString
           (Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber | Format-List | Out-String).Trim()
           "node $(node --version), pnpm $(pnpm --version), npm $(npm --version), git $(git --version)"
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm run build
       - name: Install the packed CLI globally
         run: |

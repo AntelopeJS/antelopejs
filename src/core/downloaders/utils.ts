@@ -85,20 +85,13 @@ export async function runInstallCommands(
   );
 }
 
+const LEADING_HOME = /^~(?=$|[\\/])/;
+
+/**
+ * Replaces a leading `~` that stands for the home folder (`~`, `~/…` or
+ * `~\…`) with `os.homedir()`. A `~` anywhere else is part of a name, such as
+ * the Windows short name `RUNNER~1`, and is kept.
+ */
 export function expandHome(input: string): string {
-  const homeDir = os.homedir();
-
-  if (input.startsWith("~")) {
-    return homeDir + input.slice(1);
-  }
-
-  if (input.includes("~")) {
-    const parts = input.split("~");
-    if (parts[0].startsWith(homeDir)) {
-      return `${homeDir}/${parts[1].replace(/^\/+/, "")}`;
-    }
-    return input.replace(/~/g, homeDir).replace(/\/+/, "/");
-  }
-
-  return input;
+  return input.replace(LEADING_HOME, () => os.homedir());
 }

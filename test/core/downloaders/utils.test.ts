@@ -37,16 +37,31 @@ describe("Downloader utils", () => {
     expect(expandHome("~/work")).to.equal("/home/test/work");
   });
 
-  it("expands mid-string tilde when prefix matches home", () => {
-    sinon.stub(os, "homedir").returns("/home/test");
+  it("expands a leading tilde followed by a Windows separator", () => {
+    sinon.stub(os, "homedir").returns("C:\\Users\\test");
 
-    expect(expandHome("/home/test/projects~sub")).to.equal("/home/test/sub");
+    expect(expandHome("~\\work")).to.equal("C:\\Users\\test\\work");
   });
 
-  it("expands mid-string tilde when prefix differs", () => {
+  it("keeps a Windows short name that holds a tilde", () => {
+    sinon.stub(os, "homedir").returns("C:\\Users\\runneradmin");
+
+    expect(
+      expandHome("C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\app"),
+    ).to.equal("C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\app");
+  });
+
+  it("keeps a tilde inside a folder name", () => {
     sinon.stub(os, "homedir").returns("/home/test");
 
-    expect(expandHome("proj~backup")).to.equal("proj/home/testbackup");
+    expect(expandHome("/srv/proj~backup")).to.equal("/srv/proj~backup");
+    expect(expandHome("~backup/mod")).to.equal("~backup/mod");
+  });
+
+  it("inserts a home folder that holds a dollar sign verbatim", () => {
+    sinon.stub(os, "homedir").returns("/home/$&");
+
+    expect(expandHome("~/work")).to.equal("/home/$&/work");
   });
 
   it("returns input when no tilde exists", () => {
