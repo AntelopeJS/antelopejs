@@ -86,7 +86,7 @@ export const configJourneys: Journey[] = [
   },
   {
     id: "config-base-file",
-    title: "a config.json written by the base branch's CLI reads back with the head's CLI (Format containment)",
+    title: "a config.json written by the base branch's CLI reads back with the head's CLI",
     entryPoint: "ajs@base config set git <url>; ajs config get git",
     async run(context) {
       context.expect(context.folder, [{ name: "base CLI built by verify-ajs new", pass: context.state.baseCli !== "", detail: context.state.baseCli || "run verify-ajs new without --no-base" }], { critical: true });

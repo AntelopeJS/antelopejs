@@ -1,6 +1,6 @@
 ---
 name: verify-antelopejs
-description: "Drive the ajs CLI and the @antelopejs/core runtime (createRuntime, launch) the way an app developer does, in an isolated HOME with an offline template source, and post a verdict with evidence. Use to prove a change to antelopejs works before merge, to verify a PR, or to check that a seeded break is caught."
+description: "Drive the ajs CLI and the @antelopejs/core runtime (createRuntime, launch) the way an app developer does, in an isolated HOME with an offline template source, and post a verdict with evidence. Use to prove a change to antelopejs works before merge, or to verify a PR."
 ---
 
 # Verify antelopejs
@@ -71,7 +71,7 @@ node "$VERIFY" clean "$RUN"
 ## Verdict rules
 
 1. **Run every feature whose `covers:` globs the diff touches, plus the smoke journey** (`init -> dev -> fixture call -> stop`). `plan` prints that list as `run`.
-2. **Unmapped surface fails the verdict.** User-facing code is `src/**`. A changed file there that no feature glob covers is an unmapped surface. The PR adds the feature file, its journeys and its seeded break. `map` checks the whole tree.
+2. **Unmapped surface fails the verdict.** User-facing code is `src/**`. A changed file there that no feature glob covers is an unmapped surface. The PR adds the feature file and its journeys. `map` checks the whole tree.
 3. **Every registered journey of a feature in `run` must have run and passed.** A missing journey fails the verdict as "not run", so run whole features, not a hand-picked subset. Known findings stay as failing journeys. They fail a verdict only when the diff touches their feature.
 4. **Docs.** Each touched feature lists its `docs:` pages. Judge every page against what the journeys showed. A stale page fails the verdict.
 5. **Formal checks.** `verify.config.ts` lists each formal check with the source files it covers and its own files. Run `node "$VERIFY" formal "$RUN"` before the verdict: it runs every check whose covered files or own files the diff touches and records it under `evidence/formal/<name>/`. For each such check it also decides, without judgement, whether the diff changed what the covered code does: `emit` compares the structure of the covered files' JavaScript on the base and on HEAD: node kinds, names and literal values, with types, comments, formatting, parentheses and export keywords left out. Each use of an imported binding stands for its origin (the resolved module and the imported name), so an import retargeted to another module or alias counts as changed; a function declaration of a covered module is its name alone, and any other binding of a covered module is keyed by module and name. A function declaration refers to the top-level variables and classes of its own file by file and name, so moving it next to a different variable of the same name counts as changed. Exports are keyed by the origin they export, so a re-export or an export alias retargeted counts as changed. Each file must keep its top-level statements and side-effect imports in order; function declarations, which are hoisted, may move between covered files with their imports. So a type-only edit, a reformat or a moved function declaration counts as unchanged, while reordering statements or moving any other statement counts as changed. `emit` judges behaviour, not the public surface: exports are the api-diff's job; a check may instead name a `probe`, run on a checkout of each, whose output must match. Then:
@@ -80,7 +80,7 @@ node "$VERIFY" clean "$RUN"
    - when the covered behaviour changed, or the diff changed the check's own `files`, `formal` also runs the check on the base. A rule the base broke counts as fixed only when HEAD reports it passing; a rule the base broke that HEAD does not report at all fails the verdict. A fix that leaves no violated rule passes.
 
    `--all` also runs the others, which the verdict shows without gating on them.
-6. **One-way doors.** The section comes right after the result line and is mandatory; a verdict without it is void. It holds either `None` with a reason, or one row per door: kind, location, what cannot be undone, and containment. `verify.config.ts` holds the path rules per kind (`data`, `format`, `contract`, `outbound`, `exposure`, `publish`). `node "$VERIFY" doors` prints the `One-way-door:` line for the diff. Every file the path rules flag needs a row, or a `falsePositives` entry that says why it is not a door; an unadjudicated flag fails the verdict. A Data or Format door is contained only by one of that kind's `containments` journeys in `verify.config.ts` (an old `build.json` or config read by the new code), passing in this run. Name it as `feature/journey` in the row.
+6. **One-way doors.** The section comes right after the result line and is mandatory; a verdict without it is void. It holds either `None` with a reason, or one row per door: kind, location, what cannot be undone, and containment. `verify.config.ts` holds the path rules per kind (`data`, `format`, `contract`, `outbound`, `exposure`, `publish`). `node "$VERIFY" doors` prints the `One-way-door:` line for the diff. Every file the path rules flag needs a row, or a `falsePositives` entry that says why it is not a door; an unadjudicated flag fails the verdict.
 7. **Result.** FAIL if any of rules 1 to 6 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
 
 Write your judgement to `$RUN/evidence/judgement.json`:
@@ -99,7 +99,7 @@ Write your judgement to `$RUN/evidence/judgement.json`:
 }
 ```
 
-A door row is `{ "kind", "location", "irreversible", "containment", "containmentJourney" }`, where `kind` is one of the `doors` keys of `verify.config.ts`. `verifier` is required.
+A door row is `{ "kind", "location", "irreversible", "containment" }`, where `kind` is one of the `doors` keys of `verify.config.ts`. `verifier` is required.
 
 Then render and publish:
 
@@ -116,15 +116,7 @@ Post a verdict only from a thread that did not write the change, and name that t
 
 ## Trust
 
-The skill is not Trusted yet. It becomes Trusted when it catches every seeded break, passes a shadow run of 10 consecutive agent PRs, and its last maintain pass (`maintain-verification-skill`, run by the gardener) is newer than the last change to the repo or its `@antelopejs` dependencies and at most 30 days old. The gardener enforces freshness; the verdict header says `not trusted yet` until then.
-
-## Seeded breaks
-
-```bash
-node "$VERIFY" seeded smoke project-init
-```
-
-`seeded-breaks/<feature>.patch` is one minimal product-code bug per feature that the feature's journeys must catch. `seeded` builds an unpatched control worktree and a patched one, runs the feature's journeys in both, and prints `CAUGHT` with the journeys that caught it, or `MISSED`. A break is caught only when a journey that passes in the control fails one of its checks with the patch. Journeys that already fail without the patch, and failures with no failing check (harness errors), do not count. It exits 0 only when every break is caught. `seeded-doors/<kind>.patch` holds one change per door kind; `node "$VERIFY" doors <patch>` must flag its kind.
+The skill is not Trusted yet. It becomes Trusted when it passes a shadow run of 10 consecutive agent PRs, and its last maintain pass (`maintain-verification-skill`, run by the gardener) is newer than the last change to the repo or its `@antelopejs` dependencies and at most 30 days old. The gardener enforces freshness; the verdict header says `not trusted yet` until then.
 
 ## Gotchas
 

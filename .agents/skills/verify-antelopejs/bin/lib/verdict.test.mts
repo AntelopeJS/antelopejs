@@ -7,7 +7,7 @@ import { test } from "node:test";
 import type { Json } from "./json.mts";
 import { type Judgement, readJudgement } from "./verdict.mts";
 
-const ROW = { kind: "data", location: "src/x.ts", irreversible: "drops rows", containment: "journey", containmentJourney: "j" };
+const ROW = { kind: "data", location: "src/x.ts", irreversible: "drops rows", containment: "journey" };
 const MINIMAL = { verifier: "v", doors: { none: "nothing" } };
 
 function readText(text: string): Judgement {
@@ -65,9 +65,8 @@ await test("a null doors.none lets the rows stand alone", () => {
   assert.deepEqual(judgement.doors, [ROW]);
 });
 
-await test("a null note or containmentJourney reads as the empty text", () => {
+await test("a null note reads as the empty text", () => {
   assert.deepEqual(read({ ...MINIMAL, docs: [{ page: "p", matches: true, note: null }] }).docs, [{ page: "p", matches: true, note: "" }]);
-  assert.equal(read({ verifier: "v", doors: { rows: [{ ...ROW, containmentJourney: null }] } }).doors[0]?.containmentJourney, "");
 });
 
 await test("a number or a boolean where a text is read prints as it did before", () => {
@@ -82,7 +81,6 @@ await test("a number or a boolean where a text is read prints as it did before",
 await test("a 0 or false member that was only tested for truthiness reads as missing or empty", () => {
   assert.match(refusal({ verifier: "v", doors: { rows: [{ ...ROW, location: 0 }] } }), /doors\.rows\[0\] needs kind, location, irreversible and containment/);
   assert.match(refusal({ verifier: "v", doors: { rows: [{ ...ROW, containment: false }] } }), /doors\.rows\[0\] needs/);
-  assert.equal(read({ verifier: "v", doors: { rows: [{ ...ROW, containmentJourney: 0 }] } }).doors[0]?.containmentJourney, "");
   assert.equal(read({ ...MINIMAL, docs: [{ page: "p", matches: true, note: false }] }).docs[0]?.note, "");
 });
 

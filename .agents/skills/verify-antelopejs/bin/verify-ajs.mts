@@ -7,7 +7,6 @@ import { FEATURE_JOURNEYS } from "./journeys/index.mts";
 import { parseJourneyResults, runJourney, type JourneyResult } from "./lib/journey.mts";
 import { clean, doctor } from "./lib/lifecycle.mts";
 import { checkMap, planFor } from "./lib/map.mts";
-import { runSeededBreaks } from "./lib/seeded.mts";
 import { buildBaseCli } from "./lib/base.mts";
 import config from "../verify.config.ts";
 import { formalGate, runFormalCheck, touchedFormalChecks } from "./lib/formal.mts";
@@ -21,7 +20,6 @@ const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <
 
   map                              check the feature map covers every user-facing file
   plan [--base <ref>]              map the diff to features; list unmapped surfaces
-  seeded <feature...> [--base <ref>] run each feature unpatched and with its seeded break; exit 0 only when every break makes a passing journey fail a check
   new [--no-build] [--base <ref>]  build dist, create an isolated run, print its folder
                                    (--base defaults to origin/main; --no-base skips it)
   doctor <run>                     check the run is worth driving
@@ -100,21 +98,6 @@ function printMap(): number {
   return problems.length === 0 ? 0 : 1;
 }
 
-function runSeeded(features: string[], baseRef: string): number {
-  const results = runSeededBreaks(features, baseRef);
-  for (const result of results) {
-    print(`${result.caught ? "CAUGHT" : "MISSED"} ${result.feature} by ${result.caughtBy.join(", ") || "no journey"} (evidence ${result.run}/evidence/${result.feature}, control ${result.controlRun}/evidence/${result.feature})`);
-    if (result.failingInControl.length > 0) {
-      print(`    already failing without the patch, not counted: ${result.failingInControl.join(", ")}`);
-    }
-    if (result.harnessErrors.length > 0) {
-      print(`    failed without a failing check (harness error), not counted: ${result.harnessErrors.join(", ")}`);
-    }
-    print(result.output.replace(/^/gm, "    "));
-  }
-  return results.every((result) => result.caught) ? 0 : 1;
-}
-
 function runFormal(dir: string, all: boolean): number {
   const state = loadRun(dir);
   const plan = planFor(state.baseRef || "origin/main");
@@ -174,8 +157,6 @@ async function main(argv: string[]): Promise<number> {
       print(JSON.stringify(plan, null, 2));
       return plan.unmapped.length === 0 ? 0 : 1;
     }
-    case "seeded":
-      return runSeeded(rest, values.base);
     case "doctor":
       return runDoctor(rest[0]);
     case "journey":

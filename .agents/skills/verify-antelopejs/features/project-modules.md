@@ -25,7 +25,7 @@ docs:
 
 - `modules-list-empty`: empty path: a project without modules lists `[]` and prints no line.
 - `modules-add-remove-local`: `add --mode local` then `remove`, each read back with `list --json` and the text listing.
-- `modules-add-keeps-config`: Data containment: `add` on a hand-written configuration keeps the name, the module config and `environments`.
+- `modules-add-keeps-config`: `add` on a hand-written configuration keeps the name, the module config and `environments`.
 - `modules-remove-unknown`: error path: an unknown name removes nothing; `--force` removes the known ones.
 - `modules-add-unreachable-package`: error path: an npm package the offline store cannot serve exits 1 and leaves the tree identical.
 - `modules-install`: `install --git <manifest> --yes` adds the provider of an unimplemented interface; `dev` then serves the consumer's greeting.

@@ -20,7 +20,7 @@ docs:
 - `config-set-invalid`: error path: an invalid URL exits 2 and the value stays the default.
 - `config-unknown-key`: error path: `get nope` and `set nope` exit 1 and list the valid keys.
 - `config-reset`: cancel path: `reset` without `--yes` under `CI=1` exits 2 and keeps the value; `--yes` restores the default.
-- `config-base-file`: Format containment: a file written by the base branch's CLI reads back with the head's CLI.
+- `config-base-file`: upgrade path: a file written by the base branch's CLI reads back with the head's CLI.
 
 ## How to get to it (user POV)
 
