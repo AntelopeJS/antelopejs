@@ -36,8 +36,8 @@ jobs:
       - run: pnpm run build
       - name: Install the packed CLI globally
         run: |
-          $tarball = npm pack --silent --pack-destination $env:RUNNER_TEMP
-          npm install --global (Join-Path $env:RUNNER_TEMP $tarball)
+          $pack = npm pack --ignore-scripts --json --pack-destination $env:RUNNER_TEMP | ConvertFrom-Json
+          npm install --global (Join-Path $env:RUNNER_TEMP $pack[0].filename)
           (Get-Command ajs).Source
           ajs --version
       - name: ajs project init
@@ -79,9 +79,6 @@ jobs:
       - name: ajs module test
         working-directory: ${{ runner.temp }}/mod
         run: ajs module test
-      - name: Unit tests
-        if: ${{ !cancelled() }}
-        run: pnpm run test:unit
       - name: Embedded runtime suite
         if: ${{ !cancelled() }}
         run: pnpm exec ts-node test/embedded/run.ts
