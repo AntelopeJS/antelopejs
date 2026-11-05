@@ -75,7 +75,7 @@ export const journeys: Journey[] = [
   },
   {
     id: "modules-add-keeps-config",
-    title: "add rewrites antelope.config.ts without losing module config or environments (Data containment)",
+    title: "add rewrites antelope.config.ts without losing module config or environments",
     entryPoint: "ajs project modules add <path> --mode local on a hand-written configuration",
     async run(context) {
       const project = await initProject(context, "app");

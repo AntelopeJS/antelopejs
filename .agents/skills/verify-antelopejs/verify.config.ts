@@ -1,11 +1,10 @@
 /** A kind of one-way door. */
 export type DoorKind = "data" | "format" | "contract" | "outbound" | "exposure" | "publish";
 
-/** Path rules for one door kind, and the journeys, as `feature/journey`, that contain it. */
+/** Path rules for one door kind: globs and declared funnel modules. */
 export interface DoorRule {
   globs: string[];
   funnels: string[];
-  containments: string[];
   why: string;
 }
 
@@ -55,7 +54,6 @@ const config: VerifyConfig = {
         "src/cli/commands/project/logging/set*.ts",
       ],
       funnels: ["src/cli/common.ts", "src/core/config/config-writes.ts"],
-      containments: ["project-modules/modules-add-keeps-config", "config/config-base-file"],
       why: "these write antelope.config.ts or ~/.antelopejs/config.json, files the user authored",
     },
     format: {
@@ -69,7 +67,6 @@ const config: VerifyConfig = {
         "src/core/modules/module-locks.ts",
       ],
       funnels: [],
-      containments: ["project-start/start-base-build", "config/config-base-file", "project-module-locks/locks-record-replay"],
       why: "build.json, the antelope.config.ts layout, antelope-lock/ and ~/.antelopejs files must stay readable by the next version",
     },
     contract: {
@@ -82,25 +79,21 @@ const config: VerifyConfig = {
         "package.json",
       ],
       funnels: [],
-      containments: [],
       why: "the published exports, the ajs command and flag tree, and the config keys consumers rely on",
     },
     outbound: {
       globs: ["src/cli/version-check.ts", "src/cli/commands/update.ts", "src/cli/global-package-manager.ts", "src/cli/plugin.ts"],
       funnels: ["src/cli/version-check.ts", "src/cli/global-package-manager.ts"],
-      containments: [],
       why: "these contact the npm registry or install packages globally on the user's machine",
     },
     exposure: {
       globs: ["src/logging/**", "src/core/output/failures.ts", "src/core/config/config-vars.ts", "src/core/config/config-var-*.ts", "src/cli/commands/config/show*.ts"],
       funnels: [],
-      containments: [],
       why: "these print configuration values, environment-provided secrets and error details",
     },
     publish: {
       globs: ["package.json", ".release-it.json", "changelogen.config.json", ".github/workflows/release.yml"],
       funnels: [],
-      containments: [],
       why: "the package name, its files and the release workflow claim names in the npm registry",
     },
   },

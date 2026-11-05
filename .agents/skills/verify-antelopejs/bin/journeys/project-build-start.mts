@@ -133,7 +133,7 @@ export const startJourneys: Journey[] = [
   },
   {
     id: "start-base-build",
-    title: "a build.json written by the base branch's CLI starts with the head's CLI (Format containment)",
+    title: "a build.json written by the base branch's CLI starts with the head's CLI",
     entryPoint: "ajs@base project build && ajs project start",
     async run(context) {
       context.expect(context.folder, [{ name: "base CLI built by verify-ajs new", pass: context.state.baseCli !== "", detail: context.state.baseCli || "run verify-ajs new without --no-base" }], { critical: true });

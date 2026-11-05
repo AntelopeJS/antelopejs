@@ -1,6 +1,6 @@
 # Feature map
 
-One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, and `seeded-breaks/<feature>.patch` the break its journeys must catch. `node .agents/skills/verify-antelopejs/bin/verify-ajs.mts map` checks that every `src/**` file is covered.
+One file per feature. `covers:` lists the source globs it owns, and `docs:` the pages a verdict judges. `node .agents/skills/verify-antelopejs/bin/verify-ajs.mts map` checks that every `src/**` file is covered.
 
 | Feature | What the user does | Journeys |
 |---|---|---|

@@ -9,9 +9,9 @@ function git(args: string[]): string {
 }
 
 /**
- * Builds the CLI of `ref` in a cached worktree, once per commit, so Format
- * containment journeys can write state with the base and read it with the
- * head. Returns the commit and the built CLI entry.
+ * Builds the CLI of `ref` in a cached worktree, once per commit, so upgrade
+ * journeys can write state with the base and read it with the head.
+ * Returns the commit and the built CLI entry.
  */
 export function buildBaseCli(ref: string) {
   const sha = git(["rev-parse", `${ref}^{commit}`]);

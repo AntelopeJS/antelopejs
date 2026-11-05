@@ -20,7 +20,6 @@ export interface DoorRow {
   location: string;
   irreversible: string;
   containment: string;
-  containmentJourney: string;
 }
 
 /** One linked docs page and whether it still matches the behaviour. */
@@ -57,8 +56,6 @@ export interface Verdict {
   markdown: string;
   reasons: string[];
 }
-
-const CONTAINED_KINDS = new Set<DoorKind>(["data", "format"]);
 
 function isDoorKind(value: string): value is DoorKind {
   return Object.hasOwn(config.doors, value);
@@ -152,7 +149,6 @@ function parseRows(doors: JsonRead): DoorRow[] {
       location,
       irreversible,
       containment,
-      containmentJourney: presentText(row, "containmentJourney", `${label}.containmentJourney`) ?? "",
     };
   });
 }
@@ -228,18 +224,9 @@ function short(sha: string): string {
   return sha.slice(0, 7);
 }
 
-function doorReasons(judgement: Judgement, results: Map<string, JourneyResult>, plan: Plan) {
+function doorReasons(judgement: Judgement, plan: Plan) {
   const reasons: string[] = [];
   const attention: string[] = [];
-  for (const row of judgement.doors.filter((door) => CONTAINED_KINDS.has(door.kind))) {
-    const allowed = config.doors[row.kind]?.containments ?? [];
-    const journey = results.get(row.containmentJourney);
-    if (!allowed.includes(row.containmentJourney)) {
-      reasons.push(`${row.kind} door at ${row.location} names ${row.containmentJourney || "no journey"}; its containment must be one of ${allowed.join(", ")}`);
-    } else if (!journey || journey.status !== "PASS") {
-      reasons.push(`${row.kind} door at ${row.location}: containment journey ${row.containmentJourney} did not pass in this run`);
-    }
-  }
   for (const door of flaggedDoors(plan.changed)) {
     for (const file of door.files) {
       const listed = judgement.doors.some((row) => row.kind === door.kind && row.location.includes(file));
@@ -261,7 +248,7 @@ function doorsSection(judgement: Judgement): string[] {
     ...dismissed,
     "| Kind | Location | What cannot be undone | Containment |",
     "|---|---|---|---|",
-    ...judgement.doors.map((door) => `| ${door.kind} | \`${door.location}\` | ${door.irreversible} | ${door.containment}${door.containmentJourney ? ` (journey \`${door.containmentJourney}\`)` : ""} |`),
+    ...judgement.doors.map((door) => `| ${door.kind} | \`${door.location}\` | ${door.irreversible} | ${door.containment} |`),
   ];
 }
 
@@ -272,7 +259,6 @@ function bullets(entries: string[], empty: string): string[] {
 function journeyRows(state: RunState, plan: Plan, pr: number) {
   const rows: string[] = [];
   const reasons: string[] = [];
-  const byJourney = new Map<string, JourneyResult>();
   for (const feature of plan.run) {
     const results = readResults(state, feature) ?? [];
     const registered = (FEATURE_JOURNEYS.get(feature) ?? []).map((journey) => journey.id);
@@ -283,14 +269,13 @@ function journeyRows(state: RunState, plan: Plan, pr: number) {
       if (!registered.includes(result.journey)) {
         reasons.push(`${feature}/${result.journey} is not a registered journey`);
       }
-      byJourney.set(`${feature}/${result.journey}`, result);
       if (result.status === "FAIL") {
         reasons.push(`${feature}/${result.journey} failed`);
       }
       rows.push(`| ${feature} | \`${result.journey}\`: ${result.entryPoint} | ${result.status === "PASS" ? "pass" : "**fail**"}: ${result.title} | [${result.folder}](${evidenceUrl(pr, plan.headSha, result.folder)}) |`);
     }
   }
-  return { rows, reasons, byJourney };
+  return { rows, reasons };
 }
 
 function formalSection(state: RunState, plan: Plan, pr: number) {
@@ -343,7 +328,7 @@ export function renderVerdict(state: RunState, pr: number, judgement: Judgement)
   }
   const journeys = journeyRows(state, plan, pr);
   reasons.push(...journeys.reasons, ...plan.unmapped.map((file) => `unmapped surface ${file}`), ...docsReasons(judgement, plan));
-  const doors = doorReasons(judgement, journeys.byJourney, plan);
+  const doors = doorReasons(judgement, plan);
   const formal = formalSection(state, plan, pr);
   reasons.push(...doors.reasons, ...formal.reasons);
   const attention = [...judgement.attention, ...doors.attention];

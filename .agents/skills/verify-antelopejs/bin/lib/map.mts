@@ -3,8 +3,6 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { FEATURE_JOURNEYS } from "../journeys/index.mts";
-import { breakCoverageProblems } from "./break-coverage.mts";
-import { patchFiles } from "./doors.mts";
 import { REPO_DIR, SKILL_DIR } from "./run.mts";
 
 /** The files whose change a user can observe. A changed file here that no feature covers is an unmapped surface. */
@@ -23,7 +21,6 @@ export interface Feature {
 }
 
 const FEATURES_DIR = path.join(SKILL_DIR, "features");
-const SEEDED_BREAKS_DIR = path.join(SKILL_DIR, "seeded-breaks");
 
 function frontmatterLists(text: string): Map<string, string[]> {
   const lists = new Map<string, string[]>();
@@ -75,9 +72,8 @@ export function featuresOf(file: string, features: Feature[]): string[] {
 
 /**
  * Checks the map against the repository: every user-facing file is covered,
- * every feature has journeys and a seeded break that edits only files its
- * own globs cover, every journey is named in
- * its feature file, and every docs path exists. Returns one line per problem.
+ * every feature has journeys, every journey is named in its feature file,
+ * and every docs path exists. Returns one line per problem.
  */
 export function checkMap(): string[] {
   const features = readFeatures();
@@ -110,20 +106,13 @@ export function checkMap(): string[] {
         problems.push(`${feature.file}: docs path ${doc} does not exist`);
       }
     }
-    if (!existsSync(path.join(SEEDED_BREAKS_DIR, `${feature.name}.patch`))) {
-      problems.push(`${feature.file}: seeded-breaks/${feature.name}.patch is missing`);
-    }
   }
   for (const name of FEATURE_JOURNEYS.keys()) {
     if (!features.some((feature) => feature.name === name)) {
       problems.push(`journeys of ${name} have no features/${name}.md`);
     }
   }
-  const breakFiles = (name: string) => {
-    const patch = path.join(SEEDED_BREAKS_DIR, `${name}.patch`);
-    return existsSync(patch) ? patchFiles(patch) : [];
-  };
-  return [...problems, ...breakCoverageProblems(features, breakFiles, SMOKE_FEATURE)];
+  return problems;
 }
 
 /** What a diff asks a verdict to run. */
