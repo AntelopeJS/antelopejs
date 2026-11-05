@@ -52,8 +52,9 @@ function literal(text: string, numeric = false, keepsKeyLine = false) {
   return { kind: "literal", text, numeric, keepsKeyLine } as const;
 }
 
+/** A config value of any shape as the source tree {@link printNode} lays out. */
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- parses a module config value, user JS data that can hold any value, into the source tree
-function toNode(value: unknown): SourceNode {
+export function toNode(value: unknown): SourceNode {
   if (isString(value)) {
     return literal(quote(value));
   }
@@ -210,4 +211,9 @@ export function toConfigSource(
   unit: string,
 ): string {
   return print(toNode(config), unit, 0, 0);
+}
+
+/** `node` laid out as {@link toConfigSource} lays out a config, from the first column. */
+export function printNode(node: SourceNode, unit: string): string {
+  return print(node, unit, 0, 0);
 }

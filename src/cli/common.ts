@@ -3,7 +3,6 @@ import { mkdirSync } from "node:fs";
 import { stat, writeFile as writeFileNode } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
-import type * as TypeScript from "typescript";
 
 import {
   loadTsConfigFile,
@@ -11,25 +10,19 @@ import {
   TS_CONFIG_FILE,
 } from "../core/config";
 import { NodeFileSystem } from "../core/filesystem";
+import { rewriteConfigSource } from "./config-source";
 import {
   decodeModulePackageJson,
   type ModulePackageJson,
 } from "../core/modules";
 import { CliError, getProcessUi } from "../core/output";
 import type { IFileSystem } from "../types";
-import { isObject, isString } from "../utils";
+import { cloneValue, isObject, isString } from "../utils";
 import { toConfigSource } from "./config-layout";
 
 const DEFAULT_INDENTATION = "  ";
 const DEFINE_CONFIG_IMPORT_LINE =
   'import { defineConfig } from "@antelopejs/interface-core/config";';
-const FUNCTION_BASED_TS_CONFIG_ERROR =
-  "Cannot update antelope.config.ts automatically when default export is function-based.";
-
-interface TsConfigWriteMeta {
-  canWrite: boolean;
-  useDefineConfig: boolean;
-}
 
 /**
  * Detects the indentation character from a file
@@ -93,94 +86,33 @@ async function readTextFile(
   return fileSystem.readFileString(filePath);
 }
 
-function getDefaultExportExpression(
-  ts: typeof TypeScript,
-  sourceFile: TypeScript.SourceFile,
-): TypeScript.Expression | undefined {
-  const exportAssignment = sourceFile.statements.find(
-    (statement): statement is TypeScript.ExportAssignment =>
-      ts.isExportAssignment(statement) && !statement.isExportEquals,
-  );
-  return exportAssignment?.expression;
-}
-
-function isDefineConfigCall(
-  ts: typeof TypeScript,
-  expression: TypeScript.Expression,
-): expression is TypeScript.CallExpression {
-  return (
-    ts.isCallExpression(expression) &&
-    ts.isIdentifier(expression.expression) &&
-    expression.expression.text === "defineConfig"
-  );
-}
-
-function unwrapDefineConfigExpression(
-  ts: typeof TypeScript,
-  expression: TypeScript.Expression,
-): TypeScript.Expression {
-  if (
-    !isDefineConfigCall(ts, expression) ||
-    expression.arguments.length === 0
-  ) {
-    return expression;
-  }
-  return expression.arguments[0];
-}
-
-async function getTsConfigWriteMeta(
-  configPath: string,
-  source: string,
-): Promise<TsConfigWriteMeta> {
-  const ts = await import("typescript");
-  const sourceFile = ts.createSourceFile(
-    configPath,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  );
-  const expression = getDefaultExportExpression(ts, sourceFile);
-  if (!expression) {
-    return { canWrite: false, useDefineConfig: false };
-  }
-  const useDefineConfig = isDefineConfigCall(ts, expression);
-  const targetExpression = unwrapDefineConfigExpression(ts, expression);
-  return {
-    canWrite: ts.isObjectLiteralExpression(targetExpression),
-    useDefineConfig,
-  };
-}
-
 function createTsConfigContent(
   data: Partial<AntelopeConfig>,
   indentation: string,
-  useDefineConfig: boolean,
 ): string {
   const serialized = toConfigSource(data, indentation);
-  if (!useDefineConfig) {
-    return `export default ${serialized};\n`;
-  }
   return `${DEFINE_CONFIG_IMPORT_LINE}\n\nexport default defineConfig(${serialized});\n`;
 }
 
-async function writeTsConfig(
+const readSnapshots = new WeakMap<object, unknown>();
+
+async function renderTsConfig(
   configPath: string,
   data: Partial<AntelopeConfig>,
-  fileSystem: IFileSystem = new NodeFileSystem(),
-): Promise<void> {
-  const source = await fileSystem.readFileString(configPath);
-  const writeMeta = await getTsConfigWriteMeta(configPath, source);
-  if (!writeMeta.canWrite) {
-    throw new CliError({ title: FUNCTION_BASED_TS_CONFIG_ERROR });
-  }
-  const indentation = await detectIndentation(configPath, fileSystem);
-  const content = createTsConfigContent(
-    data,
-    indentation,
-    writeMeta.useDefineConfig,
-  );
-  await fileSystem.writeFile(configPath, content);
+  fileSystem: IFileSystem,
+): Promise<string> {
+  const ts = await import("typescript");
+  const snapshot = readSnapshots.get(data);
+  return rewriteConfigSource(ts, {
+    fileName: path.basename(configPath),
+    source: await fileSystem.readFileString(configPath),
+    indentation: await detectIndentation(configPath, fileSystem),
+    loadCurrent: async () =>
+      isObject(snapshot)
+        ? snapshot
+        : loadTsConfigFile(configPath, undefined, true),
+    target: data,
+  });
 }
 
 async function writeNewTsConfig(
@@ -189,10 +121,16 @@ async function writeNewTsConfig(
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<void> {
   const configPath = path.join(project, TS_CONFIG_FILE);
-  const content = createTsConfigContent(data, DEFAULT_INDENTATION, true);
+  const content = createTsConfigContent(data, DEFAULT_INDENTATION);
   await fileSystem.writeFile(configPath, content);
 }
 
+/**
+ * Writes `data` to the project's configuration file. An existing file is
+ * edited in place: only the values that differ from what {@link readConfig}
+ * returned for `data` change, and a change that falls on an expression throws
+ * a {@link CliError} without writing.
+ */
 export async function writeConfig(
   project: string,
   data: Partial<AntelopeConfig>,
@@ -203,7 +141,24 @@ export async function writeConfig(
     await writeNewTsConfig(project, data, fileSystem);
     return;
   }
-  await writeTsConfig(configPath, data, fileSystem);
+  const content = await renderTsConfig(configPath, data, fileSystem);
+  await fileSystem.writeFile(configPath, content);
+  readSnapshots.set(data, cloneValue(data));
+}
+
+/**
+ * Throws the {@link CliError} that {@link writeConfig} would throw for `data`,
+ * without writing, so a command can refuse before its other side effects.
+ */
+export async function assertConfigWritable(
+  project: string,
+  data: Partial<AntelopeConfig>,
+  fileSystem: IFileSystem = new NodeFileSystem(),
+): Promise<void> {
+  const configPath = await tryFindConfigPath(project, fileSystem);
+  if (configPath) {
+    await renderTsConfig(configPath, data, fileSystem);
+  }
 }
 
 export async function readConfig(
@@ -216,7 +171,11 @@ export async function readConfig(
   if (!configPath) {
     return undefined;
   }
-  return loadTsConfigFile(configPath, environment);
+  const config = await loadTsConfigFile(configPath, environment);
+  if (!readSnapshots.has(config)) {
+    readSnapshots.set(config, cloneValue(config));
+  }
+  return config;
 }
 
 export async function writeModuleManifest(

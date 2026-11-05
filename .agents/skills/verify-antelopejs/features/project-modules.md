@@ -4,6 +4,7 @@ covers:
   - src/cli/common.ts
   - src/cli/config-layout.ts
   - src/cli/text-width*.ts
+  - src/cli/config-source*.ts
   - src/core/downloaders/**
   - src/core/config/config-editor.ts
   - src/core/config/config-writes.ts

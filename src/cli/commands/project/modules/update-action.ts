@@ -1,5 +1,6 @@
 import type {
   AntelopeConfig,
+  AntelopeModuleConfig,
   ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
@@ -20,7 +21,8 @@ import {
   pluralize,
   type NextStep,
 } from "../../../../core/output";
-import { writeConfig } from "../../../common";
+import { isString } from "../../../../utils";
+import { assertConfigWritable, writeConfig } from "../../../common";
 import { formatNames } from "../../shared/names";
 import {
   isChangedLock,
@@ -54,15 +56,38 @@ function applyUpdates(
     if (!module || !isPackageSource(module.source)) {
       continue;
     }
-    envModules[entry.name] = {
-      ...module,
-      source: {
+    envModules[entry.name] = bumpedEntry(
+      Object.hasOwn(envModules, entry.name)
+        ? envModules[entry.name]
+        : undefined,
+      {
         ...module.source,
         version: bumpVersionSpec(entry.current, entry.latest),
       },
-    };
+    );
   }
 }
+
+/**
+ * The configured entry of a package module with only its version changed, in
+ * the shape it was written: a version string, or a `version` field on an entry
+ * without `source`. Any other entry, an environment entry that inherits its
+ * source included, gets `source`, which wins over a `version` merged from the
+ * base configuration.
+ */
+function bumpedEntry(
+  configured: string | AntelopeModuleConfig | undefined,
+  source: ModuleSourcePackage,
+): string | AntelopeModuleConfig {
+  if (isString(configured)) {
+    return source.version;
+  }
+  if (configured?.version !== undefined && configured.source === undefined) {
+    return { ...configured, version: source.version };
+  }
+  return { ...configured, source };
+}
+
 /**
  * The package modules of `selected`, at the version `modules update` moves
  * them to.
@@ -214,6 +239,10 @@ export async function updateModules(
   const outdated = await checkOutdatedModules(selectedModules);
   let changedLocks = 0;
   if (!options.dryRun) {
+    if (outdated.length > 0) {
+      applyUpdates(env.modules, outdated, antelopeConfig.modules);
+      await assertConfigWritable(options.project, config);
+    }
     const refreshed = await refreshModuleLocks(
       options.project,
       config,
@@ -221,7 +250,6 @@ export async function updateModules(
     );
     changedLocks = refreshed.filter(isChangedLock).length;
     if (outdated.length > 0) {
-      applyUpdates(env.modules, outdated, antelopeConfig.modules);
       await writeConfig(options.project, config);
     }
     await pruneModuleLocks(options.project, config);
