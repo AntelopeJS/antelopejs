@@ -10,6 +10,43 @@ const CONFIG_PATH = "/project/antelope.config.ts";
 const REPOSITORY = path.resolve(__dirname, "../../..");
 const OXFMT = path.join(REPOSITORY, "node_modules/.bin/oxfmt");
 const LONG = "x".repeat(70);
+const OUTPUT_LIMIT = 256 * 1024 * 1024;
+const PLANES: readonly (readonly [
+  first: number,
+  last: number,
+  step: number,
+])[] = [
+  [0x20, 0xd7ff, 1],
+  [0xe000, 0x1ffff, 1],
+  [0x20000, 0x3ffff, 64],
+  [0x3fffd, 0x3ffff, 1],
+  [0xe0000, 0xe01ef, 1],
+];
+const BOUNDARY_PADS = [56, 57, 58];
+const TOKENS = [
+  "नमस्ते दुनिया",
+  "क्षमा",
+  "مرحبا",
+  "السلام",
+  "لا",
+  "สวัสดี",
+  "안녕하세요",
+  "日本語",
+  "ｶﾀｶﾅ",
+  "café",
+  "e\u0301",
+  "👍🏽",
+  "❤️",
+  "❤",
+  "⭐︎",
+  "✔️",
+  "👨‍👩‍👧",
+  "🏳️‍🌈",
+  "🇫🇷",
+  "1️⃣",
+  "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "៘",
+];
 
 async function writtenConfig(
   config: Partial<AntelopeConfig>,
@@ -30,8 +67,48 @@ function oxfmt(source: string): string {
   return execFileSync(OXFMT, args, {
     input: source,
     encoding: "utf-8",
+    maxBuffer: OUTPUT_LIMIT,
     stdio: ["pipe", "pipe", "ignore"],
   });
+}
+
+/** The first line where `written` and `formatted` differ, with its neighbour. */
+function firstDifference(written: string, formatted: string): string {
+  const writtenLines = written.split("\n");
+  const formattedLines = formatted.split("\n");
+  const index = writtenLines.findIndex(
+    (line, position) => line !== formattedLines[position],
+  );
+  return index === -1
+    ? ""
+    : JSON.stringify(writtenLines.slice(index, index + 2)) +
+        " !== " +
+        JSON.stringify(formattedLines.slice(index, index + 2));
+}
+
+/** A module config holding `texts`, each padded so it ends near column 80. */
+function boundaryProbes(texts: readonly string[]): Partial<AntelopeConfig> {
+  const entries = texts.flatMap((text, index) =>
+    BOUNDARY_PADS.map(
+      (pad) =>
+        [
+          `k${index.toString(16).padStart(6, "0")}${pad}`,
+          ["-".repeat(pad - 2) + text],
+        ] as const,
+    ),
+  );
+  return {
+    name: "app",
+    modules: { app: { config: Object.fromEntries(entries) } },
+  };
+}
+
+function printableCodePoints(): string[] {
+  return PLANES.flatMap(([first, last, step]) =>
+    Array.from({ length: Math.floor((last - first) / step) + 1 }, (_, index) =>
+      String.fromCodePoint(first + index * step),
+    ),
+  );
 }
 
 function localModule(watchDir: string[]): Partial<AntelopeConfig> {
@@ -91,6 +168,17 @@ describe("antelope.config.ts written by the CLI", () => {
       expect(source).to.equal(oxfmt(source));
     });
   }
+
+  it("measures printable code points the way oxfmt does", async function () {
+    this.timeout(120_000);
+    const source = await writtenConfig(boundaryProbes(printableCodePoints()));
+    expect(firstDifference(source, oxfmt(source))).to.equal("");
+  });
+
+  it("measures emoji sequences, flags and joined scripts the way oxfmt does", async () => {
+    const source = await writtenConfig(boundaryProbes(TOKENS));
+    expect(firstDifference(source, oxfmt(source))).to.equal("");
+  });
 
   it("writes the template config init writes on one line per short array", async () => {
     const source = await writtenConfig(localModule(["src"]));

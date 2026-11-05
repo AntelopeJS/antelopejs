@@ -1,6 +1,7 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import { isBoolean, isNumber, isObject, isString } from "../utils";
+import { textWidth } from "./text-width";
 
 const PRINT_WIDTH = 80;
 const TAB_WIDTH = 2;
@@ -8,9 +9,6 @@ const SHORT_KEY_WIDTH = 5;
 const TAB = "\t";
 const SAFE_KEY_RE = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u;
 const ESCAPE_OR_SINGLE_QUOTE_RE = /\\.|'/g;
-const WIDE_RE =
-  /[\u1100-\u115f\u2e80-\u303e\u3041-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua000-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6\u{20000}-\u{3fffd}\p{Emoji_Presentation}]/u;
-const ZERO_WIDTH_RE = /[\p{M}\u200b-\u200f]/u;
 
 interface LiteralNode {
   readonly kind: "literal";
@@ -32,17 +30,6 @@ interface ObjectNode {
 }
 
 type SourceNode = LiteralNode | ArrayNode | ObjectNode;
-
-/** Columns `text` takes in a terminal, as oxfmt counts them. */
-function width(text: string): number {
-  let columns = 0;
-  for (const character of text) {
-    if (!ZERO_WIDTH_RE.test(character)) {
-      columns += WIDE_RE.test(character) ? 2 : 1;
-    }
-  }
-  return columns;
-}
 
 function count(text: string, character: string): number {
   return text.split(character).length - 1;
@@ -138,7 +125,7 @@ function fill(texts: readonly string[], unit: string, depth: number): string {
     const last = lines.at(-1);
     if (
       last !== undefined &&
-      start + width(last) + 1 + width(text) <= PRINT_WIDTH
+      start + textWidth(last) + 1 + textWidth(text) <= PRINT_WIDTH
     ) {
       lines[lines.length - 1] = `${last} ${text}`;
     } else {
@@ -155,11 +142,11 @@ function printProperty(
   depth: number,
 ): string {
   const printedKey = SAFE_KEY_RE.test(key) ? key : quote(key);
-  const column = indentWidth(unit, depth) + width(printedKey) + 2;
+  const column = indentWidth(unit, depth) + textWidth(printedKey) + 2;
   const keepsLine =
-    width(printedKey) < SHORT_KEY_WIDTH ||
+    textWidth(printedKey) < SHORT_KEY_WIDTH ||
     (value.kind === "literal" && value.keepsKeyLine) ||
-    column + width(head(value)) <= PRINT_WIDTH;
+    column + textWidth(head(value)) <= PRINT_WIDTH;
   if (keepsLine) {
     return `${printedKey}: ${print(value, unit, depth, column)}`;
   }
@@ -201,7 +188,7 @@ function print(
     return node.text;
   }
   const oneLine = flat(node);
-  if (oneLine !== undefined && column + width(oneLine) + 1 <= PRINT_WIDTH) {
+  if (oneLine !== undefined && column + textWidth(oneLine) + 1 <= PRINT_WIDTH) {
     return oneLine;
   }
   return node.kind === "array"

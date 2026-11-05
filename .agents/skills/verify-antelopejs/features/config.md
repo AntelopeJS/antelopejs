@@ -3,6 +3,7 @@ covers:
   - src/cli/commands/config/**
   - src/cli/common.ts
   - src/cli/config-source.ts
+  - src/cli/text-width*.ts
   - src/cli/git-url.ts
 docs:
   - docs/5.cli/5.config.md
