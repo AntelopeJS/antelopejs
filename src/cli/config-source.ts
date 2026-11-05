@@ -141,10 +141,12 @@ function printProperty(
   unit: string,
   depth: number,
 ): string {
-  const printedKey = SAFE_KEY_RE.test(key) ? key : quote(key);
+  const identifier = SAFE_KEY_RE.test(key);
+  const printedKey = identifier ? key : quote(key);
+  const keyLength = identifier ? Array.from(key).length : textWidth(printedKey);
   const column = indentWidth(unit, depth) + textWidth(printedKey) + 2;
   const keepsLine =
-    printedKey.length < SHORT_KEY_LENGTH ||
+    keyLength < SHORT_KEY_LENGTH ||
     (value.kind === "literal" && value.keepsKeyLine) ||
     column + textWidth(head(value)) <= PRINT_WIDTH;
   if (keepsLine) {

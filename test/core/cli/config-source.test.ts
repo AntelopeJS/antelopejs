@@ -22,7 +22,7 @@ const PLANES: readonly (readonly [
   [0x3fffd, 0x3ffff, 1],
   [0xe0000, 0xe01ef, 1],
 ];
-const BOUNDARY_PADS = [56, 57, 58];
+const LAST_FITTING_PAD = 58;
 const TOKENS = [
   "नमस्ते दुनिया",
   "क्षमा",
@@ -46,6 +46,14 @@ const TOKENS = [
   "1️⃣",
   "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
   "៘",
+  "ភ្នំពេញ កម្ពុជា",
+  "ភាសាខ្មែរ",
+  "لَا",
+  "إِلَّا",
+  "ꓚꓹꓼ",
+  "1⃣",
+  "x 5⃣ y",
+  "👩🏽‍💻",
 ];
 
 async function writtenConfig(
@@ -86,17 +94,19 @@ function firstDifference(written: string, formatted: string): string {
         JSON.stringify(formattedLines.slice(index, index + 2));
 }
 
-/** A module config holding `texts`, each padded so it ends near column 80. */
+/**
+ * A module config holding each of `texts` behind every dash padding that can
+ * put its end at column 80, for any width up to three columns per code point.
+ */
 function boundaryProbes(texts: readonly string[]): Partial<AntelopeConfig> {
-  const entries = texts.flatMap((text, index) =>
-    BOUNDARY_PADS.map(
-      (pad) =>
-        [
-          `k${index.toString(16).padStart(6, "0")}${pad}`,
-          ["-".repeat(pad - 2) + text],
-        ] as const,
-    ),
-  );
+  const entries = texts.flatMap((text, index) => {
+    const widest = 3 * Array.from(text).length;
+    return Array.from({ length: widest + 1 }, (_, offset) => {
+      const pad = Math.max(LAST_FITTING_PAD - widest + offset, 2);
+      const key = `k${index.toString(16).padStart(6, "0")}${pad}`;
+      return [key, ["-".repeat(pad - 2) + text]] as const;
+    });
+  });
   return {
     name: "app",
     modules: { app: { config: Object.fromEntries(entries) } },
@@ -237,11 +247,17 @@ const CASES = {
     name: "app",
     modules: { app: { config: { rows: [[1], [2]], deep: nested(38) } } },
   },
-  "keys short in UTF-16 units but wide in columns, and the reverse": {
+  "short keys counted in code points, or in columns when quoted": {
     name: "app",
     modules: {
       app: {
-        config: { 日本語: "x".repeat(66), ["a\u0301bcd"]: "x".repeat(66) },
+        config: {
+          日本語: "x".repeat(66),
+          ["a\u0301bcd"]: "x".repeat(66),
+          𠮷野家店: "x".repeat(66),
+          "🇫🇷": "x".repeat(66),
+          "1月": "x".repeat(66),
+        },
       },
     },
   },
