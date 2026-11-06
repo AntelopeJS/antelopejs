@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.21.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.20.0...v1.21.0)
+
+### 🩹 Fixes
+
+- **cli:** Write antelope.config.ts the way oxfmt formats it ([#392](https://github.com/AntelopeJS/antelopejs/pull/392))
+- Run the ajs tooling on Windows and keep a mid-path tilde in local module paths ([#390](https://github.com/AntelopeJS/antelopejs/pull/390))
+- **cli:** Edit antelope.config.ts in place when project commands write it ([#391](https://github.com/AntelopeJS/antelopejs/pull/391))
+- **project:** Keep envOverrides values out of build.json and read them at start ([#394](https://github.com/AntelopeJS/antelopejs/pull/394))
+- **deps:** Update mocha to 12 and brace-expansion to resolve runtime advisories ([#396](https://github.com/AntelopeJS/antelopejs/pull/396))
+- **skills:** Route the embedded or standalone interface choice to ajs-author-interface ([#398](https://github.com/AntelopeJS/antelopejs/pull/398))
+
+### 🏡 Chore
+
+- **verify:** Remove seeded runs from the verification skill ([#393](https://github.com/AntelopeJS/antelopejs/pull/393))
+- **ci:** Remove the weekly mutation caller ([#395](https://github.com/AntelopeJS/antelopejs/pull/395))
+
+### 🤖 CI
+
+- Call ci-node.yml@v1 ([#397](https://github.com/AntelopeJS/antelopejs/pull/397))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.20.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.19.0...v1.20.0)
