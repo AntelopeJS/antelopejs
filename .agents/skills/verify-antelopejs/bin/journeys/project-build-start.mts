@@ -132,6 +132,28 @@ export const startJourneys: Journey[] = [
     },
   },
   {
+    id: "start-env-overrides",
+    title: "build stores the envOverrides mapping without its values, and start reads them from its own environment",
+    entryPoint: "SECRET=a ajs project build && SECRET=b ajs project start",
+    async run(context) {
+      const project = await initProject(context, "app");
+      const config = path.join(project, "antelope.config.ts");
+      context.edit("map VERIFY_SECRET onto the fixture's config", config, readFileSync(config, "utf8").replace(/\n\}\);\s*$/, ',\n  envOverrides: { VERIFY_SECRET: "modules.verify-http-fixture.config.secret" }\n});\n'));
+      const build = await context.ajs("project build with VERIFY_SECRET set", ["project", "build"], { cwd: project, env: { VERIFY_SECRET: "build-time-secret" } });
+      const artifact = readFileSync(path.join(project, BUILD_FILE), "utf8");
+      context.expect(build.folder, [
+        exitIs(build, 0),
+        { name: "build.json holds no VERIFY_SECRET value", pass: !artifact.includes("build-time-secret"), detail: artifact.slice(0, 400) },
+        has("build.json", artifact, /"VERIFY_SECRET": "modules\.verify-http-fixture\.config\.secret"/),
+      ], { critical: true });
+      const start = await context.background("project start with VERIFY_SECRET set", ["project", "start"], { cwd: project, env: { VERIFY_SECRET: "start-time-secret" } });
+      const ready = await context.waitReady("ready", start);
+      context.expect(ready.folder, [answers(ready, "config", { secret: "start-time-secret" })]);
+      const stop = await context.stop("stop with SIGINT", start);
+      context.expect(stop.folder, [exitIs(stop, 130), { name: "build.json unchanged by start", pass: readFileSync(path.join(project, BUILD_FILE), "utf8") === artifact, detail: "" }]);
+    },
+  },
+  {
     id: "start-base-build",
     title: "a build.json written by the base branch's CLI starts with the head's CLI",
     entryPoint: "ajs@base project build && ajs project start",
