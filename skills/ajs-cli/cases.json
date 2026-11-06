@@ -114,6 +114,17 @@
           "ajs project modules update"
         ]
       }
+    },
+    {
+      "id": "ajs-cli-embedded-mode-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "embedded or standalone mode for my express app, which one do i pick",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"],
+        "avoid": ["ajs-author-interface"]
+      }
     }
   ]
 }
