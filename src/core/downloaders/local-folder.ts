@@ -59,6 +59,7 @@ export function registerLocalFolderDownloader(
         );
         const moduleSource: ModuleSourceLocal = {
           type: "local",
+          id: source.id,
           path: folder,
           watchDir: source.watchDir,
           installCommand: source.installCommand,

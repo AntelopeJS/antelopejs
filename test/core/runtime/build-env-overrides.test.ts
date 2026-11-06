@@ -93,6 +93,21 @@ describe("runtime applyBuildEnvOverrides", () => {
     expect(applied.modules.api.folder).to.equal("/project/.antelope/cache/api");
   });
 
+  it("skips the paths of a module the artifact stores without an entry id", () => {
+    const artifact = createArtifact();
+    artifact.config.envOverrides = {
+      [TOKEN]: ["modules.legacy.config.token", "modules.api.config.token"],
+    };
+
+    const applied = applyBuildEnvOverrides(artifact, { [TOKEN]: "secret" });
+
+    expect(applied.modules.orphan).to.deep.equal(createEntry("orphan"));
+    expect(applied.modules.api.config).to.deep.equal({
+      token: "secret",
+      host: "localhost",
+    });
+  });
+
   it("refuses a variable whose text does not decode for its field", () => {
     expect(() =>
       applyBuildEnvOverrides(createArtifact(), { [OPTIONAL]: "yes" }),

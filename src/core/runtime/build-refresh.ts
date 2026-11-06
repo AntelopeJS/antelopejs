@@ -221,6 +221,33 @@ function storedConfig(artifact: BuildArtifact): LoadedConfig {
   return { name, cacheFolder, modules, logging, envOverrides };
 }
 
+function reachesStoredModule(
+  overridePath: string,
+  modules: ConfiguredModules,
+): boolean {
+  const [root, id] = overridePath.split(".");
+  return root !== "modules" || (id !== undefined && Object.hasOwn(modules, id));
+}
+
+/**
+ * The override paths that land in the stored configuration. A build by an
+ * older core stores `local-folder` modules without the id of their entry, so
+ * their paths have no module to write to and are left out.
+ */
+function pathsIntoStoredModules(
+  envOverrides: Record<string, string | string[]>,
+  modules: ConfiguredModules,
+): Record<string, string[]> {
+  return Object.fromEntries(
+    Object.entries(envOverrides).map(([name, paths]) => [
+      name,
+      (Array.isArray(paths) ? paths : [paths]).filter((overridePath) =>
+        reachesStoredModule(overridePath, modules),
+      ),
+    ]),
+  );
+}
+
 /**
  * Apply the `envOverrides` a build artifact stores, with each variable read
  * from `variables`, to its module entries and logging settings, the way
@@ -244,7 +271,7 @@ export function applyBuildEnvOverrides(
   const stored = storedConfig(artifact);
   const overridden = new ConfigParser().applyEnvOverrides(
     stored,
-    envOverrides,
+    pathsIntoStoredModules(envOverrides, stored.modules),
     decodeOverride,
     variables,
   );
