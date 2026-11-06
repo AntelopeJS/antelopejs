@@ -2,7 +2,7 @@ const os = require("node:os");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 
-const PINNED_VERSION = "0.0.11";
+const PINNED_VERSION = process.argv[2] ?? "";
 const REQUIRED_RANGE = ">=0.4.0 <0.5.0";
 
 /** @param {string} root */
@@ -35,12 +35,15 @@ function describe(error) {
 }
 
 async function main() {
-  const launch = require("@antelopejs/core").default;
+  if (!PINNED_VERSION) {
+    throw new Error("Pass the pinned interface-core version as an argument.");
+  }
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "ajs-pinned-core-"));
   let manager;
   let message = "";
   try {
     await createProject(root);
+    const launch = require("@antelopejs/core").default;
     manager = await launch(root);
   } catch (error) {
     message = describe(error);

@@ -5,7 +5,6 @@ import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
 } from "./interface-registry";
-import { assertInterfaceCoreCopy } from "./interface-core-copy";
 import { Module } from "./module";
 import { ModuleIsolation } from "./module-isolation";
 import {
@@ -76,7 +75,6 @@ export class ModuleManager {
 
   private startupOrder: string[] = [];
   constructor(deps: ModuleManagerDeps = {}) {
-    assertInterfaceCoreCopy();
     this.registry = deps.registry ?? new ModuleRegistry();
     this.resolver = deps.resolver ?? new Resolver(new PathMapper());
     this.resolverDetour = new ResolverDetour(this.resolver);

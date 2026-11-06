@@ -7,11 +7,11 @@ import {
   isString,
   type ResolvedPackage,
   resolvePackage,
-} from "../../utils";
-import { CliError } from "../output";
+} from "./utils";
+import { CliError } from "./core/output";
 
 const INTERFACE_CORE = "@antelopejs/interface-core";
-const CORE_MANIFEST = path.join(__dirname, "../../../package.json");
+const CORE_MANIFEST = path.join(__dirname, "../package.json");
 
 /** What the core declares for `@antelopejs/interface-core` and what it loads. */
 export interface InterfaceCoreCopy {
@@ -38,7 +38,9 @@ function readInterfaceCoreCopy(): InterfaceCoreCopy {
  * Throws when the core's own copy of `@antelopejs/interface-core` falls
  * outside the range the core declares. A package manager override or
  * resolution can replace that copy without a warning at install, and the
- * core would then fail later on a function the old copy lacks.
+ * core would then fail on a subpath or function the old copy lacks. Every
+ * entry imports this module before anything that loads interface-core, so
+ * this check runs first.
  */
 export function assertInterfaceCoreCopy(
   copy: InterfaceCoreCopy = readInterfaceCoreCopy(),
@@ -61,3 +63,5 @@ export function assertInterfaceCoreCopy(
     ],
   });
 }
+
+assertInterfaceCoreCopy();

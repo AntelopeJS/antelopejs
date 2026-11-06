@@ -1,7 +1,6 @@
 export * from "./build-artifact";
 export * as buildArtifactModule from "./build-artifact";
 export * from "./diagnostics";
-export * from "./interface-core-copy";
 export * from "./interface-registry";
 export * from "./lifecycle-signals";
 export * from "./module";

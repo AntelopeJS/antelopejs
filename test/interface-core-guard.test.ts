@@ -3,8 +3,8 @@ import { expect } from "chai";
 import {
   assertInterfaceCoreCopy,
   type InterfaceCoreCopy,
-} from "../../src/core/modules";
-import { CliError } from "../../src/core/output";
+} from "../src/interface-core-guard";
+import { CliError } from "../src/core/output";
 
 const REQUIRED_RANGE = ">=0.4.0 <0.5.0";
 

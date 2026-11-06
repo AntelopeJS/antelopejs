@@ -12,8 +12,7 @@ const root = path.resolve(__dirname, "../..");
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "ajs-package-consumer-"));
 const packFolder = path.join(temp, "pack");
 const consumerFolder = path.join(temp, "consumer");
-const pinnedFolder = path.join(temp, "pinned-consumer");
-const pinnedInterfaceCore = "0.0.11";
+const pinnedInterfaceCores = ["0.0.4", "0.0.11"];
 const typeScriptCompiler = path.join(
   root,
   "node_modules",
@@ -146,11 +145,15 @@ function installConsumer(tarball: string): void {
   run(pnpm, ["install"], consumerFolder);
 }
 
-function verifyConsumer(script: string, folder = consumerFolder): void {
+function verifyConsumer(
+  script: string,
+  folder = consumerFolder,
+  args: string[] = [],
+): void {
   const source = path.join(__dirname, script);
   const target = path.join(folder, script);
   fs.copyFileSync(source, target);
-  run(process.execPath, [target], folder);
+  run(process.execPath, [target, ...args], folder);
 }
 
 function verifyEs2020Types(): void {
@@ -179,7 +182,8 @@ function verifyEs2020Types(): void {
   run(process.execPath, [typeScriptCompiler, "-p", "."], consumerFolder);
 }
 
-function installPinnedConsumer(tarball: string): void {
+function verifyPinnedConsumer(tarball: string, version: string): void {
+  const pinnedFolder = path.join(temp, `pinned-${version}`);
   fs.mkdirSync(pinnedFolder, { recursive: true });
   fs.writeFileSync(
     path.join(pinnedFolder, "package.json"),
@@ -187,16 +191,17 @@ function installPinnedConsumer(tarball: string): void {
       private: true,
       dependencies: {
         "@antelopejs/core": `file:${tarball}`,
-        "@antelopejs/interface-core": pinnedInterfaceCore,
+        "@antelopejs/interface-core": version,
         "reflect-metadata": "0.2.2",
       },
     }),
   );
   fs.writeFileSync(
     path.join(pinnedFolder, "pnpm-workspace.yaml"),
-    `overrides:\n  "@antelopejs/interface-core": "${pinnedInterfaceCore}"\n`,
+    `overrides:\n  "@antelopejs/interface-core": "${version}"\n`,
   );
   run(pnpm, ["install"], pinnedFolder);
+  verifyConsumer("verify-pinned-interface-core.cjs", pinnedFolder, [version]);
 }
 
 try {
@@ -208,8 +213,9 @@ try {
   verifyConsumer("verify-cli.cjs");
   verifyConsumer("verify-cli-api.cjs");
   verifyEs2020Types();
-  installPinnedConsumer(tarball);
-  verifyConsumer("verify-pinned-interface-core.cjs", pinnedFolder);
+  for (const version of pinnedInterfaceCores) {
+    verifyPinnedConsumer(tarball, version);
+  }
   process.stdout.write(
     "Package consumer routing, CLI startup, CLI API, ES2020 types and pinned interface-core verified.\n",
   );

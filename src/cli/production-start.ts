@@ -1,3 +1,4 @@
+import "../interface-core-guard";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
