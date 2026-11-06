@@ -120,8 +120,8 @@ export class ConfigParser {
   }
 
   /**
-   * A copy of `config` with each overridden path set to its environment
-   * variable's text, as `readOverride` decodes it for that path. A path can
+   * A copy of `config` with each overridden path set to its variable's text
+   * in `variables`, as `readOverride` decodes it for that path. A path can
    * reach any field, so the result is `unknown` until a caller checks the
    * fields it reads.
    */
@@ -132,6 +132,7 @@ export class ConfigParser {
       _path,
       text,
     ) => text,
+    variables: NodeJS.ProcessEnv = process.env,
     // oxlint-disable-next-line anti-slop/no-unknown-returns -- an override path can reach and retype any field, so the loader decodes the copy in config-fields.ts
   ): unknown {
     const result = cloneValue(config);
@@ -140,7 +141,7 @@ export class ConfigParser {
     }
 
     for (const [envVar, paths] of Object.entries(overrides)) {
-      const value = process.env[envVar];
+      const value = variables[envVar];
       if (value === undefined) continue;
 
       const pathList = Array.isArray(paths) ? paths : [paths];

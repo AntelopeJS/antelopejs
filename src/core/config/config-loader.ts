@@ -22,10 +22,15 @@ export class ConfigLoader {
 
   constructor(private fs: IFileSystem) {}
 
+  /**
+   * Resolves the project configuration for `environment`, with the
+   * `envOverrides` it declares read from `variables`.
+   */
   async load(
     projectFolder: string,
     environment?: string,
     configPath?: string,
+    variables: NodeJS.ProcessEnv = process.env,
   ): Promise<LoadedConfig> {
     const rawConfig = await this.loadConfigSource(
       projectFolder,
@@ -67,6 +72,7 @@ export class ConfigLoader {
       loaded,
       envOverrides,
       decodeOverride,
+      variables,
     );
     const fields = isObject(overridden) ? overridden : {};
 

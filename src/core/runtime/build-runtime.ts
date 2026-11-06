@@ -2,6 +2,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import path from "node:path";
 
 import type { IFileSystem } from "../../types";
+import type { LoadedConfig } from "../config";
 import type { NodeFileSystem } from "../filesystem";
 import {
   type BuildArtifact,
@@ -10,7 +11,9 @@ import {
   computeConfigHash,
   createBuildArtifact,
   getBuildArtifactPath,
+  hashResolvedConfig,
   type InterfaceConnectionRef,
+  loadBuildConfig,
   type ModuleConfig,
   ModuleManifest,
   readBuildArtifact,
@@ -21,6 +24,7 @@ import type {
   ModuleOverrideMap,
   NormalizedLoadedConfig,
 } from "./runtime-types";
+import { toModuleConfig } from "./module-loading";
 
 const STALE_BUILD_WARNING = `Configuration has changed since last build. Run 'ajs project build' to update.`;
 const BUILD_MISSING_REBUILD_HINT = "Run 'ajs project build --env <env>' first.";
@@ -183,28 +187,42 @@ export async function ensureBuildModulesExist(
   await Promise.all(checks);
 }
 
+function withStoredConfig(
+  entry: ModuleManifestEntry,
+  stored: LoadedConfig,
+): ModuleManifestEntry {
+  const id = entry.manifest.source.id;
+  if (id === undefined || !Object.hasOwn(stored.modules, id)) {
+    return entry;
+  }
+  return { ...entry, config: toModuleConfig(stored.modules[id]) };
+}
+
+/**
+ * Writes `build.json` for the modules of `entries`. Their configuration and
+ * the logging settings are those of {@link loadBuildConfig}, so the artifact
+ * holds the `envOverrides` mapping and none of its values.
+ */
 export async function writeProjectBuildArtifact(
   normalizedConfig: NormalizedLoadedConfig,
   env: string,
   entries: ModuleManifestEntry[],
   fs: NodeFileSystem,
 ): Promise<void> {
-  const configHash = await computeConfigHash(
-    normalizedConfig.projectFolder,
-    env,
-    fs,
+  const stored = await loadBuildConfig(normalizedConfig.projectFolder, env, fs);
+  const modules = serializeBuildModuleEntries(
+    entries.map((entry) => withStoredConfig(entry, stored)),
   );
-  const modules = serializeBuildModuleEntries(entries);
 
   const artifact = createBuildArtifact({
-    configHash,
+    configHash: hashResolvedConfig(stored, env),
     env,
     config: {
       name: normalizedConfig.name,
       cacheFolder: normalizedConfig.cacheFolder,
       projectFolder: normalizedConfig.projectFolder,
-      logging: normalizedConfig.logging,
-      envOverrides: normalizedConfig.envOverrides,
+      logging: stored.logging,
+      envOverrides: stored.envOverrides,
     },
     modules,
   });

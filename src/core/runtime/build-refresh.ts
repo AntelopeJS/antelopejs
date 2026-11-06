@@ -3,7 +3,10 @@ import path from "node:path";
 
 import type { IFileSystem } from "../../types";
 import {
+  assertLoadedConfig,
   ConfigLoader,
+  ConfigParser,
+  decodeOverride,
   type ExpandedModuleConfig,
   type LoadedConfig,
 } from "../config";
@@ -188,4 +191,77 @@ export async function readRefreshedBuildArtifact(
   const artifact = await readBuildArtifactOrThrow(projectFolder, fs);
   const config = await new ConfigLoader(fs).load(projectFolder, env);
   return refreshBuildArtifact(artifact, config, env, projectFolder);
+}
+
+function expandedModuleConfig(entry: BuildModuleEntry): ExpandedModuleConfig {
+  const expanded: ExpandedModuleConfig = {
+    source: entry.source,
+    config: entry.config,
+    importOverrides: entry.importOverrides ?? [],
+    disabledExports: entry.disabledExports ?? [],
+  };
+  if (entry.exportPriority !== undefined) {
+    expanded.exportPriority = entry.exportPriority;
+  }
+  if (entry.optional !== undefined) {
+    expanded.optional = entry.optional;
+  }
+  return expanded;
+}
+
+function storedConfig(artifact: BuildArtifact): LoadedConfig {
+  const modules: ConfiguredModules = {};
+  for (const entry of Object.values(artifact.modules)) {
+    const id = entry.source.id;
+    if (id !== undefined && !Object.hasOwn(modules, id)) {
+      modules[id] = expandedModuleConfig(entry);
+    }
+  }
+  const { name, cacheFolder, logging, envOverrides } = artifact.config;
+  return { name, cacheFolder, modules, logging, envOverrides };
+}
+
+/**
+ * Apply the `envOverrides` a build artifact stores, with each variable read
+ * from `variables`, to its module entries and logging settings, the way
+ * loading `antelope.config.ts` applies them. A build stores none of their
+ * values, so a started build takes them from its own environment. Module
+ * sources, folders and the cache folder stay those of the build.
+ *
+ * @throws Error naming the field when a variable's text does not decode for
+ *   its path, or leaves a field without its declared type
+ */
+export function applyBuildEnvOverrides(
+  artifact: BuildArtifact,
+  variables: NodeJS.ProcessEnv = process.env,
+): BuildArtifact {
+  const { envOverrides } = artifact.config;
+  if (
+    Object.keys(envOverrides).every((name) => variables[name] === undefined)
+  ) {
+    return artifact;
+  }
+  const stored = storedConfig(artifact);
+  const overridden = new ConfigParser().applyEnvOverrides(
+    stored,
+    envOverrides,
+    decodeOverride,
+    variables,
+  );
+  assertLoadedConfig(overridden, stored);
+  const modules = Object.entries(artifact.modules).map(
+    ([name, entry]): [string, BuildModuleEntry] => {
+      const id = entry.source.id;
+      if (id === undefined || !Object.hasOwn(overridden.modules, id)) {
+        return [name, entry];
+      }
+      const moduleConfig = toModuleConfig(overridden.modules[id]);
+      return [name, { ...entry, ...serializeModuleConfig(moduleConfig) }];
+    },
+  );
+  return {
+    ...artifact,
+    config: { ...artifact.config, logging: overridden.logging },
+    modules: Object.fromEntries(modules),
+  };
 }

@@ -138,9 +138,20 @@ export async function computeConfigHash(
   env: string,
   fs: IFileSystem = new NodeFileSystem(),
 ): Promise<string> {
-  const loader = new ConfigLoader(fs);
-  const resolvedConfig = await loader.load(projectFolder, env);
-  return hashResolvedConfig(resolvedConfig, env);
+  return hashResolvedConfig(await loadBuildConfig(projectFolder, env, fs), env);
+}
+
+/**
+ * Resolves `antelope.config.ts` for `env` the way a build stores it: every
+ * `envOverrides` variable is read as unset, so no value of the build
+ * environment reaches `build.json`. `ajs project start` applies them.
+ */
+export function loadBuildConfig(
+  projectFolder: string,
+  env: string,
+  fs: IFileSystem = new NodeFileSystem(),
+): Promise<LoadedConfig> {
+  return new ConfigLoader(fs).load(projectFolder, env, undefined, {});
 }
 
 /**

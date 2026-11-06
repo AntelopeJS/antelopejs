@@ -17,11 +17,11 @@ ajs project dev -e production    # select an environment of antelope.config.ts (
 ajs project dev -i           # REPL with the project loaded
 ajs project dev --inspect    # Node inspector (default 127.0.0.1:9229)
 ajs project build            # download & install modules, check they load and interface ranges, write .antelope/build/build.json (--frozen-modules in CI)
-ajs project start            # launch from the build artifact; --refresh-config re-resolves the config at start
+ajs project start            # launch from the build artifact with envOverrides read at start; --refresh-config re-resolves the config at start
 ajs project logging show|set # view/change logging settings
 ```
 
-`dev` resolves and wires the module graph every run; `start` trusts a prior `build`. Use `build` + `start` in production/CI, `dev --watch` while developing. `dev` and `start` accept `-c, --concurrency <number>`. `start --refresh-config` exits with code `3` when the configured module set differs from the build: rebuild then.
+`dev` resolves and wires the module graph every run; `start` trusts a prior `build`. Use `build` + `start` in production/CI, `dev --watch` while developing. `dev` and `start` accept `-c, --concurrency <number>`. `build.json` keeps the `envOverrides` mapping but none of its values, so secrets mapped there are set at `start`, not at `build`. `start --refresh-config` exits with code `3` when the configured module set differs from the build: rebuild then.
 
 `init` asks its questions interactively; in scripts and CI answer them with flags (`--name`, `-t/--template <slug>`, `--interfaces a,b`, `--pm pnpm`, `--git-init`/`--no-git-init`) or accept defaults with `-y`. `--template` takes a template slug (its name in lower case, runs of other characters as `-`: "DMS Demo" is `dms-demo`) or the exact name; an unknown template exits with code `2` and lists the slugs. Without a terminal, an unanswered question exits with code `2` before anything is written.
 

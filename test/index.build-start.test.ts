@@ -394,6 +394,50 @@ function readRecordedConfig() {
       });
     };
 
+  const checkStartReadsEnvOverrides: (this: Mocha.Suite) => void = function () {
+    it("build stores no envOverrides value, and launchFromBuild reads them at start", async () => {
+      const projectFolder = makeTempDir("antelope-build-env-overrides-");
+      tempDirs.push(projectFolder);
+      writeRecordingModule(projectFolder);
+      writeTsConfig(
+        projectFolder,
+        recorderConfig(
+          { token: "placeholder" },
+          {
+            envOverrides: {
+              [TOKEN_VARIABLE]: "modules.recorder.config.token",
+            },
+          },
+        ),
+      );
+      process.env[TOKEN_VARIABLE] = "build-secret";
+      await build(projectFolder, "default");
+      delete process.env[TOKEN_VARIABLE];
+      const artifactPath = path.join(
+        projectFolder,
+        ".antelope",
+        "build",
+        "build.json",
+      );
+
+      expect(readText(artifactPath)).to.not.include("build-secret");
+
+      const manager = await launchFromBuild(projectFolder, "default");
+      await manager.destroyAll();
+
+      expect(readRecordedConfig()).to.deep.equal({ token: "placeholder" });
+
+      process.env[TOKEN_VARIABLE] = "start-secret";
+      const warnStub = sinon.stub(Logging, "Warn");
+      const restarted = await launchFromBuild(projectFolder, "default");
+      await restarted.destroyAll();
+
+      expect(readRecordedConfig()).to.deep.equal({ token: "start-secret" });
+      expect(warnStub.called).to.equal(false);
+      expect(readText(artifactPath)).to.not.include("start-secret");
+    });
+  };
+
   registerBuildAndLaunchFromBuild = () => {
     tempDirs = initializeTempDirs();
 
@@ -413,6 +457,10 @@ function readRecordedConfig() {
 
     describe("launchFromBuild throws when a module folder is missing", function () {
       checkLaunchFromBuildThrowsWhenAModule.call(this);
+    });
+
+    describe("launchFromBuild reads envOverrides at start", function () {
+      checkStartReadsEnvOverrides.call(this);
     });
   };
 
