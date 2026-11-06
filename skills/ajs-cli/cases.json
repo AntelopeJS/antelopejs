@@ -114,6 +114,39 @@
           "ajs project modules update"
         ]
       }
+    },
+    {
+      "id": "ajs-cli-embedded-mode-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "embedded vs standalone for an adonisjs app, which one",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"],
+        "avoid": ["ajs-author-interface"]
+      }
+    },
+    {
+      "id": "ajs-cli-embedded-config-casual",
+      "area": "framework",
+      "style": "casual",
+      "prompt": "do i still need antelope.config.ts if i go embedded instead of standalone",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"],
+        "avoid": ["ajs-author-interface"]
+      }
+    },
+    {
+      "id": "ajs-cli-embedded-mode-diff",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "What is the difference between embedded mode and standalone mode?",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"],
+        "avoid": ["ajs-author-interface"]
+      }
     }
   ]
 }

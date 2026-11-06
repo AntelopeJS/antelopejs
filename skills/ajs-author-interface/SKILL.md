@@ -1,6 +1,6 @@
 ---
 name: ajs-author-interface
-description: Guides authoring or versioning an AntelopeJS interface package itself (@antelopejs/interface-*). Use when editing an interface's contract surface, defining a new interface, or deciding whether a change is breaking and which version to bump.
+description: Guides authoring or versioning an AntelopeJS interface package itself (@antelopejs/interface-*). Use when editing an interface's contract surface, defining a new interface, deciding whether an interface ships embedded in the module that implements it or as a standalone interface package, publishing an interface, or deciding whether a change is breaking and which version to bump. Not for embedded mode or standalone mode, which is how the runtime starts (createRuntime in a host app or ajs project): use ajs-cli.
 ---
 
 # Authoring & versioning interfaces
