@@ -18,7 +18,7 @@ export class CliError extends Error {
 
   constructor(
     readonly problem: CliProblem,
-    options?: ErrorOptions,
+    options?: { cause?: unknown },
   ) {
     super(problem.title, options);
     this.name = CLI_ERROR_NAME;

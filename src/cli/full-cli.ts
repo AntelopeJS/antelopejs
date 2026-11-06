@@ -1,3 +1,4 @@
+import "../interface-core-guard";
 import { Command, type AddHelpTextContext } from "commander";
 
 import {

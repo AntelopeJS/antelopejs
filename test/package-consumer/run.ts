@@ -12,6 +12,14 @@ const root = path.resolve(__dirname, "../..");
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "ajs-package-consumer-"));
 const packFolder = path.join(temp, "pack");
 const consumerFolder = path.join(temp, "consumer");
+const pinnedInterfaceCores = ["0.0.4", "0.0.11"];
+const typeScriptCompiler = path.join(
+  root,
+  "node_modules",
+  "typescript",
+  "bin",
+  "tsc",
+);
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const builtEntry = path.join(root, "dist", "index.js");
 const skillsFolder = "skills";
@@ -35,7 +43,7 @@ function run(command: string, args: string[], cwd: string): string {
   }
   if (result.status !== 0) {
     throw new Error(
-      `${command} ${args.join(" ")} exited with ${result.status ?? result.signal}`,
+      `${command} ${args.join(" ")} exited with ${result.status ?? result.signal}\n${result.stdout}`,
     );
   }
   return result.stdout;
@@ -137,11 +145,63 @@ function installConsumer(tarball: string): void {
   run(pnpm, ["install"], consumerFolder);
 }
 
-function verifyConsumer(script: string): void {
+function verifyConsumer(
+  script: string,
+  folder = consumerFolder,
+  args: string[] = [],
+): void {
   const source = path.join(__dirname, script);
-  const target = path.join(consumerFolder, script);
+  const target = path.join(folder, script);
   fs.copyFileSync(source, target);
-  run(process.execPath, [target], consumerFolder);
+  run(process.execPath, [target, ...args], folder);
+}
+
+function verifyEs2020Types(): void {
+  fs.writeFileSync(
+    path.join(consumerFolder, "types.ts"),
+    'export * from "@antelopejs/core";\n',
+  );
+  fs.writeFileSync(
+    path.join(consumerFolder, "tsconfig.json"),
+    JSON.stringify({
+      compilerOptions: {
+        target: "ES2020",
+        lib: ["ES2020"],
+        module: "commonjs",
+        strict: true,
+        noEmit: true,
+        esModuleInterop: true,
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+        typeRoots: [path.join(root, "node_modules", "@types")],
+        types: ["node"],
+      },
+      files: ["types.ts"],
+    }),
+  );
+  run(process.execPath, [typeScriptCompiler, "-p", "."], consumerFolder);
+}
+
+function verifyPinnedConsumer(tarball: string, version: string): void {
+  const pinnedFolder = path.join(temp, `pinned-${version}`);
+  fs.mkdirSync(pinnedFolder, { recursive: true });
+  fs.writeFileSync(
+    path.join(pinnedFolder, "package.json"),
+    JSON.stringify({
+      private: true,
+      dependencies: {
+        "@antelopejs/core": `file:${tarball}`,
+        "@antelopejs/interface-core": version,
+        "reflect-metadata": "0.2.2",
+      },
+    }),
+  );
+  fs.writeFileSync(
+    path.join(pinnedFolder, "pnpm-workspace.yaml"),
+    `overrides:\n  "@antelopejs/interface-core": "${version}"\n`,
+  );
+  run(pnpm, ["install"], pinnedFolder);
+  verifyConsumer("verify-pinned-interface-core.cjs", pinnedFolder, [version]);
 }
 
 try {
@@ -152,8 +212,12 @@ try {
   verifyConsumer("verify.cjs");
   verifyConsumer("verify-cli.cjs");
   verifyConsumer("verify-cli-api.cjs");
+  verifyEs2020Types();
+  for (const version of pinnedInterfaceCores) {
+    verifyPinnedConsumer(tarball, version);
+  }
   process.stdout.write(
-    "Package consumer routing, CLI startup and CLI API verified.\n",
+    "Package consumer routing, CLI startup, CLI API, ES2020 types and pinned interface-core verified.\n",
   );
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });

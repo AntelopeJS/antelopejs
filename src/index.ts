@@ -1,3 +1,4 @@
+import "./interface-core-guard";
 import { build as buildProject } from "./core/build";
 import { DEFAULT_ENV } from "./core/config";
 import type { ModuleManager } from "./core/modules";
