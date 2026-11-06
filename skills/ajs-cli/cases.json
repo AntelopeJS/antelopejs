@@ -136,6 +136,17 @@
         "acceptable": ["antelopejs"],
         "avoid": ["ajs-author-interface"]
       }
+    },
+    {
+      "id": "ajs-cli-embedded-mode-diff",
+      "area": "framework",
+      "style": "clean",
+      "prompt": "What is the difference between embedded mode and standalone mode?",
+      "expect": {
+        "skills": ["ajs-cli"],
+        "acceptable": ["antelopejs"],
+        "avoid": ["ajs-author-interface"]
+      }
     }
   ]
 }
