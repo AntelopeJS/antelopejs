@@ -138,9 +138,40 @@ export async function computeConfigHash(
   env: string,
   fs: IFileSystem = new NodeFileSystem(),
 ): Promise<string> {
-  const loader = new ConfigLoader(fs);
-  const resolvedConfig = await loader.load(projectFolder, env);
-  return hashResolvedConfig(resolvedConfig, env);
+  return hashResolvedConfig(await loadBuildConfig(projectFolder, env, fs), env);
+}
+
+/**
+ * Whether an override path decides what a build downloads and where: the
+ * project `name`, its `cacheFolder`, or a module `source`.
+ */
+function isBuildInput(overridePath: string): boolean {
+  const segments = overridePath.split(".");
+  return (
+    overridePath === "name" ||
+    overridePath === "cacheFolder" ||
+    (segments[0] === "modules" && segments[2] === "source")
+  );
+}
+
+/**
+ * Resolves `antelope.config.ts` for `env` the way a build stores it. An
+ * `envOverrides` path that decides what the build downloads reads the build
+ * environment; every other path is read as unset, so its value never reaches
+ * `build.json`. `ajs project start` applies those.
+ */
+export function loadBuildConfig(
+  projectFolder: string,
+  env: string,
+  fs: IFileSystem = new NodeFileSystem(),
+): Promise<LoadedConfig> {
+  return new ConfigLoader(fs).load(
+    projectFolder,
+    env,
+    undefined,
+    (name, overridePath) =>
+      isBuildInput(overridePath) ? process.env[name] : undefined,
+  );
 }
 
 /**

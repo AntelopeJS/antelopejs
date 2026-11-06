@@ -62,6 +62,10 @@ function createExecSpy() {
         expect(result).to.have.length(2);
         const names = result.map((manifest) => manifest.name).sort();
         expect(names).to.deep.equal(["group-a", "group-b"]);
+        expect(result.map((manifest) => manifest.source.id)).to.deep.equal([
+          "group",
+          "group",
+        ]);
       });
 
       it("should skip non-directory entries and use folder name when id is missing", async () => {

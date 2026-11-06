@@ -8,7 +8,10 @@ import { NodeFileSystem } from "../filesystem";
 import type { BuildArtifact } from "../modules";
 import { INSTANCES_FOLDER, ModuleManager, unpackErrors } from "../modules";
 import { terminalDisplay } from "../output";
-import { readRefreshedBuildArtifact } from "./build-refresh";
+import {
+  applyBuildEnvOverrides,
+  readRefreshedBuildArtifact,
+} from "./build-refresh";
 import {
   ensureBuildModulesExist,
   logEnvironmentMismatch,
@@ -164,7 +167,8 @@ function prepareFromBuiltArtifact(
 
 /**
  * Prepare a project from a pre-built `.antelope/build/build.json` artifact,
- * skipping module resolution entirely.
+ * skipping module resolution entirely. The `envOverrides` the artifact maps
+ * are read from the process environment, after the project's `.env`.
  *
  * Backs `ajs project start`.
  */
@@ -174,7 +178,8 @@ export const prepareFromArtifact: ProjectPreparer = async (
 ) => {
   const fs = new NodeFileSystem();
   loadProjectEnv(projectFolder);
-  const artifact = await readBuildArtifactOrThrow(projectFolder, fs);
+  const built = await readBuildArtifactOrThrow(projectFolder, fs);
+  const artifact = applyBuildEnvOverrides(built);
 
   return prepareFromBuiltArtifact(artifact, projectFolder, fs, async () => {
     logEnvironmentMismatch(env, artifact.env);
