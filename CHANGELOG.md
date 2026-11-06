@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.21.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.0...v1.21.1)
+
+### 🩹 Fixes
+
+- **core:** Work with consumers that pin an old interface-core or target ES2020 ([#400](https://github.com/AntelopeJS/antelopejs/pull/400))
+
+### 📦 Build
+
+- **deps:** Bump @antelopejs packages to the 2026-11-06 releases ([#399](https://github.com/AntelopeJS/antelopejs/pull/399))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.21.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.20.0...v1.21.0)
