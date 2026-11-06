@@ -39,20 +39,20 @@ describe("TestRunner", () => {
     expect(calls).to.deep.equal(["setup", "cleanup"]);
   });
 
-  it("loads mocha only once it runs tests, then runs them with it", async function () {
+  it("loads mocha only once it runs tests, then reports their failures", async function () {
     this.timeout(CHILD_TIMEOUT_MS);
     const folder = await fs.mkdtemp(path.join(os.tmpdir(), "test-runner-"));
-    const testFile = path.join(folder, "passing.test.js");
+    const testFile = path.join(folder, "failing.test.js");
     await fs.writeFile(
       testFile,
-      'describe("child", () => { it("passes", () => {}); });\n',
+      'describe("child", () => { it("passes", () => {}); it("fails", () => { throw new Error("expected"); }); });\n',
     );
 
     try {
       const report = await runChild(testFile);
 
       expect(report).to.equal(
-        "loaded on import: false, loaded after run: true, failures: 0",
+        "loaded on import: false, loaded after run: true, failures: 1",
       );
     } finally {
       await fs.rm(folder, { recursive: true, force: true });
