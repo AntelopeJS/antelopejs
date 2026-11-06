@@ -19,6 +19,7 @@ docs:
 - `start-without-build`: error path: exit 1, `No build found`, and the hint to run `ajs project build`.
 - `start-refresh-config`: `--refresh-config` with an unchanged module set serves.
 - `start-refresh-config-changed`: error path: a module added after the build makes `--refresh-config` exit 3.
+- `start-env-overrides`: secrets path: a variable `envOverrides` maps is set at build and at start with different values; `build.json` holds the mapping and not the build value, and the module receives the start value.
 - `start-base-build`: upgrade path: a `build.json` written by the base branch's CLI starts with the head's CLI.
 
 ## How to get to it (user POV)

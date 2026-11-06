@@ -233,6 +233,7 @@ function createArtifact(
           {
             manifest: manifestFixture({
               name: "alpha",
+              source: { type: "local", id: "alpha" },
               serialize: () => createBuildModuleEntry(),
             }),
             config: {
@@ -246,6 +247,7 @@ function createArtifact(
           {
             manifest: manifestFixture({
               name: "beta",
+              source: { type: "local", id: "beta" },
               serialize: () =>
                 createBuildModuleEntry({
                   name: "beta",
@@ -258,9 +260,19 @@ function createArtifact(
           },
         ];
 
-        sinon
-          .stub(buildArtifact, "computeConfigHash")
-          .resolves("computed-hash");
+        const stored: NormalizedLoadedConfig = {
+          ...normalizedConfig,
+          modules: {
+            beta: {
+              source: { type: "local", id: "beta" },
+              config: { enabled: false },
+              importOverrides: [],
+              disabledExports: [],
+            },
+          },
+          envOverrides: { TOKEN: "x" },
+        };
+        sinon.stub(buildArtifact, "loadBuildConfig").resolves(stored);
 
         await writeProjectBuildArtifact(
           normalizedConfig,
@@ -276,7 +288,13 @@ function createArtifact(
           ),
         );
 
-        expect(written).to.have.property("configHash", "computed-hash");
+        expect(written).to.have.property(
+          "configHash",
+          buildArtifact.hashResolvedConfig(stored, "production"),
+        );
+        expect(written)
+          .to.have.nested.property("config.envOverrides")
+          .that.deep.equals({ TOKEN: "x" });
         expect(written).to.have.property("env", "production");
         expect(written)
           .to.have.nested.property("modules.alpha.importOverrides")
@@ -289,6 +307,12 @@ function createArtifact(
         expect(written)
           .to.have.nested.property("modules.beta")
           .that.does.not.have.property("importOverrides");
+        expect(written)
+          .to.have.nested.property("modules.beta.config")
+          .that.deep.equals({ enabled: false });
+        expect(written)
+          .to.have.nested.property("modules.alpha.config")
+          .that.deep.equals({ feature: true });
       });
     };
 
