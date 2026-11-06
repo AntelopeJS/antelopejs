@@ -7,7 +7,11 @@ import {
   decodeOverride,
   type LoadedConfig,
 } from "./config-fields";
-import { ConfigParser } from "./config-parser";
+import {
+  ConfigParser,
+  type OverrideReader,
+  readProcessEnv,
+} from "./config-parser";
 import {
   DEFAULT_CACHE_DIR,
   findConfigPath,
@@ -24,13 +28,13 @@ export class ConfigLoader {
 
   /**
    * Resolves the project configuration for `environment`, with the
-   * `envOverrides` it declares read from `variables`.
+   * `envOverrides` it declares read through `variables`.
    */
   async load(
     projectFolder: string,
     environment?: string,
     configPath?: string,
-    variables: NodeJS.ProcessEnv = process.env,
+    variables: OverrideReader = readProcessEnv,
   ): Promise<LoadedConfig> {
     const rawConfig = await this.loadConfigSource(
       projectFolder,

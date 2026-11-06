@@ -273,7 +273,7 @@ export function applyBuildEnvOverrides(
     stored,
     pathsIntoStoredModules(envOverrides, stored.modules),
     decodeOverride,
-    variables,
+    (name) => variables[name],
   );
   assertLoadedConfig(overridden, stored);
   const modules = Object.entries(artifact.modules).map(

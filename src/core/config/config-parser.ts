@@ -45,6 +45,15 @@ function readExportPriority(name: string, priorities: Record<string, number>) {
   return { ...priorities };
 }
 
+/**
+ * Reads the text an `envOverrides` variable gives the configuration path it
+ * maps, or `undefined` to leave that path as configured.
+ */
+export type OverrideReader = (name: string, path: string) => string | undefined;
+
+/** Reads every override from the process environment. */
+export const readProcessEnv: OverrideReader = (name) => process.env[name];
+
 export class ConfigParser {
   /**
    * Replaces `${key}` templates in every string of `config`. A pure template
@@ -120,8 +129,8 @@ export class ConfigParser {
   }
 
   /**
-   * A copy of `config` with each overridden path set to its variable's text
-   * in `variables`, as `readOverride` decodes it for that path. A path can
+   * A copy of `config` with each overridden path set to the text `variables`
+   * reads for it, as `readOverride` decodes it for that path. A path can
    * reach any field, so the result is `unknown` until a caller checks the
    * fields it reads.
    */
@@ -132,7 +141,7 @@ export class ConfigParser {
       _path,
       text,
     ) => text,
-    variables: NodeJS.ProcessEnv = process.env,
+    variables: OverrideReader = readProcessEnv,
     // oxlint-disable-next-line anti-slop/no-unknown-returns -- an override path can reach and retype any field, so the loader decodes the copy in config-fields.ts
   ): unknown {
     const result = cloneValue(config);
@@ -141,12 +150,12 @@ export class ConfigParser {
     }
 
     for (const [envVar, paths] of Object.entries(overrides)) {
-      const value = variables[envVar];
-      if (value === undefined) continue;
-
       const pathList = Array.isArray(paths) ? paths : [paths];
       for (const path of pathList) {
-        set(result, path, readOverride(path, value));
+        const value = variables(envVar, path);
+        if (value !== undefined) {
+          set(result, path, readOverride(path, value));
+        }
       }
     }
 

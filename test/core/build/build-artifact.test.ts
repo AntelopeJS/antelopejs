@@ -11,6 +11,7 @@ import {
 import {
   computeConfigHash,
   createBuildArtifact,
+  loadBuildConfig,
   readBuildArtifact,
   writeBuildArtifact,
 } from "../../../src/core/modules";
@@ -129,5 +130,41 @@ describe("build artifact", () => {
     expect(loaded.configHash).to.equal("abc123");
     expect(loaded.buildTime).to.equal("2026-01-01T00:00:00.000Z");
     expect(loaded.modules).to.deep.equal({});
+  });
+});
+
+describe("loadBuildConfig", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("resolves a build with the overrides of module sources and none of module config", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/project/antelope.config.ts", "");
+    sinon.stub(tsConfigFile, "loadTsConfigFile").resolves({
+      name: "sample",
+      modules: {
+        api: {
+          source: { type: "local", path: "./old" },
+          config: { token: "x" },
+        },
+      },
+      envOverrides: {
+        ANTELOPEJS_TEST_API_PATH: "modules.api.source.path",
+        ANTELOPEJS_TEST_API_TOKEN: "modules.api.config.token",
+      },
+    });
+    sinon.stub(process, "env").value({
+      ANTELOPEJS_TEST_API_PATH: "./api",
+      ANTELOPEJS_TEST_API_TOKEN: "build-secret",
+    });
+
+    const config = await loadBuildConfig("/project", "production", fs);
+
+    expect(config.modules.api.source).to.deep.equal({
+      type: "local",
+      path: "./api",
+    });
+    expect(config.modules.api.config).to.deep.equal({ token: "x" });
   });
 });
