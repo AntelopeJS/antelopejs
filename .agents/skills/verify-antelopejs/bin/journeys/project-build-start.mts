@@ -51,7 +51,7 @@ export const buildJourneys: Journey[] = [
       const free = await context.ajs("project build --env any (no environments)", ["project", "build", "--env", "any"], { cwd: project });
       context.expect(free.folder, [exitIs(free, 0), exists(path.join(project, BUILD_FILE))]);
       const config = path.join(project, "antelope.config.ts");
-      context.edit("declare a staging environment", config, readFileSync(config, "utf8").replace(/\n\}\);\s*$/, ',\n  environments: { staging: {} }\n});\n'));
+      context.edit("declare a staging environment", config, readFileSync(config, "utf8").replace(/,?\n\}\);\s*$/, ',\n  environments: { staging: {} }\n});\n'));
       rmSync(path.join(project, BUILD_FILE));
       const undeclared = await context.ajs("project build --env nope", ["project", "build", "--env", "nope"], { cwd: project });
       context.expect(undeclared.folder, [exitIs(undeclared, 2), has("stderr", undeclared.stderr, /nope/), absent(path.join(project, BUILD_FILE))]);
@@ -138,7 +138,7 @@ export const startJourneys: Journey[] = [
     async run(context) {
       const project = await initProject(context, "app");
       const config = path.join(project, "antelope.config.ts");
-      context.edit("map VERIFY_SECRET onto the fixture's config", config, readFileSync(config, "utf8").replace(/\n\}\);\s*$/, ',\n  envOverrides: { VERIFY_SECRET: "modules.verify-http-fixture.config.secret" }\n});\n'));
+      context.edit("map VERIFY_SECRET onto the fixture's config", config, readFileSync(config, "utf8").replace(/,?\n\}\);\s*$/, ',\n  envOverrides: { VERIFY_SECRET: "modules.verify-http-fixture.config.secret" }\n});\n'));
       const build = await context.ajs("project build with VERIFY_SECRET set", ["project", "build"], { cwd: project, env: { VERIFY_SECRET: "build-time-secret" } });
       const artifact = readFileSync(path.join(project, BUILD_FILE), "utf8");
       context.expect(build.folder, [
