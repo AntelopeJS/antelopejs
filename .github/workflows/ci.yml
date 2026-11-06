@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   ci:
-    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1-campaign
+    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
     with:
       docs-files: |
         README.md
