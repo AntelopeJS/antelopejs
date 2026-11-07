@@ -25,7 +25,7 @@ export { launchFromBuild } from "./core/repl";
 export { BuildModuleSetChangedError } from "./core/runtime";
 export type { BuildOptions, RuntimePolicy } from "./core/runtime";
 export { TestModule } from "./core/test";
-export { BuildLaunchOptions, LaunchOptions } from "./types";
+export type { BuildLaunchOptions, LaunchOptions } from "./types";
 
 export async function launch(
   projectFolder: string = ".",
