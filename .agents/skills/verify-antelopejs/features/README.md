@@ -1,6 +1,6 @@
 # Feature map
 
-One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, and `known:` the journeys that fail on main as documented findings (`map` fails a `known:` id that is not a journey of that feature). `node .agents/skills/verify-antelopejs/bin/verify-ajs.mts map` checks that every `src/**` file is covered.
+One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, and `known:` the journeys that fail on main as documented findings (`map` fails a `known:` id that is not a journey of that feature; a verdict excuses an id only when the base lists it too, so a PR cannot add its own excuse). `node .agents/skills/verify-antelopejs/bin/verify-ajs.mts map` checks that every `src/**` file is covered.
 
 | Feature | What the user does | Journeys |
 |---|---|---|

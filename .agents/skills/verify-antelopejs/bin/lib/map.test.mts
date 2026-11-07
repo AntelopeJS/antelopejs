@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
-import { changedFiles, type Feature, knownFinding, selectFeatures, unregisteredKnown } from "./map.mts";
+import { changedFiles, type Feature, knownAtBase, knownFinding, selectFeatures, unregisteredKnown } from "./map.mts";
 
 function feature(name: string, covers: string[], docs: string[] = [], known: string[] = []): Feature {
   return { name, file: `features/${name}.md`, covers, docs, known, body: "" };
@@ -40,19 +40,69 @@ await test("--all runs every feature on an empty diff and says it was asked for"
   assert.deepEqual(selection.full, { reason: "all" });
 });
 
+const KNOWN = new Set(["project-dev/dev-watch"]);
+
 await test("a known journey of a feature the diff does not touch is a known finding", () => {
   const touched = selectFeatures(["pnpm-lock.yaml"], FEATURES, { all: false, shared: SHARED }).touched;
-  assert.equal(knownFinding(FEATURES, touched, "project-dev", "dev-watch"), true);
+  assert.equal(knownFinding(KNOWN, touched, "project-dev", "dev-watch"), true);
 });
 
 await test("a known journey of a touched feature is not a known finding, so it fails the verdict", () => {
   const touched = selectFeatures(["src/core/runtime/dev.ts"], FEATURES, { all: false, shared: SHARED }).touched;
-  assert.equal(knownFinding(FEATURES, touched, "project-dev", "dev-watch"), false);
+  assert.equal(knownFinding(KNOWN, touched, "project-dev", "dev-watch"), false);
 });
 
 await test("a journey that is not listed as known, or that another feature lists, is not a known finding", () => {
-  assert.equal(knownFinding(FEATURES, [], "project-dev", "dev-call-stop"), false);
-  assert.equal(knownFinding(FEATURES, [], "cli-shell", "dev-watch"), false);
+  assert.equal(knownFinding(KNOWN, [], "project-dev", "dev-call-stop"), false);
+  assert.equal(knownFinding(KNOWN, [], "cli-shell", "dev-watch"), false);
+});
+
+function repositoryWithFeatureFiles(base: Record<string, string>) {
+  const dir = mkdtempSync(path.join(tmpdir(), "verify-ajs-known-"));
+  git(dir, ["init", "--quiet"]);
+  mkdirSync(path.join(dir, "features"));
+  for (const [name, text] of Object.entries(base)) {
+    writeFileSync(path.join(dir, "features", `${name}.md`), text);
+  }
+  writeFileSync(path.join(dir, "keep"), "x\n");
+  git(dir, ["add", "."]);
+  git(dir, ["commit", "--quiet", "-m", "base"]);
+  return { dir, base: git(dir, ["rev-parse", "HEAD"]) };
+}
+
+function featureFile(known: string[]): string {
+  return `---\ncovers:\n  - "src/**"\n${known.length > 0 ? `known:\n${known.map((id) => `  - ${id}\n`).join("")}` : ""}---\nbody\n`;
+}
+
+const AT_HEAD = (known: string[]) => [{ ...feature("project-init", ["src/**"], [], known), file: "features/project-init.md" }];
+
+await test("a known id that the diff adds to a feature file does not excuse the failure the same diff causes", () => {
+  const { dir, base } = repositoryWithFeatureFiles({ "project-init": featureFile([]) });
+  try {
+    const known = knownAtBase(dir, base, AT_HEAD(["init-flags"]));
+    assert.deepEqual([...known], []);
+    assert.equal(knownFinding(known, [], "project-init", "init-flags"), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+await test("an id the base lists stays known, and one HEAD removes or the base never listed does not", () => {
+  const { dir, base } = repositoryWithFeatureFiles({ "project-init": featureFile(["init-flags", "init-yes"]) });
+  try {
+    assert.deepEqual([...knownAtBase(dir, base, AT_HEAD(["init-flags", "init-cancel"]))], ["project-init/init-flags"]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+await test("a feature file missing at the base contributes no known id", () => {
+  const { dir, base } = repositoryWithFeatureFiles({ other: featureFile(["x"]) });
+  try {
+    assert.deepEqual([...knownAtBase(dir, base, AT_HEAD(["init-flags"]))], []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 await test("a known id that is not a registered journey of its feature is reported", () => {

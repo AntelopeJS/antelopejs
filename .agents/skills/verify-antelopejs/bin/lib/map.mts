@@ -81,14 +81,39 @@ export function unregisteredKnown(feature: Feature, registered: string[]): strin
   return feature.known.filter((id) => !registered.includes(id));
 }
 
+function knownAt(cwd: string, baseSha: string, file: string): string[] {
+  if (execFileSync("git", ["ls-tree", "--name-only", baseSha, "--", file], { cwd, encoding: "utf8" }).trim() === "") {
+    return [];
+  }
+  return frontmatterLists(execFileSync("git", ["show", `${baseSha}:${file}`], { cwd, encoding: "utf8" })).get("known") ?? [];
+}
+
+/**
+ * The `<feature>/<journey>` ids a verdict may excuse as known findings: those
+ * a feature file lists under `known:` at `baseSha` and still lists at HEAD.
+ * Removing an entry at HEAD withdraws the excuse, and adding one cannot
+ * excuse a failure the same diff causes. A feature file missing at the base
+ * contributes none.
+ */
+export function knownAtBase(cwd: string, baseSha: string, features: Feature[]): Set<string> {
+  const known = new Set<string>();
+  for (const feature of features) {
+    const atBase = knownAt(cwd, baseSha, feature.file);
+    for (const id of feature.known.filter((entry) => atBase.includes(entry))) {
+      known.add(`${feature.name}/${id}`);
+    }
+  }
+  return known;
+}
+
 /**
  * Whether a failing journey is a known finding the diff does not answer for:
- * the feature lists it under `known:` and the diff touches no file the feature
- * covers. A journey of a touched feature is never a known finding.
+ * `known` holds its `<feature>/<journey>` id (see {@link knownAtBase}) and the
+ * diff touches no file the feature covers. A journey of a touched feature is
+ * never a known finding.
  */
-export function knownFinding(features: Feature[], touched: Selection["touched"], feature: string, journey: string): boolean {
-  const listed = features.some((entry) => entry.name === feature && entry.known.includes(journey));
-  return listed && !touched.some((entry) => entry.feature === feature);
+export function knownFinding(known: ReadonlySet<string>, touched: Selection["touched"], feature: string, journey: string): boolean {
+  return known.has(`${feature}/${journey}`) && !touched.some((entry) => entry.feature === feature);
 }
 
 /**

@@ -8,7 +8,7 @@ import { flaggedDoors } from "./doors.mts";
 import { field, isPrintable, isText, type Json, type JsonRead, parseJson } from "./json.mts";
 import { formalGate, readFormalResult, touchedFormalChecks } from "./formal.mts";
 import { type JourneyResult, parseJourneyResults } from "./journey.mts";
-import { type FullSet, knownFinding, planFor, type Plan, readFeatures, SMOKE_FEATURE } from "./map.mts";
+import { type FullSet, knownAtBase, knownFinding, planFor, type Plan, readFeatures, SMOKE_FEATURE } from "./map.mts";
 import { REPO_DIR, type RunState, SKILL_DIR } from "./run.mts";
 
 /** The overall result a verdict carries. */
@@ -206,8 +206,15 @@ function git(args: string[]): string {
   return execFileSync("git", args, { cwd: REPO_DIR, encoding: "utf8" }).trim();
 }
 
-/** The GitHub `owner/repo` of the origin remote. */
+/** The environment variable that names the `owner/repo` the evidence links point at, ahead of the origin remote. */
+export const REPOSITORY_ENV = "VERIFY_AJS_REPOSITORY";
+
+/** The GitHub `owner/repo` the evidence links point at: `VERIFY_AJS_REPOSITORY` when it is set, otherwise the GitHub origin remote. */
 export function originRepository(): string {
+  const named = process.env[REPOSITORY_ENV];
+  if (named) {
+    return named;
+  }
   const url = git(["remote", "get-url", "origin"]);
   const match = /github\.com[:/](.+?)(?:\.git)?$/.exec(url);
   if (!match) {
@@ -260,7 +267,7 @@ function journeyRows(state: RunState, plan: Plan, pr: number) {
   const rows: string[] = [];
   const reasons: string[] = [];
   const known: string[] = [];
-  const features = readFeatures();
+  const excusable = knownAtBase(REPO_DIR, plan.baseSha, readFeatures());
   for (const feature of plan.run) {
     const results = readResults(state, feature) ?? [];
     const registered = (FEATURE_JOURNEYS.get(feature) ?? []).map((journey) => journey.id);
@@ -271,7 +278,7 @@ function journeyRows(state: RunState, plan: Plan, pr: number) {
       if (!registered.includes(result.journey)) {
         reasons.push(`${feature}/${result.journey} is not a registered journey`);
       }
-      const isKnown = result.status === "FAIL" && knownFinding(features, plan.touched, feature, result.journey);
+      const isKnown = result.status === "FAIL" && knownFinding(excusable, plan.touched, feature, result.journey);
       if (isKnown) {
         known.push(`${feature}/${result.journey}`);
       } else if (result.status === "FAIL") {
