@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { CACHE_DIR, isolatedEnv, type RunState, SKILL_DIR } from "./run.mts";
+import { CACHE_DIR, isolatedEnv, PNPM_SHIMS_DIR, type RunState, SKILL_DIR } from "./run.mts";
 
 /** The fixtures every run copies from: the template, the greeter project and the hosts. */
 export const FIXTURES_DIR = path.join(SKILL_DIR, "fixtures");
@@ -66,6 +66,8 @@ function writeManifest(folder: string, templateUrl: string, providerFolder: stri
  * or to save with `ajs config set git`.
  */
 export function seedSources(state: RunState): string {
+  mkdirSync(PNPM_SHIMS_DIR, { recursive: true });
+  execFileSync("corepack", ["enable", "--install-directory", PNPM_SHIMS_DIR, "pnpm"], { stdio: "ignore" });
   warmStore(state);
   const { sources, greeter, template } = sourcePaths(state);
   mkdirSync(sources, { recursive: true });

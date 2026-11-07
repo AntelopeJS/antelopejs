@@ -35,6 +35,13 @@ export const CACHE_DIR = path.join(
 const REAL_COREPACK_HOME =
   process.env.COREPACK_HOME ?? path.join(homedir(), ".cache", "node", "corepack");
 
+/**
+ * Corepack shims for pnpm, first on every driven command's PATH, so a fixture
+ * that pins pnpm runs that version from the corepack cache instead of
+ * whichever pnpm the host has installed.
+ */
+export const PNPM_SHIMS_DIR = path.join(CACHE_DIR, "corepack-shims");
+
 /** A process a run started in the background, found again by its PID. */
 export interface ProcessRecord {
   name: string;
@@ -147,8 +154,9 @@ const INHERITED_PREFIXES = ["ANTELOPEJS_", "npm_", "PNPM_", "XDG_"];
 
 /**
  * The environment every driven command gets: the run's HOME, CI=1, no update
- * check, no colors, and the shared caches. Variables that could leak the
- * operator's own settings into the run are dropped.
+ * check, no colors, the shared caches, and the pnpm each project pins.
+ * Variables that could leak the operator's own settings into the run are
+ * dropped.
  */
 export function isolatedEnv(state: RunState, extra: Record<string, string> = {}, home = state.home): NodeJS.ProcessEnv {
   const kept = Object.entries(process.env).filter(
@@ -157,6 +165,7 @@ export function isolatedEnv(state: RunState, extra: Record<string, string> = {},
   return {
     ...Object.fromEntries(kept),
     HOME: home,
+    PATH: [PNPM_SHIMS_DIR, process.env.PATH ?? ""].join(path.delimiter),
     USERPROFILE: home,
     CI: "1",
     AJS_NO_UPDATE_CHECK: "1",
