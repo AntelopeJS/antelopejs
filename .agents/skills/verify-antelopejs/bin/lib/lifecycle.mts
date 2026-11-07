@@ -37,11 +37,6 @@ function cliVersion(state: RunState): string {
   }
 }
 
-/**
- * Answers whether a run is worth driving: the CLI is built from the current
- * sources at the package version, HOME is the run's, the offline manifest is
- * in place, the store is warm, and no process of an earlier run is alive.
- */
 /** The version `pnpm` reports in the run's environment, or what failed. */
 function drivenPnpmVersion(state: RunState): string {
   try {
@@ -51,6 +46,12 @@ function drivenPnpmVersion(state: RunState): string {
   }
 }
 
+/**
+ * Answers whether a run is worth driving: the CLI is built from the current
+ * sources at the package version, HOME is the run's, the offline manifest is
+ * in place, the store is warm, the driven `pnpm` is the version the fixtures
+ * pin, and no process of an earlier run is alive.
+ */
 export function doctor(state: RunState): DoctorLine[] {
   const packageVersion = textField(parseJson(execFileSync("git", ["show", "HEAD:package.json"], { cwd: REPO_DIR, encoding: "utf8" })), "version");
   const built = existsSync(CLI_ENTRY);
