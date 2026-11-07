@@ -254,7 +254,7 @@ describe("writeConfig around comments, line endings and spreads", () => {
         )
         .replace(
           "    // set by ajs project logging set\n",
-          "    // set by ajs project logging set\n    enabled: true\n",
+          "    // set by ajs project logging set\n    enabled: true,\n",
         ),
     );
   });
