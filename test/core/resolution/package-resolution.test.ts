@@ -102,6 +102,38 @@ describe("package resolution", () => {
       false,
     );
   });
+
+  it("counts a folder as inside itself and the filesystem root as holding every path", () => {
+    expect(isPathWithin("/modules/mod-a", "/modules/mod-a")).to.equal(true);
+    expect(isPathWithin("/modules/mod-a", "/modules/mod-a/")).to.equal(true);
+    expect(isPathWithin("/modules/mod-a/index.js", "/")).to.equal(true);
+    expect(isPathWithin("/", "/")).to.equal(true);
+    expect(isPathWithin("/", "/modules")).to.equal(false);
+  });
+
+  it("resolves a relative path against the working directory of each call", () => {
+    const root = makeTempDir("ajs-relative-path-");
+    const firstDir = path.join(root, "one");
+    const secondDir = path.join(root, "two");
+    const originalCwd = process.cwd();
+    try {
+      for (const dir of [firstDir, secondDir]) {
+        mkdirSync(dir);
+        writeFileSync(path.join(dir, "file.js"), "");
+      }
+
+      process.chdir(firstDir);
+      const insideFirst = isPathWithin("file.js", firstDir);
+      process.chdir(secondDir);
+      const insideFirstAfterMove = isPathWithin("file.js", firstDir);
+
+      expect(insideFirst).to.equal(true);
+      expect(insideFirstAfterMove).to.equal(false);
+    } finally {
+      process.chdir(originalCwd);
+      cleanupTempDir(root);
+    }
+  });
 });
 
 describe("package resolution of fields with the wrong type", () => {
