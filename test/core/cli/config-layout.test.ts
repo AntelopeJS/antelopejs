@@ -1,9 +1,11 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import { execFileSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { writeConfig } from "../../../src/cli";
+import { cleanupTempDir, makeTempDir, readText } from "../../helpers/temp";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 const CONFIG_PATH = "/project/antelope.config.ts";
@@ -239,6 +241,22 @@ function localModule(watchDir: string[]): Partial<AntelopeConfig> {
   };
 }
 
+/** The module entry `ajs project init` adds for a template's local module, a new object per call. */
+const initModule = (): Partial<AntelopeConfig> => ({
+  name: "app",
+  modules: {
+    app: {
+      source: {
+        type: "local",
+        path: ".",
+        watchDir: ["src"],
+        installCommand: ["npx tsc"],
+        reloadCommand: ["npx tsc"],
+      },
+    },
+  },
+});
+
 const CASES = {
   "a new project": { name: "my-project", modules: {} },
   "a template's local module": localModule(["src"]),
@@ -313,6 +331,35 @@ describe("antelope.config.ts written by the CLI", () => {
   it("measures emoji sequences, flags and joined scripts the way oxfmt does", async () => {
     const source = await writtenConfig(boundaryProbes(TOKENS));
     expect(firstDifference(source, oxfmt(source))).to.equal("");
+  });
+
+  it("adds the first module to the empty modules object init writes the way oxfmt lays it out", async () => {
+    const project = makeTempDir("ajs-config-layout-");
+    try {
+      await writeConfig(project, { name: "app", modules: {} });
+      await writeConfig(project, initModule());
+      const source = readText(path.join(project, "antelope.config.ts"));
+      expect(firstDifference(source, oxfmt(source))).to.equal("");
+    } finally {
+      cleanupTempDir(project);
+    }
+  });
+
+  it("adds a module to a modules object whose closing brace has its own line the way oxfmt lays it out", async () => {
+    const project = makeTempDir("ajs-config-layout-");
+    try {
+      await writeConfig(project, { name: "app", modules: {} });
+      const configPath = path.join(project, "antelope.config.ts");
+      writeFileSync(
+        configPath,
+        readText(configPath).replace("modules: {},", "modules: {\n  },"),
+      );
+      await writeConfig(project, initModule());
+      const source = readText(configPath);
+      expect(firstDifference(source, oxfmt(source))).to.equal("");
+    } finally {
+      cleanupTempDir(project);
+    }
   });
 
   it("writes the template config init writes on one line per short array", async () => {
