@@ -21,6 +21,8 @@ import {
 } from "../../../src/core/output";
 import * as logging from "../../../src/logging";
 
+const COMMAND_LINE = [process.execPath, "ajs", "project"];
+
 {
   let registerCLIMainGuard: (this: Mocha.Suite) => void;
 
@@ -41,6 +43,7 @@ import * as logging from "../../../src/logging";
     sinon.stub(logging, "setupAntelopeProjectLogging");
     sinon.stub(versionCheck, "startUpdateCheck").returns(undefined);
     sinon.stub(Command.prototype, "getOptionValue").returns(undefined);
+    sinon.stub(process, "argv").value([...COMMAND_LINE]);
   }
 
   function loadCliAsMain() {

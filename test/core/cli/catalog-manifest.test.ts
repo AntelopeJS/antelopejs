@@ -9,6 +9,7 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 import type { JsonValue } from "../../helpers/json";
 
 const GIT_URL = "https://example.com/catalog.git";
+const COLD_LOAD_TIMEOUT_MS = 60000;
 
 async function loadGitOps(homeDir: string) {
   process.env.HOME = homeDir;
@@ -22,6 +23,11 @@ describe("catalog manifests read from a git catalog", () => {
   let homeDir: string;
   let originalHome: string | undefined;
   let repoPath: string;
+
+  before(async function () {
+    this.timeout(COLD_LOAD_TIMEOUT_MS);
+    await import("../../../src/cli");
+  });
 
   beforeEach(async () => {
     originalHome = process.env.HOME;
