@@ -69,14 +69,35 @@ function commaEnd(
 
 /**
  * The comma that ends an entry added to the empty `object`: none when the
- * property holding `object` is the last of its object and has no comma, so
- * the file keeps its style, and the formatter's comma otherwise.
+ * property holding `object`, through any cast or parentheses, is the last of
+ * its object and has no comma, so the file keeps its style; the formatter's
+ * comma otherwise.
  */
 function emptyObjectComma(
-  text: string,
+  layout: SourceLayout,
   object: TypeScript.ObjectLiteralExpression,
 ): string {
-  return text.slice(object.end).trimStart().startsWith("}") ? "" : ",";
+  const { ts, sourceFile } = layout;
+  let value: TypeScript.Node = object;
+  while (
+    ts.isAsExpression(value.parent) ||
+    ts.isSatisfiesExpression(value.parent) ||
+    ts.isParenthesizedExpression(value.parent)
+  ) {
+    value = value.parent;
+  }
+  const property = value.parent;
+  if (
+    !ts.isPropertyAssignment(property) ||
+    !ts.isObjectLiteralExpression(property.parent)
+  ) {
+    return ",";
+  }
+  const holder = property.parent;
+  const isLast = holder.properties.at(-1) === property;
+  return isLast && commaEnd(sourceFile, holder, property) === undefined
+    ? ""
+    : ",";
 }
 
 /** A config value as source: its laid-out text, and the string itself when it is one. */
@@ -164,7 +185,7 @@ export function insertionEdit(
       return {
         start: at,
         end: at,
-        text: `${newline}${inner}${entry}${emptyObjectComma(text, object)}`,
+        text: `${newline}${inner}${entry}${emptyObjectComma(layout, object)}`,
       };
     }
     const innerText = text.slice(objectStart + 1, object.end - 1);
@@ -179,7 +200,7 @@ export function insertionEdit(
     return {
       start: objectStart,
       end: object.end,
-      text: `{${newline}${inner}${entry}${emptyObjectComma(text, object)}${newline}${objectIndent}}`,
+      text: `{${newline}${inner}${entry}${emptyObjectComma(layout, object)}${newline}${objectIndent}}`,
     };
   }
   const lastStart = last.getStart(sourceFile);

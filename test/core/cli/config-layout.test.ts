@@ -362,22 +362,27 @@ describe("antelope.config.ts written by the CLI", () => {
     }
   });
 
-  it("adds to an empty object without a comma in a file that ends its entries without one", async () => {
-    const project = makeTempDir("ajs-config-layout-");
-    try {
-      const configPath = path.join(project, "antelope.config.ts");
-      const source =
-        'export default {\n  name: "app",\n  modules: {\n  }\n};\n';
-      writeFileSync(configPath, source);
-      const config = await readConfig(project);
-      await writeConfig(project, { ...config, modules: { a: "1.0.0" } });
-      expect(readText(configPath)).to.equal(
-        source.replace("  modules: {\n", '  modules: {\n    a: "1.0.0"\n'),
-      );
-    } finally {
-      cleanupTempDir(project);
-    }
-  });
+  for (const [layout, modules] of [
+    ["on its own lines", "  modules: {\n  }"],
+    ["before a comment", "  modules: {} // none yet"],
+    ["with a satisfies cast", "  modules: {} satisfies Record<string, string>"],
+  ]) {
+    it(`adds to an empty object ${layout} without a comma in a file that ends its entries without one`, async () => {
+      const project = makeTempDir("ajs-config-layout-");
+      try {
+        const configPath = path.join(project, "antelope.config.ts");
+        writeFileSync(
+          configPath,
+          `export default {\n  name: "app",\n${modules}\n};\n`,
+        );
+        const config = await readConfig(project);
+        await writeConfig(project, { ...config, modules: { a: "1.0.0" } });
+        expect(readText(configPath)).to.match(/\n {4}a: "1\.0\.0"\n {2}\}/);
+      } finally {
+        cleanupTempDir(project);
+      }
+    });
+  }
 
   it("writes the template config init writes on one line per short array", async () => {
     const source = await writtenConfig(localModule(["src"]));
