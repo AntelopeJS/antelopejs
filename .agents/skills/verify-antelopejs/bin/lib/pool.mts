@@ -1,10 +1,10 @@
 import { availableParallelism } from "node:os";
 
-/** The most features one `journeys` command runs at once, whatever the host offers. */
+/** The most journeys one `journeys` command runs at once, whatever the host offers. */
 export const MAX_JOBS = 8;
 
 /**
- * How many features run at once when `--jobs` is not given: a quarter of the
+ * How many journeys run at once when `--jobs` is not given: a quarter of the
  * cores, between 2 and `MAX_JOBS`. A shared host runs several agents, each of
  * which drives pnpm and a Node.js process per journey, so a quarter leaves
  * the others their share; 16 cores give 4.

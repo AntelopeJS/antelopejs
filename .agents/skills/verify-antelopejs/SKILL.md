@@ -40,11 +40,11 @@ Doctor checks the following: the CLI is built and newer than `src/`, and `ajs --
 
 ```bash
 node "$VERIFY" plan                          # diff to features, unmapped surfaces, and `command`
-node "$VERIFY" journeys "$RUN" smoke cli-shell project-dev   # whole features at once
+node "$VERIFY" journeys "$RUN" smoke cli-shell project-dev   # every journey of the features, at once
 node "$VERIFY" journey "$RUN" project-dev [journey-id...]    # one feature, or chosen journeys
 ```
 
-- Run the plan's `run` list in one command: `plan` prints it as `command`, so substitute your run for `$RUN` and run that. `journeys` runs the features at the same time, `--jobs <n>` at once (default a quarter of the cores, 2 to 8; 4 on 16 cores), and prints each feature's `PASS`/`FAIL` lines together, in the order given. It exits non-zero when any journey failed. Journeys inside a feature run one after another. Features share nothing but the run folder: each journey has its own `HOME`, work folder and port, and each background process is recorded in its own `$RUN/processes/<pid>.json`. A feature run alone takes the same time as before, so use `journey` only to rerun one feature or chosen journeys.
+- Run the plan's `run` list in one command: `plan` prints it as `command`, so substitute your run for `$RUN` and run that. `journeys` runs the journeys of all the features at the same time, `--jobs <n>` journeys at once (default a quarter of the cores, 2 to 8; 4 on 16 cores), and prints each feature's `PASS`/`FAIL` lines together, in the order given. It writes each feature's `feature.json` when that feature's last journey ends, and exits non-zero when any journey failed. Journeys share nothing but the run folder: each has its own `HOME`, work folder, evidence folder and port, and each background process is recorded in its own `$RUN/processes/<pid>.json`. A feature that must not overlap its own journeys is declared in `SERIAL_FEATURES` of `bin/journeys/index.mts` with the reason; none is. `journey` runs one feature's journeys one after another, so use it only to rerun one feature or chosen journeys.
 - Each feature file in [features/](features/README.md) lists its journeys, its source globs (`covers:`) and its docs pages (`docs:`).
 - `ajs project dev` and `ajs project start` run in the background. The harness records their PID, waits for the fixture module's HTTP endpoint to answer, and stops them with SIGINT by recorded PID. A stop that does not exit within the timeout fails the journey.
 - Every mutation is read back through a second command, for example `ajs project modules add` followed by `ajs project modules list`, or `ajs config set` followed by `ajs config get`.

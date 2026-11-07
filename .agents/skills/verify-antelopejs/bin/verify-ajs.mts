@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { FEATURE_JOURNEYS } from "./journeys/index.mts";
+import { FEATURE_JOURNEYS, SERIAL_FEATURES } from "./journeys/index.mts";
 import { parseJourneyResults, runJourney, type JourneyResult } from "./lib/journey.mts";
 import { clean, doctor } from "./lib/lifecycle.mts";
 import { checkMap, planFor } from "./lib/map.mts";
@@ -13,8 +13,9 @@ import { formalGate, runFormalCheck, touchedFormalChecks } from "./lib/formal.mt
 import { doorLine, flaggedDoors, patchFiles } from "./lib/doors.mts";
 import { postComment, pushEvidence, readStatus, setStatus } from "./lib/publish.mts";
 import { readJudgement, renderVerdict } from "./lib/verdict.mts";
-import { runLimited, defaultJobs } from "./lib/pool.mts";
+import { defaultJobs } from "./lib/pool.mts";
 import { allocateRun, loadRun, REPO_DIR, type RunState, saveRun } from "./lib/run.mts";
+import { scheduleFeatures } from "./lib/schedule.mts";
 import { seedSources } from "./lib/sources.mts";
 
 const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <command>
@@ -26,8 +27,9 @@ const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <
   doctor <run>                     check the run is worth driving
   journey <run> <feature> [ids...] run a feature's journeys and record evidence
   journeys <run> <feature>... [--jobs <n>]
-                                   run whole features at once, <n> at a time (default: a
-                                   quarter of the cores, 2 to 8); results print per feature
+                                   run the journeys of the features at once, <n> at a time
+                                   (default: a quarter of the cores, 2 to 8); results print
+                                   per feature
   clean <run>                      stop recorded processes, keep only the evidence
   doors [patch] [--base <ref>]     print the One-way-door line for a patch, or for the diff
   formal <run> [--all]             run the formal checks that cover the diff (or every one) and record them
@@ -63,8 +65,6 @@ function runDoctor(dir: string): number {
   return lines.every((line) => line.ok) ? 0 : 1;
 }
 
-type Emit = (line: string) => void;
-
 function missingJourneys(feature: string, ids: string[]): string | undefined {
   const journeys = FEATURE_JOURNEYS.get(feature);
   if (!journeys) {
@@ -74,33 +74,35 @@ function missingJourneys(feature: string, ids: string[]): string | undefined {
   return unknown.length > 0 ? `Unknown journeys of ${feature}: ${unknown.join(", ")}` : undefined;
 }
 
-async function runFeature(state: RunState, feature: string, ids: string[], emit: Emit): Promise<number> {
-  const journeys = FEATURE_JOURNEYS.get(feature) ?? [];
-  const selected = ids.length > 0 ? journeys.filter((journey) => ids.includes(journey.id)) : journeys;
-  const results: JourneyResult[] = [];
-  for (const journey of selected) {
-    const result = await runJourney(state, feature, journey);
-    results.push(result);
-    const failed = result.steps.flatMap((step) => step.checks.filter((check) => !check.pass).map((check) => `    ${step.name}: ${check.name} (${check.detail})`));
-    emit(`${result.status} ${feature}/${journey.id}`);
-    for (const line of [...failed, ...(result.error ? [`    ${result.error.split("\n")[0]}`] : [])]) {
-      emit(line);
-    }
-  }
-  const file = path.join(state.evidence, feature, "feature.json");
-  const earlier = existsSync(file) ? parseJourneyResults(readFileSync(file, "utf8")) : [];
-  const merged = journeys.flatMap((journey) => results.find((result) => result.journey === journey.id) ?? earlier.filter((result) => result.journey === journey.id));
-  writeFileSync(file, `${JSON.stringify(merged, null, 2)}\n`);
-  return results.every((result) => result.status === "PASS") ? 0 : 1;
+function journeyLines(result: JourneyResult): string[] {
+  const failed = result.steps.flatMap((step) => step.checks.filter((check) => !check.pass).map((check) => `    ${step.name}: ${check.name} (${check.detail})`));
+  return [`${result.status} ${result.feature}/${result.journey}`, ...failed, ...(result.error ? [`    ${result.error.split("\n")[0]}`] : [])];
 }
 
-function runOneFeature(dir: string, feature: string, ids: string[]): Promise<number> {
+/** Writes feature.json: the registered journeys in order, each with the result just obtained or else the earlier one. */
+function recordFeature(state: RunState, feature: string, results: JourneyResult[]): void {
+  const file = path.join(state.evidence, feature, "feature.json");
+  const earlier = existsSync(file) ? parseJourneyResults(readFileSync(file, "utf8")) : [];
+  const merged = (FEATURE_JOURNEYS.get(feature) ?? []).flatMap((journey) => results.find((result) => result.journey === journey.id) ?? earlier.filter((result) => result.journey === journey.id));
+  writeFileSync(file, `${JSON.stringify(merged, null, 2)}\n`);
+}
+
+async function runOneFeature(dir: string, feature: string, ids: string[]): Promise<number> {
   const problem = missingJourneys(feature, ids);
   if (problem) {
     print(problem);
-    return Promise.resolve(2);
+    return 2;
   }
-  return runFeature(loadRun(dir), feature, ids, print);
+  const state = loadRun(dir);
+  const journeys = FEATURE_JOURNEYS.get(feature) ?? [];
+  const results: JourneyResult[] = [];
+  for (const journey of ids.length > 0 ? journeys.filter((candidate) => ids.includes(candidate.id)) : journeys) {
+    const result = await runJourney(state, feature, journey);
+    results.push(result);
+    journeyLines(result).forEach(print);
+  }
+  recordFeature(state, feature, results);
+  return results.every((result) => result.status === "PASS") ? 0 : 1;
 }
 
 async function runFeatures(dir: string, requested: string[], jobs: number): Promise<number> {
@@ -111,21 +113,15 @@ async function runFeatures(dir: string, requested: string[], jobs: number): Prom
     return 2;
   }
   const state = loadRun(dir);
-  const started = features.map((feature) => {
-    const lines: string[] = [];
-    return () =>
-      runFeature(state, feature, [], (line) => lines.push(line)).then(
-        (code) => ({ code, lines }),
-        (failure: unknown) => ({ code: 1, lines: [...lines, `ERROR ${feature}: ${failure instanceof Error ? failure.message : String(failure)}`] }),
-      );
-  });
+  const runs = features.map((feature) => ({ feature, journeys: FEATURE_JOURNEYS.get(feature) ?? [], serial: SERIAL_FEATURES.get(feature) }));
   let worst = 0;
-  for (const finished of runLimited(started, jobs)) {
-    const { code, lines } = await finished;
-    for (const line of lines) {
-      print(line);
+  for (const outcome of scheduleFeatures(runs, jobs, (feature, journey) => runJourney(state, feature, journey), (feature, results) => recordFeature(state, feature, results))) {
+    const { feature, results, error } = await outcome;
+    results.flatMap(journeyLines).forEach(print);
+    if (error !== undefined) {
+      print(`ERROR ${feature}: ${error.split("\n")[0]}`);
     }
-    worst = Math.max(worst, code);
+    worst = Math.max(worst, error !== undefined || results.some((result) => result.status === "FAIL") ? 1 : 0);
   }
   return worst;
 }
