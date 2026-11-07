@@ -4,7 +4,8 @@ import path from "node:path";
 import { absent, answers, equal, exists, exitIs, has, refused } from "../lib/checks.mts";
 import { field, keys, parseJson } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, initProject, installFixture, setConsumerRange } from "../lib/project.mts";
+import { copyGreeter, installFixture, setConsumerRange } from "../lib/project.mts";
+import { useProject } from "../lib/shared-project.mts";
 import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
 const BUILD_FILE = path.join(".antelope", "build", "build.json");
@@ -14,7 +15,7 @@ function builtModules(project: string): string[] {
 }
 
 async function builtProject(context: JourneyContext, options: { cli?: string } = {}): Promise<string> {
-  const project = await initProject(context, "app");
+  const project = await useProject(context);
   const build = await context.ajs(options.cli ? "project build with the base CLI" : "project build", ["project", "build"], { cwd: project, cli: options.cli });
   context.expect(build.folder, [exitIs(build, 0), has("stderr", build.stderr, /Built 1 module/), exists(path.join(project, BUILD_FILE))], { critical: true });
   return project;
@@ -47,7 +48,7 @@ export const buildJourneys: Journey[] = [
     title: "--env picks a declared environment, an undeclared one is a usage error, and without environments any name builds the base",
     entryPoint: "ajs project build --env <name>",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const free = await context.ajs("project build --env any (no environments)", ["project", "build", "--env", "any"], { cwd: project });
       context.expect(free.folder, [exitIs(free, 0), exists(path.join(project, BUILD_FILE))]);
       const config = path.join(project, "antelope.config.ts");
@@ -104,7 +105,7 @@ export const startJourneys: Journey[] = [
     title: "start without a build fails and says to run ajs project build",
     entryPoint: "ajs project start (no build.json)",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const start = await context.ajs("project start without a build", ["project", "start"], { cwd: project });
       context.expect(start.folder, [exitIs(start, 1), has("stderr", start.stderr, /No build found/), has("stderr", start.stderr, /ajs project build/)]);
     },
@@ -136,7 +137,7 @@ export const startJourneys: Journey[] = [
     title: "build stores the envOverrides mapping without its values, and start reads them from its own environment",
     entryPoint: "SECRET=a ajs project build && SECRET=b ajs project start",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const config = path.join(project, "antelope.config.ts");
       context.edit("map VERIFY_SECRET onto the fixture's config", config, readFileSync(config, "utf8").replace(/,?\n\}\);\s*$/, ',\n  envOverrides: { VERIFY_SECRET: "modules.verify-http-fixture.config.secret" }\n});\n'));
       const build = await context.ajs("project build with VERIFY_SECRET set", ["project", "build"], { cwd: project, env: { VERIFY_SECRET: "build-time-secret" } });

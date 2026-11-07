@@ -245,6 +245,13 @@ export class JourneyContext {
     await sleep(ms);
   }
 
+  /** Records a text as a step of its own, such as where a journey's input came from. */
+  note(name: string, text: string): string {
+    const folder = this.nextFolder(name);
+    writeFileSync(path.join(folder, "note.txt"), `${text}\n`);
+    return folder;
+  }
+
   /** Sends a GET to any loopback URL, such as the Node.js inspector. */
   get(name: string, url: string): Promise<HttpResult> {
     return httpGet(this.nextFolder(name), url);
