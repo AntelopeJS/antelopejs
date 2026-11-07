@@ -20,7 +20,8 @@ function newestMtime(folder: string): number {
     .reduce((newest, entry) => Math.max(newest, statSync(path.join(entry.parentPath, entry.name)).mtimeMs), 0);
 }
 
-function alive(pid: number): boolean {
+/** Whether a process with this PID is running. */
+export function alive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;

@@ -4,7 +4,7 @@ import path from "node:path";
 import { equal, exitIs, fileHas, has } from "../lib/checks.mts";
 import { field, parseJson } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { initProject } from "../lib/project.mts";
+import { useProject } from "../lib/shared-project.mts";
 
 async function showJson(context: JourneyContext, project: string, label: string) {
   const show = await context.ajs(label, ["project", "logging", "show", "--json"], { cwd: project });
@@ -18,7 +18,7 @@ export const journeys: Journey[] = [
     title: "show prints the default settings as key/value lines and as JSON",
     entryPoint: "ajs project logging show [--json]",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const text = await context.ajs("logging show", ["project", "logging", "show"], { cwd: project });
       context.expect(text.folder, [exitIs(text, 0), has("stdout", text.stdout, /^Enabled\s+yes$/m), has("stdout", text.stdout, /^Module tracking\s+off$/m)]);
       const { show, logging } = await showJson(context, project, "logging show --json");
@@ -30,7 +30,7 @@ export const journeys: Journey[] = [
     title: "set writes each changed setting to antelope.config.ts, and show reads it back",
     entryPoint: "ajs project logging set --disable --include-module m --level debug --format '…'",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const set = await context.ajs("logging set", ["project", "logging", "set", "--disable", "--enable-module-tracking", "--include-module", "verify-http-fixture", "--level", "debug", "--format", "[{{DATE}}] {{ARGS}}"], { cwd: project });
       context.expect(set.folder, [exitIs(set, 0), fileHas(path.join(project, "antelope.config.ts"), /logging/)], { critical: true });
       const { show, logging } = await showJson(context, project, "logging show --json after set");
@@ -52,7 +52,7 @@ export const journeys: Journey[] = [
     title: "--level without --format is a usage error and writes nothing",
     entryPoint: "ajs project logging set --level debug",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const before = readFileSync(path.join(project, "antelope.config.ts"), "utf8");
       const set = await context.ajs("logging set --level only", ["project", "logging", "set", "--level", "debug"], { cwd: project });
       context.expect(set.folder, [exitIs(set, 2), has("stderr", set.stderr, /--level needs --format/), equal("configuration unchanged", readFileSync(path.join(project, "antelope.config.ts"), "utf8"), before)]);
@@ -63,7 +63,7 @@ export const journeys: Journey[] = [
     title: "set without a setting flag and without a terminal asks for flags and writes nothing",
     entryPoint: "ajs project logging set (CI=1, no flags)",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const before = readFileSync(path.join(project, "antelope.config.ts"), "utf8");
       const set = await context.ajs("logging set without flags", ["project", "logging", "set"], { cwd: project });
       context.expect(set.folder, [exitIs(set, 2), has("stderr", set.stderr, /Cannot prompt/), equal("configuration unchanged", readFileSync(path.join(project, "antelope.config.ts"), "utf8"), before)]);

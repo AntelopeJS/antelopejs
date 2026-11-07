@@ -46,6 +46,7 @@ node "$VERIFY" journey "$RUN" project-dev [journey-id...]
 
 - Each feature file in [features/](features/README.md) lists its journeys, its source globs (`covers:`) and its docs pages (`docs:`).
 - `ajs project dev` and `ajs project start` run in the background. The harness records their PID, waits for the fixture module's HTTP endpoint to answer, and stops them with SIGINT by recorded PID. A stop that does not exit within the timeout fails the journey.
+- A run runs `ajs project init` for real in two places only: the `smoke` and `project-init` journeys, and one shared init, `shared/project-init`, that the first journey needing a project triggers. Every other journey copies that project into its own work folder, sets the offline manifest in its own `HOME` and reads the project back with `ajs project modules list`. Its step `project copied from the shared init` names the init's evidence, `$RUN/evidence/shared/project-init/`. If that init fails, every journey that needs a project fails on its first step; read the shared evidence.
 - Every mutation is read back through a second command, for example `ajs project modules add` followed by `ajs project modules list`, or `ajs config set` followed by `ajs config get`.
 - The library runtime is driven through `fixtures/hosts/*.mjs`, which import the built package the way a consumer does.
 
