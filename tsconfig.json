@@ -19,7 +19,8 @@
     "declaration": true,
     "sourceMap": true,
     "useDefineForClassFields": true,
-    "stripInternal": true
+    "stripInternal": true,
+    "isolatedModules": true
   },
   "include": ["src/**/*.ts"],
   "references": [{ "path": "./tsconfig.tools.json" }],
