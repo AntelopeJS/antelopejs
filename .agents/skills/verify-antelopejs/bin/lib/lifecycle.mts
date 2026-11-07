@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { parseJson, textField } from "./json.mts";
 import { killGroup } from "./journey.mts";
-import { CLI_ENTRY, isolatedEnv, listProcesses, REPO_DIR, type RunState } from "./run.mts";
+import { CLI_ENTRY, isolatedEnv, listProcesses, REPO_DIR, type RunState, saveRun } from "./run.mts";
 import { FIXTURE_PNPM_VERSION, STORE_DIR } from "./sources.mts";
 
 /** One doctor finding. */
@@ -85,6 +85,7 @@ export function clean(state: RunState): string[] {
       removed.push(`killed ${record.name} pid ${record.pid}`);
     }
   }
+  saveRun(state);
   for (const entry of readdirSync(state.dir)) {
     if (entry === "evidence" || entry === "run.json") {
       continue;

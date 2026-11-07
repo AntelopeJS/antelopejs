@@ -12,7 +12,7 @@ import {
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
-import { parseJson, requireNumber, requireText } from "./json.mts";
+import { field, items, type JsonRead, parseJson, requireNumber, requireText } from "./json.mts";
 
 /** The skill folder, `.agents/skills/verify-antelopejs`. */
 export const SKILL_DIR = path.resolve(import.meta.dirname, "..", "..");
@@ -89,7 +89,10 @@ function stateFile(dir: string): string {
 
 /** Decodes the text of a process record file; throws, naming the field, when it does not hold one. */
 export function parseProcessRecord(text: string): ProcessRecord {
-  const value = parseJson(text);
+  return decodeProcessRecord(parseJson(text));
+}
+
+function decodeProcessRecord(value: JsonRead): ProcessRecord {
   return {
     name: requireText(value, "name", "process record"),
     pid: requireNumber(value, "pid", "process record"),
@@ -153,15 +156,23 @@ export function forgetProcess(state: RunState, pid: number): void {
   rmSync(processFile(state, pid), { force: true });
 }
 
-/** Every process some journey of the run recorded and has not stopped. */
+/**
+ * Every process some journey of the run recorded and has not stopped: one file
+ * each under `processes/`, plus the `processes` list that a run.json written
+ * by an earlier version of the harness still holds.
+ */
 export function listProcesses(state: RunState): ProcessRecord[] {
+  const legacy = items(field(parseJson(readFileSync(stateFile(state.dir), "utf8")), "processes")).map(decodeProcessRecord);
   const folder = path.dirname(processFile(state, 0));
   if (!existsSync(folder)) {
-    return [];
+    return legacy;
   }
-  return readdirSync(folder)
-    .filter((name) => name.endsWith(".json"))
-    .map((name) => parseProcessRecord(readFileSync(path.join(folder, name), "utf8")));
+  return [
+    ...legacy,
+    ...readdirSync(folder)
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => parseProcessRecord(readFileSync(path.join(folder, name), "utf8"))),
+  ];
 }
 
 /** The commit the checkout is at, which every verdict names. */

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -125,6 +125,30 @@ await test("a process record is gone once forgotten, and the others stay", () =>
     forgetProcess(state, 7);
     assert.deepEqual(listProcesses(state).map((entry) => entry.pid), [8]);
   } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+await test("clean kills the processes a run.json of the earlier harness lists inline, then forgets them", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "verify-run-legacy-"));
+  const sleeper = path.join(root, "sleeper.mjs");
+  writeFileSync(sleeper, "setInterval(() => {}, 1000);\n");
+  const child = spawn(process.execPath, [sleeper], { detached: true, stdio: "ignore" });
+  child.unref();
+  const pid = child.pid ?? 0;
+  try {
+    const state = makeRun(root);
+    const legacy = { name: "project dev", pid, port: 1234, cwd: state.work, startedAt: "2026-11-02T00:00:01.000Z" };
+    writeFileSync(path.join(state.dir, "run.json"), `${JSON.stringify({ ...state, processes: [legacy] })}\n`);
+
+    assert.deepEqual(listProcesses(state).map((record) => record.pid), [pid]);
+    assert.deepEqual(clean(state).filter((line) => line.startsWith("killed ")), [`killed project dev pid ${pid}`]);
+    assert.equal(await allGone([pid]), true);
+    assert.deepEqual(listProcesses(state), []);
+  } finally {
+    if (alive(pid)) {
+      process.kill(-pid, "SIGKILL");
+    }
     rmSync(root, { recursive: true, force: true });
   }
 });
