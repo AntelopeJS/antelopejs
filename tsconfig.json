@@ -22,5 +22,6 @@
     "stripInternal": true
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "./tsconfig.tools.json" }]
+  "references": [{ "path": "./tsconfig.tools.json" }],
+  "ts-node": { "transpileOnly": true }
 }
