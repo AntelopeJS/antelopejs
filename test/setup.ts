@@ -1,5 +1,7 @@
 import "@antelopejs/interface-core/logging";
 
+import { getProcessTasks } from "../src/core/output";
+
 type SignalName = "SIGINT" | "SIGTERM";
 type SignalListener = NodeJS.SignalsListener;
 
@@ -8,6 +10,7 @@ const FAILING_EXIT_CODE = 1;
 
 const baseline = new Map<SignalName, Set<SignalListener>>();
 let runFinished = false;
+let isExitGuardInstalled = false;
 
 function listenersOf(signal: SignalName): SignalListener[] {
   return process.listeners(signal);
@@ -49,8 +52,17 @@ function releaseLeakedSignalListeners(): void {
  * that does truncates the run before mocha reports it. Should it happen, the
  * run must not be reported as green: the exit code is forced to a failing one
  * so the truncation is visible where it counts.
+ *
+ * The guard is armed by the root hooks, which run in the process that runs the
+ * tests: the only process in a serial run, each worker in a parallel one. The
+ * parallel main process runs none, so it never arms the guard and its own
+ * `--exit` after the last report stays a success.
  */
 function installPrematureExitGuard(): void {
+  if (isExitGuardInstalled) {
+    return;
+  }
+  isExitGuardInstalled = true;
   const exitProcess = process.exit.bind(process);
   process.exit = (code?: number) => {
     if (runFinished) {
@@ -66,10 +78,24 @@ function installPrematureExitGuard(): void {
   };
 }
 
-installPrematureExitGuard();
+/**
+ * Creates the process task list while the process streams are what they are.
+ *
+ * The task list is created on first use and keeps what it detected for the
+ * life of the process: whether the terminal is live decides if it takes over
+ * the writes to stdout and stderr. A test that fakes a terminal and runs the
+ * CLI would otherwise be the one to create it, in a process that runs more than
+ * one file, and leave every later test with a live list.
+ */
+function createProcessTasksOnRealStreams(): void {
+  getProcessTasks();
+}
 
 export const mochaHooks = {
   beforeAll(): void {
+    runFinished = false;
+    createProcessTasksOnRealStreams();
+    installPrematureExitGuard();
     snapshotSignalListeners();
   },
   afterEach(): void {

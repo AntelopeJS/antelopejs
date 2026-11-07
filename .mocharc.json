@@ -3,5 +3,7 @@
   "require": ["ts-node/register"],
   "spec": "test/**/*.test.ts",
   "timeout": 5000,
+  "parallel": true,
+  "jobs": 4,
   "exit": true
 }
