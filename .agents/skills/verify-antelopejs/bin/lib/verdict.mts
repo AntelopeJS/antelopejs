@@ -8,7 +8,7 @@ import { flaggedDoors } from "./doors.mts";
 import { field, isPrintable, isText, type Json, type JsonRead, parseJson } from "./json.mts";
 import { formalGate, readFormalResult, touchedFormalChecks } from "./formal.mts";
 import { type JourneyResult, parseJourneyResults } from "./journey.mts";
-import { planFor, type Plan, SMOKE_FEATURE } from "./map.mts";
+import { type FullSet, knownFinding, planFor, type Plan, readFeatures, SMOKE_FEATURE } from "./map.mts";
 import { REPO_DIR, type RunState, SKILL_DIR } from "./run.mts";
 
 /** The overall result a verdict carries. */
@@ -259,6 +259,8 @@ function bullets(entries: string[], empty: string): string[] {
 function journeyRows(state: RunState, plan: Plan, pr: number) {
   const rows: string[] = [];
   const reasons: string[] = [];
+  const known: string[] = [];
+  const features = readFeatures();
   for (const feature of plan.run) {
     const results = readResults(state, feature) ?? [];
     const registered = (FEATURE_JOURNEYS.get(feature) ?? []).map((journey) => journey.id);
@@ -269,13 +271,24 @@ function journeyRows(state: RunState, plan: Plan, pr: number) {
       if (!registered.includes(result.journey)) {
         reasons.push(`${feature}/${result.journey} is not a registered journey`);
       }
-      if (result.status === "FAIL") {
+      const isKnown = result.status === "FAIL" && knownFinding(features, plan.touched, feature, result.journey);
+      if (isKnown) {
+        known.push(`${feature}/${result.journey}`);
+      } else if (result.status === "FAIL") {
         reasons.push(`${feature}/${result.journey} failed`);
       }
-      rows.push(`| ${feature} | \`${result.journey}\`: ${result.entryPoint} | ${result.status === "PASS" ? "pass" : "**fail**"}: ${result.title} | [${result.folder}](${evidenceUrl(pr, plan.headSha, result.folder)}) |`);
+      const outcome = result.status === "PASS" ? "pass" : isKnown ? "known finding" : "**fail**";
+      rows.push(`| ${feature} | \`${result.journey}\`: ${result.entryPoint} | ${outcome}: ${result.title} | [${result.folder}](${evidenceUrl(pr, plan.headSha, result.folder)}) |`);
     }
   }
-  return { rows, reasons };
+  return { rows, reasons, known };
+}
+
+function fullLines(full: FullSet | null): string[] {
+  if (!full) {
+    return [];
+  }
+  return [full.reason === "all" ? "- every other feature: pre-release run (`--all`)" : `- every other feature: the diff changes shared files ${full.files.map((file) => `\`${file}\``).join(", ")}`];
 }
 
 function formalSection(state: RunState, plan: Plan, pr: number) {
@@ -317,10 +330,11 @@ function docsReasons(judgement: Judgement, plan: Plan): string[] {
 /**
  * Computes the verdict of a run from its journey results, the diff plan and
  * the verifier's judgement, and writes verdict.md, verdict.json and plan.json
- * into the evidence folder.
+ * into the evidence folder. `all` is the pre-release mode of `plan --all`: the
+ * verdict gates on every feature. It is required so that no caller drops it.
  */
-export function renderVerdict(state: RunState, pr: number, judgement: Judgement): Verdict {
-  const plan = planFor(state.baseRef || "origin/main");
+export function renderVerdict(state: RunState, pr: number, judgement: Judgement, all: boolean): Verdict {
+  const plan = planFor(state.baseRef || "origin/main", all);
   const skillSha = git(["log", "-1", "--format=%H", "--", path.relative(REPO_DIR, SKILL_DIR)]) || plan.headSha;
   const reasons: string[] = [];
   if (plan.headSha !== state.headSha) {
@@ -345,7 +359,7 @@ export function renderVerdict(state: RunState, pr: number, judgement: Judgement)
     "### Touched features",
     ...bullets(touched, "none"),
     `- ${SMOKE_FEATURE}: init → dev → fixture call → stop`,
-    ...(plan.full?.reason === "shared" ? [`- every other feature: the diff changes shared files ${plan.full.files.map((file) => `\`${file}\``).join(", ")}`] : []),
+    ...fullLines(plan.full),
     "",
     ...(plan.unmapped.length > 0 ? ["### Unmapped surfaces", ...plan.unmapped.map((file) => `- \`${file}\` matches no feature glob; add it to a feature file.`), ""] : []),
     ...(reasons.length > 0 ? ["### Why it fails", ...reasons.map((reason) => `- ${reason}`), ""] : []),
@@ -354,6 +368,7 @@ export function renderVerdict(state: RunState, pr: number, judgement: Judgement)
     "|---|---|---|---|",
     ...journeys.rows,
     "",
+    ...(journeys.known.length > 0 ? ["### Known findings", ...journeys.known.map((id) => `- \`${id}\` fails on main and the diff does not touch its feature.`), ""] : []),
     "### Formal checks",
     ...bullets(formal.lines, "None ran."),
     "",
