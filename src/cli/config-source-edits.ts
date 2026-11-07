@@ -124,7 +124,12 @@ export function replacementEdit(
   return { start, end: node.end, text };
 }
 
-/** Adds `key: value` after the last property of `object`, on its own line when the object spans lines. */
+/**
+ * Adds `key: value` after the last property of `object`, on its own line when
+ * the object spans lines. A property on its own line ends with a comma when
+ * the last one did, and always in an object that had none, as the formatter
+ * lays it out.
+ */
 export function insertionEdit(
   layout: SourceLayout,
   object: TypeScript.ObjectLiteralExpression,
@@ -144,7 +149,7 @@ export function insertionEdit(
     if (startsOwnLine(text, closingBrace)) {
       const closing = text.lastIndexOf("\n", closingBrace - 1);
       const at = lineBreakBefore(text, closing);
-      return { start: at, end: at, text: `${newline}${inner}${entry}` };
+      return { start: at, end: at, text: `${newline}${inner}${entry},` };
     }
     const innerText = text.slice(objectStart + 1, object.end - 1);
     if (innerText.trim() !== "") {
@@ -158,7 +163,7 @@ export function insertionEdit(
     return {
       start: objectStart,
       end: object.end,
-      text: `{${newline}${inner}${entry}${newline}${objectIndent}}`,
+      text: `{${newline}${inner}${entry},${newline}${objectIndent}}`,
     };
   }
   const lastStart = last.getStart(sourceFile);
