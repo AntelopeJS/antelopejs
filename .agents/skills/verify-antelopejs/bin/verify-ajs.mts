@@ -13,7 +13,8 @@ import { formalGate, runFormalCheck, touchedFormalChecks } from "./lib/formal.mt
 import { doorLine, flaggedDoors, patchFiles } from "./lib/doors.mts";
 import { postComment, pushEvidence, readStatus, setStatus } from "./lib/publish.mts";
 import { readJudgement, renderVerdict } from "./lib/verdict.mts";
-import { allocateRun, loadRun, REPO_DIR, saveRun } from "./lib/run.mts";
+import { runLimited, defaultJobs } from "./lib/pool.mts";
+import { allocateRun, loadRun, REPO_DIR, type RunState, saveRun } from "./lib/run.mts";
 import { seedSources } from "./lib/sources.mts";
 
 const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <command>
@@ -24,6 +25,9 @@ const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <
                                    (--base defaults to origin/main; --no-base skips it)
   doctor <run>                     check the run is worth driving
   journey <run> <feature> [ids...] run a feature's journeys and record evidence
+  journeys <run> <feature>... [--jobs <n>]
+                                   run whole features at once, <n> at a time (default: a
+                                   quarter of the cores, 2 to 8); results print per feature
   clean <run>                      stop recorded processes, keep only the evidence
   doors [patch] [--base <ref>]     print the One-way-door line for a patch, or for the diff
   formal <run> [--all]             run the formal checks that cover the diff (or every one) and record them
@@ -59,27 +63,28 @@ function runDoctor(dir: string): number {
   return lines.every((line) => line.ok) ? 0 : 1;
 }
 
-async function runFeature(dir: string, feature: string, ids: string[]): Promise<number> {
+type Emit = (line: string) => void;
+
+function missingJourneys(feature: string, ids: string[]): string | undefined {
   const journeys = FEATURE_JOURNEYS.get(feature);
   if (!journeys) {
-    print(`Unknown feature '${feature}'. Known: ${[...FEATURE_JOURNEYS.keys()].join(", ")}`);
-    return 2;
+    return `Unknown feature '${feature}'. Known: ${[...FEATURE_JOURNEYS.keys()].join(", ")}`;
   }
   const unknown = ids.filter((id) => !journeys.some((journey) => journey.id === id));
-  if (unknown.length > 0) {
-    print(`Unknown journeys of ${feature}: ${unknown.join(", ")}`);
-    return 2;
-  }
-  const state = loadRun(dir);
+  return unknown.length > 0 ? `Unknown journeys of ${feature}: ${unknown.join(", ")}` : undefined;
+}
+
+async function runFeature(state: RunState, feature: string, ids: string[], emit: Emit): Promise<number> {
+  const journeys = FEATURE_JOURNEYS.get(feature) ?? [];
   const selected = ids.length > 0 ? journeys.filter((journey) => ids.includes(journey.id)) : journeys;
   const results: JourneyResult[] = [];
   for (const journey of selected) {
     const result = await runJourney(state, feature, journey);
     results.push(result);
     const failed = result.steps.flatMap((step) => step.checks.filter((check) => !check.pass).map((check) => `    ${step.name}: ${check.name} (${check.detail})`));
-    print(`${result.status} ${feature}/${journey.id}`);
+    emit(`${result.status} ${feature}/${journey.id}`);
     for (const line of [...failed, ...(result.error ? [`    ${result.error.split("\n")[0]}`] : [])]) {
-      print(line);
+      emit(line);
     }
   }
   const file = path.join(state.evidence, feature, "feature.json");
@@ -87,6 +92,42 @@ async function runFeature(dir: string, feature: string, ids: string[]): Promise<
   const merged = journeys.flatMap((journey) => results.find((result) => result.journey === journey.id) ?? earlier.filter((result) => result.journey === journey.id));
   writeFileSync(file, `${JSON.stringify(merged, null, 2)}\n`);
   return results.every((result) => result.status === "PASS") ? 0 : 1;
+}
+
+function runOneFeature(dir: string, feature: string, ids: string[]): Promise<number> {
+  const problem = missingJourneys(feature, ids);
+  if (problem) {
+    print(problem);
+    return Promise.resolve(2);
+  }
+  return runFeature(loadRun(dir), feature, ids, print);
+}
+
+async function runFeatures(dir: string, requested: string[], jobs: number): Promise<number> {
+  const features = [...new Set(requested)];
+  const problems = features.map((feature) => missingJourneys(feature, [])).filter((problem) => problem !== undefined);
+  if (features.length === 0 || problems.length > 0 || !Number.isInteger(jobs) || jobs < 1) {
+    print(problems.length > 0 ? problems.join("\n") : "journeys needs at least one feature and a whole --jobs of 1 or more");
+    return 2;
+  }
+  const state = loadRun(dir);
+  const started = features.map((feature) => {
+    const lines: string[] = [];
+    return () =>
+      runFeature(state, feature, [], (line) => lines.push(line)).then(
+        (code) => ({ code, lines }),
+        (failure: unknown) => ({ code: 1, lines: [...lines, `ERROR ${feature}: ${failure instanceof Error ? failure.message : String(failure)}`] }),
+      );
+  });
+  let worst = 0;
+  for (const finished of runLimited(started, jobs)) {
+    const { code, lines } = await finished;
+    for (const line of lines) {
+      print(line);
+    }
+    worst = Math.max(worst, code);
+  }
+  return worst;
 }
 
 function printMap(): number {
@@ -144,7 +185,7 @@ function judge(command: "verdict" | "publish", dir: string, pr: number): number 
 }
 
 async function main(argv: string[]): Promise<number> {
-  const { positionals, values } = parseArgs({ args: argv, allowPositionals: true, options: { "no-build": { type: "boolean" }, base: { type: "string", default: "origin/main" }, "no-base": { type: "boolean" }, pr: { type: "string" }, all: { type: "boolean" } } });
+  const { positionals, values } = parseArgs({ args: argv, allowPositionals: true, options: { "no-build": { type: "boolean" }, base: { type: "string", default: "origin/main" }, "no-base": { type: "boolean" }, pr: { type: "string" }, jobs: { type: "string" }, all: { type: "boolean" } } });
   const [command, ...rest] = positionals;
   switch (command) {
     case "new":
@@ -154,13 +195,15 @@ async function main(argv: string[]): Promise<number> {
       return printMap();
     case "plan": {
       const plan = planFor(values.base);
-      print(JSON.stringify(plan, null, 2));
+      print(JSON.stringify({ ...plan, command: `node ${path.relative(REPO_DIR, process.argv[1])} journeys "$RUN" ${plan.run.join(" ")}` }, null, 2));
       return plan.unmapped.length === 0 ? 0 : 1;
     }
     case "doctor":
       return runDoctor(rest[0]);
     case "journey":
-      return runFeature(rest[0], rest[1], rest.slice(2));
+      return runOneFeature(rest[0], rest[1], rest.slice(2));
+    case "journeys":
+      return runFeatures(rest[0], rest.slice(1), values.jobs === undefined ? defaultJobs() : Number(values.jobs));
     case "clean":
       for (const line of clean(loadRun(rest[0]))) {
         print(line);

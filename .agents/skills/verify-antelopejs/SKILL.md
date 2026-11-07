@@ -39,11 +39,12 @@ Doctor checks the following: the CLI is built and newer than `src/`, and `ajs --
 ## Drive
 
 ```bash
-node "$VERIFY" plan                          # diff to features, unmapped surfaces
-node "$VERIFY" journey "$RUN" smoke
-node "$VERIFY" journey "$RUN" project-dev [journey-id...]
+node "$VERIFY" plan                          # diff to features, unmapped surfaces, and `command`
+node "$VERIFY" journeys "$RUN" smoke cli-shell project-dev   # whole features at once
+node "$VERIFY" journey "$RUN" project-dev [journey-id...]    # one feature, or chosen journeys
 ```
 
+- Run the plan's `run` list in one command: `plan` prints it as `command`, so substitute your run for `$RUN` and run that. `journeys` runs the features at the same time, `--jobs <n>` at once (default a quarter of the cores, 2 to 8; 4 on 16 cores), and prints each feature's `PASS`/`FAIL` lines together, in the order given. It exits non-zero when any journey failed. Journeys inside a feature run one after another. Features share nothing but the run folder: each journey has its own `HOME`, work folder and port, and each background process is recorded in its own `$RUN/processes/<pid>.json`. A feature run alone takes the same time as before, so use `journey` only to rerun one feature or chosen journeys.
 - Each feature file in [features/](features/README.md) lists its journeys, its source globs (`covers:`) and its docs pages (`docs:`).
 - `ajs project dev` and `ajs project start` run in the background. The harness records their PID, waits for the fixture module's HTTP endpoint to answer, and stops them with SIGINT by recorded PID. A stop that does not exit within the timeout fails the journey.
 - Every mutation is read back through a second command, for example `ajs project modules add` followed by `ajs project modules list`, or `ajs config set` followed by `ajs config get`.
@@ -66,11 +67,11 @@ Each step writes `$RUN/evidence/<feature>/<journey>/<NN-step>/` with:
 node "$VERIFY" clean "$RUN"
 ```
 
-`clean` kills what the run started, by recorded PID, and removes everything except `evidence/` and `run.json`.
+`clean` kills what the run started, by the PIDs in `$RUN/processes/`, and removes everything except `evidence/` and `run.json`.
 
 ## Verdict rules
 
-1. **Run every feature whose `covers:` globs the diff touches, plus the smoke journey** (`init -> dev -> fixture call -> stop`). `plan` prints that list as `run`.
+1. **Run every feature whose `covers:` globs the diff touches, plus the smoke journey** (`init -> dev -> fixture call -> stop`). `plan` prints that list as `run`, and the command that runs it as `command`.
 2. **Unmapped surface fails the verdict.** User-facing code is `src/**`. A changed file there that no feature glob covers is an unmapped surface. The PR adds the feature file and its journeys. `map` checks the whole tree.
 3. **Every registered journey of a feature in `run` must have run and passed.** A missing journey fails the verdict as "not run", so run whole features, not a hand-picked subset. Known findings stay as failing journeys. They fail a verdict only when the diff touches their feature.
 4. **Docs.** Each touched feature lists its `docs:` pages. Judge every page against what the journeys showed. A stale page fails the verdict.

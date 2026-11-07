@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { parseJson, textField } from "./json.mts";
 import { killGroup } from "./journey.mts";
-import { CLI_ENTRY, isolatedEnv, REPO_DIR, type RunState, saveRun } from "./run.mts";
+import { CLI_ENTRY, isolatedEnv, listProcesses, REPO_DIR, type RunState } from "./run.mts";
 import { FIXTURE_PNPM_VERSION, STORE_DIR } from "./sources.mts";
 
 /** One doctor finding. */
@@ -58,7 +58,7 @@ export function doctor(state: RunState): DoctorLine[] {
   const distFresh = built && statSync(CLI_ENTRY).mtimeMs >= newestMtime(path.join(REPO_DIR, "src"));
   const version = built ? cliVersion(state) : "missing";
   const env = isolatedEnv(state);
-  const leftovers = state.processes.filter((record) => alive(record.pid));
+  const leftovers = listProcesses(state).filter((record) => alive(record.pid));
   const pnpmVersion = drivenPnpmVersion(state);
   return [
     { check: "CLI built", ok: built, detail: CLI_ENTRY },
@@ -79,14 +79,12 @@ export function doctor(state: RunState): DoctorLine[] {
  */
 export function clean(state: RunState): string[] {
   const removed: string[] = [];
-  for (const record of state.processes) {
+  for (const record of listProcesses(state)) {
     if (alive(record.pid)) {
       killGroup(record.pid);
       removed.push(`killed ${record.name} pid ${record.pid}`);
     }
   }
-  state.processes = [];
-  saveRun(state);
   for (const entry of readdirSync(state.dir)) {
     if (entry === "evidence" || entry === "run.json") {
       continue;
