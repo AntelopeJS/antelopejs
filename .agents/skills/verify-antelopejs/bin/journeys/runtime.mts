@@ -4,7 +4,8 @@ import path from "node:path";
 import { answers, equal, exitIs, exitFails, has, refused } from "../lib/checks.mts";
 import { field, lastJsonLine } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, initProject, installFixture, setConsumerRange } from "../lib/project.mts";
+import { copyGreeter, installFixture, setConsumerRange } from "../lib/project.mts";
+import { useProject } from "../lib/shared-project.mts";
 import { CORE_ENTRY } from "../lib/run.mts";
 import { FIXTURE_MESSAGE, FIXTURES_DIR } from "../lib/sources.mts";
 import { freePort } from "../lib/evidence.mts";
@@ -26,7 +27,7 @@ export const embeddedJourneys: Journey[] = [
     title: "a host starts the runtime, calls an interface a module implements, reaches a module over HTTP, and stops it",
     entryPoint: "createRuntime({ modules, uses }).start() / use() / stop()",
     async run(context) {
-      const app = await initProject(context, "app");
+      const app = await useProject(context);
       const greeter = await greeterWithHost(context);
       const port = String(await freePort());
       const host = await context.node("embedded host", EMBEDDED_HOST, [CORE_ENTRY, path.join(greeter, "host"), path.join(greeter, "provider"), app], { env: { VERIFY_FIXTURE_PORT: port } });
@@ -47,7 +48,7 @@ export const embeddedJourneys: Journey[] = [
     title: "a host that uses an interface no module implements fails at start with the interface name",
     entryPoint: "createRuntime({ uses: ['verify-greeter'] }) without its provider",
     async run(context) {
-      const app = await initProject(context, "app");
+      const app = await useProject(context);
       const greeter = await greeterWithHost(context);
       const host = await context.node("embedded host without provider", EMBEDDED_HOST, [CORE_ENTRY, path.join(greeter, "host"), path.join(greeter, "missing-provider"), app], { env: { VERIFY_FIXTURE_PORT: String(await freePort()) } });
       context.expect(host.folder, [exitFails(host), has("stderr", host.stderr, /missing-provider|verify-greeter/)]);
@@ -62,7 +63,7 @@ export const launchJourneys: Journey[] = [
     title: "launch() runs a project, build() writes its artifact, launchFromBuild() runs from it, each stops cleanly",
     entryPoint: "launch(project); build(project); launchFromBuild(project)",
     async run(context) {
-      const app = await initProject(context, "app");
+      const app = await useProject(context);
       const host = await context.node("launch host", LAUNCH_HOST, [CORE_ENTRY, app], { env: { VERIFY_FIXTURE_PORT: String(await freePort()) } });
       const seen = lastJsonLine(host.stdout);
       context.expect(host.folder, [

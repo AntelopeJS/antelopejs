@@ -7,6 +7,8 @@ covers:
   - src/core/repl/launch.ts
 docs:
   - docs/5.cli/2.project.md
+known:
+  - start-without-build
 ---
 
 # Project start

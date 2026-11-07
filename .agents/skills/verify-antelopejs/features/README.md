@@ -1,6 +1,6 @@
 # Feature map
 
-One file per feature. `covers:` lists the source globs it owns, and `docs:` the pages a verdict judges. `node .agents/skills/verify-antelopejs/bin/verify-ajs.mts map` checks that every `src/**` file is covered.
+One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, and `known:` the journeys that fail on main as documented findings (`map` fails a `known:` id that is not a journey of that feature; a verdict excuses an id only when the base lists it too, so a PR cannot add its own excuse). `node .agents/skills/verify-antelopejs/bin/verify-ajs.mts map` checks that every `src/**` file is covered.
 
 | Feature | What the user does | Journeys |
 |---|---|---|
@@ -21,4 +21,4 @@ One file per feature. `covers:` lists the source globs it owns, and `docs:` the 
 | [project-start](project-start.md) | `ajs project start` runs a project from its build artifact, without downloading modules. `--refresh-config` resolves the configuration again and exits 3 when the module set differs from the build. | start-from-build, start-without-build, start-refresh-config, start-refresh-config-changed, start-base-build |
 | [smoke](smoke.md) | The fixed journey every verdict runs, whatever the diff touches: create a project from a template, run it, call its module over HTTP, stop it. | smoke |
 
-The smoke journey (`init -> dev -> fixture call -> stop`) runs on every verdict.
+The smoke journey (`init -> dev -> fixture call -> stop`) runs on every verdict. Every feature runs when the diff changes a file that the `shared` globs of `../verify.config.ts` match, and when `plan --all` asks for it before a release; a pre-release `verdict` takes `--all` too.

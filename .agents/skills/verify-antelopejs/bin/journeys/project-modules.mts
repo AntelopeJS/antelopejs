@@ -3,7 +3,8 @@ import path from "node:path";
 
 import { answers, equal, exitIs, fileHas, has, lacks, unchanged } from "../lib/checks.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, FIXTURE_MODULE, initProject, installFixture, listModules, setConsumerRange, useOfflineManifest } from "../lib/project.mts";
+import { copyGreeter, FIXTURE_MODULE, installFixture, listModules, setConsumerRange, useOfflineManifest } from "../lib/project.mts";
+import { useProject } from "../lib/shared-project.mts";
 
 const EMPTY_CONFIG = `import { defineConfig } from "@antelopejs/interface-core/config";
 
@@ -58,7 +59,7 @@ export const journeys: Journey[] = [
     title: "add --mode local writes the module into the configuration, remove takes it out, both read back with list",
     entryPoint: "ajs project modules add <path> --mode local; ajs project modules remove <name>",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const greeter = copyGreeter(context);
       await installFixture(context, path.join(greeter, "provider"));
       const add = await context.ajs("modules add provider", ["project", "modules", "add", path.join(greeter, "provider"), "--mode", "local"], { cwd: project });
@@ -78,7 +79,7 @@ export const journeys: Journey[] = [
     title: "add rewrites antelope.config.ts without losing module config or environments",
     entryPoint: "ajs project modules add <path> --mode local on a hand-written configuration",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       context.edit("hand-write the configuration", path.join(project, "antelope.config.ts"), HAND_WRITTEN_CONFIG);
       const greeter = copyGreeter(context);
       await installFixture(context, path.join(greeter, "provider"));
@@ -99,7 +100,7 @@ export const journeys: Journey[] = [
     title: "remove with an unknown name removes nothing; --force removes the known ones",
     entryPoint: "ajs project modules remove nope [--force]",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const before = configText(project);
       const remove = await context.ajs("modules remove unknown", ["project", "modules", "remove", "nope", FIXTURE_MODULE], { cwd: project });
       context.expect(remove.folder, [exitIs(remove, 1), has("stderr", remove.stderr, /nope/), equal("configuration unchanged", configText(project), before)]);
@@ -114,7 +115,7 @@ export const journeys: Journey[] = [
     title: "adding an npm package the offline registry cannot serve fails and leaves the configuration as it was",
     entryPoint: "ajs project modules add verify-antelopejs-missing-package",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const before = context.tree("tree before add", project);
       const add = await context.ajs("modules add missing package", ["project", "modules", "add", "verify-antelopejs-missing-package"], { cwd: project });
       const after = context.tree("tree after add", project);
@@ -173,7 +174,7 @@ export const journeys: Journey[] = [
     title: "update --dry-run with no npm module reports nothing to update and writes nothing",
     entryPoint: "ajs project modules update --dry-run",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const before = configText(project);
       const update = await context.ajs("modules update --dry-run", ["project", "modules", "update", "--dry-run"], { cwd: project });
       context.expect(update.folder, [exitIs(update, 0), has("stderr", update.stderr, /Nothing to update/), lacks("stdout", update.stdout, /\S/), equal("configuration unchanged", configText(project), before)]);

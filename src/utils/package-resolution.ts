@@ -24,6 +24,7 @@ interface PackageJson {
 }
 
 const realPathCache = new Map<string, string>();
+const pathVariantsCache = new Map<string, string[]>();
 let pathCacheGeneration = 0;
 
 /**
@@ -34,6 +35,7 @@ let pathCacheGeneration = 0;
  */
 export function clearPathResolutionCache(): void {
   realPathCache.clear();
+  pathVariantsCache.clear();
   pathCacheGeneration += 1;
 }
 
@@ -64,13 +66,43 @@ export function normalizeExistingPath(filePath: string): string {
   }
 }
 
+const POSIX_SEP = "/";
+
+/**
+ * The resolved path of `filePath` and, when it differs, its real path.
+ *
+ * The result is shared between calls and must not be modified. It is reused
+ * only for an absolute POSIX path that exists, because that is the only input
+ * whose resolution cannot change before `clearPathResolutionCache`: a relative
+ * path follows the working directory, and a missing path may appear on disk.
+ */
 export function getPathVariants(filePath: string): string[] {
+  const reusable = path.sep === POSIX_SEP && filePath.startsWith(POSIX_SEP);
+  const cachedVariants = reusable ? pathVariantsCache.get(filePath) : undefined;
+  if (cachedVariants) {
+    return cachedVariants;
+  }
   const logicalPath = path.resolve(filePath);
   const realPath = normalizeExistingPath(logicalPath);
-  return logicalPath === realPath ? [logicalPath] : [logicalPath, realPath];
+  const variants =
+    logicalPath === realPath ? [logicalPath] : [logicalPath, realPath];
+  if (reusable && realPathCache.has(logicalPath)) {
+    pathVariantsCache.set(filePath, variants);
+  }
+  return variants;
 }
 
 function isVariantWithin(fileVariant: string, folderVariant: string): boolean {
+  if (path.sep === POSIX_SEP) {
+    return (
+      fileVariant === folderVariant ||
+      fileVariant.startsWith(
+        folderVariant.endsWith(POSIX_SEP)
+          ? folderVariant
+          : `${folderVariant}${POSIX_SEP}`,
+      )
+    );
+  }
   const relativePath = path.relative(folderVariant, fileVariant);
   return (
     relativePath === "" ||
@@ -80,6 +112,10 @@ function isVariantWithin(fileVariant: string, folderVariant: string): boolean {
   );
 }
 
+/**
+ * Whether any file variant lies inside any folder variant. Both lists must come
+ * from `getPathVariants`, so every entry is a resolved absolute path.
+ */
 export function areVariantsWithin(
   fileVariants: readonly string[],
   folderVariants: readonly string[],

@@ -4,10 +4,10 @@ import { expect } from "chai";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import EventEmitter from "node:events";
+import path from "node:path";
 import sinon from "sinon";
 
 import { ConfigLoader } from "../../../src/core/config";
-import * as bootstrap from "../../../src/core/runtime";
 import { ShutdownManager } from "../../../src/core/runtime";
 import * as logging from "../../../src/logging";
 
@@ -20,6 +20,49 @@ type ProcessListenerSnapshot = Record<
   ProcessEventName,
   ((...args: any[]) => void)[]
 >;
+
+type ProcessHandler = ProcessListenerSnapshot[ProcessEventName][number];
+
+interface BootstrapHandlers {
+  uncaught: ProcessHandler;
+  rejection: ProcessHandler;
+}
+
+/**
+ * Loads a private copy of the runtime entry, bootstrap module included.
+ *
+ * The module remembers that it registered its process handlers, but a test
+ * runner may wipe the process listeners behind its back: a mocha worker does
+ * after each file it runs, and the next file of that worker then finds the
+ * flag set and no handler attached. A private copy starts without the flag, so
+ * the handlers it registers are always the ones under test.
+ */
+async function loadPrivateBootstrap() {
+  const entryPath = require.resolve("../../../src/core/runtime");
+  const bootstrapPath = require.resolve(
+    path.join(path.dirname(entryPath), "runtime-bootstrap"),
+  );
+  const shared = [entryPath, bootstrapPath].map(
+    (modulePath) => [modulePath, require.cache[modulePath]] as const,
+  );
+  for (const [modulePath] of shared) {
+    delete require.cache[modulePath];
+  }
+  try {
+    return await import("../../../src/core/runtime");
+  } finally {
+    for (const [modulePath, entry] of shared) {
+      if (entry) {
+        require.cache[modulePath] = entry;
+      } else {
+        delete require.cache[modulePath];
+      }
+    }
+  }
+}
+
+let bootstrap: Awaited<ReturnType<typeof loadPrivateBootstrap>>;
+let handlers: BootstrapHandlers;
 
 function snapshotProcessListeners(): ProcessListenerSnapshot {
   return {
@@ -43,6 +86,21 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
   for (const listener of snapshot.warning) {
     process.on("warning", listener);
   }
+}
+
+function installedBy(register: () => void): BootstrapHandlers {
+  const before = snapshotProcessListeners();
+  register();
+  const after = snapshotProcessListeners();
+  const [uncaught] = after.uncaughtException.filter(
+    (listener) => !before.uncaughtException.includes(listener),
+  );
+  const [rejection] = after.unhandledRejection.filter(
+    (listener) => !before.unhandledRejection.includes(listener),
+  );
+  assert.ok(uncaught);
+  assert.ok(rejection);
+  return { uncaught, rejection };
 }
 
 {
@@ -126,21 +184,16 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
         try {
           bootstrap.setupProcessHandlers(shutdownManager);
           const withdraw = bootstrap.tolerateInvalidatedModuleWork();
-          const current = snapshotProcessListeners();
-          const uncaught = current.uncaughtException.at(-1);
-          const rejection = current.unhandledRejection.at(-1);
-          assert.ok(uncaught);
-          assert.ok(rejection);
 
-          uncaught(orphaned);
-          rejection(orphaned);
+          handlers.uncaught(orphaned);
+          handlers.rejection(orphaned);
           expect(shutdownStub.called).to.equal(false);
 
-          rejection(new Error("unrelated"));
+          handlers.rejection(new Error("unrelated"));
           expect(shutdownStub.calledOnceWith(1)).to.equal(true);
 
           withdraw();
-          rejection(orphaned);
+          handlers.rejection(orphaned);
           expect(shutdownStub.calledTwice).to.equal(true);
         } finally {
           bootstrap.releaseProcessShutdownManager(shutdownManager);
@@ -158,12 +211,10 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
         try {
           bootstrap.setupProcessHandlers(shutdownManager);
           const withdraw = bootstrap.tolerateInvalidatedModuleWork();
-          const uncaught = snapshotProcessListeners().uncaughtException.at(-1);
-          assert.ok(uncaught);
 
-          uncaught("str");
-          uncaught(null);
-          uncaught({ code: invalidatedCode });
+          handlers.uncaught("str");
+          handlers.uncaught(null);
+          handlers.uncaught({ code: invalidatedCode });
           expect(shutdownStub.callCount).to.equal(3);
           expect(shutdownStub.alwaysCalledWith(1)).to.equal(true);
           withdraw();
@@ -186,10 +237,7 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
       try {
         bootstrap.setupProcessHandlers(shutdownManager);
 
-        const current = snapshotProcessListeners();
-        const uncaught =
-          current.uncaughtException[current.uncaughtException.length - 1];
-        uncaught(new Error("boom"));
+        handlers.uncaught(new Error("boom"));
 
         expect(shutdownStub.calledOnceWith(1)).to.equal(true);
         expect(exitStub.called).to.equal(false);
@@ -212,10 +260,7 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
         bootstrap.setupProcessHandlers(second);
         bootstrap.releaseProcessShutdownManager(second);
 
-        const current = snapshotProcessListeners();
-        const uncaught =
-          current.uncaughtException[current.uncaughtException.length - 1];
-        uncaught(new Error("boom"));
+        handlers.uncaught(new Error("boom"));
 
         expect(firstShutdown.calledOnceWith(1)).to.equal(true);
         expect(secondShutdown.called).to.equal(false);
@@ -238,10 +283,7 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
         bootstrap.setupProcessHandlers();
         bootstrap.setupProcessHandlers(shutdownManager);
 
-        const current = snapshotProcessListeners();
-        const uncaught =
-          current.uncaughtException[current.uncaughtException.length - 1];
-        uncaught(new Error("boom"));
+        handlers.uncaught(new Error("boom"));
 
         expect(shutdownStub.calledOnceWith(1)).to.equal(true);
         expect(exitStub.called).to.equal(false);
@@ -347,10 +389,7 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
 
         try {
           bootstrap.setupProcessHandlers();
-          const listeners = process.listeners("unhandledRejection");
-          const rejection = listeners[listeners.length - 1];
-          assert.ok(rejection);
-          rejection(aggregate, Promise.resolve());
+          handlers.rejection(aggregate, Promise.resolve());
 
           expect(errorStub.args).to.deep.equal([
             ["Unhandled rejection:", aggregate],
@@ -362,8 +401,14 @@ function restoreProcessListeners(snapshot: ProcessListenerSnapshot): void {
     };
 
   registerRuntimeRuntimeBootstrap = () => {
-    before(() => {
-      bootstrap.setupProcessHandlers();
+    before(async () => {
+      bootstrap = await loadPrivateBootstrap();
+      handlers = installedBy(() => bootstrap.setupProcessHandlers());
+    });
+
+    after(() => {
+      process.removeListener("uncaughtException", handlers.uncaught);
+      process.removeListener("unhandledRejection", handlers.rejection);
     });
 
     afterEach(() => {

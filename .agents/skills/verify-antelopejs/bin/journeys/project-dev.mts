@@ -6,7 +6,8 @@ import { freePort } from "../lib/evidence.mts";
 import type { HttpResult } from "../lib/evidence.mts";
 import { field } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, FIXTURE_MODULE, initProject, installFixture } from "../lib/project.mts";
+import { copyGreeter, FIXTURE_MODULE, installFixture } from "../lib/project.mts";
+import { useProject } from "../lib/shared-project.mts";
 import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
 const WATCH_SETTLE_MS = 3000;
@@ -24,7 +25,7 @@ function messageIs(text: string) {
 }
 
 async function watchedProject(context: JourneyContext) {
-  const project = await initProject(context, "app");
+  const project = await useProject(context);
   const dev = await context.background("project dev --watch", ["project", "dev", "--watch"], { cwd: project });
   const ready = await context.waitReady("ready", dev);
   context.expect(ready.folder, [answers(ready, "message", FIXTURE_MESSAGE)], { critical: true });
@@ -39,7 +40,7 @@ export const journeys: Journey[] = [
     title: "dev serves the module, and SIGINT stops it with exit code 130 and frees the port",
     entryPoint: "ajs project dev, then SIGINT",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const dev = await context.background("project dev", ["project", "dev"], { cwd: project });
       const ready = await context.waitReady("ready", dev);
       context.expect(ready.folder, [answers(ready, "message", FIXTURE_MESSAGE)], { critical: true });
@@ -154,7 +155,7 @@ export const journeys: Journey[] = [
     title: "ajs project run behaves as ajs project dev",
     entryPoint: "ajs project run",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const run = await context.background("project run", ["project", "run"], { cwd: project });
       const ready = await context.waitReady("ready", run);
       context.expect(ready.folder, [answers(ready, "message", FIXTURE_MESSAGE)]);
@@ -167,7 +168,7 @@ export const journeys: Journey[] = [
     title: "--project runs a project from another directory",
     entryPoint: "ajs project dev --project ./app",
     async run(context) {
-      await initProject(context, "app");
+      await useProject(context);
       const dev = await context.background("project dev --project", ["project", "dev", "--project", "./app"]);
       const ready = await context.waitReady("ready", dev);
       context.expect(ready.folder, [answers(ready, "message", FIXTURE_MESSAGE)]);
@@ -179,7 +180,7 @@ export const journeys: Journey[] = [
     title: "SIGINT while dev still installs and loads its modules stops it with exit code 130 and leaves nothing listening",
     entryPoint: "ajs project dev, SIGINT before the module answers",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const dev = await context.background("project dev", ["project", "dev"], { cwd: project });
       await context.settle("let dev begin installing", 500, "cancel must land while the install command still runs");
       const stop = await context.stop("stop with SIGINT during start", dev);
@@ -194,7 +195,7 @@ export const journeys: Journey[] = [
     title: "--inspect opens the Node.js inspector on the given address while the module serves",
     entryPoint: "ajs project dev --inspect 127.0.0.1:<port>",
     async run(context) {
-      const project = await initProject(context, "app");
+      const project = await useProject(context);
       const inspectPort = await freePort();
       const dev = await context.background("project dev --inspect", ["project", "dev", "--inspect", `127.0.0.1:${inspectPort}`], { cwd: project });
       const ready = await context.waitReady("ready", dev);

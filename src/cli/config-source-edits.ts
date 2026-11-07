@@ -67,6 +67,41 @@ function commaEnd(
   return next?.getText(sourceFile) === "," ? next.end : undefined;
 }
 
+/**
+ * The comma that ends an entry added to the empty `object`: none when the
+ * property holding `object`, through casts, assertions and parentheses, is
+ * the last of its object and has no comma, so the file keeps its style; the
+ * formatter's comma otherwise.
+ */
+function emptyObjectComma(
+  layout: SourceLayout,
+  object: TypeScript.ObjectLiteralExpression,
+): string {
+  const { ts, sourceFile } = layout;
+  let value: TypeScript.Node = object;
+  while (
+    ts.isAsExpression(value.parent) ||
+    ts.isSatisfiesExpression(value.parent) ||
+    ts.isParenthesizedExpression(value.parent) ||
+    ts.isNonNullExpression(value.parent) ||
+    ts.isTypeAssertionExpression(value.parent)
+  ) {
+    value = value.parent;
+  }
+  const property = value.parent;
+  if (
+    !ts.isPropertyAssignment(property) ||
+    !ts.isObjectLiteralExpression(property.parent)
+  ) {
+    return ",";
+  }
+  const holder = property.parent;
+  const isLast = holder.properties.at(-1) === property;
+  return isLast && commaEnd(sourceFile, holder, property) === undefined
+    ? ""
+    : ",";
+}
+
 /** A config value as source: its laid-out text, and the string itself when it is one. */
 export interface ValueSource {
   serialized: string;
@@ -124,7 +159,12 @@ export function replacementEdit(
   return { start, end: node.end, text };
 }
 
-/** Adds `key: value` after the last property of `object`, on its own line when the object spans lines. */
+/**
+ * Adds `key: value` after the last property of `object`, on its own line when
+ * the object spans lines. A property on its own line ends with a comma when
+ * the last one did; in an object that had none, it follows the property that
+ * holds the object (see {@link emptyObjectComma}).
+ */
 export function insertionEdit(
   layout: SourceLayout,
   object: TypeScript.ObjectLiteralExpression,
@@ -144,7 +184,11 @@ export function insertionEdit(
     if (startsOwnLine(text, closingBrace)) {
       const closing = text.lastIndexOf("\n", closingBrace - 1);
       const at = lineBreakBefore(text, closing);
-      return { start: at, end: at, text: `${newline}${inner}${entry}` };
+      return {
+        start: at,
+        end: at,
+        text: `${newline}${inner}${entry}${emptyObjectComma(layout, object)}`,
+      };
     }
     const innerText = text.slice(objectStart + 1, object.end - 1);
     if (innerText.trim() !== "") {
@@ -158,7 +202,7 @@ export function insertionEdit(
     return {
       start: objectStart,
       end: object.end,
-      text: `{${newline}${inner}${entry}${newline}${objectIndent}}`,
+      text: `{${newline}${inner}${entry}${emptyObjectComma(layout, object)}${newline}${objectIndent}}`,
     };
   }
   const lastStart = last.getStart(sourceFile);
