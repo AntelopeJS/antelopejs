@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { writeConfig } from "../../../src/cli";
+import { readConfig, writeConfig } from "../../../src/cli";
 import { cleanupTempDir, makeTempDir, readText } from "../../helpers/temp";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
@@ -357,6 +357,23 @@ describe("antelope.config.ts written by the CLI", () => {
       await writeConfig(project, initModule());
       const source = readText(configPath);
       expect(firstDifference(source, oxfmt(source))).to.equal("");
+    } finally {
+      cleanupTempDir(project);
+    }
+  });
+
+  it("adds to an empty object without a comma in a file that ends its entries without one", async () => {
+    const project = makeTempDir("ajs-config-layout-");
+    try {
+      const configPath = path.join(project, "antelope.config.ts");
+      const source =
+        'export default {\n  name: "app",\n  modules: {\n  }\n};\n';
+      writeFileSync(configPath, source);
+      const config = await readConfig(project);
+      await writeConfig(project, { ...config, modules: { a: "1.0.0" } });
+      expect(readText(configPath)).to.equal(
+        source.replace("  modules: {\n", '  modules: {\n    a: "1.0.0"\n'),
+      );
     } finally {
       cleanupTempDir(project);
     }

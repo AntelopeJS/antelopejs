@@ -67,6 +67,18 @@ function commaEnd(
   return next?.getText(sourceFile) === "," ? next.end : undefined;
 }
 
+/**
+ * The comma that ends an entry added to the empty `object`: none when the
+ * property holding `object` is the last of its object and has no comma, so
+ * the file keeps its style, and the formatter's comma otherwise.
+ */
+function emptyObjectComma(
+  text: string,
+  object: TypeScript.ObjectLiteralExpression,
+): string {
+  return text.slice(object.end).trimStart().startsWith("}") ? "" : ",";
+}
+
 /** A config value as source: its laid-out text, and the string itself when it is one. */
 export interface ValueSource {
   serialized: string;
@@ -127,8 +139,8 @@ export function replacementEdit(
 /**
  * Adds `key: value` after the last property of `object`, on its own line when
  * the object spans lines. A property on its own line ends with a comma when
- * the last one did, and always in an object that had none, as the formatter
- * lays it out.
+ * the last one did; in an object that had none, it follows the property that
+ * holds the object (see {@link emptyObjectComma}).
  */
 export function insertionEdit(
   layout: SourceLayout,
@@ -149,7 +161,11 @@ export function insertionEdit(
     if (startsOwnLine(text, closingBrace)) {
       const closing = text.lastIndexOf("\n", closingBrace - 1);
       const at = lineBreakBefore(text, closing);
-      return { start: at, end: at, text: `${newline}${inner}${entry},` };
+      return {
+        start: at,
+        end: at,
+        text: `${newline}${inner}${entry}${emptyObjectComma(text, object)}`,
+      };
     }
     const innerText = text.slice(objectStart + 1, object.end - 1);
     if (innerText.trim() !== "") {
@@ -163,7 +179,7 @@ export function insertionEdit(
     return {
       start: objectStart,
       end: object.end,
-      text: `{${newline}${inner}${entry},${newline}${objectIndent}}`,
+      text: `{${newline}${inner}${entry}${emptyObjectComma(text, object)}${newline}${objectIndent}}`,
     };
   }
   const lastStart = last.getStart(sourceFile);
