@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import config from "../../verify.config.ts";
 import { FEATURE_JOURNEYS } from "../journeys/index.mts";
 import { REPO_DIR, SKILL_DIR } from "./run.mts";
 
@@ -11,12 +12,16 @@ export const USER_FACING = ["src/**"];
 /** The feature that always runs, whatever the diff touches. */
 export const SMOKE_FEATURE = "smoke";
 
-/** One feature file of the map, parsed from its frontmatter. */
+/**
+ * One feature file of the map, parsed from its frontmatter. `known` lists the
+ * journeys that fail on main on purpose, each a documented finding.
+ */
 export interface Feature {
   name: string;
   file: string;
   covers: string[];
   docs: string[];
+  known: string[];
   body: string;
 }
 
@@ -52,6 +57,7 @@ export function readFeatures(): Feature[] {
         file: path.relative(REPO_DIR, path.join(FEATURES_DIR, file)),
         covers: lists.get("covers") ?? [],
         docs: lists.get("docs") ?? [],
+        known: lists.get("known") ?? [],
         body: text,
       };
     });
@@ -70,10 +76,51 @@ export function featuresOf(file: string, features: Feature[]): string[] {
   return features.filter((feature) => matches(file, feature.covers)).map((feature) => feature.name);
 }
 
+/** The `known:` ids of a feature that are not among its registered journeys. */
+export function unregisteredKnown(feature: Feature, registered: string[]): string[] {
+  return feature.known.filter((id) => !registered.includes(id));
+}
+
+function knownAt(cwd: string, baseSha: string, file: string): string[] {
+  if (execFileSync("git", ["ls-tree", "--name-only", baseSha, "--", file], { cwd, encoding: "utf8" }).trim() === "") {
+    return [];
+  }
+  return frontmatterLists(execFileSync("git", ["show", `${baseSha}:${file}`], { cwd, encoding: "utf8" })).get("known") ?? [];
+}
+
+/**
+ * The `<feature>/<journey>` ids a verdict may excuse as known findings: those
+ * a feature file lists under `known:` at `baseSha` and still lists at HEAD.
+ * Removing an entry at HEAD withdraws the excuse, and adding one cannot
+ * excuse a failure the same diff causes. A feature file missing at the base
+ * contributes none.
+ */
+export function knownAtBase(cwd: string, baseSha: string, features: Feature[]): Set<string> {
+  const known = new Set<string>();
+  for (const feature of features) {
+    const atBase = knownAt(cwd, baseSha, feature.file);
+    for (const id of feature.known.filter((entry) => atBase.includes(entry))) {
+      known.add(`${feature.name}/${id}`);
+    }
+  }
+  return known;
+}
+
+/**
+ * Whether a failing journey is a known finding the diff does not answer for:
+ * `known` holds its `<feature>/<journey>` id (see {@link knownAtBase}) and the
+ * diff touches no file the feature covers. A journey of a touched feature is
+ * never a known finding.
+ */
+export function knownFinding(known: ReadonlySet<string>, touched: Selection["touched"], feature: string, journey: string): boolean {
+  return known.has(`${feature}/${journey}`) && !touched.some((entry) => entry.feature === feature);
+}
+
 /**
  * Checks the map against the repository: every user-facing file is covered,
  * every feature has journeys, every journey is named in its feature file,
- * and every docs path exists. Returns one line per problem.
+ * every `known:` id is a journey of its feature, and every docs path exists.
+ * Returns one line per problem.
  */
 export function checkMap(): string[] {
   const features = readFeatures();
@@ -93,6 +140,9 @@ export function checkMap(): string[] {
         problems.push(`${feature.file}: journey \`${journey.id}\` is not described`);
       }
     }
+    for (const id of unregisteredKnown(feature, (journeys ?? []).map((journey) => journey.id))) {
+      problems.push(`${feature.file}: known journey \`${id}\` is not a registered journey of ${feature.name}`);
+    }
     if (feature.name !== SMOKE_FEATURE && feature.covers.length === 0) {
       problems.push(`${feature.file}: lists no covers globs`);
     }
@@ -107,6 +157,11 @@ export function checkMap(): string[] {
       }
     }
   }
+  for (const glob of config.shared) {
+    if (!trackedFiles().some((tracked) => path.matchesGlob(tracked, glob))) {
+      problems.push(`verify.config.ts: shared glob ${glob} matches no tracked file`);
+    }
+  }
   for (const name of FEATURE_JOURNEYS.keys()) {
     if (!features.some((feature) => feature.name === name)) {
       problems.push(`journeys of ${name} have no features/${name}.md`);
@@ -115,33 +170,63 @@ export function checkMap(): string[] {
   return problems;
 }
 
+/** Why a plan runs every feature: `--all` asked for it, or the diff changed these shared files. */
+export type FullSet = { reason: "all" } | { reason: "shared"; files: string[] };
+
+/** The features a set of changed files asks a verdict to run. */
+export interface Selection {
+  touched: { feature: string; files: string[] }[];
+  unmapped: string[];
+  docs: string[];
+  full: FullSet | null;
+  run: string[];
+}
+
 /** What a diff asks a verdict to run. */
-export interface Plan {
+export interface Plan extends Selection {
   baseRef: string;
   baseSha: string;
   headSha: string;
   changed: string[];
-  touched: { feature: string; files: string[] }[];
-  unmapped: string[];
-  docs: string[];
-  run: string[];
 }
 
 /**
- * Maps the diff from the merge base of `baseRef` to HEAD onto features:
- * every touched feature plus the smoke journey runs, and a user-facing
- * file outside every glob is an unmapped surface.
+ * Maps changed files onto features: every touched feature plus the smoke
+ * journey runs, every feature runs when `all` is set or a changed file
+ * matches a `shared` glob, and a user-facing file outside every feature
+ * glob is an unmapped surface. Docs are those of the touched features only.
  */
-export function planFor(baseRef: string): Plan {
-  const features = readFeatures();
-  const git = (args: string[]) => execFileSync("git", args, { cwd: REPO_DIR, encoding: "utf8" }).trim();
-  const baseSha = git(["merge-base", baseRef, "HEAD"]);
-  const changed = git(["diff", "--name-only", `${baseSha}...HEAD`]).split("\n").filter(Boolean);
+export function selectFeatures(changed: string[], features: Feature[], options: { all: boolean; shared: string[] }): Selection {
   const touched = features
     .map((feature) => ({ feature: feature.name, files: changed.filter((file) => matches(file, feature.covers)) }))
     .filter((entry) => entry.files.length > 0);
   const unmapped = changed.filter((file) => matches(file, USER_FACING) && featuresOf(file, features).length === 0);
   const docs = [...new Set(features.filter((feature) => touched.some((entry) => entry.feature === feature.name)).flatMap((feature) => feature.docs))];
-  const run = [SMOKE_FEATURE, ...touched.map((entry) => entry.feature).filter((name) => name !== SMOKE_FEATURE)];
-  return { baseRef, baseSha, headSha: git(["rev-parse", "HEAD"]), changed, touched, unmapped, docs, run };
+  const sharedFiles = changed.filter((file) => matches(file, options.shared));
+  const full: FullSet | null = options.all ? { reason: "all" } : sharedFiles.length > 0 ? { reason: "shared", files: sharedFiles } : null;
+  const selected = full ? features.map((feature) => feature.name) : touched.map((entry) => entry.feature);
+  const run = [SMOKE_FEATURE, ...selected.filter((name) => name !== SMOKE_FEATURE)];
+  return { touched, unmapped, docs, full, run };
+}
+
+/**
+ * The files changed from `baseSha` to HEAD in the repository at `cwd`. A
+ * rename counts as the deletion of the old name and the addition of the new
+ * one, so a shared or covered file renamed away still matches its globs.
+ */
+export function changedFiles(cwd: string, baseSha: string): string[] {
+  return execFileSync("git", ["diff", "--name-only", "--no-renames", `${baseSha}...HEAD`], { cwd, encoding: "utf8" }).split("\n").filter(Boolean);
+}
+
+/**
+ * Maps the diff from the merge base of `baseRef` to HEAD onto features with
+ * {@link selectFeatures}. `all` is required so that no caller drops the
+ * pre-release mode by omission.
+ */
+export function planFor(baseRef: string, all: boolean): Plan {
+  const git = (args: string[]) => execFileSync("git", args, { cwd: REPO_DIR, encoding: "utf8" }).trim();
+  const baseSha = git(["merge-base", baseRef, "HEAD"]);
+  const changed = changedFiles(REPO_DIR, baseSha);
+  const selection = selectFeatures(changed, readFeatures(), { all, shared: config.shared });
+  return { baseRef, baseSha, headSha: git(["rev-parse", "HEAD"]), changed, ...selection };
 }

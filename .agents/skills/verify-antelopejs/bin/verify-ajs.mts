@@ -19,7 +19,8 @@ import { seedSources } from "./lib/sources.mts";
 const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <command>
 
   map                              check the feature map covers every user-facing file
-  plan [--base <ref>]              map the diff to features; list unmapped surfaces
+  plan [--base <ref>] [--all]      map the diff to features; list unmapped surfaces
+                                   (a shared file in the diff, or --all before a release, runs every feature)
   new [--no-build] [--base <ref>]  build dist, create an isolated run, print its folder
                                    (--base defaults to origin/main; --no-base skips it)
   doctor <run>                     check the run is worth driving
@@ -27,8 +28,9 @@ const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <
   clean <run>                      stop recorded processes, keep only the evidence
   doors [patch] [--base <ref>]     print the One-way-door line for a patch, or for the diff
   formal <run> [--all]             run the formal checks that cover the diff (or every one) and record them
-  verdict <run> --pr <n>           render evidence/verdict.md from the results and evidence/judgement.json
-  publish <run> --pr <n>           push the evidence to verify-evidence, comment the verdict, set status verify
+  verdict <run> --pr <n> [--all]   render evidence/verdict.md from the results and evidence/judgement.json
+                                   (--all gates on every feature, as plan --all: pass it for a pre-release verdict)
+  publish <run> --pr <n> [--all]   push the evidence to verify-evidence, comment the verdict, set status verify
 `;
 
 function print(text: string): void {
@@ -100,7 +102,7 @@ function printMap(): number {
 
 function runFormal(dir: string, all: boolean): number {
   const state = loadRun(dir);
-  const plan = planFor(state.baseRef || "origin/main");
+  const plan = planFor(state.baseRef || "origin/main", false);
   const touched = touchedFormalChecks(plan.changed);
   const checks = all ? config.formal : touched;
   for (const check of checks) {
@@ -125,13 +127,13 @@ function printDoors(files: string[]): number {
   return 0;
 }
 
-function judge(command: "verdict" | "publish", dir: string, pr: number): number {
+function judge(command: "verdict" | "publish", dir: string, pr: number, all: boolean): number {
   if (!Number.isInteger(pr) || pr <= 0) {
     print(`${command} needs --pr <number>`);
     return 2;
   }
   const state = loadRun(dir);
-  const verdict = renderVerdict(state, pr, readJudgement(path.join(state.evidence, "judgement.json")));
+  const verdict = renderVerdict(state, pr, readJudgement(path.join(state.evidence, "judgement.json")), all);
   print(verdict.markdown);
   if (command === "publish") {
     print(`evidence commit ${pushEvidence(state, verdict)}`);
@@ -153,7 +155,7 @@ async function main(argv: string[]): Promise<number> {
     case "map":
       return printMap();
     case "plan": {
-      const plan = planFor(values.base);
+      const plan = planFor(values.base, Boolean(values.all));
       print(JSON.stringify(plan, null, 2));
       return plan.unmapped.length === 0 ? 0 : 1;
     }
@@ -167,12 +169,12 @@ async function main(argv: string[]): Promise<number> {
       }
       return 0;
     case "doors":
-      return printDoors(rest[0] ? patchFiles(rest[0]) : planFor(values.base).changed);
+      return printDoors(rest[0] ? patchFiles(rest[0]) : planFor(values.base, false).changed);
     case "formal":
       return runFormal(rest[0], Boolean(values.all));
     case "verdict":
     case "publish":
-      return judge(command, rest[0], Number(values.pr));
+      return judge(command, rest[0], Number(values.pr), Boolean(values.all));
     default:
       print(USAGE);
       return command ? 2 : 0;

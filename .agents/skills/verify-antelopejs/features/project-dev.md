@@ -19,6 +19,9 @@ docs:
   - docs/5.cli/2.project.md
   - docs/2.concepts/7.runtime.md
   - docs/2.concepts/2.modules.md
+known:
+  - dev-readd-root-module
+  - dev-watch-module-without-src
 ---
 
 # Project dev

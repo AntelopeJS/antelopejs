@@ -35,13 +35,18 @@ export interface FormalCheck {
   behaviour: Behaviour;
 }
 
-/** The repo-owned layer of the verification skill. */
+/**
+ * The repo-owned layer of the verification skill. `shared` globs the files
+ * every feature depends on: a diff that changes one runs every feature.
+ */
 export interface VerifyConfig {
+  shared: string[];
   doors: Record<DoorKind, DoorRule | null>;
   formal: FormalCheck[];
 }
 
 const config: VerifyConfig = {
+  shared: ["package.json", "pnpm-lock.yaml", "tsconfig.json", ".nvmrc"],
   doors: {
     data: {
       globs: [

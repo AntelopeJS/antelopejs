@@ -6,6 +6,8 @@ covers:
 docs:
   - docs/5.cli/4.module.md
   - docs/3.module-development/3.testing.md
+known:
+  - module-test-file-docs-form
 ---
 
 # Module test
