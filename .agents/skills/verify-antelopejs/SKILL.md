@@ -39,12 +39,13 @@ Doctor checks the following: the CLI is built and newer than `src/`, and `ajs --
 ## Drive
 
 ```bash
-node "$VERIFY" plan                          # diff to features, unmapped surfaces
+node "$VERIFY" plan                          # diff to features, unmapped surfaces, and `command`
 node "$VERIFY" plan --all                    # every feature, before a release
-node "$VERIFY" journey "$RUN" smoke
-node "$VERIFY" journey "$RUN" project-dev [journey-id...]
+node "$VERIFY" journeys "$RUN" smoke cli-shell project-dev   # every journey of the features, at once
+node "$VERIFY" journey "$RUN" project-dev [journey-id...]    # one feature, or chosen journeys
 ```
 
+- Run the plan's `run` list in one command: `plan` prints it as `command`, so substitute your run for `$RUN` and run that. `journeys` runs the journeys of all the features at the same time, `--jobs <n>` journeys at once (default a quarter of the cores, 2 to 8; 4 on 16 cores), and prints each feature's `PASS`/`FAIL` lines together, in the order given. It writes each feature's `feature.json` when that feature's last journey ends, and exits non-zero when any journey failed. Journeys share nothing but the run folder: each has its own `HOME`, work folder, evidence folder and port, and each background process is recorded in its own `$RUN/processes/<pid>.json`. A feature that must not overlap its own journeys is declared in `SERIAL_FEATURES` of `bin/journeys/index.mts` with the reason; none is. `journey` runs one feature's journeys one after another, so use it only to rerun one feature or chosen journeys.
 - Each feature file in [features/](features/README.md) lists its journeys, its source globs (`covers:`) and its docs pages (`docs:`).
 - `ajs project dev` and `ajs project start` run in the background. The harness records their PID, waits for the fixture module's HTTP endpoint to answer, and stops them with SIGINT by recorded PID. A stop that does not exit within the timeout fails the journey.
 - A run runs `ajs project init` for real in two places only: the `smoke` and `project-init` journeys, and one shared init, `shared/project-init`, that the first journey needing a project triggers. Every other journey copies that project into its own work folder, sets the offline manifest in its own `HOME` and reads the project back with `ajs project modules list`. Its step `project copied from the shared init` names the init's evidence, `$RUN/evidence/shared/project-init/`. If that init fails, it stays failed for the rest of the run: every journey that needs a project fails on its first step and names `$RUN/evidence/shared/project-init/result.json`, which keeps the real cause. Fix the cause, then start a new run with `verify-ajs new`; rerunning the journeys in the same run does not retry the init. A run that Ctrl-C stopped during the init leaves no verdict, and the next journey runs the init again.
@@ -68,11 +69,11 @@ Each step writes `$RUN/evidence/<feature>/<journey>/<NN-step>/` with:
 node "$VERIFY" clean "$RUN"
 ```
 
-`clean` kills what the run started, by recorded PID, and removes everything except `evidence/` and `run.json`.
+`clean` kills what the run started, by the PIDs in `$RUN/processes/`, and removes everything except `evidence/` and `run.json`.
 
 ## Verdict rules
 
-1. **Run every feature that `plan` lists in `run`.** On a pull request that is every feature whose `covers:` globs the diff touches, plus the smoke journey (`init -> dev -> fixture call -> stop`). When the diff changes a file that the `shared` globs of `verify.config.ts` match, every feature depends on it, so `run` holds every feature and `full` names the shared files. A rename counts as a deletion plus an addition, so renaming a shared file away also runs every feature. Before a release, run `plan --all`, then every feature in `run`, `formal "$RUN" --all`, and render the verdict with `--all` (`verdict "$RUN" --pr <n> --all`): a verdict without `--all` gates on the diff's own features and smoke only, whatever `plan --all` printed.
+1. **Run every feature that `plan` lists in `run`.** `plan` also prints the command that runs them all as `command`. On a pull request that is every feature whose `covers:` globs the diff touches, plus the smoke journey (`init -> dev -> fixture call -> stop`). When the diff changes a file that the `shared` globs of `verify.config.ts` match, every feature depends on it, so `run` holds every feature and `full` names the shared files. A rename counts as a deletion plus an addition, so renaming a shared file away also runs every feature. Before a release, run `plan --all`, then every feature in `run`, `formal "$RUN" --all`, and render the verdict with `--all` (`verdict "$RUN" --pr <n> --all`): a verdict without `--all` gates on the diff's own features and smoke only, whatever `plan --all` printed.
 2. **Unmapped surface fails the verdict.** User-facing code is `src/**`. A changed file there that no feature glob covers is an unmapped surface. The PR adds the feature file and its journeys. `map` checks the whole tree.
 3. **Every registered journey of a feature in `run` must have run and passed.** A missing journey fails the verdict as "not run", so run whole features, not a hand-picked subset. Known findings stay as failing journeys, listed under `known:` in their feature file; `map` fails a `known:` id that is not a registered journey of that feature. A journey counts as known only when the feature file lists it on the base (the plan's `baseSha`) and at HEAD: a diff can remove an entry but cannot add the excuse for a failure it causes. A known journey fails a verdict only when the diff touches its feature: in a feature that runs only because of a shared file or `--all`, the verdict reports a failing known journey under Known findings. Every other failing journey fails the verdict, a non-known one in an untouched feature included.
 4. **Docs.** Each touched feature lists its `docs:` pages. Judge every page against what the journeys showed. A stale page fails the verdict.

@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { type FormalResult, parseFormalResult } from "./formal.mts";
 import { parseJourneyResults } from "./journey.mts";
-import { parseRunState } from "./run.mts";
+import { parseProcessRecord, parseRunState } from "./run.mts";
 
 const RUN = {
   id: "r1",
@@ -17,8 +17,9 @@ const RUN = {
   baseRef: "main",
   baseSha: "bbb",
   baseCli: "/base/cli",
-  processes: [{ name: "dev", pid: 12, port: 3000, cwd: "/run/work", startedAt: "2026-11-02T00:00:01.000Z" }],
 };
+
+const PROCESS = { name: "dev", pid: 12, port: 3000, cwd: "/run/work", startedAt: "2026-11-02T00:00:01.000Z" };
 
 const JOURNEY = {
   feature: "cli",
@@ -56,10 +57,12 @@ await test("a run.json saveRun wrote reads back unchanged", () => {
 
 await test("a run.json with a wrong-shaped member is refused, naming the member", () => {
   assert.throws(() => parseRunState(JSON.stringify({ ...RUN, headSha: 5 })), /run\.json: headSha must be a string/);
-  assert.throws(() => parseRunState(JSON.stringify({ ...RUN, processes: [{ ...RUN.processes[0], pid: "12" }] })), /run\.json process: pid must be a number/);
-  const { processes: _dropped, ...noProcesses } = RUN;
-  assert.throws(() => parseRunState(JSON.stringify(noProcesses)), /run\.json: processes must be a list/);
   assert.throws(() => parseRunState("not json"), /run\.json: id must be a string/);
+});
+
+await test("a process record reads back unchanged, and a wrong-shaped one is refused, naming the field", () => {
+  assert.deepEqual(parseProcessRecord(JSON.stringify(PROCESS)), PROCESS);
+  assert.throws(() => parseProcessRecord(JSON.stringify({ ...PROCESS, pid: "12" })), /process record: pid must be a number/);
 });
 
 await test("a feature.json the journey runner wrote reads back unchanged", () => {

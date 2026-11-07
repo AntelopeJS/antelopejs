@@ -10,9 +10,7 @@ import { embeddedJourneys, launchJourneys, resolutionJourneys } from "./runtime.
 import { configJourneys, pluginJourneys, shellJourneys } from "./settings.mts";
 import { journeys as smoke } from "./smoke.mts";
 
-/** Every feature of the map with its journeys. */
-export const FEATURE_JOURNEYS = new Map(
-  Object.entries({
+const FEATURES = {
   smoke,
   "project-init": projectInit,
   "project-dev": projectDev,
@@ -29,5 +27,18 @@ export const FEATURE_JOURNEYS = new Map(
   "embedded-runtime": embeddedJourneys,
   "library-launch": launchJourneys,
   "interface-resolution": resolutionJourneys,
-} satisfies Record<string, Journey[]>),
-);
+} satisfies Record<string, Journey[]>;
+
+/** Every feature of the map with its journeys. */
+export const FEATURE_JOURNEYS = new Map<string, Journey[]>(Object.entries(FEATURES));
+
+const SERIAL: readonly (readonly [keyof typeof FEATURES, string])[] = [];
+
+/**
+ * The features whose journeys must run one after another, each with the
+ * reason. A journey of any other feature may run at the same time as any other
+ * journey: it owns its HOME, work folder, evidence folder and ports, and reads
+ * nothing another journey leaves. A feature belongs here only when one of its
+ * journeys does read what an earlier one left.
+ */
+export const SERIAL_FEATURES: ReadonlyMap<string, string> = new Map(SERIAL);

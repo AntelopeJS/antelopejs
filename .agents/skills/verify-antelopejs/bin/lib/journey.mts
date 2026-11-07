@@ -13,7 +13,7 @@ import {
   startRecorded,
 } from "./evidence.mts";
 import { field, parseJson, requireBoolean, requireItems, requireText, type Json } from "./json.mts";
-import { CLI_ENTRY, isolatedEnv, type RunState, saveRun } from "./run.mts";
+import { CLI_ENTRY, forgetProcess, isolatedEnv, recordProcess, type RunState } from "./run.mts";
 
 /** One expectation a step met or missed, with what was observed. */
 export interface Check {
@@ -137,6 +137,7 @@ export class JourneyContext {
   readonly home: string;
   readonly steps: StepRecord[] = [];
   readonly backgrounds: Background[] = [];
+  private readonly tracked = new Set<number>();
   private index = 0;
 
   constructor(state: RunState, feature: string, journey: string) {
@@ -212,8 +213,8 @@ export class JourneyContext {
     const background: Background = { ...handle, name, port };
     writeFileSync(path.join(handle.folder, "port.txt"), `${port}\n`);
     this.backgrounds.push(background);
-    this.state.processes.push({ name, pid: handle.pid, port, cwd: options.cwd ?? this.work, startedAt: new Date().toISOString() });
-    saveRun(this.state);
+    this.tracked.add(handle.pid);
+    recordProcess(this.state, { name, pid: handle.pid, port, cwd: options.cwd ?? this.work, startedAt: new Date().toISOString() });
     return background;
   }
 
@@ -299,9 +300,10 @@ export class JourneyContext {
     return { ...exit, ...readOutput(background), folder };
   }
 
-  private untrack(background: Background): void {
-    this.state.processes = this.state.processes.filter((record) => record.pid !== background.pid);
-    saveRun(this.state);
+  /** Forgets a background process that has exited, so neither cleanup nor `clean` looks for it. */
+  untrack(background: Background): void {
+    this.tracked.delete(background.pid);
+    forgetProcess(this.state, background.pid);
   }
 
   /** Records the file tree of `root` as the resulting state of the previous step. */
@@ -337,7 +339,7 @@ export class JourneyContext {
   /** Stops every background process the journey left running. */
   async cleanup(): Promise<void> {
     for (const background of this.backgrounds.slice()) {
-      if (this.state.processes.some((record) => record.pid === background.pid)) {
+      if (this.tracked.has(background.pid)) {
         await this.stop(`cleanup-${background.name}`, background);
       }
     }

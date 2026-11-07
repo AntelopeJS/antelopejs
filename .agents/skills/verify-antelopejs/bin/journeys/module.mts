@@ -20,7 +20,7 @@ async function moduleTest(context: JourneyContext, label: string, args: string[]
     const exit = await run.exited;
     const output = { stdout: readFileSync(path.join(run.folder, "stdout.txt"), "utf8"), stderr: readFileSync(path.join(run.folder, "stderr.txt"), "utf8") };
     context.backgrounds.splice(context.backgrounds.indexOf(run), 1);
-    context.state.processes = context.state.processes.filter((record) => record.pid !== run.pid);
+    context.untrack(run);
     return { folder: run.folder, ...exit, ...output };
   });
 }

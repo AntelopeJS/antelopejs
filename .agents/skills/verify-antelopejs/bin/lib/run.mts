@@ -3,13 +3,16 @@ import { randomBytes } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
-import { parseJson, requireItems, requireNumber, requireText, type Json } from "./json.mts";
+import { field, items, type JsonRead, parseJson, requireNumber, requireText } from "./json.mts";
 
 /** The skill folder, `.agents/skills/verify-antelopejs`. */
 export const SKILL_DIR = path.resolve(import.meta.dirname, "..", "..");
@@ -68,7 +71,6 @@ export interface RunState {
   baseRef: string;
   baseSha: string;
   baseCli: string;
-  processes: ProcessRecord[];
 }
 
 /** The folders of a run, derived from its root. */
@@ -85,13 +87,18 @@ function stateFile(dir: string): string {
   return path.join(dir, "run.json");
 }
 
-function parseProcessRecord(value: Json): ProcessRecord {
+/** Decodes the text of a process record file; throws, naming the field, when it does not hold one. */
+export function parseProcessRecord(text: string): ProcessRecord {
+  return decodeProcessRecord(parseJson(text));
+}
+
+function decodeProcessRecord(value: JsonRead): ProcessRecord {
   return {
-    name: requireText(value, "name", "run.json process"),
-    pid: requireNumber(value, "pid", "run.json process"),
-    port: requireNumber(value, "port", "run.json process"),
-    cwd: requireText(value, "cwd", "run.json process"),
-    startedAt: requireText(value, "startedAt", "run.json process"),
+    name: requireText(value, "name", "process record"),
+    pid: requireNumber(value, "pid", "process record"),
+    port: requireNumber(value, "port", "process record"),
+    cwd: requireText(value, "cwd", "process record"),
+    startedAt: requireText(value, "startedAt", "process record"),
   };
 }
 
@@ -110,7 +117,6 @@ export function parseRunState(text: string): RunState {
     baseRef: requireText(raw, "baseRef", "run.json"),
     baseSha: requireText(raw, "baseSha", "run.json"),
     baseCli: requireText(raw, "baseCli", "run.json"),
-    processes: requireItems(raw, "processes", "run.json").map(parseProcessRecord),
   };
 }
 
@@ -123,9 +129,51 @@ export function loadRun(dir: string): RunState {
   return parseRunState(readFileSync(file, "utf8"));
 }
 
-/** Persists the run state. */
+/** Persists the run state, which `verify-ajs new` writes once; nothing rewrites it while journeys run. */
 export function saveRun(state: RunState): void {
   writeFileSync(stateFile(state.dir), `${JSON.stringify(state, null, 2)}\n`);
+}
+
+function processFile(state: RunState, pid: number): string {
+  return path.join(state.dir, "processes", `${pid}.json`);
+}
+
+/**
+ * Records a background process in a file of its own, `processes/<pid>.json`.
+ * Journeys running at the same time never write the same file, so no record
+ * is lost; `listProcesses` joins them when `clean` or `doctor` reads.
+ */
+export function recordProcess(state: RunState, record: ProcessRecord): void {
+  const file = processFile(state, record.pid);
+  mkdirSync(path.dirname(file), { recursive: true });
+  const partial = `${file}.partial`;
+  writeFileSync(partial, `${JSON.stringify(record, null, 2)}\n`);
+  renameSync(partial, file);
+}
+
+/** Drops the record of a process that has stopped. */
+export function forgetProcess(state: RunState, pid: number): void {
+  rmSync(processFile(state, pid), { force: true });
+}
+
+/**
+ * Every process some journey of the run recorded and has not stopped: one file
+ * each under `processes/`, plus the `processes` list that a run.json written
+ * by an earlier version of the harness still holds.
+ */
+export function listProcesses(state: RunState): ProcessRecord[] {
+  const runFile = stateFile(state.dir);
+  const legacy = existsSync(runFile) ? items(field(parseJson(readFileSync(runFile, "utf8")), "processes")).map(decodeProcessRecord) : [];
+  const folder = path.dirname(processFile(state, 0));
+  if (!existsSync(folder)) {
+    return legacy;
+  }
+  return [
+    ...legacy,
+    ...readdirSync(folder)
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => parseProcessRecord(readFileSync(path.join(folder, name), "utf8"))),
+  ];
 }
 
 /** The commit the checkout is at, which every verdict names. */
@@ -150,7 +198,6 @@ export function allocateRun(): RunState {
     baseRef: "",
     baseSha: "",
     baseCli: "",
-    processes: [],
   };
 }
 
