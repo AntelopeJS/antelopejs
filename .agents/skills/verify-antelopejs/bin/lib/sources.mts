@@ -1,13 +1,21 @@
-import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { CACHE_DIR, isolatedEnv, type RunState, SKILL_DIR } from "./run.mts";
+import { parseJson, requireText } from "./json.mts";
+import { CACHE_DIR, COREPACK_HOME_DIR, isolatedEnv, PNPM_SHIMS_DIR, type RunState, SKILL_DIR } from "./run.mts";
 
 /** The fixtures every run copies from: the template, the greeter project and the hosts. */
 export const FIXTURES_DIR = path.join(SKILL_DIR, "fixtures");
+
+/** The pnpm version the fixture template pins, which every run drives. */
+export const FIXTURE_PNPM_VERSION = requireText(
+  parseJson(readFileSync(path.join(FIXTURES_DIR, "template-verify-http", "package.json"), "utf8")),
+  "packageManager",
+  "fixture template package.json",
+).replace(/^pnpm@/, "");
 
 /** The template name the offline manifest lists. */
 export const TEMPLATE_NAME = "Verify HTTP";
@@ -66,6 +74,7 @@ function writeManifest(folder: string, templateUrl: string, providerFolder: stri
  * or to save with `ajs config set git`.
  */
 export function seedSources(state: RunState): string {
+  installPnpmShims();
   warmStore(state);
   const { sources, greeter, template } = sourcePaths(state);
   mkdirSync(sources, { recursive: true });
@@ -78,6 +87,22 @@ export function seedSources(state: RunState): string {
   execFileSync("pnpm", ["install", "--offline", "--frozen-lockfile"], { cwd: path.join(greeter, "provider"), env: isolatedEnv(state), stdio: "ignore" });
   commitFolder(manifestFolder);
   return bareRepository(manifestFolder, path.join(sources, "interfaces.git"));
+}
+
+/**
+ * Writes the corepack shims for pnpm, the way `ajs` prefers corepack when it
+ * exists. A folder that pins no pnpm gets the fixtures' version, so no
+ * command asks the registry for the latest one. Without corepack the run
+ * keeps the host's pnpm.
+ */
+function installPnpmShims(): void {
+  if (spawnSync("corepack", ["--version"], { stdio: "ignore" }).status !== 0) {
+    return;
+  }
+  mkdirSync(PNPM_SHIMS_DIR, { recursive: true });
+  execFileSync("corepack", ["enable", "--install-directory", PNPM_SHIMS_DIR, "pnpm"], { stdio: "ignore" });
+  mkdirSync(COREPACK_HOME_DIR, { recursive: true });
+  writeFileSync(path.join(COREPACK_HOME_DIR, "lastKnownGood.json"), JSON.stringify({ pnpm: FIXTURE_PNPM_VERSION }));
 }
 
 function warmStore(state: RunState): void {

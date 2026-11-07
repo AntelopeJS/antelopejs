@@ -5,7 +5,7 @@ import path from "node:path";
 import { parseJson, textField } from "./json.mts";
 import { killGroup } from "./journey.mts";
 import { CLI_ENTRY, isolatedEnv, REPO_DIR, type RunState, saveRun } from "./run.mts";
-import { STORE_DIR } from "./sources.mts";
+import { FIXTURE_PNPM_VERSION, STORE_DIR } from "./sources.mts";
 
 /** One doctor finding. */
 export interface DoctorLine {
@@ -37,10 +37,20 @@ function cliVersion(state: RunState): string {
   }
 }
 
+/** The version `pnpm` reports in the run's environment, or what failed. */
+function drivenPnpmVersion(state: RunState): string {
+  try {
+    return execFileSync("pnpm", ["--version"], { cwd: state.work, env: isolatedEnv(state), encoding: "utf8" }).trim();
+  } catch (error) {
+    return error instanceof Error ? error.message.split("\n")[0] : String(error);
+  }
+}
+
 /**
  * Answers whether a run is worth driving: the CLI is built from the current
  * sources at the package version, HOME is the run's, the offline manifest is
- * in place, the store is warm, and no process of an earlier run is alive.
+ * in place, the store is warm, the driven `pnpm` is the version the fixtures
+ * pin, and no process of an earlier run is alive.
  */
 export function doctor(state: RunState): DoctorLine[] {
   const packageVersion = textField(parseJson(execFileSync("git", ["show", "HEAD:package.json"], { cwd: REPO_DIR, encoding: "utf8" })), "version");
@@ -49,6 +59,7 @@ export function doctor(state: RunState): DoctorLine[] {
   const version = built ? cliVersion(state) : "missing";
   const env = isolatedEnv(state);
   const leftovers = state.processes.filter((record) => alive(record.pid));
+  const pnpmVersion = drivenPnpmVersion(state);
   return [
     { check: "CLI built", ok: built, detail: CLI_ENTRY },
     { check: "dist newer than src", ok: distFresh, detail: distFresh ? "fresh" : "rebuild with pnpm build or verify-ajs new" },
@@ -56,6 +67,7 @@ export function doctor(state: RunState): DoctorLine[] {
     { check: "HOME is the run's", ok: env.HOME === state.home && state.home.startsWith(state.dir), detail: String(env.HOME) },
     { check: "offline manifest seeded", ok: state.manifestUrl.startsWith("file://") && existsSync(new URL(state.manifestUrl)), detail: state.manifestUrl },
     { check: "pnpm store warm", ok: existsSync(STORE_DIR), detail: STORE_DIR },
+    { check: "driven pnpm is the fixtures' pnpm", ok: pnpmVersion === FIXTURE_PNPM_VERSION, detail: `pnpm --version ${pnpmVersion}, fixtures pin ${FIXTURE_PNPM_VERSION}` },
     { check: "head SHA unchanged since new", ok: execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO_DIR, encoding: "utf8" }).trim() === state.headSha, detail: state.headSha },
     { check: "no process left from the run", ok: leftovers.length === 0, detail: leftovers.map((record) => `${record.name} pid ${record.pid}`).join(", ") || "none" },
   ];
