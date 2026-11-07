@@ -69,9 +69,9 @@ function commaEnd(
 
 /**
  * The comma that ends an entry added to the empty `object`: none when the
- * property holding `object`, through any cast or parentheses, is the last of
- * its object and has no comma, so the file keeps its style; the formatter's
- * comma otherwise.
+ * property holding `object`, through casts, assertions and parentheses, is
+ * the last of its object and has no comma, so the file keeps its style; the
+ * formatter's comma otherwise.
  */
 function emptyObjectComma(
   layout: SourceLayout,
@@ -82,7 +82,9 @@ function emptyObjectComma(
   while (
     ts.isAsExpression(value.parent) ||
     ts.isSatisfiesExpression(value.parent) ||
-    ts.isParenthesizedExpression(value.parent)
+    ts.isParenthesizedExpression(value.parent) ||
+    ts.isNonNullExpression(value.parent) ||
+    ts.isTypeAssertionExpression(value.parent)
   ) {
     value = value.parent;
   }

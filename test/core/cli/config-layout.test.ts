@@ -366,6 +366,7 @@ describe("antelope.config.ts written by the CLI", () => {
     ["on its own lines", "  modules: {\n  }"],
     ["before a comment", "  modules: {} // none yet"],
     ["with a satisfies cast", "  modules: {} satisfies Record<string, string>"],
+    ["with a non-null assertion", "  modules: {}!"],
   ]) {
     it(`adds to an empty object ${layout} without a comma in a file that ends its entries without one`, async () => {
       const project = makeTempDir("ajs-config-layout-");
