@@ -1,9 +1,9 @@
-import { constants, cpSync, existsSync, lstatSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { constants, cpSync, existsSync, lstatSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { exists, equal, exitIs } from "./checks.mts";
-import { runJourney, type Journey, type JourneyContext } from "./journey.mts";
-import { alive } from "./lifecycle.mts";
+import { withLock } from "./file-lock.mts";
+import { runJourney, type Journey, type JourneyContext, type JourneyResult } from "./journey.mts";
 import { FIXTURE_MODULE, initProject, listModules, useOfflineManifest } from "./project.mts";
 import type { RunState } from "./run.mts";
 
@@ -11,8 +11,7 @@ import type { RunState } from "./run.mts";
 export const SHARED_INIT = { feature: "shared", journey: "project-init" } as const;
 
 const PROJECT_NAME = "app";
-const LOCK_WAIT_MS = 300_000;
-const LOCK_POLL_MS = 250;
+const FAILURE_EVIDENCE = `evidence/${SHARED_INIT.feature}/${SHARED_INIT.journey}/result.json`;
 
 const sharedInit: Journey = {
   id: SHARED_INIT.journey,
@@ -23,63 +22,47 @@ const sharedInit: Journey = {
   },
 };
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function ownerIsGone(lock: string): boolean {
-  try {
-    return !alive(Number(readFileSync(lock, "utf8")));
-  } catch {
-    return false;
-  }
-}
-
-async function withLock(lock: string, work: () => Promise<void>): Promise<void> {
-  const deadline = Date.now() + LOCK_WAIT_MS;
-  for (;;) {
-    try {
-      writeFileSync(lock, String(process.pid), { flag: "wx" });
-      break;
-    } catch (failure) {
-      if (!(failure instanceof Error && "code" in failure && failure.code === "EEXIST")) {
-        throw failure;
-      }
-      if (ownerIsGone(lock)) {
-        rmSync(lock, { force: true });
-      } else if (Date.now() > deadline) {
-        throw new Error(`Another process held ${lock} for ${LOCK_WAIT_MS} ms: remove it if no verify-ajs journey is running.`);
-      } else {
-        await sleep(LOCK_POLL_MS);
-      }
+/**
+ * Runs `attempt` once per run directory, however many processes ask. It writes `shared-project.ready` when the
+ * attempt passes and `shared-project.failed` when it does not. A failed attempt stays failed: later callers
+ * throw at once without running `attempt`, so the evidence the failure names is never replaced. A crashed
+ * attempt leaves neither marker and the next caller runs it again. A second process waits for the first.
+ */
+export async function settleOnce(dir: string, attempt: () => Promise<Pick<JourneyResult, "status">>): Promise<void> {
+  const ready = path.join(dir, "shared-project.ready");
+  const failed = path.join(dir, "shared-project.failed");
+  const failure = () => new Error(`The shared project init failed and stays failed for this run, see ${FAILURE_EVIDENCE}`);
+  const settled = (): boolean => {
+    if (existsSync(failed)) {
+      throw failure();
     }
+    return existsSync(ready);
+  };
+  if (settled()) {
+    return;
   }
-  try {
-    await work();
-  } finally {
-    rmSync(lock, { force: true });
-  }
+  await withLock(path.join(dir, "shared-project.lock"), async () => {
+    if (settled()) {
+      return;
+    }
+    const result = await attempt();
+    if (result.status === "PASS") {
+      writeFileSync(ready, "");
+      return;
+    }
+    writeFileSync(failed, "");
+    throw failure();
+  });
 }
 
 /**
  * Runs the one real `ajs project init` of a run, as the journey `shared/project-init`
  * with its own HOME and evidence, unless an earlier journey already did. Returns the
- * project folder. A second `verify-ajs journey` process waits for the first.
+ * project folder. A second `verify-ajs journey` process waits for the first. If the
+ * init fails, it stays failed for the run and every journey that needs it fails at once.
  */
 export async function sharedProject(state: RunState): Promise<string> {
-  const ready = path.join(state.dir, "shared-project.ready");
-  if (!existsSync(ready)) {
-    await withLock(path.join(state.dir, "shared-project.lock"), async () => {
-      if (existsSync(ready)) {
-        return;
-      }
-      const result = await runJourney(state, SHARED_INIT.feature, sharedInit);
-      if (result.status !== "PASS") {
-        throw new Error(`The shared project init failed, see evidence/${result.folder}/result.json`);
-      }
-      writeFileSync(ready, `${result.folder}\n`);
-    });
-  }
+  await settleOnce(state.dir, () => runJourney(state, SHARED_INIT.feature, sharedInit));
   return path.join(state.work, SHARED_INIT.feature, SHARED_INIT.journey, PROJECT_NAME);
 }
 

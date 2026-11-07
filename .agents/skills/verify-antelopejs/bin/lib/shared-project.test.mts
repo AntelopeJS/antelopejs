@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
-import { copyProject } from "./shared-project.mts";
+import { copyProject, settleOnce } from "./shared-project.mts";
 
 function makeSource(root: string): string {
   const source = path.join(root, "source", "app");
@@ -51,5 +51,65 @@ await test("a copied project's bin shims point at the copy, not at the source", 
 await test("a copied project keeps file times, so a built dist stays as old as it was", () => {
   withCopy((source, target) => {
     assert.equal(statSync(path.join(target, "dist", "index.js")).mtimeMs, statSync(path.join(source, "dist", "index.js")).mtimeMs);
+  });
+});
+
+async function inRunDir(check: (dir: string) => Promise<void>): Promise<void> {
+  const dir = mkdtempSync(path.join(tmpdir(), "verify-settle-once-"));
+  try {
+    await check(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+interface Attempts {
+  run: () => Promise<{ status: "PASS" | "FAIL" }>;
+  calls: () => number;
+}
+
+function attempts(...statuses: Array<"PASS" | "FAIL" | Error>): Attempts {
+  let calls = 0;
+  return {
+    run: async () => {
+      const next = statuses[Math.min(calls, statuses.length - 1)];
+      calls += 1;
+      if (next instanceof Error) {
+        throw next;
+      }
+      return { status: next };
+    },
+    calls: () => calls,
+  };
+}
+
+await test("a failed shared init stays failed: a later caller throws without running it again, naming the kept evidence", async () => {
+  await inRunDir(async (dir) => {
+    const init = attempts("FAIL", "PASS");
+    await assert.rejects(settleOnce(dir, init.run), /see evidence\/shared\/project-init\/result\.json/);
+    await assert.rejects(settleOnce(dir, init.run), /stays failed for this run, see evidence\/shared\/project-init\/result\.json/);
+    assert.equal(init.calls(), 1);
+    assert.equal(existsSync(path.join(dir, "shared-project.failed")), true);
+    assert.equal(existsSync(path.join(dir, "shared-project.ready")), false);
+  });
+});
+
+await test("a passing shared init runs once, however many callers ask at the same time", async () => {
+  await inRunDir(async (dir) => {
+    const init = attempts("PASS");
+    await Promise.all([settleOnce(dir, init.run), settleOnce(dir, init.run), settleOnce(dir, init.run)]);
+    await settleOnce(dir, init.run);
+    assert.equal(init.calls(), 1);
+    assert.equal(existsSync(path.join(dir, "shared-project.ready")), true);
+  });
+});
+
+await test("a shared init that crashed leaves no verdict, so the next caller runs it again", async () => {
+  await inRunDir(async (dir) => {
+    const init = attempts(new Error("interrupted"), "PASS");
+    await assert.rejects(settleOnce(dir, init.run), /interrupted/);
+    await settleOnce(dir, init.run);
+    assert.equal(init.calls(), 2);
+    assert.equal(existsSync(path.join(dir, "shared-project.failed")), false);
   });
 });
