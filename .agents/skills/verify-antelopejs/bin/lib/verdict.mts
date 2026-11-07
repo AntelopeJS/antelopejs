@@ -345,6 +345,7 @@ export function renderVerdict(state: RunState, pr: number, judgement: Judgement)
     "### Touched features",
     ...bullets(touched, "none"),
     `- ${SMOKE_FEATURE}: init → dev → fixture call → stop`,
+    ...(plan.full?.reason === "shared" ? [`- every other feature: the diff changes shared files ${plan.full.files.map((file) => `\`${file}\``).join(", ")}`] : []),
     "",
     ...(plan.unmapped.length > 0 ? ["### Unmapped surfaces", ...plan.unmapped.map((file) => `- \`${file}\` matches no feature glob; add it to a feature file.`), ""] : []),
     ...(reasons.length > 0 ? ["### Why it fails", ...reasons.map((reason) => `- ${reason}`), ""] : []),

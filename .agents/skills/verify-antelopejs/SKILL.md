@@ -40,6 +40,7 @@ Doctor checks the following: the CLI is built and newer than `src/`, and `ajs --
 
 ```bash
 node "$VERIFY" plan                          # diff to features, unmapped surfaces
+node "$VERIFY" plan --all                    # every feature, before a release
 node "$VERIFY" journey "$RUN" smoke
 node "$VERIFY" journey "$RUN" project-dev [journey-id...]
 ```
@@ -70,7 +71,7 @@ node "$VERIFY" clean "$RUN"
 
 ## Verdict rules
 
-1. **Run every feature whose `covers:` globs the diff touches, plus the smoke journey** (`init -> dev -> fixture call -> stop`). `plan` prints that list as `run`.
+1. **Run every feature that `plan` lists in `run`.** On a pull request that is every feature whose `covers:` globs the diff touches, plus the smoke journey (`init -> dev -> fixture call -> stop`). When the diff changes a file that the `shared` globs of `verify.config.ts` match, every feature depends on it, so `run` holds every feature and `full` names the shared files. Before a release, run `plan --all`, then every feature in `run` and `formal "$RUN" --all`.
 2. **Unmapped surface fails the verdict.** User-facing code is `src/**`. A changed file there that no feature glob covers is an unmapped surface. The PR adds the feature file and its journeys. `map` checks the whole tree.
 3. **Every registered journey of a feature in `run` must have run and passed.** A missing journey fails the verdict as "not run", so run whole features, not a hand-picked subset. Known findings stay as failing journeys. They fail a verdict only when the diff touches their feature.
 4. **Docs.** Each touched feature lists its `docs:` pages. Judge every page against what the journeys showed. A stale page fails the verdict.

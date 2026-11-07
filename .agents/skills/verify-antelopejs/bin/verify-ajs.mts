@@ -19,7 +19,8 @@ import { seedSources } from "./lib/sources.mts";
 const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <command>
 
   map                              check the feature map covers every user-facing file
-  plan [--base <ref>]              map the diff to features; list unmapped surfaces
+  plan [--base <ref>] [--all]      map the diff to features; list unmapped surfaces
+                                   (a shared file in the diff, or --all before a release, runs every feature)
   new [--no-build] [--base <ref>]  build dist, create an isolated run, print its folder
                                    (--base defaults to origin/main; --no-base skips it)
   doctor <run>                     check the run is worth driving
@@ -153,7 +154,7 @@ async function main(argv: string[]): Promise<number> {
     case "map":
       return printMap();
     case "plan": {
-      const plan = planFor(values.base);
+      const plan = planFor(values.base, Boolean(values.all));
       print(JSON.stringify(plan, null, 2));
       return plan.unmapped.length === 0 ? 0 : 1;
     }

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import config from "../../verify.config.ts";
 import { FEATURE_JOURNEYS } from "../journeys/index.mts";
 import { REPO_DIR, SKILL_DIR } from "./run.mts";
 
@@ -107,6 +108,11 @@ export function checkMap(): string[] {
       }
     }
   }
+  for (const glob of config.shared) {
+    if (!trackedFiles().some((tracked) => path.matchesGlob(tracked, glob))) {
+      problems.push(`verify.config.ts: shared glob ${glob} matches no tracked file`);
+    }
+  }
   for (const name of FEATURE_JOURNEYS.keys()) {
     if (!features.some((feature) => feature.name === name)) {
       problems.push(`journeys of ${name} have no features/${name}.md`);
@@ -115,33 +121,50 @@ export function checkMap(): string[] {
   return problems;
 }
 
+/** Why a plan runs every feature: `--all` asked for it, or the diff changed these shared files. */
+export type FullSet = { reason: "all" } | { reason: "shared"; files: string[] };
+
+/** The features a set of changed files asks a verdict to run. */
+export interface Selection {
+  touched: { feature: string; files: string[] }[];
+  unmapped: string[];
+  docs: string[];
+  full: FullSet | null;
+  run: string[];
+}
+
 /** What a diff asks a verdict to run. */
-export interface Plan {
+export interface Plan extends Selection {
   baseRef: string;
   baseSha: string;
   headSha: string;
   changed: string[];
-  touched: { feature: string; files: string[] }[];
-  unmapped: string[];
-  docs: string[];
-  run: string[];
 }
 
 /**
- * Maps the diff from the merge base of `baseRef` to HEAD onto features:
- * every touched feature plus the smoke journey runs, and a user-facing
- * file outside every glob is an unmapped surface.
+ * Maps changed files onto features: every touched feature plus the smoke
+ * journey runs, every feature runs when `all` is set or a changed file
+ * matches a `shared` glob, and a user-facing file outside every feature
+ * glob is an unmapped surface. Docs are those of the touched features only.
  */
-export function planFor(baseRef: string): Plan {
-  const features = readFeatures();
-  const git = (args: string[]) => execFileSync("git", args, { cwd: REPO_DIR, encoding: "utf8" }).trim();
-  const baseSha = git(["merge-base", baseRef, "HEAD"]);
-  const changed = git(["diff", "--name-only", `${baseSha}...HEAD`]).split("\n").filter(Boolean);
+export function selectFeatures(changed: string[], features: Feature[], options: { all: boolean; shared: string[] }): Selection {
   const touched = features
     .map((feature) => ({ feature: feature.name, files: changed.filter((file) => matches(file, feature.covers)) }))
     .filter((entry) => entry.files.length > 0);
   const unmapped = changed.filter((file) => matches(file, USER_FACING) && featuresOf(file, features).length === 0);
   const docs = [...new Set(features.filter((feature) => touched.some((entry) => entry.feature === feature.name)).flatMap((feature) => feature.docs))];
-  const run = [SMOKE_FEATURE, ...touched.map((entry) => entry.feature).filter((name) => name !== SMOKE_FEATURE)];
-  return { baseRef, baseSha, headSha: git(["rev-parse", "HEAD"]), changed, touched, unmapped, docs, run };
+  const sharedFiles = changed.filter((file) => matches(file, options.shared));
+  const full: FullSet | null = options.all ? { reason: "all" } : sharedFiles.length > 0 ? { reason: "shared", files: sharedFiles } : null;
+  const selected = full ? features.map((feature) => feature.name) : touched.map((entry) => entry.feature);
+  const run = [SMOKE_FEATURE, ...selected.filter((name) => name !== SMOKE_FEATURE)];
+  return { touched, unmapped, docs, full, run };
+}
+
+/** Maps the diff from the merge base of `baseRef` to HEAD onto features with {@link selectFeatures}. */
+export function planFor(baseRef: string, all = false): Plan {
+  const git = (args: string[]) => execFileSync("git", args, { cwd: REPO_DIR, encoding: "utf8" }).trim();
+  const baseSha = git(["merge-base", baseRef, "HEAD"]);
+  const changed = git(["diff", "--name-only", `${baseSha}...HEAD`]).split("\n").filter(Boolean);
+  const selection = selectFeatures(changed, readFeatures(), { all, shared: config.shared });
+  return { baseRef, baseSha, headSha: git(["rev-parse", "HEAD"]), changed, ...selection };
 }
