@@ -162,7 +162,8 @@ export function forgetProcess(state: RunState, pid: number): void {
  * by an earlier version of the harness still holds.
  */
 export function listProcesses(state: RunState): ProcessRecord[] {
-  const legacy = items(field(parseJson(readFileSync(stateFile(state.dir), "utf8")), "processes")).map(decodeProcessRecord);
+  const runFile = stateFile(state.dir);
+  const legacy = existsSync(runFile) ? items(field(parseJson(readFileSync(runFile, "utf8")), "processes")).map(decodeProcessRecord) : [];
   const folder = path.dirname(processFile(state, 0));
   if (!existsSync(folder)) {
     return legacy;
