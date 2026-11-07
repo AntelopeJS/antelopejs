@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -66,8 +66,7 @@ function writeManifest(folder: string, templateUrl: string, providerFolder: stri
  * or to save with `ajs config set git`.
  */
 export function seedSources(state: RunState): string {
-  mkdirSync(PNPM_SHIMS_DIR, { recursive: true });
-  execFileSync("corepack", ["enable", "--install-directory", PNPM_SHIMS_DIR, "pnpm"], { stdio: "ignore" });
+  installPnpmShims();
   warmStore(state);
   const { sources, greeter, template } = sourcePaths(state);
   mkdirSync(sources, { recursive: true });
@@ -80,6 +79,18 @@ export function seedSources(state: RunState): string {
   execFileSync("pnpm", ["install", "--offline", "--frozen-lockfile"], { cwd: path.join(greeter, "provider"), env: isolatedEnv(state), stdio: "ignore" });
   commitFolder(manifestFolder);
   return bareRepository(manifestFolder, path.join(sources, "interfaces.git"));
+}
+
+/**
+ * Writes the corepack shims for pnpm, the way `ajs` prefers corepack when it
+ * exists. Without corepack the run keeps the host's pnpm.
+ */
+function installPnpmShims(): void {
+  if (spawnSync("corepack", ["--version"], { stdio: "ignore" }).status !== 0) {
+    return;
+  }
+  mkdirSync(PNPM_SHIMS_DIR, { recursive: true });
+  execFileSync("corepack", ["enable", "--install-directory", PNPM_SHIMS_DIR, "pnpm"], { stdio: "ignore" });
 }
 
 function warmStore(state: RunState): void {

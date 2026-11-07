@@ -38,7 +38,8 @@ const REAL_COREPACK_HOME =
 /**
  * Corepack shims for pnpm, first on every driven command's PATH, so a fixture
  * that pins pnpm runs that version from the corepack cache instead of
- * whichever pnpm the host has installed.
+ * whichever pnpm the host has installed. The folder stays absent on a host
+ * without corepack.
  */
 export const PNPM_SHIMS_DIR = path.join(CACHE_DIR, "corepack-shims");
 
