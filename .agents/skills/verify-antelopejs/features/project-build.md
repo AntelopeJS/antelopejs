@@ -4,6 +4,7 @@ covers:
   - src/core/build/**
   - src/core/runtime/build-*.ts
   - src/core/modules/build-artifact.ts
+  - src/core/modules/module-locks.ts
   - src/core/config/**
   - src/cli/commands/shared/project-command.ts
 docs:

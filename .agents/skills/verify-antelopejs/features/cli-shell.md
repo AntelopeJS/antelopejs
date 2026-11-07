@@ -2,6 +2,7 @@
 covers:
   - src/cli/index.ts
   - src/cli/full-cli.ts
+  - src/interface-core-guard.ts
   - src/cli/command-runner.ts
   - src/cli/lazy-action.ts
   - src/cli/failure-exit.ts
