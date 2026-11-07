@@ -32,8 +32,11 @@ export const CACHE_DIR = path.join(
   "verify-antelopejs",
 );
 
-const REAL_COREPACK_HOME =
-  process.env.COREPACK_HOME ?? path.join(homedir(), ".cache", "node", "corepack");
+/**
+ * The corepack home of every run, owned by the skill so a run never writes
+ * the operator's own corepack cache.
+ */
+export const COREPACK_HOME_DIR = path.join(CACHE_DIR, "corepack");
 
 /**
  * Corepack shims for pnpm, first on every driven command's PATH, so a fixture
@@ -172,7 +175,8 @@ export function isolatedEnv(state: RunState, extra: Record<string, string> = {},
     AJS_NO_UPDATE_CHECK: "1",
     NO_COLOR: "1",
     TERM: "xterm-256color",
-    COREPACK_HOME: REAL_COREPACK_HOME,
+    COREPACK_HOME: COREPACK_HOME_DIR,
+    COREPACK_DEFAULT_TO_LATEST: "0",
     COREPACK_ENABLE_DOWNLOAD_PROMPT: "0",
     XDG_DATA_HOME: path.join(CACHE_DIR, "xdg-data"),
     XDG_CACHE_HOME: path.join(home, ".cache"),

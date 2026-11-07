@@ -23,7 +23,7 @@ node "$VERIFY" new --no-build --no-base   # reuse dist, skip the base CLI
 
 `new` builds `dist/`, then creates an isolated run:
 
-- `HOME` is a fresh folder per journey under `$RUN/homes/<feature>/<journey>`. Environment is `CI=1`, `AJS_NO_UPDATE_CHECK=1`, `NO_COLOR=1`, npm offline. `pnpm` is a corepack shim, so each fixture runs the pnpm version it pins whatever the host has installed.
+- `HOME` is a fresh folder per journey under `$RUN/homes/<feature>/<journey>`. Environment is `CI=1`, `AJS_NO_UPDATE_CHECK=1`, `NO_COLOR=1`, npm offline. `pnpm` is a corepack shim with its own corepack home under the cache, so each fixture runs the pnpm version it pins, a folder that pins none runs the fixtures' version, and nothing asks the registry.
 - The template source is offline: `$RUN/sources/interfaces.git` is a local git repo holding `manifest.json`. Its template points at `file://$RUN/sources/template-verify-http.git`, a copy of `fixtures/template-verify-http`. Journeys pass it with `-g`.
 - The pnpm store is warm and shared across runs at `~/.cache/verify-antelopejs/xdg-data`. The first run fills it; later runs install offline.
 - `--base <ref>` (default `origin/main`) builds the base CLI in a cached worktree so that journeys can compare against it.
@@ -34,7 +34,7 @@ node "$VERIFY" new --no-build --no-base   # reuse dist, skip the base CLI
 node "$VERIFY" doctor "$RUN"
 ```
 
-Doctor checks the following: the CLI is built and newer than `src/`, and `ajs --version` equals the package version. `HOME` belongs to the run, and the manifest is seeded. The store is warm, HEAD has not moved since `new`, and no recorded process is alive. Do not drive a run that fails doctor.
+Doctor checks the following: the CLI is built and newer than `src/`, and `ajs --version` equals the package version. `HOME` belongs to the run, and the manifest is seeded. The store is warm, the driven `pnpm` is the version the fixtures pin, HEAD has not moved since `new`, and no recorded process is alive. Do not drive a run that fails doctor.
 
 ## Drive
 
