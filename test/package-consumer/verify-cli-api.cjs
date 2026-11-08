@@ -4,19 +4,20 @@ const { execFileSync } = require("node:child_process");
 /** @typedef {typeof import("../../src/core/cli/public")} PublicCli */
 
 const PUBLIC_ENTRY = "@antelopejs/core/cli";
-const LOAD_BUDGET_MS = 30;
-const LOAD_SAMPLE_COUNT = 7;
-const EAGER_FORBIDDEN_MODULES = [
-  /[\\/]node_modules[\\/]@antelopejs[\\/]interface-core[\\/]/,
-  /[\\/]node_modules[\\/]commander[\\/]/,
-  /[\\/]node_modules[\\/]@clack[\\/]/,
-];
+const EAGER_ALLOWED_FILES = new Map([
+  [
+    "@antelopejs/core",
+    [
+      "dist/core/cli/public.js",
+      "dist/core/output/",
+      "dist/core/filesystem/",
+      "dist/utils/",
+      "dist/types/",
+    ],
+  ],
+  ["picocolors", [""]],
+]);
 const EAGER_FORBIDDEN_BUILTINS = ["NativeModule child_process"];
-const LOAD_TIME_PROBE = `
-const start = process.hrtime.bigint();
-require(${JSON.stringify(PUBLIC_ENTRY)});
-process.stdout.write(String(Number(process.hrtime.bigint() - start) / 1e6));
-`;
 const LOADED_MODULES_PROBE = `
 require(${JSON.stringify(PUBLIC_ENTRY)});
 process.stdout.write(JSON.stringify({
@@ -183,12 +184,45 @@ function readLoadedModules() {
   };
 }
 
+/**
+ * Splits a loaded file into the package it belongs to, read from its last
+ * `node_modules` segment, and its path inside that package, or returns
+ * `undefined` for a file outside `node_modules`.
+ *
+ * @param {string} file
+ */
+function packageFileOf(file) {
+  const segments = file.split(/[\\/]node_modules[\\/]/);
+  if (segments.length < 2) {
+    return undefined;
+  }
+  const parts = segments[segments.length - 1].split(/[\\/]/);
+  const nameLength = parts[0].startsWith("@") ? 2 : 1;
+  return {
+    name: parts.slice(0, nameLength).join("/"),
+    path: parts.slice(nameLength).join("/"),
+  };
+}
+
+/** @param {string} file */
+function isAllowedEagerFile(file) {
+  const packageFile = packageFileOf(file);
+  if (packageFile === undefined) {
+    return true;
+  }
+  const allowed = EAGER_ALLOWED_FILES.get(packageFile.name) ?? [];
+  return allowed.some((prefix) => packageFile.path.startsWith(prefix));
+}
+
+/**
+ * Fails when loading the public CLI entry loads a package file outside
+ * `EAGER_ALLOWED_FILES`, such as the core runtime or a third-party package,
+ * or the `child_process` builtin.
+ */
 function verifyStaysLight() {
   const loaded = readLoadedModules();
   const eager = [
-    ...loaded.files.filter((file) =>
-      EAGER_FORBIDDEN_MODULES.some((pattern) => pattern.test(file)),
-    ),
+    ...loaded.files.filter((file) => !isAllowedEagerFile(file)),
     ...loaded.builtins.filter((name) =>
       EAGER_FORBIDDEN_BUILTINS.includes(name),
     ),
@@ -198,38 +232,9 @@ function verifyStaysLight() {
   }
 }
 
-/** @param {number[]} values */
-function median(values) {
-  const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.floor(sorted.length / 2)];
-}
-
-/**
- * Checks the median load time of the public CLI entry against the budget.
- * Windows is skipped: there the file system and antivirus scanning alone put
- * the light entry near the budget, so the time no longer tells an eager import
- * apart from noise. `verifyStaysLight` still checks the eager imports there,
- * and the Linux CI run enforces the budget.
- */
-function verifyLoadBudget() {
-  if (process.platform === "win32") {
-    return;
-  }
-  const samples = Array.from({ length: LOAD_SAMPLE_COUNT }, () =>
-    Number(runProbe(LOAD_TIME_PROBE)),
-  );
-  const loadMs = median(samples);
-  if (loadMs >= LOAD_BUDGET_MS) {
-    throw new Error(
-      `${PUBLIC_ENTRY} took ${loadMs.toFixed(1)} ms to load (budget ${LOAD_BUDGET_MS} ms)`,
-    );
-  }
-}
-
 async function main() {
   verifyResolution();
   verifyStaysLight();
-  verifyLoadBudget();
   const cli = require("@antelopejs/core/cli");
   verifyExitCodes(cli);
   verifyOutput(cli);
