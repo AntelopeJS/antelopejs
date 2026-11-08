@@ -3,8 +3,13 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import sinon from "sinon";
+
 import launch from "../../src";
-import { getActiveShutdownManager } from "../../src/core/runtime";
+import {
+  getActiveShutdownManager,
+  type ShutdownManager,
+} from "../../src/core/runtime";
 
 const VALUE_VARIABLE = "AJS_ENV_RELOAD_VALUE";
 const MARKER_TIMEOUT_MS = 8000;
@@ -39,6 +44,52 @@ async function waitForMarker(markerPath: string, value: string): Promise<void> {
   );
 }
 
+interface EnvProject {
+  markerPath: string;
+  envPath: string;
+}
+
+async function writeEnvProject(projectFolder: string): Promise<EnvProject> {
+  const modulePath = path.join(projectFolder, "mod");
+  const markerPath = path.join(projectFolder, "marker.txt");
+  await fs.mkdir(modulePath, { recursive: true });
+  await fs.writeFile(
+    path.join(modulePath, "package.json"),
+    JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
+  );
+  await fs.writeFile(path.join(modulePath, "index.js"), MODULE_SOURCE);
+  const config = {
+    name: "env-reload",
+    modules: {
+      mod: {
+        source: { type: "local", path: "./mod", main: "index.js" },
+        config: { markerPath, value: "unset" },
+      },
+    },
+    envOverrides: { [VALUE_VARIABLE]: "modules.mod.config.value" },
+  };
+  await fs.writeFile(
+    path.join(projectFolder, "antelope.config.ts"),
+    `export default ${JSON.stringify(config)};\n`,
+  );
+  return { markerPath, envPath: path.join(projectFolder, ".env") };
+}
+
+/** Resolves with the shutdown manager of the next launch once it claims the process. */
+async function waitForNextLaunch(
+  previous: ShutdownManager | undefined,
+): Promise<ShutdownManager> {
+  const deadline = Date.now() + MARKER_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const current = getActiveShutdownManager();
+    if (current && current !== previous) {
+      return current;
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  throw new Error("No restart claimed the process");
+}
+
 describe("project .env in watch mode", () => {
   let projectFolder: string;
 
@@ -54,29 +105,7 @@ describe("project .env in watch mode", () => {
 
   it("restarts the project with the variables of a created, then edited .env", async function () {
     this.timeout(30000);
-    const modulePath = path.join(projectFolder, "mod");
-    const markerPath = path.join(projectFolder, "marker.txt");
-    const envPath = path.join(projectFolder, ".env");
-    await fs.mkdir(modulePath, { recursive: true });
-    await fs.writeFile(
-      path.join(modulePath, "package.json"),
-      JSON.stringify({ name: "mod", version: "1.0.0", main: "index.js" }),
-    );
-    await fs.writeFile(path.join(modulePath, "index.js"), MODULE_SOURCE);
-    const config = {
-      name: "env-reload",
-      modules: {
-        mod: {
-          source: { type: "local", path: "./mod", main: "index.js" },
-          config: { markerPath, value: "unset" },
-        },
-      },
-      envOverrides: { [VALUE_VARIABLE]: "modules.mod.config.value" },
-    };
-    await fs.writeFile(
-      path.join(projectFolder, "antelope.config.ts"),
-      `export default ${JSON.stringify(config)};\n`,
-    );
+    const { markerPath, envPath } = await writeEnvProject(projectFolder);
 
     await launch(projectFolder, "default", { watch: true });
     await waitForMarker(markerPath, "unset");
@@ -88,5 +117,32 @@ describe("project .env in watch mode", () => {
     await waitForMarker(markerPath, "edited");
 
     expect(process.env[VALUE_VARIABLE]).to.equal("edited");
+  });
+
+  it("ends a restart that a shutdown interrupts without exiting the process", async function () {
+    this.timeout(30000);
+    const { markerPath, envPath } = await writeEnvProject(projectFolder);
+    await launch(projectFolder, "default", { watch: true });
+    await waitForMarker(markerPath, "unset");
+    const recordRejection = sinon.spy();
+    const exit = sinon.stub(process, "exit");
+    process.on("unhandledRejection", recordRejection);
+    try {
+      const running = getActiveShutdownManager();
+      await fs.writeFile(envPath, `${VALUE_VARIABLE}=interrupted\n`);
+      await (await waitForNextLaunch(running)).shutdown();
+      await new Promise((resolve) => setTimeout(resolve, MARKER_POLL_MS));
+    } finally {
+      process.removeListener("unhandledRejection", recordRejection);
+      exit.restore();
+    }
+
+    expect({
+      exitCodes: exit.args.map(([code]) => code),
+      rejections: recordRejection.args.map(([reason]) => String(reason)),
+    }).to.deep.equal({
+      exitCodes: [],
+      rejections: [],
+    });
   });
 });

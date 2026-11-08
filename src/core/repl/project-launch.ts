@@ -21,6 +21,7 @@ import {
   type StartedProject,
   DEFAULT_RUNTIME_POLICY,
   getActiveShutdownManager,
+  LaunchInterruptedError,
   type LaunchStep,
   prepareFromArtifact,
   prepareFromConfig,
@@ -233,6 +234,10 @@ async function restartProject(
     }
 
     await startProject(prepareFromConfig, projectFolder, env, options);
+  } catch (error) {
+    if (!(error instanceof LaunchInterruptedError)) {
+      throw error;
+    }
   } finally {
     withdraw();
     isRestarting = false;
