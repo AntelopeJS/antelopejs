@@ -193,6 +193,9 @@ describe("project .env in watch mode", () => {
       lookups.restore();
     }
 
-    expect(getActiveShutdownManager()).to.equal(undefined);
+    expect({
+      restartRan: lookups.called,
+      running: getActiveShutdownManager(),
+    }).to.deep.equal({ restartRan: true, running: undefined });
   });
 });
