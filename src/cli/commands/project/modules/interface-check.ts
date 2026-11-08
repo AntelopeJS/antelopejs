@@ -13,6 +13,7 @@ import type {
 } from "../../../../core/modules";
 import {
   CliError,
+  type CliProblem,
   displayPath,
   ExecuteCMD,
   getInstallCommand,
@@ -41,6 +42,9 @@ export interface InterfaceCheckOptions {
 const FIX_FLAG = "--fix";
 const UPDATE_COMMAND = "ajs project modules update";
 const BUMP_TITLE = "Interface packages need a newer copy";
+const UNREACHED_TITLE = "The fix did not install the newer interface copy";
+const UNREACHED_REASON =
+  "The dependencies were resolved again, and these modules still hold an older copy than the one every module accepts:";
 const BUMP_REASON =
   "Every module accepts a newer installed copy than the one a launch would share, and the launch fails until each module below gets it:";
 
@@ -209,6 +213,25 @@ function warnDrift(bumps: InterfaceBump[], options: InterfaceCheckOptions) {
 }
 
 /**
+ * What a check after `--fix` reports for the bumps still pending: resolving
+ * again did not reach the target, so running `--fix` again would not either.
+ */
+function unreachedProblem(bumps: InterfaceBump[]): CliProblem {
+  return {
+    title: UNREACHED_TITLE,
+    reason: UNREACHED_REASON,
+    details: bumps.map(
+      (bump) =>
+        `${bump.moduleId} still installs ${bump.packageName} ${bump.current}, and ${bump.target} is ${requiredByText(bump)}`,
+    ),
+    fixes: bumps.flatMap((bump) => [
+      `Check that the registry serves ${bump.packageName} ${bump.target} to ${bump.moduleId}`,
+      `Or update ${bump.moduleId} to a release that depends on ${bump.packageName} ${bump.target}`,
+    ]),
+  };
+}
+
+/**
  * Checks, for every environment in `options`, that each interface package
  * has one installed copy every module accepts, and that the project's own
  * modules and the shared copy use it. With `fix`, applies the bumps first and
@@ -230,6 +253,9 @@ export async function checkInterfaceVersions(
     options,
   );
   const required = result.bumps.filter((bump) => bump.required);
+  if (required.length > 0 && options.fix) {
+    return new CliError(unreachedProblem(required));
+  }
   if (required.length > 0) {
     return new CliError({
       title: BUMP_TITLE,

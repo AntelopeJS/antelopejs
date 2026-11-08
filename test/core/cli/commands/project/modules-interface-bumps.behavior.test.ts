@@ -83,13 +83,28 @@ function messageLines(stub: sinon.SinonStub): string[] {
   });
 }
 
-describe("project modules update behavior: interface bumps", () => {
-  let project = "";
-  let refresh: sinon.SinonStub;
-  let message: sinon.SinonStub;
+/**
+ * A project folder with one npm module that `modules update` finds up to
+ * date, with the lock refresh and the output stubbed.
+ */
+function useUpdateProject() {
+  const env = {
+    project: "",
+    refresh: sinon.stub(),
+    message: sinon.stub(),
+    update(...flags: string[]) {
+      return cmdUpdate().parseAsync([
+        "node",
+        "test",
+        "--project",
+        env.project,
+        ...flags,
+      ]);
+    },
+  };
 
   beforeEach(() => {
-    project = makeTempDir("ajs-interface-bumps-");
+    env.project = makeTempDir("ajs-interface-bumps-");
     const config: AntelopeConfig = {
       name: "proj",
       modules: { mongodb: { source: MONGODB_SOURCE } },
@@ -99,31 +114,26 @@ describe("project modules update behavior: interface bumps", () => {
     sinon
       .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "1.6.2", stderr: "" });
-    refresh = sinon.stub(moduleLocks, "refreshModuleLocks").resolves([]);
+    env.refresh = sinon.stub(moduleLocks, "refreshModuleLocks").resolves([]);
     sinon.stub(moduleLocks, "pruneModuleLocks").resolves([]);
     sinon.stub(getProcessUi(), "summary");
-    message = sinon.stub(getProcessUi(), "message");
+    env.message = sinon.stub(getProcessUi(), "message");
   });
 
   afterEach(() => {
     sinon.restore();
-    cleanupTempDir(project);
+    cleanupTempDir(env.project);
   });
+  return env;
+}
 
-  function update(...flags: string[]) {
-    return cmdUpdate().parseAsync([
-      "node",
-      "test",
-      "--project",
-      project,
-      ...flags,
-    ]);
-  }
+describe("project modules update behavior: interface bumps", () => {
+  const env = useUpdateProject();
 
   it("fails with the module to resolve again when a launch would share its older copy", async () => {
     stubInterfaceCheck(check([RELOCK_MONGODB]));
 
-    const failure = await rejectionOf(update());
+    const failure = await rejectionOf(env.update());
 
     assert.ok(failure instanceof CliError);
     const problem = describeFailure(failure, false);
@@ -138,74 +148,94 @@ describe("project modules update behavior: interface bumps", () => {
     ]);
   });
 
+  it("warns, without failing, when only a local module compiles against an older copy", async () => {
+    stubInterfaceCheck(check([rangeBump(env.project, false)]));
+
+    await env.update();
+
+    expect(messageLines(env.message)).to.include(
+      `@antelopejs/interface-data-api: ^0.1.8 → ^0.1.9 in ${displayPath(path.join(env.project, "package.json"))}, required by cms@0.6.6`,
+    );
+  });
+});
+
+describe("project modules update behavior: interface bumps with --fix", () => {
+  const env = useUpdateProject();
+
   it("with --fix resolves the provider again, checks again and passes", async () => {
     const interfaceCheck = stubInterfaceCheck(check([RELOCK_MONGODB]));
     interfaceCheck.onSecondCall().resolves(check([]));
 
-    await update("--fix");
+    await env.update("--fix");
 
     expect(interfaceCheck.callCount).to.equal(2);
-    expect(refresh.lastCall.args[2]).to.deep.equal([
+    expect(env.refresh.lastCall.args[2]).to.deep.equal([
       { id: "mongodb", source: MONGODB_SOURCE },
     ]);
   });
 
+  it("with --fix says the provider still holds the older copy when resolving again did not reach the target", async () => {
+    stubInterfaceCheck(check([RELOCK_MONGODB]));
+
+    const failure = await rejectionOf(env.update("--fix"));
+
+    assert.ok(failure instanceof CliError);
+    const problem = describeFailure(failure, false);
+    expect(problem.title).to.equal(
+      "The fix did not install the newer interface copy",
+    );
+    expect(problem.details).to.deep.equal([
+      "mongodb still installs @antelopejs/interface-database 0.3.0, and 0.3.1 is required by app@0.0.1",
+    ]);
+    expect(problem.fixes?.some((fix) => fix.includes("--fix"))).to.equal(false);
+  });
+
   it("with --fix raises the range of a local module and installs its dependencies", async () => {
-    const manifestPath = path.join(project, "package.json");
+    const manifestPath = path.join(env.project, "package.json");
     await writeFile(
       manifestPath,
       `${JSON.stringify({ name: "app", dependencies: { [DATA_API]: "^0.1.8" } }, null, "\t")}\n`,
     );
     const interfaceCheck = stubInterfaceCheck(
-      check([rangeBump(project, true)]),
+      check([rangeBump(env.project, true)]),
     );
     interfaceCheck.onSecondCall().resolves(check([]));
     const execute = sinon.stub(command, "ExecuteCMD").callsFake(async () => {
       await writeInterfacePackage(
-        path.join(project, "node_modules", DATA_API),
+        path.join(env.project, "node_modules", DATA_API),
         DATA_API,
         "0.1.9",
       );
       return { code: 0, stdout: "", stderr: "" };
     });
 
-    await update("--fix");
+    await env.update("--fix");
 
     expect(await readFile(manifestPath, "utf8")).to.equal(
       `${JSON.stringify({ name: "app", dependencies: { [DATA_API]: "^0.1.9" } }, null, "\t")}\n`,
     );
-    expect(execute.lastCall.args[1]).to.deep.equal({ cwd: project });
+    expect(execute.lastCall.args[1]).to.deep.equal({ cwd: env.project });
   });
 
   it("with --fix fails when the install leaves the local module without the target copy", async () => {
     await writeFile(
-      path.join(project, "package.json"),
+      path.join(env.project, "package.json"),
       JSON.stringify({ name: "app", dependencies: { [DATA_API]: "^0.1.8" } }),
     );
     const interfaceCheck = stubInterfaceCheck(
-      check([rangeBump(project, false)]),
+      check([rangeBump(env.project, false)]),
     );
     interfaceCheck.onSecondCall().resolves(check([]));
     sinon
       .stub(command, "ExecuteCMD")
       .resolves({ code: 0, stdout: "", stderr: "" });
 
-    const failure = await rejectionOf(update("--fix"));
+    const failure = await rejectionOf(env.update("--fix"));
 
     assert.ok(failure instanceof CliError);
     expect(failure.problem.title).to.equal(
       "Could not install @antelopejs/interface-data-api 0.1.9 for app",
     );
     expect(interfaceCheck.callCount).to.equal(1);
-  });
-
-  it("warns, without failing, when only a local module compiles against an older copy", async () => {
-    stubInterfaceCheck(check([rangeBump(project, false)]));
-
-    await update();
-
-    expect(messageLines(message)).to.include(
-      `@antelopejs/interface-data-api: ^0.1.8 → ^0.1.9 in ${displayPath(path.join(project, "package.json"))}, required by cms@0.6.6`,
-    );
   });
 });
