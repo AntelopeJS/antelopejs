@@ -100,6 +100,33 @@ describe("init in a directory that holds a git repository", () => {
     });
   }
 
+  it("writes link/../bar where it checked, beside the link, not into the repository the link leads to", async () => {
+    const stubs = stubModuleInit();
+    stubs.copy.callsFake(async (_template, target) => {
+      mkdirSync(target, { recursive: true });
+      writeFileSync(`${target}/package.json`, "{}");
+    });
+    fakePrompts({ answers: ["basic", "npm", false] });
+    const work = path.join(repository, "work");
+    const projects = path.join(repository, "projects");
+    mkdirSync(path.join(projects, "foo"), { recursive: true });
+    const linked = makeRepository();
+    try {
+      mkdirSync(work);
+      symlinkSync(path.join(projects, "foo"), path.join(work, "link"));
+      symlinkSync(linked, path.join(projects, "bar"));
+      process.chdir(work);
+
+      await moduleInitCommand("link/../bar", {});
+
+      expect(stubs.copy.calledOnce).to.equal(true);
+      expect(existsSync(path.join(work, "bar", "package.json"))).to.equal(true);
+      expectRepositoryUntouched(linked);
+    } finally {
+      cleanupTempDir(linked);
+    }
+  });
+
   it("keeps a dangling symlink the user made when the template copy fails", async () => {
     const stubs = stubModuleInit();
     stubs.copy.rejects(new Error("EEXIST: file already exists, mkdir"));
