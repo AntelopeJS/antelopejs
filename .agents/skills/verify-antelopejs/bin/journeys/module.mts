@@ -4,6 +4,7 @@ import path from "node:path";
 import { absent, equal, exists, exitIs, exitFails, has, unchanged } from "../lib/checks.mts";
 import { field, parseJson } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
+import { expectUserCommit, makeUserRepository } from "../lib/repository.mts";
 import { FIXTURE_MESSAGE, TEMPLATE_NAME } from "../lib/sources.mts";
 
 const TEMPLATE_FLAGS = ["--template", TEMPLATE_NAME, "--pm", "pnpm", "--no-git-init"];
@@ -68,6 +69,21 @@ export const initJourneys: Journey[] = [
       const after = context.tree("tree after init", folder);
       context.expect(init.folder, [exitFails(init), has("stderr", init.stderr, /mod/)]);
       context.expect(after.folder, [unchanged(before.lines, after.lines)]);
+    },
+  },
+  {
+    id: "module-init-current-repository",
+    title: "module init . inside a git repository refuses and keeps the repository and its files",
+    entryPoint: "cd repo && ajs module init . (repo is a git repository)",
+    async run(context) {
+      const folder = path.join(context.work, "repo");
+      await makeUserRepository(context, folder);
+      const before = context.tree("tree before init", folder);
+      const init = await context.ajs("module init . in the repository", ["module", "init", ".", "--git", context.state.manifestUrl, ...TEMPLATE_FLAGS], { cwd: folder });
+      const after = context.tree("tree after init", folder);
+      context.expect(init.folder, [exitIs(init, 1), has("stderr", init.stderr, /Directory \. is not empty/)]);
+      context.expect(after.folder, [unchanged(before.lines, after.lines)]);
+      await expectUserCommit(context, folder);
     },
   },
   {

@@ -29,6 +29,7 @@ docs:
 - `init-needs-input`: empty path: no flags under `CI=1` exits 2, names `--template <slug>`, writes nothing.
 - `init-unknown-template`: error path: exit 2, lists the available templates, writes nothing.
 - `init-existing`: error path: a second init into the same project exits 1 and leaves the file tree identical.
+- `init-existing-repository`: error path: init into a git repository with no project exits 1, and the files and the commit stay.
 - `init-cancel`: cancel path: SIGINT during the install ends the command by SIGINT.
 - `init-unreachable-source`: error path: a git setting pointing at a missing repository exits 1 with `Could not fetch templates`.
 

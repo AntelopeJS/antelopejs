@@ -23,6 +23,7 @@ docs:
 - `module-init-env-git`: `ANTELOPEJS_GIT` selects the repository like `--git`.
 - `module-init-needs-input`: empty path: no `--template` under `CI=1` exits 2 and writes nothing.
 - `module-init-occupied`: error path: a non-empty target fails and stays identical.
+- `module-init-current-repository`: error path: `ajs module init .` inside a git repository fails, and the files and the commit stay.
 - `module-init-unknown-template`: error path: exit 2 with the available templates.
 - `module-init-bad-git`: error path: an unreachable repository exits 1 with `Could not fetch templates`.
 

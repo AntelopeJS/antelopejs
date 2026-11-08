@@ -3,6 +3,7 @@ import path from "node:path";
 import { absent, equal, exists, exitIs, fileHas, has, interrupted, unchanged } from "../lib/checks.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
 import { FIXTURE_MODULE, initProject, listModules, useOfflineManifest } from "../lib/project.mts";
+import { expectUserCommit, makeUserRepository } from "../lib/repository.mts";
 import { TEMPLATE_SLUG } from "../lib/sources.mts";
 
 const FLAGS = ["--template", TEMPLATE_SLUG, "--pm", "pnpm"];
@@ -128,6 +129,22 @@ export const journeys: Journey[] = [
       const after = context.tree("tree after second init", project);
       context.expect(again.folder, [exitIs(again, 1), has("stderr", again.stderr, /Project already exists/)]);
       context.expect(after.folder, [unchanged(before.lines, after.lines)]);
+    },
+  },
+  {
+    id: "init-existing-repository",
+    title: "init into a git repository that is not a project refuses and keeps the repository and its files",
+    entryPoint: "ajs project init repo (repo is a git repository)",
+    async run(context) {
+      await useOfflineManifest(context);
+      const folder = path.join(context.work, "repo");
+      await makeUserRepository(context, folder);
+      const before = context.tree("tree before init", folder);
+      const init = await context.ajs("project init into the repository", ["project", "init", "repo", ...FLAGS, "--no-git-init"]);
+      const after = context.tree("tree after init", folder);
+      context.expect(init.folder, [exitIs(init, 1), has("stderr", init.stderr, /is not empty/), has("stderr", init.stderr, /ajs project init <project>/)]);
+      context.expect(after.folder, [unchanged(before.lines, after.lines)]);
+      await expectUserCommit(context, folder);
     },
   },
   {
