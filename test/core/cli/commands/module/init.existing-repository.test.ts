@@ -67,6 +67,19 @@ describe("init in a directory that holds a git repository", () => {
     expectRepositoryUntouched(repository);
   });
 
+  it("refuses an empty path as the current directory and leaves the repository untouched", async () => {
+    const stubs = stubModuleInit();
+    stubs.copy.rejects(new Error("ENOENT: no such file or directory, mkdir"));
+    fakePrompts({ answers: ["basic", "npm", false] });
+    process.chdir(repository);
+
+    const failure = await rejectionOf(moduleInitCommand("", {}));
+
+    expect(failure.problem.title).to.equal("Directory . is not empty");
+    expect(stubs.copy.called).to.equal(false);
+    expectRepositoryUntouched(repository);
+  });
+
   it("refuses ajs project init <dir> and leaves the repository untouched", async () => {
     const stubs = stubModuleInit();
     fakePrompts({ isInteractive: false });
