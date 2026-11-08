@@ -14,6 +14,8 @@ import {
   Spinner,
   success,
   warning,
+  withDependency,
+  packageJsonWith,
 } from "../../../core/output";
 import { isObject } from "../../../utils";
 import {
@@ -30,7 +32,6 @@ export interface ModuleInitAnswers {
 }
 
 const LATEST_VERSION = "latest";
-const JSON_INDENTATION = 2;
 
 function unusableManifest(pkgJsonPath: string, reason: string): CliError {
   return new CliError({
@@ -64,13 +65,16 @@ function addInterfaceDependencies(
       "Its dependencies field must be a JSON object.",
     );
   }
-  pkgJson.dependencies = dependencies;
-  packages.forEach((name) => {
-    dependencies[name] ??= LATEST_VERSION;
-  });
   writeFileSync(
     pkgJsonPath,
-    `${JSON.stringify(pkgJson, null, JSON_INDENTATION)}\n`,
+    packageJsonWith(
+      pkgJson,
+      "dependencies",
+      packages.reduce(
+        (listed, name) => withDependency(listed, name, LATEST_VERSION),
+        dependencies,
+      ),
+    ),
   );
   success(`Added ${interfaces.length} interface(s) to dependencies`);
 }

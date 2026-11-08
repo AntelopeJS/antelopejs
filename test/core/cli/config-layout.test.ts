@@ -1,18 +1,15 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
-import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { readConfig, writeConfig } from "../../../src/cli";
 import { cleanupTempDir, makeTempDir, readText } from "../../helpers/temp";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { oxfmt as oxfmtFile } from "../../helpers/oxfmt";
 
 const CONFIG_PATH = "/project/antelope.config.ts";
-const REPOSITORY = path.resolve(__dirname, "../../..");
-const OXFMT = path.join(REPOSITORY, "node_modules/.bin/oxfmt");
 const LONG = "x".repeat(70);
-const OUTPUT_LIMIT = 256 * 1024 * 1024;
 const PLANES: readonly (readonly [
   first: number,
   last: number,
@@ -98,16 +95,9 @@ async function writtenConfig(
   return fs.readFileString(CONFIG_PATH);
 }
 
-/** `source` as oxfmt formats it with the house preset in `oxfmt.config.ts`. */
+/** `source` as oxfmt formats it as an `antelope.config.ts`. */
 function oxfmt(source: string): string {
-  const config = path.join(REPOSITORY, "oxfmt.config.ts");
-  const args = ["-c", config, "--stdin-filepath", "antelope.config.ts"];
-  return execFileSync(OXFMT, args, {
-    input: source,
-    encoding: "utf-8",
-    maxBuffer: OUTPUT_LIMIT,
-    stdio: ["pipe", "pipe", "ignore"],
-  });
+  return oxfmtFile(source, "antelope.config.ts");
 }
 
 /** The first line where `written` and `formatted` differ, with its neighbour. */
