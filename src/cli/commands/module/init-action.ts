@@ -57,6 +57,7 @@ const INTERFACES_FLAG = `${INTERFACES_OPTION} <names>`;
 export const YES_FLAG = "--yes";
 export const GIT_INIT_FLAG = "--[no-]git-init";
 const MODULE_INIT_COMMAND = "ajs module init";
+const PROJECT_INIT_COMMAND = "ajs project init";
 const CURRENT_DIRECTORY = ".";
 
 const CHECK_REPOSITORY_FIX =
@@ -117,11 +118,7 @@ function unknownChoiceError(choice: UnknownChoice): CliError {
 }
 
 function isDirectoryOccupied(modulePath: string): boolean {
-  return (
-    existsSync(modulePath) &&
-    modulePath !== CURRENT_DIRECTORY &&
-    readdirSync(modulePath).length > 0
-  );
+  return existsSync(modulePath) && readdirSync(modulePath).length > 0;
 }
 
 async function ensureDirectoryUsable(
@@ -133,11 +130,14 @@ async function ensureDirectoryUsable(
     `Checking directory ${palette.dim(modulePath)}`,
   );
   await dirSpinner.start();
-  if (isDirectoryOccupied(modulePath) && !isFromProject) {
+  if (isDirectoryOccupied(modulePath)) {
     await dirSpinner.stop();
+    const usage = isFromProject
+      ? `${PROJECT_INIT_COMMAND} <project>`
+      : `${MODULE_INIT_COMMAND} <path>`;
     throw new CliError({
       title: `Directory ${modulePath} is not empty`,
-      fixes: [`Pass an empty or new directory: ${MODULE_INIT_COMMAND} <path>`],
+      fixes: [`Pass an empty or new directory: ${usage}`],
     });
   }
   await dirSpinner.succeed(`Directory is valid`);
