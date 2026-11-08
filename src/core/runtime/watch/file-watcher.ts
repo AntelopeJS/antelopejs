@@ -3,7 +3,7 @@ import { type FSWatcher, watch } from "node:fs";
 import * as path from "node:path";
 
 import type { IFileSystem } from "../../../types";
-import { FileHasher } from "./file-hasher";
+import { FileHasher, isVanishedPathError } from "./file-hasher";
 
 export type ModuleChangeListener = (moduleId: string) => void;
 export type FileChangeListener = (filePath: string) => void;
@@ -26,13 +26,6 @@ interface WatchedFile {
 }
 
 const EXCLUDED_WATCH_DIRS = [".git", "node_modules"];
-const VANISHED_PATH_ERROR_CODES = new Set(["ENOENT", "ENOTDIR"]);
-
-function isVanishedPathError(error: Error): boolean {
-  const systemError: NodeJS.ErrnoException = error;
-  const { code } = systemError;
-  return code !== undefined && VANISHED_PATH_ERROR_CODES.has(code);
-}
 
 function isInsideDir(filePath: string, dirPath: string): boolean {
   const relative = path.relative(dirPath, filePath);

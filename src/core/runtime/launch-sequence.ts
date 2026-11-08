@@ -129,10 +129,7 @@ async function hashRestartFiles(
   }
   const hashes = new Map<string, string | undefined>();
   for (const file of files) {
-    hashes.set(
-      file,
-      (await fs.exists(file)) ? await hasher.hashFile(file) : undefined,
-    );
+    hashes.set(file, await hasher.hashFileIfPresent(file));
   }
   return hashes;
 }
