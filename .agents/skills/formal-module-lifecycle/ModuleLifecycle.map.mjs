@@ -19,8 +19,6 @@
  * @property {Record<number, { pc: string, mod: string, repl: number, prev: number }>} rl
  */
 
-export const readerActions = ["ConfigEdit", "SourceEdit", "Sigint"];
-
 /** @type {Partial<Record<string, string>>} */
 const RELOAD = {
   manifest: "loading new code",
@@ -87,14 +85,13 @@ export function state(v) {
   return `${context(v)}: ${progress(v)}`;
 }
 
-export const regionNames = ["Project", "Hot reload"];
-
 /** @type {Partial<Record<string, string>>} */
 const STEPS = {
   BatchEnds: "the reload batch ends",
   ConfigEdit: "antelope.config.ts is edited",
   ConfigNoticed: "the watcher hashes the config",
   ConstructApply: "a module constructs",
+  Done: "the process has exited",
   FlushStarts: "the debounce timer fires",
   LaunchAddModules: "the launch adds modules",
   LaunchConstruct: "the launch constructs modules",
@@ -136,33 +133,4 @@ const STEPS = {
  */
 export function step(action) {
   return STEPS[action] ?? action;
-}
-
-/**
- * @param {LifecycleState} v
- * @param {unknown} facts
- * @param {string} invariant
- * @returns {string | null}
- */
-export function cause(v, facts, invariant) {
-  if (invariant === "ConfigEditsReachProject") {
-    return v.staleRead
-      ? "the restart re-read the config jiti had cached, not the edited file"
-      : "the edit landed after the launch read the config and before the watcher started";
-  }
-  if (invariant === "LaunchReadsCurrentConfig") {
-    if (v.sigint) {
-      return "a restart began a launch while Ctrl+C was stopping the project, and it read the cached config";
-    }
-    return v.configOwner === "none"
-      ? "the modules live in subfolders, so no destroy evicted the config jiti cached"
-      : "the root module was not loaded, so no destroy evicted the config jiti cached";
-  }
-  if (invariant !== "NoOrphanGeneration") return null;
-  const fromReload = orphans(v).some((g) =>
-    Object.values(v.rl).some((r) => r.repl === g || r.prev === g),
-  );
-  return fromReload
-    ? "a reload installed its new generation in a manager the shutdown had already passed"
-    : "a module constructed after the shutdown had already destroyed and dropped it";
 }
