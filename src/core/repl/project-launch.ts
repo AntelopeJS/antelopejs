@@ -207,6 +207,12 @@ export async function startProject(
 
 let isRestarting = false;
 
+/**
+ * Shuts the running project down and launches it again. Work the destroyed
+ * generations left pending stays tolerated for the whole restart, since the
+ * shutdown withdraws the previous launch's tolerance before the new launch
+ * adds its own.
+ */
 async function restartProject(
   projectFolder: string,
   env: string,
@@ -214,6 +220,7 @@ async function restartProject(
 ): Promise<void> {
   if (isRestarting) return;
   isRestarting = true;
+  const withdraw = tolerateInvalidatedModuleWork();
 
   try {
     const activeShutdownManager = getActiveShutdownManager();
@@ -223,6 +230,7 @@ async function restartProject(
 
     await startProject(prepareFromConfig, projectFolder, env, options);
   } finally {
+    withdraw();
     isRestarting = false;
   }
 }

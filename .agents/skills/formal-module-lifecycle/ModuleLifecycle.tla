@@ -211,7 +211,7 @@ TypeOK ==
   /\ startPending \subseteq Gens
   /\ loaded \in [Launches -> [Modules -> 0..MaxGen]]
   /\ \A L \in Launches : rl[L].pc \in ReloadPcs
-  /\ tolerance \in 0..MaxLaunch
+  /\ tolerance \in 0..(MaxLaunch + 1)
 
 Created == 1..(nextGen - 1)
 
