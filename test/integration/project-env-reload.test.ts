@@ -90,6 +90,21 @@ async function waitForNextLaunch(
   throw new Error("No restart claimed the process");
 }
 
+/**
+ * Stops the project, then any project a restart launches once the one it
+ * replaces has stopped: a restart under way when the test ends would otherwise
+ * keep running into the next test.
+ */
+async function stopProjects(): Promise<void> {
+  for (
+    let running = getActiveShutdownManager();
+    running;
+    running = getActiveShutdownManager()
+  ) {
+    await running.shutdown();
+  }
+}
+
 describe("project .env in watch mode", () => {
   let projectFolder: string;
 
@@ -98,7 +113,7 @@ describe("project .env in watch mode", () => {
   });
 
   afterEach(async () => {
-    await getActiveShutdownManager()?.shutdown();
+    await stopProjects();
     delete process.env[VALUE_VARIABLE];
     await fs.rm(projectFolder, { recursive: true, force: true });
   });

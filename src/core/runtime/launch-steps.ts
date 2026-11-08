@@ -17,6 +17,31 @@ function nextEventLoopTurn(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
+function throwIfStopping(stopping: AbortSignal): void {
+  if (stopping.aborted) {
+    throw new LaunchInterruptedError();
+  }
+}
+
+/**
+ * Runs one piece of a launch. A failure once the project started shutting
+ * down is reported as the interruption it is: the shutdown may already have
+ * removed what the work was reading.
+ *
+ * @throws {LaunchInterruptedError} when the work fails after `stopping` is aborted.
+ */
+export async function runInterruptibly<Result>(
+  work: () => Promise<Result>,
+  stopping: AbortSignal,
+): Promise<Result> {
+  try {
+    return await work();
+  } catch (error) {
+    throwIfStopping(stopping);
+    throw error;
+  }
+}
+
 /**
  * Runs the steps of a launch in order. Before each step, lets the event loop
  * deliver a termination signal that arrived while the previous one kept it
@@ -32,9 +57,7 @@ export async function runLaunchSteps<Launch>(
 ): Promise<void> {
   for (const step of steps) {
     await nextEventLoopTurn();
-    if (stopping.aborted) {
-      throw new LaunchInterruptedError();
-    }
-    await step(launch);
+    throwIfStopping(stopping);
+    await runInterruptibly(async () => step(launch), stopping);
   }
 }

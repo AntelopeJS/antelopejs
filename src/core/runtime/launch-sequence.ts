@@ -24,7 +24,11 @@ import {
   warnIfBuildIsStale,
 } from "./build-runtime";
 import { registerCoreRuntimeInterface } from "./dev-server-registry";
-import { type LaunchStep, runLaunchSteps } from "./launch-steps";
+import {
+  type LaunchStep,
+  runInterruptibly,
+  runLaunchSteps,
+} from "./launch-steps";
 import {
   activateLoadedModules,
   buildModuleConfigs,
@@ -432,7 +436,10 @@ async function completeLaunchSequence(
   shutdownManager: ShutdownManager,
   manager: ModuleManager,
 ): Promise<StartedProject> {
-  const project = await request.prepare(request.projectFolder, request.env);
+  const project = await runInterruptibly(
+    () => request.prepare(request.projectFolder, request.env),
+    shutdownManager.stopping,
+  );
   const launch: ProjectLaunch = {
     request,
     project,

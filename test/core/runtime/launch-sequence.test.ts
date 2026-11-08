@@ -393,3 +393,45 @@ describe("runtime launch steps", () => {
     expect(first.called).to.equal(false);
   });
 });
+
+describe("runtime launch-sequence failing during a shutdown", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("reports a preparation that fails once the shutdown started as interrupted", async () => {
+    const shutdownManager = new ShutdownManager();
+
+    const thrown = await launchInterruptedBy(shutdownManager, async () => {
+      void shutdownManager.shutdown();
+      throw new Error("project folder removed");
+    });
+
+    expect(thrown).to.be.instanceOf(LaunchInterruptedError);
+  });
+
+  it("reports a step that fails once the shutdown started as interrupted", async () => {
+    const shutdownManager = new ShutdownManager();
+
+    const thrown = await launchInterruptedBy(shutdownManager, async () => ({
+      fs: new NodeFileSystem(),
+      dev: true,
+      loadContext: async () => loaderFixture({}),
+      verify: async () => {
+        void shutdownManager.shutdown();
+        throw new Error("project folder removed");
+      },
+      createEntries: async () => [],
+    }));
+
+    expect(thrown).to.be.instanceOf(LaunchInterruptedError);
+  });
+
+  it("keeps the failure of a preparation no shutdown interrupted", async () => {
+    const thrown = await launchInterruptedBy(new ShutdownManager(), () =>
+      Promise.reject(new Error("project folder removed")),
+    );
+
+    expect(thrown?.message).to.equal("project folder removed");
+  });
+});
