@@ -247,6 +247,35 @@ describe("ModuleManager lifecycle signals", () => {
     ]);
   });
 
+  it("announces stopping when the project stops while a module is still starting, and not started after it", async () => {
+    const manager = new ModuleManager();
+    let releaseSlow: () => void = () => undefined;
+    await addConstructedModule(manager, "fast", () => calls.push("start:fast"));
+    await addConstructedModule(manager, "slow", async () => {
+      calls.push("start:slow");
+      await new Promise<void>((resolve) => {
+        releaseSlow = resolve;
+      });
+      calls.push("started:slow");
+    });
+
+    const starting = manager.startAll();
+    await new Promise((resolve) => setImmediate(resolve));
+    const stopping = manager.stopAll();
+    releaseSlow();
+    await starting;
+    await stopping;
+
+    expect(calls).to.deep.equal([
+      "start:fast",
+      "start:slow",
+      "stopping",
+      "started:slow",
+      "stop:slow",
+      "stop:fast",
+    ]);
+  });
+
   it("announces stopping only when the project stops, not when one module stops, restarts or is destroyed", async () => {
     const manager = new ModuleManager();
     const reloaded = await addConstructedModule(manager, "reloaded", () =>
@@ -329,6 +358,18 @@ describe("ModuleManager lifecycle signals", () => {
     manager["loaded"].set(id, { module, config: {} });
     return module;
   }
+
+  it("announces stopping when a failed start tears the project down", async () => {
+    const manager = new ModuleManager();
+    await addConstructedModule(manager, "broken", () => {
+      throw new Error("broken start");
+    });
+
+    const thrown = await manager.startAll().catch((error: unknown) => error);
+
+    assert.ok(thrown instanceof AggregateError);
+    expect(calls).to.deep.equal(["stopping"]);
+  });
 
   it("fails a start that does not settle in time, naming the late module", async () => {
     const clock = sinon.useFakeTimers({
