@@ -216,7 +216,9 @@ let isRestarting = false;
  * Shuts the running project down and launches it again. Work the destroyed
  * generations left pending stays tolerated for the whole restart, since the
  * shutdown withdraws the previous launch's tolerance before the new launch
- * adds its own.
+ * adds its own. A change seen while the project is already shutting down
+ * leaves nothing to restart, and a restart that a shutdown interrupts ends
+ * there: the project is stopping.
  */
 async function restartProject(
   projectFolder: string,
@@ -224,15 +226,13 @@ async function restartProject(
   options: LaunchOptions,
 ): Promise<void> {
   if (isRestarting) return;
+  const running = getActiveShutdownManager();
+  if (running?.active) return;
   isRestarting = true;
   const withdraw = tolerateInvalidatedModuleWork();
 
   try {
-    const activeShutdownManager = getActiveShutdownManager();
-    if (activeShutdownManager) {
-      await activeShutdownManager.shutdown();
-    }
-
+    await running?.shutdown();
     await startProject(prepareFromConfig, projectFolder, env, options);
   } catch (error) {
     if (!(error instanceof LaunchInterruptedError)) {

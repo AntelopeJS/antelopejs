@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -8,12 +9,14 @@ import sinon from "sinon";
 import launch from "../../src";
 import {
   getActiveShutdownManager,
+  processClaimModule as processClaim,
   type ShutdownManager,
 } from "../../src/core/runtime";
 
 const VALUE_VARIABLE = "AJS_ENV_RELOAD_VALUE";
 const MARKER_TIMEOUT_MS = 8000;
 const MARKER_POLL_MS = 50;
+const SHUTDOWN_PRIORITY_FIRST = 100;
 
 const MODULE_SOURCE = `const fs = require("node:fs");
 let cfg;
@@ -90,6 +93,16 @@ async function waitForNextLaunch(
   throw new Error("No restart claimed the process");
 }
 
+async function waitUntil(condition: () => boolean): Promise<void> {
+  const deadline = Date.now() + MARKER_TIMEOUT_MS;
+  while (!condition()) {
+    if (Date.now() >= deadline) {
+      throw new Error("Condition not met in time");
+    }
+    await new Promise((resolve) => setTimeout(resolve, MARKER_POLL_MS));
+  }
+}
+
 /**
  * Stops the project, then any project a restart launches once the one it
  * replaces has stopped: a restart under way when the test ends would otherwise
@@ -159,5 +172,27 @@ describe("project .env in watch mode", () => {
       exitCodes: [],
       rejections: [],
     });
+  });
+
+  it("launches no project for a change seen while the project shuts down", async function () {
+    this.timeout(30000);
+    const { markerPath, envPath } = await writeEnvProject(projectFolder);
+    await launch(projectFolder, "default", { watch: true });
+    await waitForMarker(markerPath, "unset");
+    const running = getActiveShutdownManager();
+    assert.ok(running);
+    const lookups = sinon.spy(processClaim, "getActiveShutdownManager");
+    running.register(async () => {
+      await fs.writeFile(envPath, `${VALUE_VARIABLE}=late\n`);
+      await waitUntil(() => lookups.called);
+    }, SHUTDOWN_PRIORITY_FIRST);
+    try {
+      await running.shutdown();
+      await new Promise((resolve) => setTimeout(resolve, MARKER_POLL_MS));
+    } finally {
+      lookups.restore();
+    }
+
+    expect(getActiveShutdownManager()).to.equal(undefined);
   });
 });
