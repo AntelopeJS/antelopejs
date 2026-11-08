@@ -7,8 +7,6 @@ covers:
   - src/core/repl/launch.ts
 docs:
   - docs/5.cli/2.project.md
-known:
-  - start-without-build
 ---
 
 # Project start
@@ -39,5 +37,4 @@ Each journey's steps, checks and evidence are in `bin/journeys/` and under `$RUN
 
 ## Gotchas
 
-- Finding on main 9b81264: `start-without-build` fails. The error carries `Run 'ajs project build --env <env>' first.` on its second line, but the CLI prints only the first line unless `--verbose` is set. The journey stays as written; it passes once the hint reaches default stderr.
 - `start-base-build` needs the base CLI that `verify-ajs new` builds from `--base` (default `origin/main`).

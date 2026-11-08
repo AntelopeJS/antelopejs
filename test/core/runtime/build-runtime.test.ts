@@ -3,6 +3,7 @@ import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
 import { NodeFileSystem } from "../../../src/core/filesystem";
+import { describeFailure } from "../../../src/core/output";
 import { manifestFixture } from "../../helpers/module-fixtures";
 
 import type {
@@ -410,5 +411,22 @@ describe("readBuildArtifactOrThrow on a build file of the wrong shape", () => {
 
     expect(read).to.not.be.instanceOf(Error);
     expect(JSON.parse(JSON.stringify(read))).to.deep.equal(artifact);
+  });
+});
+
+describe("readBuildArtifactOrThrow reported without --verbose", () => {
+  it("tells the user to run ajs project build", async () => {
+    let thrown: unknown;
+    try {
+      await readBuildArtifactOrThrow("/missing", new InMemoryFileSystem());
+    } catch (error) {
+      thrown = error;
+    }
+
+    const problem = describeFailure(thrown, false);
+    expect(problem.title).to.include("No build found");
+    expect(problem.fixes).to.deep.equal([
+      "Run 'ajs project build --env <env>' first.",
+    ]);
   });
 });

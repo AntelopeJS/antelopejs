@@ -4,6 +4,7 @@ import path from "node:path";
 import type { IFileSystem } from "../../types";
 import type { LoadedConfig } from "../config";
 import type { NodeFileSystem } from "../filesystem";
+import { CliError } from "../output";
 import {
   type BuildArtifact,
   type BuildImportOverride,
@@ -128,7 +129,7 @@ export function mapArtifactModuleEntries(
   });
 }
 
-function createMissingBuildError(projectFolder: string): Error {
+function createMissingBuildError(projectFolder: string): CliError {
   const buildPath = path.relative(
     path.resolve(projectFolder),
     getBuildArtifactPath(projectFolder),
@@ -137,9 +138,10 @@ function createMissingBuildError(projectFolder: string): Error {
     buildPath && buildPath.length > 0
       ? buildPath
       : ".antelope/build/build.json";
-  return new Error(
-    `No build found at ${messagePath}\n${BUILD_MISSING_REBUILD_HINT}`,
-  );
+  return new CliError({
+    title: `No build found at ${messagePath}`,
+    fixes: [BUILD_MISSING_REBUILD_HINT],
+  });
 }
 
 export async function readBuildArtifactOrThrow(
