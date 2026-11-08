@@ -8,6 +8,10 @@ export default defineConfig({
   options: { typeAware: true },
   overrides: [
     {
+      files: ["src/**"],
+      rules: { "typescript/no-explicit-any": "error" },
+    },
+    {
       files: ["src/cli/commands/**"],
       rules: { "eslint/no-console": "error" },
     },
