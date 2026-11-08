@@ -1,4 +1,7 @@
-import type { ModuleSourceLocal } from "@antelopejs/interface-core/config";
+import type {
+  ModuleSourceGit,
+  ModuleSourceLocal,
+} from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import os from "node:os";
 import * as path from "node:path";
@@ -16,12 +19,11 @@ describe("DownloaderRegistry", () => {
     await cache.load();
 
     const manifest = manifestFixture({ name: "mod" });
-    registry.register("test", "id", async () => [manifest]);
+    registry.register("git", "remote", async () => [manifest]);
 
     const result = await registry.load("/project", cache, {
-      // @ts-expect-error Custom downloader names are accepted by the registry but excluded by ModuleSource.
-      type: "test",
-      id: "mod",
+      type: "git",
+      remote: "https://example.com/mod.git",
     });
 
     expect(result).to.deep.equal([manifest]);
@@ -33,9 +35,9 @@ describe("DownloaderRegistry", () => {
     await cache.load();
 
     const promise = registry.load("/project", cache, {
-      // @ts-expect-error Custom downloader names are accepted by the registry but excluded by ModuleSource.
-      type: "delayed",
-      id: "mod",
+      type: "package",
+      package: "mod",
+      version: "1.0.0",
     });
     let resolved = false;
     void promise.then(() => {
@@ -46,7 +48,7 @@ describe("DownloaderRegistry", () => {
     expect(resolved).to.equal(false);
 
     const manifest = manifestFixture({ name: "mod" });
-    registry.register("delayed", "id", async () => [manifest]);
+    registry.register("package", "package", async () => [manifest]);
 
     const result = await promise;
     expect(result).to.deep.equal([manifest]);
@@ -104,21 +106,32 @@ describe("DownloaderRegistry", () => {
 
   it("returns undefined when loader is not registered", () => {
     const registry = new DownloaderRegistry();
-    // @ts-expect-error Exercise an unregistered downloader name outside the built-in ModuleSource discriminant.
-    expect(registry.getLoaderIdentifier({ type: "missing" })).to.equal(
-      undefined,
-    );
+    const source: ModuleSourceGit = { type: "git", remote: "mod" };
+    expect(registry.getLoaderIdentifier(source)).to.equal(undefined);
+  });
+
+  it("registers a loader only under a source type a module can declare", () => {
+    const registry = new DownloaderRegistry();
+    // @ts-expect-error ModuleSource has no "custom" type, so no configured module could reach this loader.
+    registry.register("custom", "id", async () => []);
+    registry.register("git", "remote", async () => []);
+
+    const source: ModuleSourceGit = { type: "git", remote: "mod" };
+    expect(registry.getLoaderIdentifier(source)).to.equal("mod");
   });
 
   it("answers a string identifier and refuses any other value", () => {
-    type PortSource = ModuleSourceLocal & { port: number };
     const registry = new DownloaderRegistry();
-    registry.register<PortSource>("local", "path", async () => []);
+    registry.register("local", "path", async () => []);
 
-    const named: PortSource = { type: "local", path: "mod", port: 80 };
+    const named: ModuleSourceLocal = {
+      type: "local",
+      path: "mod",
+      ignoreCache: true,
+    };
     expect(registry.getLoaderIdentifier(named)).to.equal("mod");
 
-    registry.register<PortSource>("local", "port", async () => []);
+    registry.register("local", "ignoreCache", async () => []);
     expect(registry.getLoaderIdentifier(named)).to.equal(undefined);
   });
 });

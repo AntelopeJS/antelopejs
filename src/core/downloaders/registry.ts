@@ -1,4 +1,7 @@
-import type { ModuleSource } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeModuleConfig,
+  ModuleSource,
+} from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
 import * as path from "node:path";
 
@@ -12,6 +15,21 @@ export interface LoadOptions {
   reload?: boolean;
 }
 
+/** A module source a downloader loads: one of the variants a module config declares. */
+type DownloadableSource = NonNullable<AntelopeModuleConfig["source"]>;
+
+/**
+ * A source handed to the registry: a stored source, or a declared variant
+ * written inline with the fields of its type.
+ */
+type RegistrySource = ModuleSource | DownloadableSource;
+
+/** The source variant whose `type` is `K`. */
+type DownloadableSourceOf<K extends ModuleSource["type"]> = Extract<
+  DownloadableSource,
+  { type: K }
+>;
+
 export type ModuleLoader<T extends ModuleSource = ModuleSource> = (
   cache: ModuleCache,
   source: T,
@@ -20,7 +38,7 @@ export type ModuleLoader<T extends ModuleSource = ModuleSource> = (
 
 type WaitingType = {
   cache: ModuleCache;
-  source: ModuleSource;
+  source: RegistrySource;
   options?: LoadOptions;
   resolve: (info: ModuleManifest[]) => void;
   reject: (error?: unknown) => void;
@@ -32,13 +50,21 @@ interface KnownDownloader {
 }
 
 export class DownloaderRegistry {
-  private waiting = new Map<string, WaitingType[]>();
-  private knownTypes = new Map<string, KnownDownloader>();
+  private waiting = new Map<ModuleSource["type"], WaitingType[]>();
+  private knownTypes = new Map<ModuleSource["type"], KnownDownloader>();
 
-  register<T extends ModuleSource>(
-    type: string,
-    loaderIdentifier: keyof T,
-    loader: ModuleLoader<T>,
+  /**
+   * Registers the loader for one source type, and runs the loads that were
+   * waiting for it.
+   *
+   * @param type - The source type, one a module config can declare.
+   * @param loaderIdentifier - The source field that names the module to load.
+   * @param loader - Loads a source of that type.
+   */
+  register<K extends ModuleSource["type"]>(
+    type: K,
+    loaderIdentifier: keyof DownloadableSourceOf<K>,
+    loader: ModuleLoader<DownloadableSourceOf<K>>,
   ): void {
     const known: KnownDownloader = { loaderIdentifier, loader };
     this.knownTypes.set(type, known);
@@ -56,7 +82,7 @@ export class DownloaderRegistry {
   load(
     projectFolder: string,
     cache: ModuleCache,
-    source: ModuleSource,
+    source: RegistrySource,
     options?: LoadOptions,
   ): Promise<ModuleManifest[]> {
     Logger.Debug(`LoadModule called for type ${source.type}`);
@@ -87,7 +113,7 @@ export class DownloaderRegistry {
     });
   }
 
-  getLoaderIdentifier(source: ModuleSource): string | undefined {
+  getLoaderIdentifier(source: RegistrySource): string | undefined {
     const type = this.knownTypes.get(source.type);
     if (type) {
       const identifier: unknown = Object.getOwnPropertyDescriptor(
