@@ -14,7 +14,14 @@ import {
 } from "../../helpers/interface-range-incident";
 import { cleanupTempDir } from "../../helpers/temp";
 
-const { findProjectInterfaceRangeConflicts } = interfaceRangesModule;
+async function findProjectInterfaceRangeConflicts(
+  projectFolder: string,
+  env: string,
+) {
+  return (
+    await interfaceRangesModule.checkProjectInterfaces(projectFolder, env)
+  ).conflicts;
+}
 
 function buildArtifactPath(projectFolder: string): string {
   return path.join(projectFolder, ".antelope", "build", "build.json");
@@ -43,6 +50,19 @@ describe("interface range check before startup", function () {
   afterEach(() => {
     projects.splice(0).forEach(cleanupTempDir);
   });
+
+  for (const projectModule of ["app", "zz-app"]) {
+    it(`build shares the highest copy every range accepts when nothing implements the interface, whatever the module is named (${projectModule})`, async () => {
+      const folder = await project([
+        { name: projectModule, range: "^0.1.8", copy: "0.1.8", optional: true },
+        { name: "cms", range: ">=0.1.9 <1.0.0", copy: "0.1.9", optional: true },
+      ]);
+
+      await build(folder, "default");
+
+      expect(existsSync(buildArtifactPath(folder))).to.equal(true);
+    });
+  }
 
   it("build fails with the conflict and writes no build artifact", async () => {
     const folder = await project();
