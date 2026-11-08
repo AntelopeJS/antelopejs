@@ -32,7 +32,7 @@ import {
 export const ADDED_MOD_A = { added: ["modA"], skipped: [], failed: [] };
 
 type RangeCheckStub = sinon.SinonStubbedMember<
-  typeof interfaceRangesModule.findProjectInterfaceRangeConflicts
+  typeof interfaceRangesModule.checkProjectInterfaces
 >;
 
 interface TaskOutputStubs {
@@ -98,8 +98,8 @@ export function installFixture() {
 
   beforeEach(() => {
     rangeCheck = sinon
-      .stub(interfaceRangesModule, "findProjectInterfaceRangeConflicts")
-      .resolves([]);
+      .stub(interfaceRangesModule, "checkProjectInterfaces")
+      .resolves({ conflicts: [], bumps: [] });
   });
 
   afterEach(() => {

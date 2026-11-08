@@ -19,6 +19,12 @@ export default function () {
         "Add the first module listed when several implement an interface",
       ),
     )
+    .addOption(
+      new Option(
+        "--fix",
+        "Apply the interface package bumps the check finds after the install",
+      ),
+    )
     .action(
       lazyAction(async () => (await import("./install-action")).installModules),
     );

@@ -13,7 +13,7 @@ import {
   getProcessUi,
   stripAnsi,
 } from "../../../../../src/core/output";
-import { stubLoadedConfig } from "../../fixtures";
+import { stubInterfaceCheck, stubLoadedConfig } from "../../fixtures";
 
 function messageLines(stub: sinon.SinonStub): string[] {
   return stub
@@ -21,6 +21,9 @@ function messageLines(stub: sinon.SinonStub): string[] {
     .map((call) => stripAnsi(`${call.args[0]} ${call.args[1]}`));
 }
 describe("project modules behavior: update-versions", () => {
+  beforeEach(() => {
+    stubInterfaceCheck();
+  });
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;
@@ -52,7 +55,9 @@ describe("project modules behavior: update-versions", () => {
     const cmd = cmdUpdate();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project", "pkg"]);
 
-    expect(messageStub.called).to.equal(false);
+    expect(messageLines(messageStub)).to.deep.equal([
+      "success Checked interface versions in default",
+    ]);
     expect(summaryStub.firstCall.args[0].headline).to.equal(
       "Everything is up to date (1 npm module checked)",
     );
@@ -88,6 +93,7 @@ describe("project modules behavior: update-versions", () => {
     });
     expect(process.exitCode).to.equal(undefined);
     expect(messageLines(messageStub)).to.deep.equal([
+      "success Checked interface versions in default",
       "success Updated pkg 1.0.0 → 2.0.0",
     ]);
     expect(summaryStub.firstCall.args[0]).to.deep.include({
@@ -141,6 +147,9 @@ async function updateInProduction(
 }
 
 describe("project modules behavior: update-versions in an environment", () => {
+  beforeEach(() => {
+    stubInterfaceCheck();
+  });
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;

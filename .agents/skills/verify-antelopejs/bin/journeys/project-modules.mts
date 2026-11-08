@@ -36,6 +36,33 @@ function emptyProject(context: JourneyContext): string {
   return project;
 }
 
+const TWO_COPIES_CONFIG = `import { defineConfig } from "@antelopejs/interface-core/config";
+
+export default defineConfig({
+  name: "greeter",
+  modules: {
+    "greeter-consumer": { source: { type: "local", path: "./consumer" } },
+    "greeter-reader": { source: { type: "local", path: "./reader" } },
+  },
+});
+`;
+
+/**
+ * Gives a module of the greeter project its own installed copy of a
+ * standalone verify-greeter at \`version\`, then declares \`range\` for it.
+ */
+async function installGreeterCopy(context: JourneyContext, greeter: string, module: { folder: string; name: string; version: string; range: string }): Promise<void> {
+  const copy = path.join(greeter, `verify-greeter-${module.version}`);
+  context.edit(`write verify-greeter ${module.version}`, path.join(copy, "package.json"), JSON.stringify({ name: "verify-greeter", version: module.version, main: "index.js", antelopeJs: { standalone: true } }));
+  context.edit(`write verify-greeter ${module.version} entry`, path.join(copy, "index.js"), "exports.Greeter = {};\n");
+  const manifest = (spec: string) => JSON.stringify({ name: module.name, version: "1.0.0", main: "index.js", dependencies: { "verify-greeter": spec } }, null, 2);
+  const folder = path.join(greeter, module.folder);
+  context.edit(`write ${module.name} entry`, path.join(folder, "index.js"), "exports.construct = () => {};\nexports.destroy = () => {};\n");
+  context.edit(`point ${module.name} at its copy`, path.join(folder, "package.json"), manifest(`file:../${path.basename(copy)}`));
+  await installFixture(context, folder);
+  context.edit(`declare ${module.range} in ${module.name}`, path.join(folder, "package.json"), manifest(module.range));
+}
+
 function configText(project: string): string {
   return readFileSync(path.join(project, "antelope.config.ts"), "utf8");
 }
@@ -167,6 +194,26 @@ export const journeys: Journey[] = [
       ]);
       const listed = await listModules(context, greeter, "modules list after install");
       context.expect(listed.folder, [equal("the added provider stays", listed.names, ["greeter-consumer", "greeter-provider"])]);
+    },
+  },
+  {
+    id: "modules-install-shared-copy-by-version",
+    title: "install and build share the highest copy of a standalone interface that every range accepts, and name the bump the older module needs",
+    entryPoint: "ajs project modules install --yes; ajs project build; consumer ^1.0.0 on 1.0.0, reader ^1.1.0 on 1.1.0",
+    async run(context) {
+      await useOfflineManifest(context);
+      const greeter = copyGreeter(context);
+      context.edit("keep the consumer and the reader", path.join(greeter, "antelope.config.ts"), TWO_COPIES_CONFIG);
+      await installGreeterCopy(context, greeter, { folder: "consumer", name: "greeter-consumer", version: "1.0.0", range: "^1.0.0" });
+      await installGreeterCopy(context, greeter, { folder: "reader", name: "greeter-reader", version: "1.1.0", range: "^1.1.0" });
+      const install = await context.ajs("modules install", ["project", "modules", "install", "--git", context.state.manifestUrl, "--yes"], { cwd: greeter });
+      context.expect(install.folder, [
+        exitIs(install, 0),
+        lacks("stderr", install.stderr, /Incompatible interface package resolution/),
+        has("stderr", install.stderr, /verify-greeter: \^1\.0\.0 (->|→) \^1\.1\.0 in \.\/consumer\/package\.json, required by greeter-reader@1\.0\.0/),
+      ]);
+      const build = await context.ajs("project build", ["project", "build"], { cwd: greeter });
+      context.expect(build.folder, [exitIs(build, 0)]);
     },
   },
   {

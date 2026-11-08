@@ -16,6 +16,7 @@ import {
 } from "../runtime";
 
 export * as interfaceRangesModule from "./interface-ranges";
+export type { ProjectInterfaceCheck } from "./interface-ranges";
 
 /**
  * Loads the modules of the project for `env`, checks that their interfaces

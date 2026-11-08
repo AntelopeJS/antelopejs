@@ -11,8 +11,11 @@ import {
   commandModule as command,
   getProcessUi,
 } from "../../../../../src/core/output";
-import { stubLoadedConfig } from "../../fixtures";
+import { stubInterfaceCheck, stubLoadedConfig } from "../../fixtures";
 describe("project modules behavior: update-registry-failures", () => {
+  beforeEach(() => {
+    stubInterfaceCheck();
+  });
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;

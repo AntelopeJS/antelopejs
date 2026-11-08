@@ -4,12 +4,14 @@ import sinon from "sinon";
 
 import {
   commandsProjectModulesInstallCommand as cmdInstall,
+  commandsProjectModulesLocksModule as moduleLocks,
   commonModule as common,
   gitOperationsModule as gitOps,
 } from "../../../../../../src/cli";
 import {
   ModuleCache,
   ModuleManifest,
+  type RelockBump,
 } from "../../../../../../src/core/modules";
 import {
   cliUiModule as cliUi,
@@ -33,6 +35,21 @@ const AUTH_CONFLICT: InterfaceRangeConflict = {
   consumerCopy: {
     version: "0.0.9",
     root: "/tmp/project/modules/backend/node_modules/@antelopejs/interface-auth",
+  },
+};
+
+const RELOCK_AUTH_JWT: RelockBump = {
+  kind: "relock",
+  moduleId: "auth-jwt",
+  packageName: "@antelopejs/interface-auth",
+  current: "0.1.0",
+  target: "0.1.1",
+  requiredBy: ["backend"],
+  required: true,
+  source: {
+    type: "package",
+    package: "@antelopejs/auth-jwt",
+    version: "1.0.4",
   },
 };
 
@@ -68,7 +85,7 @@ describe("project modules install behavior: checks interface ranges after adding
   it("fails with the conflict once the selected modules are added", async () => {
     const { output } = fixture.stubUnresolvedImport([MOD_A]);
     fakePrompts();
-    fixture.rangeCheck.resolves([AUTH_CONFLICT]);
+    fixture.rangeCheck.resolves({ conflicts: [AUTH_CONFLICT], bumps: [] });
 
     const failure = await rejectionOf(
       cmdInstall().parseAsync(["node", "test", "--project", "/tmp/project"]),
@@ -94,7 +111,7 @@ describe("project modules install behavior: checks interface ranges after adding
 
   it("checks every analyzed environment and reports a conflict they share once", async () => {
     stubEnvironments(fixture);
-    fixture.rangeCheck.resolves([AUTH_CONFLICT]);
+    fixture.rangeCheck.resolves({ conflicts: [AUTH_CONFLICT], bumps: [] });
 
     const failure = await rejectionOf(
       cmdInstall().parseAsync(["node", "test", "--project", "/tmp/project"]),
@@ -105,6 +122,29 @@ describe("project modules install behavior: checks interface ranges after adding
     expect(
       fixture.rangeCheck.getCalls().map((call) => call.args[1]),
     ).to.deep.equal(["staging", "prod"]);
+  });
+
+  it("with --fix resolves the provider again and checks again before it finishes", async () => {
+    stubEnvironments(fixture);
+    fixture.rangeCheck
+      .onFirstCall()
+      .resolves({ conflicts: [AUTH_CONFLICT], bumps: [RELOCK_AUTH_JWT] });
+    const refresh = sinon.stub(moduleLocks, "refreshModuleLocks").resolves([]);
+
+    await cmdInstall().parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/tmp/project",
+      "--env",
+      "prod",
+      "--fix",
+    ]);
+
+    expect(refresh.firstCall.args[2]).to.deep.equal([
+      { id: "auth-jwt", source: RELOCK_AUTH_JWT.source },
+    ]);
+    expect(fixture.rangeCheck.callCount).to.equal(2);
   });
 
   it("finishes with its summary when no range conflicts", async () => {

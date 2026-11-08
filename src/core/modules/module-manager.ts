@@ -5,6 +5,7 @@ import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
 } from "./interface-registry";
+import { findPlannedBumps, type InterfaceBump } from "./interface-bumps";
 import { Module } from "./module";
 import { ModuleIsolation } from "./module-isolation";
 import {
@@ -527,6 +528,18 @@ export class ModuleManager {
    */
   findInterfaceRangeConflicts(): InterfaceRangeConflict[] {
     return operations(this).findInterfaceRangeConflicts();
+  }
+
+  /**
+   * Lists the changes that give each module the copy of every planned
+   * interface package that all their ranges accept. Reads only package.json
+   * files, like {@link findInterfaceRangeConflicts}.
+   */
+  findInterfaceBumps(): InterfaceBump[] {
+    return findPlannedBumps(
+      this.interfacePackagePlans,
+      this.getAllManagedModules(),
+    );
   }
 
   private findRangeConflicts(

@@ -31,17 +31,17 @@ ajs project logging show|set # view/change logging settings
 ajs project modules list                 # configured modules + their sources (alias: ls; -j for JSON)
 ajs project modules add <modules...>     # add & download modules you name (-m, --mode package|git|local|dir; default package = npm)
 ajs project modules remove <modules...>  # remove from config (alias: rm; -f, --force)
-ajs project modules update [modules...]  # bump npm modules to their latest versions and resolve their locks again (--dry-run)
-ajs project modules install              # add a provider module for every unresolved interface (-y: never ask)
+ajs project modules update [modules...]  # bump npm modules to their latest versions, resolve their locks again, check interface versions (--dry-run, --fix)
+ajs project modules install              # add a provider module for every unresolved interface, then check interface versions (-y: never ask, --fix)
 ```
 
 `add` in package mode accepts `<name>@<exact|range|dist-tag>`; without a spec it writes a caret range of the latest version. `add` does no interface resolution.
 
 `modules add|remove|update|install` and `logging set` edit only the values they change in `antelope.config.ts` and keep the rest of the source. They change a value only when it is a plain literal. On an expression (`version: CORE_VERSION`, `process.env.X ?? "1.0.0"`) they fail, name the value to edit by hand, and leave the file unchanged: make that edit, do not inline the expression to silence the error.
 
-`modules install` (not `add`) fixes **unresolved imports**, and despite its name it installs no npm dependencies: it finds the interfaces no loaded module implements, looks up their implementing modules in the interface repository, and writes the chosen one into `antelope.config.ts`. A single implementer is added without a question; with several it asks, or takes the first with `-y`. It then checks interface ranges like `build`.
+`modules install` (not `add`) fixes **unresolved imports**, and despite its name it installs no npm dependencies: it finds the interfaces no loaded module implements, looks up their implementing modules in the interface repository, and writes the chosen one into `antelope.config.ts`. A single implementer is added without a question; with several it asks, or takes the first with `-y`. It then runs the interface version check, which `modules update` also runs.
 
-`build` and `modules install` fail (exit `1`, no `build.json` written) with `Incompatible interface package resolution` when a module's declared range of an interface package excludes the shared copy, the same error `start` and `dev` raise. Fix it as the error says: update that module, or widen its range to the shared version (`^<version>`) and reinstall, or keep the module that provides the shared copy on a version within the range. Do not skip the build check. A module marked `optional: true` that would conflict only produces a warning, as `start` runs without it.
+`modules install` and `modules update` find, for each interface package, the highest installed copy every module's range accepts. When the copy a launch would share is older, they fail (exit `1`) with `Interface packages need a newer copy` and the exact change: a raised floor in a local module's `package.json` (`^0.1.8 → ^0.1.9`), or an npm module whose dependencies must be resolved again (`modules update <module>`). `--fix` applies the changes, reinstalls and checks again. A local module that only compiles against an older copy gets a warning. For an interface nothing implements, the shared copy is that highest accepted copy, whatever the module order. `build`, `start` and `dev` fail with `Incompatible interface package resolution` when a module's declared range excludes the shared copy; run `modules install` to get the exact change, or update the module. Do not skip the build check. A module marked `optional: true` that would conflict only produces a warning, as `start` runs without it.
 
 Modules declared in `antelope.config.ts` are downloaded into `.antelope/cache` by `dev`, `build`, and `modules add`; a module's own npm dependencies install inside its cache folder.
 
