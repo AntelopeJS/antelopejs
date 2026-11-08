@@ -11,6 +11,12 @@ export type FileChangeListener = (filePath: string) => void;
 export interface WatchFileOptions {
   /** The file may be absent: its creation and its deletion are changes. */
   optional?: boolean;
+  /**
+   * The hash of each file as the project read it, `undefined` for a file that
+   * was absent. A listed file that differs from it once watching starts is a
+   * change; an unlisted one is hashed when it starts being watched.
+   */
+  readHashes?: ReadonlyMap<string, string | undefined>;
 }
 
 interface WatchedFile {
@@ -78,7 +84,7 @@ export class FileWatcher {
   async watchFile(
     filePath: string,
     listener: FileChangeListener,
-    { optional = false }: WatchFileOptions = {},
+    { optional = false, readHashes }: WatchFileOptions = {},
   ): Promise<void> {
     const resolved = path.resolve(filePath);
     const dir = path.dirname(resolved);
@@ -89,14 +95,27 @@ export class FileWatcher {
       return;
     }
 
-    const hash =
-      optional && !(await this.fs.exists(resolved))
-        ? undefined
-        : await this.hasher.hashFile(resolved);
+    const hash = readHashes?.has(resolved)
+      ? readHashes.get(resolved)
+      : await this.hashWatchedFile(resolved, optional);
     this.watchedFiles.set(resolved, { hash, optional, listeners: [listener] });
     this.watchedDirs.add(dir);
   }
 
+  private async hashWatchedFile(
+    filePath: string,
+    optional: boolean,
+  ): Promise<string | undefined> {
+    return optional && !(await this.fs.exists(filePath))
+      ? undefined
+      : this.hasher.hashFile(filePath);
+  }
+
+  /**
+   * Starts the fs watchers. A watched file whose directory starts being
+   * watched is checked once against its hash, so an edit made before the
+   * watcher ran reaches its listeners.
+   */
   startWatching(): void {
     if (this.stopped) {
       return;
@@ -120,8 +139,17 @@ export class FileWatcher {
           console.error(`FileWatcher error for ${dir}:`, err);
         });
         this.watchers.set(dir, watcher);
+        this.checkWatchedFilesIn(dir);
       } catch (err) {
         console.error(`Failed to watch directory ${dir}:`, err);
+      }
+    }
+  }
+
+  private checkWatchedFilesIn(dir: string): void {
+    for (const filePath of this.watchedFiles.keys()) {
+      if (path.dirname(filePath) === dir) {
+        this.enqueueChange(dir, filePath);
       }
     }
   }

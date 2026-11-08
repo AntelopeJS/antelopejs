@@ -6,18 +6,19 @@ EXTENDS ModuleLifecycleState
 
 (* ---------------------------- launch -------------------------------- *)
 
-(* prepareFromConfig imports antelope.config.ts through ConfigLoader.load, *)
-(* which asks jiti without `fresh`: jiti's module cache answers with the  *)
-(* content this process imported first.                                   *)
+(* prepareFromConfig hashes antelope.config.ts, then imports it through  *)
+(* ConfigLoader.load, which asks jiti without `fresh`: jiti's module cache *)
+(* answers with the content this process imported first.                 *)
 LaunchPrepare(L) ==
   /\ ~exited /\ lpc[L] = "prepare"
+  /\ cfgHash' = [cfgHash EXCEPT ![L] = declared]          \* launch-sequence.ts:150
   /\ LET read == IF jitiCache = {"none"} THEN declared ELSE jitiCache \* config-loader.ts:145, :42-49
-     IN /\ cfgSeen' = [cfgSeen EXCEPT ![L] = read]       \* launch-sequence.ts:115
+     IN /\ cfgSeen' = [cfgSeen EXCEPT ![L] = read]       \* launch-sequence.ts:154
         /\ jitiCache' = read
         /\ staleRead' = (staleRead \/ read /= declared)
   /\ lpc' = [lpc EXCEPT ![L] = "addModules"]
   /\ UNCHANGED <<declared, edits, configOwner, changes, genVars, launch, awaiting, loaded, lateStart,
-                 sdVars, watchVars, restartVars, hrVars, procVars>>
+                 sdVars, watching, watched, cfgEvent, restartReq, restartVars, hrVars, procVars>>
 
 Interrupt(L) ==
   /\ lpc' = [lpc EXCEPT ![L] = "interrupted"]
@@ -111,21 +112,23 @@ LaunchWatch(L) ==
                          sdVars, cfgHash, cfgEvent, restartReq, restartVars, hrVars,
                          staleWork, sigint, exited, crashed, crashedWhileWatching>>
 
-(* FileWatcher.watchFile hashes antelope.config.ts. *)
+(* FileWatcher.watchFile keeps the hash prepareFromConfig took. *)
 LaunchHashConfig(L) ==
   /\ ~exited /\ lpc[L] = "hashConfig"
-  /\ cfgHash' = [cfgHash EXCEPT ![L] = declared]          \* project-launch.ts:108
-  /\ lpc' = [lpc EXCEPT ![L] = "startWatching"]
+  /\ lpc' = [lpc EXCEPT ![L] = "startWatching"]          \* project-launch.ts:109-116, file-watcher.ts:98
   /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, awaiting, loaded, lateStart,
-                 sdVars, watching, watched, cfgEvent, restartReq, restartVars, hrVars,
+                 sdVars, watching, watched, cfgHash, cfgEvent, restartReq, restartVars, hrVars,
                  procVars>>
 
-(* FileWatcher.startWatching; startProject returns, and restartProject    *)
-(* withdraws its tolerance and clears isRestarting.                       *)
+(* FileWatcher.startWatching, which checks antelope.config.ts against    *)
+(* its hash once; startProject returns, and restartProject withdraws its *)
+(* tolerance and clears isRestarting.                                     *)
 LaunchWatching(L) ==
   /\ ~exited /\ lpc[L] = "startWatching"
   /\ watching' = [watching EXCEPT ![L] =
-       IF watching[L] = "stopped" THEN "stopped" ELSE "yes"] \* file-watcher.ts:89, project-launch.ts:125
+       IF watching[L] = "stopped" THEN "stopped" ELSE "yes"] \* file-watcher.ts:120, project-launch.ts:129
+  /\ cfgEvent' = [cfgEvent EXCEPT ![L] =
+       cfgEvent[L] \/ watching[L] /= "stopped"]          \* file-watcher.ts:142, :149-155
   /\ lpc' = [lpc EXCEPT ![L] = "running"]
   /\ IF restartPc = "start" /\ L = launch
      THEN /\ tolerance' = tolerance - 1                   \* project-launch.ts:233
@@ -133,7 +136,7 @@ LaunchWatching(L) ==
           /\ restartPc' = "idle"
      ELSE UNCHANGED <<isRestarting, restartPc, tolerance>>
   /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, awaiting, loaded, lateStart,
-                 sdVars, watched, cfgHash, cfgEvent, restartReq, restartFrom, hrVars,
+                 sdVars, watched, cfgHash, restartReq, restartFrom, hrVars,
                  staleWork, sigint, exited, crashed, crashedWhileWatching>>
 
 (* ----------------------- config edits and restarts ---------------------- *)

@@ -3,7 +3,11 @@ import path from "node:path";
 
 import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
 import type { LaunchOptions } from "../../types";
-import { loadProjectEnv } from "../config";
+import {
+  getProjectEnvPath,
+  loadProjectEnv,
+  tryFindConfigPath,
+} from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { BuildArtifact } from "../modules";
 import { INSTANCES_FOLDER, ModuleManager, unpackErrors } from "../modules";
@@ -54,6 +58,7 @@ import type {
   StartedProject,
 } from "./runtime-types";
 import type { ShutdownHandler, ShutdownManager } from "./shutdown/index";
+import { FileHasher } from "./watch/file-hasher";
 
 export function memoizeLoaderContext(
   create: () => Promise<LoaderContext>,
@@ -109,6 +114,30 @@ function resolveRuntimeLoaderConfig(
 }
 
 /**
+ * Hashes `antelope.config.ts` and the project `.env` before the launch reads
+ * them, so the watcher sees an edit made while the project starts.
+ */
+async function hashRestartFiles(
+  projectFolder: string,
+  fs: NodeFileSystem,
+): Promise<Map<string, string | undefined>> {
+  const hasher = new FileHasher(fs);
+  const configPath = await tryFindConfigPath(projectFolder, fs);
+  const files = [getProjectEnvPath(projectFolder)];
+  if (configPath) {
+    files.push(path.resolve(configPath));
+  }
+  const hashes = new Map<string, string | undefined>();
+  for (const file of files) {
+    hashes.set(
+      file,
+      (await fs.exists(file)) ? await hasher.hashFile(file) : undefined,
+    );
+  }
+  return hashes;
+}
+
+/**
  * Prepare a project from its live `antelope.config.ts`, resolving and
  * downloading module sources at launch time.
  *
@@ -118,6 +147,10 @@ export const prepareFromConfig: ProjectPreparer = async (
   projectFolder,
   env,
 ) => {
+  const readHashes = await hashRestartFiles(
+    projectFolder,
+    new NodeFileSystem(),
+  );
   const { fs, normalizedConfig } = await loadProjectConfig(projectFolder, env);
   const loadContext = memoizeLoaderContext(() =>
     createLoaderContext(normalizedConfig, fs),
@@ -138,6 +171,7 @@ export const prepareFromConfig: ProjectPreparer = async (
     createEntries: async () =>
       buildModuleConfigs(normalizedConfig, await loadContext()),
     instanceRoot: path.join(normalizedConfig.cacheFolder, INSTANCES_FOLDER),
+    readHashes,
   };
 };
 
@@ -419,6 +453,7 @@ async function completeLaunchSequence(
     fs: project.fs,
     shutdownManager,
     policy: request.policy,
+    readHashes: project.readHashes,
   };
 }
 

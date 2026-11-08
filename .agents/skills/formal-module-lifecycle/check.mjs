@@ -16,7 +16,7 @@ import { checkSpec } from "@antelopejs/tooling-configs/formal";
 const FINDINGS = {
   NoOrphanGeneration: 10,
   LaunchReadsCurrentConfig: 21,
-  ConfigEditsReachProject: 12,
+  ConfigEditsReachProject: 30,
 };
 
 await checkSpec({

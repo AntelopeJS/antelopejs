@@ -34,7 +34,7 @@ Run it when a change touches any file in the coverage record below. A changed ru
 | `NoCrashFromStaleWork` | Work a destroyed generation leaves behind never stops the dev process unless the user stopped it. | holds |
 | `NoOrphanGeneration` | Every constructed or running generation is one the project still holds, so a stop or destroy can reach it. | finding F1 |
 | `LaunchReadsCurrentConfig` | Every launch, restarts included, loads antelope.config.ts as the file holds it. | finding F2 |
-| `ConfigEditsReachProject` | Once the project settles, it holds exactly the modules antelope.config.ts declares. | finding F2, F3 |
+| `ConfigEditsReachProject` | Once the project settles, it holds exactly the modules antelope.config.ts declares. | finding F2 |
 
 `TypeOK` holds too. `check.mjs` records each finding's counterexample length in `FINDINGS`.
 
@@ -46,7 +46,7 @@ Each finding was replayed against the real code at the sync commit. The replays 
 - **F2, restart reads a stale config (`LaunchReadsCurrentConfig`).** `importConfigInput` builds a new jiti instance per call, but jiti answers from the shared `require.cache` while the config's entry is there and loaded (config-loader.ts:42-50, jiti 2.6.1 with `moduleCache` on). The only thing that deletes that entry is `evictModuleFiles` (module-manager-cache.ts:39-51), which `destroyAll` runs for every loaded module, and `reloadLoadedModuleFromSource` for the reloaded one. It deletes only files under the module's folder. So a restart reads the edited file when a loaded module lives at the project root (`path: "."`, the layout the templates use), and reads the first import otherwise. The model has `configOwner`, the module whose folder holds antelope.config.ts, and `Init` lets TLC try both layouts. Replays on the built CLI with `ajs project dev --watch`:
   - Modules in subfolders (`./a`, `./b`): with dev on `{a}`, writing `{a, b}` logged "Configuration file changed, restarting project...", then "Loaded 1 module", and `b` never constructed.
   - Module `a` at the root: writing `{a, b}` gave "Loaded 2 modules", as the parent's template journey saw. Then writing `{b}` gave "Loaded 1 module", and writing `{a, b}` again gave "Loaded 1 module" with only `b` constructed. With the root module removed, nothing evicts the cached config, so every later restart reads `{b}`.
-- **F3, edit lost during startup (`ConfigEditsReachProject`).** An edit after `prepareFromConfig` read the config and before `FileWatcher.startWatching` produces no fs.watch event. `watchFile` hashes the already-edited file, so the project runs without the change. In the replay, a module's `construct` wrote `b` into the config during launch, and dev never restarted or loaded `b`.
+- **F3, edit lost during startup, fixed (#248).** An edit after `prepareFromConfig` read the config and before `FileWatcher.startWatching` produced no fs.watch event, and `watchFile` hashed the already-edited file, so the project ran without the change. `prepareFromConfig` now hashes antelope.config.ts and `.env` before it loads them, `watchFile` keeps that hash, and `startWatching` checks each watched file against it once its directory is watched. `LaunchPrepare` sets `cfgHash` and `LaunchWatching` raises `cfgEvent`. `test/integration/config-edit-during-launch.test.ts` replays it: a module's `construct` writes `b` into the config during launch, and dev restarts and starts `b`. `ConfigEditsReachProject` still breaks through F2.
 
 ## Read every result with /statechart
 
@@ -66,11 +66,11 @@ Replay the counterexample against the code, one action per step, with the covera
 
 | Model action | Code |
 | --- | --- |
-| `LaunchPrepare`, `EvictConfig` (in `SdClear`, `RlInstall`) | `prepareFromConfig` (src/core/runtime/launch-sequence.ts), `loadProjectConfig` (runtime-bootstrap.ts), `ConfigLoader.load` / `importConfigInput` (src/core/config/config-loader.ts), `evictModuleFiles` (src/core/modules/module-manager-cache.ts) |
+| `LaunchPrepare`, `EvictConfig` (in `SdClear`, `RlInstall`) | `prepareFromConfig`, `hashRestartFiles` (src/core/runtime/launch-sequence.ts), `loadProjectConfig` (runtime-bootstrap.ts), `ConfigLoader.load` / `importConfigInput` (src/core/config/config-loader.ts), `evictModuleFiles` (src/core/modules/module-manager-cache.ts) |
 | `LaunchAddModules`, `LaunchConstruct`, `LaunchStart`, `LaunchWatch` gates | `runLaunchSteps` (src/core/runtime/launch-steps.ts), `MODULE_STEPS`, `LAUNCH_STEPS` (launch-sequence.ts), `POST_LAUNCH_STEPS` (src/core/repl/project-launch.ts) |
 | `ConstructApply`, `LaunchConstructed` | `constructAll`, `constructReadyModules` (src/core/modules/module-manager-construction.ts), `Module.construct` (module.ts), `ModuleLifecycle.construct` (module-lifecycle.ts) |
 | `StartApply`, `LaunchStarted` | `startAll`, `startModules` (module-manager-lifecycle.ts), `Module.start`, `ModuleLifecycle.start`, `enqueue` |
-| `LaunchWatch`, `LaunchHashConfig`, `LaunchWatching` | `setupWatching`, `keepRunningThroughFailedReloads` (project-launch.ts), `FileWatcher.scanModule`, `watchFile`, `startWatching` (src/core/runtime/watch/file-watcher.ts), `tolerateInvalidatedModuleWork` (runtime-bootstrap.ts) |
+| `LaunchWatch`, `LaunchHashConfig`, `LaunchWatching` | `setupWatching`, `keepRunningThroughFailedReloads` (project-launch.ts), `FileWatcher.scanModule`, `watchFile`, `startWatching`, `checkWatchedFilesIn` (src/core/runtime/watch/file-watcher.ts), `tolerateInvalidatedModuleWork` (runtime-bootstrap.ts) |
 | `ConfigEdit`, `ConfigNoticed` | `writeConfig` (src/cli/common.ts), `FileWatcher.handleFileChange`, `handleWatchedFileChange` |
 | `RestartRequested`, `RestartLaunches` | `restartUnlessOwnWrite`, `restartProject`, `isRestarting` (project-launch.ts), `getActiveShutdownManager` (src/core/runtime/process-claim.ts), `runLaunchSequence` / `armShutdown` (launch-sequence.ts) |
 | `Sigint`, `BeginShutdown` | `ShutdownManager.handleSignal`, `shutdown` (src/core/runtime/shutdown/shutdown-manager.ts) |

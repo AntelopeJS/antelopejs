@@ -9,7 +9,6 @@ import { getActiveShutdownManager } from "../../src/core/runtime";
 const VALUE_VARIABLE = "AJS_ENV_RELOAD_VALUE";
 const MARKER_TIMEOUT_MS = 8000;
 const MARKER_POLL_MS = 50;
-const RESAVE_INTERVAL_MS = 1000;
 
 const MODULE_SOURCE = `const fs = require("node:fs");
 let cfg;
@@ -27,27 +26,11 @@ async function readMarker(markerPath: string): Promise<string | undefined> {
   }
 }
 
-/**
- * Waits until the module the project runs has written `value`.
- *
- * A project that is still restarting has not armed its `.env` watcher yet and
- * ignores a change made meanwhile, so `save` is repeated until the restart that
- * follows it is the one that took effect.
- */
-async function waitForMarker(
-  markerPath: string,
-  value: string,
-  save?: () => Promise<void>,
-): Promise<void> {
+async function waitForMarker(markerPath: string, value: string): Promise<void> {
   const deadline = Date.now() + MARKER_TIMEOUT_MS;
-  let nextSave = Date.now() + RESAVE_INTERVAL_MS;
   while (Date.now() < deadline) {
     if ((await readMarker(markerPath)) === value) {
       return;
-    }
-    if (save && Date.now() >= nextSave) {
-      await save();
-      nextSave = Date.now() + RESAVE_INTERVAL_MS;
     }
     await new Promise((resolve) => setTimeout(resolve, MARKER_POLL_MS));
   }
@@ -98,14 +81,11 @@ describe("project .env in watch mode", () => {
     await launch(projectFolder, "default", { watch: true });
     await waitForMarker(markerPath, "unset");
 
-    const saveEnv = (value: string) => () =>
-      fs.writeFile(envPath, `${VALUE_VARIABLE}=${value}\n`);
+    await fs.writeFile(envPath, `${VALUE_VARIABLE}=created\n`);
+    await waitForMarker(markerPath, "created");
 
-    await saveEnv("created")();
-    await waitForMarker(markerPath, "created", saveEnv("created"));
-
-    await saveEnv("edited")();
-    await waitForMarker(markerPath, "edited", saveEnv("edited"));
+    await fs.writeFile(envPath, `${VALUE_VARIABLE}=edited\n`);
+    await waitForMarker(markerPath, "edited");
 
     expect(process.env[VALUE_VARIABLE]).to.equal("edited");
   });
