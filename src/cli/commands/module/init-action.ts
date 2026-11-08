@@ -118,7 +118,8 @@ function unknownChoiceError(choice: UnknownChoice): CliError {
 }
 
 function isDirectoryOccupied(modulePath: string): boolean {
-  return existsSync(modulePath) && readdirSync(modulePath).length > 0;
+  const target = path.resolve(modulePath);
+  return existsSync(target) && readdirSync(target).length > 0;
 }
 
 async function ensureDirectoryUsable(

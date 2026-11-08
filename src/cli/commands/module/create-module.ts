@@ -1,5 +1,5 @@
 import * as childProcess from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { lstatSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -150,15 +150,15 @@ export async function createModule(
   modulePath: string,
   answers: ModuleInitAnswers,
 ): Promise<void> {
-  const isNewDirectory = !existsSync(modulePath);
+  const target = path.resolve(modulePath);
+  const isNewDirectory =
+    lstatSync(target, { throwIfNoEntry: false }) === undefined;
   try {
     await populateModule(modulePath, answers);
   } catch (error) {
     if (isNewDirectory) {
-      rmSync(path.resolve(modulePath), { recursive: true, force: true });
-      info(
-        `Removed the incomplete directory ${displayPath(path.resolve(modulePath))}`,
-      );
+      rmSync(target, { recursive: true, force: true });
+      info(`Removed the incomplete directory ${displayPath(target)}`);
     }
     throw error;
   }
