@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { expect } from "chai";
+import sinon from "sinon";
 
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { FileWatcher } from "../../../src/core/runtime";
@@ -196,5 +197,48 @@ describe("FileWatcher Integration with a project root module", () => {
 
     expect(changes).to.equal(0);
     expect(watcher.getModuleSignature("project")).to.equal(baseline);
+  });
+});
+
+describe("FileWatcher Integration with a module that has no src folder", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(path.join(tmpdir(), "ajs-test-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("watches the other folders of a module that has no src folder", async function () {
+    this.timeout(5000);
+    const libFile = path.join(tempDir, "lib", "a.js");
+    await mkdir(path.dirname(libFile));
+    await writeFile(libFile, "export const a = 1;");
+    const consoleError = sinon.stub(console, "error");
+
+    const watcher = new FileWatcher(new NodeFileSystem());
+    try {
+      await watcher.scanModule("test", tempDir, ["src", "lib"]);
+      const changePromise = new Promise<string>((resolve, reject) => {
+        const timeout = setTimeout(
+          () => reject(new Error("Timed out waiting for change")),
+          2000,
+        );
+        watcher.onModuleChanged((id) => {
+          clearTimeout(timeout);
+          resolve(id);
+        });
+      });
+      watcher.startWatching();
+
+      await writeFile(libFile, "export const a = 2;");
+      expect(await changePromise).to.equal("test");
+      expect(consoleError.called).to.equal(false);
+    } finally {
+      watcher.stopWatching();
+      consoleError.restore();
+    }
   });
 });

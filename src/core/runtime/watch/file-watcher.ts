@@ -68,7 +68,10 @@ export class FileWatcher {
     watchDirs: string[] = [""],
   ): Promise<void> {
     for (const dir of watchDirs) {
-      await this.exploreDir(moduleId, path.join(rootDir, dir));
+      const dirPath = path.join(rootDir, dir);
+      await this.forgetIfVanished(dirPath, () =>
+        this.exploreDir(moduleId, dirPath),
+      );
     }
   }
 
@@ -333,8 +336,17 @@ export class FileWatcher {
     moduleId: string,
     fullPath: string,
   ): Promise<void> {
+    await this.forgetIfVanished(fullPath, () =>
+      this.addEntry(moduleId, fullPath),
+    );
+  }
+
+  private async forgetIfVanished(
+    fullPath: string,
+    explore: () => Promise<void>,
+  ): Promise<void> {
     try {
-      await this.addEntry(moduleId, fullPath);
+      await explore();
     } catch (error) {
       if (!(error instanceof Error && isVanishedPathError(error))) {
         throw error;
