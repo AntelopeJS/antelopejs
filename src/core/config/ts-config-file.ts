@@ -6,6 +6,7 @@ import { createJiti } from "jiti";
 import path from "node:path";
 
 import { isFunction } from "../../utils";
+import { assertAntelopeConfig } from "./config-fields";
 import { DEFAULT_ENV } from "./config-paths";
 import { loadProjectEnv } from "./project-env";
 
@@ -35,6 +36,12 @@ async function importConfigInput(
   return loaded.default ?? loaded;
 }
 
+/**
+ * Loads the project configuration file at `configPath`, calling it with
+ * `environment` when it exports a function. Throws an error naming the field
+ * and the file when the value does not hold the declared `AntelopeConfig`
+ * contract.
+ */
 export async function loadTsConfigFile(
   configPath: string,
   environment?: string,
@@ -43,9 +50,9 @@ export async function loadTsConfigFile(
   loadProjectEnv(path.dirname(configPath));
   const configInput = await importConfigInput(configPath, fresh);
 
-  if (isFunction(configInput)) {
-    return await configInput({ env: environment ?? DEFAULT_ENV });
-  }
-
-  return configInput;
+  const config: unknown = isFunction(configInput)
+    ? await configInput({ env: environment ?? DEFAULT_ENV })
+    : configInput;
+  assertAntelopeConfig(config, configPath);
+  return config;
 }

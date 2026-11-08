@@ -44,11 +44,7 @@ export class ConfigLoader {
 
     let config = { ...rawConfig };
     if (environment && rawConfig.environments?.[environment]) {
-      // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Environment overrides are not validated today; checking required fields would change acceptance (#228).
-      config = mergeDeep(
-        config,
-        rawConfig.environments[environment],
-      ) as AntelopeConfig;
+      config = mergeDeep(config, rawConfig.environments[environment]);
     }
 
     config.cacheFolder = config.cacheFolder ?? DEFAULT_CACHE_DIR;

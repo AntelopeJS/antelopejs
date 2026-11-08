@@ -209,6 +209,7 @@ describe("writeConfig around comments, line endings and spreads", () => {
 
   it("removes a module with its own comments and keeps its neighbours' comments", async () => {
     const source = `export default {
+  name: "shop",
   modules: {
     api: "1.0.0", // keep
     // database module
@@ -232,6 +233,7 @@ describe("writeConfig around comments, line endings and spreads", () => {
 
   it("adds after a trailing comment and inside a commented empty object", async () => {
     const source = `export default {
+  name: "shop",
   modules: {
     a: "1.0.0" // the a module
   },
@@ -262,6 +264,7 @@ describe("writeConfig around comments, line endings and spreads", () => {
   it("keeps CRLF line endings when it removes and adds", async () => {
     const source = [
       "export default {",
+      '  name: "shop",',
       "  modules: {",
       '    api: "1.0.0",',
       '    db: "1.0.0",',
@@ -278,6 +281,10 @@ describe("writeConfig around comments, line endings and spreads", () => {
       source.replace('    db: "1.0.0",\r\n', '    web: "3.0.0",\r\n'),
     );
   });
+});
+
+describe("writeConfig around evaluated values and inline objects", () => {
+  const project = useProject();
 
   it("ignores values that evaluate differently on each load", async () => {
     const source = `export default {
@@ -303,6 +310,7 @@ describe("writeConfig around comments, line endings and spreads", () => {
 
   it("adds after a comma that follows a block comment holding a comma", async () => {
     const source = `export default {
+  name: "shop",
   modules: {
     a: "1.0.0" /* pinned, do not bump */,
   },
@@ -320,6 +328,7 @@ describe("writeConfig around comments, line endings and spreads", () => {
 
   it("writes a value inline into a single-line object", async () => {
     const source = `export default {
+  name: "shop",
   environments: { prod: { modules: { a: "1.0.0" } } },
 };
 `;
@@ -344,7 +353,7 @@ describe("writeConfig refusals on values it cannot reach", () => {
 
   it("refuses a value a later spread overrides", async () => {
     const source = `const extra = { modules: { a: "9.9.9" } };
-export default { modules: { a: "1.0.0" }, ...extra };
+export default { name: "shop", modules: { a: "1.0.0" }, ...extra };
 `;
     const config = await writeSourceAndRead(project, source);
     config.modules = { a: "2.0.0" };
@@ -363,7 +372,7 @@ export default { modules: { a: "1.0.0" }, ...extra };
 
   it("names the whole value to write when it refuses an added module", async () => {
     const source = `const MODULES = { api: "1.0.0" };
-export default { modules: MODULES };
+export default { name: "shop", modules: MODULES };
 `;
     const config = await writeSourceAndRead(project, source);
     config.modules = {
@@ -425,6 +434,7 @@ describe("writeConfig next to closing braces and multi-line comments", () => {
 
   it("keeps a multi-line comment on the property it follows when adding", async () => {
     const source = `export default {
+  name: "shop",
   modules: {
     web: "1.0.0" /* the web,
                     served on 80 */
