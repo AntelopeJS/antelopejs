@@ -6,7 +6,6 @@ import path from "node:path";
 import { FEATURE_JOURNEYS } from "../../journeys/index.mts";
 import { field, type JsonRead, parseJson } from "../json.mts";
 import { REPO_DIR, SKILL_DIR } from "../run.mts";
-import { REPOSITORY_ENV } from "../verdict.mts";
 
 /** What the `verdict` command printed and recorded for a crafted run. */
 export interface DrivenVerdict {
@@ -35,16 +34,13 @@ function writeRun(dir: string, failing: Set<string>): void {
 /**
  * Crafts a run whose base is HEAD, so the diff is empty, with the named
  * `<feature>/<journey>` results failing and every other journey passing, and
- * drives `verify-ajs verdict` on it with `args`. The repository the evidence
- * links name is set through `VERIFY_AJS_REPOSITORY`, so the run needs no
- * GitHub origin remote. Throws with the verdict's stderr when it wrote no plan.
+ * drives `verify-ajs verdict` on it with `args`. Throws with the verdict's stderr when it wrote no plan.
  */
 export function driveVerdict(failing: string[], args: string[]): DrivenVerdict {
   const dir = mkdtempSync(path.join(tmpdir(), "verify-ajs-verdict-"));
   try {
     writeRun(dir, new Set(failing));
-    const env = { ...process.env, [REPOSITORY_ENV]: "owner/repo" };
-    const run = spawnSync(process.execPath, [path.join(SKILL_DIR, "bin", "verify-ajs.mts"), "verdict", dir, "--pr", "1", ...args], { cwd: REPO_DIR, encoding: "utf8", env });
+    const run = spawnSync(process.execPath, [path.join(SKILL_DIR, "bin", "verify-ajs.mts"), "verdict", dir, "--pr", "1", ...args], { cwd: REPO_DIR, encoding: "utf8" });
     const planFile = path.join(dir, "evidence", "plan.json");
     if (!existsSync(planFile)) {
       throw new Error(`verdict exited ${run.status} without writing plan.json\nstdout: ${run.stdout}\nstderr: ${run.stderr}`);

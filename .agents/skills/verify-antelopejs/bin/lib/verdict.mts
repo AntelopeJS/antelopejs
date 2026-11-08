@@ -50,9 +50,6 @@ export interface FalsePositive {
 /** A rendered verdict and the facts it was computed from. */
 export interface Verdict {
   result: VerdictResult;
-  headSha: string;
-  skillSha: string;
-  pr: number;
   markdown: string;
   reasons: string[];
 }
@@ -206,27 +203,6 @@ function git(args: string[]): string {
   return execFileSync("git", args, { cwd: REPO_DIR, encoding: "utf8" }).trim();
 }
 
-/** The environment variable that names the `owner/repo` the evidence links point at, ahead of the origin remote. */
-export const REPOSITORY_ENV = "VERIFY_AJS_REPOSITORY";
-
-/** The GitHub `owner/repo` the evidence links point at: `VERIFY_AJS_REPOSITORY` when it is set, otherwise the GitHub origin remote. */
-export function originRepository(): string {
-  const named = process.env[REPOSITORY_ENV];
-  if (named) {
-    return named;
-  }
-  const url = git(["remote", "get-url", "origin"]);
-  const match = /github\.com[:/](.+?)(?:\.git)?$/.exec(url);
-  if (!match) {
-    throw new Error(`origin ${url} is not a GitHub repository`);
-  }
-  return match[1];
-}
-
-function evidenceUrl(pr: number, sha: string, relative: string): string {
-  return `https://github.com/${originRepository()}/tree/verify-evidence/pr-${pr}/${sha}/${relative}`;
-}
-
 function short(sha: string): string {
   return sha.slice(0, 7);
 }
@@ -263,7 +239,7 @@ function bullets(entries: string[], empty: string): string[] {
   return (entries.length > 0 ? entries : [empty]).map((entry) => `- ${entry}`);
 }
 
-function journeyRows(state: RunState, plan: Plan, pr: number) {
+function journeyRows(state: RunState, plan: Plan) {
   const rows: string[] = [];
   const reasons: string[] = [];
   const known: string[] = [];
@@ -285,7 +261,7 @@ function journeyRows(state: RunState, plan: Plan, pr: number) {
         reasons.push(`${feature}/${result.journey} failed`);
       }
       const outcome = result.status === "PASS" ? "pass" : isKnown ? "known finding" : "**fail**";
-      rows.push(`| ${feature} | \`${result.journey}\`: ${result.entryPoint} | ${outcome}: ${result.title} | [${result.folder}](${evidenceUrl(pr, plan.headSha, result.folder)}) |`);
+      rows.push(`| ${feature} | \`${result.journey}\`: ${result.entryPoint} | ${outcome}: ${result.title} | \`${result.folder}\` |`);
     }
   }
   return { rows, reasons, known };
@@ -298,7 +274,7 @@ function fullLines(full: FullSet | null): string[] {
   return [full.reason === "all" ? "- every other feature: pre-release run (`--all`)" : `- every other feature: the diff changes shared files ${full.files.map((file) => `\`${file}\``).join(", ")}`];
 }
 
-function formalSection(state: RunState, plan: Plan, pr: number) {
+function formalSection(state: RunState, plan: Plan) {
   const reasons: string[] = [];
   const lines: string[] = [];
   const touched = touchedFormalChecks(plan.changed).map((check) => check.name);
@@ -319,7 +295,7 @@ function formalSection(state: RunState, plan: Plan, pr: number) {
       reasons.push(`formal check ${check.name}: ${weight.outcome}`);
     }
     const summary = gate ? weight.outcome : result.violated.length > 0 ? `violated: ${result.violated.join(", ")}` : `exit ${result.exitCode}, no violated rule`;
-    lines.push(`\`${check.name}\` (${gate ? "covers the diff, gates the verdict" : "does not cover the diff, informational"}): ${summary}. [evidence](${evidenceUrl(pr, plan.headSha, result.folder)})`);
+    lines.push(`\`${check.name}\` (${gate ? "covers the diff, gates the verdict" : "does not cover the diff, informational"}): ${summary}. Evidence: \`${result.folder}\`.`);
   }
   return { reasons, lines };
 }
@@ -347,10 +323,10 @@ export function renderVerdict(state: RunState, pr: number, judgement: Judgement,
   if (plan.headSha !== state.headSha) {
     reasons.push(`the run was created at ${short(state.headSha)} but HEAD is ${short(plan.headSha)}`);
   }
-  const journeys = journeyRows(state, plan, pr);
+  const journeys = journeyRows(state, plan);
   reasons.push(...journeys.reasons, ...plan.unmapped.map((file) => `unmapped surface ${file}`), ...docsReasons(judgement, plan));
   const doors = doorReasons(judgement, plan);
-  const formal = formalSection(state, plan, pr);
+  const formal = formalSection(state, plan);
   reasons.push(...doors.reasons, ...formal.reasons);
   const attention = [...judgement.attention, ...doors.attention];
   const result: VerdictResult = reasons.length > 0 ? "FAIL" : judgement.notVerified.length + attention.length > 0 ? "PASS+NOTES" : "PASS";
@@ -388,11 +364,9 @@ export function renderVerdict(state: RunState, pr: number, judgement: Judgement,
     "### Attention",
     ...bullets(attention, "Nothing."),
     "",
-    `Evidence: \`verify-evidence\` branch, [\`pr-${pr}/${plan.headSha}/\`](${evidenceUrl(pr, plan.headSha, "")})`,
-    "",
   ].join("\n");
   writeFileSync(path.join(state.evidence, "verdict.md"), markdown);
   writeFileSync(path.join(state.evidence, "plan.json"), `${JSON.stringify(plan, null, 2)}\n`);
   writeFileSync(path.join(state.evidence, "verdict.json"), `${JSON.stringify({ result, headSha: plan.headSha, skillSha, pr, reasons }, null, 2)}\n`);
-  return { result, headSha: plan.headSha, skillSha, pr, markdown, reasons };
+  return { result, markdown, reasons };
 }
