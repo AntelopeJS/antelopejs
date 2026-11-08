@@ -1,6 +1,6 @@
 ---
 name: verify-antelopejs
-description: "Drive the ajs CLI and the @antelopejs/core runtime (createRuntime, launch) the way an app developer does, in an isolated HOME with an offline template source, and post a verdict with evidence. Use to prove a change to antelopejs works before merge, or to verify a PR."
+description: "Drive the ajs CLI and the @antelopejs/core runtime (createRuntime, launch) the way an app developer does, in an isolated HOME with an offline template source, and report a verdict with evidence. Use to prove a change to antelopejs works before merge, or to verify a PR."
 ---
 
 # Verify antelopejs
@@ -104,19 +104,18 @@ Write your judgement to `$RUN/evidence/judgement.json`:
 
 A door row is `{ "kind", "location", "irreversible", "containment" }`, where `kind` is one of the `doors` keys of `verify.config.ts`. `verifier` is required.
 
-Then render and publish:
+Then render the verdict:
 
 ```bash
 node "$VERIFY" verdict "$RUN" --pr <n>   # writes evidence/verdict.md; exit 1 on FAIL
 node "$VERIFY" verdict "$RUN" --pr <n> --all   # pre-release: gates on every feature, as plan --all
-node "$VERIFY" publish "$RUN" --pr <n> [--all]
 ```
 
-- `verdict` computes the result from `feature.json`, the plan and your judgement. It renders the comment in the shape of `prototype/verification-bar/sample-verdict.md` from Upd4ting/outer-loop.
-- `publish` commits `evidence/` to the orphan branch `verify-evidence` under `pr-<n>/<sha>/`. It works from a temporary worktree and never touches the checkout under review. It then posts the verdict with `gh pr comment` and sets commit status `verify` on the head SHA: `success` for PASS and PASS+NOTES, `failure` for FAIL. Finally it reads the status back from GitHub.
-- A new push invalidates the status, so verify again on the new head.
+- `verdict` computes the result from `feature.json`, the plan and your judgement. It writes `evidence/verdict.md` and prints it. The evidence stays under `$RUN/evidence/` on the machine that ran the verification.
+- Report the verdict and what you saw in your own reply: the result, the failing journeys and what the evidence showed. Nothing is posted to GitHub.
+- A new push changes the head, so verify again on the new head.
 
-Post a verdict only from a thread that did not write the change, and name that thread in `verifier`.
+Judge a change only from a thread that did not write it, and name that thread in `verifier`.
 
 ## Trust
 
@@ -126,7 +125,6 @@ The skill is not Trusted yet. It becomes Trusted when it passes a shadow run of 
 
 - The build is the one in `dist/`. Doctor fails when `src/` is newer, so rebuild with `new` instead of trusting an old `dist/`.
 - Templates come only from the offline manifest. A journey that reaches the network is a harness bug.
-- `publish` needs a `gh` token that can push to the repository and write commit statuses (`statuses: write`). A GitHub App token without it gets HTTP 403 on the status after the evidence and the comment are already posted. Rerun `publish` with a token that has it.
 - Each background process gets a free port from the kernel, so two runs never share an instance.
 - `project dev` exits 130 on SIGINT; journeys assert it and that the port refuses connections afterwards.
 

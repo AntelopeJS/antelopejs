@@ -11,7 +11,6 @@ import { buildBaseCli } from "./lib/base.mts";
 import config from "../verify.config.ts";
 import { formalGate, runFormalCheck, touchedFormalChecks } from "./lib/formal.mts";
 import { doorLine, flaggedDoors, patchFiles } from "./lib/doors.mts";
-import { postComment, pushEvidence, readStatus, setStatus } from "./lib/publish.mts";
 import { readJudgement, renderVerdict } from "./lib/verdict.mts";
 import { defaultJobs } from "./lib/pool.mts";
 import { allocateRun, loadRun, REPO_DIR, type RunState, saveRun } from "./lib/run.mts";
@@ -36,7 +35,6 @@ const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <
   formal <run> [--all]             run the formal checks that cover the diff (or every one) and record them
   verdict <run> --pr <n> [--all]   render evidence/verdict.md from the results and evidence/judgement.json
                                    (--all gates on every feature, as plan --all: pass it for a pre-release verdict)
-  publish <run> --pr <n> [--all]   push the evidence to verify-evidence, comment the verdict, set status verify
 `;
 
 function print(text: string): void {
@@ -164,21 +162,14 @@ function printDoors(files: string[]): number {
   return 0;
 }
 
-function judge(command: "verdict" | "publish", dir: string, pr: number, all: boolean): number {
+function judge(dir: string, pr: number, all: boolean): number {
   if (!Number.isInteger(pr) || pr <= 0) {
-    print(`${command} needs --pr <number>`);
+    print("verdict needs --pr <number>");
     return 2;
   }
   const state = loadRun(dir);
   const verdict = renderVerdict(state, pr, readJudgement(path.join(state.evidence, "judgement.json")), all);
   print(verdict.markdown);
-  if (command === "publish") {
-    print(`evidence commit ${pushEvidence(state, verdict)}`);
-    const comment = postComment(verdict);
-    print(`comment ${comment}`);
-    setStatus(verdict, comment);
-    print(`status verify on ${verdict.headSha}: ${readStatus(verdict.headSha)}`);
-  }
   return verdict.result === "FAIL" ? 1 : 0;
 }
 
@@ -212,8 +203,7 @@ async function main(argv: string[]): Promise<number> {
     case "formal":
       return runFormal(rest[0], Boolean(values.all));
     case "verdict":
-    case "publish":
-      return judge(command, rest[0], Number(values.pr), Boolean(values.all));
+      return judge(rest[0], Number(values.pr), Boolean(values.all));
     default:
       print(USAGE);
       return command ? 2 : 0;
