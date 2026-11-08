@@ -376,16 +376,18 @@ function modulePrompter(
 }
 
 /**
- * Creates a module from a template. The directory and the template
+ * Creates a module from a template. An empty path names the current
+ * directory, as `path.resolve` reads it. The directory and the template
  * repository are checked first, so their errors come before any missing
  * answer. Every question is answered before anything is written, so a
  * cancelled or unanswerable question leaves the target directory untouched.
  */
 export async function moduleInitCommand(
-  modulePath: string,
+  requestedPath: string,
   options: ModuleInitOptions,
   context: ModuleInitContext = {},
 ) {
+  const modulePath = requestedPath === "" ? CURRENT_DIRECTORY : requestedPath;
   const prompter = modulePrompter(modulePath, options, context);
   await ensureDirectoryUsable(modulePath, Boolean(context.isFromProject));
   const git = await resolveGit(options);
