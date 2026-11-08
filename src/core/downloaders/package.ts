@@ -4,13 +4,9 @@ import * as path from "node:path";
 import { maxSatisfying, satisfies, valid, validRange } from "semver";
 
 import type { IFileSystem } from "../../types";
-import { isObject } from "../../utils";
+import { isObject, isString } from "../../utils";
 import { NodeFileSystem } from "../filesystem";
-import {
-  ModuleCache,
-  ModuleManifest,
-  type ModulePackageJson,
-} from "../modules";
+import { ModuleCache, ModuleManifest } from "../modules";
 import { ExecError, ExecuteCMD, getModuleCacheInstallCommand } from "../output";
 import { type PackageLockPolicy, PackageLocks } from "./package-locks";
 import type { DownloaderRegistry } from "./registry";
@@ -61,6 +57,25 @@ function isExactVersion(spec: string): boolean {
   return valid(spec) !== null;
 }
 
+function isExactVersionString(value: unknown): value is string {
+  return isString(value) && isExactVersion(value);
+}
+
+/** The exact versions of an `npm view <pkg>@<spec> version --json` answer, which prints one version or a list of them. */
+function decodeViewVersions(output: string): string[] {
+  const parsed: unknown = JSON.parse(output);
+  const answers: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
+  return answers.filter(isExactVersionString);
+}
+
+/** The `version` of a packed package.json, or `undefined` when it holds no exact version. */
+function decodePackedVersion(packageJsonText: string): string | undefined {
+  const parsed: unknown = JSON.parse(packageJsonText);
+  return isObject(parsed) && isExactVersionString(parsed.version)
+    ? parsed.version
+    : undefined;
+}
+
 function pickBestVersion(versions: string[], spec: string): string | undefined {
   const range = validRange(spec);
   if (range) {
@@ -88,10 +103,7 @@ async function fetchRegistryVersion(
     return undefined;
   }
   try {
-    // oxlint-disable-next-line typescript/no-unsafe-assignment -- npm view --json prints one version or a list of them, read as npm prints it, because narrowing the parse changes which version real registry output selects (#323)
-    const parsed: string | string[] = JSON.parse(output);
-    const versions = Array.isArray(parsed) ? parsed : [parsed];
-    return pickBestVersion(versions, spec);
+    return pickBestVersion(decodeViewVersions(output), spec);
   } catch {
     Logger.Debug(`Unexpected npm view output for ${pkg}@${spec}: ${output}`);
     return undefined;
@@ -210,11 +222,10 @@ async function downloadPackage(
   await ctx.extract(path.join(tmp, filename), tmp);
 
   const tmpPackage = path.join(tmp, "package");
-  // oxlint-disable-next-line typescript/no-unsafe-assignment -- the package.json npm packed into the downloaded tarball, read as published, because narrowing it changes how real published manifests load (#323)
-  const manifest: ModulePackageJson = JSON.parse(
+  const packedVersion = decodePackedVersion(
     await ctx.fs.readFileString(path.join(tmpPackage, PACKAGE_JSON)),
   );
-  const key = { package: source.package, version: manifest.version ?? version };
+  const key = { package: source.package, version: packedVersion ?? version };
   const record = await ctx.locks.find(key);
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);
   await cache.clearVersion(source.package);
@@ -230,8 +241,8 @@ async function downloadPackage(
       new ExecError({ ...installResult, command: cmd }),
     );
   }
-  if (manifest.version !== undefined) {
-    await cache.commitVersion(source.package, manifest.version);
+  if (packedVersion !== undefined) {
+    await cache.commitVersion(source.package, packedVersion);
   }
   await ctx.locks.keep(key, folder, record);
   return folder;

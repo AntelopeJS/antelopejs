@@ -11,7 +11,7 @@
     "import/no-self-import": 0,
     "typescript/no-base-to-string": 0,
     "typescript/no-redundant-type-constituents": 2,
-    "typescript/no-unsafe-assignment": 15,
+    "typescript/no-unsafe-assignment": 13,
     "typescript/no-unsafe-return": 4
   },
   "tsExpectError": 12,
