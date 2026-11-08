@@ -9,13 +9,13 @@ import {
   getInstallCommand,
   getProcessPalette,
   info,
+  packageJsonWith,
   type PackageManagerName,
   savePackageManagerToPackageJson,
   Spinner,
   success,
   warning,
   withDependency,
-  packageJsonWith,
 } from "../../../core/output";
 import { isObject } from "../../../utils";
 import {

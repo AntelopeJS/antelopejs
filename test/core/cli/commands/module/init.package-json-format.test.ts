@@ -13,7 +13,11 @@ import {
   type ModuleInitStubs,
 } from "../../../../helpers/module-init-stubs";
 import { oxfmt } from "../../../../helpers/oxfmt";
-import { cleanupTempDir, makeTempDir, readText } from "../../../../helpers/temp";
+import {
+  cleanupTempDir,
+  makeTempDir,
+  readText,
+} from "../../../../helpers/temp";
 
 const MODULE_TEMPLATE = {
   name: "antelopejs-module",
@@ -32,7 +36,6 @@ const BARE_TEMPLATE = {
   main: "dist/index.js",
   scripts: { build: "tsc" },
   devDependencies: { typescript: "^6.0.3" },
-  pnpm: { onlyBuiltDependencies: [] },
   antelopeJs: { implements: ["antelopejs-module"] },
 };
 
