@@ -1,4 +1,4 @@
-import { satisfies, validRange } from "semver";
+import { compare, satisfies, valid, validRange } from "semver";
 
 import {
   createPathWithinMatcher,
@@ -42,19 +42,66 @@ export function registerStubbedInterfaces(
   this.buildBindings();
 }
 
+interface ProvidingConsumer extends InterfacePackageConsumer {
+  resolvedPackage: ResolvedPackage;
+}
+
+function hasCopy(
+  consumer: InterfacePackageConsumer,
+): consumer is ProvidingConsumer {
+  return consumer.resolvedPackage !== undefined;
+}
+
+const UNVERSIONED = "0.0.0";
+
+function copyVersion(consumer: ProvidingConsumer): string {
+  return valid(consumer.resolvedPackage.version) ?? UNVERSIONED;
+}
+
+function satisfiesEveryRange(
+  version: string,
+  consumers: InterfacePackageConsumer[],
+): boolean {
+  return consumers.every((consumer) => {
+    const range = validRange(consumer.range);
+    return !range || satisfies(version, range);
+  });
+}
+
+/**
+ * The consumer whose copy of a stubbed interface package becomes the shared
+ * one: the highest version that every consumer's range accepts, or the
+ * highest version when none does. Equal versions go to the first module id,
+ * so the choice never depends on the order modules are declared in.
+ */
+function chooseStubProvider(
+  consumers: InterfacePackageConsumer[],
+): ProvidingConsumer | undefined {
+  const candidates = consumers
+    .filter(hasCopy)
+    .sort(
+      (left, right) =>
+        compare(copyVersion(right), copyVersion(left)) ||
+        compareModuleIds(left.moduleId, right.moduleId),
+    );
+  return (
+    candidates.find((candidate) =>
+      satisfiesEveryRange(copyVersion(candidate), consumers),
+    ) ?? candidates[0]
+  );
+}
+
 export function registerStubbedInterfacePackage(
   this: ManagerContext,
   packageName: string,
   entries: UnresolvedInterface[],
 ): void {
   const consumers = this.collectInterfacePackageConsumers(packageName);
-  const provider = [...consumers]
-    .sort((left, right) => compareModuleIds(left.moduleId, right.moduleId))
-    .find((consumer) => consumer.resolvedPackage);
-  const canonicalPackage = provider?.resolvedPackage;
-  if (!canonicalPackage) {
+  const provider = chooseStubProvider(consumers);
+  if (!provider) {
     return;
   }
+  const canonicalPackage = provider.resolvedPackage;
   this.stubbedInterfacePackages.set(packageName, {
     canonicalPackage,
     provider: provider.moduleId,
