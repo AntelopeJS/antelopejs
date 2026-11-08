@@ -117,13 +117,13 @@ function unknownChoiceError(choice: UnknownChoice): CliError {
   });
 }
 
-function isDirectoryOccupied(modulePath: string): boolean {
-  const target = path.resolve(modulePath);
+function isDirectoryOccupied(target: string): boolean {
   return existsSync(target) && readdirSync(target).length > 0;
 }
 
 async function ensureDirectoryUsable(
   modulePath: string,
+  target: string,
   isFromProject: boolean,
 ): Promise<void> {
   const palette = getProcessPalette();
@@ -131,7 +131,7 @@ async function ensureDirectoryUsable(
     `Checking directory ${palette.dim(modulePath)}`,
   );
   await dirSpinner.start();
-  if (isDirectoryOccupied(modulePath)) {
+  if (isDirectoryOccupied(target)) {
     await dirSpinner.stop();
     const usage = isFromProject
       ? `${PROJECT_INIT_COMMAND} <project>`
@@ -377,8 +377,9 @@ function modulePrompter(
 }
 
 /**
- * Creates a module from a template. An empty path names the current
- * directory, as `path.resolve` reads it. The directory and the template
+ * Creates a module from a template. The path is resolved once, the way
+ * `path.resolve` reads it (an empty path is the current directory), and the
+ * directory check and every write use that resolved path. The directory and the template
  * repository are checked first, so their errors come before any missing
  * answer. Every question is answered before anything is written, so a
  * cancelled or unanswerable question leaves the target directory untouched.
@@ -389,8 +390,13 @@ export async function moduleInitCommand(
   context: ModuleInitContext = {},
 ) {
   const modulePath = requestedPath === "" ? CURRENT_DIRECTORY : requestedPath;
+  const target = path.resolve(modulePath);
   const prompter = modulePrompter(modulePath, options, context);
-  await ensureDirectoryUsable(modulePath, Boolean(context.isFromProject));
+  await ensureDirectoryUsable(
+    modulePath,
+    target,
+    Boolean(context.isFromProject),
+  );
   const git = await resolveGit(options);
   displayNonDefaultGitWarning(git);
   const manifest = await runTask(
@@ -408,7 +414,7 @@ export async function moduleInitCommand(
     manifest,
     Boolean(context.isFromProject),
   );
-  await createModule(modulePath, answers);
+  await createModule(target, answers);
   displayModuleCreated(modulePath, answers, context);
   return answers.template;
 }
