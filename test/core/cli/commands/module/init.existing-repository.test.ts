@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import sinon from "sinon";
 
@@ -10,7 +10,11 @@ import {
 import { CliError } from "../../../../../src/core/output";
 import { fakePrompts } from "../../../../helpers/fake-prompts";
 import { stubModuleInit } from "../../../../helpers/module-init-stubs";
-import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
+import {
+  cleanupTempDir,
+  listDirectory,
+  makeTempDir,
+} from "../../../../helpers/temp";
 import { expectInstanceOf } from "../../fixtures";
 
 const REPOSITORY_FILES = [".git", "mine.txt"];
@@ -78,6 +82,40 @@ describe("init in a directory that holds a git repository", () => {
     expect(failure.problem.title).to.equal("Directory . is not empty");
     expect(stubs.copy.called).to.equal(false);
     expectRepositoryUntouched(repository);
+  });
+
+  for (const spelling of ["x/..", "mine.txt/.."]) {
+    it(`refuses ${spelling}, which resolves to the repository, and leaves it untouched`, async () => {
+      const stubs = stubModuleInit();
+      fakePrompts({ answers: ["basic", "npm", false] });
+      process.chdir(repository);
+
+      const failure = await rejectionOf(moduleInitCommand(spelling, {}));
+
+      expect(failure.problem.title).to.equal(
+        `Directory ${spelling} is not empty`,
+      );
+      expect(stubs.copy.called).to.equal(false);
+      expectRepositoryUntouched(repository);
+    });
+  }
+
+  it("keeps a dangling symlink the user made when the template copy fails", async () => {
+    const stubs = stubModuleInit();
+    stubs.copy.rejects(new Error("EEXIST: file already exists, mkdir"));
+    fakePrompts({ answers: ["basic", "npm", false] });
+    const link = path.join(repository, "link");
+    symlinkSync(path.join(repository, "missing"), link);
+
+    let caught: unknown;
+    try {
+      await moduleInitCommand(link, {});
+    } catch (error) {
+      caught = error;
+    }
+
+    expectInstanceOf(caught, Error);
+    expect(listDirectory(repository)).to.include("link");
   });
 
   it("refuses ajs project init <dir> and leaves the repository untouched", async () => {
