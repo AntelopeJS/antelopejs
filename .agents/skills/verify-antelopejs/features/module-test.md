@@ -6,8 +6,6 @@ covers:
 docs:
   - docs/5.cli/4.module.md
   - docs/3.module-development/3.testing.md
-known:
-  - module-test-file-docs-form
 ---
 
 # Module test
@@ -19,13 +17,13 @@ known:
 - `module-test-pass`: the fixture's test reaches the started module over HTTP: `1 passing`, exit 0.
 - `module-test-fail`: error path: a failing expectation exits non-zero with `1 failing`.
 - `module-test-file`: `--file test/http.test.js` from the module folder runs only that file.
-- `module-test-file-docs-form`: `ajs module test mod --file test/http.test.js` from the parent folder, the form the docs show.
+- `module-test-file-from-parent`: `ajs module test mod --file mod/test/http.test.js` from the parent folder, the form the docs show: `--file` resolves against the current folder.
 - `module-test-no-config`: empty path: no `antelopeJs.test` fails and says so.
 
 ## How to get to it (user POV)
 
 - `ajs module test`
-- `ajs module test ./modules/my-module -f tests/auth.test.ts`
+- `ajs module test ./modules/my-module -f modules/my-module/test/auth.test.ts`
 
 ## Driving it with verify-ajs
 
@@ -34,7 +32,3 @@ node .agents/skills/verify-antelopejs/bin/verify-ajs.mts journey "$RUN" module-t
 ```
 
 Each journey's steps, checks and evidence are in `bin/journeys/` and under `$RUN/evidence/module-test/<journey>/`.
-
-## Gotchas
-
-- Finding on main 9b81264: `module-test-file-docs-form` fails. `--file` paths go to mocha unresolved, so they resolve against the current folder, while `docs/5.cli/4.module.md` shows them relative to the module path. Either the code or the page must change; the journey follows the page until then.
