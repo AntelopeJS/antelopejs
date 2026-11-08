@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import path from "node:path";
+import { lt, valid } from "semver";
 
 import {
   interfaceRangesModule,
@@ -20,6 +21,7 @@ import {
   InterfaceResolutionError,
   runTask,
 } from "../../../../core/output";
+import { resolvePackage } from "../../../../utils";
 import { readModuleManifest, writeModuleManifest } from "../../../common";
 import { scopedCommand } from "../../shared/next-steps";
 import { refreshModuleLocks } from "./module-locks";
@@ -141,6 +143,30 @@ async function applyRangeBumps(folder: string, bumps: RangeBump[]) {
     () => ExecuteCMD(command, { cwd: folder }),
     { done: `Installed the dependencies of ${displayPath(folder)}` },
   );
+  bumps.forEach(ensureTargetInstalled);
+}
+
+/**
+ * Checks that the install after a range bump left the module on a copy at
+ * least as new as the target: a package manager skips an optional dependency
+ * it cannot fetch, and a check of a module without a copy finds nothing.
+ *
+ * @throws CliError naming the module, the package and the copy it got.
+ */
+function ensureTargetInstalled(bump: RangeBump): void {
+  const installed = valid(
+    resolvePackage(bump.packageName, bump.folder)?.version,
+  );
+  if (installed && !lt(installed, bump.target)) {
+    return;
+  }
+  throw new CliError({
+    title: `Could not install ${bump.packageName} ${bump.target} for ${bump.moduleId}`,
+    reason: `${manifestPath(bump)} now asks for ${bump.to}, but its dependencies hold ${installed ?? "no copy"} of ${bump.packageName}.`,
+    fixes: [
+      `Check that the registry serves ${bump.packageName} ${bump.target}, then install the dependencies of ${displayPath(bump.folder)} again`,
+    ],
+  });
 }
 
 async function applyBumps(

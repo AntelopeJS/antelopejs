@@ -165,6 +165,23 @@ describe("ModuleManager interface bumps of an implemented interface", () => {
     expect(bumps).to.deep.equal([]);
   });
 
+  it("leaves a local module whose spec has no floor to raise, such as an npm alias", async () => {
+    const { bumps } = await plan(
+      [
+        {
+          name: "app",
+          range: "npm:@test-scope/interface-auth-fork@^0.1.8",
+          copy: "0.1.8",
+          optional: true,
+        },
+        { name: "cms", range: ">=0.1.9 <1.0.0", copy: "0.1.9", optional: true },
+      ],
+      ["cms"],
+    );
+
+    expect(bumps).to.deep.equal([]);
+  });
+
   it("leaves an npm module that is not the provider on its own copy", async () => {
     const { bumps } = await plan(
       [
@@ -179,17 +196,22 @@ describe("ModuleManager interface bumps of an implemented interface", () => {
 });
 
 describe("raiseRangeFloor", () => {
-  const cases: Array<[string, string, string]> = [
+  const cases: Array<[string, string, string | undefined]> = [
     [">=0.3.0 <0.4.0", "0.3.1", ">=0.3.1 <0.4.0"],
     [">=0.1.8", "0.1.9", ">=0.1.9"],
     ["^0.1.8", "0.1.9", "^0.1.9"],
     ["~1.2.0", "1.2.3", "~1.2.3"],
     ["0.1.8", "0.1.9", "0.1.9"],
-    ["0.1.x || 0.2.x", "0.2.1", "^0.2.1"],
+    ["0.1.x || 0.2.x", "0.2.1", undefined],
+    ["npm:@other-scope/auth-fork@^0.1.8", "0.1.9", undefined],
+    ["workspace:*", "0.1.9", undefined],
+    ["file:../interface", "0.1.9", undefined],
+    ["latest", "0.1.9", undefined],
+    [">=next", "0.1.9", undefined],
   ];
 
   for (const [range, version, expected] of cases) {
-    it(`raises ${range} to ${expected} for ${version}`, () => {
+    it(`raises ${range} to ${expected ?? "nothing"} for ${version}`, () => {
       expect(raiseRangeFloor(range, version)).to.equal(expected);
     });
   }

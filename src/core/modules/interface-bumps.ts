@@ -60,9 +60,8 @@ const LOCAL_SOURCE_TYPES: ReadonlySet<string> = new Set([
   "local",
   "local-folder",
 ]);
-const FLOOR_RANGE_PATTERN = /^>=\s*\S+(\s+<\s*\S+)?$/;
-const PREFIX_RANGE_PATTERN = /^[\^~]?/;
-const CARET = "^";
+const FLOOR_RANGE_PATTERN = /^>=\s*(\S+)(\s+<\s*\S+)?$/;
+const PREFIX_RANGE_PATTERN = /^([\^~]?)(\S+)$/;
 
 function packageSource(source: ModuleSource): ModuleSourcePackage | undefined {
   if (
@@ -87,23 +86,28 @@ function acceptsVersion(range: string, version: string): boolean {
 
 /**
  * `range` with its floor raised to `version`, keeping its shape: `>=a <b`
- * keeps its cap, `^a` and `~a` keep their prefix. Any other range becomes
- * `^version`.
+ * keeps its cap, `^a` and `~a` keep their prefix, and an exact version is
+ * replaced. Any other spec, such as an `npm:` alias, a `workspace:` or
+ * `file:` link, a dist-tag or a union, has no floor to raise.
+ *
+ * @returns undefined when the spec has no floor to raise.
  */
-export function raiseRangeFloor(range: string, version: string): string {
+export function raiseRangeFloor(
+  range: string,
+  version: string,
+): string | undefined {
   const trimmed = range.trim();
   const floor = FLOOR_RANGE_PATTERN.exec(trimmed);
-  const prefix = PREFIX_RANGE_PATTERN.exec(trimmed)?.[0] ?? "";
-  const candidates = [
-    floor ? `>=${version}${floor[1] ?? ""}` : undefined,
-    valid(trimmed.slice(prefix.length)) ? `${prefix}${version}` : undefined,
-  ];
-  return (
-    candidates.find(
-      (candidate) =>
-        candidate !== undefined && acceptsVersion(candidate, version),
-    ) ?? `${CARET}${version}`
-  );
+  const prefixed = PREFIX_RANGE_PATTERN.exec(trimmed);
+  let raised: string | undefined;
+  if (floor && valid(floor[1])) {
+    raised = `>=${version}${floor[2] ?? ""}`;
+  } else if (prefixed && valid(prefixed[2])) {
+    raised = `${prefixed[1]}${version}`;
+  }
+  return raised !== undefined && acceptsVersion(raised, version)
+    ? raised
+    : undefined;
 }
 
 /**
@@ -184,16 +188,19 @@ function bumpConsumer(
     required: context.required,
   };
   if (LOCAL_SOURCE_TYPES.has(manifest.source.type)) {
-    return [
-      {
-        ...base,
-        kind: "range",
-        folder: manifest.folder,
-        field: dependencyField(manifest, context.packageName),
-        from: consumer.range,
-        to: raiseRangeFloor(consumer.range, context.target),
-      },
-    ];
+    const to = raiseRangeFloor(consumer.range, context.target);
+    return to === undefined
+      ? []
+      : [
+          {
+            ...base,
+            kind: "range",
+            folder: manifest.folder,
+            field: dependencyField(manifest, context.packageName),
+            from: consumer.range,
+            to,
+          },
+        ];
   }
   const source = packageSource(manifest.source);
   if (source && isProviderCopy(context.plan, consumer)) {

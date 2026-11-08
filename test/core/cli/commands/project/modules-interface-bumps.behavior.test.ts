@@ -27,6 +27,7 @@ import {
   stripAnsi,
 } from "../../../../../src/core/output";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
+import { writeInterfacePackage } from "../../../module-manager.fixtures";
 import {
   rejectionOf,
   stubInterfaceCheck,
@@ -159,9 +160,14 @@ describe("project modules update behavior: interface bumps", () => {
       check([rangeBump(project, true)]),
     );
     interfaceCheck.onSecondCall().resolves(check([]));
-    const execute = sinon
-      .stub(command, "ExecuteCMD")
-      .resolves({ code: 0, stdout: "", stderr: "" });
+    const execute = sinon.stub(command, "ExecuteCMD").callsFake(async () => {
+      await writeInterfacePackage(
+        path.join(project, "node_modules", DATA_API),
+        DATA_API,
+        "0.1.9",
+      );
+      return { code: 0, stdout: "", stderr: "" };
+    });
 
     await update("--fix");
 
@@ -169,6 +175,28 @@ describe("project modules update behavior: interface bumps", () => {
       `${JSON.stringify({ name: "app", dependencies: { [DATA_API]: "^0.1.9" } }, null, "\t")}\n`,
     );
     expect(execute.lastCall.args[1]).to.deep.equal({ cwd: project });
+  });
+
+  it("with --fix fails when the install leaves the local module without the target copy", async () => {
+    await writeFile(
+      path.join(project, "package.json"),
+      JSON.stringify({ name: "app", dependencies: { [DATA_API]: "^0.1.8" } }),
+    );
+    const interfaceCheck = stubInterfaceCheck(
+      check([rangeBump(project, false)]),
+    );
+    interfaceCheck.onSecondCall().resolves(check([]));
+    sinon
+      .stub(command, "ExecuteCMD")
+      .resolves({ code: 0, stdout: "", stderr: "" });
+
+    const failure = await rejectionOf(update("--fix"));
+
+    assert.ok(failure instanceof CliError);
+    expect(failure.problem.title).to.equal(
+      "Could not install @antelopejs/interface-data-api 0.1.9 for app",
+    );
+    expect(interfaceCheck.callCount).to.equal(1);
   });
 
   it("warns, without failing, when only a local module compiles against an older copy", async () => {
