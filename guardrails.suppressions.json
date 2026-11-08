@@ -14,7 +14,7 @@
     "typescript/no-unsafe-assignment": 15,
     "typescript/no-unsafe-return": 4
   },
-  "tsExpectError": 10,
+  "tsExpectError": 12,
   "tsIgnore": 0,
   "safety": 6,
   "config": {},

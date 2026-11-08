@@ -110,10 +110,18 @@ describe("DownloaderRegistry", () => {
     expect(registry.getLoaderIdentifier(source)).to.equal(undefined);
   });
 
-  it("registers a loader only under a source type a module can declare", () => {
+  it("registers a loader only under a declared source type, with that type's fields", () => {
     const registry = new DownloaderRegistry();
     // @ts-expect-error ModuleSource has no "custom" type, so no configured module could reach this loader.
     registry.register("custom", "id", async () => []);
+    // @ts-expect-error A git source has no path field to identify its module by.
+    registry.register("git", "path", async () => []);
+    registry.register(
+      "local",
+      // @ts-expect-error A local loader cannot take a git source.
+      "path",
+      async (_cache, _source: ModuleSourceGit) => [],
+    );
     registry.register("git", "remote", async () => []);
 
     const source: ModuleSourceGit = { type: "git", remote: "mod" };
