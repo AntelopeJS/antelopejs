@@ -113,17 +113,17 @@ describe("project modules behavior: local-paths", () => {
     ["is an array", []],
   ];
   for (const [label, manifest] of unnamedManifests) {
-    it(`local handler keeps the historic "undefined" key for a package.json that ${label}`, async () => {
+    it(`local handler keys a package.json that ${label} by its folder name`, async () => {
       const [key] = await addLocal(manifest);
 
-      expect(key).to.equal("undefined");
+      expect(key).to.equal("moduleA");
     });
   }
 
-  it("local handler keeps an empty name as the key", async () => {
+  it("local handler keys a package.json with an empty name by its folder name", async () => {
     const [key] = await addLocal({ name: "" });
 
-    expect(key).to.equal("");
+    expect(key).to.equal("moduleA");
   });
 
   const refusedManifests: Array<[string, JsonValue]> = [
