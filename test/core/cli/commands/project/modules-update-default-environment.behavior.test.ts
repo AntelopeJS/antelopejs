@@ -6,8 +6,11 @@ import {
   commonModule as common,
 } from "../../../../../src/cli";
 import { getProcessUi } from "../../../../../src/core/output";
-import { stubLoadedConfig } from "../../fixtures";
+import { stubInterfaceCheck, stubLoadedConfig } from "../../fixtures";
 describe("project modules behavior: update-default-environment", () => {
+  beforeEach(() => {
+    stubInterfaceCheck();
+  });
   afterEach(() => {
     sinon.restore();
     process.exitCode = undefined;

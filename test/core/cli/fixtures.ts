@@ -4,6 +4,10 @@ import sinon from "sinon";
 
 import type { InterfaceInfo, InterfaceManifest } from "../../../src/cli";
 import {
+  interfaceRangesModule,
+  type ProjectInterfaceCheck,
+} from "../../../src/core/build";
+import {
   ConfigLoader,
   type ExpandedModuleConfig,
   type LoadedConfig,
@@ -19,6 +23,18 @@ export function expectInstanceOf<T, E extends object>(
   constructor: abstract new (...args: never[]) => E,
 ): asserts value is T & E {
   assert(value instanceof constructor);
+}
+
+/**
+ * Replaces the interface check modules commands run after resolving modules,
+ * which loads every module of the project from disk.
+ */
+export function stubInterfaceCheck(
+  result: ProjectInterfaceCheck = { conflicts: [], bumps: [] },
+) {
+  return sinon
+    .stub(interfaceRangesModule, "checkProjectInterfaces")
+    .resolves(result);
 }
 
 export async function rejectionOf<T>(promise: Promise<T>): Promise<Error> {

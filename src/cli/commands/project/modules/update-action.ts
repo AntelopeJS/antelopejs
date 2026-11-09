@@ -30,6 +30,7 @@ import {
   pruneModuleLocks,
   refreshModuleLocks,
 } from "./module-locks";
+import { checkInterfaceVersions } from "./interface-check";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 
@@ -37,6 +38,7 @@ interface UpdateOptions {
   project: string;
   env?: string;
   dryRun: boolean;
+  fix?: boolean;
 }
 
 const PACKAGE_SOURCE_TYPE = "package";
@@ -254,6 +256,14 @@ export async function updateModules(
     }
     await pruneModuleLocks(options.project, config);
   }
+  const interfaceFailure = options.dryRun
+    ? undefined
+    : await checkInterfaceVersions({
+        ...options,
+        environments: [environment],
+        config,
+        command: UPDATE_COMMAND,
+      });
   displayResults({
     modules,
     outdated,
@@ -262,4 +272,7 @@ export async function updateModules(
     options,
     durationMs: Date.now() - startedAt,
   });
+  if (interfaceFailure) {
+    throw interfaceFailure;
+  }
 }

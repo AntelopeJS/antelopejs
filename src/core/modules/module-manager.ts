@@ -1,5 +1,4 @@
 import { ConfigVarStore } from "../config";
-import type { InterfaceRangeConflict } from "../output";
 import type { BindingGraph, UnresolvedInterface } from "../resolution";
 import {
   type InterfaceConnectionRef,
@@ -525,8 +524,17 @@ export class ModuleManager {
    * the shared copy the manager planned for it. Reads only package.json
    * files, so it runs before any module code is loaded.
    */
-  findInterfaceRangeConflicts(): InterfaceRangeConflict[] {
+  findInterfaceRangeConflicts() {
     return operations(this).findInterfaceRangeConflicts();
+  }
+
+  /**
+   * Lists the changes that give each module the copy of every planned
+   * interface package that all their ranges accept. Reads only package.json
+   * files, like {@link findInterfaceRangeConflicts}.
+   */
+  findInterfaceBumps() {
+    return operations(this).findInterfaceBumps();
   }
 
   private findRangeConflicts(

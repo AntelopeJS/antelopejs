@@ -25,7 +25,12 @@ import {
 } from "../../../../../src/core/output";
 import { collectStderr } from "../../../../helpers/capture-output";
 import { cleanupTempDir, makeTempDir } from "../../../../helpers/temp";
-import { buildArtifact, loadedConfig, stubLoadedConfig } from "../../fixtures";
+import {
+  buildArtifact,
+  loadedConfig,
+  stubInterfaceCheck,
+  stubLoadedConfig,
+} from "../../fixtures";
 
 function packageModule(version: string) {
   return {
@@ -61,6 +66,9 @@ function useTempProject() {
 }
 
 describe("project modules behavior: update locks", () => {
+  beforeEach(() => {
+    stubInterfaceCheck();
+  });
   const temp = useTempProject();
 
   it("update resolves the lock of each npm module at the version it moves to", async () => {

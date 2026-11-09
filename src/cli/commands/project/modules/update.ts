@@ -16,6 +16,12 @@ export default function () {
     .addOption(
       new Option("--dry-run", "Show the updates without applying them"),
     )
+    .addOption(
+      new Option(
+        "--fix",
+        "Apply the interface package bumps the check finds after the update",
+      ),
+    )
     .action(
       lazyAction(async () => (await import("./update-action")).updateModules),
     );
