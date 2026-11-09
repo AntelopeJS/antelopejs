@@ -2,8 +2,15 @@ import { expect } from "chai";
 import fs from "node:fs";
 import path from "node:path";
 
-import { readUserConfig } from "../../../src/cli";
+import sinon from "sinon";
+
+import {
+  commandsConfigResetCommand as cmdReset,
+  DEFAULT_GIT_REPO,
+  readUserConfig,
+} from "../../../src/cli";
 import { CliError } from "../../../src/core/output";
+import { collectStderr } from "../../helpers/capture-output";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { rejectionOf } from "./fixtures";
 
@@ -19,6 +26,7 @@ describe("the CLI configuration file", () => {
   });
 
   afterEach(() => {
+    sinon.restore();
     process.env.HOME = originalHome;
     cleanupTempDir(home);
   });
@@ -40,4 +48,26 @@ describe("the CLI configuration file", () => {
       extra: "kept",
     });
   });
+
+  for (const [kind, content] of [
+    ["a value that is not an object with a git string", "[1]"],
+    ["text that is not JSON", "{bad"],
+  ]) {
+    it(`resets a file that holds ${kind}`, async () => {
+      writeConfig(content);
+      const feedback = collectStderr();
+
+      await cmdReset().parseAsync(["node", "test", "--yes"]);
+
+      expect(await readUserConfig()).to.deep.equal({ git: DEFAULT_GIT_REPO });
+      expect(feedback()).to.equal(
+        [
+          "✔ Reset the configuration to its default values",
+          "",
+          `git  invalid → ${DEFAULT_GIT_REPO}`,
+          "",
+        ].join("\n"),
+      );
+    });
+  }
 });

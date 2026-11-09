@@ -1,4 +1,5 @@
 import {
+  CliError,
   createPrompter,
   getProcessUi,
   type DetailEntry,
@@ -18,6 +19,32 @@ interface ResetOptions {
 const RESET_COMMAND = "ajs config reset";
 const YES_FLAG = "--yes";
 const NOT_SET_LABEL = "not set";
+const INVALID_LABEL = "invalid";
+
+/**
+ * Reads the configuration to reset, or `undefined` when the file holds
+ * content the CLI refuses, since a reset replaces that content anyway.
+ */
+async function readCurrentConfig(): Promise<UserConfig | undefined> {
+  try {
+    return await readUserConfig();
+  } catch (error) {
+    if (error instanceof CliError || error instanceof SyntaxError) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+function describeCurrentValue(
+  currentConfig: UserConfig | undefined,
+  key: keyof UserConfig,
+): string {
+  if (currentConfig === undefined) {
+    return INVALID_LABEL;
+  }
+  return currentConfig[key] || NOT_SET_LABEL;
+}
 
 async function confirmReset(options: ResetOptions): Promise<boolean> {
   const prompter = createPrompter({ command: RESET_COMMAND });
@@ -31,7 +58,7 @@ async function confirmReset(options: ResetOptions): Promise<boolean> {
 }
 
 function describeResetValues(
-  currentConfig: UserConfig,
+  currentConfig: UserConfig | undefined,
   defaultConfig: UserConfig,
 ): DetailEntry[] {
   const ui = getProcessUi();
@@ -40,18 +67,20 @@ function describeResetValues(
     .filter(isConfigKey)
     .map((key) => ({
       label: key,
-      value: `${palette.dim(currentConfig[key] || NOT_SET_LABEL)} ${ui.symbols.arrow} ${defaultConfig[key]}`,
+      value: `${palette.dim(describeCurrentValue(currentConfig, key))} ${ui.symbols.arrow} ${defaultConfig[key]}`,
     }));
 }
 
 export async function resetConfig(options: ResetOptions): Promise<void> {
   const ui = getProcessUi();
-  const currentConfig = await readUserConfig();
+  const currentConfig = await readCurrentConfig();
   const defaultConfig = getDefaultUserConfig();
 
-  const hasChanges = Object.keys(defaultConfig)
-    .filter(isConfigKey)
-    .some((key) => currentConfig[key] !== defaultConfig[key]);
+  const hasChanges =
+    currentConfig === undefined ||
+    Object.keys(defaultConfig)
+      .filter(isConfigKey)
+      .some((key) => currentConfig[key] !== defaultConfig[key]);
 
   if (!hasChanges) {
     ui.message("info", "Configuration is already at default values");
