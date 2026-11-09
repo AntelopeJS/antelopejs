@@ -9,11 +9,21 @@ import { getActiveShutdownManager } from "../../src/core/runtime";
 const VALUE_VARIABLE = "AJS_ENV_RELOAD_VALUE";
 const MARKER_TIMEOUT_MS = 8000;
 const MARKER_POLL_MS = 50;
+const START_HOOK = "ajsEnvReloadOnStart";
+
+type StartHook = (value: string) => void;
+
+function setStartHook(hook: StartHook | undefined): void {
+  Reflect.set(globalThis, START_HOOK, hook);
+}
 
 const MODULE_SOURCE = `const fs = require("node:fs");
 let cfg;
 exports.construct = (c) => { cfg = c; };
-exports.start = () => { fs.writeFileSync(cfg.markerPath, String(cfg.value)); };
+exports.start = () => {
+  fs.writeFileSync(cfg.markerPath, String(cfg.value));
+  globalThis.${START_HOOK}?.(cfg.value);
+};
 exports.stop = () => {};
 exports.destroy = () => {};
 `;
@@ -47,13 +57,16 @@ describe("project .env in watch mode", () => {
   });
 
   afterEach(async () => {
+    setStartHook(undefined);
     await getActiveShutdownManager()?.shutdown();
     delete process.env[VALUE_VARIABLE];
     await fs.rm(projectFolder, { recursive: true, force: true });
   });
 
-  it("restarts the project with the variables of a created, then edited .env", async function () {
-    this.timeout(30000);
+  async function launchProject(): Promise<{
+    markerPath: string;
+    envPath: string;
+  }> {
     const modulePath = path.join(projectFolder, "mod");
     const markerPath = path.join(projectFolder, "marker.txt");
     const envPath = path.join(projectFolder, ".env");
@@ -80,6 +93,12 @@ describe("project .env in watch mode", () => {
 
     await launch(projectFolder, "default", { watch: true });
     await waitForMarker(markerPath, "unset");
+    return { markerPath, envPath };
+  }
+
+  it("restarts the project with the variables of a created, then edited .env", async function () {
+    this.timeout(30000);
+    const { markerPath, envPath } = await launchProject();
 
     await fs.writeFile(envPath, `${VALUE_VARIABLE}=created\n`);
     await waitForMarker(markerPath, "created");
@@ -88,5 +107,23 @@ describe("project .env in watch mode", () => {
     await waitForMarker(markerPath, "edited");
 
     expect(process.env[VALUE_VARIABLE]).to.equal("edited");
+  });
+
+  it("stops cleanly when the project shuts down while a restart launches", async function () {
+    this.timeout(30000);
+    const { markerPath, envPath } = await launchProject();
+    let stopped: Promise<void> | undefined;
+    setStartHook((value) => {
+      if (value === "second") {
+        stopped = getActiveShutdownManager()?.shutdown();
+      }
+    });
+
+    await fs.writeFile(envPath, `${VALUE_VARIABLE}=second\n`);
+    await waitForMarker(markerPath, "second");
+    await stopped;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(stopped).to.be.instanceOf(Promise);
   });
 });

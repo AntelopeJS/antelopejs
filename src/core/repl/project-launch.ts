@@ -21,6 +21,7 @@ import {
   type StartedProject,
   DEFAULT_RUNTIME_POLICY,
   getActiveShutdownManager,
+  LaunchInterruptedError,
   type LaunchStep,
   prepareFromArtifact,
   prepareFromConfig,
@@ -215,7 +216,8 @@ let isRestarting = false;
  * Shuts the running project down and launches it again. Work the destroyed
  * generations left pending stays tolerated for the whole restart, since the
  * shutdown withdraws the previous launch's tolerance before the new launch
- * adds its own.
+ * adds its own. A shutdown that interrupts the new launch ends the restart
+ * without an error.
  */
 async function restartProject(
   projectFolder: string,
@@ -232,7 +234,13 @@ async function restartProject(
       await activeShutdownManager.shutdown();
     }
 
-    await startProject(prepareFromConfig, projectFolder, env, options);
+    await startProject(prepareFromConfig, projectFolder, env, options).catch(
+      (error: unknown) => {
+        if (!(error instanceof LaunchInterruptedError)) {
+          throw error;
+        }
+      },
+    );
   } finally {
     withdraw();
     isRestarting = false;

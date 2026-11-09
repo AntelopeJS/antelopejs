@@ -131,8 +131,8 @@ LaunchWatching(L) ==
        cfgEvent[L] \/ watching[L] /= "stopped"]          \* file-watcher.ts:142, :149-155
   /\ lpc' = [lpc EXCEPT ![L] = "running"]
   /\ IF restartPc = "start" /\ L = launch
-     THEN /\ tolerance' = tolerance - 1                   \* project-launch.ts:233
-          /\ isRestarting' = FALSE                        \* project-launch.ts:234
+     THEN /\ tolerance' = tolerance - 1                   \* project-launch.ts:245
+          /\ isRestarting' = FALSE                        \* project-launch.ts:246
           /\ restartPc' = "idle"
      ELSE UNCHANGED <<isRestarting, restartPc, tolerance>>
   /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, awaiting, loaded, lateStart,
@@ -170,13 +170,13 @@ ConfigNoticed(L) ==
 RestartRequested(L) ==
   /\ ~exited /\ restartReq[L]
   /\ restartReq' = [restartReq EXCEPT ![L] = FALSE]
-  /\ IF isRestarting                                      \* project-launch.ts:221
+  /\ IF isRestarting                                      \* project-launch.ts:227
      THEN UNCHANGED <<isRestarting, restartPc, restartFrom, sd, sdLeft, tolerance>>
-     ELSE /\ isRestarting' = TRUE                         \* project-launch.ts:222
-          /\ tolerance' = tolerance + 1                   \* project-launch.ts:223
+     ELSE /\ isRestarting' = TRUE                         \* project-launch.ts:228
+          /\ tolerance' = tolerance + 1                   \* project-launch.ts:229
           /\ restartPc' = "shutdown"
           /\ restartFrom' = armed
-          /\ IF armed /= None THEN BeginShutdown(armed)   \* project-launch.ts:228
+          /\ IF armed /= None THEN BeginShutdown(armed)   \* project-launch.ts:234
              ELSE UNCHANGED <<sd, sdLeft>>
   /\ UNCHANGED <<editVars, genVars, launchVars, exitReq, armed, watching, watched,
                  cfgHash, cfgEvent, hrVars, staleWork, sigint, exited, crashed,
@@ -188,7 +188,7 @@ RestartLaunches ==
   /\ ~exited /\ restartPc = "shutdown"
   /\ IF restartFrom = None THEN TRUE ELSE sd[restartFrom] = "done"
   /\ launch < MaxLaunch
-  /\ launch' = launch + 1                                 \* project-launch.ts:231
+  /\ launch' = launch + 1                                 \* project-launch.ts:237
   /\ lpc' = [lpc EXCEPT ![launch + 1] = "prepare"]
   /\ armed' = launch + 1                                  \* launch-sequence.ts:253, process-claim.ts:160
   /\ restartPc' = "start"
