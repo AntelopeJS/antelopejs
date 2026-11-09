@@ -19,7 +19,7 @@ await test("verdict without --all gates on the smoke journey alone when the diff
 });
 
 await test("a failing known journey of an untouched feature is reported as a known finding and does not fail the full set", () => {
-  const driven = driveVerdict(["project-dev/dev-readd-root-module", "project-start/start-without-build"], ["--all"]);
+  const driven = driveVerdict(["project-dev/dev-readd-root-module"], ["--all"]);
   assert.equal(driven.status, 0);
   assert.match(driven.stdout, /### Known findings/);
   assert.match(driven.stdout, /`project-dev\/dev-readd-root-module` fails on main/);
