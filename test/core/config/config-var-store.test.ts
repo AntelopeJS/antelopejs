@@ -45,6 +45,24 @@ describe("ConfigVarStore", () => {
     );
   });
 
+  it("rejects a reference to a name the provider inherits but does not publish", () => {
+    store.record("api", ["API_PORT"], { API_PORT: 5010 });
+
+    for (const name of ["toString", "constructor", "hasOwnProperty"]) {
+      expect(() => store.resolve("dms", `\${@api.${name}}`)).to.throw(
+        `Module 'dms' references '\${@api.${name}}', but its expected provider 'api' published no config variable '${name}'.`,
+      );
+    }
+  });
+
+  it("rejects a declared variable the provide callback only inherits", () => {
+    expect(() =>
+      store.record("api", ["toString"], { API_PORT: 5010 }),
+    ).to.throw(
+      "Module 'api' declares the config variable(s) 'toString' in antelopeJs.configVars but its provide callback did not return them.",
+    );
+  });
+
   it("forgets every published value once cleared", () => {
     store.record("api", ["API_PORT"], { API_PORT: 5010 });
     store.clear();

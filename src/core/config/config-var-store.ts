@@ -24,7 +24,7 @@ export class ConfigVarStore {
   ): void {
     // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- record accepts arbitrary provider values and checks names only; enforcing ConfigVarValue would change existing acceptance.
     const values = isObject(returned) ? (returned as ConfigVars) : {};
-    const missing = declared.filter((name) => !(name in values));
+    const missing = declared.filter((name) => !Object.hasOwn(values, name));
     if (missing.length > 0) {
       throw new Error(
         `Module '${moduleId}' declares the config variable(s) '${missing.join("', '")}' in antelopeJs.configVars but its provide callback did not return them.`,
@@ -50,7 +50,7 @@ export class ConfigVarStore {
     reference: ConfigVarReference,
   ): ConfigVarValue {
     const values = this.published.get(reference.module);
-    if (!values || !(reference.variable in values)) {
+    if (!values || !Object.hasOwn(values, reference.variable)) {
       throw new Error(
         `Module '${consumerId}' references '${reference.token}', but its expected provider '${reference.module}' published no config variable '${reference.variable}'.`,
       );
