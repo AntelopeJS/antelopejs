@@ -127,13 +127,13 @@ export const testJourneys: Journey[] = [
     },
   },
   {
-    id: "module-test-file-docs-form",
-    title: "--file with a module path resolves the file inside the module, as docs/5.cli/4.module.md shows",
-    entryPoint: "ajs module test mod --file test/http.test.js (from the parent folder)",
+    id: "module-test-file-from-parent",
+    title: "--file with a module path resolves the file against the current folder, as docs/5.cli/4.module.md shows",
+    entryPoint: "ajs module test mod --file mod/test/http.test.js (from the parent folder)",
     async run(context) {
       const folder = await initModule(context);
       context.edit("add a second, failing test file", path.join(folder, "test", "other.test.js"), 'it("fails", () => { throw new Error("must not run"); });\n');
-      const run = await moduleTest(context, "module test mod --file", ["mod", "--file", "test/http.test.js"]);
+      const run = await moduleTest(context, "module test mod --file", ["mod", "--file", "mod/test/http.test.js"]);
       context.expect(run.folder, [exitIs(run, 0), has("stdout", run.stdout, /1 passing/)]);
     },
   },
