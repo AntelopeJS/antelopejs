@@ -39,6 +39,18 @@ describe("ConfigVarStore", () => {
     );
   });
 
+  it("publishes string, number and boolean values unchanged", () => {
+    store.record("api", ["HOST", "PORT", "TLS"], {
+      HOST: "127.0.0.1",
+      PORT: 5010,
+      TLS: false,
+    });
+
+    expect(
+      store.resolve("dms", ["${@api.HOST}", "${@api.PORT}", "${@api.TLS}"]),
+    ).to.deep.equal(["127.0.0.1", 5010, false]);
+  });
+
   it("rejects an unresolved reference instead of substituting an empty string", () => {
     expect(() => store.resolve("dms", { url: "${@api.API_PORT}" })).to.throw(
       "Module 'dms' references '${@api.API_PORT}', but its expected provider 'api' published no config variable 'API_PORT'.",

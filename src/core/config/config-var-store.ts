@@ -4,8 +4,12 @@ import type {
   ConfigVarValue,
 } from "@antelopejs/interface-core/config";
 
-import { isObject } from "../../utils";
+import { isBoolean, isNumber, isObject, isString } from "../../utils";
 import { type ConfigVarReference, substituteConfigVars } from "./config-vars";
+
+function isConfigVarValue(value: unknown): value is ConfigVarValue {
+  return isString(value) || isNumber(value) || isBoolean(value);
+}
 
 /**
  * The config variables every constructed module published.
@@ -16,21 +20,42 @@ import { type ConfigVarReference, substituteConfigVars } from "./config-vars";
 export class ConfigVarStore {
   private readonly published = new Map<string, ConfigVars>();
 
-  /** Freezes what a provider returned, once its `provide` callback resolved. */
+  /**
+   * Freezes the declared variables a provider returned, once its `provide`
+   * callback resolved.
+   *
+   * @throws When a declared variable is missing, or its value is not a
+   * string, a number, or a boolean. Undeclared keys are dropped: no
+   * reference can name them.
+   */
   record(
     moduleId: string,
     declared: string[],
     returned: Awaited<ReturnType<ConfigVarProvider>>,
   ): void {
-    // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- record accepts arbitrary provider values and checks names only; enforcing ConfigVarValue would change existing acceptance.
-    const values = isObject(returned) ? (returned as ConfigVars) : {};
+    const values = isObject(returned) ? returned : {};
     const missing = declared.filter((name) => !Object.hasOwn(values, name));
     if (missing.length > 0) {
       throw new Error(
         `Module '${moduleId}' declares the config variable(s) '${missing.join("', '")}' in antelopeJs.configVars but its provide callback did not return them.`,
       );
     }
-    this.published.set(moduleId, { ...values });
+    const published: ConfigVars = {};
+    const invalid: string[] = [];
+    for (const name of declared) {
+      const value = values[name];
+      if (isConfigVarValue(value)) {
+        published[name] = value;
+      } else {
+        invalid.push(name);
+      }
+    }
+    if (invalid.length > 0) {
+      throw new Error(
+        `Module '${moduleId}' published the config variable(s) '${invalid.join("', '")}' with a value that is not a string, a number, or a boolean.`,
+      );
+    }
+    this.published.set(moduleId, published);
   }
 
   /** The consumer configuration with every reference replaced by its value. */
