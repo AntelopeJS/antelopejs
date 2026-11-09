@@ -2,8 +2,8 @@ import { ModuleState } from "../../types";
 import { clearPathResolutionCache } from "../../utils";
 import { clearStubInterfaceWarnings } from "../resolution";
 import {
-  announceModulesStarted,
   announceModulesStopping,
+  beginModulesStart,
 } from "./lifecycle-signals";
 import { Module } from "./module";
 import { collectRejectedErrors, unpackErrors } from "./module-errors";
@@ -123,6 +123,7 @@ export async function startModules(
   modules.forEach(({ module }) => {
     this.trackModuleStart(module.id);
   });
+  const announceModulesStarted = beginModulesStart();
   const results = await Promise.allSettled(
     modules.map(({ module }) => startWithinDeadline(module)),
   );
