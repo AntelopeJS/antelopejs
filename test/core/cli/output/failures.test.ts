@@ -259,6 +259,44 @@ function installFailure(): CliError {
       });
     };
 
+  const checkShowsBothStreams: (this: Mocha.Suite) => void = function () {
+    it("ends the output tail on the build errors a script printed on stdout while pnpm wrote on stderr", () => {
+      const build = new ExecError({
+        command: "pnpm run build",
+        stdout: [
+          "src/a.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.",
+          "src/b.ts(4,2): error TS2304: Cannot find name 'foo'.",
+          "Found 2 errors.",
+          "",
+        ].join("\n"),
+        stderr: [
+          " WARN  Unsupported engine: wanted node >=24",
+          "$ tsc",
+          "[ELIFECYCLE] Command failed with exit code 2.",
+          "",
+        ].join("\n"),
+        code: 2,
+      });
+
+      expect(describeFailure(build, false).details).to.deep.equal([
+        "Command output:",
+        "  src/a.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.",
+        "  src/b.ts(4,2): error TS2304: Cannot find name 'foo'.",
+        "  Found 2 errors.",
+        COMMAND_OUTPUT_HINT,
+      ]);
+      expect(describeFailure(build, true).details).to.deep.equal([
+        "Output of 'pnpm run build':",
+        "   WARN  Unsupported engine: wanted node >=24",
+        "  $ tsc",
+        "  [ELIFECYCLE] Command failed with exit code 2.",
+        "  src/a.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.",
+        "  src/b.ts(4,2): error TS2304: Cannot find name 'foo'.",
+        "  Found 2 errors.",
+      ]);
+    });
+  };
+
   registerDescribeFailure = () => {
     describe("keeps the problem of a command error that has no cause", function () {
       checkKeepsTheProblemOfA.call(this);
@@ -266,6 +304,10 @@ function installFailure(): CliError {
 
     describe("explains a failure with the translate hook before the built-in translations", function () {
       checkExplainsAFailureWithThe.call(this);
+    });
+
+    describe("shows a failed command's stdout after its stderr", function () {
+      checkShowsBothStreams.call(this);
     });
   };
 

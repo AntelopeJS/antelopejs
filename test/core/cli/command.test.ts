@@ -90,7 +90,7 @@ describe("Command Execution", () => {
         expect(failure.stdout.trim()).to.equal("partial");
         expect(failure.stderr.trim()).to.equal("oops");
         expect(failure.exitCode).to.equal(3);
-        expect(failure.output.trim()).to.equal("oops");
+        expect(failure.output.trim()).to.equal("oops\npartial");
         expect(failure.message).to.equal(
           "Command 'sh -c 'echo partial; echo oops 1>&2; exit 3'' failed with exit code 3",
         );

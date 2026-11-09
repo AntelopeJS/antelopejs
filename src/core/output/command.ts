@@ -63,8 +63,16 @@ export class ExecError extends Error {
     this.exitCode = failure.code;
   }
 
+  /**
+   * Both streams of the command, stderr then stdout. A build script prints
+   * its diagnostics on stdout while the package manager reports the failure
+   * on stderr, so the diagnostics come last, where the output tail shows them.
+   */
   get output(): string {
-    return this.stderr || this.stdout;
+    return [this.stderr, this.stdout]
+      .map((stream) => stream.trimEnd())
+      .filter((stream) => stream !== "")
+      .join("\n");
   }
 }
 
