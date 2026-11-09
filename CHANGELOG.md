@@ -1,5 +1,61 @@
 # Changelog
 
+## v1.21.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.1...v1.21.2)
+
+### 🚀 Enhancements
+
+- **verify:** Run every feature when a shared file changes or before a release ([#405](https://github.com/AntelopeJS/antelopejs/pull/405))
+- **cli:** Check interface versions at modules install and update, and share the highest accepted copy ([#412](https://github.com/AntelopeJS/antelopejs/pull/412))
+
+### 🔥 Performance
+
+- **core:** Match require.cache paths without repeating path work ([#401](https://github.com/AntelopeJS/antelopejs/pull/401))
+- **test:** Run ts-node in transpile-only mode ([#402](https://github.com/AntelopeJS/antelopejs/pull/402))
+- **verify:** Run ajs project init once per run and copy it into journeys ([#406](https://github.com/AntelopeJS/antelopejs/pull/406))
+- **test:** Run the unit suite in mocha parallel mode with 4 workers ([#407](https://github.com/AntelopeJS/antelopejs/pull/407))
+- **verify:** Run a plan's journeys concurrently ([#408](https://github.com/AntelopeJS/antelopejs/pull/408))
+
+### 🩹 Fixes
+
+- **verify:** Run the pnpm version the fixtures pin ([#404](https://github.com/AntelopeJS/antelopejs/pull/404))
+- **verify:** Cover module-locks, add-action and interface-core-guard by the features that run them ([#403](https://github.com/AntelopeJS/antelopejs/pull/403))
+- **cli:** Add the first entry of an empty object the way the formatter lays it out ([#409](https://github.com/AntelopeJS/antelopejs/pull/409))
+- **watch:** Skip a missing watch folder instead of crashing dev --watch ([#421](https://github.com/AntelopeJS/antelopejs/pull/421))
+- **cli:** Key a local module without a package.json name by its folder name ([#428](https://github.com/AntelopeJS/antelopejs/pull/428))
+- **config:** Resolve config variables from the provider's own keys only ([#427](https://github.com/AntelopeJS/antelopejs/pull/427))
+- **verify:** Check module test -f against the current folder, as the docs say ([#423](https://github.com/AntelopeJS/antelopejs/pull/423))
+- **cli:** Show a failed command's stdout after its stderr ([#411](https://github.com/AntelopeJS/antelopejs/pull/411))
+- **cli:** Let ajs config reset replace a config file it cannot read ([#433](https://github.com/AntelopeJS/antelopejs/pull/433))
+- **skills:** Let /statechart read the lifecycle map and stop reporting the exit as a deadlock ([#425](https://github.com/AntelopeJS/antelopejs/pull/425))
+- **test:** Replace the cli entry load budget with an allowlist of eager files ([#413](https://github.com/AntelopeJS/antelopejs/pull/413))
+- **cli:** Show the rebuild hint when project start finds no build ([#422](https://github.com/AntelopeJS/antelopejs/pull/422))
+- **cli:** Keep a dev restart running when a destroyed generation's work fails ([#420](https://github.com/AntelopeJS/antelopejs/pull/420))
+- **core:** Type the remaining explicit any parameters ([#434](https://github.com/AntelopeJS/antelopejs/pull/434))
+- **modules:** Announce ModulesStopping when the project stops before its modules started ([#410](https://github.com/AntelopeJS/antelopejs/pull/410))
+- **downloaders:** Keep only the exact versions npm view and a packed package.json report ([#430](https://github.com/AntelopeJS/antelopejs/pull/430))
+- **config:** Check antelope.config.ts against the AntelopeConfig contract when it loads ([#414](https://github.com/AntelopeJS/antelopejs/pull/414))
+- **cli:** Refuse a non-empty directory in ajs module init . and ajs project init ([#424](https://github.com/AntelopeJS/antelopejs/pull/424))
+- **cli:** Write the module manifest the way the template's formatter lays it out ([#426](https://github.com/AntelopeJS/antelopejs/pull/426))
+- **config:** Reject provider config variables that are not a string, number or boolean ([#416](https://github.com/AntelopeJS/antelopejs/pull/416))
+- **watch:** Notice a config or .env edit made before the watcher starts ([#419](https://github.com/AntelopeJS/antelopejs/pull/419))
+- **runtime:** Stop an interrupted watch restart from exiting the process ([#435](https://github.com/AntelopeJS/antelopejs/pull/435))
+- **downloaders:** Register loaders only under the source types a module declares ([#415](https://github.com/AntelopeJS/antelopejs/pull/415))
+- **modules:** Construct nothing once a shutdown began ([#417](https://github.com/AntelopeJS/antelopejs/pull/417))
+
+### 💅 Refactors
+
+- **verify-antelopejs:** Remove publish, its evidence branch, comment and status ([#437](https://github.com/AntelopeJS/antelopejs/pull/437))
+
+### 📖 Documentation
+
+- **readme:** Add animated banners and a star history ([#436](https://github.com/AntelopeJS/antelopejs/pull/436))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.21.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.0...v1.21.1)
