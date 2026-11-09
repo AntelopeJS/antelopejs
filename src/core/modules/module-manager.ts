@@ -1,11 +1,9 @@
 import { ConfigVarStore } from "../config";
-import type { InterfaceRangeConflict } from "../output";
 import type { BindingGraph, UnresolvedInterface } from "../resolution";
 import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
 } from "./interface-registry";
-import { findPlannedBumps, type InterfaceBump } from "./interface-bumps";
 import { Module } from "./module";
 import { ModuleIsolation } from "./module-isolation";
 import {
@@ -526,7 +524,7 @@ export class ModuleManager {
    * the shared copy the manager planned for it. Reads only package.json
    * files, so it runs before any module code is loaded.
    */
-  findInterfaceRangeConflicts(): InterfaceRangeConflict[] {
+  findInterfaceRangeConflicts() {
     return operations(this).findInterfaceRangeConflicts();
   }
 
@@ -535,11 +533,8 @@ export class ModuleManager {
    * interface package that all their ranges accept. Reads only package.json
    * files, like {@link findInterfaceRangeConflicts}.
    */
-  findInterfaceBumps(): InterfaceBump[] {
-    return findPlannedBumps(
-      this.interfacePackagePlans,
-      this.getAllManagedModules(),
-    );
+  findInterfaceBumps() {
+    return operations(this).findInterfaceBumps();
   }
 
   private findRangeConflicts(

@@ -16,6 +16,7 @@ import {
   logStubInterfaceWarningOnce,
   neutralizeInterfacePackage,
 } from "../resolution";
+import { type InterfaceBump, listBumps } from "./interface-bumps";
 import { Module } from "./module";
 import {
   type InterfacePackageConsumer,
@@ -276,6 +277,10 @@ export function findInterfaceRangeConflicts(
   return [...this.interfacePackagePlans].flatMap(([name, plan]) =>
     this.findRangeConflicts(name, plan),
   );
+}
+
+export function findInterfaceBumps(this: ManagerContext): InterfaceBump[] {
+  return listBumps(this.interfacePackagePlans, this.getAllManagedModules());
 }
 
 export function validateInterfacePackages(this: ManagerContext): void {

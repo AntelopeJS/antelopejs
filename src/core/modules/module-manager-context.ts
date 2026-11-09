@@ -12,6 +12,7 @@ import type {
   BindingModule,
   UnresolvedInterface,
 } from "../resolution";
+import type { InterfaceBump } from "./interface-bumps";
 import {
   type InterfaceConnectionRef,
   InterfaceRegistry,
@@ -227,6 +228,7 @@ export interface ManagerMethods {
   ): void;
   validateInterfacePackages(): void;
   findInterfaceRangeConflicts(): InterfaceRangeConflict[];
+  findInterfaceBumps(): InterfaceBump[];
   findRangeConflicts(
     packageName: string,
     plan: InterfacePackagePlan,

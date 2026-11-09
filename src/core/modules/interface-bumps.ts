@@ -242,11 +242,12 @@ function findInterfaceBumps(
 }
 
 /**
- * Lists the {@link InterfaceBump}s of every planned interface package.
+ * Lists the {@link InterfaceBump}s of every planned interface package. Reads
+ * only package.json files, so it runs before any module code is loaded.
  *
  * @param modules every module the plans were made for.
  */
-export function findPlannedBumps(
+export function listBumps(
   plans: ReadonlyMap<string, InterfacePackagePlan>,
   modules: readonly ManagedModule[],
 ): InterfaceBump[] {
