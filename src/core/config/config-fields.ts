@@ -1,10 +1,11 @@
 import { isDeepStrictEqual } from "node:util";
 
 import type {
+  AntelopeConfig,
   AntelopeLogging,
+  AntelopeModuleConfig,
   AntelopeTestConfig,
   ImportOverride,
-  ModuleSource,
   ModuleSourceGit,
   ModuleSourceLocal,
   ModuleSourceLocalFolder,
@@ -16,7 +17,10 @@ import {
   FieldError,
   type FieldChecks,
   flag,
+  isFunction,
   isObject,
+  isString,
+  leaf,
   listOf,
   literal,
   mapOf,
@@ -29,6 +33,7 @@ import {
   texts,
 } from "../../utils";
 import type { ExpandedModuleConfig } from "./config-parser";
+import type { ModuleEntryConfig } from "./module-entry";
 
 /** The project configuration once templates and environment overrides ran. */
 export interface LoadedConfig {
@@ -86,7 +91,10 @@ const localFolderSource: FieldCheck<ModuleSourceLocalFolder> = section(
 const SOURCE_TAKES =
   "a module source of type local, git, package or local-folder";
 
-const moduleSource: FieldCheck<ModuleSource> = (value, field) => {
+const moduleSource: FieldCheck<NonNullable<AntelopeModuleConfig["source"]>> = (
+  value,
+  field,
+) => {
   const type: unknown = isObject(value) ? value.type : undefined;
   if (type === "local") {
     localSource(value, field);
@@ -280,4 +288,123 @@ function checkProjectFields(
   checks.logging(value.logging, "logging");
   checks.envOverrides(value.envOverrides, "envOverrides");
   checks.test(value.test, "test");
+}
+
+type SetupHook = NonNullable<AntelopeTestConfig["setup"]>;
+type CleanupHook = NonNullable<AntelopeTestConfig["cleanup"]>;
+
+/** Whether a value is callable; the setup hook's result is read where it runs. */
+function isSetupHook(value: unknown): value is SetupHook {
+  return isFunction(value);
+}
+
+/** Whether a value is callable; the cleanup hook's result is awaited and dropped. */
+function isCleanupHook(value: unknown): value is CleanupHook {
+  return isFunction(value);
+}
+
+const testSectionContract = section<AntelopeTestConfig>("a test section", {
+  folder: optional(text),
+  setup: optional(leaf("a function", isSetupHook)),
+  cleanup: optional(leaf("a function", isCleanupHook)),
+});
+
+const IMPORT_OVERRIDES_TAKE =
+  "a list of import overrides or a map of interface names to module names";
+
+const importOverrideList: FieldCheck<ImportOverride[]> = listOf(
+  IMPORT_OVERRIDES_TAKE,
+  importOverrideCheck,
+);
+const importOverrideMap: FieldCheck<Record<string, string>> = mapOf(
+  IMPORT_OVERRIDES_TAKE,
+  text,
+);
+
+const importOverridesContract: FieldCheck<
+  AntelopeModuleConfig["importOverrides"]
+> = (value, field) => {
+  if (value === undefined) return;
+  if (Array.isArray(value)) {
+    importOverrideList(value, field);
+  } else if (isObject(value)) {
+    importOverrideMap(value, field);
+  } else {
+    throw new FieldError(field, IMPORT_OVERRIDES_TAKE);
+  }
+};
+
+const moduleEntryContract: FieldCheck<ModuleEntryConfig> = section(
+  "a module entry",
+  {
+    version: optional(text),
+    source: optional(moduleSource),
+    config: anyValue,
+    importOverrides: importOverridesContract,
+    disabledExports: optional(texts),
+    exportPriority: optional(mapOf("a map of export priorities", number)),
+    disabled: optional(flag),
+    optional: optional(flag),
+  },
+);
+
+const MODULE_TAKES = "a version string or a module entry";
+
+const moduleContract: FieldCheck<string | AntelopeModuleConfig> = (
+  value,
+  field,
+) => {
+  if (isString(value)) return;
+  if (!isObject(value)) throw new FieldError(field, MODULE_TAKES);
+  moduleEntryContract(value, field);
+};
+
+function configContract(
+  name: FieldCheck<string | undefined>,
+): FieldChecks<Partial<AntelopeConfig>> {
+  return {
+    name,
+    cacheFolder: optional(text),
+    modules: optional(mapOf("a map of module entries", moduleContract)),
+    logging: optional(loggingCheck),
+    envOverrides: optional(mapOf("a map of environment overrides", textOrList)),
+    environments: optional(
+      mapOf("a map of environments", (value, field) => {
+        environmentContract(value, field);
+      }),
+    ),
+    test: optional(testSectionContract),
+  };
+}
+
+const environmentContract: FieldCheck<Partial<AntelopeConfig>> = section(
+  "an environment",
+  configContract(optional(text)),
+);
+
+const projectContract: FieldCheck<AntelopeConfig> = section(
+  "a project configuration",
+  { ...configContract(text), name: text },
+);
+
+/**
+ * Asserts that a configuration file's value holds the declared
+ * `AntelopeConfig` contract, its `environments` included. A key the contract
+ * does not declare is kept unchecked, and a module's `config` stays `unknown`.
+ * Throws an error naming the first field that does not hold its declared type,
+ * and the file it came from.
+ */
+export function assertAntelopeConfig(
+  value: unknown,
+  configPath: string,
+): asserts value is AntelopeConfig {
+  try {
+    projectContract(value, "");
+  } catch (error) {
+    if (!(error instanceof FieldError)) throw error;
+    throw new Error(
+      `Configuration field '${error.field || "export"}' in ${configPath} does not hold ${error.takes}.`,
+      { cause: error },
+    );
+  }
 }
