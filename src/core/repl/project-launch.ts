@@ -70,7 +70,7 @@ async function setupWatching(
   manager: ModuleManager,
   fs: NodeFileSystem,
   { projectFolder, env, options }: Omit<PostLaunch, "started">,
-  shutdownManager: ShutdownManager,
+  { shutdownManager, readHashes }: StartedProject,
   loaderContext: LoaderContext,
 ): Promise<void> {
   const [{ FileWatcher }, { HotReload }, moduleLoading] = await Promise.all([
@@ -106,18 +106,22 @@ async function setupWatching(
 
   const configPath = await tryFindConfigPath(projectFolder, fs);
   if (configPath) {
-    await watcher.watchFile(configPath, () => {
-      void restartUnlessOwnWrite(configPath, () =>
-        restartProject(projectFolder, env, options),
-      );
-    });
+    await watcher.watchFile(
+      configPath,
+      () => {
+        void restartUnlessOwnWrite(configPath, () =>
+          restartProject(projectFolder, env, options),
+        );
+      },
+      { readHashes },
+    );
     await watcher.watchFile(
       getProjectEnvPath(projectFolder),
       () => {
         Logger.Info("Project .env changed, restarting project...");
         void restartProject(projectFolder, env, options);
       },
-      { optional: true },
+      { optional: true, readHashes },
     );
   }
 
@@ -151,7 +155,7 @@ async function startWatching({
     started.manager,
     started.fs,
     { projectFolder, env, options },
-    started.shutdownManager,
+    started,
     await started.loadContext(),
   );
 }

@@ -89,6 +89,11 @@ export interface PreparedProject {
   createEntries: () => Promise<ModuleManifestEntry[]>;
   /** Folder for instance copies of module packages loaded more than once. */
   instanceRoot?: string;
+  /**
+   * The hash of each file a change of which restarts a watched project, as
+   * the launch read it: `undefined` for a file that was absent.
+   */
+  readHashes?: ReadonlyMap<string, string | undefined>;
 }
 
 export type ProjectPreparer = (
@@ -103,4 +108,9 @@ export interface StartedProject {
   fs: NodeFileSystem;
   shutdownManager: ShutdownManager;
   policy: RuntimePolicy;
+  /**
+   * The hash of each file a change of which restarts a watched project, as
+   * the launch read it: `undefined` for a file that was absent.
+   */
+  readHashes?: ReadonlyMap<string, string | undefined>;
 }

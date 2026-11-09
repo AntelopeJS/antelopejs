@@ -16,4 +16,31 @@ describe("FileHasher", () => {
 
     expect(hash1).to.not.equal(hash2);
   });
+
+  it("hashes a file that vanished as undefined instead of failing", async () => {
+    const fs = new InMemoryFileSystem();
+    fs.readFile = async (filePath) => {
+      throw Object.assign(new Error(`ENOENT: ${filePath}`), { code: "ENOENT" });
+    };
+    const hasher = new FileHasher(fs);
+
+    expect(await hasher.hashFileIfPresent("/file.txt")).to.equal(undefined);
+  });
+
+  it("still fails on an error other than a missing file", async () => {
+    const fs = new InMemoryFileSystem();
+    const failure = Object.assign(new Error("denied"), { code: "EACCES" });
+    fs.readFile = async () => {
+      throw failure;
+    };
+    const hasher = new FileHasher(fs);
+
+    let caught: unknown;
+    try {
+      await hasher.hashFileIfPresent("/file.txt");
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).to.equal(failure);
+  });
 });
