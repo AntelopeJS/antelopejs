@@ -47,17 +47,19 @@ LaunchConstruct(L) ==
   /\ ~exited /\ lpc[L] = "construct"
   /\ IF Stopping(L)                                       \* launch-steps.ts:35
      THEN Interrupt(L)
-     ELSE /\ awaiting' = [awaiting EXCEPT ![L] = HeldGens(L)] \* module-manager-construction.ts:181
+     ELSE /\ awaiting' = [awaiting EXCEPT ![L] = HeldGens(L)] \* module-manager-construction.ts:190
           /\ lpc' = [lpc EXCEPT ![L] = "constructing"]
           /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, loaded, lateStart, sdVars,
                          watchVars, restartVars, hrVars, procVars>>
 
 (* Module.construct loads the code, then ModuleLifecycle.construct runs.  *)
-(* A destroy that came first found the module Loaded and did nothing.     *)
+(* constructEntry skips every generation once the shutdown closed the    *)
+(* manager: the shutdown found it Loaded and could not destroy it.        *)
 ConstructApply(L, g) ==
   /\ ~exited /\ lpc[L] = "constructing" /\ g \in awaiting[L]
   /\ awaiting' = [awaiting EXCEPT ![L] = @ \ {g}]
   /\ state' = IF state[g] = "Loaded"                      \* module-lifecycle.ts:63
+                 /\ ~Closed(L)                             \* module-manager-construction.ts:330
               THEN [state EXCEPT ![g] = "Constructed"]    \* module-lifecycle.ts:76
               ELSE state
   /\ UNCHANGED <<editVars, gmod, nextGen, startPending, launch, lpc, cfgSeen, loaded,

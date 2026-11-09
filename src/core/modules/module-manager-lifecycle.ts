@@ -134,8 +134,18 @@ export async function startModules(
   announceModulesStarted();
 }
 
+/**
+ * Closes the manager, then waits for the constructs already under way, so
+ * the shutdown finds every module they construct.
+ */
+async function closeManager(context: ManagerContext): Promise<void> {
+  context.closed = true;
+  await Promise.allSettled(context.constructing);
+}
+
 export async function stopAll(this: ManagerContext): Promise<void> {
   announceModulesStopping();
+  await closeManager(this);
   const modules = this.getReverseLifecycleModules();
   const errors = await runModuleOperations(modules, (module) => module.stop());
   this.startupOrder = [];
@@ -146,6 +156,7 @@ export async function stopAll(this: ManagerContext): Promise<void> {
 
 export async function destroyAll(this: ManagerContext): Promise<void> {
   announceModulesStopping();
+  await closeManager(this);
   const modules = this.getReverseLifecycleModules();
   const results = await runTrackedModuleOperations(
     modules,

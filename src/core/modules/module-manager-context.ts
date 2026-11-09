@@ -84,6 +84,14 @@ interface ManagerFields {
   interfacePackagePlans: Map<string, InterfacePackagePlan>;
   configVars: ConfigVarStore;
   pendingCleanup: ManagedModule[];
+  /**
+   * Set once `stopAll` or `destroyAll` begins. A closed manager provides and
+   * constructs nothing more: a module it constructed then would outlive
+   * every destroy.
+   */
+  closed: boolean;
+  /** Constructs that passed the `closed` check and have not settled. */
+  constructing: Set<Promise<void>>;
   bindingGraph: BindingGraph | undefined;
   isolation: ModuleIsolation;
   startupOrder: string[];
@@ -319,6 +327,7 @@ interface FieldWriters {
   pendingCleanup: (value: ManagerFields["pendingCleanup"]) => void;
   bindingGraph: (value: ManagerFields["bindingGraph"]) => void;
   startupOrder: (value: ManagerFields["startupOrder"]) => void;
+  closed: (value: ManagerFields["closed"]) => void;
 }
 interface ManagerContextParts {
   fields: FieldReaders;
@@ -391,6 +400,15 @@ function createContext({
     },
     set pendingCleanup(value) {
       writers.pendingCleanup(value);
+    },
+    get closed() {
+      return fields.closed();
+    },
+    set closed(value) {
+      writers.closed(value);
+    },
+    get constructing() {
+      return fields.constructing();
     },
     get bindingGraph() {
       return fields.bindingGraph();

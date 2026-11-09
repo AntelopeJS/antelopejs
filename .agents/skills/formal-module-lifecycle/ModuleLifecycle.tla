@@ -106,7 +106,8 @@ RlInstall(L) ==
 (* can throw after the state became Constructed.                          *)
 RlConstruct(L) ==
   /\ ~exited /\ rl[L].pc = "construct"
-  /\ IF state[rl[L].repl] = "Loaded"                      \* module.ts:97, module-lifecycle.ts:63
+  /\ IF /\ state[rl[L].repl] = "Loaded"                   \* module.ts:97, module-lifecycle.ts:63
+        /\ ~Closed(L)                                    \* module-manager-construction.ts:330
      THEN /\ state' = [state EXCEPT ![rl[L].repl] = "Constructed"] \* module-lifecycle.ts:76
           /\ \/ /\ rl' = [rl EXCEPT ![L].pc = "callStart"]
                 /\ UNCHANGED staleWork

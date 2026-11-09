@@ -17,6 +17,9 @@ import { runModuleOperations } from "./module-manager-lifecycle";
 import { Logger } from "./module-manager-logger";
 
 export async function constructAll(this: ManagerContext): Promise<void> {
+  if (this.closed) {
+    return;
+  }
   const leaseAcquired = this.resolverDetour.attach();
   const modules = [...this.loaded.values()];
   let plan: ConfigVarPlan;
@@ -65,6 +68,9 @@ export async function constructModules(
   this: ManagerContext,
   modules: ManagedModule[],
 ): Promise<void> {
+  if (this.closed) {
+    return;
+  }
   const leaseAcquired = this.resolverDetour.attach();
   try {
     this.logBindingWarnings();
@@ -286,9 +292,15 @@ export async function provideEntry(
   this: ManagerContext,
   entry: ManagedModule,
 ): Promise<void> {
+  if (this.closed) {
+    return;
+  }
   const { module, config } = entry;
   config.config = this.configVars.resolve(module.id, config.config);
   const published = await this.provideModule(entry);
+  if (this.closed) {
+    return;
+  }
   this.configVars.record(
     module.id,
     declaredConfigVars(module.manifest),
@@ -315,7 +327,16 @@ export async function constructEntry(
   this: ManagerContext,
   entry: ManagedModule,
 ): Promise<void> {
+  if (this.closed) {
+    return;
+  }
   const { module, config } = entry;
   config.config = this.configVars.resolve(module.id, config.config);
-  await this.constructModule(entry);
+  const construction = this.constructModule(entry);
+  this.constructing.add(construction);
+  try {
+    await construction;
+  } finally {
+    this.constructing.delete(construction);
+  }
 }

@@ -14,7 +14,6 @@ import { checkSpec } from "@antelopejs/tooling-configs/formal";
 
 /** Rules today's code breaks, with the states in TLC's shortest counterexample. */
 const FINDINGS = {
-  NoOrphanGeneration: 10,
   LaunchReadsCurrentConfig: 21,
   ConfigEditsReachProject: 30,
 };
