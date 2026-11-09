@@ -37,8 +37,6 @@ import { resolveProjectContext } from "../../shared/project-command";
 import { isObject, isObjectOrNull, isString } from "../../../../utils";
 import { createModuleRegistry, openModuleCache } from "./module-locks";
 
-/** The key earlier versions stored for a local module whose package.json has no name. */
-const UNNAMED_MODULE_KEY = "undefined";
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
 const LOCAL_MODULE_BUILD_COMMAND = ["npx tsc"];
 const INSTALL_COMMAND = "ajs project modules install";
@@ -345,7 +343,7 @@ handlers.set("local", async (module, options) => {
   );
 
   return [
-    name ?? UNNAMED_MODULE_KEY,
+    name || path.basename(resolvedModulePath),
     {
       source: {
         type: "local",
