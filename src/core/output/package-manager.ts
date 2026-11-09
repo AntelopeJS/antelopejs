@@ -5,6 +5,7 @@ import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import { info, warning } from "./cli-ui";
 import { loadChildProcess } from "./child-process";
+import { packageJsonWith } from "./package-json-layout";
 import {
   DEFAULT_PACKAGE_MANAGER,
   PACKAGE_MANAGER_NAMES,
@@ -259,10 +260,13 @@ export function savePackageManagerToPackageJson(
     }
     const packageManagerWithVersion =
       getPackageManagerWithVersion(packageManager);
-    packageJsonContent.packageManager = packageManagerWithVersion;
     fs.writeFileSync(
       packageJsonPath,
-      JSON.stringify(packageJsonContent, null, 2),
+      packageJsonWith(
+        packageJsonContent,
+        "packageManager",
+        packageManagerWithVersion,
+      ),
     );
     info(`Package manager set to ${getProcessPalette().bold(packageManager)}`);
   } catch (err) {

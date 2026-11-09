@@ -19,6 +19,7 @@ export * from "./logging-utils";
 export * as loggingUtilsModule from "./logging-utils";
 export * from "./package-manager";
 export * as packageManagerModule from "./package-manager";
+export * from "./package-json-layout";
 export * from "./package-manager-name";
 export * from "./prompt";
 export * from "./symbols";
