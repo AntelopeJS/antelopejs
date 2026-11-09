@@ -27,8 +27,8 @@ type WaitingType = {
 };
 
 interface KnownDownloader {
-  loaderIdentifier: keyof any;
-  loader: ModuleLoader<any>;
+  loaderIdentifier: PropertyKey;
+  loader: ModuleLoader;
 }
 
 export class DownloaderRegistry {
@@ -40,7 +40,11 @@ export class DownloaderRegistry {
     loaderIdentifier: keyof T,
     loader: ModuleLoader<T>,
   ): void {
-    const known: KnownDownloader = { loaderIdentifier, loader };
+    const known: KnownDownloader = {
+      loaderIdentifier,
+      // SAFETY: `load` calls this loader only with a source whose `type` is the `type` it was registered under, and every core downloader (local, local-folder, git, package) registers a loader under the `type` of the source shape `T` it reads.
+      loader: loader as ModuleLoader,
+    };
     this.knownTypes.set(type, known);
     const waitingList = this.waiting.get(type);
     if (waitingList) {

@@ -1,8 +1,15 @@
 import type { AntelopeLogging } from "@antelopejs/interface-core/config";
+import { inspect } from "node:util";
 import { createColors } from "picocolors";
 
 import { hasProcessColorSupport } from "./capabilities";
-import { isBoolean, isNumber, isString } from "../../utils";
+import {
+  isBoolean,
+  isFunction,
+  isNumber,
+  isString,
+  isSymbol,
+} from "../../utils";
 
 const LOG_LEVELS = {
   ERROR: 40,
@@ -163,28 +170,18 @@ function indentCause(text: string): string {
     .join("\n");
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- serializes an aggregate member or cause, which JS lets be any value
-function serializeInnerError(value: unknown, ancestors: Set<Error>): string {
-  if (!(value instanceof Error)) {
-    return serializeLogValue(value);
-  }
-  return ancestors.has(value)
-    ? CIRCULAR_ERROR
-    : serializeError(value, ancestors);
-}
-
 function aggregatedErrors(error: Error, ancestors: Set<Error>): string[] {
   if (!(error instanceof AggregateError) || !Array.isArray(error.errors)) {
     return [];
   }
   return error.errors.map((inner) =>
-    indentInnerError(serializeInnerError(inner, ancestors)),
+    indentInnerError(serializeLogValue(inner, ancestors)),
   );
 }
 
 function causeOf(error: Error, ancestors: Set<Error>): string[] {
   if (error.cause === undefined) return [];
-  return [indentCause(serializeInnerError(error.cause, ancestors))];
+  return [indentCause(serializeLogValue(error.cause, ancestors))];
 }
 
 /**
@@ -210,20 +207,30 @@ function serializeError(error: Error, ancestors: Set<Error>): string {
 /**
  * Serializes a value for logging, handling objects, arrays, and other types appropriately
  * @param value - The value to serialize
+ * @param ancestors - The errors being serialized around this value, so an error that contains itself prints as `[Circular]`
  * @returns A string representation of the value
  */
-export function serializeLogValue(value: any): string {
+export function serializeLogValue(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- serializes a log argument, aggregate member or cause, which JS lets be any value
+  value: unknown,
+  ancestors = new Set<Error>(),
+): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
   if (isString(value)) return value;
   if (isNumber(value) || isBoolean(value)) return String(value);
-  if (value instanceof Error) return serializeError(value, new Set());
+  if (value instanceof Error) {
+    return ancestors.has(value)
+      ? CIRCULAR_ERROR
+      : serializeError(value, ancestors);
+  }
   if (value instanceof Date) return value.toISOString();
+  if (isSymbol(value) || isFunction(value)) return inspect(value);
 
   try {
     return JSON.stringify(value, null, 2);
   } catch {
-    return String(value);
+    return inspect(value);
   }
 }
 
@@ -277,7 +284,7 @@ export function formatDate(date: Date, format = "yyyy-MM-dd HH:mm:ss"): string {
  */
 export function formatLogMessageWithRightAlignedDate(
   logging: AntelopeLogging,
-  log: { levelId: number; args: any[]; time: number },
+  log: { levelId: number; args: unknown[]; time: number },
   module?: string,
   defaultDateFormat = "yyyy-MM-dd HH:mm:ss",
 ): string {

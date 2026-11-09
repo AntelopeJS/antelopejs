@@ -310,7 +310,16 @@ function setTTY(stdout: boolean, stderr: boolean, columns?: number) {
       it("should handle circular references", () => {
         const value: SelfReferencing = {};
         value.self = value;
-        expect(serializeLogValue(value)).to.equal("[object Object]");
+        expect(serializeLogValue(value)).to.equal(
+          "<ref *1> { self: [Circular *1] }",
+        );
+      });
+
+      it("should serialize values JSON has no text for", () => {
+        function onReady(): void {}
+        expect(
+          [Symbol("id"), onReady, 10n].map((value) => serializeLogValue(value)),
+        ).to.deep.equal(["Symbol(id)", "[Function: onReady]", "10n"]);
       });
     };
 
