@@ -17,7 +17,6 @@ const FINDINGS = {
   NoOrphanGeneration: 10,
   LaunchReadsCurrentConfig: 21,
   ConfigEditsReachProject: 12,
-  NoCrashFromStaleWork: 23,
 };
 
 await checkSpec({

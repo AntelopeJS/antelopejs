@@ -121,19 +121,20 @@ LaunchHashConfig(L) ==
                  procVars>>
 
 (* FileWatcher.startWatching; startProject returns, and restartProject    *)
-(* clears isRestarting.                                                   *)
+(* withdraws its tolerance and clears isRestarting.                       *)
 LaunchWatching(L) ==
   /\ ~exited /\ lpc[L] = "startWatching"
   /\ watching' = [watching EXCEPT ![L] =
-       IF watching[L] = "stopped" THEN "stopped" ELSE "yes"] \* file-watcher.ts:89, project-launch.ts:116
+       IF watching[L] = "stopped" THEN "stopped" ELSE "yes"] \* file-watcher.ts:89, project-launch.ts:125
   /\ lpc' = [lpc EXCEPT ![L] = "running"]
   /\ IF restartPc = "start" /\ L = launch
-     THEN /\ isRestarting' = FALSE                        \* project-launch.ts:217
+     THEN /\ tolerance' = tolerance - 1                   \* project-launch.ts:233
+          /\ isRestarting' = FALSE                        \* project-launch.ts:234
           /\ restartPc' = "idle"
-     ELSE UNCHANGED <<isRestarting, restartPc>>
+     ELSE UNCHANGED <<isRestarting, restartPc, tolerance>>
   /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, awaiting, loaded, lateStart,
                  sdVars, watched, cfgHash, cfgEvent, restartReq, restartFrom, hrVars,
-                 procVars>>
+                 staleWork, sigint, exited, crashed, crashedWhileWatching>>
 
 (* ----------------------- config edits and restarts ---------------------- *)
 
@@ -161,19 +162,22 @@ ConfigNoticed(L) ==
                  restartVars, hrVars, procVars>>
 
 (* restartUnlessOwnWrite read the file (not the runtime's own write), and *)
-(* restartProject runs: it shuts the active launch down.                  *)
+(* restartProject runs: it holds a tolerance for the whole restart, then  *)
+(* shuts the active launch down.                                          *)
 RestartRequested(L) ==
   /\ ~exited /\ restartReq[L]
   /\ restartReq' = [restartReq EXCEPT ![L] = FALSE]
-  /\ IF isRestarting                                      \* project-launch.ts:206
-     THEN UNCHANGED <<isRestarting, restartPc, restartFrom, sd, sdLeft>>
-     ELSE /\ isRestarting' = TRUE                         \* project-launch.ts:207
+  /\ IF isRestarting                                      \* project-launch.ts:221
+     THEN UNCHANGED <<isRestarting, restartPc, restartFrom, sd, sdLeft, tolerance>>
+     ELSE /\ isRestarting' = TRUE                         \* project-launch.ts:222
+          /\ tolerance' = tolerance + 1                   \* project-launch.ts:223
           /\ restartPc' = "shutdown"
           /\ restartFrom' = armed
-          /\ IF armed /= None THEN BeginShutdown(armed)   \* project-launch.ts:212
+          /\ IF armed /= None THEN BeginShutdown(armed)   \* project-launch.ts:228
              ELSE UNCHANGED <<sd, sdLeft>>
   /\ UNCHANGED <<editVars, genVars, launchVars, exitReq, armed, watching, watched,
-                 cfgHash, cfgEvent, hrVars, procVars>>
+                 cfgHash, cfgEvent, hrVars, staleWork, sigint, exited, crashed,
+                 crashedWhileWatching>>
 
 (* The shutdown resolved: startProject runs the next launch, and          *)
 (* runLaunchSequence arms its ShutdownManager before its first await.     *)
@@ -181,7 +185,7 @@ RestartLaunches ==
   /\ ~exited /\ restartPc = "shutdown"
   /\ IF restartFrom = None THEN TRUE ELSE sd[restartFrom] = "done"
   /\ launch < MaxLaunch
-  /\ launch' = launch + 1                                 \* project-launch.ts:215
+  /\ launch' = launch + 1                                 \* project-launch.ts:231
   /\ lpc' = [lpc EXCEPT ![launch + 1] = "prepare"]
   /\ armed' = launch + 1                                  \* launch-sequence.ts:253, process-claim.ts:160
   /\ restartPc' = "start"
