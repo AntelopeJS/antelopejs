@@ -1,7 +1,4 @@
-import type {
-  AntelopeConfig,
-  ModuleSourcePackage,
-} from "@antelopejs/interface-core/config";
+import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -64,13 +61,9 @@ describe("project modules behavior: add-rejections", () => {
     sinon
       .stub(packageDownloader, "registerPackageDownloader")
       .callsFake((registry) => {
-        registry.register<ModuleSourcePackage>(
-          "package",
-          "package",
-          async () => {
-            throw new Error("down");
-          },
-        );
+        registry.register("package", "package", async () => {
+          throw new Error("down");
+        });
       });
 
     const errorStub = sinon.stub(getProcessUi(), "problem");
