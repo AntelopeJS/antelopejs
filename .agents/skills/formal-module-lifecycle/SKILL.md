@@ -13,7 +13,7 @@ The TLA+ spec models what `ajs project dev --watch` does to module generations: 
 node .agents/skills/formal-module-lifecycle/check.mjs
 ```
 
-It needs Node 24, `pnpm install` done (the runner comes from `@antelopejs/tooling-configs/formal`), and Java 11 or later from `$JAVA`, else `java` on PATH, else the `eclipse-temurin:21-jre` Docker image (set `TLC_DOCKER_PREFIX` to name the containers). The first run downloads TLC 1.7.4 into `~/.cache/antelopejs-formal` (or `$XDG_CACHE_HOME/antelopejs-formal`) and checks its SHA-256. A run takes about 55 s on 4 cores and explores 1,253,708 states. CI runs it as the `formal-module-lifecycle` job.
+It needs Node 24, `pnpm install` done (the runner comes from `@antelopejs/tooling-configs/formal`), and Java 11 or later from `$JAVA`, else `java` on PATH, else the `eclipse-temurin:21-jre` Docker image (set `TLC_DOCKER_PREFIX` to name the containers). The first run downloads TLC 1.7.4 into `~/.cache/antelopejs-formal` (or `$XDG_CACHE_HOME/antelopejs-formal`) and checks its SHA-256. A run takes about 55 s on 4 cores and explores 1,456,112 states. CI runs it as the `formal-module-lifecycle` job.
 
 - Exit 0 means every rule that held still holds, and each finding still breaks with its recorded counterexample length.
 - Exit 1 means a rule changed. `BROKEN` names a rule that held and now breaks. `CHANGED` names a finding whose shortest counterexample changed length. `HOLDS` names a finding that no longer breaks. The script keeps TLC's output in a temporary folder and prints its path.
@@ -85,7 +85,7 @@ The sync commit is `9b81264` on AntelopeJS/antelopejs `main`.
 
 ## Bounds and what is left out
 
-The check runs with modules `a` and `b` (`a` declared at start), at most 2 config edits (so at most 3 launches) and 1 module source edit, with both config layouts (the config in no module folder, or in `a`'s folder at the project root), which gives 1,253,708 states. The charts use 0 edits with 1 source edit (1,996 states), and 1 edit with 0 source edits (4,300 states). A pass covers these bounds only.
+The check runs with modules `a` and `b` (`a` declared at start), at most 2 config edits (so at most 3 launches) and 1 module source edit, with both config layouts (the config in no module folder, or in `a`'s folder at the project root), which gives 1,456,112 states. The charts use 0 edits with 1 source edit (1,996 states), and 1 edit with 0 source edits (4,300 states). A pass covers these bounds only.
 
 The model leaves out:
 
