@@ -192,7 +192,9 @@ System ==
   \/ RestartLaunches
   \/ StaleWorkFails
 
-Next == User \/ System
+Done == exited /\ UNCHANGED vars
+
+Next == User \/ System \/ Done
 
 Spec == Init /\ [][Next]_vars
 
