@@ -69,6 +69,10 @@ export class ModuleManager {
 
   private pendingCleanup: ManagedModule[] = [];
 
+  private closed = false;
+
+  private readonly constructing = new Set<Promise<void>>();
+
   private bindingGraph?: BindingGraph;
 
   private readonly isolation = new ModuleIsolation();
@@ -100,6 +104,8 @@ export class ModuleManager {
         interfacePackagePlans: () => manager.interfacePackagePlans,
         configVars: () => manager.configVars,
         pendingCleanup: () => manager.pendingCleanup,
+        closed: () => manager.closed,
+        constructing: () => manager.constructing,
         bindingGraph: () => manager.bindingGraph,
         isolation: () => manager.isolation,
         startupOrder: () => manager.startupOrder,
@@ -113,6 +119,9 @@ export class ModuleManager {
         },
         startupOrder: (value) => {
           manager.startupOrder = value;
+        },
+        closed: (value) => {
+          manager.closed = value;
         },
       },
       methods: {

@@ -91,6 +91,10 @@ editVars == <<declared, edits, jitiCache, staleRead, configOwner, changes>>
 Held(L) == {m \in Modules : loaded[L][m] /= None}
 HeldGens(L) == {loaded[L][m] : m \in Held(L)}
 
+(* stopAll closes the manager before its first await, and waits for the   *)
+(* constructs already past the check, which ConstructApply makes atomic.  *)
+Closed(L) == sd[L] /= "none"                                \* module-manager-lifecycle.ts:142
+
 (* evictModuleFiles deletes the require.cache entries under a module's    *)
 (* folder. jiti answers from require.cache only while the config's entry  *)
 (* is there, so evicting the module whose folder holds antelope.config.ts *)
