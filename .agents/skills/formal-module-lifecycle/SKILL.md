@@ -95,6 +95,6 @@ The model leaves out:
 - the `destroyAll` of `cleanupFailedLaunch`, which only repeats the shutdown's own `destroyAll`;
 - a destroy that fails during shutdown, `pendingCleanup`, start failures and the 120 s start deadline, and a second Ctrl+C;
 - the reload's signature check, which skips a reload when no file changed, and directories added or removed under a module;
-- `FileWatcher.scanModule` on a missing watch dir. `ajs project modules add --mode local` writes `watchDir: ["src"]`, and a module with no `src/` makes the restarted `setupWatching` reject with `scandir ... ENOENT`, unhandled, so dev exits 1 (reported by the parent's verify journey, replayed here). It is a crash outside the lifecycle orders the model checks.
+- `FileWatcher.scanModule` on a missing watch dir, such as the `src` that `ajs project modules add --mode local` writes for a module with no `src/`. The scan skips it and watches the module's other watch dirs, outside the lifecycle orders the model checks.
 
 Every await is a point where another step may run, including Ctrl+C, a file edit, and a timer. Node delivers those only between macrotasks, so the model allows some orders the code cannot produce. Every finding above was replayed, and each replay says which real await it needs.
