@@ -162,7 +162,17 @@ export class AntelopeRuntime {
     return this.hostModule().runInContext(() => require(request));
   }
 
-  /** Implements an interface from host code, released through the returned handle. */
+  /**
+   * Implements an interface from host code. The package must be listed in
+   * `provides` and declared in the {@link EmbeddedInterfaces} map, and that
+   * declaration types `implementation`. Call `detach()` on the returned handle
+   * to remove the implementation.
+   *
+   * @throws Error when the runtime has not been started, or when `packageName`
+   * is not listed in `provides`.
+   * @throws TypeError when the interface declaration or `implementation` is not
+   * an object.
+   */
   provide<Request extends Extract<keyof EmbeddedInterfaces, string>>(
     packageName: Request,
     implementation: InterfaceToImpl<EmbeddedInterfaces[Request]>,
