@@ -47,7 +47,7 @@
   "scripts": {
     "build": "rimraf dist && tsc",
     "prepack": "pnpm run build",
-    "release": "pnpm run lint && pnpm run test && pnpm run prepack && release-it",
+    "release": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run prepack && release-it",
     "lint": "oxlint && pnpm run deps",
     "deps": "depcruise src test --config .dependency-cruiser.cjs",
     "lint:fix": "oxlint --fix",

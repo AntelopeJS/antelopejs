@@ -10,7 +10,6 @@
     "types": [
       "node"
     ],
-    "skipLibCheck": true
   },
   "include": [
     "*.mjs"

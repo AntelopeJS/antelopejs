@@ -4,7 +4,6 @@
     "noEmit": true,
     "declaration": false,
     "rootDir": "..",
-    "skipLibCheck": true,
     "paths": {
       "@antelopejs/core": ["../src/index.ts"]
     }
