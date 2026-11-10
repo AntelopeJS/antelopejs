@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { enableCompileCache } from "node:module";
+
 import {
   helpAsPluginArguments,
   parsePluginInvocation,
@@ -76,5 +78,6 @@ async function runCLIAsMain(): Promise<void> {
 }
 
 if (require.main === module) {
+  enableCompileCache?.();
   void runCLIAsMain();
 }
