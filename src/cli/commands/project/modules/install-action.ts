@@ -443,6 +443,7 @@ export async function installModules(options: InstallOptions): Promise<void> {
     environments,
     config: baseConfig,
     command: INSTALL_COMMAND,
+    installCommands: environments.length > 1,
   });
   getProcessUi().summary({
     headline: installHeadline(context, outcome),

@@ -1,8 +1,10 @@
 import { type InterfaceBump, ModuleManager } from "../modules";
 import type { InterfaceRangeConflict } from "../output";
 import {
+  createLoaderContext,
   createModuleEntriesForManager,
   findEntryRangeConflicts,
+  type LoaderConfig,
   loadProjectConfig,
   planInterfacePackages,
   withRaisedMaxListeners,
@@ -27,6 +29,7 @@ export interface ProjectInterfaceCheck {
 export async function checkProjectInterfaces(
   projectFolder: string,
   env: string,
+  { installCommands }: Pick<LoaderConfig, "installCommands"> = {},
 ): Promise<ProjectInterfaceCheck> {
   const { normalizedConfig } = await loadProjectConfig(projectFolder, env);
   return withRaisedMaxListeners(async () => {
@@ -36,6 +39,7 @@ export async function checkProjectInterfaces(
         manager,
         normalizedConfig,
         false,
+        await createLoaderContext({ ...normalizedConfig, installCommands }),
       );
       const conflicts = await findEntryRangeConflicts(
         manager,

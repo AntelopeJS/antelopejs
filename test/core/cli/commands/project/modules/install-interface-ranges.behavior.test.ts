@@ -99,6 +99,7 @@ describe("project modules install behavior: checks interface ranges after adding
     expect(fixture.rangeCheck.firstCall.args).to.deep.equal([
       "/tmp/project",
       "default",
+      { installCommands: false },
     ]);
     expect(output.summary.firstCall.args[0]).to.deep.include({
       headline: "1 module added to antelope.config.ts",
@@ -144,7 +145,9 @@ describe("project modules install behavior: checks interface ranges after adding
     expect(refresh.firstCall.args[2]).to.deep.equal([
       { id: "auth-jwt", source: RELOCK_AUTH_JWT.source },
     ]);
-    expect(fixture.rangeCheck.callCount).to.equal(2);
+    expect(
+      fixture.rangeCheck.getCalls().map((call) => call.args[2]),
+    ).to.deep.equal([{ installCommands: false }, { installCommands: true }]);
   });
 
   it("finishes with its summary when no range conflicts", async () => {
@@ -161,7 +164,7 @@ describe("project modules install behavior: checks interface ranges after adding
 
     expect(
       fixture.rangeCheck.getCalls().map((call) => call.args),
-    ).to.deep.equal([["/tmp/project", "prod"]]);
+    ).to.deep.equal([["/tmp/project", "prod", { installCommands: false }]]);
     expect(output.summary.firstCall.args[0]).to.deep.include({
       headline: "All interfaces are implemented",
     });

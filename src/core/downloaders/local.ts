@@ -16,6 +16,8 @@ const Logger = new Logging.Channel("loader.local");
 export interface LocalDownloaderDeps {
   fs?: IFileSystem;
   exec?: CommandRunner;
+  /** Whether loading a module runs its install commands; `true` by default. */
+  installCommands?: boolean;
 }
 
 export function registerLocalDownloader(
@@ -24,6 +26,7 @@ export function registerLocalDownloader(
 ): void {
   const fs = deps.fs ?? new NodeFileSystem();
   const exec = deps.exec ?? ExecuteCMD;
+  const runsInstallCommands = deps.installCommands ?? true;
 
   registry.register(
     "local",
@@ -46,13 +49,15 @@ export function registerLocalDownloader(
 
       const name = source.id ?? path.basename(formattedPath);
 
-      await runInstallCommands(
-        exec,
-        Logger,
-        name,
-        formattedPath,
-        installCommand,
-      );
+      if (runsInstallCommands) {
+        await runInstallCommands(
+          exec,
+          Logger,
+          name,
+          formattedPath,
+          installCommand,
+        );
+      }
       const manifest = await ModuleManifest.create(
         formattedPath,
         source,
