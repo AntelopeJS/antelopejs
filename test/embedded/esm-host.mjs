@@ -14,13 +14,33 @@ function check(label, actual, expected) {
   console.log(`ok - ${label}`);
 }
 
+/**
+ * @param {unknown} value
+ * @returns {value is Function}
+ */
+function isFunction(value) {
+  return value instanceof Function;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is { greet: Function }}
+ */
+function hasGreet(value) {
+  return (
+    value instanceof Object &&
+    Object.hasOwn(value, "greet") &&
+    isFunction(value.greet)
+  );
+}
+
 const sigintBefore = process.listenerCount("SIGINT");
 const sigtermBefore = process.listenerCount("SIGTERM");
 
 const { createRuntime } = await import("@antelopejs/core");
 check(
   "named import of createRuntime from an ESM host",
-  createRuntime instanceof Function,
+  isFunction(createRuntime),
   true,
 );
 
@@ -35,11 +55,7 @@ const runtime = createRuntime({
 await runtime.start();
 
 const greeter = runtime.use("iface-pkg");
-check(
-  "use() returns the interface object",
-  greeter.Greeter.greet instanceof Function,
-  true,
-);
+check("use() returns the interface object", hasGreet(greeter.Greeter), true);
 
 // oxlint-disable-next-line typescript/no-unsafe-assignment -- an ESM JS host fixture; values from the runtime are untyped in JS
 const greeting = await Promise.race([

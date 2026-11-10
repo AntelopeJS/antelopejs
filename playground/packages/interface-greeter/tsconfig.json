@@ -3,7 +3,8 @@
     "target": "ESNext",
     "module": "commonjs",
     "strict": true,
-    "declaration": true
+    "declaration": true,
+    "types": ["node"]
   },
   "include": ["index.ts"]
 }

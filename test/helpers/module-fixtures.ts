@@ -64,15 +64,19 @@ export function loadedConfigFixture<
 }
 
 export function manifestFixture<T extends ManifestFields>(fields: T) {
-  return Object.assign(sinon.createStubInstance(ModuleManifest), fields);
+  const stub: ModuleManifest &
+    Omit<sinon.SinonStubbedInstance<ModuleManifest>, keyof T> =
+    sinon.createStubInstance(ModuleManifest);
+  return Object.assign(stub, fields);
 }
 
 export function moduleFixture<T extends Partial<Module>>(
   fields: T,
 ): Module &
-  sinon.SinonStubbedInstance<Module> &
+  Omit<sinon.SinonStubbedInstance<Module>, keyof T> &
   Omit<T, "state"> & { state: ModuleState } {
-  const fixture = sinon.createStubInstance(Module);
+  const fixture: Module & Omit<sinon.SinonStubbedInstance<Module>, keyof T> =
+    sinon.createStubInstance(Module);
   Object.defineProperties(fixture, {
     state: {
       value: ModuleState.Constructed,
@@ -85,7 +89,10 @@ export function moduleFixture<T extends Partial<Module>>(
 }
 
 export function managerFixture<T extends Partial<ModuleManager>>(fields: T) {
-  return Object.assign(sinon.createStubInstance(ModuleManager), fields);
+  const stub: ModuleManager &
+    Omit<sinon.SinonStubbedInstance<ModuleManager>, keyof T> =
+    sinon.createStubInstance(ModuleManager);
+  return Object.assign(stub, fields);
 }
 
 export function loaderFixture(
@@ -95,14 +102,15 @@ export function loaderFixture(
     fs?: Partial<NodeFileSystem>;
   },
 ): LoaderContext {
+  const fs: NodeFileSystem = sinon.createStubInstance(NodeFileSystem);
+  const cache: ModuleCache = sinon.createStubInstance(ModuleCache);
+  const registry: DownloaderRegistry =
+    sinon.createStubInstance(DownloaderRegistry);
   return {
     projectFolder: "/project",
     ...fields,
-    fs: Object.assign(sinon.createStubInstance(NodeFileSystem), fields.fs),
-    cache: Object.assign(sinon.createStubInstance(ModuleCache), fields.cache),
-    registry: Object.assign(
-      sinon.createStubInstance(DownloaderRegistry),
-      fields.registry,
-    ),
+    fs: Object.assign(fs, fields.fs),
+    cache: Object.assign(cache, fields.cache),
+    registry: Object.assign(registry, fields.registry),
   };
 }

@@ -70,11 +70,36 @@ function verifyHelpStaysLight(folder) {
   }
 }
 
+/**
+ * @param {unknown} value
+ * @returns {value is { git: string }}
+ */
+function hasGitText(value) {
+  return (
+    value instanceof Object &&
+    Object.hasOwn(value, "git") &&
+    String(value.git) === value.git
+  );
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is { confirm: Function }}
+ */
+function hasConfirm(value) {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    Object.hasOwn(value, "confirm") &&
+    value.confirm instanceof Function
+  );
+}
+
 /** @param {string} folder */
 function verifyLazyActionResolves(folder) {
   /** @type {unknown} */
   const config = JSON.parse(runCli(["config", "show", "--json"], folder));
-  if (!(config instanceof Object) || String(config.git) !== config.git) {
+  if (!hasGitText(config)) {
     throw new Error(
       `Unexpected ajs config show output: ${JSON.stringify(config)}`,
     );
@@ -87,7 +112,7 @@ function verifyPromptLibraryLoads() {
   const library = require(
     require.resolve(PROMPT_LIBRARY, { paths: [coreFolder] }),
   );
-  if (!(Object(library).confirm instanceof Function)) {
+  if (!hasConfirm(library)) {
     throw new Error(`${PROMPT_LIBRARY} did not load with require()`);
   }
 }
