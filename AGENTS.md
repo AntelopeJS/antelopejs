@@ -92,6 +92,7 @@ Verify a boundary against the imports a developer or agent would plausibly write
 | String-keyed object tables are read through own keys only                      | `antelopejs/no-inherited-key-lookup`                |
 | A type guard checks each member it narrows to; keys with `Object.hasOwn`       | `antelopejs/no-presence-only-type-guard`            |
 | A type guard checks the nested elements and values it claims                   | review; no tool                                     |
+| `Object.assign` writes no `unknown`, `any` or mistyped value over a field      | `antelopejs/no-unsafe-object-assign`                |
 | Every file type-aware lint reads is listed by a tsconfig                       | `antelopejs/require-tsconfig-include`               |
 | Params ≤ 5, function ≤ 120 lines, file ≤ 500 lines, depth ≤ 4, complexity ≤ 20 | `eslint/max-*`, `eslint/complexity`                 |
 | Cleanup preserves declarations, runtime exports and DMS auto-imports           | `antelopejs-api-diff <base-ref>`                    |
@@ -118,6 +119,9 @@ Verify a boundary against the imports a developer or agent would plausibly write
 | A CI gate reads `needs.<id>` only of jobs in its `needs`                       | `antelopejs-sync --check`                           |
 | Entry-only rules exempt no tracked outsider                                    | `antelopejs-sync --check`                           |
 | A DMS layer's `build/backend-boundary.ts` is the pack's plugin                 | `antelopejs-sync --check`                           |
+| No `skipLibCheck` in the root tsconfig or one `typecheck` or `build` uses      | Reported by `antelopejs-sync` (note only)           |
+| `build` skips the lib check only over what `typecheck` checks                  | Reported by `antelopejs-sync` (note only)           |
+| `release` runs `typecheck`                                                     | Reported by `antelopejs-sync` (note only)           |
 | A test names the wrong implementation it catches                               | review; no tool                                     |
 
 <!-- antelopejs-guardrails:end -->

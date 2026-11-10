@@ -20,7 +20,12 @@ if [[ "$(node -p 'process.versions.node.split(".")[0]')" != "$major" ]]; then
 fi
 pin="$(node -p 'JSON.parse(require("node:fs").readFileSync("package.json", "utf8")).packageManager || "pnpm"')"
 manager="${pin%%@*}"
-corepack enable
+if ! corepack enable >/dev/null 2>&1; then
+  shims="$HOME/.local/bin"
+  mkdir -p "$shims"
+  corepack enable --install-directory "$shims"
+  export PATH="$shims:$PATH"
+fi
 if [[ "$pin" == *@* ]]; then
   corepack prepare "$pin" --activate
 fi
