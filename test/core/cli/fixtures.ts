@@ -98,9 +98,10 @@ export function moduleManifest(
   overrides: Omit<Partial<ModuleManifest>, "manifest"> & {
     manifest?: Partial<ModulePackageJson>;
   } = {},
-): sinon.SinonStubbedInstance<ModuleManifest> {
+): ModuleManifest {
   const { manifest = {}, ...rest } = overrides;
-  return Object.assign(sinon.createStubInstance(ModuleManifest), {
+  const stub: ModuleManifest = sinon.createStubInstance(ModuleManifest);
+  return Object.assign(stub, {
     ...rest,
     manifest: { name: "module", version: "1.0.0", ...manifest },
   });

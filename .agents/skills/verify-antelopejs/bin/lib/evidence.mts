@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, openSync, readdirSync, readFileSync, statSync, writeFileSync, closeSync } from "node:fs";
-import { createServer } from "node:net";
+import { createServer, type AddressInfo } from "node:net";
 import path from "node:path";
 
 import { parseJson, type JsonRead } from "./json.mts";
@@ -119,14 +119,23 @@ export function readOutput(handle: BackgroundHandle) {
   };
 }
 
+function isAddressInfo(address: AddressInfo | string | null): address is AddressInfo {
+  return address !== null && typeof address === "object";
+}
+
+/** The TCP port a listening server is bound to, or 0 when it listens on a pipe or not at all. */
+export function boundPort(server: { address(): AddressInfo | string | null }): number {
+  const address = server.address();
+  return isAddressInfo(address) ? address.port : 0;
+}
+
 /** Asks the kernel for a free TCP port on the loopback interface. */
 export function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.once("error", reject);
     server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      const port = address instanceof Object ? address.port : 0;
+      const port = boundPort(server);
       server.close(() => resolve(port));
     });
   });

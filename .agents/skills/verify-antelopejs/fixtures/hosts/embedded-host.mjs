@@ -5,6 +5,14 @@ const [coreEntry, hostFolder, providerFolder, fixtureFolder] = process.argv.slic
 const port = process.env.VERIFY_FIXTURE_PORT;
 const observations = {};
 
+/**
+ * @param {unknown} body
+ * @returns {body is { message: unknown }}
+ */
+function hasMessage(body) {
+  return body instanceof Object && Object.hasOwn(body, "message");
+}
+
 async function fixtureMessage() {
   try {
     const response = await fetch(`http://127.0.0.1:${port}/`);
@@ -13,7 +21,7 @@ async function fixtureMessage() {
     if (body === null) {
       return null;
     }
-    return body instanceof Object && "message" in body ? body.message : undefined;
+    return hasMessage(body) ? body.message : undefined;
   } catch {
     return null;
   }

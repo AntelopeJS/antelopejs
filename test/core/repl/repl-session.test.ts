@@ -13,7 +13,8 @@ describe("ReplSession", () => {
 
     const replFactory = (prompt?: string) => {
       capturedPrompt = prompt ?? "";
-      return Object.assign(sinon.createStubInstance(REPLServer), {
+      const server: REPLServer = sinon.createStubInstance(REPLServer);
+      return Object.assign(server, {
         context,
         close: closeSpy,
       });

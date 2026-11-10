@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import path from "node:path";
 
+import { boundPort } from "./evidence.mts";
 import { items, parseJson, requireText } from "./json.mts";
 
 /** A package a {@link LocalRegistry} publishes: its package.json and its files. */
@@ -62,8 +63,7 @@ export class LocalRegistry {
     });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     this.server = server;
-    const address = server.address();
-    this.url = `http://127.0.0.1:${address instanceof Object ? address.port : 0}`;
+    this.url = `http://127.0.0.1:${boundPort(server)}`;
   }
 
   stop(): Promise<void> {

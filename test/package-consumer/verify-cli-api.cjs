@@ -166,16 +166,24 @@ function verifyHelp(cli) {
   );
 }
 
+/**
+ * @param {unknown} value
+ * @returns {value is { files: unknown[], builtins: unknown[] }}
+ */
+function isModuleList(value) {
+  return (
+    value instanceof Object &&
+    Object.hasOwn(value, "files") &&
+    Object.hasOwn(value, "builtins") &&
+    Array.isArray(value.files) &&
+    Array.isArray(value.builtins)
+  );
+}
+
 function readLoadedModules() {
   /** @type {unknown} */
   const loaded = JSON.parse(runProbe(LOADED_MODULES_PROBE));
-  if (
-    !(loaded instanceof Object) ||
-    !("files" in loaded) ||
-    !("builtins" in loaded) ||
-    !Array.isArray(loaded.files) ||
-    !Array.isArray(loaded.builtins)
-  ) {
+  if (!isModuleList(loaded)) {
     throw new Error(`${PUBLIC_ENTRY} probe printed an unexpected module list`);
   }
   return {

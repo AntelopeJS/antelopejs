@@ -9,7 +9,8 @@
       "verify-greeter": [
         "../verify-greeter/index.js"
       ]
-    }
+    },
+    "types": []
   },
   "files": [
     "index.js"

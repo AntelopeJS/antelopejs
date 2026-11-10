@@ -6,7 +6,6 @@
     "noEmit": true,
     "strict": true,
     "types": ["node"],
-    "skipLibCheck": true
   },
   "include": ["greeter/antelope.config.ts", "template-verify-http/antelope.test.ts"]
 }
