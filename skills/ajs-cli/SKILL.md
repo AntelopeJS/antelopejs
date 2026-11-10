@@ -49,12 +49,25 @@ Modules declared in `antelope.config.ts` are downloaded into `.antelope/cache` b
 
 ## Embedded mode: no `ajs project`
 
-In **embedded** mode the host application (AdonisJS, Express, Fastify…) owns the process and starts the runtime itself with `createRuntime({ projectFolder, modules, uses })` from `@antelopejs/core`, calling `start()` and `stop()` from its own lifecycle (in AdonisJS, a service provider). Recognize it before running any `ajs project` command: **no `antelope.config.*`**, and a host file calls `createRuntime`.
+In **embedded** mode the host application (AdonisJS, Express, Fastify…) owns the process and starts the runtime itself with `createRuntime({ projectFolder, modules, uses, provides })` from `@antelopejs/core`, calling `start()` and `stop()` from its own lifecycle (in AdonisJS, a service provider). Recognize it before running any `ajs project` command: **no `antelope.config.*`**, and a host file calls `createRuntime`.
 
 - **No `ajs project …`**: `dev`, `build`, `start`, `modules add|remove|install` and `logging` need `antelope.config.ts` and do not apply. `envOverrides` and `environments` do not exist; configure modules in host code.
 - **Modules are listed in code**, as keys of the `modules` map (`'@antelopejs/mongodb': { config: { ... } }`). To add one, `pnpm add` it (modules resolve from the host's `node_modules` or a local path, never `.antelope/cache`), add its key to the map, and restart the host.
 - **No hot reload**: the runtime forces `dev: false`, so modules apply their production behaviour (e.g. `@antelopejs/api` needs `publicBaseUrl` and listens on its own port). In a DMS app, `ajs dms dev` does not work either: build and start the dashboard (the **dms-project** skill).
-- Host code reaches an interface through `runtime.use("<interface package>")`, never a plain `import` of `@antelopejs/interface-*`.
+- Host code reaches an interface through `runtime.use("<interface package>[/subpath]")`, never a plain `import` of `@antelopejs/interface-*`. Declare each request in the `EmbeddedInterfaces` map of `@antelopejs/core` first; a request missing from the map fails with TS2345. `use()` takes no type argument: it returns the declared type, so replace an old `runtime.use<T>("<request>")` with a map entry `"<request>": T`.
+
+  ```ts
+  declare module "@antelopejs/core" {
+    interface EmbeddedInterfaces {
+      "@antelopejs/interface-database": typeof import("@antelopejs/interface-database");
+    }
+  }
+
+  const database = runtime.use("@antelopejs/interface-database");
+  ```
+
+  Type-only imports (`import type`, `typeof import(...)`) are safe in host code; a value import loads a second copy with no provider.
+- For modules to call into the host, `runtime.provide(packageName, implementation)` after `start()`: the package must be listed in `provides` and declared in the same `EmbeddedInterfaces` map, which types `implementation`. Call `detach()` on the returned handle to remove it.
 - `ajs module init` and `ajs module test` still work on module folders.
 
 Guide: <https://framework.antelopejs.com/docs/guides/embedded-runtime>.
