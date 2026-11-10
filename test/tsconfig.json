@@ -3,12 +3,20 @@
   "compilerOptions": {
     "noEmit": true,
     "declaration": false,
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "rootDir": "..",
-    "skipLibCheck": true,
     "paths": {
       "@antelopejs/core": ["../src/index.ts"],
       "@antelopejs/core/cli": ["../src/core/cli/public.ts"]
     }
   },
-  "include": ["./**/*.ts", "./**/*.cjs", "./**/*.mjs"]
+  "include": ["./**/*.ts", "./**/*.cjs", "./**/*.mjs"],
+  "ts-node": {
+    "transpileOnly": true,
+    "compilerOptions": {
+      "module": "commonjs",
+      "moduleResolution": "node10"
+    }
+  }
 }
