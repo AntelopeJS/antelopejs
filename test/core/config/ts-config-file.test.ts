@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import assert from "node:assert";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -94,5 +95,23 @@ describe("loadTsConfigFile contract", () => {
     expect(config.environments).to.deep.equal({
       production: { cacheFolder: "/var/cache" },
     });
+  });
+
+  it("reads a file written since the last load", async () => {
+    await load('export default { name: "before", modules: {} };');
+
+    const config = await load('export default { name: "after", modules: {} };');
+
+    expect(config.name).to.equal("after");
+  });
+
+  it("keeps the transpiled file for the next command that loads it", async () => {
+    await mkdir(path.join(project, "node_modules"));
+
+    await load('export default { name: "app", modules: {} };');
+
+    expect(
+      existsSync(path.join(project, "node_modules", ".cache", "jiti")),
+    ).to.equal(true);
   });
 });

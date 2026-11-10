@@ -14,9 +14,9 @@ const CORE_CONFIG_PACKAGE = "@antelopejs/interface-core/config";
 const CORE_CONFIG_ENTRY = require.resolve(CORE_CONFIG_PACKAGE);
 
 /**
- * Imports the configuration file. `fresh` skips jiti's module and file
- * caches, for a file the running process may have written since it last read
- * it.
+ * Imports the configuration file. `fresh` skips jiti's module cache, for a
+ * file the running process may have written since it last read it. Its file
+ * cache stays on: an entry is reused only for the same source text.
  */
 async function importConfigInput(
   configPath: string,
@@ -27,7 +27,6 @@ async function importConfigInput(
   };
   if (fresh) {
     options.moduleCache = false;
-    options.fsCache = false;
   }
   const jiti = createJiti(configPath, options);
   const loaded = await jiti.import<ConfigInput & { default?: ConfigInput }>(
