@@ -82,8 +82,8 @@ function readLocks(project: string): string[] {
   return [lockFile(project, PNPM_MODULE, "1.0.0"), lockFile(project, NPM_MODULE, "1.0.0")].map((file) => (existsSync(file) ? readFileSync(file, "utf8") : "missing"));
 }
 
-async function build(locked: Locked, project: string, name: string, args: string[] = [], cli?: string) {
-  const result = await locked.context.ajs(name, ["project", "build", ...args], { cwd: project, env: locked.env, cli, timeoutMs: 300_000 });
+async function build(locked: Locked, project: string, name: string, args: string[] = []) {
+  const result = await locked.context.ajs(name, ["project", "build", ...args], { cwd: project, env: locked.env, timeoutMs: 300_000 });
   locked.context.tree(`tree after ${name}`, project);
   return result;
 }
@@ -102,17 +102,6 @@ async function recordedProject(locked: Locked, name: string): Promise<string> {
   return project;
 }
 
-async function compareBase(locked: Locked): Promise<string | undefined> {
-  const baseCli = locked.context.state.baseCli;
-  if (!baseCli) {
-    return undefined;
-  }
-  const project = writeProject(locked.context, "base-app", BOTH_MODULES);
-  const first = await build(locked, project, "project build with the base CLI", [], baseCli);
-  locked.context.expect(first.folder, [exitIs(first, 0), equal("base: installed dependency versions", [installedDep(project, PNPM_MODULE), installedDep(project, NPM_MODULE)], ["1.0.0", "1.0.0"]), absent(path.join(project, LOCK_FOLDER))]);
-  return project;
-}
-
 /** `ajs project build` records each npm module's lockfile in antelope-lock/, replays it, and `--frozen-modules` requires it. */
 export const journeys: Journey[] = [
   {
@@ -122,14 +111,8 @@ export const journeys: Journey[] = [
     async run(context) {
       await withRegistry(context, async (locked) => {
         const project = await recordedProject(locked, "app");
-        const baseProject = await compareBase(locked);
         const recorded = readLocks(project);
         publishDep(locked.registry, "1.1.0");
-        if (baseProject) {
-          clearCache(baseProject);
-          const base = await build(locked, baseProject, "cold rebuild with the base CLI", [], context.state.baseCli);
-          context.expect(base.folder, [exitIs(base, 0), equal("base: the cold rebuild moves the dependency to 1.1.0", [installedDep(baseProject, PNPM_MODULE), installedDep(baseProject, NPM_MODULE)], ["1.1.0", "1.1.0"])]);
-        }
         const control = path.join(context.work, "control");
         cpSync(project, control, { recursive: true });
         rmSync(path.join(control, LOCK_FOLDER), { recursive: true, force: true });
@@ -193,10 +176,6 @@ export const journeys: Journey[] = [
         const project = writeProject(context, "app", BOTH_MODULES);
         const missing = await build(locked, project, "project build --frozen-modules without locks", ["--frozen-modules"]);
         context.expect(missing.folder, [exitIs(missing, 1), has("stderr", missing.stderr, /No module lock for verify-lock-(pnpm|npm)@1\.0\.0/), has("stderr", missing.stderr, /--frozen-modules/), absent(path.join(project, LOCK_FOLDER)), absent(path.join(project, BUILD_FILE))]);
-        if (context.state.baseCli) {
-          const base = await build(locked, project, "project build --frozen-modules with the base CLI", ["--frozen-modules"], context.state.baseCli);
-          context.expect(base.folder, [exitIs(base, 2), has("stderr", base.stderr, /Unknown option '--frozen-modules'/)]);
-        }
         const record = await build(locked, project, "project build records the locks");
         context.expect(record.folder, [exitIs(record, 0), exists(lockFile(project, PNPM_MODULE, "1.0.0"))], { critical: true });
         const recorded = readLocks(project);

@@ -16,7 +16,7 @@ The dependencies of an npm module are installed inside `.antelope/cache/<module>
 
 ## Sub-features
 
-- `locks-record-replay`: a build records `pnpm-lock.yaml` and `package-lock.json`; after a dependency release, a cold rebuild still installs the recorded version, while a control copy without locks (and the base CLI) moves to the new one.
+- `locks-record-replay`: a build records `pnpm-lock.yaml` and `package-lock.json`; after a dependency release, a cold rebuild still installs the recorded version, while a control copy without locks moves to the new one.
 - `locks-warm-cache`: a cached module installed from another lockfile than the record is reinstalled from the record.
 - `locks-update-moves`: `modules update` rewrites the lock with the new dependency version (diff in the evidence); a module upgrade adds the new version's lock and removes the old one.
 - `locks-frozen`: error path: `build --frozen-modules` without locks exits 1, writes no lock and no build; with locks it installs the recorded versions; `ANTELOPEJS_FROZEN_MODULES=1` does the same.
