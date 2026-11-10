@@ -37,6 +37,14 @@ export interface InterfaceCheckOptions {
   command: string;
   /** Applies the bumps, then checks again. */
   fix?: boolean;
+  /**
+   * Whether the first check runs the install commands of local modules;
+   * `true` by default. A caller that just ran them for the only environment it
+   * checks turns it off: an environment can override them, so a check of
+   * several environments runs each one's again. The check after `fix` always
+   * runs them, since the bumps changed the modules.
+   */
+  installCommands?: boolean;
 }
 
 const FIX_FLAG = "--fix";
@@ -61,16 +69,20 @@ function conflictKey(conflict: InterfaceRangeConflict): string {
   ]);
 }
 
-async function checkEnvironments(
-  project: string,
-  environments: string[],
-): Promise<ProjectInterfaceCheck> {
+async function checkEnvironments({
+  project,
+  environments,
+  installCommands,
+}: InterfaceCheckOptions): Promise<ProjectInterfaceCheck> {
   const conflicts = new Map<string, InterfaceRangeConflict>();
   const bumps = new Map<string, InterfaceBump>();
   for (const env of environments) {
     const found = await runTask(
       `Checking interface versions in ${env}`,
-      () => interfaceRangesModule.checkProjectInterfaces(project, env),
+      () =>
+        interfaceRangesModule.checkProjectInterfaces(project, env, {
+          installCommands,
+        }),
       { done: `Checked interface versions in ${env}` },
     );
     found.conflicts.forEach((conflict) =>
@@ -243,10 +255,10 @@ function unreachedProblem(bumps: InterfaceBump[]): CliProblem {
 export async function checkInterfaceVersions(
   options: InterfaceCheckOptions,
 ): Promise<Error | undefined> {
-  let result = await checkEnvironments(options.project, options.environments);
+  let result = await checkEnvironments(options);
   if (options.fix && result.bumps.length > 0) {
     await applyBumps(result.bumps, options);
-    result = await checkEnvironments(options.project, options.environments);
+    result = await checkEnvironments({ ...options, installCommands: true });
   }
   warnDrift(
     result.bumps.filter((bump) => !bump.required),

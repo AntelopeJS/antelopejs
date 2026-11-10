@@ -56,6 +56,11 @@ export interface LoaderConfig {
    * A started project uses `replay`: it never writes the project's locks.
    */
   moduleLocks?: ModuleLockMode;
+  /**
+   * Whether loading a local module runs its install commands; `true` by
+   * default. A check after the install that already ran them turns it off.
+   */
+  installCommands?: boolean;
 }
 
 export interface LoaderContext {

@@ -19,6 +19,8 @@ const Logger = new Logging.Channel("loader.local-folder");
 export interface LocalFolderDownloaderDeps {
   fs?: IFileSystem;
   exec?: CommandRunner;
+  /** Whether loading a module runs its install commands; `true` by default. */
+  installCommands?: boolean;
 }
 
 export function registerLocalFolderDownloader(
@@ -27,6 +29,7 @@ export function registerLocalFolderDownloader(
 ): void {
   const fs = deps.fs ?? new NodeFileSystem();
   const exec = deps.exec ?? ExecuteCMD;
+  const runsInstallCommands = deps.installCommands ?? true;
 
   registry.register(
     "local-folder",
@@ -50,13 +53,15 @@ export function registerLocalFolderDownloader(
         if (!stat.isDirectory()) continue;
 
         const moduleName = source.id ? `${source.id}-${name}` : name;
-        await runInstallCommands(
-          exec,
-          Logger,
-          moduleName,
-          folder,
-          installCommand,
-        );
+        if (runsInstallCommands) {
+          await runInstallCommands(
+            exec,
+            Logger,
+            moduleName,
+            folder,
+            installCommand,
+          );
+        }
         const moduleSource: ModuleSourceLocal = {
           type: "local",
           id: source.id,

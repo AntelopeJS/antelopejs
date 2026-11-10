@@ -58,8 +58,9 @@ export async function createLoaderContext(
 
   const locks = new ModuleLockStore(config.projectFolder, fs);
   const registry = new DownloaderRegistry();
-  local.registerLocalDownloader(registry, { fs });
-  localFolder.registerLocalFolderDownloader(registry, { fs });
+  const { installCommands } = config;
+  local.registerLocalDownloader(registry, { fs, installCommands });
+  localFolder.registerLocalFolderDownloader(registry, { fs, installCommands });
   packageDownloader.registerPackageDownloader(registry, {
     fs,
     lock: { store: locks, mode: config.moduleLocks ?? "record" },
