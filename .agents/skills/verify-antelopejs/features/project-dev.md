@@ -7,6 +7,7 @@ covers:
   - src/cli/lock.ts
   - src/cli/process-runner.ts
   - src/core/repl/**
+  - src/core/repl-session/**
   - src/core/runtime/**
   - src/core/modules/**
   - src/core/config/**
@@ -58,6 +59,6 @@ Each journey's steps, checks and evidence are in `bin/journeys/` and under `$RUN
 ## Gotchas
 
 - The watcher arms after the modules start and prints nothing when armed; HMR journeys wait 3 s after the first answer (`settle`) or the first edit is absorbed into the baseline hash.
-- `--interactive` (REPL) is not driven: it needs a terminal. Report it under Not verified when the diff touches `src/core/repl/repl-session.ts`.
+- `--interactive` (REPL) is not driven: it needs a terminal. Report it under Not verified when the diff touches `src/core/repl-session/index.ts`.
 - Module add or remove while dev runs goes through the configuration watcher, which restarts the project. `dev-modules-add-while-running` drives it. The formal model `formal-module-lifecycle` covers the orderings a journey cannot time.
 - `ajs project modules add --mode local` always writes `watchDir: ["src"]` (`add-action.ts`). For a module without `src/`, the watcher skips the missing folder, so edits to that module do not reload it.

@@ -211,6 +211,24 @@ async function verifyPreloadedCopyDiagnostic(launch, root) {
   }
 }
 
+/**
+ * Node's `repl` loads `domain`, which sets `EventEmitter.usingDomains` and
+ * slows every EventEmitter of the process, so a launch without an
+ * interactive session must leave it unset.
+ */
+function verifyNoReplLoaded() {
+  /** @type {unknown} */
+  const usingDomains = Object.getOwnPropertyDescriptor(
+    require("node:events"),
+    "usingDomains",
+  )?.value;
+  if (usingDomains !== false) {
+    throw new Error(
+      `A non-interactive launch loaded node:domain (EventEmitter.usingDomains is ${String(usingDomains)}); the REPL must load only when it is opened.`,
+    );
+  }
+}
+
 async function main() {
   const launch = require("@antelopejs/core").default;
   const compatible = await fs.mkdtemp(
@@ -221,6 +239,7 @@ async function main() {
   );
   try {
     await verifyCompatibleCopies(launch, compatible);
+    verifyNoReplLoaded();
     await verifyPreloadedCopyDiagnostic(launch, incompatible);
   } finally {
     await fs.rm(compatible, { recursive: true, force: true });
