@@ -78,6 +78,7 @@ Official plugins add command groups to `ajs` and ship as separate global package
 | Command   | Package                                                                  | Purpose                                    |
 | --------- | ------------------------------------------------------------------------ | ------------------------------------------ |
 | `ajs dms` | [`@antelopejs/dms-frontend`](https://github.com/AntelopeJS/dms-frontend) | Develop, build, and deploy the DMS frontend |
+| `ajs cloud` | [`@antelopejs/cloud`](https://github.com/AntelopeJS/cloud-sdk) | Deploy and operate AntelopeJS Cloud projects |
 
 When a plugin is missing, `ajs` offers to install it with the package manager that installed the CLI. `ajs plugins` lists the official plugins. `ajs update` updates the CLI and every official plugin installed globally.
 
