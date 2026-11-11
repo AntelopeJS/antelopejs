@@ -26,15 +26,6 @@ A replacement provider leaves consuming code unchanged only when it supports the
 
 <img data-illustration alt="Screen recording from the AntelopeJS framework film. In antelope.config.ts the nodemailer provider is replaced by brevo, git diff --stat reports 1 file changed, and the project's source files stay unchanged." src="./.github/assets/swap.gif" width="100%">
 
-<details>
-<summary><b>Watch the framework film</b></summary>
-
-**The AntelopeJS framework.** Contracts, providers you can swap, your own modules and one CLI.
-
-https://github.com/user-attachments/assets/c632616c-e48d-4c7e-9306-22ad0f4a6351
-
-</details>
-
 ## Quick start
 
 <img data-illustration src="./.github/assets/readme/fw-quickstart.svg" width="100%" alt="A terminal creates a project with the AntelopeJS CLI and starts it in development mode with watch. The modules start, and the next step adds a provider. Caption: One CLI. From init to dev.">
@@ -98,7 +89,7 @@ When a plugin is missing, `ajs` offers to install it with the package manager th
 
 ## Star history
 
-<a href="https://star-history.com/#AntelopeJS/antelopejs&Date"><img data-illustration alt="AntelopeJS stars over time" src="https://api.star-history.com/svg?repos=AntelopeJS/antelopejs&type=Date" width="100%"></a>
+<a href="https://star-history.com/#AntelopeJS/antelopejs&Date"><img data-illustration alt="AntelopeJS stars over time" src="https://api.star-history.com/svg?repos=antelopejs/antelopejs&type=Date" width="100%"></a>
 
 If AntelopeJS saves you work, a ⭐ helps other developers find it.
 
