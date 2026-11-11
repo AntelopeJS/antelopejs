@@ -4,7 +4,7 @@
   <h1>AntelopeJS</h1>
   <p><strong>Hexagonal architecture, beyond your own code.</strong></p>
 
-<a href="https://github.com/AntelopeJS/antelopejs/stargazers"><img data-illustration alt="GitHub stars" src="https://img.shields.io/github/stars/AntelopeJS/antelopejs?style=for-the-badge&labelColor=000000&color=000000&logo=github"></a> <a href="https://www.npmjs.com/package/@antelopejs/core"><img data-illustration alt="npm" src="https://img.shields.io/npm/v/@antelopejs/core?style=for-the-badge&labelColor=000000&color=000000"></a> <a href="./LICENSE"><img data-illustration alt="License" src="https://img.shields.io/npm/l/@antelopejs/core?style=for-the-badge&labelColor=000000&color=000000"></a> <a href="https://discord.gg/g4pFt6eXqu"><img data-illustration alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a> <a href="https://framework.antelopejs.com/docs/get-started/introduction"><img data-illustration alt="Docs" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
+<a href="https://github.com/AntelopeJS/antelopejs"><img data-illustration alt="GitHub stars" src="https://img.shields.io/github/stars/AntelopeJS/antelopejs?style=for-the-badge&labelColor=000000&color=000000&logo=github"></a> <a href="https://www.npmjs.com/package/@antelopejs/core"><img data-illustration alt="npm" src="https://img.shields.io/npm/v/@antelopejs/core?style=for-the-badge&labelColor=000000&color=000000"></a> <a href="./LICENSE"><img data-illustration alt="License" src="https://img.shields.io/npm/l/@antelopejs/core?style=for-the-badge&labelColor=000000&color=000000"></a> <a href="https://discord.gg/g4pFt6eXqu"><img data-illustration alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a> <a href="https://framework.antelopejs.com/docs/get-started/introduction"><img data-illustration alt="Docs" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
 [Docs](https://framework.antelopejs.com/docs/get-started/introduction) · [Quick start](#quick-start) · [Discord](https://discord.gg/g4pFt6eXqu)
 
@@ -25,15 +25,6 @@ AntelopeJS is a TypeScript framework and CLI for Node.js applications. It extend
 A replacement provider leaves consuming code unchanged only when it supports the contract version and behavior that code relies on. You still handle its configuration, credentials, and data migrations.
 
 <img data-illustration alt="Screen recording from the AntelopeJS framework film. In antelope.config.ts the nodemailer provider is replaced by brevo, git diff --stat reports 1 file changed, and the project's source files stay unchanged." src="./.github/assets/swap.gif" width="100%">
-
-<details>
-<summary><b>Watch the framework film</b></summary>
-
-**The AntelopeJS framework.** Contracts, providers you can swap, your own modules and one CLI.
-
-https://github.com/user-attachments/assets/c632616c-e48d-4c7e-9306-22ad0f4a6351
-
-</details>
 
 ## Quick start
 
@@ -98,7 +89,7 @@ When a plugin is missing, `ajs` offers to install it with the package manager th
 
 ## Star history
 
-<a href="https://star-history.com/#AntelopeJS/antelopejs&Date"><img data-illustration alt="AntelopeJS stars over time" src="https://api.star-history.com/svg?repos=AntelopeJS/antelopejs&type=Date" width="100%"></a>
+<a href="https://star-history.com/#AntelopeJS/antelopejs&Date"><img data-illustration alt="AntelopeJS stars over time" src="https://api.star-history.com/svg?repos=antelopejs/antelopejs&type=Date" width="100%"></a>
 
 If AntelopeJS saves you work, a ⭐ helps other developers find it.
 
