@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.21.3
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.2...v1.21.3)
+
+### 🔥 Performance
+
+- **cli:** Enable the Node compile cache in the ajs CLI ([#438](https://github.com/AntelopeJS/antelopejs/pull/438))
+- **config:** Keep jiti's file cache when reloading antelope.config.ts ([#439](https://github.com/AntelopeJS/antelopejs/pull/439))
+- **cli:** Run a local module's install commands once per modules install ([#440](https://github.com/AntelopeJS/antelopejs/pull/440))
+- **repl:** Load node:repl only when the interactive session opens ([#450](https://github.com/AntelopeJS/antelopejs/pull/450))
+
+### 🩹 Fixes
+
+- **verify:** Drop base CLI comparisons that predate module locks on main ([#443](https://github.com/AntelopeJS/antelopejs/pull/443))
+
+### 📖 Documentation
+
+- **skills:** Show the EmbeddedInterfaces declaration for runtime.use and provide ([#444](https://github.com/AntelopeJS/antelopejs/pull/444))
+- **embedded:** State the provides and EmbeddedInterfaces requirements of provide() ([#445](https://github.com/AntelopeJS/antelopejs/pull/445))
+- **cli:** Document that writeData and Ui.json take JSON-typed data ([#446](https://github.com/AntelopeJS/antelopejs/pull/446))
+- **readme:** Fix the dead stars badge, film and star-history links ([#449](https://github.com/AntelopeJS/antelopejs/pull/449))
+
+### 📦 Build
+
+- **deps:** Bump @antelopejs/tooling-configs to 0.5.0 ([#442](https://github.com/AntelopeJS/antelopejs/pull/442))
+- **deps:** Bump @antelopejs/tooling-configs to 0.5.1 ([#448](https://github.com/AntelopeJS/antelopejs/pull/448))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.21.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.1...v1.21.2)
