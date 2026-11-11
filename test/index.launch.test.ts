@@ -8,7 +8,7 @@ import {
 import { ConfigLoader } from "../src/core/config";
 import { DownloaderRegistry } from "../src/core/downloaders";
 import { ModuleCache, ModuleManager } from "../src/core/modules";
-import { ReplSession } from "../src/core/repl";
+import { ReplSession } from "../src/core/repl-session";
 import { FileWatcher, HotReload } from "../src/core/runtime";
 import { launch } from "../src/index";
 
