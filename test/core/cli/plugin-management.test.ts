@@ -31,6 +31,7 @@ import {
   globalExecutable,
   LOCAL_DMS_EXECUTABLE,
   localExecutable,
+  onlyDmsInstalled,
 } from "../../helpers/official-plugin";
 
 const NPM_INSTALLATION: GlobalInstallation = {
@@ -41,13 +42,20 @@ const NPM_INSTALLATION: GlobalInstallation = {
 describe("Official plugin statuses", () => {
   it("reports an installed plugin with its version", async () => {
     const statuses = await getPluginStatuses({
-      lookupExecutable: async () => GLOBAL_DMS,
+      lookupExecutable: onlyDmsInstalled(GLOBAL_DMS),
       packageLookup: { reader: createInstalledReader({ version: "2.0.1" }) },
       coreVersion: CORE_VERSION,
     });
 
-    expect(statuses).to.have.length(1);
-    expect(statuses[0].plugin.name).to.equal("dms");
+    expect(statuses.map(({ plugin }) => plugin.name)).to.deep.equal([
+      "dms",
+      "cloud",
+    ]);
+    expect(describePluginStatus(statuses[1])).to.include({
+      name: "cloud",
+      package: "@antelopejs/cloud",
+      state: "not-installed",
+    });
     expect(statuses[0].executablePath).to.equal(DMS_EXECUTABLE);
     expect(statuses[0].version).to.equal("2.0.1");
     expect(statuses[0].source).to.equal("path");
@@ -252,7 +260,7 @@ describe("Official plugin table", () => {
 
         const exitCode = await runUpdate(undefined, {
           detectInstallation: () => NPM_INSTALLATION,
-          lookupExecutable: async () => GLOBAL_DMS,
+          lookupExecutable: onlyDmsInstalled(GLOBAL_DMS),
           packageLookup: { reader: createInstalledReader() },
           processOptions: { processRunner: runner, platform: "linux" },
           output,
@@ -266,6 +274,26 @@ describe("Official plugin table", () => {
         expect(output.infos).to.deep.equal([
           "Running: npm install -g @antelopejs/core@latest",
           "Running: npm install -g @antelopejs/dms-frontend@latest",
+        ]);
+      });
+
+      it("updates every official plugin installed globally", async () => {
+        const { runner, calls } = createProcessRunner([0, 0, 0]);
+
+        const exitCode = await runUpdate(undefined, {
+          detectInstallation: () => NPM_INSTALLATION,
+          lookupExecutable: async (binary) =>
+            globalExecutable(`/usr/bin/${binary}`),
+          packageLookup: { reader: createInstalledReader() },
+          processOptions: { processRunner: runner, platform: "linux" },
+          output: createOutput(),
+        });
+
+        expect(exitCode).to.equal(0);
+        expect(formatSpawnCalls(calls)).to.deep.equal([
+          "npm install -g @antelopejs/core@latest",
+          "npm install -g @antelopejs/dms-frontend@latest",
+          "npm install -g @antelopejs/cloud@latest",
         ]);
       });
 
@@ -364,7 +392,7 @@ describe("Official plugin table", () => {
         expect(output.problems.map(plainProblem)).to.deep.equal([
           {
             title: "Unknown plugin 'unknown'",
-            reason: "Official plugins: dms.",
+            reason: "Official plugins: dms, cloud.",
             fixes: ["Run ajs plugins to list them"],
             exitCode: 2,
           },
