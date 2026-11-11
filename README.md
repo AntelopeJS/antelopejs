@@ -98,7 +98,7 @@ When a plugin is missing, `ajs` offers to install it with the package manager th
 
 ## Star history
 
-See [AntelopeJS stars over time](https://star-history.com/#AntelopeJS/antelopejs&Date) on star-history.com.
+<a href="https://star-history.com/#AntelopeJS/antelopejs&Date"><img data-illustration alt="AntelopeJS stars over time" src="https://api.star-history.com/svg?repos=AntelopeJS/antelopejs&type=Date" width="100%"></a>
 
 If AntelopeJS saves you work, a ⭐ helps other developers find it.
 
