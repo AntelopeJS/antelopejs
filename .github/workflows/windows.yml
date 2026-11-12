@@ -88,5 +88,5 @@ jobs:
       - name: Playground suite
         if: ${{ !cancelled() }}
         run: |
-          pnpm --dir playground install
+          pnpm --dir playground install --ignore-workspace
           pnpm exec ts-node playground/test-playground.ts
