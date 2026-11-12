@@ -152,8 +152,14 @@ export function applyVerboseChannels(verbose?: string[]): void {
   }
 }
 
+/**
+ * Resolve the cache and project folders of a loaded config and default its
+ * module map. `modules` may be missing: setup overrides merged by a test
+ * module can drop it.
+ */
 export function normalizeLoadedConfig(
-  loadedConfig: LoadedConfig,
+  loadedConfig: Omit<LoadedConfig, "modules"> &
+    Partial<Pick<LoadedConfig, "modules">>,
   projectFolder: string,
 ): NormalizedLoadedConfig {
   const absoluteCache = path.isAbsolute(loadedConfig.cacheFolder)

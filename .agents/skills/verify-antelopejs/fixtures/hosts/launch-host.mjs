@@ -38,7 +38,7 @@ async function fixtureMessage() {
  * @property {(projectFolder: string) => Promise<LaunchedManager>} launch
  * @property {(projectFolder: string) => Promise<void>} build
  * @property {(projectFolder: string) => Promise<LaunchedManager>} launchFromBuild
- * @property {Function} default
+ * @property {unknown} [default]
  */
 
 /**
@@ -54,9 +54,7 @@ function isCoreEntry(value) {
     Object.hasOwn(value, "build") &&
     value.build instanceof Function &&
     Object.hasOwn(value, "launchFromBuild") &&
-    value.launchFromBuild instanceof Function &&
-    Object.hasOwn(value, "default") &&
-    value.default instanceof Function
+    value.launchFromBuild instanceof Function
   );
 }
 
@@ -69,7 +67,7 @@ async function stopManager(manager) {
 /** @type {unknown} */
 const core = createRequire(import.meta.url)(coreEntry);
 if (!isCoreEntry(core)) {
-  throw new Error(`${coreEntry} does not export launch, build, launchFromBuild and a default`);
+  throw new Error(`${coreEntry} does not export launch, build and launchFromBuild`);
 }
 const launched = await core.launch(projectFolder);
 observations.launchIsDefault = core.default === core.launch;

@@ -370,12 +370,11 @@ function installedBy(register: () => void): BootstrapHandlers {
         }
       });
 
-      it("normalizes absolute cache folders without modification", () => {
+      it("normalizes absolute cache folders without modification and defaults a missing module map", () => {
         const normalized = bootstrap.normalizeLoadedConfig(
           {
             name: "sample",
             cacheFolder: "/var/cache",
-            modules: {},
             envOverrides: {},
           },
           "/project",
@@ -383,6 +382,7 @@ function installedBy(register: () => void): BootstrapHandlers {
 
         expect(normalized.cacheFolder).to.equal("/var/cache");
         expect(normalized.projectFolder).to.equal("/project");
+        expect(normalized.modules).to.deep.equal({});
       });
 
       it("logs an aggregate rejection once, its inner errors with it", () => {
