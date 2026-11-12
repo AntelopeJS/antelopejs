@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { Module } from "../../src/core/modules";
+import { ModuleState } from "../../src/types";
 import { manifestFixture } from "../helpers/module-fixtures";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
@@ -37,10 +38,21 @@ describe("Module default loader", () => {
     expect(String(failure)).to.contain("constructed with port 1");
   });
 
-  it("refuses a module main whose lifecycle callback is not a function", async () => {
+  it("calls a lifecycle callback on the module main", async () => {
     const mod = moduleWithMain(
-      "exports-non-function",
-      "exports.construct = () => {}; exports.start = 'ready';",
+      "exports-receiver",
+      "exports.marker = 'module main'; exports.construct = function () { if (this.marker !== 'module main') throw new Error('called on another receiver'); };",
+    );
+
+    await mod.construct({});
+
+    expect(mod.state).to.equal(ModuleState.Constructed);
+  });
+
+  it("reads the callbacks of a function main marked __esModule", async () => {
+    const mod = moduleWithMain(
+      "function-main",
+      "module.exports = function main() {}; module.exports.__esModule = true; module.exports.construct = () => { throw new Error('function main constructed'); };",
     );
 
     const failure = await mod.construct({}).then(
@@ -48,7 +60,59 @@ describe("Module default loader", () => {
       (error: unknown) => error,
     );
 
+    expect(String(failure)).to.contain("function main constructed");
+  });
+
+  it("skips a null lifecycle callback", async () => {
+    const mod = moduleWithMain(
+      "null-callbacks",
+      "exports.provide = null; exports.construct = null; exports.start = null; exports.stop = null; exports.destroy = null;",
+    );
+
+    const published = await mod.provide({});
+    await mod.construct({});
+    await mod.start();
+    await mod.stop();
+    await mod.destroy();
+
+    expect(published).to.equal(undefined);
+    expect(mod.state).to.equal(ModuleState.Loaded);
+  });
+
+  it("skips a false stop callback", async () => {
+    const mod = moduleWithMain("false-stop", "exports.stop = false;");
+
+    await mod.construct({});
+    await mod.start();
+    await mod.stop();
+
+    expect(mod.state).to.equal(ModuleState.Constructed);
+  });
+
+  it("loads a truthy non-function callback and fails it when its phase runs", async () => {
+    const mod = moduleWithMain("string-start", "exports.start = 'ready';");
+
+    await mod.construct({});
+    const failure = await mod.start().then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
     expect(failure).to.be.instanceOf(TypeError);
-    expect(String(failure)).to.contain("exports-non-function.js");
+    expect(String(failure)).to.contain(
+      "this.callbacks?.start is not a function",
+    );
+  });
+
+  it("fails a false callback that only stop would skip", async () => {
+    const mod = moduleWithMain("false-start", "exports.start = false;");
+
+    await mod.construct({});
+    const failure = await mod.start().then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(failure).to.be.instanceOf(TypeError);
   });
 });

@@ -12,12 +12,8 @@ import { isNumber } from "../../utils";
 
 let channel: Logging.Channel | undefined;
 
-const requireLogging: (
-  id: "@antelopejs/interface-core/logging",
-) => typeof import("@antelopejs/interface-core/logging") = require;
-
 function loadLogging(): typeof import("@antelopejs/interface-core/logging") {
-  return requireLogging("@antelopejs/interface-core/logging");
+  return require("@antelopejs/interface-core/logging");
 }
 
 /**

@@ -1,5 +1,4 @@
 import type { AntelopeLogging } from "@antelopejs/interface-core/config";
-import type { Log } from "@antelopejs/interface-core/logging/listener";
 import { inspect } from "node:util";
 import { createColors } from "picocolors";
 
@@ -213,7 +212,8 @@ function serializeError(error: Error, ancestors: Set<Error>): string {
  * @returns A string representation of the value
  */
 export function serializeLogValue(
-  value: Log["args"][number],
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- serializes a log argument, aggregate member or cause, which JS lets be any value
+  value: unknown,
   ancestors = new Set<Error>(),
 ): string {
   if (value === null) return "null";

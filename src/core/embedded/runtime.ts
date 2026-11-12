@@ -24,14 +24,6 @@ import { isObject } from "../../utils";
 
 const Logger = new Logging.Channel("loader.embedded");
 
-type RequireInterface = <
-  Request extends Extract<keyof EmbeddedInterfaces, string>,
->(
-  request: Request,
-) => EmbeddedInterfaces[Request];
-
-const requireInterface: RequireInterface = require;
-
 function findInterfacePackage(
   started: StartedProject,
   request: string,
@@ -166,7 +158,10 @@ export class AntelopeRuntime {
     request: Request,
   ): EmbeddedInterfaces[Request] {
     requireProvided(this.requireStarted(), request);
-    return this.hostModule().runInContext(() => requireInterface(request));
+    return this.hostModule().runInContext(
+      // SAFETY: use publishes the host's EmbeddedInterfaces declaration as its contract, and requireProvided just found a loaded module providing the package; no run-time check can establish a type the host declared.
+      () => require(request) as EmbeddedInterfaces[Request],
+    );
   }
 
   /**
