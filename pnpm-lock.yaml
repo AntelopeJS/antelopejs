@@ -67,8 +67,8 @@ importers:
         specifier: 0.1.0
         version: 0.1.0(@antelopejs/interface-core@0.4.0)
       '@antelopejs/tooling-configs':
-        specifier: ^0.5.1
-        version: 0.5.1(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: ^0.5.5
+        version: 0.5.5(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       '@types/chai':
         specifier: ^4.3.20
         version: 4.3.20
@@ -178,8 +178,8 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
-  '@antelopejs/tooling-configs@0.5.1':
-    resolution: {integrity: sha512-Q1JWAsMIDy8f6KaTFPAakT+ChWDhQCzJjdszFFam/pUFqBVMgY+Lp1I7bc8SwcWL3CMdHBzgUUEId2od2cB7hQ==}
+  '@antelopejs/tooling-configs@0.5.5':
+    resolution: {integrity: sha512-03QagBC3hE4GAtEF+vwEYWvQfD1oqik+3OrvzT6MaII88vwHdWJOiyqUcHW0ul+ujG4GBL5nDO+wmBciTxQB+g==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -2851,7 +2851,7 @@ snapshots:
     dependencies:
       '@antelopejs/interface-core': 0.4.0
 
-  '@antelopejs/tooling-configs@0.5.1(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
+  '@antelopejs/tooling-configs@0.5.5(eslint-plugin-perfectionist@5.11.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
     dependencies:
       '@oxlint/plugins': 1.81.0
       dts-bundle-generator: 9.5.1

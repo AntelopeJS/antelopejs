@@ -7,7 +7,7 @@ export default defineConfig({
       source: {
         type: "local",
         path: "./modules/module-a",
-        installCommand: ["pnpm install", "npx tsc"],
+        installCommand: ["pnpm install --ignore-workspace", "npx tsc"],
       },
       config: { prefix: "Hello" },
     },
@@ -15,7 +15,7 @@ export default defineConfig({
       source: {
         type: "local",
         path: "./modules/module-b",
-        installCommand: ["pnpm install", "npx tsc"],
+        installCommand: ["pnpm install --ignore-workspace", "npx tsc"],
       },
       config: { target: "World" },
     },
