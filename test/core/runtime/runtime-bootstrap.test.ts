@@ -4,10 +4,12 @@ import { expect } from "chai";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import EventEmitter from "node:events";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import sinon from "sinon";
 
-import { ConfigLoader } from "../../../src/core/config";
+import { tsConfigFileModule as tsConfigFile } from "../../../src/core/config";
 import { ShutdownManager } from "../../../src/core/runtime";
 import * as logging from "../../../src/logging";
 
@@ -325,12 +327,14 @@ function installedBy(register: () => void): BootstrapHandlers {
     function () {
       it("normalizes config and applies verbose channels when loading runtime config", async () => {
         const originalListeners = snapshotProcessListeners();
+        const projectFolder = await mkdtemp(
+          path.join(os.tmpdir(), "bootstrap-config-"),
+        );
+        await writeFile(path.join(projectFolder, "antelope.config.ts"), "");
 
-        sinon.stub(ConfigLoader.prototype, "load").resolves({
+        sinon.stub(tsConfigFile, "loadTsConfigFile").resolves({
           name: "sample",
           cacheFolder: ".cache",
-          // @ts-expect-error Missing modules exercises runtime normalization of partially loaded input (#228).
-          modules: undefined,
           envOverrides: {},
           logging: { enabled: true },
         });
@@ -343,7 +347,7 @@ function installedBy(register: () => void): BootstrapHandlers {
 
         try {
           const loaded = await bootstrap.loadProjectRuntimeConfig(
-            "/project",
+            projectFolder,
             "prod",
             {
               verbose: ["runtime", "loader"],
@@ -351,17 +355,18 @@ function installedBy(register: () => void): BootstrapHandlers {
           );
 
           expect(loaded.normalizedConfig.cacheFolder).to.equal(
-            "/project/.cache",
+            path.join(projectFolder, ".cache"),
           );
           expect(loaded.normalizedConfig.modules).to.deep.equal({});
           expect(setupLoggingStub.calledOnce).to.equal(true);
           expect(addFilterStub.calledWith("runtime", 0)).to.equal(true);
           expect(addFilterStub.calledWith("loader", 0)).to.equal(true);
 
-          await bootstrap.loadProjectRuntimeConfig("/project", "prod", {});
+          await bootstrap.loadProjectRuntimeConfig(projectFolder, "prod", {});
           expect(addFilterStub.callCount).to.equal(2);
         } finally {
           restoreProcessListeners(originalListeners);
+          await rm(projectFolder, { recursive: true, force: true });
         }
       });
 
@@ -370,8 +375,7 @@ function installedBy(register: () => void): BootstrapHandlers {
           {
             name: "sample",
             cacheFolder: "/var/cache",
-            // @ts-expect-error Missing modules exercises runtime normalization of partially loaded input (#228).
-            modules: undefined,
+            modules: {},
             envOverrides: {},
           },
           "/project",
