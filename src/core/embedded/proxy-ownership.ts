@@ -19,14 +19,14 @@ function getOwnedProxies(owner: string): Set<OwnedProxy>[] {
   );
 }
 
-function hasCallableCleanup(proxy: OwnedProxy): proxy is RuntimeCleanup {
-  return isFunction(proxy.cleanup);
-}
-
 function releaseProxy(proxy: OwnedProxy): void {
-  if (hasCallableCleanup(proxy)) {
-    proxy.cleanup();
+  const cleanup = proxy.cleanup;
+  if (isFunction(cleanup)) {
+    cleanup.call(proxy);
     return;
+  }
+  if (!("detach" in proxy)) {
+    throw new TypeError("proxy.detach is not a function");
   }
   proxy.detach();
 }
