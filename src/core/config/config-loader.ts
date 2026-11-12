@@ -1,7 +1,13 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import type { IFileSystem } from "../../types";
-import { isObject, isString, mergeDeep } from "../../utils";
+import {
+  isFunction,
+  isObject,
+  isObjectOrNull,
+  isString,
+  mergeDeep,
+} from "../../utils";
 import {
   assertLoadedConfig,
   decodeOverride,
@@ -56,13 +62,14 @@ export class ConfigLoader {
       const moduleConfigPath = getModuleConfigPath(projectFolder, moduleName);
       if (await this.fs.exists(moduleConfigPath)) {
         const moduleConfig = await this.loadJsonFile(moduleConfigPath);
-        expandedModules[moduleName].config = mergeDeep(
-          // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
-          (expandedModules[moduleName].config as Parameters<
-            typeof mergeDeep
-          >[0]) ?? {},
-          moduleConfig,
-        );
+        const declared = expandedModules[moduleName].config;
+        const target =
+          isObjectOrNull(declared) || isFunction(declared)
+            ? (declared ?? {})
+            : Object.fromEntries(
+                isString(declared) ? declared.split("").entries() : [],
+              );
+        expandedModules[moduleName].config = mergeDeep(target, moduleConfig);
       }
     }
 

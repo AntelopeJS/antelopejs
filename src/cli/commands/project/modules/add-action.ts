@@ -34,7 +34,7 @@ import {
 import { writeConfig } from "../../../common";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
-import { isObject, isObjectOrNull, isString } from "../../../../utils";
+import { isObject, isString } from "../../../../utils";
 import { createModuleRegistry, openModuleCache } from "./module-locks";
 
 const LOCAL_MODULE_WATCH_DIRS = ["src"];
@@ -49,7 +49,12 @@ interface AddOptions {
   ignoreCache?: boolean;
 }
 
-type ModuleEntry = [string, AntelopeModuleConfig | string];
+/** A module entry a source handler resolves, with the source it resolved. */
+interface ResolvedModuleConfig extends AntelopeModuleConfig {
+  source: NonNullable<AntelopeModuleConfig["source"]>;
+}
+
+type ModuleEntry = [string, ResolvedModuleConfig | string];
 
 export const handlers = new Map<
   string,
@@ -83,12 +88,11 @@ interface SourceReference {
   path?: string;
 }
 
-function sourceReference(moduleConfig: AntelopeModuleConfig | string): string {
+function sourceReference(moduleConfig: ResolvedModuleConfig | string): string {
   if (isString(moduleConfig)) {
     return moduleConfig;
   }
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Config source is optional; preserving the direct read also preserves the existing missing-source error (#228).
-  const source = moduleConfig.source as SourceReference;
+  const source: SourceReference = moduleConfig.source;
   return source.version ?? source.remote ?? source.path ?? "";
 }
 
@@ -119,15 +123,12 @@ function resolveModule(module: string, options: AddOptions) {
 async function downloadModule(
   context: AddContext,
   moduleName: string,
-  moduleConfig: AntelopeModuleConfig | string,
+  moduleConfig: ResolvedModuleConfig | string,
 ): Promise<void> {
-  if (!isObjectOrNull(moduleConfig) || !("source" in moduleConfig)) {
+  if (isString(moduleConfig)) {
     return;
   }
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- An explicit undefined source historically reaches the downloader's property-access error; validating this optional config field changes that behavior (#228).
-  const source = moduleConfig.source as NonNullable<
-    AntelopeModuleConfig["source"]
-  >;
+  const { source } = moduleConfig;
   if (!context.registry.getLoaderIdentifier(source)) {
     return;
   }
