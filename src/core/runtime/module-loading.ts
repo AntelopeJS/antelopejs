@@ -292,8 +292,7 @@ export async function constructAndStartModules(
 
 export async function destroyModulesAfterFailure(
   manager: ModuleManager,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- rethrows the startup failure after cleanup; JS can throw any value
-  error: unknown,
+  cause: unknown,
 ): Promise<never> {
   try {
     await manager.destroyAll();
@@ -303,11 +302,11 @@ export async function destroyModulesAfterFailure(
       cleanupError,
     );
     throw new AggregateError(
-      [...unpackErrors(error), ...unpackErrors(cleanupError)],
+      [...unpackErrors(cause), ...unpackErrors(cleanupError)],
       "Failed to start and clean up modules",
     );
   }
-  throw error;
+  throw cause;
 }
 
 export function ensureGraphIsValid(manager: ModuleManager): void {

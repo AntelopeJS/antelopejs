@@ -7,6 +7,7 @@ import {
 } from "@antelopejs/interface-core/modules";
 
 import { type ModuleCallbacks, ModuleState } from "../../types";
+import { isFunction, isObject } from "../../utils";
 import {
   ModuleDiagnostics,
   type ModuleDiagnosticsContext,
@@ -21,10 +22,30 @@ const Logger = new Logging.Channel("loader.module");
 const MODULE_OWNER_SEPARATOR = "#";
 let nextModuleOwner = 1;
 
+const LIFECYCLE_CALLBACK_NAMES = [
+  "construct",
+  "destroy",
+  "provide",
+  "start",
+  "stop",
+] as const;
+
+function isModuleCallbacks(value: unknown): value is ModuleCallbacks {
+  return (
+    isObject(value) &&
+    LIFECYCLE_CALLBACK_NAMES.every(
+      (name) => value[name] === undefined || isFunction(value[name]),
+    )
+  );
+}
+
 async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
-  // oxlint-disable-next-line typescript/no-unsafe-assignment -- import() of a module main, which TS types as any
-  const mod = await import(mainPath);
-  // oxlint-disable-next-line typescript/no-unsafe-return -- import() of a module main, which TS types as any
+  const mod: unknown = await import(mainPath);
+  if (!isModuleCallbacks(mod)) {
+    throw new TypeError(
+      `Module main '${mainPath}' exports a lifecycle callback (${LIFECYCLE_CALLBACK_NAMES.join(", ")}) that is not a function`,
+    );
+  }
   return mod;
 }
 

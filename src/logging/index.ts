@@ -19,23 +19,26 @@ const DEFAULT_FORMATTER_KEY = "default";
 const DEFAULT_LEVEL_NAME = "LOG";
 const LOG_SUFFIX = "{{chalk.reset}}{{chalk.dim}} {{chalk.reset}} {{ARGS}}";
 
-// oxlint-disable-next-line anti-slop/no-known-value-widening -- levelNames is indexed with runtime numeric level ids that no literal key list covers, so inferred fixed keys would reject the lookups.
-export const levelNames: Record<number, string> = {
-  0: "TRACE",
-  10: "DEBUG",
-  20: "INFO",
-  30: "WARN",
-  40: "ERROR",
-};
+export const levelNames = new Map([
+  [0, "TRACE"],
+  [10, "DEBUG"],
+  [20, "INFO"],
+  [30, "WARN"],
+  [40, "ERROR"],
+]);
 
-// oxlint-disable-next-line anti-slop/no-known-value-widening -- levelMap is indexed with user-supplied level names, so inferred fixed keys would reject the lookups.
-export const levelMap: Record<string, number> = {
+export const levelMap = {
   trace: 0,
   debug: 10,
   info: 20,
   warn: 30,
   error: 40,
-};
+} as const;
+
+/** Whether a name is one of the `levelMap` level names, own keys only. */
+export function isLevelName(name: string): name is keyof typeof levelMap {
+  return Object.hasOwn(levelMap, name);
+}
 
 export const defaultConfigLogging: AntelopeLogging = {
   enabled: true,
@@ -79,7 +82,7 @@ const channelFilters: Record<string, number | string> = {};
 function resolveLevelValue(level: number | string): number {
   if (isString(level)) {
     const normalized = level.toLowerCase();
-    if (Object.hasOwn(levelMap, normalized)) {
+    if (isLevelName(normalized)) {
       return levelMap[normalized];
     }
     const numeric = Number(level);
@@ -186,7 +189,7 @@ function formatLogLine(log: Log, module?: string): string {
   return renderLogTemplate(template, {
     log,
     module,
-    levelName: levelNames[log.levelId] ?? DEFAULT_LEVEL_NAME,
+    levelName: levelNames.get(log.levelId) ?? DEFAULT_LEVEL_NAME,
     dateFormat: loggingConfig.dateFormat || DEFAULT_DATE_FORMAT,
   });
 }

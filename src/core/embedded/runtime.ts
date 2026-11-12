@@ -24,6 +24,14 @@ import { isObject } from "../../utils";
 
 const Logger = new Logging.Channel("loader.embedded");
 
+type RequireInterface = <
+  Request extends Extract<keyof EmbeddedInterfaces, string>,
+>(
+  request: Request,
+) => EmbeddedInterfaces[Request];
+
+const requireInterface: RequireInterface = require;
+
 function findInterfacePackage(
   started: StartedProject,
   request: string,
@@ -158,8 +166,7 @@ export class AntelopeRuntime {
     request: Request,
   ): EmbeddedInterfaces[Request] {
     requireProvided(this.requireStarted(), request);
-    // oxlint-disable-next-line typescript/no-unsafe-return -- Node require of the host-declared interface package returns any
-    return this.hostModule().runInContext(() => require(request));
+    return this.hostModule().runInContext(() => requireInterface(request));
   }
 
   /**

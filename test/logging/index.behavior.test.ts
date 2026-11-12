@@ -6,6 +6,7 @@ import * as sinon from "sinon";
 import { getProcessTasks } from "../../src/core/output";
 import {
   addChannelFilter,
+  isLevelName,
   levelMap,
   setLogAudience,
   setupAntelopeProjectLogging,
@@ -31,6 +32,12 @@ function countOccurrences(output: string, needle: string): number {
         expect(levelMap.info).to.equal(20);
         expect(levelMap.warn).to.equal(30);
         expect(levelMap.error).to.equal(40);
+      });
+
+      it("names only its own keys as levels", () => {
+        expect(isLevelName("warn")).to.equal(true);
+        expect(isLevelName("constructor")).to.equal(false);
+        expect(isLevelName("toString")).to.equal(false);
       });
     };
   }

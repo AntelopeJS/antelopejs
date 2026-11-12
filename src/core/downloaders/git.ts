@@ -45,12 +45,16 @@ function validateSource(source: ModuleSourceGit): void {
   }
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- turns a rejected exec value into a result; JS can reject with any value
-function toCommandResult(err: unknown): CommandResult {
-  if (err instanceof ExecError) {
-    return { stdout: err.stdout, stderr: err.stderr, code: err.exitCode };
-  }
-  return { stdout: "", stderr: String(err), code: 1 };
+function execToResult(
+  exec: CommandRunner,
+  command: string,
+  cwd: string,
+): Promise<CommandResult> {
+  return exec(command, { cwd }).catch((err: unknown): CommandResult =>
+    err instanceof ExecError
+      ? { stdout: err.stdout, stderr: err.stderr, code: err.exitCode }
+      : { stdout: "", stderr: String(err), code: 1 },
+  );
 }
 
 async function runGitCommand(
@@ -58,7 +62,7 @@ async function runGitCommand(
   cwd: string,
   exec: CommandRunner,
 ): Promise<CommandResult> {
-  const result = await exec(command, { cwd }).catch(toCommandResult);
+  const result = await execToResult(exec, command, cwd);
   if (result.code !== 0) {
     throw new ExecError({ ...result, command });
   }
@@ -147,9 +151,7 @@ async function syncRepo(
   const { source, exec, folder } = request;
   const branch = source.commit || source.branch;
   const [, prevBranch, prevCommit] = request.cacheVersion.split(":");
-  const fetchResult = await exec("git fetch", { cwd: folder }).catch(
-    toCommandResult,
-  );
+  const fetchResult = await execToResult(exec, "git fetch", folder);
   if (fetchResult.code !== 0) {
     task.warn(`Could not fetch ${source.remote}, using cached copy`);
     return UNCHANGED_REPO;

@@ -1,4 +1,5 @@
 import type { AntelopeLogging } from "@antelopejs/interface-core/config";
+import type { Log } from "@antelopejs/interface-core/logging/listener";
 import { inspect } from "node:util";
 import { createColors } from "picocolors";
 
@@ -77,15 +78,16 @@ export function isTerminalOutput(): boolean {
   return process.stdout.isTTY && process.stderr.isTTY;
 }
 
+const ESCAPE_CHARACTER = String.fromCharCode(27);
+const ANSI_SGR_SEQUENCE = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, "g");
+
 /**
  * Remove ANSI color codes from a string to get its real length
  * @param str - The string to strip ANSI codes from
  * @returns The string without ANSI codes
  */
 export function stripAnsiCodes(str: string): string {
-  // oxlint-disable-next-line eslint/no-control-regex -- an ANSI stripper must match the ESC control character
-  const ansiRegex = /\u001b\[[0-9;]*m/g;
-  return str.replace(ansiRegex, "");
+  return str.replace(ANSI_SGR_SEQUENCE, "");
 }
 
 const WIDE_RANGES = [
@@ -211,8 +213,7 @@ function serializeError(error: Error, ancestors: Set<Error>): string {
  * @returns A string representation of the value
  */
 export function serializeLogValue(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- serializes a log argument, aggregate member or cause, which JS lets be any value
-  value: unknown,
+  value: Log["args"][number],
   ancestors = new Set<Error>(),
 ): string {
   if (value === null) return "null";

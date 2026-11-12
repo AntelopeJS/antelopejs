@@ -1,7 +1,9 @@
 import type { Command } from "commander";
 
-// oxlint-disable-next-line anti-slop/no-unknown-returns -- Commander actions return different values (a template, a command result, nothing) that the wrapper awaits and discards, so the constraint cannot name one result type.
-type CommandAction = (this: Command, ...args: never[]) => unknown;
+type CommandAction = (
+  this: Command,
+  ...args: never[]
+) => Promise<object | void>;
 
 /**
  * Wraps a command action so that its implementation module is only imported

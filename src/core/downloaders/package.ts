@@ -37,8 +37,10 @@ interface InlyExtraction {
   on(event: "end", listener: () => void): void;
 }
 
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- inly is an untyped CommonJS module and require returns any
-const inly: (from: string, to: string) => InlyExtraction = require("inly");
+const requireInly: (
+  id: "inly",
+) => (from: string, to: string) => InlyExtraction = require;
+const inly = requireInly("inly");
 
 const Logger = new Logging.Channel("loader.package");
 
