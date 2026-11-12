@@ -1,6 +1,7 @@
 {
   "name": "module-a",
   "version": "1.0.0",
+  "private": true,
   "main": "index.js",
   "dependencies": {
     "interface-greeter": "file:../../packages/interface-greeter"
