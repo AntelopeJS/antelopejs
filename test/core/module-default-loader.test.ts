@@ -115,4 +115,32 @@ describe("Module default loader", () => {
 
     expect(failure).to.be.instanceOf(TypeError);
   });
+
+  it("fails a truthy non-function stop with the lifecycle's message", async () => {
+    const mod = moduleWithMain("string-stop", "exports.stop = 'halt';");
+
+    await mod.construct({});
+    await mod.start();
+    const failure = await mod.stop().then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(String(failure)).to.contain("this.callbacks.stop is not a function");
+  });
+
+  it("calls the callback the module main holds when its phase runs, not the one it held at load", async () => {
+    const mod = moduleWithMain(
+      "replaced-start",
+      "exports.construct = () => { exports.start = () => { throw new Error('replaced start ran'); }; }; exports.start = () => {};",
+    );
+
+    await mod.construct({});
+    const failure = await mod.start().then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(String(failure)).to.contain("replaced start ran");
+  });
 });

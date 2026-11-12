@@ -159,7 +159,7 @@ export class AntelopeRuntime {
   ): EmbeddedInterfaces[Request] {
     requireProvided(this.requireStarted(), request);
     return this.hostModule().runInContext(
-      // SAFETY: use publishes the host's EmbeddedInterfaces declaration as its contract, and requireProvided just found a loaded module providing the package; no run-time check can establish a type the host declared.
+      // SAFETY: use publishes the host's EmbeddedInterfaces declaration as its contract, and requireProvided just found the package among the interface packages, provided or stubbed; no run-time check can establish a type the host declared.
       () => require(request) as EmbeddedInterfaces[Request],
     );
   }

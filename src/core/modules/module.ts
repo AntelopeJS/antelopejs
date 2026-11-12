@@ -86,7 +86,7 @@ function lifecycleCallback<Name extends keyof ModuleCallbacks>(
   if (!isFunction(value)) {
     return notAFunction(callee);
   }
-  // SAFETY: a module main's export under a lifecycle name is that callback by the module contract; like the lifecycle's direct call before, the core checks only that it is callable, and it awaits the result, or for provide hands it to ConfigVarStore.record, which decodes it.
+  // SAFETY: a module main's export under a lifecycle name is that callback by the module contract; like the lifecycle's direct call before, the core checks only that it is callable, and it awaits the result; for provide, ConfigVarStore.record decodes it, while Module.provide returns it to its caller unchecked, as it did before.
   return value.bind(main) as LifecycleCallback<Name>;
 }
 
