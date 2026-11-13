@@ -20,6 +20,8 @@ jobs:
       renovate-sync: false
       test-job: true
       windows: true
+      extra-commands: pnpm run test:cli-smoke
+      extra-commands-job: true
     permissions:
       contents: read
 
