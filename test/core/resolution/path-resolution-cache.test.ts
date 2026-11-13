@@ -83,6 +83,7 @@ describe("path resolution cache", () => {
     isPathWithin(file, root);
 
     expect(getPathResolutionCacheGeneration()).to.equal(generation + 1);
+    expect(firstPassCalls).to.be.greaterThan(0);
     expect(realpathSpy.callCount).to.equal(firstPassCalls * 2);
   });
 
@@ -142,19 +143,33 @@ describe("loaded file matcher", () => {
     expect(createLoadedFileMatcher(root)(file)).to.equal(true);
   });
 
-  it("resolves no loaded file when the loader names files by their real path", () => {
-    useLoaderSettings({}, []);
-    const isLoaded = createLoadedFileMatcher(fixture.roots[0]);
-    const realpathSpy = sinon.spy(fs, "realpathSync");
+  const realPathSettings: [string, string[]][] = [
+    ["no flag", []],
+    ["--preserve-symlinks-main", ["--preserve-symlinks-main"]],
+  ];
+  for (const [label, execArgv] of realPathSettings) {
+    it(`touches the filesystem for no loaded file with ${label}`, () => {
+      useLoaderSettings({}, execArgv);
+      const isLoaded = createLoadedFileMatcher(fixture.roots[0]);
+      const spies = [
+        sinon.spy(fs, "realpathSync"),
+        sinon.spy(fs.realpathSync, "native"),
+        sinon.spy(fs, "statSync"),
+        sinon.spy(fs, "lstatSync"),
+      ];
 
-    fixture.files.forEach((file) => isLoaded(file));
+      fixture.files.forEach((file) => isLoaded(file));
 
-    expect(realpathSpy.callCount).to.equal(0);
-  });
+      expect(spies.map((spy) => spy.callCount)).to.deep.equal([0, 0, 0, 0]);
+    });
+  }
 
   const preserveSymlinksSettings: [string, NodeJS.ProcessEnv, string[]][] = [
     ["NODE_PRESERVE_SYMLINKS=1", { NODE_PRESERVE_SYMLINKS: "1" }, []],
     ["--preserve-symlinks=true", {}, ["--preserve-symlinks=true"]],
+    ["--preserve-symlinks", {}, ["--preserve-symlinks"]],
+    ["--preserve_symlinks", {}, ["--preserve_symlinks"]],
+    ["NODE_OPTIONS and a value", { NODE_OPTIONS: "--preserve-symlinks=1" }, []],
     [
       "NODE_OPTIONS",
       { NODE_OPTIONS: "--max-old-space-size=512 --preserve-symlinks" },

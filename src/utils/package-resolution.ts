@@ -144,10 +144,8 @@ export function createPathWithinMatcher(folderPath: string): PathMatcher {
 const PRESERVE_SYMLINKS_FLAG = "--preserve-symlinks";
 
 function isPreserveSymlinksFlag(argument: string): boolean {
-  return (
-    argument === PRESERVE_SYMLINKS_FLAG ||
-    argument.startsWith(`${PRESERVE_SYMLINKS_FLAG}=`)
-  );
+  const [name] = argument.split("=", 1);
+  return name.replaceAll("_", "-") === PRESERVE_SYMLINKS_FLAG;
 }
 
 function loaderPreservesSymlinks(): boolean {
