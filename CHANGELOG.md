@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.22.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.3...v1.22.0)
+
+### 💅 Refactors
+
+- **test:** Remove the suppressions from the tests and verify fixtures ([#454](https://github.com/AntelopeJS/antelopejs/pull/454))
+- Replace the thrown-value, untyped-require and small-rule suppressions with typed boundaries ([#455](https://github.com/AntelopeJS/antelopejs/pull/455))
+- **config:** Type the module sources and the stub export walk, and drop the config assertions ([#456](https://github.com/AntelopeJS/antelopejs/pull/456))
+
+### 📖 Documentation
+
+- **readme:** Add the Ecosystem section with the framework module table ([#452](https://github.com/AntelopeJS/antelopejs/pull/452))
+
+### 📦 Build
+
+- **playground:** Mark the demo packages private so the API proof skips them ([#453](https://github.com/AntelopeJS/antelopejs/pull/453))
+- **deps:** Adopt @antelopejs/interface-core 0.5 ([#458](https://github.com/AntelopeJS/antelopejs/pull/458))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.21.3
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.2...v1.21.3)
