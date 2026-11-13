@@ -27,6 +27,7 @@ const WATCH_SETTLE_MS = 10_000;
 const WATCH_DEADLINE_MS = 120_000;
 const POLL_MS = 500;
 const OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024;
+const STEP_TIMEOUT_MS = 10 * 60 * 1000;
 
 function spawnInvocation(command: string, args: string[]) {
   const invocation = buildProcessInvocation(command, args);
@@ -52,9 +53,12 @@ function run(command: string, args: string[], cwd: string): void {
     encoding: "utf8",
     maxBuffer: OUTPUT_LIMIT_BYTES,
     stdio: ["ignore", "pipe", "pipe"],
+    timeout: STEP_TIMEOUT_MS,
   });
   if (result.error) {
-    throw result.error;
+    throw new Error(
+      `${path.basename(command)} ${args.join(" ")} failed: ${result.error.message}\n${result.stdout}${result.stderr}`,
+    );
   }
   if (result.status !== 0) {
     throw new Error(

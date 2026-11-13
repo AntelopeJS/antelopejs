@@ -5,6 +5,7 @@ import sinon from "sinon";
 
 import {
   clearPathResolutionCache,
+  createLoadedFileMatcher,
   getPathResolutionCacheGeneration,
   isPathWithin,
 } from "../../../src/utils";
@@ -106,5 +107,39 @@ describe("path resolution cache", () => {
     fs.symlinkSync(path.dirname(file), pendingLink, "dir");
 
     expect(isPathWithin(file, pendingLink)).to.equal(true);
+  });
+});
+
+describe("loaded file matcher", () => {
+  let fixture: LinkedRootsFixture;
+
+  beforeEach(() => {
+    fixture = createLinkedRoots();
+    clearPathResolutionCache();
+  });
+
+  afterEach(() => {
+    sinon.restore();
+    clearPathResolutionCache();
+    cleanupTempDir(fixture.dir);
+  });
+
+  it("matches a file loaded by its real path against a folder named by its link", () => {
+    const [root] = fixture.roots;
+    const [file] = fixture.files;
+
+    expect(createLoadedFileMatcher(root)(file)).to.equal(true);
+  });
+
+  it("matches a file the loader keeps under its link path with --preserve-symlinks", () => {
+    const [file] = fixture.files;
+    const realRoot = path.dirname(file);
+    const linkedFile = path.join(fixture.roots[0], path.basename(file));
+    sinon.stub(process, "env").value({
+      ...process.env,
+      NODE_PRESERVE_SYMLINKS: "1",
+    });
+
+    expect(createLoadedFileMatcher(realRoot)(linkedFile)).to.equal(true);
   });
 });

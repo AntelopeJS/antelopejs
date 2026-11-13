@@ -59,7 +59,7 @@
     "test:package-consumer": "pnpm build && ts-node test/package-consumer/run.ts",
     "test:playground": "pnpm build && pnpm --dir playground install --ignore-workspace && ts-node playground/test-playground.ts",
     "test:watch": "mocha --require ts-node/register --require test/setup.ts --no-parallel --watch --watch-extensions ts 'test/**/*.test.ts'",
-    "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 90 --statements 90 mocha --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
+    "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 90 --statements 90 mocha --no-parallel --require ts-node/register --require test/setup.ts 'test/**/*.test.ts' --exit",
     "test:embedded": "pnpm build && ts-node test/embedded/run.ts",
     "test:cli-smoke": "pnpm build && ts-node test/cli-smoke/run.ts",
     "prepare": "if [ -e .git ] && command -v git >/dev/null 2>&1 && command -v lefthook >/dev/null 2>&1 && GIT_DIR=.git GIT_WORK_TREE=. git rev-parse --git-dir >/dev/null 2>&1; then GIT_DIR=.git GIT_WORK_TREE=. lefthook install; fi",
