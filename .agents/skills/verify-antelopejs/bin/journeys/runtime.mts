@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import path from "node:path";
 
 import { answers, equal, exitIs, exitFails, has, refused } from "../lib/checks.mts";
@@ -46,12 +46,16 @@ export const embeddedJourneys: Journey[] = [
   {
     id: "embedded-missing-provider",
     title: "a host that uses an interface no module implements fails at start with the interface name",
-    entryPoint: "createRuntime({ modules: { 'greeter-consumer' }, uses: ['verify-greeter'] }) without its provider",
+    entryPoint: "createRuntime({ modules: { 'greeter-consumer': { path } }, uses: ['verify-greeter'] }) without its provider",
     async run(context) {
       const app = await useProject(context);
-      const greeter = await greeterWithHost(context);
-      const host = await context.node("embedded host without provider", EMBEDDED_HOST, [CORE_ENTRY, path.join(greeter, "host"), `greeter-consumer=${path.join(greeter, "consumer")}`, app], { env: { VERIFY_FIXTURE_PORT: String(await freePort()) } });
-      context.expect(host.folder, [exitFails(host), has("stderr", host.stderr, /Unresolved interface dependencies:\n {2}- __antelope_host__ requires verify-greeter\n/)]);
+      const greeter = copyGreeter(context);
+      await installFixture(context, path.join(greeter, "host"));
+      const consumer = path.join(greeter, "consumer");
+      mkdirSync(path.join(consumer, "node_modules"));
+      symlinkSync(path.join(greeter, "verify-greeter"), path.join(consumer, "node_modules", "verify-greeter"), "junction");
+      const host = await context.node("embedded host without provider", EMBEDDED_HOST, [CORE_ENTRY, path.join(greeter, "host"), `greeter-consumer=${consumer}`, app], { env: { VERIFY_FIXTURE_PORT: String(await freePort()) } });
+      context.expect(host.folder, [exitFails(host), has("stderr", host.stderr, /Unresolved interface dependencies:\n(?: {2}- .+\n)* {2}- greeter-consumer requires verify-greeter\n/)]);
     },
   },
 ];

@@ -2,7 +2,9 @@ import process from "node:process";
 import { pathToFileURL } from "node:url";
 
 const [coreEntry, hostFolder, greeterModule, fixtureFolder] = process.argv.slice(2);
-const [greeterId, greeterFolder] = greeterModule.split("=");
+const separator = greeterModule.indexOf("=");
+const greeterId = greeterModule.slice(0, separator);
+const greeterFolder = greeterModule.slice(separator + 1);
 const port = process.env.VERIFY_FIXTURE_PORT;
 const observations = {};
 
