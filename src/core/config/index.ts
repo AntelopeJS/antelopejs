@@ -1,5 +1,6 @@
 export * from "./config-editor";
 export {
+  assertConfigModules,
   assertLoadedConfig,
   decodeOverride,
   importOverrideCheck,
