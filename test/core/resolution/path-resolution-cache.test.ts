@@ -68,6 +68,7 @@ describe("path resolution cache", () => {
     );
 
     expect(ownedFiles).to.deep.equal(fixture.files);
+    expect(realpathSpy.callCount).to.be.greaterThan(0);
     expect(realpathSpy.callCount).to.be.at.most(FILE_COUNT + ROOT_COUNT);
   });
 
@@ -110,6 +111,16 @@ describe("path resolution cache", () => {
   });
 });
 
+function useLoaderSettings(env: NodeJS.ProcessEnv, execArgv: string[]): void {
+  const {
+    NODE_OPTIONS: _options,
+    NODE_PRESERVE_SYMLINKS: _preserve,
+    ...rest
+  } = process.env;
+  sinon.stub(process, "env").value({ ...rest, ...env });
+  sinon.stub(process, "execArgv").value(execArgv);
+}
+
 describe("loaded file matcher", () => {
   let fixture: LinkedRootsFixture;
 
@@ -131,15 +142,33 @@ describe("loaded file matcher", () => {
     expect(createLoadedFileMatcher(root)(file)).to.equal(true);
   });
 
-  it("matches a file the loader keeps under its link path with --preserve-symlinks", () => {
-    const [file] = fixture.files;
-    const realRoot = path.dirname(file);
-    const linkedFile = path.join(fixture.roots[0], path.basename(file));
-    sinon.stub(process, "env").value({
-      ...process.env,
-      NODE_PRESERVE_SYMLINKS: "1",
-    });
+  it("resolves no loaded file when the loader names files by their real path", () => {
+    useLoaderSettings({}, []);
+    const isLoaded = createLoadedFileMatcher(fixture.roots[0]);
+    const realpathSpy = sinon.spy(fs, "realpathSync");
 
-    expect(createLoadedFileMatcher(realRoot)(linkedFile)).to.equal(true);
+    fixture.files.forEach((file) => isLoaded(file));
+
+    expect(realpathSpy.callCount).to.equal(0);
   });
+
+  const preserveSymlinksSettings: [string, NodeJS.ProcessEnv, string[]][] = [
+    ["NODE_PRESERVE_SYMLINKS=1", { NODE_PRESERVE_SYMLINKS: "1" }, []],
+    ["--preserve-symlinks=true", {}, ["--preserve-symlinks=true"]],
+    [
+      "NODE_OPTIONS",
+      { NODE_OPTIONS: "--max-old-space-size=512 --preserve-symlinks" },
+      [],
+    ],
+  ];
+  for (const [label, env, execArgv] of preserveSymlinksSettings) {
+    it(`matches a file the loader keeps under its link path with ${label}`, () => {
+      const [file] = fixture.files;
+      const realRoot = path.dirname(file);
+      const linkedFile = path.join(fixture.roots[0], path.basename(file));
+      useLoaderSettings(env, execArgv);
+
+      expect(createLoadedFileMatcher(realRoot)(linkedFile)).to.equal(true);
+    });
+  }
 });

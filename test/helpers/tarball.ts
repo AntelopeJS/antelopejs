@@ -3,14 +3,18 @@ import { gzipSync } from "node:zlib";
 
 const BLOCK = 512;
 const FILE_MODE = 0o644;
+const NAME_BYTES = 100;
 
 function octal(value: number, width: number): string {
   return `${value.toString(8).padStart(width - 1, "0")}\0`;
 }
 
 function header(name: string, size: number): Buffer {
+  if (Buffer.byteLength(name) > NAME_BYTES) {
+    throw new Error(`Tar entry name over ${NAME_BYTES} bytes: ${name}`);
+  }
   const block = Buffer.alloc(BLOCK);
-  block.write(name, 0, 100, "utf8");
+  block.write(name, 0, NAME_BYTES, "utf8");
   block.write(octal(FILE_MODE, 8), 100, "ascii");
   block.write(octal(0, 8), 108, "ascii");
   block.write(octal(0, 8), 116, "ascii");

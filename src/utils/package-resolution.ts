@@ -143,13 +143,18 @@ export function createPathWithinMatcher(folderPath: string): PathMatcher {
 
 const PRESERVE_SYMLINKS_FLAG = "--preserve-symlinks";
 
+function isPreserveSymlinksFlag(argument: string): boolean {
+  return (
+    argument === PRESERVE_SYMLINKS_FLAG ||
+    argument.startsWith(`${PRESERVE_SYMLINKS_FLAG}=`)
+  );
+}
+
 function loaderPreservesSymlinks(): boolean {
   return (
     process.env.NODE_PRESERVE_SYMLINKS === "1" ||
-    process.execArgv.includes(PRESERVE_SYMLINKS_FLAG) ||
-    (process.env.NODE_OPTIONS ?? "")
-      .split(/\s+/)
-      .includes(PRESERVE_SYMLINKS_FLAG)
+    process.execArgv.some(isPreserveSymlinksFlag) ||
+    (process.env.NODE_OPTIONS ?? "").split(/\s+/).some(isPreserveSymlinksFlag)
   );
 }
 
