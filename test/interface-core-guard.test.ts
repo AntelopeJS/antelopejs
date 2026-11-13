@@ -6,7 +6,7 @@ import {
 } from "../src/interface-core-guard";
 import { CliError } from "../src/core/output";
 
-const REQUIRED_RANGE = ">=0.4.0 <0.5.0";
+const REQUIRED_RANGE = ">=0.5.1 <0.6.0";
 
 function copyAt(version: string | undefined): InterfaceCoreCopy {
   return {
@@ -44,7 +44,7 @@ describe("assertInterfaceCoreCopy", () => {
 
   it("accepts a prerelease of the required minor", () => {
     expect(() =>
-      assertInterfaceCoreCopy(copyAt("0.4.1-beta.0")),
+      assertInterfaceCoreCopy(copyAt("0.5.2-beta.0")),
     ).not.to.throw();
   });
 
@@ -59,7 +59,7 @@ describe("assertInterfaceCoreCopy", () => {
   });
 
   it("rejects the next minor the core does not implement", () => {
-    expect(thrownBy(copyAt("0.5.0")).problem.title).to.include("0.5.0");
+    expect(thrownBy(copyAt("0.6.0")).problem.title).to.include("0.6.0");
   });
 
   it("rejects a copy whose version it cannot find", () => {

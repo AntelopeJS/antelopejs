@@ -12,9 +12,10 @@ import { isFunction, isObjectOrNull } from "../../utils";
 const Logger = new Logging.Channel("loader");
 
 /**
- * The proxy classes under the type their default type arguments name.
- * `instanceof` against the generic class narrows to `AsyncProxy<any, any>`,
- * which the helpers below, typed with the defaults, reject as unsafe.
+ * The proxy classes under the type their default type argument names.
+ * `instanceof` against the generic class narrows to `AsyncProxy<any>` or
+ * `RegisteringProxy<any>`, which the helpers below, typed with the defaults,
+ * reject as unsafe.
  */
 export const AsyncProxyClass: new (...args: never[]) => AsyncProxy = AsyncProxy;
 const RegisteringProxyClass: new (...args: never[]) => RegisteringProxy =

@@ -117,7 +117,7 @@ If AntelopeJS saves you work, a ⭐ helps other developers find it.
 
 | Package                      | Supported        | Tested with |
 | ---------------------------- | ---------------- | ----------- |
-| `@antelopejs/interface-core` | `>=0.4.0 <0.5.0` | `0.4.0`     |
+| `@antelopejs/interface-core` | `>=0.5.1 <0.6.0` | `0.5.1`     |
 
 <!-- antelopejs-docs-compat:end -->
 
