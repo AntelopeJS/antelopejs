@@ -11,23 +11,23 @@ import {
 } from "../../../src/cli";
 import { CliError } from "../../../src/core/output";
 import { collectStderr } from "../../helpers/capture-output";
+import { redirectHome } from "../../helpers/home";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { rejectionOf } from "./fixtures";
 
 describe("the CLI configuration file", () => {
   let home: string;
-  let originalHome: string | undefined;
+  let restoreHome: () => void;
 
   beforeEach(() => {
-    originalHome = process.env.HOME;
     home = makeTempDir("ajs-user-config-");
-    process.env.HOME = home;
+    restoreHome = redirectHome(home);
     fs.mkdirSync(path.join(home, ".antelopejs"));
   });
 
   afterEach(() => {
     sinon.restore();
-    process.env.HOME = originalHome;
+    restoreHome();
     cleanupTempDir(home);
   });
 

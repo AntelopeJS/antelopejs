@@ -73,11 +73,11 @@ import { cleanupTempDir, makeTempDir } from "../helpers/temp";
         const source: ModuleSourceLocal = { type: "local", path: "/mod" };
         const manifest = await ModuleManifest.create("/mod", source, "mod", fs);
 
-        expect(manifest.baseUrl).to.equal(path.join("/mod", "src"));
+        expect(manifest.baseUrl).to.equal(path.resolve("/mod", "src"));
         expect(manifest.paths).to.deep.equal([
           {
             key: "@lib/",
-            values: [path.join("/mod", "src", "lib/")],
+            values: [path.join(path.resolve("/mod", "src"), "lib/")],
           },
         ]);
       });
@@ -106,11 +106,11 @@ import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
         expect(manifest.srcAliases).to.deep.include({
           alias: "@root",
-          replace: path.join("/mod", "src"),
+          replace: path.resolve("/mod", "src"),
         });
         expect(manifest.srcAliases).to.deep.include({
           alias: "@lib",
-          replace: path.join("/mod", "lib"),
+          replace: path.resolve("/mod", "lib"),
         });
       });
     };
@@ -139,7 +139,7 @@ import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
       expect(manifest.srcAliases).to.deep.include({
         alias: "@lib",
-        replace: path.join("/mod", "lib"),
+        replace: path.resolve("/mod", "lib"),
       });
     });
 
@@ -303,29 +303,51 @@ import { cleanupTempDir, makeTempDir } from "../helpers/temp";
       });
 
       it("moves a build entry's paths into an instance copy of its folder, and leaves outside paths alone", () => {
+        const folder = (...segments: string[]) =>
+          path.resolve(path.sep, ...segments);
+        const directory = (...segments: string[]) =>
+          `${folder(...segments)}${path.sep}`;
         const manifest = ModuleManifest.fromBuildEntry({
-          folder: "/mod",
+          folder: folder("mod"),
           source: { type: "local" },
           name: "mod",
           version: "1.0.0",
-          main: "/mod/dist/index.js",
+          main: folder("mod", "dist", "index.js"),
           manifest: { name: "mod", version: "1.0.0" },
           implements: ["@antelopejs/interface-database"],
-          baseUrl: "/mod/dist",
-          paths: [{ key: "@lib/", values: ["/mod/dist/lib/", "/shared/lib/"] }],
-          srcAliases: [{ alias: "@src", replace: "/mod/src" }],
+          baseUrl: folder("mod", "dist"),
+          paths: [
+            {
+              key: "@lib/",
+              values: [
+                directory("mod", "dist", "lib"),
+                directory("shared", "lib"),
+              ],
+            },
+          ],
+          srcAliases: [{ alias: "@src", replace: folder("mod", "src") }],
         });
 
-        const relocated = manifest.relocate("/copies/mod-2").serialize();
+        const relocated = manifest
+          .relocate(folder("copies", "mod-2"))
+          .serialize();
 
-        expect(relocated.folder).to.equal("/copies/mod-2");
-        expect(relocated.main).to.equal("/copies/mod-2/dist/index.js");
-        expect(relocated.baseUrl).to.equal("/copies/mod-2/dist");
+        expect(relocated.folder).to.equal(folder("copies", "mod-2"));
+        expect(relocated.main).to.equal(
+          folder("copies", "mod-2", "dist", "index.js"),
+        );
+        expect(relocated.baseUrl).to.equal(folder("copies", "mod-2", "dist"));
         expect(relocated.paths).to.deep.equal([
-          { key: "@lib/", values: ["/copies/mod-2/dist/lib/", "/shared/lib/"] },
+          {
+            key: "@lib/",
+            values: [
+              directory("copies", "mod-2", "dist", "lib"),
+              directory("shared", "lib"),
+            ],
+          },
         ]);
         expect(relocated.srcAliases).to.deep.equal([
-          { alias: "@src", replace: "/copies/mod-2/src" },
+          { alias: "@src", replace: folder("copies", "mod-2", "src") },
         ]);
         expect(relocated.implements).to.deep.equal([
           "@antelopejs/interface-database",

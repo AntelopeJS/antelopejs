@@ -1,6 +1,5 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
-import { execFileSync } from "node:child_process";
 import path from "node:path";
 import {
   DownloaderRegistry,
@@ -9,7 +8,8 @@ import {
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { ModuleCache } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
-import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { writeTarball } from "../../helpers/tarball";
 describe("PackageDownloader", () => {
   it("resolves dist-tags to exact versions and caches them", async () => {
     const fs = new InMemoryFileSystem();
@@ -196,7 +196,7 @@ describe("PackageDownloader", () => {
     });
     expect(execCalls[1]).to.deep.equal({
       command: "npm install",
-      cwd: "/cache/pkg",
+      cwd: path.join("/cache", "pkg"),
     });
   });
 });
@@ -290,16 +290,12 @@ describe("PackageDownloader", () => {
   it("uses the default extractor when no custom extract is provided", async () => {
     const folder = makeTempDir("package-extractor-");
     try {
-      const sourceFolder = path.join(folder, "source");
-      writeJson(path.join(sourceFolder, "package.json"), {
-        name: "pkg",
-        version: "1.0.0",
+      writeTarball(path.join(folder, "pkg-1.0.0.tgz"), {
+        "package/package.json": JSON.stringify({
+          name: "pkg",
+          version: "1.0.0",
+        }),
       });
-      execFileSync(
-        "npm",
-        ["pack", "--ignore-scripts", "--pack-destination", folder],
-        { cwd: sourceFolder, stdio: "pipe" },
-      );
       const fs = new NodeFileSystem();
       const cache = new ModuleCache(path.join(folder, "cache"), fs);
       await cache.load();

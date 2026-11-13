@@ -5,6 +5,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -66,7 +67,11 @@ function createArtifact(): BuildArtifact {
     modules: {
       api: createEntry(
         "api",
-        { type: "local", path: "/project/modules/api", id: "api" },
+        {
+          type: "local",
+          path: path.resolve(PROJECT, "modules", "api"),
+          id: "api",
+        },
         { token: "placeholder" },
       ),
       database: createEntry(

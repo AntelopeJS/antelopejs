@@ -50,6 +50,10 @@ export function getPathResolutionCacheGeneration(): number {
 /**
  * The real path of `filePath`, or its resolved path when it does not exist.
  * Lookups are cached until `clearPathResolutionCache`.
+ *
+ * It is the path the module loader names the file by, so it matches the
+ * `require.cache` keys and module filenames: on Windows the loader keeps
+ * 8.3 short names such as `RUNNER~1`, which the native realpath expands.
  */
 export function normalizeExistingPath(filePath: string): string {
   const resolvedPath = path.resolve(filePath);
@@ -58,7 +62,7 @@ export function normalizeExistingPath(filePath: string): string {
     return cachedPath;
   }
   try {
-    const realPath = realpathSync.native(resolvedPath);
+    const realPath = realpathSync(resolvedPath);
     realPathCache.set(resolvedPath, realPath);
     return realPath;
   } catch {
@@ -135,6 +139,38 @@ export function createPathWithinMatcher(folderPath: string): PathMatcher {
   const folderVariants = getPathVariants(folderPath);
   return (filePath) =>
     areVariantsWithin(getPathVariants(filePath), folderVariants);
+}
+
+const PRESERVE_SYMLINKS_FLAG = "--preserve-symlinks";
+
+function isPreserveSymlinksFlag(argument: string): boolean {
+  const [name] = argument.split("=", 1);
+  return name.replaceAll("_", "-") === PRESERVE_SYMLINKS_FLAG;
+}
+
+function loaderPreservesSymlinks(): boolean {
+  return (
+    process.env.NODE_PRESERVE_SYMLINKS === "1" ||
+    process.execArgv.some(isPreserveSymlinksFlag) ||
+    (process.env.NODE_OPTIONS ?? "").split(/\s+/).some(isPreserveSymlinksFlag)
+  );
+}
+
+/**
+ * {@link createPathWithinMatcher} for the keys of `require.cache`. The module
+ * loader already names each loaded file by its real path, the one
+ * `normalizeExistingPath` returns, so the file side is not resolved again:
+ * a scan of the cache costs no filesystem call per loaded file. Under
+ * `--preserve-symlinks` the loader keeps link paths, so each key is resolved
+ * as {@link createPathWithinMatcher} does.
+ */
+export function createLoadedFileMatcher(folderPath: string): PathMatcher {
+  if (loaderPreservesSymlinks()) {
+    return createPathWithinMatcher(folderPath);
+  }
+  const folderVariants = getPathVariants(folderPath);
+  return (loadedFile) =>
+    areVariantsWithin([path.resolve(loadedFile)], folderVariants);
 }
 
 export function isPathWithin(filePath: string, folderPath: string): boolean {

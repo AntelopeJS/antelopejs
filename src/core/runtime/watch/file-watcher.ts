@@ -67,7 +67,7 @@ export class FileWatcher {
     watchDirs: string[] = [""],
   ): Promise<void> {
     for (const dir of watchDirs) {
-      const dirPath = path.join(rootDir, dir);
+      const dirPath = path.join(path.resolve(rootDir), dir);
       await this.forgetIfVanished(dirPath, () =>
         this.exploreDir(moduleId, dirPath),
       );
@@ -190,24 +190,24 @@ export class FileWatcher {
   }
 
   async handleFileChange(filePath: string): Promise<void> {
-    if (this.stopped || this.isExcludedPath(filePath)) {
+    const resolved = path.resolve(filePath);
+    if (this.stopped || this.isExcludedPath(resolved)) {
       return;
     }
     try {
-      await this.processFileChange(filePath);
+      await this.processFileChange(resolved);
     } catch (error) {
       if (!(error instanceof Error && isVanishedPathError(error))) {
         throw error;
       }
-      this.handleRemovedPath(filePath);
+      this.handleRemovedPath(resolved);
     }
   }
 
   private async processFileChange(filePath: string): Promise<void> {
-    const resolved = path.resolve(filePath);
-    const watchedFile = this.watchedFiles.get(resolved);
+    const watchedFile = this.watchedFiles.get(filePath);
     if (watchedFile) {
-      await this.handleWatchedFileChange(resolved, watchedFile);
+      await this.handleWatchedFileChange(filePath, watchedFile);
       return;
     }
 

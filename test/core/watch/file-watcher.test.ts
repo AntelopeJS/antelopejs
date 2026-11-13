@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import { FileHasher, FileWatcher } from "../../../src/core/runtime";
@@ -71,8 +72,9 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         await fs.writeFile("/project/antelope.config.ts", "modified");
         await watcher.handleFileChange("/project/antelope.config.ts");
 
-        expect(changes).to.have.lengthOf(1);
-        expect(changes[0]).to.equal("/project/antelope.config.ts");
+        expect(changes).to.deep.equal([
+          path.resolve("/project/antelope.config.ts"),
+        ]);
       });
 
       it("should ignore unchanged watched files", async () => {
@@ -121,7 +123,8 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         await watcher.handleFileChange("/project/.env");
         await watcher.handleFileChange("/project/.env");
 
-        expect(changes).to.deep.equal(["/project/.env", "/project/.env"]);
+        const envPath = path.resolve("/project/.env");
+        expect(changes).to.deep.equal([envPath, envPath]);
       });
 
       it("ignores the deletion of a watched file that is not optional", async () => {
@@ -407,9 +410,13 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         const hashedFiles = hasher.hashFile
           .getCalls()
           .map((call) => call.args[0]);
-        expect(hashedFiles).to.include("/mod/src/ok.txt");
-        expect(hashedFiles).to.not.include("/mod/.git/ignored.txt");
-        expect(hashedFiles).to.not.include("/mod/node_modules/ignored.txt");
+        expect(hashedFiles).to.include(path.resolve("/mod/src/ok.txt"));
+        expect(hashedFiles).to.not.include(
+          path.resolve("/mod/.git/ignored.txt"),
+        );
+        expect(hashedFiles).to.not.include(
+          path.resolve("/mod/node_modules/ignored.txt"),
+        );
       });
 
       it("skips excluded paths when scanning and on change events", async () => {
@@ -427,7 +434,7 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         const hashedFiles = hasher.hashFile
           .getCalls()
           .map((call) => call.args[0]);
-        expect(hashedFiles).to.deep.equal(["/project/index.js"]);
+        expect(hashedFiles).to.deep.equal([path.resolve("/project/index.js")]);
 
         const changes: string[] = [];
         watcher.onModuleChanged((id) => changes.push(id));
@@ -500,3 +507,21 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
     registerFileWatcher.call(this);
   });
 }
+
+describe("FileWatcher path spelling", () => {
+  it("matches a change reported under another spelling of a scanned path", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/mod/a.txt", "a");
+
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("mod", "/mod/");
+
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+
+    await fs.writeFile("/mod/a.txt", "b");
+    await watcher.handleFileChange("/mod/./a.txt");
+
+    expect(changes).to.deep.equal(["mod"]);
+  });
+});

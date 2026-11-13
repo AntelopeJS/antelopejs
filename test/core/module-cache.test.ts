@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as fsPromises from "node:fs/promises";
+import path from "node:path";
 
 import { ModuleCache } from "../../src/core/modules";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
@@ -39,7 +40,7 @@ describe("ModuleCache", () => {
 
     const folder = await cache.getFolder("mod");
 
-    expect(folder).to.equal("/cache/mod");
+    expect(folder).to.equal(path.join("/cache", "mod"));
     expect(await fs.exists("/cache/mod/file.txt")).to.equal(false);
     expect(await fs.exists("/cache/mod")).to.equal(true);
   });
@@ -53,7 +54,7 @@ describe("ModuleCache", () => {
     const dest = await cache.transfer("/tmp/src", "mod");
     await cache.commitVersion("mod", "1.0.0");
 
-    expect(dest).to.equal("/cache/mod");
+    expect(dest).to.equal(path.join("/cache", "mod"));
     expect(await fs.exists("/tmp/src")).to.equal(false);
     expect(await fs.readFileString("/cache/mod/file.txt")).to.equal("hello");
     expect(cache.hasVersion("mod", "^1.0.0")).to.equal(true);

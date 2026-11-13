@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -20,6 +21,8 @@ import { BuildModuleSetChangedError } from "../../../../../src/core/runtime";
 import { collectStderr } from "../../../../helpers/capture-output";
 import { expectProjectNotFound } from "../../../../helpers/cli-error";
 import { buildArtifact } from "../../fixtures";
+
+const PROJECT_FOLDER = path.resolve("/tmp/project");
 
 const PROJECT_WITH_PRODUCTION: AntelopeConfig = {
   name: "project",
@@ -81,7 +84,7 @@ const PROJECT_WITH_PRODUCTION: AntelopeConfig = {
 
         expect(
           buildStub.calledWith(
-            "/tmp/project",
+            PROJECT_FOLDER,
             "production",
             sinon.match.object,
           ),
@@ -89,11 +92,15 @@ const PROJECT_WITH_PRODUCTION: AntelopeConfig = {
         expect(summaryStub.calledOnce).to.equal(true);
         expect(summaryStub.firstCall.args[0]).to.deep.include({
           headline: "Built 2 modules",
-          artifact: "/tmp/project/.antelope/build/build.json",
+          artifact: path.join(
+            PROJECT_FOLDER,
+            ".antelope",
+            "build",
+            "build.json",
+          ),
           nextSteps: [
             {
-              command:
-                "ajs project start --project /tmp/project --env production",
+              command: `ajs project start --project ${PROJECT_FOLDER} --env production`,
               description: "start the project from this build",
             },
           ],
@@ -125,7 +132,7 @@ const PROJECT_WITH_PRODUCTION: AntelopeConfig = {
         ]);
 
         expect(startStub.called).to.equal(true);
-        expect(startStub.firstCall.args[0]).to.equal("/tmp/project");
+        expect(startStub.firstCall.args[0]).to.equal(PROJECT_FOLDER);
         expect(startStub.firstCall.args[1]).to.equal("production");
         expect(startStub.firstCall.args[2]).to.deep.equal({
           concurrency: 3,

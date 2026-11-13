@@ -5,6 +5,7 @@ import {
   RegisterDevServer,
 } from "@antelopejs/interface-core/runtime";
 import { expect } from "chai";
+import path from "node:path";
 import { resetProxy } from "../helpers/interface-proxy";
 
 import {
@@ -192,7 +193,7 @@ async function expectRegistry(fs: InMemoryFileSystem) {
 
         expect(await GetRuntimeInfo()).to.deep.equal({
           dev: true,
-          projectPath: PROJECT_PATH,
+          projectPath: path.resolve(PROJECT_PATH),
           env: "default",
         });
 
@@ -240,7 +241,7 @@ async function expectRegistry(fs: InMemoryFileSystem) {
 
         expect(await GetRuntimeInfo()).to.deep.equal({
           dev: false,
-          projectPath: PROJECT_PATH,
+          projectPath: path.resolve(PROJECT_PATH),
           env: "production",
         });
 

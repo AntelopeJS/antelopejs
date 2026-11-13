@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -100,7 +101,7 @@ describe("project modules behavior: update-versions", () => {
       headline: "1 module updated in antelope.config.ts",
       nextSteps: [
         {
-          command: "ajs project dev --project /tmp/project",
+          command: `ajs project dev --project ${path.resolve("/tmp/project")}`,
           description: "run the project with the new versions",
         },
       ],

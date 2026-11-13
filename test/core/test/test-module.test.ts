@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 import { ConfigLoader } from "../../../src/core/config";
 import { testModuleModule as testModule } from "../../../src/core/test";
@@ -161,7 +162,7 @@ describe("test-module", () => {
       await testModule.loadTestConfig("/module", fs);
 
       expect(loadStub.firstCall.args[2]).to.equal(
-        "/module/antelope.test.config.ts",
+        path.join("/module", "antelope.test.config.ts"),
       );
     });
   });

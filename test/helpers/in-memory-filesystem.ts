@@ -10,11 +10,15 @@ interface MemoryNode {
   children?: Map<string, MemoryNode>;
 }
 
+function pathParts(filePath: string): string[] {
+  return path.resolve(path.sep, filePath).split(/[\\/]/).filter(Boolean);
+}
+
 export class InMemoryFileSystem implements IFileSystem {
   private root: MemoryNode = { type: "directory", children: new Map() };
 
   private getNode(filePath: string): MemoryNode | undefined {
-    const parts = filePath.split("/").filter(Boolean);
+    const parts = pathParts(filePath);
     let current = this.root;
 
     for (const part of parts) {
@@ -34,7 +38,7 @@ export class InMemoryFileSystem implements IFileSystem {
   private getParent(
     filePath: string,
   ): { parent: MemoryNode; name: string } | undefined {
-    const parts = filePath.split("/").filter(Boolean);
+    const parts = pathParts(filePath);
     const name = parts.pop();
     if (!name) {
       return undefined;
@@ -75,7 +79,7 @@ export class InMemoryFileSystem implements IFileSystem {
     filePath: string,
     data: Parameters<IFileSystem["writeFile"]>[1],
   ): Promise<void> {
-    const parts = filePath.split("/").filter(Boolean);
+    const parts = pathParts(filePath);
     const fileName = parts.pop();
     if (!fileName) {
       throw new Error("Invalid path");
@@ -129,7 +133,7 @@ export class InMemoryFileSystem implements IFileSystem {
     dirPath: string,
     options?: { recursive?: boolean },
   ): Promise<void> {
-    const parts = dirPath.split("/").filter(Boolean);
+    const parts = pathParts(dirPath);
     let current = this.root;
 
     for (let index = 0; index < parts.length; index++) {

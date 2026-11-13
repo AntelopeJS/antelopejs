@@ -6,6 +6,7 @@ import type {
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { ExecError } from "../../../src/core/output";
 
 import {
@@ -157,10 +158,10 @@ function createExecSpy() {
           `${a.cwd}:${a.command}`.localeCompare(`${b.cwd}:${b.command}`),
         );
         const expectedCalls = [
-          { command: "pnpm install", cwd: "/mods/a" },
-          { command: "pnpm build", cwd: "/mods/a" },
-          { command: "pnpm install", cwd: "/mods/b" },
-          { command: "pnpm build", cwd: "/mods/b" },
+          { command: "pnpm install", cwd: path.join("/mods", "a") },
+          { command: "pnpm build", cwd: path.join("/mods", "a") },
+          { command: "pnpm install", cwd: path.join("/mods", "b") },
+          { command: "pnpm build", cwd: path.join("/mods", "b") },
         ].sort((a, b) =>
           `${a.cwd}:${a.command}`.localeCompare(`${b.cwd}:${b.command}`),
         );

@@ -19,6 +19,9 @@ jobs:
       docs-typescript-project: docs/tsconfig.json
       renovate-sync: false
       test-job: true
+      windows: true
+      extra-commands: pnpm run test:cli-smoke
+      extra-commands-job: true
     permissions:
       contents: read
 

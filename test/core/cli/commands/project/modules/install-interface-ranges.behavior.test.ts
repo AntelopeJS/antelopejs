@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -97,7 +98,7 @@ describe("project modules install behavior: checks interface ranges after adding
       preloadedCopies: [],
     });
     expect(fixture.rangeCheck.firstCall.args).to.deep.equal([
-      "/tmp/project",
+      path.resolve("/tmp/project"),
       "default",
       { installCommands: false },
     ]);
@@ -164,7 +165,9 @@ describe("project modules install behavior: checks interface ranges after adding
 
     expect(
       fixture.rangeCheck.getCalls().map((call) => call.args),
-    ).to.deep.equal([["/tmp/project", "prod", { installCommands: false }]]);
+    ).to.deep.equal([
+      [path.resolve("/tmp/project"), "prod", { installCommands: false }],
+    ]);
     expect(output.summary.firstCall.args[0]).to.deep.include({
       headline: "All interfaces are implemented",
     });

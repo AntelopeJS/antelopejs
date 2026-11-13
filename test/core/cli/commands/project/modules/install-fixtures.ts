@@ -3,7 +3,7 @@ import type {
   AntelopeModuleConfig,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import sinon from "sinon";
@@ -70,7 +70,7 @@ export function installFixture() {
   const ifaceName2 = "test-iface2";
 
   before(async () => {
-    tempModuleDir = path.join(tmpdir(), `ajs-install-test-${Date.now()}`);
+    tempModuleDir = await mkdtemp(path.join(tmpdir(), "ajs-install-test-"));
     for (const name of [ifaceName, ifaceName2]) {
       const pkgDir = path.join(tempModuleDir, "node_modules", name);
       await mkdir(pkgDir, { recursive: true });

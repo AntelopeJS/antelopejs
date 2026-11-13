@@ -200,7 +200,7 @@ function readRecordedConfig() {
         expect(thrown).to.be.instanceOf(Error);
         assert.ok(thrown instanceof Error);
         expect(thrown.message).to.include(
-          "No build found at .antelope/build/build.json",
+          `No build found at ${path.join(".antelope", "build", "build.json")}`,
         );
       });
 

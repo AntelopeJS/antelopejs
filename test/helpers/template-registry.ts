@@ -13,6 +13,7 @@ const ENVIRONMENT_KEYS = [
   "USERPROFILE",
   "ANTELOPEJS_GIT",
   "npm_config_offline",
+  "GIT_CONFIG_NOSYSTEM",
 ];
 const GIT_IDENTITY = [
   "-c",
@@ -80,7 +81,9 @@ export function buildRegistry(
 
 /**
  * Gives the test its own home folder whose CLI setting points at a missing
- * registry, and returns the function that puts the environment back.
+ * registry, and returns the function that puts the environment back. Git
+ * reads no system configuration either, so a host setting such as Git for
+ * Windows' `core.autocrlf=true` does not rewrite the files a test checks out.
  */
 export function isolateHome(root: string): () => void {
   const saved = new Map(ENVIRONMENT_KEYS.map((key) => [key, process.env[key]]));
@@ -94,6 +97,7 @@ export function isolateHome(root: string): () => void {
   process.env.USERPROFILE = home;
   delete process.env.ANTELOPEJS_GIT;
   process.env.npm_config_offline = "true";
+  process.env.GIT_CONFIG_NOSYSTEM = "1";
   return () => {
     for (const [key, value] of saved) {
       if (value === undefined) {

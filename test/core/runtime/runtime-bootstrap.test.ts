@@ -381,7 +381,7 @@ function installedBy(register: () => void): BootstrapHandlers {
         );
 
         expect(normalized.cacheFolder).to.equal("/var/cache");
-        expect(normalized.projectFolder).to.equal("/project");
+        expect(normalized.projectFolder).to.equal(path.resolve("/project"));
         expect(normalized.modules).to.deep.equal({});
       });
 

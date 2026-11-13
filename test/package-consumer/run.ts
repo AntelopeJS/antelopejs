@@ -80,8 +80,17 @@ function packCore(): string {
   return path.join(packFolder, tarball);
 }
 
+function readFromTarball(tarball: string, args: string[]): string {
+  const [flags, ...members] = args;
+  return run(
+    "tar",
+    [flags, path.basename(tarball), ...members],
+    path.dirname(tarball),
+  );
+}
+
 function inspectManifest(tarball: string): void {
-  const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
+  const content = readFromTarball(tarball, ["-xOf", "package/package.json"]);
   const manifest: unknown = JSON.parse(content);
   const dependencies = isObject(manifest) ? manifest.dependencies : undefined;
   const interfaceCoreRange = isObject(dependencies)
@@ -100,14 +109,14 @@ function inspectManifest(tarball: string): void {
 }
 
 function inspectSkills(tarball: string): void {
-  const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
+  const content = readFromTarball(tarball, ["-xOf", "package/package.json"]);
   const manifest: unknown = JSON.parse(content);
   const antelopeJs = isObject(manifest) ? manifest.antelopeJs : undefined;
   const skills = isObject(antelopeJs) ? antelopeJs.skills : undefined;
   if (!Array.isArray(skills) || !skills.includes(`./${skillsFolder}`)) {
     throw new Error("Packed core does not declare its agent skills.");
   }
-  const packedFiles = run("tar", ["-tf", tarball], root).split(/\r?\n/);
+  const packedFiles = readFromTarball(tarball, ["-tf"]).split(/\r?\n/);
   const missing = listDirectory(path.join(root, skillsFolder))
     .map((skill) => `package/${skillsFolder}/${skill}/${skillFile}`)
     .filter((file) => !packedFiles.includes(file));

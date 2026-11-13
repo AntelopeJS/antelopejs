@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import { commonModule as common } from "../../../../../src/cli";
@@ -317,7 +318,7 @@ describe("project logging set with an environment", () => {
       "Saved the logging configuration of test-project (staging)",
     );
     expect(stubs.feedback()).to.include(
-      "ajs project logging show --project /tmp/project --env staging",
+      `ajs project logging show --project ${path.resolve("/tmp/project")} --env staging`,
     );
   });
 
