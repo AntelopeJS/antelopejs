@@ -142,16 +142,15 @@ export function translateExecError(error: ExecError): CliProblem | undefined {
  * an unreachable registry, a git clone that was refused, incompatible
  * interface packages) into a problem that names the cause and the fix. Returns `undefined` for anything else.
  */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- translates a thrown value; JS can throw any value
-export function translateFailure(error: unknown): CliProblem | undefined {
-  if (error instanceof ExecError) {
-    return translateExecError(error);
+export function translateFailure(cause: unknown): CliProblem | undefined {
+  if (cause instanceof ExecError) {
+    return translateExecError(cause);
   }
-  if (error instanceof InterfaceResolutionError) {
-    return describeInterfaceConflicts(error);
+  if (cause instanceof InterfaceResolutionError) {
+    return describeInterfaceConflicts(cause);
   }
-  if (isSystemError(error)) {
-    return SYSTEM_ERROR_TRANSLATIONS.get(error.code ?? "")?.(error);
+  if (isSystemError(cause)) {
+    return SYSTEM_ERROR_TRANSLATIONS.get(cause.code ?? "")?.(cause);
   }
   return undefined;
 }

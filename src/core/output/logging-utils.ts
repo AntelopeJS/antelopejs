@@ -77,15 +77,38 @@ export function isTerminalOutput(): boolean {
   return process.stdout.isTTY && process.stderr.isTTY;
 }
 
+const ESCAPE = "\u001b";
+const SGR_PARAMETERS = "0123456789;";
+
+/**
+ * The index just past the SGR sequence that starts at `start`: `ESC [`, then
+ * digits and semicolons, then `m`. `undefined` when none starts there.
+ */
+function sgrSequenceEnd(str: string, start: number): number | undefined {
+  if (str[start + 1] !== "[") return undefined;
+  let index = start + 2;
+  while (index < str.length && SGR_PARAMETERS.includes(str[index])) index++;
+  return str[index] === "m" ? index + 1 : undefined;
+}
+
 /**
  * Remove ANSI color codes from a string to get its real length
  * @param str - The string to strip ANSI codes from
  * @returns The string without ANSI codes
  */
 export function stripAnsiCodes(str: string): string {
-  // oxlint-disable-next-line eslint/no-control-regex -- an ANSI stripper must match the ESC control character
-  const ansiRegex = /\u001b\[[0-9;]*m/g;
-  return str.replace(ansiRegex, "");
+  let stripped = "";
+  let kept = 0;
+  let escape = str.indexOf(ESCAPE);
+  while (escape !== -1) {
+    const end = sgrSequenceEnd(str, escape);
+    if (end !== undefined) {
+      stripped += str.slice(kept, escape);
+      kept = end;
+    }
+    escape = str.indexOf(ESCAPE, end ?? escape + 1);
+  }
+  return stripped + str.slice(kept);
 }
 
 const WIDE_RANGES = [

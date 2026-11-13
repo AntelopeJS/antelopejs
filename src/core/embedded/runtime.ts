@@ -158,8 +158,10 @@ export class AntelopeRuntime {
     request: Request,
   ): EmbeddedInterfaces[Request] {
     requireProvided(this.requireStarted(), request);
-    // oxlint-disable-next-line typescript/no-unsafe-return -- Node require of the host-declared interface package returns any
-    return this.hostModule().runInContext(() => require(request));
+    return this.hostModule().runInContext(
+      // SAFETY: use publishes the host's EmbeddedInterfaces declaration as its contract, and requireProvided just found the package among the interface packages, provided or stubbed; no run-time check can establish a type the host declared.
+      () => require(request) as EmbeddedInterfaces[Request],
+    );
   }
 
   /**

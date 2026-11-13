@@ -9,6 +9,7 @@ covers:
   - src/cli/options.ts
   - src/core/cli/**
   - src/core/output/**
+  - src/lazy-requires.d.ts
 docs:
   - docs/5.cli/1.introduction.md
   - docs/5.cli/6.cheat-sheet.md

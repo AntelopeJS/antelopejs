@@ -113,21 +113,20 @@ function verboseHint(
  * show more than what is printed.
  */
 export function describeFailure(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- describes a thrown value; JS can throw any value, and non-Error throws keep their String() title
-  error: unknown,
+  cause: unknown,
   verbose: boolean = isVerboseRun(),
   translate?: FailureTranslator,
 ): CliProblem {
   const problem =
-    error instanceof CliError
-      ? error.problem
-      : (translate?.(error) ??
-        translateFailure(error) ??
-        (error instanceof Error
-          ? headlineProblem(error)
-          : { title: String(error) }));
+    cause instanceof CliError
+      ? cause.problem
+      : (translate?.(cause) ??
+        translateFailure(cause) ??
+        (cause instanceof Error
+          ? headlineProblem(cause)
+          : { title: String(cause) }));
   const chain: unknown[] = [];
-  const pending: unknown[] = [error];
+  const pending: unknown[] = [cause];
   while (pending.length > 0) {
     const current = pending.shift();
     if (current === undefined || chain.includes(current)) {
@@ -156,13 +155,12 @@ export function describeFailure(
  * code it calls for.
  */
 export function reportFailure(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- describes a thrown value; JS can throw any value, and non-Error throws keep their String() title
-  error: unknown,
+  cause: unknown,
   ui: Ui = getProcessUi(),
   verbose: boolean = isVerboseRun(),
   translate?: FailureTranslator,
 ): number {
-  const problem = describeFailure(error, verbose, translate);
+  const problem = describeFailure(cause, verbose, translate);
   ui.problem(problem);
   return problem.exitCode ?? FAILURE_EXIT_CODE;
 }

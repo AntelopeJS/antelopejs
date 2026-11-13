@@ -1,5 +1,6 @@
 import type { AddHelpTextContext, Command, Help } from "commander";
 
+import { isFunction, isObject } from "../../utils";
 import { wrapText } from "./format";
 
 export interface HelpExample {
@@ -81,6 +82,10 @@ export function formatHelpItem(
   ];
 }
 
+function hasItemFormatter(value: unknown): value is Pick<Help, "formatItem"> {
+  return isObject(value) && isFunction(value.formatItem);
+}
+
 function formatCommanderItem(
   this: Help,
   term: string,
@@ -91,9 +96,8 @@ function formatCommanderItem(
   const width = helper.helpWidth ?? MAX_HELP_WIDTH;
   const isWideEnough =
     width - termWidth - ITEM_MARGIN_WIDTH >= MIN_DESCRIPTION_WIDTH;
-  if (!description || isWideEnough) {
-    // oxlint-disable-next-line typescript/no-unsafe-assignment -- Object.getPrototypeOf on commander Help returns any; a value import of commander would load it on the light output entry
-    const commanderHelp: Help = Object.getPrototypeOf(this);
+  const commanderHelp = Reflect.getPrototypeOf(this);
+  if ((!description || isWideEnough) && hasItemFormatter(commanderHelp)) {
     return commanderHelp.formatItem.call(
       this,
       term,

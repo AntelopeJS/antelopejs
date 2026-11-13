@@ -1,5 +1,6 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
+import inly = require("inly");
 import * as path from "node:path";
 import { maxSatisfying, satisfies, valid, validRange } from "semver";
 
@@ -31,14 +32,6 @@ type VersionFetcher = (
   pkg: string,
   spec: string,
 ) => Promise<string | undefined>;
-
-interface InlyExtraction {
-  on(event: "error", listener: (error: Error) => void): void;
-  on(event: "end", listener: () => void): void;
-}
-
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- inly is an untyped CommonJS module and require returns any
-const inly: (from: string, to: string) => InlyExtraction = require("inly");
 
 const Logger = new Logging.Channel("loader.package");
 

@@ -7,6 +7,7 @@ import {
 } from "@antelopejs/interface-core/modules";
 
 import { type ModuleCallbacks, ModuleState } from "../../types";
+import { isFunction, isObjectOrNull } from "../../utils";
 import {
   ModuleDiagnostics,
   type ModuleDiagnosticsContext,
@@ -21,11 +22,100 @@ const Logger = new Logging.Channel("loader.module");
 const MODULE_OWNER_SEPARATOR = "#";
 let nextModuleOwner = 1;
 
+type LifecycleCallback<Name extends keyof ModuleCallbacks> = NonNullable<
+  ModuleCallbacks[Name]
+>;
+
+/**
+ * What the default loader's `import()` resolves a module main to: an ES
+ * module namespace, a CommonJS module's exports, or, when they are marked
+ * `__esModule`, the exports themselves, a function included. Its lifecycle
+ * exports hold whatever the module wrote.
+ */
+interface ModuleMain {
+  readonly construct?: unknown;
+  readonly destroy?: unknown;
+  readonly provide?: unknown;
+  readonly start?: unknown;
+  readonly stop?: unknown;
+}
+
+function isModuleMain(value: unknown): value is ModuleMain {
+  return (isObjectOrNull(value) && value !== null) || isFunction(value);
+}
+
+interface LifecycleCallSite {
+  readonly skips: "nullish" | "falsy";
+  readonly callee: string;
+}
+
+/**
+ * How `ModuleLifecycle` calls each export of a module main: `start?.()`
+ * skips a nullish export, `if (stop)` skips a falsy one, and calling any
+ * other export that is not a function throws the TypeError V8 words after
+ * the call expression.
+ */
+const LIFECYCLE_CALL_SITES = {
+  construct: { skips: "nullish", callee: "this.callbacks?.construct" },
+  destroy: { skips: "nullish", callee: "this.callbacks?.destroy" },
+  provide: { skips: "nullish", callee: "this.callbacks?.provide" },
+  start: { skips: "nullish", callee: "this.callbacks?.start" },
+  stop: { skips: "falsy", callee: "this.callbacks.stop" },
+} satisfies Record<keyof ModuleCallbacks, LifecycleCallSite>;
+
+function notAFunction(callee: string): () => never {
+  return () => {
+    throw new TypeError(`${callee} is not a function`);
+  };
+}
+
+/**
+ * Reads a module main's lifecycle export each time the lifecycle reads the
+ * callback, and calls it on the module main, as the lifecycle did when it
+ * held the module main itself.
+ */
+function lifecycleCallback<Name extends keyof ModuleCallbacks>(
+  main: ModuleMain,
+  name: Name,
+): LifecycleCallback<Name> | undefined {
+  const { skips, callee } = LIFECYCLE_CALL_SITES[name];
+  const value = main[name];
+  if (skips === "falsy" ? !value : value === undefined || value === null) {
+    return undefined;
+  }
+  if (!isFunction(value)) {
+    return notAFunction(callee);
+  }
+  // SAFETY: a module main's export under a lifecycle name is that callback by the module contract; like the lifecycle's direct call before, the core checks only that it is callable, and it awaits the result; for provide, ConfigVarStore.record decodes it, while Module.provide returns it to its caller unchecked, as it did before.
+  return value.bind(main) as LifecycleCallback<Name>;
+}
+
+function moduleMainCallbacks(main: ModuleMain): ModuleCallbacks {
+  return {
+    get construct() {
+      return lifecycleCallback(main, "construct");
+    },
+    get destroy() {
+      return lifecycleCallback(main, "destroy");
+    },
+    get provide() {
+      return lifecycleCallback(main, "provide");
+    },
+    get start() {
+      return lifecycleCallback(main, "start");
+    },
+    get stop() {
+      return lifecycleCallback(main, "stop");
+    },
+  } satisfies Record<
+    keyof ModuleCallbacks,
+    LifecycleCallback<keyof ModuleCallbacks> | undefined
+  >;
+}
+
 async function defaultLoader(mainPath: string): Promise<ModuleCallbacks> {
-  // oxlint-disable-next-line typescript/no-unsafe-assignment -- import() of a module main, which TS types as any
-  const mod = await import(mainPath);
-  // oxlint-disable-next-line typescript/no-unsafe-return -- import() of a module main, which TS types as any
-  return mod;
+  const main: unknown = await import(mainPath);
+  return isModuleMain(main) ? moduleMainCallbacks(main) : {};
 }
 
 export class Module {

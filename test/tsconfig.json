@@ -11,7 +11,7 @@
       "@antelopejs/core/cli": ["../src/core/cli/public.ts"]
     }
   },
-  "include": ["./**/*.ts", "./**/*.cjs", "./**/*.mjs"],
+  "include": ["./**/*.ts", "./**/*.cjs", "./**/*.mjs", "../src/**/*.d.ts"],
   "ts-node": {
     "transpileOnly": true,
     "compilerOptions": {

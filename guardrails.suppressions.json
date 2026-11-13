@@ -1,18 +1,18 @@
 {
   "rules": {
-    "anti-slop/no-known-value-widening": 2,
-    "anti-slop/no-runtime-typeof": 1,
-    "anti-slop/no-unknown-parameters": 34,
-    "anti-slop/no-unknown-returns": 10,
+    "anti-slop/no-known-value-widening": 0,
+    "anti-slop/no-runtime-typeof": 0,
+    "anti-slop/no-unknown-parameters": 26,
+    "anti-slop/no-unknown-returns": 8,
     "anti-slop/no-unsafe-dictionary-type": 9,
     "anti-slop/require-safety-comment-for-type-assertion": 4,
-    "eslint/no-control-regex": 1,
+    "eslint/no-control-regex": 0,
     "import/no-cycle": 0,
     "import/no-self-import": 0,
     "typescript/no-base-to-string": 0,
-    "typescript/no-redundant-type-constituents": 2,
-    "typescript/no-unsafe-assignment": 3,
-    "typescript/no-unsafe-return": 4
+    "typescript/no-redundant-type-constituents": 0,
+    "typescript/no-unsafe-assignment": 0,
+    "typescript/no-unsafe-return": 0
   },
   "tsExpectError": 0,
   "tsIgnore": 0,

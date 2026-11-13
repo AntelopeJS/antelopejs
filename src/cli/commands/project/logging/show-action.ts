@@ -40,7 +40,7 @@ function describeModuleTracking(logging: AntelopeLogging): string {
 }
 
 function levelLabel(level: string): string {
-  return levelNames[Number(level)] ?? level;
+  return levelNames.get(Number(level)) ?? level;
 }
 
 function describeLevelFormats(logging: AntelopeLogging): string {

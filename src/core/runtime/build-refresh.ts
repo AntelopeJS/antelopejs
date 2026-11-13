@@ -49,14 +49,13 @@ export class BuildModuleSetChangedError extends Error {
  * the errors a failed launch aggregates.
  */
 export function findBuildModuleSetChange(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- searches a thrown value and its aggregate members; JS can throw any value
-  error: unknown,
+  cause: unknown,
 ): BuildModuleSetChangedError | undefined {
-  if (error instanceof BuildModuleSetChangedError) {
-    return error;
+  if (cause instanceof BuildModuleSetChangedError) {
+    return cause;
   }
-  if (error instanceof AggregateError) {
-    return error.errors
+  if (cause instanceof AggregateError) {
+    return cause.errors
       .map(findBuildModuleSetChange)
       .find((change) => change !== undefined);
   }
