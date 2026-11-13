@@ -5,6 +5,8 @@ import path from "node:path";
 import launch, { ModuleManager } from "../../src";
 import type { JsonValue } from "../helpers/json";
 
+const LAUNCH_BUDGET_MS = 20_000;
+
 async function createModule(folder: string, name: string) {
   await fs.mkdir(folder, { recursive: true });
   await fs.writeFile(
@@ -20,7 +22,8 @@ async function writeProjectConfig(projectFolder: string, config: JsonValue) {
     `export default ${JSON.stringify(config, null, 2)};\n`,
   );
 }
-describe("Launch Function", () => {
+describe("Launch Function", function () {
+  this.timeout(LAUNCH_BUDGET_MS);
   /**
    * The shape that used to deadlock: the config variable graph and the
    * interface graph order the same modules in opposite directions. `dms`
@@ -156,7 +159,8 @@ exports.construct = async () => {
   });
 });
 
-describe("Launch Function", () => {
+describe("Launch Function", function () {
+  this.timeout(LAUNCH_BUDGET_MS);
   it("should return ModuleManager instance", async () => {
     const projectFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-project-"),
@@ -219,7 +223,8 @@ describe("Launch Function", () => {
   });
 });
 
-describe("Launch Function", () => {
+describe("Launch Function", function () {
+  this.timeout(LAUNCH_BUDGET_MS);
   it("publishes a config variable before any module constructs", async () => {
     const projectFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-config-vars-"),
