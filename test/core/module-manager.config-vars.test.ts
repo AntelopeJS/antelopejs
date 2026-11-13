@@ -7,17 +7,17 @@ import sinon from "sinon";
 import { isObject } from "../../src/utils";
 
 import { ModuleManager } from "../../src/core/modules";
-import { ModuleState } from "../../src/types";
+import { type ModuleCallbacks, ModuleState } from "../../src/types";
 
 interface FakeModuleOptions {
   id: string;
   declared?: string[];
   implements?: string[];
   config?: unknown;
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fake module callback receiving module config, user data typed unknown by the published ModuleCallbacks
-  provide?: (config: unknown) => Promise<ConfigVars | void>;
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fake module callback receiving module config, user data typed unknown by the published ModuleCallbacks
-  construct?: (config: unknown) => Promise<void>;
+  provide?: ModuleCallbacks["provide"];
+  construct?: (
+    ...args: Parameters<NonNullable<ModuleCallbacks["construct"]>>
+  ) => Promise<ConfigVars | void>;
 }
 
 interface FakeModule {
@@ -64,13 +64,11 @@ function addModule(
         antelopeJs: { configVars: options.declared ?? [] },
       },
     }),
-    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fake module callback receiving module config, user data typed unknown by the published ModuleCallbacks
-    provide: async (config: unknown) => {
+    provide: async (config) => {
       module.providedWith = config;
       return options.provide?.(config);
     },
-    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fake module callback receiving module config, user data typed unknown by the published ModuleCallbacks
-    construct: async (config: unknown) => {
+    construct: async (config) => {
       module.received = config;
       module.constructed = true;
       module.state = ModuleState.Constructed;
@@ -301,7 +299,6 @@ async function constructAllErrors(manager: ModuleManager): Promise<unknown[]> {
         addModule(manager, {
           id: "api",
           declared: ["API_PORT"],
-          // @ts-expect-error A legacy construct hook returns a value; this test verifies it is not published.
           construct: async () => ({ API_PORT: 5010 }),
         });
         const dms = addModule(manager, {

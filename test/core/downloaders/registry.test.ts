@@ -1,4 +1,5 @@
 import type {
+  ModuleSource,
   ModuleSourceGit,
   ModuleSourceLocal,
 } from "@antelopejs/interface-core/config";
@@ -8,9 +9,16 @@ import * as path from "node:path";
 import sinon from "sinon";
 import { manifestFixture } from "../../helpers/module-fixtures";
 
-import { DownloaderRegistry } from "../../../src/core/downloaders";
+import {
+  DownloaderRegistry,
+  type ModuleLoader,
+} from "../../../src/core/downloaders";
 import { ModuleCache } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+
+type RegisterParameters<Type extends ModuleSource["type"]> = Parameters<
+  typeof DownloaderRegistry.prototype.register<Type>
+>;
 
 describe("DownloaderRegistry", () => {
   it("should register and load a downloader", async () => {
@@ -112,19 +120,19 @@ describe("DownloaderRegistry", () => {
 
   it("registers a loader only under a declared source type, with that type's fields", () => {
     const registry = new DownloaderRegistry();
-    // @ts-expect-error ModuleSource has no "custom" type, so no configured module could reach this loader.
-    registry.register("custom", "id", async () => []);
-    // @ts-expect-error A git source has no path field to identify its module by.
-    registry.register("git", "path", async () => []);
-    registry.register(
-      "local",
-      // @ts-expect-error A local loader cannot take a git source.
-      "path",
-      async (_cache, _source: ModuleSourceGit) => [],
-    );
+    const pins: [
+      "custom" extends Parameters<DownloaderRegistry["register"]>[0]
+        ? never
+        : true,
+      "path" extends RegisterParameters<"git">[1] ? never : true,
+      ModuleLoader<ModuleSourceGit> extends RegisterParameters<"local">[2]
+        ? never
+        : true,
+    ] = [true, true, true];
     registry.register("git", "remote", async () => []);
 
     const source: ModuleSourceGit = { type: "git", remote: "mod" };
+    void pins;
     expect(registry.getLoaderIdentifier(source)).to.equal("mod");
   });
 

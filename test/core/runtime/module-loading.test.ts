@@ -52,15 +52,17 @@ describe("runtime module-loading", () => {
     manager.getLoadedModuleEntry.returns(undefined);
     await moduleInterfaceBeta.ReloadModule("unknown");
 
-    manager.getModuleEntry.returns({
-      module: moduleFixture({
-        // @ts-expect-error Exercises GetModuleInfo's fallback for an unrecognized runtime state.
-        state: "unexpected",
-        manifest: manifestFixture({
-          source: { type: "local" },
-          folder: "/mods/alpha",
-        }),
+    const unrecognizedStateModule = moduleFixture({
+      manifest: manifestFixture({
+        source: { type: "local" },
+        folder: "/mods/alpha",
       }),
+    });
+    Object.defineProperty(unrecognizedStateModule, "state", {
+      value: "unexpected",
+    });
+    manager.getModuleEntry.returns({
+      module: unrecognizedStateModule,
       config: {
         config: {},
       },

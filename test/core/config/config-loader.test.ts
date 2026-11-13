@@ -24,7 +24,11 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
   let loadTsConfigFileStub: sinon.SinonStub;
 
-  async function mockTsConfig(config: AntelopeConfig): Promise<void> {
+  async function mockTsConfig(
+    config: Omit<AntelopeConfig, "cacheFolder"> & {
+      cacheFolder?: string | null;
+    },
+  ): Promise<void> {
     await fs.writeFile("/project/antelope.config.ts", "");
     loadTsConfigFileStub.resolves(config);
   }
@@ -184,7 +188,6 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         it("defaults cacheFolder when null", async () => {
           await mockTsConfig({
             name: "my-app",
-            // @ts-expect-error A null cache folder exercises the existing defaulting behavior.
             cacheFolder: null,
             modules: {},
           });

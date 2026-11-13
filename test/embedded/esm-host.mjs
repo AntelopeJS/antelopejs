@@ -57,7 +57,7 @@ await runtime.start();
 const greeter = runtime.use("iface-pkg");
 check("use() returns the interface object", hasGreet(greeter.Greeter), true);
 
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- an ESM JS host fixture; values from the runtime are untyped in JS
+/** @type {unknown} */
 const greeting = await Promise.race([
   greeter.Greeter.greet("esm"),
   new Promise((_, reject) => setTimeout(() => reject(new Error("HANG")), 5000)),

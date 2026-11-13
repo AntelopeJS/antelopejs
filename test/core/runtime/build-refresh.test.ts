@@ -34,8 +34,7 @@ const OVERRIDE_VARIABLE = "ANTELOPEJS_TEST_DATABASE_HOST";
 function createEntry(
   name: string,
   source: (ModuleSourceLocal | ModuleSourcePackage) & { id: string },
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fixture field mirroring BuildModuleEntry.config, user config data
-  config: unknown,
+  config: BuildModuleEntry["config"],
 ): BuildModuleEntry {
   const folder = `/project/.antelope/cache/${name}`;
   return {
