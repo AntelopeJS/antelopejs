@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.23.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.22.0...v1.23.0)
+
+### 💅 Refactors
+
+- **core:** ⚠️  Type the published translator and stream write, and decode test setup overrides ([#460](https://github.com/AntelopeJS/antelopejs/pull/460))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of core 1.22.0 ([#459](https://github.com/AntelopeJS/antelopejs/pull/459))
+
+#### ⚠️ Breaking Changes
+
+- **core:** ⚠️  Type the published translator and stream write, and decode test setup overrides ([#460](https://github.com/AntelopeJS/antelopejs/pull/460))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.22.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.3...v1.22.0)
