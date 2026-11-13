@@ -2,6 +2,28 @@
 
 Each section is the upgrade-notes block of one release. Paste it into the GitHub release body and under the release's heading in `CHANGELOG.md`. The changelog generator writes only commit subjects, and several of these changes have no `!` in theirs.
 
+## v1.22.0
+
+1.22.0 is a minor release. It raises the `@antelopejs/interface-core` requirement, and that change carries the compile breaks below. Ranges such as `<2` accept it.
+
+### Requirements
+
+- **`@antelopejs/interface-core` `>=0.5.1 <0.6.0`** (was `>=0.4.0 <0.5.0`) ([#458](https://github.com/AntelopeJS/antelopejs/pull/458)).
+  - When a package-manager override or resolution forces core's own copy outside that range, core refuses to load with `@antelopejs/core 1.22.0 requires @antelopejs/interface-core >=0.5.1 <0.6.0, but it loads <version>`. Drop the override or raise it to 0.5.1.
+  - Raise the interface-core range of your modules and interface packages to `>=0.5.1 <0.6.0`, so they share core's copy.
+- interface-core 0.5.1 was published on 2026-11-13. A package manager that enforces a minimum release age, such as pnpm's `minimumReleaseAge`, refuses to install it until that age has passed. Add it to the exclusions or wait.
+
+### Types from interface-core 0.5
+
+- Two type arguments no longer compile: `AsyncProxy<T, R>` fails with TS2707 and `InterfaceFunction<T, R>()` with TS2558. Both take a single type argument, the function type, and read the result type from it: `new AsyncProxy<(id: string) => Promise<User>>()`, `InterfaceFunction<(id: string) => Promise<User>>()` ([#458](https://github.com/AntelopeJS/antelopejs/pull/458)).
+- A `test.setup` hook returns `AntelopeTestOverrides`, which is `Partial<AntelopeConfig>` without `test`. A `test` section returned from `setup` no longer compiles. It never took effect: the run kept the loaded `test.setup` and `test.cleanup`.
+
+### No other API change
+
+- The other changes in this release remove lint suppressions and keep every published declaration and behaviour ([#453](https://github.com/AntelopeJS/antelopejs/pull/453), [#454](https://github.com/AntelopeJS/antelopejs/pull/454), [#455](https://github.com/AntelopeJS/antelopejs/pull/455), [#456](https://github.com/AntelopeJS/antelopejs/pull/456)). Two side effects show only in diagnostics:
+  - A module whose main exports a lifecycle callback that is not a function still fails when that phase runs, with the same message. Under `--verbose`, the stack now starts in the module loader ([#455](https://github.com/AntelopeJS/antelopejs/pull/455)).
+  - The walk that neutralizes interface proxies in module tests no longer recurses. A very deep export graph, 20,000 levels in our probe, now completes instead of overflowing the stack ([#456](https://github.com/AntelopeJS/antelopejs/pull/456)).
+
 ## v1.20.0
 
 1.20.0 is a minor release, and it carries the compile breaks below. Ranges such as `<2` accept it.
