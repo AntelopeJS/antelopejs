@@ -1,7 +1,8 @@
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-const [coreEntry, hostFolder, providerFolder, fixtureFolder] = process.argv.slice(2);
+const [coreEntry, hostFolder, greeterModule, fixtureFolder] = process.argv.slice(2);
+const [greeterId, greeterFolder] = greeterModule.split("=");
 const port = process.env.VERIFY_FIXTURE_PORT;
 const observations = {};
 
@@ -63,7 +64,7 @@ if (!exportsCreateRuntime(core)) {
 const runtime = core.createRuntime({
   projectFolder: hostFolder,
   modules: {
-    "greeter-provider": { path: providerFolder, config: { prefix: "Hello" } },
+    [greeterId]: { path: greeterFolder, config: { prefix: "Hello" } },
     "verify-http-fixture": { path: fixtureFolder },
   },
   uses: ["verify-greeter"],
