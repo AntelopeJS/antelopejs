@@ -334,3 +334,65 @@ describe("runtime module-loading: recorded module locks", () => {
     expect(reported[0]).to.include("Recorded 2 module locks");
   });
 });
+
+describe("runtime module-loading: modules sharing a package", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("starts two modules that need the same package from an empty cache", async () => {
+    sinon.stub(getProcessTasks().ui, "message");
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    const npm = fakeNpm(fs, () => "lock");
+    const commands: string[] = [];
+    const installing = new Set<string>();
+    const registry = new DownloaderRegistry();
+    registerPackageDownloader(registry, {
+      fs,
+      ...npm,
+      exec: async (command, options) => {
+        commands.push(command);
+        const cwd = options?.cwd ?? "";
+        if (command.startsWith("npm pack")) {
+          return npm.exec(command, options);
+        }
+        if (installing.has(cwd)) {
+          throw new Error(`${cwd} was replaced during its install`);
+        }
+        installing.add(cwd);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        installing.delete(cwd);
+        return npm.exec(command, options);
+      },
+    });
+    const config = loadedConfigFixture({
+      modules: {
+        first: {
+          source: { type: "package", package: "shared", version: "1.0.0" },
+        },
+        second: {
+          source: { type: "package", package: "shared", version: "1.0.0" },
+        },
+      },
+      moduleLocks: undefined,
+    });
+
+    const entries = await buildModuleConfigs(config, {
+      fs: new NodeFileSystem(),
+      cache,
+      registry,
+      projectFolder: "/project",
+      locks: new ModuleLockStore("/project", fs),
+    });
+
+    expect(entries.map(({ manifest }) => manifest.name)).to.have.members([
+      "first",
+      "second",
+    ]);
+    expect(commands.filter((c) => c.startsWith("npm pack"))).to.deep.equal([
+      'npm pack "shared@1.0.0"',
+    ]);
+  });
+});
