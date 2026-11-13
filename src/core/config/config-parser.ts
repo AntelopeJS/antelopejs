@@ -46,6 +46,26 @@ function readExportPriority(name: string, priorities: Record<string, number>) {
 }
 
 /**
+ * The list form of a module entry's `importOverrides`: a map of interface
+ * names to module names becomes one override per interface, and a missing
+ * field an empty list.
+ */
+export function expandImportOverrides(
+  importOverrides: AntelopeModuleConfig["importOverrides"],
+): ImportOverride[] {
+  if (!importOverrides) {
+    return [];
+  }
+  if (Array.isArray(importOverrides)) {
+    return importOverrides;
+  }
+  return Object.entries(importOverrides).map(([iface, src]) => ({
+    interface: iface,
+    source: src,
+  }));
+}
+
+/**
  * Reads the text an `envOverrides` variable gives the configuration path it
  * maps, or `undefined` to leave that path as configured.
  */
@@ -194,24 +214,10 @@ export class ConfigParser {
           } satisfies ModuleSourcePackage;
         }
 
-        let importOverrides: ImportOverride[] = [];
-        if (config.importOverrides) {
-          if (Array.isArray(config.importOverrides)) {
-            importOverrides = config.importOverrides;
-          } else {
-            importOverrides = Object.entries(config.importOverrides).map(
-              ([iface, src]) => ({
-                interface: iface,
-                source: src,
-              }),
-            );
-          }
-        }
-
         const expanded: ExpandedModuleConfig = {
           source: source!,
           config: config.config ?? {},
-          importOverrides,
+          importOverrides: expandImportOverrides(config.importOverrides),
           disabledExports: config.disabledExports ?? [],
         };
         result[name] = expanded;

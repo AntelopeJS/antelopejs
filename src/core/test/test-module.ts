@@ -1,14 +1,31 @@
 import type {
   AntelopeConfig,
+  AntelopeModuleConfig,
   AntelopeTestConfig,
+  AntelopeTestOverrides,
 } from "@antelopejs/interface-core/config";
 import { internal } from "@antelopejs/interface-core/internal";
 import path from "node:path";
 
 import { setupAntelopeProjectLogging } from "../../logging";
 import type { IFileSystem } from "../../types";
-import { isObject, isString, mergeDeep } from "../../utils";
-import { ConfigLoader, DEFAULT_ENV, type LoadedConfig } from "../config";
+import {
+  isObject,
+  isPlainObject,
+  isString,
+  mergeDeep,
+  type UnknownDictionary,
+} from "../../utils";
+import {
+  assertConfigModules,
+  assertLoadedConfig,
+  ConfigLoader,
+  ConfigParser,
+  DEFAULT_ENV,
+  type ExpandedModuleConfig,
+  expandImportOverrides,
+  type LoadedConfig,
+} from "../config";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../modules";
 import { CliError } from "../output";
@@ -273,12 +290,83 @@ async function discoverTestFiles(
   return [...localTestFiles, ...interfaceTestFiles];
 }
 
+const SETUP_CHANGE = "the test setup overrides";
+
+/**
+ * A copy of `fields` without the keys whose value is `undefined`, in nested
+ * plain objects too, so an optional field written as `undefined` is absent.
+ */
+function definedFields(fields: UnknownDictionary): UnknownDictionary {
+  const entries: [string, unknown][] = Object.entries(fields);
+  return Object.fromEntries(
+    entries.flatMap(([key, value]): [string, unknown][] =>
+      value === undefined
+        ? []
+        : [[key, isPlainObject(value) ? definedFields(value) : value]],
+    ),
+  );
+}
+
+/**
+ * `loaded` with the fields `entry` writes merged in, its `importOverrides` in
+ * list form. The module's `config` is merged as written, `undefined`
+ * included, since modules take it as `unknown`.
+ */
+function overrideEntry(
+  loaded: ExpandedModuleConfig,
+  entry: AntelopeModuleConfig,
+): object {
+  const { config, importOverrides, ...fields } = entry;
+  const written = definedFields(fields);
+  if (importOverrides !== undefined) {
+    written.importOverrides = expandImportOverrides(importOverrides);
+  }
+  if (Object.hasOwn(entry, "config")) {
+    written.config = config;
+  }
+  return mergeDeep<object>(loaded, written);
+}
+
+/**
+ * The `loaded` module entries with the `written` ones applied. An entry
+ * written as an object over a loaded one is merged into it. Any other entry,
+ * one the overrides add, write as a version string or disable, is expanded
+ * as the loader expands `antelope.config.ts`: it replaces the loaded entry,
+ * or removes it when disabled.
+ */
+function overrideModules(
+  loaded: LoadedConfig["modules"],
+  written: NonNullable<AntelopeConfig["modules"]>,
+) {
+  const parser = new ConfigParser();
+  const modules = new Map<string, object>(Object.entries(loaded));
+  for (const [name, entry] of Object.entries(written)) {
+    if (!isString(entry) && !entry.disabled && Object.hasOwn(loaded, name)) {
+      modules.set(name, overrideEntry(loaded[name], entry));
+      continue;
+    }
+    const expanded = parser.expandModuleShorthand({ [name]: entry });
+    if (Object.hasOwn(expanded, name)) {
+      modules.set(name, expanded[name]);
+    } else {
+      modules.delete(name);
+    }
+  }
+  return Object.fromEntries(modules);
+}
+
 function applySetupOverrides(
   config: LoadedConfig,
-  overrides: Partial<AntelopeConfig>,
+  overrides: AntelopeTestOverrides,
 ): LoadedConfig {
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Setup overrides can overwrite required fields; validating the historic merge would change accepted configuration (#228).
-  return mergeDeep<object>(config, overrides) as LoadedConfig;
+  const { modules, ...fields } = overrides;
+  assertConfigModules(modules, SETUP_CHANGE);
+  const merged = {
+    ...mergeDeep<object>(config, definedFields(fields)),
+    modules: overrideModules(config.modules, modules ?? {}),
+  };
+  assertLoadedConfig(merged, config, SETUP_CHANGE);
+  return merged;
 }
 
 function clearStubModulePath(manager: ModuleManager | null): void {
