@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
 
-import { createPathWithinMatcher } from "../../utils";
+import { createLoadedFileMatcher } from "../../utils";
 import type { BindingGraph, InstanceDescriptor } from "./binding-graph-types";
 import {
   createInstanceCopy,
@@ -26,7 +26,7 @@ interface InstanceCopy {
 }
 
 function evictFolder(folder: string): void {
-  const isInFolder = createPathWithinMatcher(folder);
+  const isInFolder = createLoadedFileMatcher(folder);
   for (const filePath of Object.keys(require.cache)) {
     if (isInFolder(filePath)) {
       delete require.cache[filePath];
