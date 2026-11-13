@@ -2,7 +2,11 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 const REPOSITORY = path.resolve(__dirname, "../..");
-const OXFMT = path.join(REPOSITORY, "node_modules/.bin/oxfmt");
+const OXFMT = path.join(
+  path.dirname(require.resolve("oxfmt/package.json")),
+  "bin",
+  "oxfmt",
+);
 const OUTPUT_LIMIT = 256 * 1024 * 1024;
 
 /**
@@ -11,8 +15,8 @@ const OUTPUT_LIMIT = 256 * 1024 * 1024;
  */
 export function oxfmt(source: string, fileName: string): string {
   const config = path.join(REPOSITORY, "oxfmt.config.ts");
-  const args = ["-c", config, "--stdin-filepath", fileName];
-  return execFileSync(OXFMT, args, {
+  const args = [OXFMT, "-c", config, "--stdin-filepath", fileName];
+  return execFileSync(process.execPath, args, {
     input: source,
     encoding: "utf-8",
     maxBuffer: OUTPUT_LIMIT,

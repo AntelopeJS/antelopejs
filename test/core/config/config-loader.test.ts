@@ -464,7 +464,7 @@ export default defineConfig({
 
       const loaded = await tsConfigFile.loadTsConfigFile(configPath);
 
-      expect(loaded.name).to.equal(
+      expect(path.normalize(loaded.name)).to.equal(
         require.resolve("@antelopejs/interface-core/config"),
       );
       expect(

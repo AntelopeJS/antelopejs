@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { chmodSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { delegateToPlugin, runCLI } from "../../../src/cli";
@@ -13,15 +13,23 @@ import {
   installedDependencies,
   pluginPackageJson,
 } from "../../helpers/official-plugin";
+import {
+  recordingScript,
+  writeNodeExecutable,
+} from "../../helpers/node-executable";
 import { cleanupTempDir, makeTempDir, readText } from "../../helpers/temp";
 
 interface PluginFixture {
-  directory: string;
+  executable: string;
   output: string;
 }
 
+const ARGUMENT_LINES = ["...process.argv.slice(2)"];
+
 {
   let registerCLIPluginDelegation: (this: Mocha.Suite) => void;
+
+  const originalExitCode = process.exitCode;
 
   const initializeOriginalPath = () => process.env.PATH;
   let originalPath: ReturnType<typeof initializeOriginalPath>;
@@ -30,26 +38,25 @@ interface PluginFixture {
   let temporaryDirectories: string[];
 
   function createPluginScript(
-    buildScript: (directory: string) => string,
-    binary: string,
-  ): string {
+    lines: string[],
+    binary = "ajs-dms",
+    exitCode = 0,
+  ): PluginFixture {
     const directory = makeTempDir();
     temporaryDirectories.push(directory);
-    const executable = path.join(directory, binary);
-    writeFileSync(executable, buildScript(directory));
+    const output = path.join(directory, "output");
     writeFileSync(path.join(directory, "package.json"), pluginPackageJson());
-    chmodSync(executable, 0o755);
+    const executable = writeNodeExecutable(
+      directory,
+      binary,
+      recordingScript(output, lines, exitCode),
+    );
     process.env.PATH = directory;
-    return directory;
+    return { executable, output };
   }
 
   function createPlugin(exitCode = 0, binary = "ajs-dms"): PluginFixture {
-    let output = "";
-    const directory = createPluginScript((pluginDirectory) => {
-      output = path.join(pluginDirectory, "args");
-      return `#!/bin/sh\nprintf '%s\\n' "$@" > "${output}"\nexit ${exitCode}\n`;
-    }, binary);
-    return { directory, output };
+    return createPluginScript(ARGUMENT_LINES, binary, exitCode);
   }
 
   const checkDelegatesAPluginCommandAnd: (this: Mocha.Suite) => void =
@@ -83,11 +90,11 @@ interface PluginFixture {
       });
 
       it("passes the global options before the plugin name as environment", async () => {
-        const plugin = createPluginScript(
-          (directory) =>
-            `#!/bin/sh\nprintf '%s\\n' "$*" "$NO_COLOR" "$ANTELOPEJS_VERBOSE" > "${path.join(directory, "invocation")}"\n`,
-          "ajs-dms",
-        );
+        const plugin = createPluginScript([
+          'process.argv.slice(2).join(" ")',
+          'process.env.NO_COLOR ?? ""',
+          'process.env.ANTELOPEJS_VERBOSE ?? ""',
+        ]);
 
         const result = await delegateToPlugin([
           "--no-color",
@@ -97,9 +104,7 @@ interface PluginFixture {
         ]);
 
         expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
-        expect(readText(path.join(plugin, "invocation"))).to.equal(
-          "dev\n1\ncli,api\n",
-        );
+        expect(readText(plugin.output)).to.equal("dev\n1\ncli,api\n");
       });
 
       it("keeps the inherited environment when global options are given", async () => {
@@ -134,16 +139,24 @@ interface PluginFixture {
         expect(result).to.deep.equal({ isDelegated: true, exitCode: 0 });
         expect(readText(plugin.output)).to.equal("run\n");
         expect(output.infos).to.deep.equal([
-          `Running third-party plugin ajs-custom (${path.join(plugin.directory, "ajs-custom")})`,
+          `Running third-party plugin ajs-custom (${plugin.executable})`,
         ]);
       });
 
       it("propagates a signal termination as a shell exit code", async () => {
-        createPluginScript(() => "#!/bin/sh\nkill -TERM $$\n", "ajs-dms");
+        const { runner, spawned, close } = createControllableProcessRunner();
 
-        const result = await delegateToPlugin(["dms"]);
+        const result = delegateToPlugin(
+          ["dms"],
+          installedDependencies({ processOptions: { processRunner: runner } }),
+        );
+        await spawned;
+        close(null, "SIGTERM");
 
-        expect(result).to.deep.equal({ isDelegated: true, exitCode: 143 });
+        expect(await result).to.deep.equal({
+          isDelegated: true,
+          exitCode: 143,
+        });
       });
 
       it("forwards the plugin exit status", async () => {
@@ -156,12 +169,9 @@ interface PluginFixture {
 
       it("sets the CLI exit status from a delegated plugin", async () => {
         createPlugin(17);
-        const originalExitCode = process.exitCode;
-
         await runCLI(["dms"]);
 
         expect(process.exitCode).to.equal(17);
-        process.exitCode = originalExitCode;
       });
 
       it("delegates unknown commands when their executable exists", async () => {
@@ -182,7 +192,7 @@ interface PluginFixture {
         await delegateToPlugin(["custom", "run"], { output });
 
         expect(output.infos).to.deep.equal([
-          `Running third-party plugin ajs-custom (${path.join(plugin.directory, "ajs-custom")})`,
+          `Running third-party plugin ajs-custom (${plugin.executable})`,
         ]);
       });
 
@@ -259,6 +269,7 @@ interface PluginFixture {
     temporaryDirectories = initializeTemporaryDirectories();
 
     afterEach(() => {
+      process.exitCode = originalExitCode;
       process.env.PATH = originalPath;
       temporaryDirectories.splice(0).forEach(cleanupTempDir);
     });

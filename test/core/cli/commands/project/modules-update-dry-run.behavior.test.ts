@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -76,8 +77,7 @@ describe("project modules behavior: update-dry-run", () => {
         "Dry run: 1 module can be updated · antelope.config.ts unchanged",
       nextSteps: [
         {
-          command:
-            "ajs project modules update pkg1 pkgSame gitMod --project /tmp/project",
+          command: `ajs project modules update pkg1 pkgSame gitMod --project ${path.resolve("/tmp/project")}`,
           description: "apply these updates",
         },
       ],

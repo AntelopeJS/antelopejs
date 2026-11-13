@@ -29,6 +29,6 @@ describe("scopedCommand", () => {
   it("quotes a project path that contains spaces", () => {
     expect(
       scopedCommand("ajs project dev", { project: "/tmp/my shop" }),
-    ).to.equal('ajs project dev --project "/tmp/my shop"');
+    ).to.equal(`ajs project dev --project "${path.resolve("/tmp/my shop")}"`);
   });
 });

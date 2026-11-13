@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 import {
   loadedConfigFixture,
@@ -155,8 +156,8 @@ function stubWatchedModuleDownloads() {
           true,
         );
         expect(excludeStub.args).to.deep.equal([
-          ["/project/.antelope"],
-          ["/project/.antelope/cache"],
+          [path.resolve("/project", ".antelope")],
+          [path.resolve("/project", ".antelope", "cache")],
         ]);
         expect(startWatchingStub.calledOnce).to.equal(true);
         expect(replStub.calledWith("> ")).to.equal(true);

@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { chmodSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import sinon from "sinon";
 
@@ -9,14 +8,20 @@ import {
   runCLI,
 } from "../../../src/cli";
 import { projectLaunchModule as projectLaunch } from "../../../src/core/repl";
+import {
+  recordingScript,
+  writeNodeExecutable,
+} from "../../helpers/node-executable";
 import { cleanupTempDir, makeTempDir, readText } from "../../helpers/temp";
 
 describe("CLI dispatcher", () => {
   const originalPath = process.env.PATH;
+  const originalExitCode = process.exitCode;
   const temporaryDirectories: string[] = [];
 
   afterEach(() => {
     sinon.restore();
+    process.exitCode = originalExitCode;
     process.env.PATH = originalPath;
     temporaryDirectories.splice(0).forEach(cleanupTempDir);
   });
@@ -24,13 +29,12 @@ describe("CLI dispatcher", () => {
   function createExecutable(name: string): string {
     const directory = makeTempDir();
     temporaryDirectories.push(directory);
-    const executable = path.join(directory, name);
     const argumentsFile = path.join(directory, "arguments");
-    writeFileSync(
-      executable,
-      `#!/bin/sh\necho "$@" > "${argumentsFile}"\nexit 0\n`,
+    writeNodeExecutable(
+      directory,
+      name,
+      recordingScript(argumentsFile, ['process.argv.slice(2).join(" ")']),
     );
-    chmodSync(executable, 0o755);
     process.env.PATH = directory;
     return argumentsFile;
   }
@@ -103,26 +107,22 @@ describe("CLI dispatcher", () => {
   it("delegates a plugin named after global options", async () => {
     const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
     createExecutable("ajs-custom");
-    const originalExitCode = process.exitCode;
 
     await runCLI(["--no-color", "--verbose", "custom", "run"]);
 
     expect(runFullCLI.called).to.equal(false);
     expect(process.exitCode).to.equal(0);
-    process.exitCode = originalExitCode;
   });
 
   it("shows the help of a plugin with the plugin's own --help", async () => {
     const runFullCLI = sinon.stub(fullCLI, "runCLI").resolves();
     sinon.stub(process.stderr, "write").returns(true);
     const argumentsFile = createExecutable("ajs-custom");
-    const originalExitCode = process.exitCode;
 
     await runCLI(["--no-color", "help", "custom", "run"]);
 
     expect(runFullCLI.called).to.equal(false);
     expect(readText(argumentsFile).trim()).to.equal("run --help");
-    process.exitCode = originalExitCode;
   });
 
   it("keeps the help of core commands on the full CLI", async () => {

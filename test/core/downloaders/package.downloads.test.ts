@@ -1,6 +1,6 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
-import { execFileSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import path from "node:path";
 import {
   DownloaderRegistry,
@@ -196,7 +196,7 @@ describe("PackageDownloader", () => {
     });
     expect(execCalls[1]).to.deep.equal({
       command: "npm install",
-      cwd: "/cache/pkg",
+      cwd: path.join("/cache", "pkg"),
     });
   });
 });
@@ -295,11 +295,10 @@ describe("PackageDownloader", () => {
         name: "pkg",
         version: "1.0.0",
       });
-      execFileSync(
-        "npm",
-        ["pack", "--ignore-scripts", "--pack-destination", folder],
-        { cwd: sourceFolder, stdio: "pipe" },
-      );
+      execSync(`npm pack --ignore-scripts --pack-destination "${folder}"`, {
+        cwd: sourceFolder,
+        stdio: "pipe",
+      });
       const fs = new NodeFileSystem();
       const cache = new ModuleCache(path.join(folder, "cache"), fs);
       await cache.load();

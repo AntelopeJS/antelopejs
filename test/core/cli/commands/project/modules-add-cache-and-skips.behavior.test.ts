@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -37,7 +38,7 @@ describe("project modules behavior: add-cache-and-skips", () => {
     const loadStub = sinon
       .stub(ModuleCache.prototype, "load")
       .callsFake(function (this: ModuleCache) {
-        expect(this.path).to.equal("/tmp/abs-cache");
+        expect(this.path).to.equal(path.resolve("/tmp/abs-cache"));
         return Promise.resolve();
       });
     sinon.stub(common, "writeConfig").resolves();
