@@ -141,13 +141,30 @@ export function createPathWithinMatcher(folderPath: string): PathMatcher {
     areVariantsWithin(getPathVariants(filePath), folderVariants);
 }
 
+const PRESERVE_SYMLINKS_FLAG = "--preserve-symlinks";
+
+function loaderPreservesSymlinks(): boolean {
+  return (
+    process.env.NODE_PRESERVE_SYMLINKS === "1" ||
+    process.execArgv.includes(PRESERVE_SYMLINKS_FLAG) ||
+    (process.env.NODE_OPTIONS ?? "")
+      .split(/\s+/)
+      .includes(PRESERVE_SYMLINKS_FLAG)
+  );
+}
+
 /**
  * {@link createPathWithinMatcher} for the keys of `require.cache`. The module
  * loader already names each loaded file by its real path, the one
  * `normalizeExistingPath` returns, so the file side is not resolved again:
- * a scan of the cache costs no filesystem call per loaded file.
+ * a scan of the cache costs no filesystem call per loaded file. Under
+ * `--preserve-symlinks` the loader keeps link paths, so each key is resolved
+ * as {@link createPathWithinMatcher} does.
  */
 export function createLoadedFileMatcher(folderPath: string): PathMatcher {
+  if (loaderPreservesSymlinks()) {
+    return createPathWithinMatcher(folderPath);
+  }
   const folderVariants = getPathVariants(folderPath);
   return (loadedFile) =>
     areVariantsWithin([path.resolve(loadedFile)], folderVariants);

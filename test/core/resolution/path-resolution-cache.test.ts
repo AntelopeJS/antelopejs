@@ -49,7 +49,7 @@ describe("path resolution cache", () => {
   beforeEach(() => {
     fixture = createLinkedRoots();
     clearPathResolutionCache();
-    realpathSpy = sinon.spy(fs.realpathSync, "native");
+    realpathSpy = sinon.spy(fs, "realpathSync");
   });
 
   afterEach(() => {
