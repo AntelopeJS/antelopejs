@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import type {
+  ExecutableLookup,
   PluginDelegationDependencies,
   PluginPackageReader,
   ResolvedExecutable,
@@ -8,6 +9,7 @@ import type {
 import { createGlobalRootResolver, createPackageReader } from "./cli-plugins";
 
 export const DMS_PACKAGE_NAME = "@antelopejs/dms-frontend";
+const DMS_BINARY = "ajs-dms";
 export const DMS_EXECUTABLE = "/usr/bin/ajs-dms";
 export const GLOBAL_ROOT = "/usr/lib/node_modules";
 const LOCAL_PROJECT_DIRECTORY = "/home/user/project";
@@ -25,6 +27,17 @@ export function globalExecutable(executablePath: string): ResolvedExecutable {
 
 export function localExecutable(executablePath: string): ResolvedExecutable {
   return { path: executablePath, source: "local" };
+}
+
+/**
+ * A lookup on a machine where the DMS plugin is the only official plugin
+ * installed: it answers `executable` for the DMS binary and nothing for any
+ * other.
+ */
+export function onlyDmsInstalled(
+  executable: ResolvedExecutable,
+): ExecutableLookup {
+  return async (binary) => (binary === DMS_BINARY ? executable : undefined);
 }
 
 export interface PluginPackageFixture {

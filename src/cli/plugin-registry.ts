@@ -21,6 +21,14 @@ const OFFICIAL_PLUGIN_DEFINITIONS = new Map<string, OfficialPluginDefinition>([
       description: "DMS frontend commands",
     },
   ],
+  [
+    "cloud",
+    {
+      package: "@antelopejs/cloud",
+      bin: "ajs-cloud",
+      description: "Deploy and operate AntelopeJS Cloud projects",
+    },
+  ],
 ]);
 
 export function findOfficialPlugin(name: string): OfficialPlugin | undefined {
