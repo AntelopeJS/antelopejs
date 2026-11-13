@@ -172,6 +172,48 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
       });
     };
 
+    const checkMergesIntoDeclaredConfig: (this: Mocha.Suite) => void =
+      function () {
+        class DeclaredSettings {
+          own = 1;
+
+          get inherited(): number {
+            return this.own + 1;
+          }
+        }
+
+        for (const [label, declared, expected] of [
+          ["a string", "ab", { 0: "a", 1: "b" }],
+          ["a number", 5, {}],
+          ["a list", ["x", "y"], { 0: "x", 1: "y" }],
+          ["null", null, {}],
+          ["a class instance", new DeclaredSettings(), { own: 1 }],
+          [
+            "a function",
+            Object.assign(() => 1, { flag: true }),
+            { flag: true },
+          ],
+        ] as const) {
+          it(`merges a module config file into a declared config holding ${label} as the historic merge does`, async () => {
+            await mockTsConfig({
+              name: "test",
+              modules: { database: { version: "1.0.0", config: declared } },
+            });
+            await fs.writeFile(
+              "/project/antelope.database.json",
+              '{"extra":2}',
+            );
+
+            const config = await loader.load("/project");
+
+            expect(config.modules.database.config).to.deep.equal({
+              ...expected,
+              extra: 2,
+            });
+          });
+        }
+      };
+
     const checkDefaultsCacheFolderWhenMissing: (this: Mocha.Suite) => void =
       function () {
         it("defaults cacheFolder when missing", async () => {
@@ -361,6 +403,7 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
     registerLoad = () => {
       describe("loads basic config", function () {
         checkLoadsBasicConfig.call(this);
+        checkMergesIntoDeclaredConfig.call(this);
       });
 
       describe("defaults cacheFolder when missing", function () {

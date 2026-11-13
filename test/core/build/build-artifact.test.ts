@@ -1,3 +1,4 @@
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import sinon from "sinon";
@@ -13,6 +14,7 @@ import {
   createBuildArtifact,
   loadBuildConfig,
   readBuildArtifact,
+  toStableJson,
   writeBuildArtifact,
 } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
@@ -130,6 +132,45 @@ describe("build artifact", () => {
     expect(loaded.configHash).to.equal("abc123");
     expect(loaded.buildTime).to.equal("2026-01-01T00:00:00.000Z");
     expect(loaded.modules).to.deep.equal({});
+  });
+});
+
+describe("toStableJson", () => {
+  it("serialises every object by its own keys in sorted order, a Date and a class instance included", () => {
+    class Credentials {
+      constructor(
+        readonly user: string,
+        readonly token: string,
+      ) {}
+    }
+    const source: ModuleSourcePackage = {
+      type: "package",
+      package: "p",
+      version: "1",
+    };
+
+    const serialised = toStableJson({
+      name: "n",
+      cacheFolder: "c",
+      envOverrides: {},
+      modules: {
+        m: {
+          source,
+          config: {
+            list: [{ y: 1, x: 2 }],
+            fn: () => 1,
+            b: new Credentials("u", "t"),
+            a: new Date(0),
+          },
+          importOverrides: [],
+          disabledExports: [],
+        },
+      },
+    });
+
+    expect(serialised).to.equal(
+      '{"cacheFolder":"c","envOverrides":{},"modules":{"m":{"config":{"a":{},"b":{"token":"t","user":"u"},"list":[{"x":2,"y":1}]},"disabledExports":[],"importOverrides":[],"source":{"package":"p","type":"package","version":"1"}}},"name":"n"}',
+    );
   });
 });
 

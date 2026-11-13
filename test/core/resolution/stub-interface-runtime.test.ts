@@ -21,7 +21,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
     const iface = {
       doThing: InterfaceFunction<(x: number) => string>(),
     };
-    neutralizeInterfaceAsyncProxies(iface, "test-iface");
+    neutralizeInterfaceAsyncProxies({ exports: iface }, "test-iface");
 
     let error: Error | undefined;
     try {
@@ -43,7 +43,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
         },
       },
     };
-    neutralizeInterfaceAsyncProxies(iface, "nested-iface");
+    neutralizeInterfaceAsyncProxies({ exports: iface }, "nested-iface");
 
     let rejected = false;
     try {
@@ -57,7 +57,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
   it("makes RegisteringProxy.register() a no-op in test stub mode", () => {
     const reg = new RegisteringProxy<(id: string) => void>();
     const iface = { reg };
-    neutralizeInterfaceAsyncProxies(iface, "reg-iface");
+    neutralizeInterfaceAsyncProxies({ exports: iface }, "reg-iface");
 
     internal.testStubMode = true;
     try {
@@ -70,7 +70,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
 
   it("replays registrations recorded while neutralized to a later provider", () => {
     const reg = new RegisteringProxy<(id: string) => void>();
-    neutralizeInterfaceAsyncProxies({ reg }, "reg-iface");
+    neutralizeInterfaceAsyncProxies({ exports: { reg } }, "reg-iface");
     reg.register("id-1");
 
     const received: string[] = [];
@@ -80,7 +80,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
 
   it("boots a module whose async start() registers into a stubbed optional interface", async () => {
     const reg = new RegisteringProxy<(id: string) => void>();
-    neutralizeInterfaceAsyncProxies({ reg }, "optional-iface");
+    neutralizeInterfaceAsyncProxies({ exports: { reg } }, "optional-iface");
 
     const lifecycle = new ModuleLifecycle("mod-async-start", "1.0.0");
     lifecycle.setCallbacks({
@@ -106,7 +106,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
   it("leaves EventProxy untouched", () => {
     const event = new EventProxy<() => void>();
     const iface = { event };
-    neutralizeInterfaceAsyncProxies(iface, "evt-iface");
+    neutralizeInterfaceAsyncProxies({ exports: iface }, "evt-iface");
 
     let fired = false;
     event.register(() => {
@@ -119,7 +119,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
   it("neutralizes bare AsyncProxy instances (not wrapped in InterfaceFunction)", async () => {
     const proxy = new AsyncProxy<() => number>();
     const iface = { proxy };
-    neutralizeInterfaceAsyncProxies(iface, "bare-iface");
+    neutralizeInterfaceAsyncProxies({ exports: iface }, "bare-iface");
 
     let rejected = false;
     try {
@@ -134,7 +134,7 @@ describe("neutralizeInterfaceAsyncProxies", () => {
     const iface: CyclicInterface = { a: {} };
     iface.a.back = iface;
     expect(() =>
-      neutralizeInterfaceAsyncProxies(iface, "cycle-iface"),
+      neutralizeInterfaceAsyncProxies({ exports: iface }, "cycle-iface"),
     ).to.not.throw();
   });
 });

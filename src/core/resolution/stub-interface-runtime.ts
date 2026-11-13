@@ -56,57 +56,61 @@ function neutralizeRegisteringProxy(
   proxy.onUnregister(() => {});
 }
 
+/** A module whose exports are walked: a Node module record, or its stand-in. */
+type ExportingModule = Pick<NodeModule, "exports">;
+
+/**
+ * Neutralizes every proxy that `module` exports, depth first in the order
+ * its objects list their values, without descending into a proxy or an
+ * event proxy.
+ */
 function walk(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks an interface module export graph loaded by Node require
-  value: unknown,
+  module: ExportingModule,
   interfaceName: string,
   seen: WeakSet<object>,
   reason: string,
 ): void {
-  if (value === null || value === undefined) {
-    return;
-  }
-  if (isFunction(value)) {
-    const callable: Function & { proxy?: unknown } = value;
-    const maybeProxy = callable.proxy;
-    if (maybeProxy instanceof AsyncProxyClass) {
-      neutralizeAsyncProxy(maybeProxy, interfaceName, reason);
+  const pending: unknown[] = [module.exports];
+  while (pending.length > 0) {
+    const value = pending.pop();
+    if (isFunction(value)) {
+      const callable: Function & { proxy?: unknown } = value;
+      const maybeProxy = callable.proxy;
+      if (maybeProxy instanceof AsyncProxyClass) {
+        neutralizeAsyncProxy(maybeProxy, interfaceName, reason);
+      }
+      continue;
     }
-    return;
-  }
-  if (!isObjectOrNull(value)) {
-    return;
-  }
-  if (seen.has(value)) {
-    return;
-  }
-  seen.add(value);
+    if (!isObjectOrNull(value) || value === null || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
 
-  if (value instanceof AsyncProxyClass) {
-    neutralizeAsyncProxy(value, interfaceName, reason);
-    return;
-  }
-  if (value instanceof RegisteringProxyClass) {
-    neutralizeRegisteringProxy(value, interfaceName, reason);
-    return;
-  }
-  if (value instanceof EventProxy) {
-    return;
-  }
+    if (value instanceof AsyncProxyClass) {
+      neutralizeAsyncProxy(value, interfaceName, reason);
+      continue;
+    }
+    if (value instanceof RegisteringProxyClass) {
+      neutralizeRegisteringProxy(value, interfaceName, reason);
+      continue;
+    }
+    if (value instanceof EventProxy) {
+      continue;
+    }
 
-  const items: unknown[] = Object.values(value);
-  for (const item of items) {
-    walk(item, interfaceName, seen, reason);
+    const items: unknown[] = Object.values(value);
+    for (let index = items.length - 1; index >= 0; index -= 1) {
+      pending.push(items[index]);
+    }
   }
 }
 
 export function neutralizeInterfaceAsyncProxies(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks an interface module export graph loaded by Node require
-  exports: unknown,
+  module: ExportingModule,
   interfaceName: string,
   reason: string = NO_PROVIDER_REASON,
 ): void {
-  walk(exports, interfaceName, new WeakSet(), reason);
+  walk(module, interfaceName, new WeakSet(), reason);
 }
 
 function isWithin(filePath: string, dirPath: string): boolean {
@@ -136,8 +140,7 @@ export function neutralizeInterfacePackage(
     if (!isWithin(filename, packageRoot)) {
       continue;
     }
-    const cachedModule = cache[filename];
-    walk(cachedModule.exports, interfaceName, seen, reason);
+    walk(cache[filename], interfaceName, seen, reason);
   }
 }
 
