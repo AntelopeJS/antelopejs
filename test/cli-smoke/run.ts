@@ -114,7 +114,7 @@ async function waitFor(
 }
 
 function stopTree(child: ChildProcess): void {
-  if (child.pid === undefined || child.exitCode !== null) {
+  if (child.pid === undefined) {
     return;
   }
   if (isWindows) {
@@ -123,7 +123,15 @@ function stopTree(child: ChildProcess): void {
     });
     return;
   }
-  process.kill(-child.pid, "SIGKILL");
+  try {
+    process.kill(-child.pid, "SIGKILL");
+  } catch (error) {
+    if (
+      !(error instanceof Error && "code" in error && error.code === "ESRCH")
+    ) {
+      throw error;
+    }
+  }
 }
 
 async function verifyWatchReload(app: string): Promise<void> {
