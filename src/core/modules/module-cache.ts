@@ -315,9 +315,10 @@ export class ModuleCache {
 
   /**
    * Checks, when this process holds the download lock of `module`, that the
-   * lock still holds the token of this hold. A downloader calls it before
-   * each step that replaces the folder of `module`, and `getFolder` and
-   * `commitVersion` call it before they clean the folder and list it.
+   * lock still holds the token of this hold. `getFolder` calls it before it
+   * cleans the folder of `module`, `commitVersion` before it lists it, and
+   * the git downloader after a fetch, before it checks out or resets the
+   * clone. A step between two checks, such as an install, is not checked.
    *
    * A check that finds another owner, or none it can read, is tried again
    * after a pause, up to three times, since on Windows a read of
