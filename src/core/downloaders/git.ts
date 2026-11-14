@@ -262,11 +262,12 @@ async function assertOnRequestedRef(
 
 /**
  * Brings the repository of `load` into the cache while this run holds its
- * download lock. It reads the manifest again. A clone that the live run of
- * another process uses is kept as it is, neither fetched nor switched, when
- * it has the requested commit checked out, and listed again; otherwise the
- * load fails. Else it fetches the clone the manifest lists, or clones the
- * repository.
+ * download lock. It reads the manifest again. A listed clone that the live
+ * run of another process uses is kept as it is, neither fetched nor
+ * switched, when it has the requested commit checked out; otherwise the load
+ * fails. A clone the manifest does not list is never adopted, since its
+ * clone or install may have stopped halfway. Else it fetches the clone the
+ * manifest lists, or clones the repository.
  */
 async function cloneOrFetchRepo(
   load: GitLoad,
@@ -277,7 +278,10 @@ async function cloneOrFetchRepo(
   const cached = cache.getVersion(name);
   const listed = cached?.startsWith("git:") ? cached : undefined;
   const repoPresent = await fs.exists(path.join(folder, GIT_DIR));
-  const holder = repoPresent ? await cache.findOtherLease(name) : undefined;
+  const holder =
+    repoPresent && listed !== undefined
+      ? await cache.findOtherLease(name)
+      : undefined;
   if (holder === undefined) {
     if (!source.ignoreCache && listed !== undefined && repoPresent) {
       return updateRepo({ source, exec, folder, cacheVersion: listed });
@@ -288,11 +292,8 @@ async function cloneOrFetchRepo(
   Logger.Info(
     `${name} is in use by the run with pid ${holder.pid} on ${holder.host} (lease ${holder.file}); keeping its clone as it is instead of fetching or cloning it`,
   );
-  return {
-    newVersion:
-      listed === undefined ? await describeRepo(source, folder, exec) : "",
-    shouldInstallDependencies: false,
-  };
+  cache.markKeptInUse(name);
+  return { newVersion: "", shouldInstallDependencies: false };
 }
 
 /** Loads the repository of `load`, installs it, and lists its version, under its download lock. */

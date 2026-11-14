@@ -73,6 +73,9 @@ describe("The git downloader and a clone that another live run uses", () => {
     });
     writeFileSync(path.join(folder, "index.js"), "module.exports = 1;\n");
     writeFileSync(path.join(folder, ".git"), "gitdir: elsewhere\n");
+    writeJson(path.join(cachePath, "manifest.json"), {
+      [REPO_ENTRY]: `git:main:${HEAD_COMMIT}`,
+    });
     writeLease(cachePath, "other.json", {
       ...thisProcess(),
       pid: other.pid,
@@ -146,10 +149,6 @@ describe("The git downloader and a clone that another live run uses", () => {
   });
 
   it("neither fetches nor switches a listed clone that another run uses, and refuses another branch", async () => {
-    writeJson(path.join(cachePath, "manifest.json"), {
-      [REPO_ENTRY]: `git:main:${HEAD_COMMIT}`,
-    });
-
     await assert.rejects(loadGit({ branch: "feature" }), (error: Error) =>
       error.message.includes(lease()),
     );

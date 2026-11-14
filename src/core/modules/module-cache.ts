@@ -118,6 +118,7 @@ function downloadKey(cachePath: string, module: string): string {
 export class ModuleCache {
   private readonly manifest: CacheManifest;
   private readonly claims = new Map<string, Promise<void>>();
+  private readonly keptInUse = new Set<string>();
   private readonly lease: RunLeaseFile;
 
   constructor(
@@ -248,6 +249,19 @@ export class ModuleCache {
     }
     await this.clearVersion(module);
     await this.fs.rm(folder, { recursive: true, force: true });
+  }
+
+  /**
+   * Records that a downloader kept the folder of `module` as it is, because
+   * another live run uses it, instead of downloading it again.
+   */
+  markKeptInUse(module: string): void {
+    this.keptInUse.add(module);
+  }
+
+  /** Whether a downloader kept the folder of `module` because another live run uses it. */
+  wasKeptInUse(module: string): boolean {
+    return this.keptInUse.has(module);
   }
 
   /**

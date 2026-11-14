@@ -333,15 +333,20 @@ async function findListedFolder(
 }
 
 /**
- * The complete folder of the version of `load` that the live run of another
- * process uses, so that this run keeps it as it is instead of replacing it.
- * The manifest lists it again when it lost it.
+ * The folder of the version of `load` that the live run of another process
+ * uses, so that this run keeps it as it is instead of replacing it. Only a
+ * folder the manifest lists counts: an entry is listed once its install has
+ * returned, so an install that was stopped or killed halfway is never
+ * adopted, whoever still holds a lease on it.
  */
 async function findFolderInUse(
   load: PackageLoad,
   ctx: PackageLoaderContext,
 ): Promise<string | undefined> {
-  const { cache, key, entry, record } = load;
+  const { cache, entry, record } = load;
+  if (cache.getVersion(entry) === undefined) {
+    return undefined;
+  }
   const holder = await cache.findOtherLease(entry);
   if (holder === undefined) {
     return undefined;
@@ -362,9 +367,7 @@ async function findFolderInUse(
   Logger.Info(
     `${entry} is in use by the run with pid ${holder.pid} on ${holder.host} (lease ${holder.file}); keeping its folder instead of downloading it again`,
   );
-  if (cache.getVersion(entry) === undefined) {
-    await cache.commitVersion(entry, cachedVersionOf(key.version));
-  }
+  cache.markKeptInUse(entry);
   return folder;
 }
 

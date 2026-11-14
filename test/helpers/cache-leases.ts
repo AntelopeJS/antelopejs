@@ -228,6 +228,10 @@ export function startIdleProcess(): Promise<IdleProcess> {
         pid,
         stop: () =>
           new Promise<void>((done) => {
+            if (child.exitCode !== null || child.signalCode !== null) {
+              done();
+              return;
+            }
             child.once("exit", () => done());
             child.kill();
           }),

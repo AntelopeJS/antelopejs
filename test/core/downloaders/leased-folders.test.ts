@@ -2,7 +2,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import * as sinon from "sinon";
 
@@ -142,18 +142,18 @@ describe("Downloaders and a folder that another live run leases", () => {
     );
   });
 
-  it("lists again a cloned repository that another run uses when the manifest lost it", async () => {
+  it("never adopts or lists a clone that another run uses when the manifest does not list it", async () => {
     seedRepo();
-    leaseToOther(REPO_ENTRY);
+    const lease = leaseToOther(REPO_ENTRY);
 
-    await loadGit(false);
+    await assert.rejects(loadGit(false), (error: Error) =>
+      error.message.includes(lease),
+    );
 
     expect(
       recorded.commands.some((command) => command.includes("clone")),
     ).to.equal(false);
-    expect(
-      JSON.parse(readText(path.join(cachePath, "manifest.json"))),
-    ).to.deep.equal({ [REPO_ENTRY]: "git:main:headcommit" });
+    expect(existsSync(path.join(cachePath, "manifest.json"))).to.equal(false);
   });
 
   it("refuses to replace a half-installed package folder that another run leases, naming its lease", async () => {
@@ -221,6 +221,7 @@ describe("A frozen install and a folder that another live run uses", () => {
     const folder = path.join(cachePath, entry);
     seedPackage(folder, true);
     writeFileSync(path.join(folder, "pnpm-lock.yaml"), "installed: other\n");
+    writeJson(path.join(cachePath, "manifest.json"), { [entry]: "1.0.0" });
     const lease = writeOtherLease(entry);
     const store = new ModuleLockStore(root, new NodeFileSystem());
     await store.write({
