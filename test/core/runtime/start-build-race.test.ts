@@ -69,6 +69,13 @@ async function writeBuild(
   await writeBuildArtifact(project, artifact, fs);
 }
 
+/** How many lease files of the cache at `cachePath` name `entry`. */
+function leasesNaming(cachePath: string, entry: string): number {
+  return readLeases(cachePath).filter((lease) =>
+    JSON.stringify(lease).includes(JSON.stringify(entry)),
+  ).length;
+}
+
 /** Resolves once a lease of the cache at `cachePath` names `entry`. */
 async function leased(cachePath: string, entry: string): Promise<void> {
   while (
@@ -102,7 +109,8 @@ describe("ajs project start while another run rebuilds and prunes", () => {
    * Prepares `start` with `prepare` from a `build.json` of {@link FIRST},
    * then, while a prune in a child process has read the leases and waits,
    * lets `start` claim, rewrites `build.json` to {@link REBUILT} and lets
-   * the prune remove {@link FIRST}.
+   * the prune remove {@link FIRST}. The lease of this test keeps
+   * {@link REBUILT} from that prune, as the lease of the build would.
    *
    * @returns the module folders `start` then loads.
    */
@@ -123,6 +131,7 @@ describe("ajs project start while another run rebuilds and prunes", () => {
     const entries = await prepared.createEntries();
 
     expect(existsSync(path.join(cachePath, FIRST))).to.equal(false);
+    expect(leasesNaming(cachePath, REBUILT)).to.equal(2);
     return entries.map(({ manifest }) => manifest.folder);
   }
 
