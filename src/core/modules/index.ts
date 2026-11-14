@@ -4,6 +4,7 @@ export * from "./diagnostics";
 export * from "./interface-bumps";
 export * from "./interface-registry";
 export * from "./lifecycle-signals";
+export * from "./missing-package";
 export * from "./module";
 export * from "./module-cache";
 export * from "./module-errors";

@@ -13,6 +13,7 @@ import {
   type ModuleDiagnosticsContext,
   moduleDiagnosticsContext,
 } from "./diagnostics";
+import { findMissingPackage } from "./missing-package";
 import { ModuleLifecycle } from "./module-lifecycle";
 import type { ModuleManifest } from "./module-manifest";
 
@@ -209,9 +210,13 @@ export class Module {
       );
       Logger.Debug(`Successfully loaded module ${this.id}`);
     } catch (err) {
-      Logger.Error(`Failed to load module ${this.id}`, err);
+      const failure =
+        err instanceof Error
+          ? (findMissingPackage(this.id, this.manifest.manifest, err) ?? err)
+          : err;
+      Logger.Error(`Failed to load module ${this.id}`, failure);
       Events.ModuleDestroyed.emit(this.id);
-      throw err;
+      throw failure;
     }
     this.lifecycle.setCallbacks(this.callbacks);
   }

@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { Module } from "../../src/core/modules";
+import { MissingPackageError, Module } from "../../src/core/modules";
 import { ModuleState } from "../../src/types";
 import { manifestFixture } from "../helpers/module-fixtures";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
@@ -142,5 +142,77 @@ describe("Module default loader", () => {
     );
 
     expect(String(failure)).to.contain("replaced start ran");
+  });
+});
+
+describe("Module default loader with a missing package", () => {
+  let folder: string;
+
+  beforeEach(() => {
+    folder = makeTempDir("ajs-missing-package-");
+  });
+
+  afterEach(() => {
+    cleanupTempDir(folder);
+  });
+
+  function moduleRequiring(
+    request: string,
+    dependencies: Record<string, string>,
+  ): Module {
+    const main = path.join(folder, "requires-missing.js");
+    writeFileSync(main, `require(${JSON.stringify(request)});`);
+    return new Module(
+      manifestFixture({
+        name: "missing-consumer",
+        version: "1.0.0",
+        main,
+        manifest: { name: "missing-consumer", dependencies },
+      }),
+    );
+  }
+
+  it("names the module, the package and the install command when a declared dependency is not installed", async () => {
+    const mod = moduleRequiring("ajs-missing-interface", {
+      "ajs-missing-interface": "^1.0.0",
+    });
+
+    const failure = await mod.construct({}).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(failure).to.be.instanceOf(MissingPackageError);
+    expect(String(failure)).to.contain(
+      "missing-consumer requires ajs-missing-interface, which is not installed. Install the dependencies of missing-consumer, then run 'ajs project modules install'",
+    );
+  });
+
+  it("names a scoped package required by a subpath", async () => {
+    const mod = moduleRequiring("@ajs-missing/interface/sub", {
+      "@ajs-missing/interface": "^1.0.0",
+    });
+
+    const failure = await mod.construct({}).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(failure).to.be.instanceOf(MissingPackageError);
+    expect(failure).to.include({ packageName: "@ajs-missing/interface" });
+  });
+
+  it("keeps Node's error for a missing package the module does not declare", async () => {
+    const mod = moduleRequiring("ajs-undeclared-package", {});
+
+    const failure = await mod.construct({}).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(failure).not.to.be.instanceOf(MissingPackageError);
+    expect(String(failure)).to.contain(
+      "Cannot find module 'ajs-undeclared-package'",
+    );
   });
 });
