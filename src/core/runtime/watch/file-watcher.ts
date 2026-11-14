@@ -4,6 +4,7 @@ import * as path from "node:path";
 
 import type { IFileSystem } from "../../../types";
 import { FileHasher, isVanishedPathError } from "./file-hasher";
+import { MissingFolders } from "./missing-folders";
 
 export type ModuleChangeListener = (moduleId: string) => void;
 export type FileChangeListener = (filePath: string) => void;
@@ -46,12 +47,19 @@ export class FileWatcher {
   private dirModules = new Map<string, string>();
   private watchedFiles = new Map<string, WatchedFile>();
   private changeChains = new Map<string, Promise<void>>();
+  private scanRoots = new Map<string, string>();
+  private missingFolders: MissingFolders;
+  private watching = false;
   private stopped = false;
 
   constructor(
     private fs: IFileSystem,
     private hasher: FileHasher = new FileHasher(fs),
-  ) {}
+  ) {
+    this.missingFolders = new MissingFolders(fs, (root) =>
+      this.awaitRoot(root),
+    );
+  }
 
   onModuleChanged(listener: ModuleChangeListener): void {
     this.listeners.push(listener);
@@ -68,6 +76,7 @@ export class FileWatcher {
   ): Promise<void> {
     for (const dir of watchDirs) {
       const dirPath = path.join(path.resolve(rootDir), dir);
+      this.scanRoots.set(dirPath, moduleId);
       await this.forgetIfVanished(dirPath, () =>
         this.exploreDir(moduleId, dirPath),
       );
@@ -107,11 +116,18 @@ export class FileWatcher {
   /**
    * Starts the fs watchers. A watched file whose directory starts being
    * watched is checked once against its hash, so an edit made before the
-   * watcher ran reaches its listeners.
+   * watcher ran reaches its listeners. A scanned folder that is missing is
+   * scanned and watched again once it exists.
    */
   startWatching(): void {
     if (this.stopped) {
       return;
+    }
+    this.watching = true;
+    for (const root of this.scanRoots.keys()) {
+      if (!this.watchedDirs.has(root)) {
+        this.awaitRoot(root);
+      }
     }
     for (const dir of this.watchedDirs) {
       if (this.watchers.has(dir)) {
@@ -152,19 +168,43 @@ export class FileWatcher {
     for (const watcher of this.watchers.values()) {
       watcher.close();
     }
+    this.missingFolders.close();
     this.watchers.clear();
     this.changeChains.clear();
   }
 
   private enqueueChange(dir: string, filePath: string): void {
-    const previous = this.changeChains.get(dir) ?? Promise.resolve();
-    const next = previous
-      .then(() => this.handleFileChange(filePath))
-      .then(() => this.forgetVanishedDir(dir))
-      .catch((err: unknown) => {
-        console.error(`FileWatcher error handling ${filePath}:`, err);
-      });
-    this.changeChains.set(dir, next);
+    this.enqueue(dir, filePath, async () => {
+      await this.handleFileChange(filePath);
+      await this.forgetVanishedDir(dir);
+    });
+  }
+
+  private enqueue(key: string, what: string, task: () => Promise<void>): void {
+    const previous = this.changeChains.get(key) ?? Promise.resolve();
+    const next = previous.then(task).catch((err: unknown) => {
+      console.error(`FileWatcher error handling ${what}:`, err);
+    });
+    this.changeChains.set(key, next);
+  }
+
+  private awaitRoot(root: string): void {
+    if (this.watching && !this.stopped) {
+      this.enqueue(root, root, () => this.followRoot(root));
+    }
+  }
+
+  private async followRoot(root: string): Promise<void> {
+    const moduleId = this.scanRoots.get(root);
+    if (this.stopped || moduleId === undefined || this.watchedDirs.has(root)) {
+      this.missingFolders.forget(root);
+      return;
+    }
+    if (await this.missingFolders.follow(root)) {
+      await this.forgetIfVanished(root, () => this.exploreDir(moduleId, root));
+      this.startWatching();
+      this.notifyModuleChange(moduleId);
+    }
   }
 
   private async forgetVanishedDir(dir: string): Promise<void> {
@@ -327,6 +367,9 @@ export class FileWatcher {
       if (watcher) {
         watcher.close();
         this.watchers.delete(dir);
+      }
+      if (this.scanRoots.has(dir)) {
+        this.awaitRoot(dir);
       }
     }
     for (const filePath of this.filesHash.keys()) {
