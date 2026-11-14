@@ -96,4 +96,14 @@ describe("FileWatcher Integration with a recreated module folder", () => {
 
     await expectEditReloads();
   });
+
+  it("watches a watch dir that is created after the scan", async () => {
+    await rm(path.join(moduleDir, "src"), { recursive: true, force: true });
+    await watcher.scanModule("test", moduleDir, ["src"]);
+    watcher.startWatching();
+
+    await changeAfter(() => writeModule(2));
+
+    await expectEditReloads();
+  });
 });
