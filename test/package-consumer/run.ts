@@ -139,6 +139,7 @@ function installConsumer(tarball: string): void {
       dependencies: {
         "@antelopejs/core": `file:${tarball}`,
         "@antelopejs/interface-core": interfaceCoreSpec,
+        "@types/node": "22.19.15",
         "reflect-metadata": "0.2.2",
       },
     }),
@@ -184,7 +185,7 @@ function verifyTypes(
         esModuleInterop: true,
         experimentalDecorators: true,
         emitDecoratorMetadata: true,
-        typeRoots: [path.join(root, "node_modules", "@types")],
+        skipLibCheck: false,
         types: ["node"],
       },
       files: [`${name}.ts`],
