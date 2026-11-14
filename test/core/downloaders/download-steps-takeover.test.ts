@@ -97,7 +97,9 @@ describe("A command a download runs under its lock", () => {
     const commands = [
       "git fetch",
       `git clone ${REMOTE} ${REPO}`,
+      "git checkout main",
       "git symbolic-ref refs/remotes/origin/HEAD",
+      "git rev-list -n 1 origin/main",
       "git rev-parse HEAD",
       "git reset --hard origin/main",
       'npm pack "pkg@1.0.0"',
