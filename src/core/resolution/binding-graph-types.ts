@@ -64,8 +64,8 @@ export interface InstanceDescriptor {
   interfaceName: string;
   provider?: string;
   /**
-   * Set when the provider disables this export: no other module binds to the
-   * instance, and an undeclared import never picks it among several.
+   * Set when the provider disables this export, or when a self-hosted
+   * instance imports a private one: an undeclared import never picks it.
    */
   private?: boolean;
   /** Instance keys a self-hosted instance imports. */

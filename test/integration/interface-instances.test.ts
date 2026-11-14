@@ -182,6 +182,24 @@ exports.destroy = () => {};
 }
 
 const DISABLED_DATABASE = { disabledExports: [DATABASE] };
+const STANDALONE = { standalone: true };
+const DATA_API_PACKAGE = {
+  name: DATA_API,
+  files: DATA_API_FILES,
+  dependencies: [DATABASE],
+};
+const UNDECLARED_IMPORTS = [
+  {
+    reached: "a standalone interface",
+    request: DATABASE,
+    call: `new imported.Query("t").run()`,
+  },
+  {
+    reached: "an interface built on a standalone interface",
+    request: DATA_API,
+    call: `imported.List("t")`,
+  },
+];
 const DISABLED_EXPORT_ORDERS = [
   { mongodb: DISABLED_DATABASE, "mongodb-erp": {} },
   { "mongodb-erp": {}, mongodb: DISABLED_DATABASE },
@@ -291,6 +309,41 @@ describe("interface instances", () => {
 
     expect(results().plain).to.equal("mongodb-erp:t");
   });
+
+  for (const { reached, request, call } of UNDECLARED_IMPORTS) {
+    it(`refuses an undeclared import of ${reached} whose only implementer disables it`, async function () {
+      this.timeout(20000);
+      projectFolder = await createProject(
+        [
+          { name: DATABASE, files: DATABASE_FILES, antelopeJs: STANDALONE },
+          { ...DATA_API_PACKAGE, antelopeJs: STANDALONE },
+          {
+            ...databaseProvider("mongodb"),
+            dependencies: [DATABASE, DATA_API],
+          },
+          {
+            name: "dms",
+            files: {
+              "index.js": `
+const imported = require(${JSON.stringify(request)});
+exports.construct = async () => {
+  global[${JSON.stringify(RESULTS_KEY)}].plain = await ${call}.catch((error) => error.message);
+};
+exports.destroy = () => {};
+`,
+            },
+          },
+        ],
+        { mongodb: DISABLED_DATABASE, dms: {} },
+      );
+
+      manager = await launch(projectFolder);
+
+      expect(results().plain).to.equal(
+        `Interface '${DATABASE}' has no provider for this async method; the call was rejected. Load a module that implements it to enable this call.`,
+      );
+    });
+  }
 
   it("shares one instance, and its classes, between modules bound the same way", async function () {
     this.timeout(20000);

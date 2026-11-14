@@ -16,6 +16,7 @@ const DMS = "interface-dms";
 
 interface ModuleSpec {
   implements?: string[];
+  disabled?: string[];
   uses?: string[];
   pins?: Record<string, string>;
   connections?: Record<string, BindingConnection[]>;
@@ -35,6 +36,8 @@ const INTERFACES = {
   logs: [],
   i1: [],
   i2: [],
+  "cycle-a": ["cycle-b"],
+  "cycle-b": ["cycle-a"],
 } satisfies Record<string, string[]>;
 
 function interfaces(): Map<string, BindingInterface> {
@@ -66,6 +69,7 @@ function modules(
       {
         id,
         implements: spec.implements ?? [],
+        disabledExports: new Set(spec.disabled),
         uses: spec.uses ?? [],
         connections: toConnections(spec),
         exportPriority: new Map(Object.entries(spec.exportPriority ?? {})),
@@ -204,6 +208,100 @@ describe("buildBindingGraph: instances", () => {
     ]);
     expect(connections?.get(API)).to.deep.equal([
       "data-api{api@api,database@postgres-client,decorators{api@api,database@postgres-client}}",
+    ]);
+  });
+});
+
+describe("buildBindingGraph: disabled exports", () => {
+  it("binds a disabled export's implementer to a private instance of its own and everyone else to the provider", () => {
+    const graph = resolve({
+      mongodb: { implements: [DB], disabled: [DB] },
+      "mongodb-erp": { implements: [DB] },
+      dms: { uses: [DB] },
+    });
+
+    expect(providerOf(graph, "mongodb", DB)).to.equal("mongodb");
+    expect(providerOf(graph, "dms", DB)).to.equal("mongodb-erp");
+    expect(graph.instances.get("database@mongodb")?.private).to.equal(true);
+    expect(graph.instances.get("database@mongodb-erp")?.private).to.equal(
+      undefined,
+    );
+    expect(graph.edges.get("dms")).to.deep.equal(new Set(["mongodb-erp"]));
+  });
+
+  it("refuses a pin to a module that disables the export", () => {
+    const graph = resolve({
+      mongodb: { implements: [DB], disabled: [DB] },
+      dms: { uses: [DB], pins: { [DB]: "mongodb" } },
+    });
+
+    expect(graph.errors).to.have.length(1);
+    expect(graph.errors[0]).to.include("dms").and.include("mongodb");
+  });
+
+  it("adds an instance bound to the defaults when every instance of an interface is private", () => {
+    const graph = resolve({
+      mongodb: { implements: [DB], disabled: [DB] },
+      api: { implements: [HTTP] },
+      decorators: { implements: [DEC], uses: [DB], disabled: [DEC] },
+    });
+
+    expect([...graph.instances.keys()].sort()).to.deep.equal([
+      "api@api",
+      "database@mongodb",
+      "database{}",
+      "decorators@decorators",
+      "decorators{api@api,database{}}",
+    ]);
+  });
+
+  it("marks an instance built on a private one private, and adds an unbound one in its place", () => {
+    const graph = resolve({
+      mongodb: { implements: [DB], uses: [DEC], disabled: [DB] },
+      api: { implements: [HTTP] },
+    });
+    const instances = [...graph.instances.values()]
+      .map(({ key, private: isPrivate }) =>
+        isPrivate ? `${key} private` : key,
+      )
+      .sort();
+
+    expect(instances).to.deep.equal([
+      "api@api",
+      "database@mongodb private",
+      "database{}",
+      "decorators{api@api,database@mongodb} private",
+      "decorators{api@api,database{}}",
+    ]);
+  });
+
+  it("adds no unbound instance for a disabled export on a dependency cycle", () => {
+    const graph = resolve({
+      m: { implements: ["cycle-a"], uses: ["cycle-a"], disabled: ["cycle-a"] },
+    });
+
+    expect([...graph.instances.keys()].sort()).to.deep.equal([
+      "cycle-a@m",
+      "cycle-b{cycle-a@m}",
+    ]);
+  });
+
+  it("adds no unbound instance when a module already reaches a public one", () => {
+    const graph = resolve({
+      mongodb: { implements: [DB] },
+      "mongodb-erp": { implements: [DB] },
+      api: { implements: [HTTP] },
+      decorators: { implements: [DEC], disabled: [DEC] },
+      app: { uses: [DEC], pins: { [DB]: "mongodb-erp" } },
+    });
+    const decoratorInstances = [...graph.instances.values()]
+      .filter(({ interfaceName }) => interfaceName === DEC)
+      .map(({ key }) => key)
+      .sort();
+
+    expect(decoratorInstances).to.deep.equal([
+      "decorators@decorators",
+      "decorators{api@api,database@mongodb-erp}",
     ]);
   });
 });
