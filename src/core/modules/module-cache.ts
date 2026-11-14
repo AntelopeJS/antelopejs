@@ -49,6 +49,11 @@ export class ModuleCache {
       : undefined;
   }
 
+  /** Every cache entry with the version it holds. */
+  entries(): [string, string][] {
+    return Object.entries(this.manifest);
+  }
+
   setVersion(module: string, version: string): void {
     this.manifest[module] = version;
   }

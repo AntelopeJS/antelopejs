@@ -2,7 +2,7 @@ import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
 import inly = require("inly");
 import * as path from "node:path";
-import { maxSatisfying, satisfies, valid, validRange } from "semver";
+import { maxSatisfying, sort, valid, validRange } from "semver";
 
 import type { IFileSystem } from "../../types";
 import { isObject, isString } from "../../utils";
@@ -118,31 +118,41 @@ function memoizeVersionFetcher(exec: CommandRunner): VersionFetcher {
 }
 
 /**
- * Runs the loads that share a cache folder one after another. Every version
- * of a package is installed into the same folder, so a second load waits for
- * the first and then reuses what it installed.
+ * Runs the loads of one package one after another. The version a load
+ * installs is only known once it runs, so a second load of the same version
+ * waits for the first and then reuses what it installed.
  */
-function queuePerFolder(): (
-  folder: string,
+function queuePerPackage(): (
+  key: string,
   load: () => Promise<string>,
 ) => Promise<string> {
   const tails = new Map<string, Promise<unknown>>();
-  return (folder, load) => {
-    const loaded = (tails.get(folder) ?? Promise.resolve()).then(load);
+  return (key, load) => {
+    const loaded = (tails.get(key) ?? Promise.resolve()).then(load);
     const tail = loaded.catch(() => undefined);
-    tails.set(folder, tail);
+    tails.set(key, tail);
     void tail.then(() => {
-      if (tails.get(folder) === tail) {
-        tails.delete(folder);
+      if (tails.get(key) === tail) {
+        tails.delete(key);
       }
     });
     return loaded;
   };
 }
 
-function cacheSatisfiesSpec(cached: string, spec: string): boolean {
-  const range = validRange(spec);
-  return range === null || satisfies(cached, range);
+/** The cache entry, and folder, that holds one version of a package. */
+function cacheEntry(pkg: string, version: string): string {
+  return `${pkg}@${valid(version) ?? version}`;
+}
+
+/** The versions of a package the cache holds, lowest first. */
+function cachedVersions(cache: ModuleCache, pkg: string): string[] {
+  return sort(
+    cache
+      .entries()
+      .filter(([entry, version]) => entry === cacheEntry(pkg, version))
+      .map(([, version]) => version),
+  );
 }
 
 async function resolveTargetVersion(
@@ -158,11 +168,14 @@ async function resolveTargetVersion(
     Logger.Debug(`Resolved ${source.package}@${source.version} to ${resolved}`);
     return resolved;
   }
-  const cached = cache.getVersion(source.package);
-  if (cached && cacheSatisfiesSpec(cached, source.version)) {
+  const cached = pickBestVersion(
+    cachedVersions(cache, source.package),
+    source.version,
+  );
+  if (cached) {
     if (validRange(source.version) === null) {
       Logger.Warn(
-        `Registry unreachable, serving last cached ${source.package}@${cached} for tag '${source.version}' (cannot verify it is current)`,
+        `Registry unreachable, serving highest cached ${source.package}@${cached} for tag '${source.version}' (cannot verify it is current)`,
       );
     } else {
       Logger.Debug(
@@ -191,10 +204,10 @@ function countDeclaredDependencies(text: string): number | undefined {
 
 async function findCachedFolder(
   cache: ModuleCache,
-  pkg: string,
+  entry: string,
   fs: IFileSystem,
 ): Promise<string | undefined> {
-  const folder = await cache.getFolder(pkg, true, true);
+  const folder = await cache.getFolder(entry, true, true);
   const manifestPath = path.join(folder, PACKAGE_JSON);
   if (!(await fs.exists(manifestPath))) {
     return undefined;
@@ -242,10 +255,11 @@ async function downloadPackage(
     await ctx.fs.readFileString(path.join(tmpPackage, PACKAGE_JSON)),
   );
   const key = { package: source.package, version: packedVersion ?? version };
+  const entry = cacheEntry(key.package, key.version);
   const record = await ctx.locks.find(key);
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);
-  await cache.clearVersion(source.package);
-  const folder = await cache.transfer(tmpPackage, source.package);
+  await cache.clearVersion(entry);
+  const folder = await cache.transfer(tmpPackage, entry);
   await ctx.locks.replay(folder, record);
 
   Logger.Debug(`Installing dependencies for ${source.package}@${version}`);
@@ -258,7 +272,7 @@ async function downloadPackage(
     );
   }
   if (packedVersion !== undefined) {
-    await cache.commitVersion(source.package, packedVersion);
+    await cache.commitVersion(entry, packedVersion);
   }
   await ctx.locks.keep(key, folder, record);
   return folder;
@@ -279,8 +293,9 @@ async function loadPackage(
     (await resolveTargetVersion(source, cache, fetchVersion));
   const key = { package: source.package, version: target };
   const record = await ctx.locks.find(key);
-  if (ctx.locks.reusesCache && cache.hasVersion(source.package, target)) {
-    const cachedFolder = await findCachedFolder(cache, source.package, ctx.fs);
+  const entry = cacheEntry(source.package, target);
+  if (ctx.locks.reusesCache && cache.hasVersion(entry, target)) {
+    const cachedFolder = await findCachedFolder(cache, entry, ctx.fs);
     if (cachedFolder && (await ctx.locks.matches(cachedFolder, record))) {
       Logger.Trace(`Using cached version of ${source.package}@${target}`);
       await ctx.locks.keep(key, cachedFolder, record);
@@ -304,7 +319,7 @@ export function registerPackageDownloader(
     locks: new PackageLocks(deps.lock, fs),
   };
   const fetchVersion = memoizeVersionFetcher(ctx.exec);
-  const queue = queuePerFolder();
+  const queue = queuePerPackage();
 
   registry.register(
     "package",

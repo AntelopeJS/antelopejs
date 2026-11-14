@@ -16,12 +16,12 @@ describe("PackageDownloader", () => {
   it("resolves dist-tags to exact versions and caches them", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile(
-      "/cache/pkg/package.json",
+      "/cache/pkg@2.0.0/package.json",
       JSON.stringify({ name: "pkg", version: "2.0.0" }),
     );
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "2.0.0");
+    cache.setVersion("pkg@2.0.0", "2.0.0");
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -99,7 +99,7 @@ describe("PackageDownloader", () => {
 
     expect(result[0].manifest.version).to.equal("2.0.0");
     expect(execCalls).to.include('npm pack "pkg@2.0.0"');
-    expect(cache.getVersion("pkg")).to.equal("2.0.0");
+    expect(cache.getVersion("pkg@2.0.0")).to.equal("2.0.0");
   });
 });
 
@@ -108,7 +108,7 @@ describe("PackageDownloader", () => {
     const fs = new InMemoryFileSystem();
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "1.0.0");
+    cache.setVersion("pkg@1.0.0", "1.0.0");
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -187,10 +187,10 @@ describe("PackageDownloader", () => {
 
     expect(result).to.have.length(1);
     expect(result[0].manifest.version).to.equal("1.2.3");
-    expect(await fs.readFileString("/cache/pkg/package.json")).to.include(
+    expect(await fs.readFileString("/cache/pkg@1.2.3/package.json")).to.include(
       "1.2.3",
     );
-    expect(cache.getVersion("pkg")).to.equal("1.2.3");
+    expect(cache.getVersion("pkg@1.2.3")).to.equal("1.2.3");
 
     expect(execCalls[0]).to.deep.equal({
       command: 'npm pack "pkg@1.2.3"',
@@ -198,7 +198,7 @@ describe("PackageDownloader", () => {
     });
     expect(execCalls[1]).to.deep.equal({
       command: "npm install",
-      cwd: path.join("/cache", "pkg"),
+      cwd: path.join("/cache", "pkg@1.2.3"),
     });
   });
 });
@@ -240,10 +240,11 @@ describe("PackageDownloader", () => {
     }
   });
 
-  it("should throw when install fails", async () => {
+  it("drops the cache entry of a version whose install fails", async () => {
     const fs = new InMemoryFileSystem();
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
+    cache.setVersion("pkg@1.0.0", "1.0.0");
 
     const registry = new DownloaderRegistry();
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -284,7 +285,7 @@ describe("PackageDownloader", () => {
     } catch (err) {
       expect(err).to.be.instanceOf(Error);
     }
-    expect(cache.getVersion("pkg")).to.equal(undefined);
+    expect(cache.entries()).to.deep.equal([]);
   });
 });
 
@@ -326,7 +327,7 @@ describe("PackageDownloader", () => {
 
       expect(result).to.have.length(1);
       expect(result[0].manifest.version).to.equal("1.0.0");
-      expect(cache.getVersion("pkg")).to.equal("1.0.0");
+      expect(cache.getVersion("pkg@1.0.0")).to.equal("1.0.0");
     } finally {
       cleanupTempDir(folder);
     }

@@ -48,11 +48,11 @@ function writeFixture(folder: string, overrides: string): void {
   });
   writeRecordingModule(folder, path.join(folder, "extra"), "extra");
   const cache = path.join(folder, ".cache");
-  writeRecordingModule(folder, path.join(cache, "greeter"), "greeter");
-  writeRecordingModule(folder, path.join(cache, "self"), "self-package");
+  writeRecordingModule(folder, path.join(cache, "greeter@1.0.0"), "greeter");
+  writeRecordingModule(folder, path.join(cache, "self@1.0.0"), "self-package");
   writeJson(path.join(cache, "manifest.json"), {
-    greeter: "1.0.0",
-    self: "1.0.0",
+    "greeter@1.0.0": "1.0.0",
+    "self@1.0.0": "1.0.0",
   });
   writeFileSync(path.join(folder, "fixture.test.js"), FIXTURE_TEST);
   writeFileSync(

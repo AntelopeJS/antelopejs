@@ -29,49 +29,51 @@ describe("PackageDownloader", () => {
     expect(registry.getLoaderIdentifier(source)).to.equal(source.package);
   });
 
-  it("should use cached version when available", async () => {
-    const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/cache/pkg/package.json",
-      JSON.stringify({ name: "pkg", version: "1.0.0" }),
-    );
+  for (const pinned of ["1.0.0", "v1.0.0"]) {
+    it(`serves a module pinned to ${pinned} from the cache`, async () => {
+      const fs = new InMemoryFileSystem();
+      await fs.writeFile(
+        "/cache/pkg@1.0.0/package.json",
+        JSON.stringify({ name: "pkg", version: "1.0.0" }),
+      );
 
-    const cache = new ModuleCache("/cache", fs);
-    await cache.load();
-    cache.setVersion("pkg", "1.0.0");
+      const cache = new ModuleCache("/cache", fs);
+      await cache.load();
+      cache.setVersion("pkg@1.0.0", "1.0.0");
 
-    const registry = new DownloaderRegistry();
-    const { exec, calls } = createExecSpy();
-    registerPackageDownloader(registry, {
-      fs,
-      exec,
-      getTemp: async () => "/tmp",
-      extract: async () => {},
-      getInstallCommand: async () => "install-cmd",
+      const registry = new DownloaderRegistry();
+      const { exec, calls } = createExecSpy();
+      registerPackageDownloader(registry, {
+        fs,
+        exec,
+        getTemp: async () => "/tmp",
+        extract: async () => {},
+        getInstallCommand: async () => "install-cmd",
+      });
+
+      const source: ModuleSourcePackage = {
+        type: "package",
+        package: "pkg",
+        version: pinned,
+        id: "pkg",
+      };
+      const result = await registry.load("/project", cache, source);
+
+      expect(result).to.have.length(1);
+      expect(result[0].manifest.version).to.equal("1.0.0");
+      expect(calls).to.deep.equal([]);
     });
-
-    const source: ModuleSourcePackage = {
-      type: "package",
-      package: "pkg",
-      version: "1.0.0",
-      id: "pkg",
-    };
-    const result = await registry.load("/project", cache, source);
-
-    expect(result).to.have.length(1);
-    expect(result[0].manifest.version).to.equal("1.0.0");
-    expect(calls).to.deep.equal([]);
-  });
+  }
 
   it("re-downloads when a newer version matches the range", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile(
-      "/cache/pkg/package.json",
+      "/cache/pkg@1.0.0/package.json",
       JSON.stringify({ name: "pkg", version: "1.0.0" }),
     );
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "1.0.0");
+    cache.setVersion("pkg@1.0.0", "1.0.0");
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -110,7 +112,7 @@ describe("PackageDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result[0].manifest.version).to.equal("1.1.0");
-    expect(cache.getVersion("pkg")).to.equal("1.1.0");
+    expect(cache.getVersion("pkg@1.1.0")).to.equal("1.1.0");
     expect(execCalls).to.include('npm view "pkg@^1.0.0" version --json');
     expect(execCalls).to.include('npm pack "pkg@1.1.0"');
   });
@@ -120,12 +122,12 @@ describe("PackageDownloader", () => {
   it("keeps the cache when it already holds the latest range version", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile(
-      "/cache/pkg/package.json",
+      "/cache/pkg@1.1.0/package.json",
       JSON.stringify({ name: "pkg", version: "1.1.0" }),
     );
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "1.1.0");
+    cache.setVersion("pkg@1.1.0", "1.1.0");
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -159,15 +161,17 @@ describe("PackageDownloader", () => {
     );
   });
 
-  it("falls back to the cached version when the registry is unreachable", async () => {
+  it("falls back to the highest cached version in range when the registry is unreachable", async () => {
     const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/cache/pkg/package.json",
-      JSON.stringify({ name: "pkg", version: "1.0.0" }),
-    );
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "1.0.0");
+    for (const version of ["1.2.0", "1.0.0", "2.0.0"]) {
+      await fs.writeFile(
+        `/cache/pkg@${version}/package.json`,
+        JSON.stringify({ name: "pkg", version }),
+      );
+      cache.setVersion(`pkg@${version}`, version);
+    }
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -195,7 +199,7 @@ describe("PackageDownloader", () => {
     };
     const result = await registry.load("/project", cache, source);
 
-    expect(result[0].manifest.version).to.equal("1.0.0");
+    expect(result[0].manifest.version).to.equal("1.2.0");
     expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(
       false,
     );
@@ -206,12 +210,12 @@ describe("PackageDownloader", () => {
   it("falls back to the cached version for a dist-tag when the registry is unreachable", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile(
-      "/cache/pkg/package.json",
+      "/cache/pkg@2.0.0/package.json",
       JSON.stringify({ name: "pkg", version: "2.0.0" }),
     );
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "2.0.0");
+    cache.setVersion("pkg@2.0.0", "2.0.0");
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -247,10 +251,10 @@ describe("PackageDownloader", () => {
 
   async function loadWithCachedManifest(manifest: string): Promise<string[]> {
     const fs = new InMemoryFileSystem();
-    await fs.writeFile("/cache/pkg/package.json", manifest);
+    await fs.writeFile("/cache/pkg@1.0.0/package.json", manifest);
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "1.0.0");
+    cache.setVersion("pkg@1.0.0", "1.0.0");
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -312,15 +316,15 @@ describe("PackageDownloader", () => {
 });
 
 describe("PackageDownloader", () => {
-  it("invalidates a previously cached version when a newer download fails to install", async () => {
+  it("keeps the cached version when a newer version fails to install", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile(
-      "/cache/pkg/package.json",
+      "/cache/pkg@1.0.0/package.json",
       JSON.stringify({ name: "pkg", version: "1.0.0" }),
     );
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "1.0.0");
+    cache.setVersion("pkg@1.0.0", "1.0.0");
 
     const exec = async (command: string, _options: { cwd?: string }) => {
       if (command.startsWith("npm view")) {
@@ -364,7 +368,7 @@ describe("PackageDownloader", () => {
     } catch (err) {
       expect(err).to.be.instanceOf(Error);
     }
-    expect(cache.getVersion("pkg")).to.equal(undefined);
+    expect(cache.entries()).to.deep.equal([["pkg@1.0.0", "1.0.0"]]);
   });
 
   it("throws when the registry is unreachable and nothing satisfying is cached", async () => {

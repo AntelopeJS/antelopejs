@@ -16,7 +16,7 @@ import { CliError } from "../../../src/core/output";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 const PKG = "@scope/mod";
-const CACHE_LOCK = `/cache/${PKG}/pnpm-lock.yaml`;
+const cacheFolder = (version: string) => `/cache/${PKG}@${version}`;
 const RESOLVED_LOCK = "resolved: from the registry today";
 const RECORDED_LOCK = "resolved: recorded yesterday";
 
@@ -52,7 +52,7 @@ async function createHarness(
   const calls: string[] = [];
   const lockAtInstall: Array<string | undefined> = [];
   let packed = "";
-  const exec = async (command: string) => {
+  const exec = async (command: string, options: { cwd?: string }) => {
     calls.push(command);
     if (command.startsWith("npm view")) {
       return { stdout: JSON.stringify(registryVersions), stderr: "", code: 0 };
@@ -62,14 +62,13 @@ async function createHarness(
       packed = maxSatisfying(registryVersions, spec) ?? spec;
       return { stdout: "mod.tgz", stderr: "", code: 0 };
     }
-    const folder = `/cache/${PKG}`;
+    const folder = options.cwd ?? "";
+    const lock = `${folder}/pnpm-lock.yaml`;
     lockAtInstall.push(
-      (await fs.exists(CACHE_LOCK))
-        ? await fs.readFileString(CACHE_LOCK)
-        : undefined,
+      (await fs.exists(lock)) ? await fs.readFileString(lock) : undefined,
     );
-    if (!(await fs.exists(CACHE_LOCK))) {
-      await fs.writeFile(CACHE_LOCK, RESOLVED_LOCK);
+    if (!(await fs.exists(lock))) {
+      await fs.writeFile(lock, RESOLVED_LOCK);
     }
     await fs.mkdir(`${folder}/node_modules`, { recursive: true });
     return { stdout: "", stderr: "", code: 0 };
@@ -105,10 +104,11 @@ async function createHarness(
 }
 
 async function warmCache(harness: Harness, version: string, lock: string) {
-  await harness.fs.writeFile(`/cache/${PKG}/package.json`, MANIFEST(version));
-  await harness.fs.mkdir(`/cache/${PKG}/node_modules`, { recursive: true });
-  await harness.fs.writeFile(CACHE_LOCK, lock);
-  await harness.cache.commitVersion(PKG, version);
+  const folder = cacheFolder(version);
+  await harness.fs.writeFile(`${folder}/package.json`, MANIFEST(version));
+  await harness.fs.mkdir(`${folder}/node_modules`, { recursive: true });
+  await harness.fs.writeFile(`${folder}/pnpm-lock.yaml`, lock);
+  await harness.cache.commitVersion(`${PKG}@${version}`, version);
 }
 
 function recorded(version: string, content: string) {
@@ -149,7 +149,9 @@ describe("PackageDownloader module locks", () => {
     await harness.load("1.0.0");
 
     expect(harness.lockAtInstall).to.deep.equal([RECORDED_LOCK]);
-    expect(await harness.fs.readFileString(CACHE_LOCK)).to.equal(RECORDED_LOCK);
+    expect(
+      await harness.fs.readFileString(`${cacheFolder("1.0.0")}/pnpm-lock.yaml`),
+    ).to.equal(RECORDED_LOCK);
   });
 
   it("reinstalls a cached module installed from another lockfile than the recorded one", async () => {
