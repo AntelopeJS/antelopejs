@@ -39,6 +39,8 @@ const BUILD_FOLDER = ".antelope/build";
 const BUILD_FILE = "build.json";
 const HASH_SEPARATOR = "\n--antelope-build-hash--\n";
 const JSON_INDENT = 2;
+const TEMP_EXTENSION = ".tmp";
+const STALE_TEMP_MS = 60_000;
 
 export interface BuildPathEntry {
   key: string;
@@ -201,6 +203,39 @@ export function createBuildArtifact(params: BuildArtifactInput): BuildArtifact {
   };
 }
 
+/**
+ * Removes the temporary files of `build.json` in the build folder that a
+ * build stopped before it renamed, those its file system dates more than
+ * 60 s before `build.json`. A build that writes one now renames it within
+ * that time, so its file stays.
+ */
+async function removeStaleTemps(
+  buildFolder: string,
+  artifactPath: string,
+  fs: IFileSystem,
+): Promise<void> {
+  const written = (await fs.stat(artifactPath)).mtimeMs;
+  const prefix = `${BUILD_FILE}.`;
+  for (const name of await fs.readdir(buildFolder)) {
+    if (!name.startsWith(prefix) || !name.endsWith(TEMP_EXTENSION)) {
+      continue;
+    }
+    const temp = path.join(buildFolder, name);
+    const stats = await fs.stat(temp).catch(() => undefined);
+    if (stats !== undefined && written - stats.mtimeMs > STALE_TEMP_MS) {
+      await fs.rm(temp, { force: true }).catch(() => undefined);
+    }
+  }
+}
+
+/**
+ * Writes `artifact` as the project's `build.json`. It writes a temporary
+ * file beside it, then renames that file over it, so that a run that reads
+ * `build.json` meanwhile reads the whole previous build or the whole new one.
+ * It then removes the temporary files a stopped build left, as
+ * {@link removeStaleTemps} does. A file it cannot remove stays and does not
+ * fail the build, since `build.json` is already the new build.
+ */
 export async function writeBuildArtifact(
   projectFolder: string,
   artifact: BuildArtifact,
@@ -208,12 +243,19 @@ export async function writeBuildArtifact(
 ): Promise<void> {
   const buildFolder = getBuildFolderPath(projectFolder);
   const artifactPath = getBuildArtifactPath(projectFolder);
-  await fs.rm(buildFolder, { recursive: true, force: true });
+  const temp = `${artifactPath}.${crypto.randomUUID()}${TEMP_EXTENSION}`;
   await fs.mkdir(buildFolder, { recursive: true });
-  await fs.writeFile(
-    artifactPath,
-    `${JSON.stringify(artifact, null, JSON_INDENT)}\n`,
-  );
+  try {
+    await fs.writeFile(
+      temp,
+      `${JSON.stringify(artifact, null, JSON_INDENT)}\n`,
+    );
+    await fs.rename(temp, artifactPath);
+  } catch (error) {
+    await fs.rm(temp, { force: true });
+    throw error;
+  }
+  await removeStaleTemps(buildFolder, artifactPath, fs).catch(() => undefined);
 }
 
 /** A module entry as `build.json` stores it, its manifest not yet decoded. */
