@@ -2,7 +2,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import * as sinon from "sinon";
 
@@ -64,7 +64,7 @@ function seedPackage(folder: string, installed: boolean): void {
   });
   writeFileSync(path.join(folder, "index.js"), SEEDED_INDEX);
   if (installed) {
-    mkdirSync(path.join(folder, "node_modules", "dep"), { recursive: true });
+    writeJson(path.join(folder, "node_modules", "dep", "package.json"), {});
   }
 }
 

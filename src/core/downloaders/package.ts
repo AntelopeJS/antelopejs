@@ -200,17 +200,42 @@ async function resolveTargetVersion(
   );
 }
 
-/** The number of dependencies a cached package.json declares, or `undefined` when its shape is not a manifest. */
-function countDeclaredDependencies(text: string): number | undefined {
+/**
+ * The names of the dependencies a cached package.json declares that an
+ * install always puts in place, or `undefined` when its shape is not a
+ * manifest. A name `optionalDependencies` also lists is left out, since npm
+ * skips it on a platform it does not support.
+ */
+function declaredDependencies(text: string): string[] | undefined {
   const parsed: unknown = JSON.parse(text);
   if (!isObject(parsed)) {
     return undefined;
   }
-  const { dependencies } = parsed;
+  const { dependencies, optionalDependencies } = parsed;
   if (dependencies === undefined || dependencies === null) {
-    return 0;
+    return [];
   }
-  return isObject(dependencies) ? Object.keys(dependencies).length : undefined;
+  if (!isObject(dependencies)) {
+    return undefined;
+  }
+  const optional = isObject(optionalDependencies) ? optionalDependencies : {};
+  return Object.keys(dependencies).filter(
+    (name) => !Object.hasOwn(optional, name),
+  );
+}
+
+/** Whether `node_modules` of `folder` holds a `package.json` for each of `dependencies`. */
+async function hasInstalledDependencies(
+  folder: string,
+  dependencies: string[],
+  fs: IFileSystem,
+): Promise<boolean> {
+  const installed = await Promise.all(
+    dependencies.map((name) =>
+      fs.exists(path.join(folder, NODE_MODULES, name, PACKAGE_JSON)),
+    ),
+  );
+  return installed.every(Boolean);
 }
 
 async function findCachedFolder(
@@ -224,15 +249,12 @@ async function findCachedFolder(
     return undefined;
   }
   try {
-    const dependencyCount = countDeclaredDependencies(
+    const dependencies = declaredDependencies(
       await fs.readFileString(manifestPath),
     );
-    if (dependencyCount === undefined) {
-      return undefined;
-    }
     if (
-      dependencyCount > 0 &&
-      !(await fs.exists(path.join(folder, NODE_MODULES)))
+      dependencies === undefined ||
+      !(await hasInstalledDependencies(folder, dependencies, fs))
     ) {
       return undefined;
     }
