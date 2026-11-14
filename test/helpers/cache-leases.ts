@@ -186,6 +186,45 @@ export function hostnameInLeaseName(): string {
   return os.hostname().replace(/[^A-Za-z0-9_.-]/g, "_");
 }
 
+function systemError(code: string): Error {
+  return Object.assign(new Error(`${code}: refused by the test`), { code });
+}
+
+/**
+ * The real filesystem, except that `mkdir`, `writeFile` and `rename` fail
+ * with `EACCES` on every path `refuses` accepts, as on a folder this process
+ * may not write.
+ */
+export class RefusingFileSystem extends NodeFileSystem {
+  constructor(private readonly refuses: (file: string) => boolean) {
+    super();
+  }
+
+  override mkdir(file: string, options?: { recursive?: boolean }) {
+    return this.refuses(file)
+      ? Promise.reject(systemError("EACCES"))
+      : super.mkdir(file, options);
+  }
+
+  override writeFile(file: string, data: Buffer | string) {
+    return this.refuses(file)
+      ? Promise.reject(systemError("EACCES"))
+      : super.writeFile(file, data);
+  }
+
+  override rename(source: string, target: string) {
+    return this.refuses(source) || this.refuses(target)
+      ? Promise.reject(systemError("EACCES"))
+      : super.rename(source, target);
+  }
+}
+
+/** Whether `file` lies in the lease folder of the cache at `cachePath`. */
+export function inLeaseFolder(cachePath: string): (file: string) => boolean {
+  const folder = path.join(cachePath, LEASES_FOLDER);
+  return (file) => file === folder || file.startsWith(`${folder}${path.sep}`);
+}
+
 /** The real filesystem, except that writing a prune lock's owner fails with `ENOSPC`. */
 export class FailingOwnerFileSystem extends NodeFileSystem {
   override writeFile(file: string, data: Buffer | string) {

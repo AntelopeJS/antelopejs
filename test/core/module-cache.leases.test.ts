@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { spawn } from "node:child_process";
-import { chmodSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -8,9 +8,11 @@ import { ModuleCache } from "../../src/core/modules";
 import {
   deadPid,
   holdPruneLock,
+  inLeaseFolder,
   leaseNames,
   pruneLockPath,
   readLeases,
+  RefusingFileSystem,
   seedCache,
   VanishingFileSystem,
 } from "../helpers/cache-leases";
@@ -20,8 +22,6 @@ const REPO_ROOT = path.resolve(__dirname, "../..");
 const MODULE_CACHE_SOURCE = path.join(REPO_ROOT, "src/core/modules");
 const CHILD_TIMEOUT_MS = 30_000;
 const PENDING_WINDOW_MS = 200;
-const READ_ONLY_MODE = 0o555;
-const WRITABLE_MODE = 0o755;
 
 function settlesWithin(promise: Promise<unknown>, ms: number) {
   const timeout = new Promise<false>((resolve) =>
@@ -160,19 +160,16 @@ describe("ModuleCache run leases", () => {
 
   it("resolves the folders of a cache this process may not write, with no lease", async () => {
     seedCache(cachePath, ["a@1.0.0"]);
-    chmodSync(cachePath, READ_ONLY_MODE);
-    try {
-      const folder = await new ModuleCache(cachePath).getFolder(
-        "a@1.0.0",
-        true,
-        true,
-      );
+    const fs = new RefusingFileSystem(inLeaseFolder(cachePath));
 
-      expect(folder).to.equal(path.join(cachePath, "a@1.0.0"));
-      expect(leaseNames(cachePath)).to.deep.equal([]);
-    } finally {
-      chmodSync(cachePath, WRITABLE_MODE);
-    }
+    const folder = await new ModuleCache(cachePath, fs).getFolder(
+      "a@1.0.0",
+      true,
+      true,
+    );
+
+    expect(folder).to.equal(path.join(cachePath, "a@1.0.0"));
+    expect(leaseNames(cachePath)).to.deep.equal([]);
   });
 
   it("removes the lease when the process that claimed exits", async function () {

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -11,9 +11,11 @@ import {
   FailingOwnerFileSystem,
   hasEntryFolder,
   hostnameInLeaseName,
+  inLeaseFolder,
   leaseNames,
   manifestKeys,
   pruneLockPath,
+  RefusingFileSystem,
   seedCache,
   startIdleProcess,
   writeLease,
@@ -22,8 +24,6 @@ import {
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
 const KEEP_NOTHING: CacheKeep = () => false;
-const READ_ONLY_MODE = 0o555;
-const WRITABLE_MODE = 0o755;
 
 function prune(cachePath: string) {
   return new ModuleCache(cachePath).prune(async () => KEEP_NOTHING);
@@ -93,12 +93,9 @@ describe("ModuleCache prune across processes and failures", () => {
 
   it("removes the folders it can move and keeps the entry of one it cannot", async () => {
     const locked = path.join(cachePath, "b@1.0.0");
-    chmodSync(locked, READ_ONLY_MODE);
-    try {
-      await prune(cachePath);
-    } finally {
-      chmodSync(locked, WRITABLE_MODE);
-    }
+    const fs = new RefusingFileSystem((file) => file === locked);
+
+    await new ModuleCache(cachePath, fs).prune(async () => KEEP_NOTHING);
 
     expect(manifestKeys(cachePath)).to.deep.equal(["b@1.0.0"]);
     expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(false);
@@ -106,17 +103,11 @@ describe("ModuleCache prune across processes and failures", () => {
   });
 
   it("does not prune from a run whose lease the file system refused", async () => {
-    const leases = path.join(cachePath, ".leases");
-    mkdirSync(leases);
-    chmodSync(leases, READ_ONLY_MODE);
-    try {
-      const run = new ModuleCache(cachePath);
-      await run.getFolder("a@1.0.0", true, true);
+    const fs = new RefusingFileSystem(inLeaseFolder(cachePath));
+    const run = new ModuleCache(cachePath, fs);
+    await run.getFolder("a@1.0.0", true, true);
 
-      await run.prune(async () => KEEP_NOTHING);
-    } finally {
-      chmodSync(leases, WRITABLE_MODE);
-    }
+    await run.prune(async () => KEEP_NOTHING);
 
     expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
     expect(manifestKeys(cachePath)).to.have.length(3);
