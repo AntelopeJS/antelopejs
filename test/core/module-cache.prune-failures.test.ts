@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -21,7 +21,7 @@ import {
   writeLease,
   writeLeaseText,
 } from "../helpers/cache-leases";
-import { cleanupTempDir, makeTempDir } from "../helpers/temp";
+import { cleanupTempDir, makeTempDir, writeJson } from "../helpers/temp";
 
 const KEEP_NOTHING: CacheKeep = () => false;
 
@@ -94,6 +94,25 @@ describe("ModuleCache prune across processes and failures", () => {
       expect(leaseNames(cachePath)).to.have.length(1);
     });
   }
+
+  it("never moves a manifest key outside the cache, under a dot folder, or not spelled as its folder", async () => {
+    const outside = path.join(root, "outside@1.0.0");
+    mkdirSync(outside);
+    await new ModuleCache(cachePath).getFolder("a@1.0.0", true, true);
+    const odd = ["../outside@1.0.0", ".leases", "x/../a@1.0.0"];
+    writeJson(
+      path.join(cachePath, "manifest.json"),
+      Object.fromEntries([...odd, "b@1.0.0"].map((key) => [key, "1.0.0"])),
+    );
+
+    await prune(cachePath);
+
+    expect(existsSync(outside)).to.equal(true);
+    expect(leaseNames(cachePath)).to.have.length(1);
+    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
+    expect(hasEntryFolder(cachePath, "b@1.0.0")).to.equal(false);
+    expect(manifestKeys(cachePath)).to.have.members(odd);
+  });
 
   it("removes the folders it can move and keeps the entry of one it cannot", async () => {
     const locked = path.join(cachePath, "b@1.0.0");

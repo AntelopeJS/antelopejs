@@ -56,6 +56,18 @@ function cacheEntryOf(cachePath: string, folder: string): string | undefined {
   return relative.split(path.sep).join("/");
 }
 
+/**
+ * Whether the manifest key `key` names a folder of the cache at `cachePath`
+ * that a prune may remove: spelled as {@link cacheEntryOf} spells its folder,
+ * so inside the cache, and outside the dot folders such as `.leases`.
+ */
+function isPrunableKey(cachePath: string, key: string): boolean {
+  return (
+    !key.startsWith(".") &&
+    cacheEntryOf(cachePath, path.join(cachePath, key)) === key
+  );
+}
+
 async function realPathOrResolved(target: string): Promise<string> {
   try {
     return await fsNode.realpath(target);
@@ -287,7 +299,10 @@ export class ModuleCache {
     const unused = this.entries()
       .map(([key]) => key)
       .filter(
-        (key) => !keep(key) && !leased.some((entry) => entryCovers(entry, key)),
+        (key) =>
+          isPrunableKey(this.path, key) &&
+          !keep(key) &&
+          !leased.some((entry) => entryCovers(entry, key)),
       );
     if (unused.length === 0) {
       return [];
