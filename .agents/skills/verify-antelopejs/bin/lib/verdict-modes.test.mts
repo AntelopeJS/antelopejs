@@ -40,3 +40,10 @@ await test("a known journey does not excuse a non-known failure in the same full
   assert.match(driven.stdout, /- project-dev\/dev-call-stop failed/);
   assert.doesNotMatch(driven.stdout, /- project-dev\/dev-readd-root-module failed/);
 });
+
+await test("a failing known journey of a feature the diff touches is a failure, not a known finding", () => {
+  const driven = driveVerdict(["project-dev/dev-readd-root-module"], [], KNOWN, ["project-dev"]);
+  assert.equal(driven.status, 1);
+  assert.match(driven.stdout, /- project-dev\/dev-readd-root-module failed/);
+  assert.doesNotMatch(driven.stdout, /### Known findings/);
+});
