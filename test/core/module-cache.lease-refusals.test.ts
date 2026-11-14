@@ -33,6 +33,13 @@ function leaseMessages(stub: sinon.SinonStub, code: string): string[] {
     .filter((message) => message.includes("lease") && message.includes(code));
 }
 
+/** The messages logged on `stub` that say the prune removes nothing. */
+function skippedPruneMessages(stub: sinon.SinonStub): string[] {
+  return stub.args
+    .map(([message]) => String(message))
+    .filter((message) => message.includes("not removing unused modules"));
+}
+
 describe("ModuleCache when the file system refuses the lease", () => {
   let root: string;
   let cachePath: string;
@@ -67,7 +74,11 @@ describe("ModuleCache when the file system refuses the lease", () => {
       expect(leaseMessages(other, code)).to.deep.equal([]);
     });
 
-    it(`does not prune from a run whose lease ${reason} refused (${code})`, async () => {
+    it(`does not prune from a run whose lease ${reason} refused (${code}), and says so at ${level} too`, async () => {
+      const logged = {
+        Debug: sinon.stub(Logging.Channel.prototype, "Debug"),
+        Warn: sinon.stub(Logging.Channel.prototype, "Warn"),
+      };
       const fs = new RefusingFileSystem(inLeaseFolder(cachePath), code);
       const run = new ModuleCache(cachePath, fs);
       await run.getFolder("a@1.0.0", true, true);
@@ -77,6 +88,9 @@ describe("ModuleCache when the file system refuses the lease", () => {
       expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
       expect(hasEntryFolder(cachePath, "b@1.0.0")).to.equal(true);
       expect(manifestKeys(cachePath)).to.deep.equal(["a@1.0.0", "b@1.0.0"]);
+      const other = level === "Warn" ? logged.Debug : logged.Warn;
+      expect(skippedPruneMessages(logged[level])).to.have.length(1);
+      expect(skippedPruneMessages(other)).to.deep.equal([]);
     });
   }
 });

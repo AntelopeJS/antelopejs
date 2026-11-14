@@ -265,8 +265,9 @@ export class ModuleCache {
    */
   async prune(readKeep: () => Promise<CacheKeep>): Promise<void> {
     await this.manifest.settled();
-    if (await this.lease.wasRefused()) {
-      Logger.Warn(
+    const refusal = await this.lease.refusal();
+    if (refusal !== undefined) {
+      Logger[refusal.level](
         `Cannot write a lease in ${this.path}; not removing unused modules`,
       );
       return;

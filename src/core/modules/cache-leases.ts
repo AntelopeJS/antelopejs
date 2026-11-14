@@ -51,6 +51,26 @@ function failureCode(error: Error): string {
   return systemError.code ?? error.message;
 }
 
+/**
+ * A write to the cache that the file system refused: its system error code
+ * or message, and the level a run logs it at, debug on a cache this process
+ * may not write (`EACCES`, `EPERM`, `EROFS`, `ENOENT`) and a warning
+ * otherwise, such as on a full disk.
+ */
+export interface CacheRefusal {
+  failure: string;
+  level: "Debug" | "Warn";
+}
+
+/** The {@link CacheRefusal} that `error`, thrown by a write to the cache, stands for. */
+export function describeRefusal(error: Error): CacheRefusal {
+  const failure = failureCode(error);
+  return {
+    failure,
+    level: READ_ONLY_CODES.includes(failure) ? "Debug" : "Warn",
+  };
+}
+
 function isPid(value: unknown): value is number {
   return isNumber(value) && Number.isInteger(value) && value > 0;
 }
@@ -172,7 +192,7 @@ export class RunLeaseFile {
   private file?: string;
   private readonly entries = new Set<string>();
   private pendingWrite: Promise<void> = Promise.resolve();
-  private refused = false;
+  private refused?: CacheRefusal;
 
   constructor(
     private readonly cachePath: string,
@@ -180,10 +200,11 @@ export class RunLeaseFile {
   ) {}
 
   /**
-   * Whether the file system refused a write of this lease, so that no prune
-   * sees the entries of this run. It waits for the pending writes first.
+   * How the file system refused a write of this lease, so that no prune sees
+   * the entries of this run, or `undefined` when no write was refused. It
+   * waits for the pending writes first.
    */
-  async wasRefused(): Promise<boolean> {
+  async refusal(): Promise<CacheRefusal | undefined> {
     await this.pendingWrite;
     return this.refused;
   }
@@ -191,10 +212,9 @@ export class RunLeaseFile {
   /**
    * Adds `entry` to the lease; resolves once the lease file names it. When a
    * write fails, whatever the error, it resolves with no lease written, and
-   * {@link wasRefused} turns true: the run goes on without a lease and does
-   * not prune. The first failure is logged, at debug level when the cache is
-   * read-only (`EACCES`, `EPERM`, `EROFS`) and as a warning otherwise, such as
-   * on a full disk.
+   * {@link refusal} returns the refusal: the run goes on without a lease and
+   * does not prune. The first failure is logged at the level of its
+   * {@link CacheRefusal}.
    */
   add(entry: string): Promise<void> {
     this.entries.add(entry);
@@ -218,21 +238,19 @@ export class RunLeaseFile {
     } catch (error) {
       this.refuse(
         folder,
-        error instanceof Error ? failureCode(error) : String(error),
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
   }
 
-  private refuse(folder: string, failure: string): void {
-    if (!this.refused) {
-      const message = `Cannot write a lease in ${folder} (${failure}); running without one`;
-      if (READ_ONLY_CODES.includes(failure)) {
-        Logger.Debug(message);
-      } else {
-        Logger.Warn(message);
-      }
+  private refuse(folder: string, error: Error): void {
+    if (this.refused === undefined) {
+      const refusal = describeRefusal(error);
+      Logger[refusal.level](
+        `Cannot write a lease in ${folder} (${refusal.failure}); running without one`,
+      );
+      this.refused = refusal;
     }
-    this.refused = true;
   }
 }
 
