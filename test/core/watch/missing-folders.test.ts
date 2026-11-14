@@ -82,3 +82,45 @@ describe("MissingFolders with an ancestor watcher that always fails", () => {
     expect(clock.countTimers()).to.equal(0);
   });
 });
+
+describe("MissingFolders with an ancestor watcher that cannot start", () => {
+  const { error } = console;
+  let clock: sinon.SinonFakeTimers;
+
+  beforeEach(() => {
+    clock = sinon.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    console.error = () => {};
+  });
+
+  afterEach(() => {
+    clock.restore();
+    console.error = error;
+  });
+
+  it("starts it again after a delay once the folder pending deletion is gone", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.mkdir("/parent", { recursive: true });
+    const watched: string[] = [];
+    const watchDirectory = (dir: string) => {
+      watched.push(dir);
+      if (watched.length === 1) {
+        throw Object.assign(new Error("EPERM"), { code: "EPERM" });
+      }
+      return { close: () => {}, on: () => {} };
+    };
+    const found: boolean[] = [];
+    const folders: MissingFolders = new MissingFolders(
+      fs,
+      (folder) => void folders.follow(folder).then((ok) => found.push(ok)),
+      watchDirectory,
+    );
+
+    expect(await folders.follow("/parent/missing")).to.equal(false);
+    expect(watched).to.have.length(1);
+
+    await fs.mkdir("/parent/missing", { recursive: true });
+    await clock.tickAsync(WATCH_RETRY_DELAY_MS);
+    expect(found).to.include(true);
+    folders.close();
+  });
+});

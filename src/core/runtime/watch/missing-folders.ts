@@ -26,7 +26,8 @@ export type WatchDirectory = (
  * Waits for missing folders to become directories again. Each missing folder
  * is watched through its nearest existing ancestor directory, and every event
  * there is reported through `onChange` so the owner calls `follow` again. An
- * ancestor watcher that fails is re-created after a delay, at most
+ * ancestor watcher that fails, or that cannot start, such as on a Windows
+ * folder pending deletion, is re-created after a delay, at most
  * `WATCH_RETRY_LIMIT` times until the folder is found.
  */
 export class MissingFolders {
@@ -74,7 +75,7 @@ export class MissingFolders {
       this.watchers.set(folder, { dir, watcher });
     } catch (err) {
       if (!(err instanceof Error && isVanishedPathError(err))) {
-        console.error(`Failed to watch directory ${dir}:`, err);
+        this.retry(folder, dir, err);
         return false;
       }
     }
@@ -101,7 +102,7 @@ export class MissingFolders {
     }
   }
 
-  private retry(folder: string, dir: string, err: Error): void {
+  private retry(folder: string, dir: string, err: unknown): void {
     const failures = (this.failures.get(folder) ?? 0) + 1;
     this.failures.set(folder, failures);
     if (failures > WATCH_RETRY_LIMIT) {
