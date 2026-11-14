@@ -1,6 +1,8 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
+import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import sinon from "sinon";
 import { isObject } from "../../../src/utils";
 
@@ -17,7 +19,9 @@ import {
   toStableJson,
   writeBuildArtifact,
 } from "../../../src/core/modules";
+import { NodeFileSystem } from "../../../src/core/filesystem";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 /**
  * An in-memory file system that reads the project's build each time a file
@@ -193,6 +197,68 @@ describe("writeBuildArtifact while another run reads build.json", () => {
     expect(await fs.readdir("/project/.antelope/build")).to.deep.equal([
       "build.json",
     ]);
+  });
+});
+
+/** The real file system, except that renaming onto `build.json` fails with `EPERM`, as on Windows while a scanner holds the file. */
+class RefusedRenameFileSystem extends NodeFileSystem {
+  override rename(source: string, target: string) {
+    if (path.basename(target) === "build.json") {
+      return Promise.reject(
+        Object.assign(new Error("EPERM: operation not permitted"), {
+          code: "EPERM",
+        }),
+      );
+    }
+    return super.rename(source, target);
+  }
+}
+
+describe("writeBuildArtifact on the real file system", () => {
+  const fs = new NodeFileSystem();
+  let project: string;
+  let buildFolder: string;
+
+  beforeEach(() => {
+    project = makeTempDir("ajs-build-artifact-");
+    buildFolder = path.join(project, ".antelope", "build");
+    mkdirSync(buildFolder, { recursive: true });
+  });
+
+  afterEach(() => {
+    cleanupTempDir(project);
+  });
+
+  it("removes the temporary file a stopped build left more than a minute ago, and keeps one a build writes now", async () => {
+    const stale = path.join(buildFolder, "build.json.stopped.tmp");
+    const fresh = path.join(buildFolder, "build.json.writing.tmp");
+    writeFileSync(stale, "{");
+    writeFileSync(fresh, "{");
+    const past = new Date(Date.now() - 120_000);
+    utimesSync(stale, past, past);
+
+    await writeBuildArtifact(project, sampleArtifact("second"), fs);
+
+    expect((await fs.readdir(buildFolder)).sort()).to.deep.equal([
+      "build.json",
+      "build.json.writing.tmp",
+    ]);
+  });
+
+  it("keeps the previous build and leaves no temporary file when the rename fails", async () => {
+    await writeBuildArtifact(project, sampleArtifact("first"), fs);
+
+    await assert.rejects(
+      writeBuildArtifact(
+        project,
+        sampleArtifact("second"),
+        new RefusedRenameFileSystem(),
+      ),
+      /EPERM/,
+    );
+
+    expect(await fs.readdir(buildFolder)).to.deep.equal(["build.json"]);
+    expect((await readBuildArtifact(project, fs)).configHash).to.equal("first");
   });
 });
 
