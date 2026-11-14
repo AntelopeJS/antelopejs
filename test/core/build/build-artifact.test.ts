@@ -229,18 +229,17 @@ describe("writeBuildArtifact on the real file system", () => {
     cleanupTempDir(project);
   });
 
-  it("removes the temporary file a stopped build left more than a minute ago, and keeps one a build writes now and other old files", async () => {
-    const past = new Date(Date.now() - 120_000);
-    for (const name of [
-      "build.json.stopped.tmp",
-      "build.json.bak",
-      "editor.tmp",
-      "notes.txt",
-    ]) {
+  it("removes the temporary file a stopped build left more than a minute ago, and keeps one written within the minute and other old files", async () => {
+    const dated = (name: string, ageMs: number) => {
+      const at = new Date(Date.now() - ageMs);
       writeFileSync(path.join(buildFolder, name), "{");
-      utimesSync(path.join(buildFolder, name), past, past);
+      utimesSync(path.join(buildFolder, name), at, at);
+    };
+    dated("build.json.stopped.tmp", 61_000);
+    dated("build.json.writing.tmp", 30_000);
+    for (const name of ["build.json.bak", "editor.tmp", "notes.txt"]) {
+      dated(name, 120_000);
     }
-    writeFileSync(path.join(buildFolder, "build.json.writing.tmp"), "{");
 
     await writeBuildArtifact(project, sampleArtifact("second"), fs);
 
@@ -253,17 +252,24 @@ describe("writeBuildArtifact on the real file system", () => {
     ]);
   });
 
-  it("writes the build though an old temporary file cannot be removed", async () => {
-    const stuck = path.join(buildFolder, "build.json.stuck.tmp");
-    mkdirSync(stuck);
+  it("writes the build, and removes the other old temporary files, though one cannot be removed", async () => {
     const past = new Date(Date.now() - 120_000);
+    const stuck = path.join(buildFolder, "build.json.a-stuck.tmp");
+    const stale = path.join(buildFolder, "build.json.z-stopped.tmp");
+    mkdirSync(stuck);
+    writeFileSync(stale, "{");
     utimesSync(stuck, past, past);
+    utimesSync(stale, past, past);
 
     await writeBuildArtifact(project, sampleArtifact("second"), fs);
 
     expect((await readBuildArtifact(project, fs)).configHash).to.equal(
       "second",
     );
+    expect((await fs.readdir(buildFolder)).sort()).to.deep.equal([
+      "build.json",
+      "build.json.a-stuck.tmp",
+    ]);
   });
 
   it("keeps the previous build and leaves no temporary file when the rename fails", async () => {

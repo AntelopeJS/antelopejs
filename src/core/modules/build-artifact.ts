@@ -223,7 +223,7 @@ async function removeStaleTemps(
     const temp = path.join(buildFolder, name);
     const stats = await fs.stat(temp).catch(() => undefined);
     if (stats !== undefined && written - stats.mtimeMs > STALE_TEMP_MS) {
-      await fs.rm(temp, { force: true });
+      await fs.rm(temp, { force: true }).catch(() => undefined);
     }
   }
 }
