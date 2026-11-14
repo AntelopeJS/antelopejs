@@ -391,6 +391,24 @@ describe("A waiter on a lock without owner", () => {
     });
   }
 
+  it("waits for an old lock whose owner.json cannot be read, as one a holder is writing", async () => {
+    mkdirSync(pruneLockPath(cachePath));
+    writeFileSync(path.join(pruneLockPath(cachePath), "owner.json"), "{");
+    datePruneLockBack(cachePath, PAST_CREATION_WINDOW_MS);
+
+    const waiting = waitWhileCacheLocked(
+      cachePath,
+      PRUNE_LOCK,
+      fs,
+      fakeClock().now,
+    );
+
+    expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
+    expect(existsSync(pruneLockPath(cachePath))).to.equal(true);
+    rmSync(pruneLockPath(cachePath), { recursive: true });
+    await waiting;
+  });
+
   it("keeps the lock another prune takes while it dates an old lock without owner", async () => {
     const lockFolder = pruneLockPath(cachePath);
     mkdirSync(lockFolder);
