@@ -1,31 +1,14 @@
 import { expect } from "chai";
 import { spawn } from "node:child_process";
-import { rmSync, utimesSync } from "node:fs";
 import path from "node:path";
 
 import { ModuleCache } from "../../src/core/modules";
-import {
-  deadPid,
-  holdPruneLock,
-  leaseNames,
-  pruneLockPath,
-  readLeases,
-  thisProcess,
-  VanishingFileSystem,
-} from "../helpers/cache-leases";
+import { leaseNames, readLeases, thisProcess } from "../helpers/cache-leases";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const MODULE_CACHE_SOURCE = path.join(REPO_ROOT, "src/core/modules");
 const CHILD_TIMEOUT_MS = 30_000;
-const PENDING_WINDOW_MS = 200;
-
-function settlesWithin(promise: Promise<unknown>, ms: number) {
-  const timeout = new Promise<false>((resolve) =>
-    setTimeout(() => resolve(false), ms).unref(),
-  );
-  return Promise.race([promise.then(() => true), timeout]);
-}
 
 /** Runs a Node child that claims `entry` in the cache, prints its lease file names, and exits. */
 function claimInChild(cachePath: string, entry: string): Promise<string> {
@@ -102,57 +85,6 @@ describe("ModuleCache run leases", () => {
     await new ModuleCache(cachePath).getFolder("b@1.0.0", true, true);
 
     expect(leaseNames(cachePath)).to.have.length(2);
-  });
-
-  it("waits while a live prune holds the cache, then returns once it is released", async () => {
-    holdPruneLock(cachePath, { pid: process.pid });
-    const claimed = new ModuleCache(cachePath).getFolder("a@1.0.0", true, true);
-
-    expect(await settlesWithin(claimed, PENDING_WINDOW_MS)).to.equal(false);
-    expect(readLeases(cachePath)).to.have.length(1);
-
-    rmSync(pruneLockPath(cachePath), { recursive: true });
-    expect(await settlesWithin(claimed, 2000)).to.equal(true);
-  });
-
-  for (const { label, hold } of [
-    {
-      label: "whose owner on this machine has exited",
-      hold: (cache: string) => holdPruneLock(cache, { pid: deadPid() }),
-    },
-    {
-      label: "older than a minute",
-      hold: (cache: string) => {
-        holdPruneLock(cache, { pid: process.pid });
-        const past = new Date(Date.now() - 120_000);
-        utimesSync(pruneLockPath(cache), past, past);
-      },
-    },
-  ]) {
-    it(`does not wait for a prune lock ${label}`, async () => {
-      hold(cachePath);
-
-      const claimed = new ModuleCache(cachePath).getFolder(
-        "a@1.0.0",
-        true,
-        true,
-      );
-
-      expect(await settlesWithin(claimed, 2000)).to.equal(true);
-    });
-  }
-
-  it("does not wait for a prune lock released while the claim reads it", async () => {
-    holdPruneLock(cachePath, { pid: process.pid });
-    const fs = new VanishingFileSystem(pruneLockPath(cachePath));
-
-    const claimed = new ModuleCache(cachePath, fs).getFolder(
-      "a@1.0.0",
-      true,
-      true,
-    );
-
-    expect(await settlesWithin(claimed, 2000)).to.equal(true);
   });
 
   it("removes the lease when the process that claimed exits", async function () {

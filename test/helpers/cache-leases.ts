@@ -11,7 +11,12 @@ import os from "node:os";
 import path from "node:path";
 
 import { NodeFileSystem } from "../../src/core/filesystem";
-import { isObject, isParsedJson, type ParsedJson } from "../../src/utils";
+import {
+  isNumber,
+  isObject,
+  isParsedJson,
+  type ParsedJson,
+} from "../../src/utils";
 import type { JsonValue } from "./json";
 import { readText, writeJson } from "./temp";
 
@@ -133,21 +138,39 @@ export function pruneLockPath(cachePath: string): string {
   return path.join(cachePath, LOCK_FOLDER);
 }
 
+/** What a prune lock's `owner.json` holds: its process, the token of this hold, and its heartbeat count. */
+export interface LockOwner extends LeaseOwner {
+  token: string;
+  beat: number;
+}
+
 /**
- * Holds the prune lock of the cache at `cachePath` for the process `owner`,
- * at heartbeat `beat`. Holding it again with another `beat` is a heartbeat.
+ * Holds the prune lock of the cache at `cachePath` for `owner`, by default
+ * this process at beat 0. Holding it again with a higher `beat` is a
+ * heartbeat; with another `token`, another prune taking the lock.
  */
 export function holdPruneLock(
   cachePath: string,
-  owner: Partial<LeaseOwner> & { pid: number },
-  beat = 0,
+  owner: Partial<LockOwner> & { pid: number },
 ): void {
   writeJson(path.join(pruneLockPath(cachePath), "owner.json"), {
     ...thisProcess(),
-    ...owner,
     token: HELD_LOCK_TOKEN,
-    beat,
+    beat: 0,
+    ...owner,
   });
+}
+
+/** The heartbeat count in the owner of the prune lock of the cache at `cachePath`, if it can be read. */
+export function readLockBeat(cachePath: string): number | undefined {
+  try {
+    const owner: unknown = JSON.parse(
+      readText(path.join(pruneLockPath(cachePath), "owner.json")),
+    );
+    return isObject(owner) && isNumber(owner.beat) ? owner.beat : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
