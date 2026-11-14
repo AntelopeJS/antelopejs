@@ -292,6 +292,39 @@ describe("interface instances", () => {
     expect(results().plain).to.equal("mongodb-erp:t");
   });
 
+  it("refuses an undeclared import of a standalone interface whose only implementer disables it", async function () {
+    this.timeout(20000);
+    projectFolder = await createProject(
+      [
+        {
+          name: DATABASE,
+          files: DATABASE_FILES,
+          antelopeJs: { standalone: true },
+        },
+        databaseProvider("mongodb"),
+        {
+          name: "dms",
+          files: {
+            "index.js": `
+const { Query } = require(${JSON.stringify(DATABASE)});
+exports.construct = async () => {
+  global[${JSON.stringify(RESULTS_KEY)}].plain = await new Query("t").run().catch((error) => error.message);
+};
+exports.destroy = () => {};
+`,
+          },
+        },
+      ],
+      { mongodb: DISABLED_DATABASE, dms: {} },
+    );
+
+    manager = await launch(projectFolder);
+
+    expect(results().plain).to.equal(
+      `Interface '${DATABASE}' has no provider for this async method; the call was rejected. Load a module that implements it to enable this call.`,
+    );
+  });
+
   it("shares one instance, and its classes, between modules bound the same way", async function () {
     this.timeout(20000);
     projectFolder = await createProject(
