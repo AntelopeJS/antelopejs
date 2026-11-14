@@ -69,6 +69,35 @@ const OTHER_MACHINE = () => ({
   pid: deadPid(),
 });
 
+/**
+ * The real file system, except that the first `failures` removals of
+ * `folder` fail with `ENOTEMPTY`, as on Windows while another process reads
+ * a file in it.
+ */
+class BusyFolderFileSystem extends NodeFileSystem {
+  constructor(
+    private readonly folder: string,
+    private failures: number,
+  ) {
+    super();
+  }
+
+  override rm(
+    file: string,
+    options?: { recursive?: boolean; force?: boolean },
+  ) {
+    if (file === this.folder && this.failures > 0) {
+      this.failures -= 1;
+      return Promise.reject(
+        Object.assign(new Error("ENOTEMPTY: directory not empty"), {
+          code: "ENOTEMPTY",
+        }),
+      );
+    }
+    return super.rm(file, options);
+  }
+}
+
 describe("ModuleCache prune lock", () => {
   let root: string;
   let cachePath: string;
@@ -142,6 +171,17 @@ describe("ModuleCache prune lock", () => {
 
     expect(beat).to.be.greaterThan(first);
     expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
+  });
+
+  it("removes its lock on release though the first removals fail, as on Windows while a waiter reads its owner", async () => {
+    const lockFolder = pruneLockPath(cachePath);
+    const busy = new BusyFolderFileSystem(lockFolder, 2);
+
+    const lock = await tryAcquireCacheLock(cachePath, PRUNE_LOCK, busy);
+    await lock?.release();
+
+    expect(lock).to.not.equal(undefined);
+    expect(existsSync(lockFolder)).to.equal(false);
   });
 
   it("stops beating, and leaves the lock on release, once another process holds it", async () => {

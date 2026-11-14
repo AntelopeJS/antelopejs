@@ -17,6 +17,7 @@ const OWNER_FILE = "owner.json";
 const HEARTBEAT_INTERVAL_MS = 10_000;
 const SILENT_AFTER_MS = 60_000;
 const POLL_INTERVAL_MS = 25;
+const REMOVE_ATTEMPTS = 10;
 const DOWNLOADS_FOLDER = ".downloads";
 const LOCK_EXTENSION = ".lock";
 const MAX_ENCODED_LENGTH = 200;
@@ -122,6 +123,26 @@ async function holdsToken(
   return (await readOwner(lockFolder, fs))?.token === token;
 }
 
+/**
+ * Removes the lock folder at `lockFolder`. On Windows a waiter that reads
+ * `owner.json` at that moment keeps the folder from being removed, so a
+ * failed removal is tried again after a pause, up to ten times.
+ */
+async function removeLockFolder(
+  lockFolder: string,
+  fs: IFileSystem,
+): Promise<void> {
+  for (let attempt = 1; attempt < REMOVE_ATTEMPTS; attempt += 1) {
+    try {
+      await fs.rm(lockFolder, { recursive: true, force: true });
+      return;
+    } catch {
+      await delay(POLL_INTERVAL_MS);
+    }
+  }
+  await fs.rm(lockFolder, { recursive: true, force: true });
+}
+
 /** Removes the lock at `lockFolder` when its owner still holds `token`. */
 async function removeIfHeldBy(
   lockFolder: string,
@@ -129,7 +150,7 @@ async function removeIfHeldBy(
   fs: IFileSystem,
 ): Promise<void> {
   if (await holdsToken(lockFolder, token, fs)) {
-    await fs.rm(lockFolder, { recursive: true, force: true });
+    await removeLockFolder(lockFolder, fs);
   }
 }
 
@@ -195,7 +216,7 @@ async function tryCreateLock(
   try {
     await writeOwner(lockFolder, owner, fs);
   } catch (error) {
-    await fs.rm(lockFolder, { recursive: true, force: true });
+    await removeLockFolder(lockFolder, fs);
     throw error;
   }
   const stopHeartbeat = startHeartbeat(lockFolder, owner, fs, heartbeatMs);
