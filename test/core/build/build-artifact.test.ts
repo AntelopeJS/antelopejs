@@ -229,20 +229,41 @@ describe("writeBuildArtifact on the real file system", () => {
     cleanupTempDir(project);
   });
 
-  it("removes the temporary file a stopped build left more than a minute ago, and keeps one a build writes now", async () => {
-    const stale = path.join(buildFolder, "build.json.stopped.tmp");
-    const fresh = path.join(buildFolder, "build.json.writing.tmp");
-    writeFileSync(stale, "{");
-    writeFileSync(fresh, "{");
+  it("removes the temporary file a stopped build left more than a minute ago, and keeps one a build writes now and other old files", async () => {
     const past = new Date(Date.now() - 120_000);
-    utimesSync(stale, past, past);
+    for (const name of [
+      "build.json.stopped.tmp",
+      "build.json.bak",
+      "editor.tmp",
+      "notes.txt",
+    ]) {
+      writeFileSync(path.join(buildFolder, name), "{");
+      utimesSync(path.join(buildFolder, name), past, past);
+    }
+    writeFileSync(path.join(buildFolder, "build.json.writing.tmp"), "{");
 
     await writeBuildArtifact(project, sampleArtifact("second"), fs);
 
     expect((await fs.readdir(buildFolder)).sort()).to.deep.equal([
       "build.json",
+      "build.json.bak",
       "build.json.writing.tmp",
+      "editor.tmp",
+      "notes.txt",
     ]);
+  });
+
+  it("writes the build though an old temporary file cannot be removed", async () => {
+    const stuck = path.join(buildFolder, "build.json.stuck.tmp");
+    mkdirSync(stuck);
+    const past = new Date(Date.now() - 120_000);
+    utimesSync(stuck, past, past);
+
+    await writeBuildArtifact(project, sampleArtifact("second"), fs);
+
+    expect((await readBuildArtifact(project, fs)).configHash).to.equal(
+      "second",
+    );
   });
 
   it("keeps the previous build and leaves no temporary file when the rename fails", async () => {

@@ -233,7 +233,8 @@ async function removeStaleTemps(
  * file beside it, then renames that file over it, so that a run that reads
  * `build.json` meanwhile reads the whole previous build or the whole new one.
  * It then removes the temporary files a stopped build left, as
- * {@link removeStaleTemps} does.
+ * {@link removeStaleTemps} does. A file it cannot remove stays and does not
+ * fail the build, since `build.json` is already the new build.
  */
 export async function writeBuildArtifact(
   projectFolder: string,
@@ -254,7 +255,7 @@ export async function writeBuildArtifact(
     await fs.rm(temp, { force: true });
     throw error;
   }
-  await removeStaleTemps(buildFolder, artifactPath, fs);
+  await removeStaleTemps(buildFolder, artifactPath, fs).catch(() => undefined);
 }
 
 /** A module entry as `build.json` stores it, its manifest not yet decoded. */
