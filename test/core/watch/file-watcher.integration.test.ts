@@ -267,13 +267,16 @@ describe("FileWatcher Integration with a deleted watched folder", () => {
       }, 2000);
     });
 
-  const changesAfterDeletion = async (watcher: FileWatcher) => {
+  const changesAfterDeletion = async (
+    watcher: FileWatcher,
+    awaitingFolders = 0,
+  ) => {
     const baseline = openWatchers();
     watcher.startWatching();
     expect(openWatchers()).to.be.greaterThan(baseline);
 
     await rm(watchedDir, { recursive: true, force: true });
-    await watchersClose(baseline);
+    await watchersClose(baseline + awaitingFolders);
     await new Promise((resolve) => setTimeout(resolve, EVENT_SETTLE_MS));
     const handleFileChange = sinon.spy(watcher, "handleFileChange");
     await new Promise((resolve) => setTimeout(resolve, EVENT_SETTLE_MS));
@@ -300,7 +303,7 @@ describe("FileWatcher Integration with a deleted watched folder", () => {
     const watcher = new FileWatcher(new NodeFileSystem());
     await watcher.scanModule("test", watchedDir);
     try {
-      expect(await changesAfterDeletion(watcher)).to.equal(0);
+      expect(await changesAfterDeletion(watcher, 1)).to.equal(0);
     } finally {
       watcher.stopWatching();
     }
