@@ -18,6 +18,7 @@ import {
   waitWhileCacheLocked,
 } from "../../src/core/modules";
 import {
+  cacheFolderNames,
   deadPid,
   holdPruneLock,
   manifestKeys,
@@ -25,6 +26,7 @@ import {
   pruneLockPath,
   readLeases,
   readLockOwner,
+  RefusingFileSystem,
   seedCache,
 } from "../helpers/cache-leases";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
@@ -33,6 +35,8 @@ const KEEP_NOTHING: CacheKeep = () => false;
 const PENDING_WINDOW_MS = 200;
 const SETTLE_WINDOW_MS = 2000;
 const SILENT_LOCK_MS = 60_000;
+const PAST_CREATION_WINDOW_MS = 61_000;
+const STALLED_CREATOR_MS = 59_000;
 const SKEWED_BY_MS = 120_000;
 const fs = new NodeFileSystem();
 
@@ -47,10 +51,15 @@ function settlesWithin(promise: Promise<unknown>, ms: number) {
   return Promise.race([promise.then(() => true), timeout]);
 }
 
+/** Dates the prune lock folder of `cachePath` `ms` back. */
+function datePruneLockBack(cachePath: string, ms: number): void {
+  const past = new Date(Date.now() - ms);
+  utimesSync(pruneLockPath(cachePath), past, past);
+}
+
 /** Dates the prune lock of `cachePath` two minutes back, as a machine whose clock runs behind would. */
 function skewLockClock(cachePath: string): void {
-  const past = new Date(Date.now() - SKEWED_BY_MS);
-  utimesSync(pruneLockPath(cachePath), past, past);
+  datePruneLockBack(cachePath, SKEWED_BY_MS);
 }
 
 /** The heartbeat count in the owner of the prune lock of `cachePath`, if it can be read. */
@@ -95,6 +104,43 @@ class BusyFolderFileSystem extends NodeFileSystem {
       );
     }
     return super.rm(file, options);
+  }
+}
+
+/**
+ * The real file system, except that it dates every file `lagMs` earlier than
+ * this machine's clock, as a shared file system whose clock runs behind.
+ */
+class LaggingClockFileSystem extends NodeFileSystem {
+  constructor(private readonly lagMs: number) {
+    super();
+  }
+
+  override async stat(file: string) {
+    const stats = await super.stat(file);
+    stats.mtimeMs -= this.lagMs;
+    return stats;
+  }
+}
+
+/**
+ * The real file system, except that once `folder` has been dated,
+ * `meanwhile` runs, as another process would between that date and what comes next.
+ */
+class AfterDatingFileSystem extends NodeFileSystem {
+  constructor(
+    private readonly folder: string,
+    private readonly meanwhile: () => void,
+  ) {
+    super();
+  }
+
+  override async stat(file: string) {
+    const stats = await super.stat(file);
+    if (file === this.folder) {
+      this.meanwhile();
+    }
+    return stats;
   }
 }
 
@@ -225,6 +271,16 @@ describe("A run claiming a cache folder while a prune holds the lock", () => {
     expect(await settlesWithin(claimed, SETTLE_WINDOW_MS)).to.equal(true);
   });
 
+  it("does not wait for a prune lock without owner that its file system dates past the creation window", async () => {
+    mkdirSync(pruneLockPath(cachePath));
+    datePruneLockBack(cachePath, PAST_CREATION_WINDOW_MS);
+
+    const claimed = new ModuleCache(cachePath).getFolder("a@1.0.0", true, true);
+
+    expect(await settlesWithin(claimed, SETTLE_WINDOW_MS)).to.equal(true);
+    expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
+  });
+
   it("does not wait for a prune lock whose owner on this machine has exited", async () => {
     holdPruneLock(cachePath, { pid: deadPid() });
 
@@ -274,18 +330,6 @@ describe("A run claiming a cache folder while a prune holds the lock", () => {
     });
   }
 
-  it("removes a lock that shows no owner for 60 s, as one a prune left when it crashed", async () => {
-    mkdirSync(pruneLockPath(cachePath));
-    const clock = fakeClock();
-
-    const waiting = waitWhileCacheLocked(cachePath, PRUNE_LOCK, fs, clock.now);
-    expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
-    clock.at = SILENT_LOCK_MS;
-
-    expect(await settlesWithin(waiting, SETTLE_WINDOW_MS)).to.equal(true);
-    expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
-  });
-
   it("stops waiting, but keeps the lock, when its owner turns unreadable and stays so for 60 s", async () => {
     holdPruneLock(cachePath, OTHER_MACHINE());
     const clock = fakeClock();
@@ -297,5 +341,139 @@ describe("A run claiming a cache folder while a prune holds the lock", () => {
 
     expect(await settlesWithin(waiting, SETTLE_WINDOW_MS)).to.equal(true);
     expect(existsSync(pruneLockPath(cachePath))).to.equal(true);
+  });
+});
+
+describe("A waiter on a lock without owner", () => {
+  let root: string;
+  let cachePath: string;
+
+  beforeEach(() => {
+    root = makeTempDir("ajs-cache-lock-ownerless-");
+    cachePath = path.join(root, "cache");
+    mkdirSync(cachePath);
+  });
+
+  afterEach(() => {
+    cleanupTempDir(root);
+  });
+
+  for (const { label, age, files } of [
+    { label: "just created", age: 0, files: fs },
+    {
+      label: "whose creator stalls 59 s before writing its owner",
+      age: STALLED_CREATOR_MS,
+      files: fs,
+    },
+    {
+      label:
+        "just created on a file system whose clock runs two minutes behind",
+      age: 0,
+      files: new LaggingClockFileSystem(SKEWED_BY_MS),
+    },
+  ]) {
+    it(`waits for a lock without owner ${label}, and removes it once it shows no owner for 60 s`, async () => {
+      mkdirSync(pruneLockPath(cachePath));
+      datePruneLockBack(cachePath, age);
+      const clock = fakeClock();
+
+      const waiting = waitWhileCacheLocked(
+        cachePath,
+        PRUNE_LOCK,
+        files,
+        clock.now,
+      );
+      expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
+      clock.at = SILENT_LOCK_MS;
+
+      expect(await settlesWithin(waiting, SETTLE_WINDOW_MS)).to.equal(true);
+      expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
+    });
+  }
+
+  it("waits for an old lock whose owner.json cannot be read, as one a holder is writing", async () => {
+    mkdirSync(pruneLockPath(cachePath));
+    writeFileSync(path.join(pruneLockPath(cachePath), "owner.json"), "{");
+    datePruneLockBack(cachePath, PAST_CREATION_WINDOW_MS);
+
+    const waiting = waitWhileCacheLocked(
+      cachePath,
+      PRUNE_LOCK,
+      fs,
+      fakeClock().now,
+    );
+
+    expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
+    expect(existsSync(pruneLockPath(cachePath))).to.equal(true);
+    rmSync(pruneLockPath(cachePath), { recursive: true });
+    await waiting;
+  });
+
+  it("keeps the lock another prune takes while it dates an old lock without owner", async () => {
+    const lockFolder = pruneLockPath(cachePath);
+    mkdirSync(lockFolder);
+    datePruneLockBack(cachePath, PAST_CREATION_WINDOW_MS);
+    const takenMeanwhile = new AfterDatingFileSystem(lockFolder, () => {
+      rmSync(lockFolder, { recursive: true });
+      holdPruneLock(cachePath, { pid: process.pid, token: "next-prune" });
+    });
+
+    const waiting = waitWhileCacheLocked(
+      cachePath,
+      PRUNE_LOCK,
+      takenMeanwhile,
+      fakeClock().now,
+    );
+
+    expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
+    expect(readLockOwner(lockFolder)?.token).to.equal("next-prune");
+    rmSync(lockFolder, { recursive: true });
+    await waiting;
+  });
+
+  it("removes at once a lock without owner past the creation window on a file system whose clock runs two minutes ahead", async () => {
+    mkdirSync(pruneLockPath(cachePath));
+    datePruneLockBack(cachePath, PAST_CREATION_WINDOW_MS);
+    const clock = fakeClock();
+
+    const waiting = waitWhileCacheLocked(
+      cachePath,
+      PRUNE_LOCK,
+      new LaggingClockFileSystem(-SKEWED_BY_MS),
+      clock.now,
+    );
+
+    expect(await settlesWithin(waiting, SETTLE_WINDOW_MS)).to.equal(true);
+    expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
+  });
+
+  it("removes at once, and leaves nothing beside it, a lock without owner that its file system dates past the creation window, as one a prune left when it crashed before writing its owner", async () => {
+    const before = cacheFolderNames(cachePath, ".");
+    mkdirSync(pruneLockPath(cachePath));
+    datePruneLockBack(cachePath, PAST_CREATION_WINDOW_MS);
+    const clock = fakeClock();
+
+    const waiting = waitWhileCacheLocked(cachePath, PRUNE_LOCK, fs, clock.now);
+
+    expect(await settlesWithin(waiting, SETTLE_WINDOW_MS)).to.equal(true);
+    expect(cacheFolderNames(cachePath, ".")).to.deep.equal(before);
+  });
+
+  it("waits the 60 s for an old lock without owner when it cannot write the probe that reads the file system's clock", async () => {
+    mkdirSync(pruneLockPath(cachePath));
+    datePruneLockBack(cachePath, PAST_CREATION_WINDOW_MS);
+    const clock = fakeClock();
+    const readOnly = new RefusingFileSystem((file) => file !== cachePath);
+
+    const waiting = waitWhileCacheLocked(
+      cachePath,
+      PRUNE_LOCK,
+      readOnly,
+      clock.now,
+    );
+    expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
+    clock.at = SILENT_LOCK_MS;
+
+    expect(await settlesWithin(waiting, SETTLE_WINDOW_MS)).to.equal(true);
   });
 });

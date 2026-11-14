@@ -16,6 +16,13 @@ import {
 const OWNER_FILE = "owner.json";
 const HEARTBEAT_INTERVAL_MS = 10_000;
 const SILENT_AFTER_MS = 60_000;
+/**
+ * How long a lock folder may go without `owner.json` before a waiter removes
+ * it. It equals {@link SILENT_AFTER_MS}, so a live creator that stalls between
+ * creating the folder and writing its owner keeps its lock as long as a live
+ * holder whose heartbeat stalls does.
+ */
+const CREATION_WINDOW_MS = SILENT_AFTER_MS;
 const POLL_INTERVAL_MS = 25;
 const REMOVE_ATTEMPTS = 10;
 const DOWNLOADS_FOLDER = ".downloads";
@@ -154,6 +161,47 @@ async function removeIfHeldBy(
   }
 }
 
+/**
+ * The time on the clock of the file system that holds `folder`: the date it
+ * gives a probe file it creates in `folder`, which is then removed.
+ */
+async function fileSystemNow(folder: string, fs: IFileSystem): Promise<number> {
+  const probe = path.join(folder, `.${randomUUID()}.probe`);
+  await fs.writeFile(probe, "");
+  try {
+    return (await fs.stat(probe)).mtimeMs;
+  } finally {
+    await fs.rm(probe, { force: true });
+  }
+}
+
+/**
+ * Whether the lock at `lockFolder` has no `owner.json`, and the file system
+ * that holds it dates the folder more than {@link CREATION_WINDOW_MS} back,
+ * as a lock whose creator stopped between creating the folder and writing
+ * its owner. Both dates come from the clock of that file system, so a clock
+ * of this machine that disagrees with it does not matter. `owner.json` is
+ * looked for again after the folder is dated, so that a lock another process
+ * took meanwhile and wrote its owner in is not abandoned. A lock that cannot
+ * be dated so, as on a cache this process may not write, is not abandoned.
+ */
+async function isAbandoned(
+  lockFolder: string,
+  fs: IFileSystem,
+): Promise<boolean> {
+  const ownerFile = path.join(lockFolder, OWNER_FILE);
+  if (await fs.exists(ownerFile)) {
+    return false;
+  }
+  try {
+    const now = await fileSystemNow(path.dirname(lockFolder), fs);
+    const created = (await fs.stat(lockFolder)).mtimeMs;
+    return now - created > CREATION_WINDOW_MS && !(await fs.exists(ownerFile));
+  } catch {
+    return false;
+  }
+}
+
 /** Whether `owner` ran on this machine and pid namespace and has exited. */
 function hasExited(owner: LockOwner | undefined): boolean {
   return owner !== undefined && !isLiveProcess(owner);
@@ -264,9 +312,11 @@ function isSameHold(owner: LockOwner | undefined, seen: LockOwner | undefined) {
 /**
  * Resolves once no live process holds the lock `name` of the cache at
  * `cachePath`: the lock is gone, or its owner ran on this machine and pid
- * namespace and has exited, or its owner has not changed for 60 s on `now`,
- * the clock of this process, so that machines whose clocks disagree still
- * agree. An owner that cannot be read counts as unchanged. A lock silent for
+ * namespace and has exited, or it has no `owner.json` and its file system
+ * dates it past the creation window, or its owner has not changed for 60 s on
+ * `now`, the clock of this process, so that machines whose clocks disagree
+ * still agree. A lock without `owner.json` past the creation window is
+ * removed. An owner that cannot be read counts as unchanged. A lock silent for
  * 60 s is removed when it still holds the token last seen.
  */
 export async function waitWhileCacheLocked(
@@ -281,6 +331,10 @@ export async function waitWhileCacheLocked(
   while (await fs.exists(lockFolder)) {
     const owner = await readOwner(lockFolder, fs);
     if (hasExited(owner)) {
+      return;
+    }
+    if (owner === undefined && (await isAbandoned(lockFolder, fs))) {
+      await removeLockFolder(lockFolder, fs);
       return;
     }
     if (owner !== undefined && !isSameHold(owner, seen)) {
