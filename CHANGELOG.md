@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.23.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.1...v1.23.2)
+
+### 🩹 Fixes
+
+- **cli:** Exit naming the module and package when modules install meets an uninstalled dependency ([#485](https://github.com/AntelopeJS/antelopejs/pull/485))
+
+### 💅 Refactors
+
+- **config:** Place the config-walker suppressions: fix, exempt or document each ([#462](https://github.com/AntelopeJS/antelopejs/pull/462))
+
+### ✅ Tests
+
+- **verify:** Fail the verdict when a known journey of a touched feature fails ([#483](https://github.com/AntelopeJS/antelopejs/pull/483))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.23.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.0...v1.23.1)
