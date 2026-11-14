@@ -17,10 +17,7 @@ import {
   unpackErrors,
 } from "../modules";
 import { terminalDisplay } from "../output";
-import {
-  applyBuildEnvOverrides,
-  readRefreshedBuildArtifact,
-} from "./build-refresh";
+import { applyBuildEnvOverrides, refreshedBuildReader } from "./build-refresh";
 import {
   ensureBuildModulesExist,
   logEnvironmentMismatch,
@@ -216,11 +213,32 @@ function builtFolders(artifact: BuildArtifact): string {
 }
 
 /**
+ * The build `read` returns now when it names other module folders than
+ * `claimed` in the same cache, so that this run starts it in place of
+ * `claimed`. A build that cannot be read, as while another build rewrites
+ * `build.json`, or that names another cache, is not adopted.
+ */
+async function readNewerBuild(
+  claimed: BuildArtifact,
+  read: () => Promise<BuildArtifact>,
+): Promise<BuildArtifact | undefined> {
+  const current = await read().catch(() => undefined);
+  if (
+    current === undefined ||
+    current.config.cacheFolder !== claimed.config.cacheFolder ||
+    builtFolders(current) === builtFolders(claimed)
+  ) {
+    return undefined;
+  }
+  return current;
+}
+
+/**
  * Claims the module folders of `artifact`, then reads the build again with
- * `read`, until the build names the folders this run has claimed. A build
- * that wrote another `build.json` before the claims, and whose prune then
- * removed the folders `artifact` names, is so started instead of failing on
- * a missing folder.
+ * `read`, and claims the folders of each newer build it adopts, as
+ * {@link readNewerBuild} decides. A build that wrote another `build.json`
+ * before the claims, and whose prune then removed the folders `artifact`
+ * names, is so started instead of failing on a missing folder.
  *
  * @returns the build whose folders this run has claimed.
  */
@@ -233,11 +251,11 @@ async function claimCurrentBuild(
   let claimed = artifact;
   for (;;) {
     await claimBuiltFolders(claimed, cacheFolder, loadContext);
-    const current = await read();
-    if (builtFolders(current) === builtFolders(claimed)) {
+    const newer = await readNewerBuild(claimed, read);
+    if (newer === undefined) {
       return claimed;
     }
-    claimed = current;
+    claimed = newer;
   }
 }
 
@@ -323,7 +341,7 @@ export const prepareFromRefreshedArtifact: ProjectPreparer = async (
   env,
 ) => {
   const fs = new NodeFileSystem();
-  const read = () => readRefreshedBuildArtifact(projectFolder, env, fs);
+  const read = await refreshedBuildReader(projectFolder, env, fs);
 
   return prepareFromBuiltArtifact(
     await read(),

@@ -179,17 +179,23 @@ export function refreshBuildArtifact(
 }
 
 /**
- * Read the project's build artifact and refresh it with `antelope.config.ts`
- * resolved for `env`, without writing it back.
+ * Resolves `antelope.config.ts` for `env` once, and returns a function that
+ * reads the project's build artifact and refreshes it with that
+ * configuration, without writing it back.
  */
-export async function readRefreshedBuildArtifact(
+export async function refreshedBuildReader(
   projectFolder: string,
   env: string,
   fs: IFileSystem,
-): Promise<BuildArtifact> {
-  const artifact = await readBuildArtifactOrThrow(projectFolder, fs);
+): Promise<() => Promise<BuildArtifact>> {
   const config = await new ConfigLoader(fs).load(projectFolder, env);
-  return refreshBuildArtifact(artifact, config, env, projectFolder);
+  return async () =>
+    refreshBuildArtifact(
+      await readBuildArtifactOrThrow(projectFolder, fs),
+      config,
+      env,
+      projectFolder,
+    );
 }
 
 function expandedModuleConfig(entry: BuildModuleEntry): ExpandedModuleConfig {

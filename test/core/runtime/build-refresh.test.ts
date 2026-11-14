@@ -22,7 +22,7 @@ import {
 import {
   BuildModuleSetChangedError,
   findBuildModuleSetChange,
-  readRefreshedBuildArtifact,
+  refreshedBuildReader,
   refreshBuildArtifact,
 } from "../../../src/core/runtime";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
@@ -313,7 +313,8 @@ async function refreshError(
         await writeBuildArtifact(PROJECT, createArtifact(), fs);
         const onDisk = await fs.readFileString(getBuildArtifactPath(PROJECT));
 
-        const refreshed = await readRefreshedBuildArtifact(PROJECT, ENV, fs);
+        const read = await refreshedBuildReader(PROJECT, ENV, fs);
+        const refreshed = await read();
 
         expect(refreshed.modules.api.config).to.deep.equal({ token: SECRET });
         expect(await fs.readFileString(getBuildArtifactPath(PROJECT))).to.equal(
