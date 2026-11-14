@@ -33,16 +33,20 @@ const SOURCE = {
   package: "a",
   version: "^1.0.0",
 } as const;
-const CONFIG: AntelopeConfig = {
-  name: "built",
-  modules: { built: { source: SOURCE } },
-};
+const MOVED_SOURCE = { ...SOURCE, version: "^2.0.0" } as const;
+type Source = typeof SOURCE | typeof MOVED_SOURCE;
+
+/** The configuration of a project whose module `built` loads `source`. */
+function configLoading(source: Source): AntelopeConfig {
+  return { name: "built", modules: { built: { source } } };
+}
 
 /** Writes a `build.json` for `project` whose only module lives in `folder` of the cache at `cachePath`. */
 async function writeBuild(
   project: string,
   cachePath: string,
   folder: string,
+  source: Source = SOURCE,
 ): Promise<void> {
   const modulePath = path.join(cachePath, folder);
   const artifact = createBuildArtifact({
@@ -57,7 +61,7 @@ async function writeBuild(
     modules: {
       built: {
         folder: modulePath,
-        source: { ...SOURCE, id: "built" },
+        source: { ...source, id: "built" },
         name: "built",
         main: path.join(modulePath, "index.js"),
         manifest: { name: "built", version: "1.0.0" },
@@ -109,12 +113,16 @@ describe("ajs project start while another run rebuilds and prunes", () => {
    * Prepares `start` with `prepare` from a `build.json` of {@link FIRST},
    * then, while a prune in a child process has read the leases and waits,
    * lets `start` claim, rewrites `build.json` to {@link REBUILT} and lets
-   * the prune remove {@link FIRST}. The lease of this test keeps
-   * {@link REBUILT} from that prune, as the lease of the build would.
+   * the prune remove {@link FIRST}. The rebuilt module loads `rebuiltSource`.
+   * The lease of this test keeps {@link REBUILT} from that prune, as the
+   * lease of the build would.
    *
    * @returns the module folders `start` then loads.
    */
-  async function startWhileRebuilt(prepare: Prepare): Promise<string[]> {
+  async function startWhileRebuilt(
+    prepare: Prepare,
+    rebuiltSource: Source = SOURCE,
+  ): Promise<string[]> {
     await writeBuild(project, cachePath, FIRST);
     await new ModuleCache(cachePath).claimFolder(path.join(cachePath, REBUILT));
     const gate = path.join(root, "prune-go");
@@ -124,7 +132,7 @@ describe("ajs project start while another run rebuilds and prunes", () => {
     const prepared = await prepare(project, "default");
     const verified = prepared.verify(new AbortController().signal);
     await leased(cachePath, FIRST);
-    await writeBuild(project, cachePath, REBUILT);
+    await writeBuild(project, cachePath, REBUILT, rebuiltSource);
     openGate(gate);
     await pruning.exited;
     await verified;
@@ -145,12 +153,38 @@ describe("ajs project start while another run rebuilds and prunes", () => {
     writeFileSync(path.join(project, "antelope.config.ts"), "");
     const evaluate = sinon
       .stub(tsConfigFile, "loadTsConfigFile")
-      .resolves(CONFIG);
+      .resolves(configLoading(SOURCE));
 
     expect(await startWhileRebuilt(prepareFromRefreshedArtifact)).to.deep.equal(
       [path.join(cachePath, REBUILT)],
     );
     expect(evaluate.callCount).to.equal(1);
+  });
+
+  it("starts the new build with --refresh-config when antelope.config.ts was edited for it", async () => {
+    writeFileSync(path.join(project, "antelope.config.ts"), "");
+    const evaluate = sinon.stub(tsConfigFile, "loadTsConfigFile");
+    evaluate.onFirstCall().resolves(configLoading(SOURCE));
+    evaluate.resolves(configLoading(MOVED_SOURCE));
+
+    expect(
+      await startWhileRebuilt(prepareFromRefreshedArtifact, MOVED_SOURCE),
+    ).to.deep.equal([path.join(cachePath, REBUILT)]);
+  });
+
+  it("reports that no build exists with --refresh-config before it resolves antelope.config.ts", async () => {
+    writeFileSync(path.join(project, "antelope.config.ts"), "");
+    const evaluate = sinon
+      .stub(tsConfigFile, "loadTsConfigFile")
+      .rejects(new Error("config exploded"));
+
+    const failure = await prepareFromRefreshedArtifact(project, "default").then(
+      () => undefined,
+      (error: unknown) => String(error),
+    );
+
+    expect(failure).to.include("No build found");
+    expect(evaluate.callCount).to.equal(0);
   });
 });
 

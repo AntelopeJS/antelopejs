@@ -17,7 +17,7 @@ import {
   unpackErrors,
 } from "../modules";
 import { terminalDisplay } from "../output";
-import { applyBuildEnvOverrides, refreshedBuildReader } from "./build-refresh";
+import { applyBuildEnvOverrides, readRefreshedBuild } from "./build-refresh";
 import {
   ensureBuildModulesExist,
   logEnvironmentMismatch,
@@ -341,11 +341,15 @@ export const prepareFromRefreshedArtifact: ProjectPreparer = async (
   env,
 ) => {
   const fs = new NodeFileSystem();
-  const read = await refreshedBuildReader(projectFolder, env, fs);
+  const { artifact, readAgain } = await readRefreshedBuild(
+    projectFolder,
+    env,
+    fs,
+  );
 
   return prepareFromBuiltArtifact(
-    await read(),
-    read,
+    artifact,
+    readAgain,
     projectFolder,
     fs,
     (artifact) => ensureBuildModulesExist(artifact, fs),
