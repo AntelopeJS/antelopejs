@@ -24,7 +24,7 @@ export type { ProjectInterfaceCheck } from "./interface-ranges";
  * Loads the modules of the project for `env`, checks that their interfaces
  * resolve and that each shared interface package satisfies the range every
  * module declares, then writes `.antelope/build/build.json` and removes the
- * cached modules no environment declares. Nothing is written or removed when a check
+ * cached modules neither the build nor any environment uses. Nothing is written or removed when a check
  * fails. The check follows a launch: the required
  * modules decide it, and an `optional: true` module that would fail it is
  * only warned about, since a launch runs without it.

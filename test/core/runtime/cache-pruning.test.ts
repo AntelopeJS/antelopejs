@@ -1,10 +1,15 @@
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import path from "node:path";
 
 import { NodeFileSystem } from "../../../src/core/filesystem";
-import { ModuleCache } from "../../../src/core/modules";
+import {
+  ModuleCache,
+  createBuildArtifact,
+  writeBuildArtifact,
+} from "../../../src/core/modules";
 import { pruneModuleCache } from "../../../src/core/runtime";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
@@ -28,6 +33,8 @@ const STALE = {
   pinned: "1.0.0",
   "pinned@1.0.0": "1.0.0",
   "dropped@1.0.0": "1.0.0",
+  "pinned@2.0.0": "2.0.0",
+  "tagged@2.0.0": "2.0.0",
 };
 
 const KEPT = {
@@ -63,6 +70,63 @@ describe("pruneModuleCache", () => {
     await pruneModuleCache(cache, project, new NodeFileSystem());
 
     expect(Object.fromEntries(cache.entries())).to.deep.equal(KEPT);
+  });
+
+  it("keeps what build.json points at for an environment the configuration does not list", async () => {
+    await fsPromises.writeFile(
+      path.join(project, "antelope.config.ts"),
+      `export default (ctx: { env: string }) => ({
+        name: "pruning",
+        modules: ctx.env === "production"
+          ? { db: { source: { type: "package", package: "real-db", version: "^1.0.0" } } }
+          : { db: { source: { type: "package", package: "mock-db", version: "^1.0.0" } } },
+      });\n`,
+    );
+    const folder = "/cache/real-db@1.0.0";
+    const source: ModuleSourcePackage = {
+      type: "package",
+      package: "real-db",
+      version: "^1.0.0",
+    };
+    await writeBuildArtifact(
+      project,
+      createBuildArtifact({
+        configHash: "hash",
+        env: "production",
+        config: {
+          name: "pruning",
+          cacheFolder: "/cache",
+          projectFolder: project,
+          envOverrides: {},
+        },
+        modules: {
+          db: {
+            folder,
+            source,
+            name: "real-db",
+            main: `${folder}/index.js`,
+            manifest: { name: "real-db", version: "1.0.0" },
+            baseUrl: folder,
+            paths: [],
+          },
+        },
+      }),
+      new NodeFileSystem(),
+    );
+    const cacheFs = new InMemoryFileSystem();
+    await cacheFs.writeFile(
+      "/cache/manifest.json",
+      JSON.stringify({ "mock-db@1.0.0": "1.0.0", "real-db@1.0.0": "1.0.0" }),
+    );
+    const cache = new ModuleCache("/cache", cacheFs);
+    await cache.load();
+
+    await pruneModuleCache(cache, project, new NodeFileSystem());
+
+    expect(Object.fromEntries(cache.entries())).to.deep.equal({
+      "mock-db@1.0.0": "1.0.0",
+      "real-db@1.0.0": "1.0.0",
+    });
   });
 
   it("leaves the cache as it is when the configuration cannot be read", async () => {

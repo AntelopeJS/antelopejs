@@ -4,7 +4,8 @@ import type {
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
-import { satisfies, validRange } from "semver";
+import * as path from "node:path";
+import { maxSatisfying, validRange } from "semver";
 
 import {
   ConfigLoader,
@@ -13,7 +14,7 @@ import {
   loadTsConfigFile,
 } from "../config";
 import type { NodeFileSystem } from "../filesystem";
-import type { ModuleCache } from "../modules";
+import { type ModuleCache, readBuildArtifact } from "../modules";
 
 const Logger = new Logging.Channel("loader");
 
@@ -28,20 +29,34 @@ function isGitSource(source: ModuleSource): source is ModuleSourceGit {
 }
 
 /**
- * Whether the cache entry holds a version `spec` can load: one in its range,
- * or any version when `spec` is a dist-tag, which only the registry resolves.
+ * The cached version an offline start of `source` falls back to: the highest
+ * one in its range, or the highest one for a dist-tag, which only the registry
+ * resolves.
  */
-function satisfiesSpec(version: string, spec: string): boolean {
-  const range = validRange(spec);
-  return range === null || satisfies(version, range);
+async function fallbackEntry(
+  source: ModuleSourcePackage,
+  cache: ModuleCache,
+): Promise<string | undefined> {
+  const { packageCacheEntry } = await import("../downloaders");
+  const versions = cache
+    .entries()
+    .filter(
+      ([entry, version]) =>
+        entry === packageCacheEntry(source.package, version),
+    )
+    .map(([, version]) => version);
+  const best = maxSatisfying(versions, validRange(source.version) ?? "*");
+  return best === null ? undefined : packageCacheEntry(source.package, best);
 }
 
-async function keepForSource(source: ModuleSource): Promise<CacheKeep> {
-  const { packageCacheEntry, urlToFile } = await import("../downloaders");
+async function keepForSource(
+  source: ModuleSource,
+  cache: ModuleCache,
+): Promise<CacheKeep> {
+  const { urlToFile } = await import("../downloaders");
   if (isPackageSource(source)) {
-    return (entry, version) =>
-      entry === packageCacheEntry(source.package, version) &&
-      satisfiesSpec(version, source.version);
+    const kept = await fallbackEntry(source, cache);
+    return (entry) => entry === kept;
   }
   if (isGitSource(source)) {
     const name = urlToFile(source.remote);
@@ -69,9 +84,26 @@ async function declaredSources(
   );
 }
 
+/** The cache entries the project's `build.json` points at; none without a build. */
+async function builtEntries(
+  cache: ModuleCache,
+  projectFolder: string,
+  fs: NodeFileSystem,
+): Promise<string[]> {
+  try {
+    const artifact = await readBuildArtifact(projectFolder, fs);
+    return Object.values(artifact.modules).map(({ folder }) =>
+      path.relative(cache.path, folder),
+    );
+  } catch {
+    return [];
+  }
+}
+
 /**
- * Removes the cached modules that no environment of the project declares and
- * that this run did not load. A failure is logged, never thrown, since the
+ * Removes the cached modules that this run did not load, that `build.json`
+ * does not point at, and that no environment the configuration lists falls
+ * back to offline. A failure is logged, never thrown, since the
  * modules have already loaded.
  */
 export async function pruneModuleCache(
@@ -81,10 +113,14 @@ export async function pruneModuleCache(
 ): Promise<void> {
   try {
     const keeps = await Promise.all(
-      (await declaredSources(projectFolder, fs)).map(keepForSource),
+      (await declaredSources(projectFolder, fs)).map((source) =>
+        keepForSource(source, cache),
+      ),
     );
-    await cache.prune((entry, version) =>
-      keeps.some((keep) => keep(entry, version)),
+    const built = new Set(await builtEntries(cache, projectFolder, fs));
+    await cache.prune(
+      (entry, version) =>
+        built.has(entry) || keeps.some((keep) => keep(entry, version)),
     );
   } catch (err) {
     Logger.Warn("Could not remove unused modules from the cache:", err);
