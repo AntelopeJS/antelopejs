@@ -1,5 +1,54 @@
 # Changelog
 
+## v1.23.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.0...v1.23.1)
+
+### 🚀 Enhancements
+
+- **core:** Add --timeout to ajs module test ([#480](https://github.com/AntelopeJS/antelopejs/pull/480))
+
+### 🩹 Fixes
+
+- **cli:** Keep the prompt library types out of the published declarations ([#465](https://github.com/AntelopeJS/antelopejs/pull/465))
+- **core:** Serialize concurrent loads of one npm package ([#466](https://github.com/AntelopeJS/antelopejs/pull/466))
+- **core:** Keep mocha types out of the published root declarations ([#471](https://github.com/AntelopeJS/antelopejs/pull/471))
+- **watch:** Close the watcher of a watched folder once it is deleted ([#472](https://github.com/AntelopeJS/antelopejs/pull/472))
+- **output:** Name each module and interface in the unresolved interface error ([#474](https://github.com/AntelopeJS/antelopejs/pull/474))
+- **core:** Install each version of an npm module in its own cache folder ([#476](https://github.com/AntelopeJS/antelopejs/pull/476))
+- **core:** Name the module and package when a declared dependency is not installed ([#482](https://github.com/AntelopeJS/antelopejs/pull/482))
+- **watch:** Watch a module folder again once it is recreated ([#479](https://github.com/AntelopeJS/antelopejs/pull/479))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of core 1.23.0 ([#461](https://github.com/AntelopeJS/antelopejs/pull/461))
+
+### 📦 Build
+
+- **deps:** Move to tooling-configs 0.6.0 and cap @antelopejs ranges below the next minor ([#475](https://github.com/AntelopeJS/antelopejs/pull/475))
+
+### 🏡 Chore
+
+- Drop the --ignore-workspace workaround from the playground installs ([#470](https://github.com/AntelopeJS/antelopejs/pull/470))
+
+### ✅ Tests
+
+- **verify:** Hand the missing-provider journey a real consumer module ([#467](https://github.com/AntelopeJS/antelopejs/pull/467))
+- **core:** Return the construct hook's value from the config-vars fake ([#468](https://github.com/AntelopeJS/antelopejs/pull/468))
+- Shut down watch-mode projects so their file watchers stop slowing later suites ([#469](https://github.com/AntelopeJS/antelopejs/pull/469))
+- Fail the test that leaves an fs.watch handle open ([#481](https://github.com/AntelopeJS/antelopejs/pull/481))
+- **formal:** Model the fresh config read and mark F2 fixed ([#473](https://github.com/AntelopeJS/antelopejs/pull/473))
+- **verify:** Drive the verdict's known findings from fixture feature files ([#477](https://github.com/AntelopeJS/antelopejs/pull/477))
+- **formal:** Resync the lifecycle model to main at 4299737 ([#478](https://github.com/AntelopeJS/antelopejs/pull/478))
+
+### 🤖 CI
+
+- Run CI on Windows through the shared Node workflow ([#463](https://github.com/AntelopeJS/antelopejs/pull/463))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.23.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.22.0...v1.23.0)
