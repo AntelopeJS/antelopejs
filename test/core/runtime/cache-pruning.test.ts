@@ -1,6 +1,8 @@
+import { Logging } from "@antelopejs/interface-core/logging";
 import { expect } from "chai";
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import * as sinon from "sinon";
 
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import {
@@ -15,6 +17,7 @@ import {
   hasEntryFolder,
   leaseNames,
   manifestKeys,
+  RefusingFileSystem,
   seedCache,
 } from "../../helpers/cache-leases";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
@@ -194,5 +197,37 @@ describe("pruneModuleCache with ANTELOPEJS_NO_CACHE_PRUNE", () => {
     await pruneModuleCache(new ModuleCache(cachePath), project, fs);
 
     expect(manifestKeys(cachePath)).to.deep.equal([]);
+  });
+});
+
+describe("writeBuildPin", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = makeTempDir("ajs-build-pin-");
+  });
+
+  afterEach(() => {
+    sinon.restore();
+    cleanupTempDir(root);
+  });
+
+  it("warns, and leaves no partial pin, when the cache refuses the write", async () => {
+    const warn = sinon.stub(Logging.Channel.prototype, "Warn");
+    const cachePath = path.join(root, "cache");
+    const pins = path.join(cachePath, ".builds");
+    const refusing = new RefusingFileSystem(
+      (file) => file.startsWith(`${pins}${path.sep}`) && file.endsWith(".json"),
+      "ENOSPC",
+    );
+    mkdirSync(pins, { recursive: true });
+
+    await writeBuildPin(cachePath, path.join(root, "build.json"), refusing);
+
+    expect(cacheFolderNames(cachePath, ".builds")).to.deep.equal([]);
+    expect(warn.args.map(([message]) => String(message))).to.satisfy(
+      (messages: string[]) =>
+        messages.some((message) => message.includes("ENOSPC")),
+    );
   });
 });

@@ -43,7 +43,8 @@ function pinPath(cachePath: string, buildFile: string): string {
 /**
  * Pins the build whose `build.json` is at `buildFile` in the cache at
  * `cachePath`, so that a prune keeps the module folders it points at for as
- * long as the file exists.
+ * long as the file exists. A pin the file system refuses, on a full disk or
+ * a read-only cache, is logged as a warning and the build goes on unpinned.
  */
 export async function writeBuildPin(
   cachePath: string,
@@ -53,9 +54,15 @@ export async function writeBuildPin(
   const pin: BuildPin = { buildFile: path.resolve(buildFile) };
   const file = pinPath(cachePath, pin.buildFile);
   const temp = `${file}.${randomUUID()}.tmp`;
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(temp, JSON.stringify(pin));
-  await fs.rename(temp, file);
+  try {
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(temp, JSON.stringify(pin));
+    await fs.rename(temp, file);
+  } catch (error) {
+    await fs.rm(temp, { force: true }).catch(() => undefined);
+    const reason = error instanceof Error ? error.message : String(error);
+    Logger.Warn(`Could not pin the build in ${cachePath} (${reason})`);
+  }
 }
 
 /**
