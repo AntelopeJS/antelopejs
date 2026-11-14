@@ -5,15 +5,16 @@ import type {
 } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
 import * as path from "node:path";
+import { satisfies, valid, validRange } from "semver";
 
-import {
-  ConfigLoader,
-  DEFAULT_ENV,
-  findConfigPath,
-  loadTsConfigFile,
-} from "../config";
+import { isObject, isString } from "../../utils";
+import { ConfigLoader, findConfigPath, readEnvironmentNames } from "../config";
 import type { NodeFileSystem } from "../filesystem";
-import { type ModuleCache, readBuildArtifact } from "../modules";
+import {
+  type ModuleCache,
+  ModuleLockStore,
+  readBuildArtifact,
+} from "../modules";
 
 const Logger = new Logging.Channel("loader");
 
@@ -28,32 +29,26 @@ function isGitSource(source: ModuleSource): source is ModuleSourceGit {
 }
 
 /**
- * The cache entry an offline start of `source` falls back to, picked as the
- * package downloader picks it.
+ * Whether `spec` can load `version`: one in its range, or any version for a
+ * dist-tag, which only the registry resolves and may move.
  */
-async function fallbackEntry(
-  source: ModuleSourcePackage,
-  cache: ModuleCache,
-): Promise<string | undefined> {
-  const { cachedVersions, packageCacheEntry, pickBestVersion } =
-    await import("../downloaders");
-  const best = pickBestVersion(
-    cachedVersions(cache, source.package),
-    source.version,
-  );
-  return best === undefined
-    ? undefined
-    : packageCacheEntry(source.package, best);
+function acceptsVersion(spec: string, version: string): boolean {
+  const range = validRange(spec);
+  return range === null || satisfies(version, range);
 }
 
-async function keepForSource(
-  source: ModuleSource,
-  cache: ModuleCache,
-): Promise<CacheKeep> {
-  const { urlToFile } = await import("../downloaders");
+/** An entry of the layout before each version had its own folder, which no loader reads. */
+function isOldLayout(entry: string, version: string): boolean {
+  const exact = valid(version);
+  return exact !== null && !entry.endsWith(`@${exact}`);
+}
+
+async function keepForSource(source: ModuleSource): Promise<CacheKeep> {
+  const { packageCacheEntry, urlToFile } = await import("../downloaders");
   if (isPackageSource(source)) {
-    const kept = await fallbackEntry(source, cache);
-    return (entry) => entry === kept;
+    return (entry, version) =>
+      entry === packageCacheEntry(source.package, version) &&
+      acceptsVersion(source.version, version);
   }
   if (isGitSource(source)) {
     const name = urlToFile(source.remote);
@@ -62,44 +57,87 @@ async function keepForSource(
   return () => false;
 }
 
+/** The path of the test configuration the project's `package.json` names, if any. */
+async function testConfigPath(
+  projectFolder: string,
+  fs: NodeFileSystem,
+): Promise<string | undefined> {
+  const packPath = path.join(projectFolder, "package.json");
+  if (!(await fs.exists(packPath))) {
+    return undefined;
+  }
+  const pack: unknown = JSON.parse(await fs.readFileString(packPath));
+  const antelopeJs = isObject(pack) ? pack.antelopeJs : undefined;
+  const test = isObject(antelopeJs) ? antelopeJs.test : undefined;
+  return isString(test) ? path.resolve(projectFolder, test) : undefined;
+}
+
+/**
+ * Every module source the project can load: each environment of its
+ * configuration, and its test configuration. `undefined` when the
+ * configuration accepts environment names it does not list.
+ */
 async function declaredSources(
   projectFolder: string,
   fs: NodeFileSystem,
-): Promise<ModuleSource[]> {
-  const raw = await loadTsConfigFile(
+): Promise<ModuleSource[] | undefined> {
+  const environments = await readEnvironmentNames(
     await findConfigPath(projectFolder, fs),
-    undefined,
-    true,
   );
-  const environments = [DEFAULT_ENV, ...Object.keys(raw.environments ?? {})];
+  if (environments === undefined) {
+    return undefined;
+  }
   const loader = new ConfigLoader(fs);
-  const loaded = await Promise.all(
-    environments.map((env) => loader.load(projectFolder, env)),
-  );
+  const testPath = await testConfigPath(projectFolder, fs);
+  const loaded = await Promise.all([
+    ...environments.map((env) => loader.load(projectFolder, env)),
+    ...(testPath === undefined
+      ? []
+      : [loader.load(projectFolder, undefined, testPath)]),
+  ]);
   return loaded.flatMap((config) =>
     Object.values(config.modules).map(({ source }) => source),
   );
 }
 
-/** The absolute module folders the project's `build.json` points at; none without a build. */
-async function builtFolders(
+/** Keeps the version `antelope-lock` records for each locked package. */
+async function keepLocked(
   projectFolder: string,
   fs: NodeFileSystem,
-): Promise<string[]> {
+): Promise<CacheKeep> {
+  const { packageCacheEntry } = await import("../downloaders");
+  const locked = new Set(
+    (await new ModuleLockStore(projectFolder, fs).list()).map((key) =>
+      packageCacheEntry(key.package, key.version),
+    ),
+  );
+  return (entry) => locked.has(entry);
+}
+
+/** Keeps the module folders the project's `build.json` points at; none without a build. */
+async function keepBuilt(
+  cache: ModuleCache,
+  projectFolder: string,
+  fs: NodeFileSystem,
+): Promise<CacheKeep> {
+  let folders: Set<string>;
   try {
     const artifact = await readBuildArtifact(projectFolder, fs);
-    return Object.values(artifact.modules).map(({ folder }) =>
-      path.resolve(folder),
+    folders = new Set(
+      Object.values(artifact.modules).map(({ folder }) => path.resolve(folder)),
     );
   } catch {
-    return [];
+    folders = new Set();
   }
+  return (entry) => folders.has(path.resolve(cache.path, entry));
 }
 
 /**
- * Removes the cached modules that this run did not load, that `build.json`
- * does not point at, and that no environment the configuration lists falls
- * back to offline. A failure is logged, never thrown, since the
+ * Removes the cached modules no run of the project can load: entries this run
+ * did not load, that no environment or test configuration accepts, that no
+ * lock records and that `build.json` does not point at. When the
+ * configuration accepts environment names it does not list, it only removes
+ * entries of the old layout. A failure is logged, never thrown, since the
  * modules have already loaded.
  */
 export async function pruneModuleCache(
@@ -108,16 +146,18 @@ export async function pruneModuleCache(
   fs: NodeFileSystem,
 ): Promise<void> {
   try {
-    const keeps = await Promise.all(
-      (await declaredSources(projectFolder, fs)).map((source) =>
-        keepForSource(source, cache),
-      ),
-    );
-    const built = new Set(await builtFolders(projectFolder, fs));
-    await cache.prune(
-      (entry, version) =>
-        built.has(path.resolve(cache.path, entry)) ||
-        keeps.some((keep) => keep(entry, version)),
+    const sources = await declaredSources(projectFolder, fs);
+    if (sources === undefined) {
+      await cache.prune((entry, version) => !isOldLayout(entry, version));
+      return;
+    }
+    const keeps = await Promise.all([
+      ...sources.map(keepForSource),
+      keepLocked(projectFolder, fs),
+      keepBuilt(cache, projectFolder, fs),
+    ]);
+    await cache.prune((entry, version) =>
+      keeps.some((keep) => keep(entry, version)),
     );
   } catch (err) {
     Logger.Warn("Could not remove unused modules from the cache:", err);

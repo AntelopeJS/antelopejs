@@ -103,12 +103,16 @@ export class ModuleCache {
 
   /**
    * Removes every manifest entry, and its folder, that no `getFolder` call of
-   * this run touched and that `keep` does not claim.
+   * this run touched and that `keep` does not claim. It decides on the
+   * manifest as another process sharing the cache last saved it, and saves
+   * that manifest minus what it removed.
    */
   async prune(
     keep: (module: string, version: string) => boolean,
   ): Promise<void> {
-    const unused = Object.entries(this.manifest)
+    await this.pendingSave;
+    await this.load();
+    const unused = this.entries()
       .filter(
         ([module, version]) => !this.used.has(module) && !keep(module, version),
       )
@@ -121,6 +125,9 @@ export class ModuleCache {
         recursive: true,
         force: true,
       });
+    }
+    await this.load();
+    for (const module of unused) {
       delete this.manifest[module];
     }
     await this.save();
