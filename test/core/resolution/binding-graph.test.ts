@@ -487,6 +487,14 @@ describe("buildBindingGraph: validation and unused pins", () => {
       "Module 'top2' pins database, but that pin decides no binding.",
     );
   });
+
+  it("fails when a module imports interfaces that depend on each other and have no provider", () => {
+    const graph = resolve({ m: { uses: ["cycle-b"] } });
+
+    expect(graph.errors).to.deep.equal([
+      "Module 'm' cannot import cycle-b: the interfaces cycle-b -> cycle-a -> cycle-b depend on each other and no module provides any of them.",
+    ]);
+  });
 });
 
 describe("buildBindingGraph: modules loaded while others run", () => {
