@@ -15,6 +15,7 @@ export * from "./format";
 export * from "./help";
 export * from "./interface-conflicts";
 export * from "./interface-resolution-error";
+export * from "./interface-unresolved-error";
 export * from "./logging-utils";
 export * as loggingUtilsModule from "./logging-utils";
 export * from "./package-manager";
