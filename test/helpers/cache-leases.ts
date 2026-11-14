@@ -19,19 +19,28 @@ const LOCK_FOLDER = ".prune.lock";
 const OLDER_THAN_STALE_MS = 120_000;
 
 /**
- * Seeds the cache at `cachePath` with a module folder for each entry, holding
- * a `package.json`, and a manifest that records each entry at `1.0.0`.
+ * Seeds the cache at `cachePath` with a package module for each
+ * `<package>@1.0.0` entry, which a package source of that exact version loads
+ * without the registry, and adds each entry to the manifest at `1.0.0`.
  */
 export function seedCache(cachePath: string, entries: string[]): void {
   for (const entry of entries) {
-    writeJson(path.join(cachePath, entry, "package.json"), {
-      name: entry,
+    const folder = path.join(cachePath, entry);
+    writeJson(path.join(folder, "package.json"), {
+      name: entry.slice(0, entry.lastIndexOf("@")),
       version: "1.0.0",
+      main: "index.js",
     });
+    writeFileSync(path.join(folder, "index.js"), "module.exports = {};\n");
   }
+  const recorded = existsSync(path.join(cachePath, "manifest.json"))
+    ? manifestKeys(cachePath)
+    : [];
   writeJson(
     path.join(cachePath, "manifest.json"),
-    Object.fromEntries(entries.map((entry) => [entry, "1.0.0"])),
+    Object.fromEntries(
+      [...recorded, ...entries].map((entry) => [entry, "1.0.0"]),
+    ),
   );
 }
 
