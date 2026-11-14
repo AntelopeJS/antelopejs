@@ -96,6 +96,29 @@ describe("interface connections", () => {
     ]);
   });
 
+  it("runs another provider's implementation through its connection inside an implementer", async function () {
+    this.timeout(20000);
+    projectFolder = await createProject(
+      [
+        { name: DATABASE, files: DATABASE_FILES },
+        connectionReportingProvider("mongo"),
+        connectionReportingProvider("pg"),
+      ],
+      { mongo: {}, pg: {} },
+    );
+
+    manager = await launch(projectFolder);
+
+    const answers = connectionsOf("pg").map(({ provider, answer }) => ({
+      provider,
+      answer,
+    }));
+    expect(answers).to.have.deep.members([
+      { provider: "mongo", answer: "mongo:t" },
+      { provider: "pg", answer: "pg:t" },
+    ]);
+  });
+
   it("marks no other provider's connection selected inside a module that disables its export", async function () {
     this.timeout(20000);
     projectFolder = await createProject(
