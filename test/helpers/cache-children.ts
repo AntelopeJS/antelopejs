@@ -107,6 +107,7 @@ export function loadPackageInChild(run: PackageRun): ChildRun {
       `  process.stdout.write("installing\\n");`,
       `  await waitFor(run.installGate);`,
       `  fs.mkdirSync(path.join(cwd, "node_modules", "dep"), { recursive: true });`,
+      `  fs.writeFileSync(path.join(cwd, "node_modules", "dep", "package.json"), "{}");`,
       `  fs.writeFileSync(path.join(cwd, ${quoted(INSTALLED_LOCKFILE)}), "installed by " + process.pid);`,
       `  return { stdout: "", stderr: "", code: 0 };`,
       `};`,
