@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -33,17 +33,17 @@ function prune(cachePath: string) {
 
 /**
  * Fails to write the owner of the prune lock of `cachePath`, as
- * {@link FailingOwnerFileSystem} does, after another live prune took the
- * lock folder over and wrote its own owner.
+ * {@link FailingOwnerFileSystem} does, after `takeOver` ran, as another live
+ * prune that took the lock folder over would.
  */
 class TakenOverOwnerFileSystem extends FailingOwnerFileSystem {
-  constructor(private readonly cachePath: string) {
+  constructor(private readonly takeOver: () => void) {
     super();
   }
 
   override writeFile(file: string, data: Buffer | string) {
     if (path.basename(file).startsWith("owner.json")) {
-      holdPruneLock(this.cachePath, { pid: process.pid, token: "taken-over" });
+      this.takeOver();
     }
     return super.writeFile(file, data);
   }
@@ -158,7 +158,9 @@ describe("ModuleCache prune across processes and failures", () => {
   });
 
   it("leaves the lock another prune took over while it failed to record its owner", async () => {
-    const fs = new TakenOverOwnerFileSystem(cachePath);
+    const fs = new TakenOverOwnerFileSystem(() =>
+      holdPruneLock(cachePath, { pid: process.pid, token: "taken-over" }),
+    );
 
     await assert.rejects(
       new ModuleCache(cachePath, fs).prune(async () => KEEP_NOTHING),
@@ -169,5 +171,19 @@ describe("ModuleCache prune across processes and failures", () => {
       "taken-over",
     );
     expect(manifestKeys(cachePath)).to.have.length(3);
+  });
+
+  it("leaves the lock whose owner.json cannot be read when it failed to record its own", async () => {
+    const ownerFile = path.join(pruneLockPath(cachePath), "owner.json");
+    const fs = new TakenOverOwnerFileSystem(() =>
+      writeFileSync(ownerFile, "{"),
+    );
+
+    await assert.rejects(
+      new ModuleCache(cachePath, fs).prune(async () => KEEP_NOTHING),
+      /ENOSPC/,
+    );
+
+    expect(existsSync(ownerFile)).to.equal(true);
   });
 });

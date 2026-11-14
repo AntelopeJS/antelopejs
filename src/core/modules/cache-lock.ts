@@ -152,16 +152,19 @@ async function removeLockFolder(
 
 /**
  * Removes the lock at `lockFolder` that this process created and failed to
- * write its owner in, unless `owner.json` holds the token of another hold,
- * as when another process took the folder over meanwhile.
+ * write its owner in, when `owner.json` is missing or holds `token`. An
+ * `owner.json` of another hold, or one that cannot be read, as while another
+ * process renames it, keeps the folder.
  */
-async function removeUnlessHeldByAnother(
+async function removeUnlessOwnedByAnother(
   lockFolder: string,
   token: string,
   fs: IFileSystem,
 ): Promise<void> {
-  const current = await readOwner(lockFolder, fs);
-  if (current === undefined || current.token === token) {
+  if (
+    !(await fs.exists(path.join(lockFolder, OWNER_FILE))) ||
+    (await holdsToken(lockFolder, token, fs))
+  ) {
     await removeLockFolder(lockFolder, fs);
   }
 }
@@ -280,7 +283,7 @@ async function tryCreateLock(
   try {
     await writeOwner(lockFolder, owner, fs);
   } catch (error) {
-    await removeUnlessHeldByAnother(lockFolder, owner.token, fs);
+    await removeUnlessOwnedByAnother(lockFolder, owner.token, fs);
     throw error;
   }
   const stopHeartbeat = startHeartbeat(lockFolder, owner, fs, heartbeatMs);
