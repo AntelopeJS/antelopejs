@@ -32,7 +32,12 @@ import {
   type NextStep,
   type Prompter,
 } from "../../../../core/output";
-import { findUnresolvedInterfaces } from "../../../../core/resolution";
+import {
+  findUnresolvedInterfaces,
+  type InterfaceConsumer,
+  type InterfaceProvider,
+} from "../../../../core/resolution";
+import { resolvePackage } from "../../../../utils";
 import { displayNonDefaultGitWarning, resolveGit } from "../../../common";
 import {
   loadInterfaceFromGit,
@@ -61,8 +66,59 @@ export interface UnresolvedImport {
   version?: string;
 }
 
+interface MissingPackage {
+  moduleId: string;
+  packageName: string;
+}
+
 interface ConfigAnalyze {
   unresolvedImports: UnresolvedImport[];
+  missingPackages: MissingPackage[];
+}
+
+/**
+ * Lists the required dependencies no provider implements, no module of the
+ * project is, and nothing installed resolves from the consumer's folder. The
+ * interface analysis cannot tell whether such a package is an interface.
+ */
+function findMissingPackages(
+  providers: InterfaceProvider[],
+  consumers: InterfaceConsumer[],
+): MissingPackage[] {
+  const supplied = new Set(
+    providers.flatMap((provider) => [
+      ...(provider.name ? [provider.name] : []),
+      ...provider.implements,
+    ]),
+  );
+  return consumers.flatMap((consumer) =>
+    Object.keys(consumer.dependencies)
+      .filter(
+        (packageName) =>
+          !supplied.has(packageName) &&
+          resolvePackage(packageName, consumer.folder) === undefined,
+      )
+      .map((packageName) => ({ moduleId: consumer.id, packageName })),
+  );
+}
+
+function missingPackagesError(
+  env: string,
+  missing: MissingPackage[],
+): CliError {
+  const modules = [...new Set(missing.map((entry) => entry.moduleId))];
+  return new CliError({
+    title: `Could not analyze environment ${env}`,
+    reason: missing
+      .map(
+        ({ moduleId, packageName }) =>
+          `${moduleId} requires ${packageName}, which is not installed`,
+      )
+      .join("; "),
+    fixes: [
+      `Install the dependencies of ${modules.join(", ")}, then run '${INSTALL_COMMAND}' again.`,
+    ],
+  });
 }
 
 export function describeUnresolvedImport(imp: UnresolvedImport): string {
@@ -78,6 +134,7 @@ export function unresolvedImportWarning(
 }
 
 const PACKAGE_SOURCE_TYPE = "package";
+const CORE_MODULE_ID = "antelopejs";
 const INSTALL_COMMAND = "ajs project modules install";
 const YES_FLAG = "--yes";
 const DEFAULT_ENVIRONMENT = "default";
@@ -156,12 +213,12 @@ async function analyzeConfig(
     const coreSource = {
       type: "local",
       path: coreRoot,
-      id: "antelopejs",
+      id: CORE_MODULE_ID,
     } satisfies ModuleSourceLocal;
     const coreManifest = await ModuleManifest.create(
       coreRoot,
       coreSource,
-      "antelopejs",
+      CORE_MODULE_ID,
       fs,
     );
     manifests.push(coreManifest);
@@ -188,6 +245,10 @@ async function analyzeConfig(
 
   const { unresolved } = findUnresolvedInterfaces(providers, consumers);
   return {
+    missingPackages: findMissingPackages(
+      providers,
+      consumers.filter((consumer) => consumer.id !== CORE_MODULE_ID),
+    ),
     unresolvedImports: unresolved.map((u) => ({
       interfacePackage: u.interfacePackage,
       moduleId: u.moduleId,
@@ -265,13 +326,13 @@ async function analyzeEnvironment(
 ): Promise<UnresolvedImport[]> {
   const { options, cache, registry, fs } = context;
   const config = await context.loader.load(options.project, env);
+  let analysis: ConfigAnalyze;
   try {
-    const analysis = await runTask(
+    analysis = await runTask(
       `Analyzing environment ${env}`,
       () => analyzeConfig(options.project, cache, config, registry, fs),
       { done: `Analyzed environment ${env}` },
     );
-    return analysis.unresolvedImports;
   } catch (err) {
     const cause = describeFailure(err, false);
     throw new CliError(
@@ -283,6 +344,10 @@ async function analyzeEnvironment(
       { cause: err },
     );
   }
+  if (analysis.missingPackages.length > 0) {
+    throw missingPackagesError(env, analysis.missingPackages);
+  }
+  return analysis.unresolvedImports;
 }
 
 async function findImplementations(
