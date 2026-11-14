@@ -68,6 +68,31 @@ const RUN_PRELUDE = [
 ];
 
 /**
+ * Starts a child that loads the cache at `cachePath`, prints `ready`, waits
+ * for `goFile`, then commits `entries` at `1.0.0` one after another.
+ */
+export function commitInChild(
+  cachePath: string,
+  entries: string[],
+  goFile: string,
+): ChildRun {
+  return runInChild(
+    [
+      ...RUN_PRELUDE,
+      `const { ModuleCache } = require(${quoted(MODULES_SOURCE)});`,
+      `(async () => {`,
+      `  const cache = new ModuleCache(run.cachePath);`,
+      `  await cache.load();`,
+      `  process.stdout.write("ready\\n");`,
+      `  await waitFor(run.goFile);`,
+      `  for (const entry of run.entries) await cache.commitVersion(entry, "1.0.0");`,
+      `})().catch((error) => { console.error(error); process.exit(1); });`,
+    ].join("\n"),
+    JSON.stringify({ cachePath, entries, goFile }),
+  );
+}
+
+/**
  * Starts a child that prunes the cache at `cachePath`, keeping nothing. Under
  * the prune lock, once it has read the leases, its keep rule prints `ready`
  * and waits for `goFile` before the prune goes on.

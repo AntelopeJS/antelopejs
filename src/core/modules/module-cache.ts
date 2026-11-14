@@ -7,7 +7,6 @@ import { satisfies } from "semver";
 
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import { isPlainObject, isString } from "../../utils";
 import {
   hasErrorCode,
   isForeignProcess,
@@ -22,11 +21,11 @@ import {
   tryAcquireCacheLock,
   waitWhileCacheLocked,
 } from "./cache-lock";
+import { CacheManifest } from "./cache-manifest";
 
 const Logger = new Logging.Channel("loader");
 
 const TRASH_FOLDER = ".trash";
-const MANIFEST_FILE = "manifest.json";
 
 /** Whether a prune keeps a manifest entry that no live run's lease covers. */
 export type CacheKeep = (entry: string) => boolean;
@@ -101,31 +100,8 @@ export async function findCacheEntry(
   );
 }
 
-/**
- * Applies to `manifest` each version of `changes`: a version sets its entry,
- * `undefined` removes it.
- */
-function applyChanges(
-  manifest: Record<string, string>,
-  changes: ReadonlyMap<string, string | undefined>,
-): void {
-  for (const [module, version] of changes) {
-    if (version === undefined) {
-      delete manifest[module];
-    } else {
-      manifest[module] = version;
-    }
-  }
-}
-
-function isVersionManifest(value: unknown): value is Record<string, string> {
-  return isPlainObject(value) && Object.values(value).every(isString);
-}
-
 export class ModuleCache {
-  private manifest: Record<string, string> = {};
-  private readonly changes = new Map<string, string | undefined>();
-  private pendingSave: Promise<void> = Promise.resolve();
+  private readonly manifest: CacheManifest;
   private readonly claims = new Map<string, Promise<void>>();
   private readonly lease: RunLeaseFile;
 
@@ -134,77 +110,40 @@ export class ModuleCache {
     private fs: IFileSystem = new NodeFileSystem(),
   ) {
     this.lease = new RunLeaseFile(path, fs);
+    this.manifest = new CacheManifest(path, fs);
   }
 
+  /**
+   * Creates the cache folder and reads `manifest.json` again, keeping the
+   * versions this run set or cleared and has not saved yet.
+   */
   async load(): Promise<void> {
     await this.fs.mkdir(this.path, { recursive: true });
-    this.manifest = (await this.readManifest()) ?? {};
+    await this.manifest.load();
   }
 
   /**
-   * The manifest on disk: empty when there is none yet, `undefined` when it
-   * exists but cannot be read or does not map entries to versions.
-   */
-  private async readManifest(): Promise<Record<string, string> | undefined> {
-    const manifestPath = path.join(this.path, MANIFEST_FILE);
-    if (!(await this.fs.exists(manifestPath))) {
-      return {};
-    }
-    try {
-      const parsed: unknown = JSON.parse(
-        await this.fs.readFileString(manifestPath),
-      );
-      return isVersionManifest(parsed) ? parsed : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  /**
-   * Writes the manifest after the saves before it. It re-reads
-   * `manifest.json` and applies only the versions this run set or cleared,
-   * so that the entries another run committed meanwhile stay. When the file
-   * cannot be read again, it applies them to the manifest this run holds
-   * instead, so that no entry it loaded is dropped. It writes a
-   * temporary file renamed over `manifest.json`, so that another run never
-   * reads it halfway.
+   * Writes the manifest after the saves before it, under the manifest lock
+   * of the cache. It re-reads `manifest.json` and applies only the versions
+   * this run set or cleared, so that the entries another run committed
+   * meanwhile stay, and renames a temporary file over it, so that another
+   * run never reads it halfway.
    */
   save(): Promise<void> {
-    this.pendingSave = this.pendingSave.then(() => this.writeChanges());
-    return this.pendingSave;
-  }
-
-  private async writeChanges(): Promise<void> {
-    const written = new Map(this.changes);
-    const merged = (await this.readManifest()) ?? { ...this.manifest };
-    applyChanges(merged, written);
-    const manifestPath = path.join(this.path, MANIFEST_FILE);
-    const temp = `${manifestPath}.${randomUUID()}.tmp`;
-    await this.fs.writeFile(temp, JSON.stringify(merged, null, 2));
-    await this.fs.rename(temp, manifestPath);
-    for (const [module, version] of written) {
-      if (this.changes.get(module) === version) {
-        this.changes.delete(module);
-      }
-    }
-    applyChanges(merged, this.changes);
-    this.manifest = merged;
+    return this.manifest.save();
   }
 
   getVersion(module: string): string | undefined {
-    return Object.hasOwn(this.manifest, module)
-      ? this.manifest[module]
-      : undefined;
+    return this.manifest.get(module);
   }
 
   /** Every cache entry with the version it holds. */
   entries(): [string, string][] {
-    return Object.entries(this.manifest);
+    return this.manifest.list();
   }
 
   setVersion(module: string, version: string): void {
-    this.manifest[module] = version;
-    this.changes.set(module, version);
+    this.manifest.set(module, version);
   }
 
   hasVersion(module: string, version: string): boolean {
@@ -299,13 +238,8 @@ export class ModuleCache {
   }
 
   async clearVersion(module: string): Promise<void> {
-    this.forget(module);
+    this.manifest.forget(module);
     await this.save();
-  }
-
-  private forget(module: string): void {
-    delete this.manifest[module];
-    this.changes.set(module, undefined);
   }
 
   /**
@@ -330,7 +264,7 @@ export class ModuleCache {
    * @throws when a lease cannot be parsed, with nothing removed.
    */
   async prune(readKeep: () => Promise<CacheKeep>): Promise<void> {
-    await this.pendingSave;
+    await this.manifest.settled();
     if (await this.lease.wasRefused()) {
       Logger.Warn(
         `Cannot write a lease in ${this.path}; not removing unused modules`,
@@ -404,7 +338,7 @@ export class ModuleCache {
       }
     }
     if (removed.length > 0) {
-      removed.forEach((key) => this.forget(key));
+      removed.forEach((key) => this.manifest.forget(key));
       await this.save();
     }
     return trashed;
