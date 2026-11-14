@@ -8,7 +8,6 @@
  * @property {boolean} crashed
  * @property {boolean} sigint
  * @property {boolean} staleRead
- * @property {string} configOwner
  * @property {number} launch
  * @property {number} nextGen
  * @property {Record<number, string>} lpc
