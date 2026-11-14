@@ -36,6 +36,8 @@ interface ResolutionTarget {
   keying: Set<string>;
   overrides?: Pins;
   recordsEdges: boolean;
+  /** Records a problem met while keying, where the graph's errors read it. */
+  report: (problem: string) => void;
 }
 
 function compareIds(left: string, right: string): number {
@@ -186,6 +188,7 @@ class BindingGraphBuilder {
       keys: new Map(),
       keying: new Set(),
       recordsEdges: true,
+      report: (problem) => this.addModuleError(moduleId, problem),
     };
     this.edges.set(moduleId, new Set());
     this.moduleErrors.delete(moduleId);
@@ -239,10 +242,7 @@ class BindingGraphBuilder {
       ...keying.slice(keying.indexOf(interfaceName)),
       interfaceName,
     ];
-    this.addModuleError(
-      moduleId,
-      describeUnprovidedCycle(moduleId, keying[0], cycle),
-    );
+    target.report(describeUnprovidedCycle(moduleId, keying[0], cycle));
     return `${interfaceName}{cycle}`;
   }
 
@@ -502,6 +502,7 @@ class BindingGraphBuilder {
       keying: new Set(),
       overrides: this.connectionScope(moduleId, interfaceName, connection),
       recordsEdges: false,
+      report: (problem) => this.errors.add(problem),
     });
   }
 
