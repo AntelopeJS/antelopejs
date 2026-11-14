@@ -207,49 +207,54 @@ describe("PackageDownloader", () => {
 });
 
 describe("PackageDownloader", () => {
-  it("falls back to the highest stable cached version for a dist-tag when the registry is unreachable", async () => {
-    const fs = new InMemoryFileSystem();
-    const cache = new ModuleCache("/cache", fs);
-    await cache.load();
-    for (const version of ["2.0.0", "3.0.0-beta.1", "1.0.0"]) {
-      await fs.writeFile(
-        `/cache/pkg@${version}/package.json`,
-        JSON.stringify({ name: "pkg", version }),
-      );
-      cache.setVersion(`pkg@${version}`, version);
-    }
-
-    const execCalls: string[] = [];
-    const exec = async (command: string, _options: { cwd?: string }) => {
-      execCalls.push(command);
-      if (command.startsWith("npm view")) {
-        throw new Error("network error");
+  for (const [tag, served] of [
+    ["latest", "2.0.0"],
+    ["next", "3.0.0-beta.1"],
+  ]) {
+    it(`falls back to ${served} for the tag ${tag} when the registry is unreachable`, async () => {
+      const fs = new InMemoryFileSystem();
+      const cache = new ModuleCache("/cache", fs);
+      await cache.load();
+      for (const version of ["2.0.0", "3.0.0-beta.1", "1.0.0"]) {
+        await fs.writeFile(
+          `/cache/pkg@${version}/package.json`,
+          JSON.stringify({ name: "pkg", version }),
+        );
+        cache.setVersion(`pkg@${version}`, version);
       }
-      return { stdout: "", stderr: "", code: 0 };
-    };
 
-    const registry = new DownloaderRegistry();
-    registerPackageDownloader(registry, {
-      fs,
-      exec,
-      getTemp: async () => "/tmp/pkg",
-      extract: async () => {},
-      getInstallCommand: async () => "npm install",
+      const execCalls: string[] = [];
+      const exec = async (command: string, _options: { cwd?: string }) => {
+        execCalls.push(command);
+        if (command.startsWith("npm view")) {
+          throw new Error("network error");
+        }
+        return { stdout: "", stderr: "", code: 0 };
+      };
+
+      const registry = new DownloaderRegistry();
+      registerPackageDownloader(registry, {
+        fs,
+        exec,
+        getTemp: async () => "/tmp/pkg",
+        extract: async () => {},
+        getInstallCommand: async () => "npm install",
+      });
+
+      const source: ModuleSourcePackage = {
+        type: "package",
+        package: "pkg",
+        version: tag,
+        id: "pkg",
+      };
+      const result = await registry.load("/project", cache, source);
+
+      expect(result[0].manifest.version).to.equal(served);
+      expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(
+        false,
+      );
     });
-
-    const source: ModuleSourcePackage = {
-      type: "package",
-      package: "pkg",
-      version: "latest",
-      id: "pkg",
-    };
-    const result = await registry.load("/project", cache, source);
-
-    expect(result[0].manifest.version).to.equal("2.0.0");
-    expect(execCalls.some((call) => call.startsWith("npm pack"))).to.equal(
-      false,
-    );
-  });
+  }
 
   async function loadWithCachedManifest(manifest: string): Promise<string[]> {
     const fs = new InMemoryFileSystem();

@@ -74,7 +74,8 @@ function pickBestVersion(versions: string[], spec: string): string | undefined {
   if (range) {
     return maxSatisfying(versions, range) ?? undefined;
   }
-  return maxSatisfying(versions, "*") ?? versions[versions.length - 1];
+  const last = versions[versions.length - 1];
+  return spec === "latest" ? (maxSatisfying(versions, "*") ?? last) : last;
 }
 
 async function fetchRegistryVersion(
@@ -175,7 +176,7 @@ async function resolveTargetVersion(
   if (cached) {
     if (validRange(source.version) === null) {
       Logger.Warn(
-        `Registry unreachable, serving highest cached ${source.package}@${cached} for tag '${source.version}' (cannot verify it is current)`,
+        `Registry unreachable, serving cached ${source.package}@${cached} for tag '${source.version}' (cannot verify it is current)`,
       );
     } else {
       Logger.Debug(
