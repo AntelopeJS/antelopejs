@@ -13,6 +13,7 @@ import {
   type ModuleDiagnosticsContext,
   moduleDiagnosticsContext,
 } from "./diagnostics";
+import { findMissingPackage } from "./missing-package";
 import { ModuleLifecycle } from "./module-lifecycle";
 import type { ModuleManifest } from "./module-manifest";
 
@@ -172,7 +173,6 @@ export class Module {
    * The module code is loaded here rather than in `construct`, because the
    * callback lives in it; `construct` then reuses the very same instance.
    */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported Module.provide forwards application-defined config to its provider; validation would change accepted inputs.
   async provide(config: unknown): Promise<ConfigVars | void> {
     if (this.lifecycle.state !== ModuleState.Loaded) {
       return;
@@ -184,7 +184,6 @@ export class Module {
     });
   }
 
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Exported Module.construct forwards application-defined config to its callback; narrowing changes declarations.
   async construct(config: unknown): Promise<void> {
     if (this.lifecycle.state !== ModuleState.Loaded) {
       Logger.Info(`Module ${this.id} already constructed`);
@@ -209,9 +208,13 @@ export class Module {
       );
       Logger.Debug(`Successfully loaded module ${this.id}`);
     } catch (err) {
-      Logger.Error(`Failed to load module ${this.id}`, err);
+      const failure =
+        err instanceof Error
+          ? (findMissingPackage(this.manifest, err) ?? err)
+          : err;
+      Logger.Error(`Failed to load module ${this.id}`, failure);
       Events.ModuleDestroyed.emit(this.id);
-      throw err;
+      throw failure;
     }
     this.lifecycle.setCallbacks(this.callbacks);
   }

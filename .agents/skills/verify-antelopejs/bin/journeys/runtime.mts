@@ -150,4 +150,19 @@ export const resolutionJourneys: Journey[] = [
       ]);
     },
   },
+  {
+    id: "resolution-missing-interface-package",
+    title: "a consumer whose interface package is installed nowhere fails the start and names the module, the package and the install command",
+    entryPoint: "ajs project dev without the provider module, consumer without verify-greeter installed",
+    async run(context) {
+      const greeter = copyGreeter(context);
+      const remove = await context.ajs("modules remove provider", ["project", "modules", "remove", "greeter-provider"], { cwd: greeter });
+      context.expect(remove.folder, [exitIs(remove, 0)], { critical: true });
+      const dev = await context.ajs("project dev", ["project", "dev"], { cwd: greeter });
+      context.expect(dev.folder, [
+        exitFails(dev),
+        has("stderr", dev.stderr, /✖ Failed to construct modules\n\s+greeter-consumer requires verify-greeter, which is not installed\. Install the dependencies of greeter-consumer, then run 'ajs project modules install'/),
+      ]);
+    },
+  },
 ];
