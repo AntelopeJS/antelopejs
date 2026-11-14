@@ -242,3 +242,83 @@ describe("FileWatcher Integration with a module that has no src folder", () => {
     }
   });
 });
+
+describe("FileWatcher Integration with a deleted watched folder", () => {
+  let parentDir: string;
+  let watchedDir: string;
+
+  const openWatchers = () =>
+    process
+      .getActiveResourcesInfo()
+      .filter((resource) => resource === "FSEventWrap").length;
+
+  const watchersClose = (target: number) =>
+    new Promise<void>((resolve, reject) => {
+      const check = setInterval(() => {
+        if (openWatchers() <= target) {
+          clearInterval(check);
+          clearTimeout(timeout);
+          resolve();
+        }
+      }, 25);
+      const timeout = setTimeout(() => {
+        clearInterval(check);
+        reject(new Error(`${openWatchers() - target} watchers stayed open`));
+      }, 2000);
+    });
+
+  const changesAfterDeletion = async (watcher: FileWatcher) => {
+    const baseline = openWatchers();
+    watcher.startWatching();
+    expect(openWatchers()).to.be.greaterThan(baseline);
+
+    await rm(watchedDir, { recursive: true, force: true });
+    await watchersClose(baseline);
+    await new Promise((resolve) => setTimeout(resolve, EVENT_SETTLE_MS));
+    const handleFileChange = sinon.spy(watcher, "handleFileChange");
+    await new Promise((resolve) => setTimeout(resolve, EVENT_SETTLE_MS));
+    return handleFileChange.callCount;
+  };
+
+  beforeEach(async () => {
+    parentDir = await mkdtemp(path.join(tmpdir(), "ajs-test-"));
+    watchedDir = path.join(parentDir, "watched");
+    await mkdir(path.join(watchedDir, "src"), { recursive: true });
+    await writeFile(
+      path.join(watchedDir, "src", "a.js"),
+      "export const a = 1;",
+    );
+    await writeFile(path.join(watchedDir, "antelope.config.ts"), "export {};");
+  });
+
+  afterEach(async () => {
+    await rm(parentDir, { recursive: true, force: true });
+  });
+
+  it("closes the watchers of a module folder deleted while watching", async function () {
+    this.timeout(5000);
+    const watcher = new FileWatcher(new NodeFileSystem());
+    await watcher.scanModule("test", watchedDir);
+    try {
+      expect(await changesAfterDeletion(watcher)).to.equal(0);
+    } finally {
+      watcher.stopWatching();
+    }
+  });
+
+  it("closes the watcher of a project folder deleted while watching", async function () {
+    this.timeout(5000);
+    const watcher = new FileWatcher(new NodeFileSystem());
+    await watcher.watchFile(
+      path.join(watchedDir, "antelope.config.ts"),
+      () => {},
+    );
+    const consoleWarn = sinon.stub(console, "warn");
+    try {
+      expect(await changesAfterDeletion(watcher)).to.equal(0);
+    } finally {
+      watcher.stopWatching();
+      consoleWarn.restore();
+    }
+  });
+});
