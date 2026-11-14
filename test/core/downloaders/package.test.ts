@@ -207,15 +207,17 @@ describe("PackageDownloader", () => {
 });
 
 describe("PackageDownloader", () => {
-  it("falls back to the cached version for a dist-tag when the registry is unreachable", async () => {
+  it("falls back to the highest stable cached version for a dist-tag when the registry is unreachable", async () => {
     const fs = new InMemoryFileSystem();
-    await fs.writeFile(
-      "/cache/pkg@2.0.0/package.json",
-      JSON.stringify({ name: "pkg", version: "2.0.0" }),
-    );
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg@2.0.0", "2.0.0");
+    for (const version of ["2.0.0", "3.0.0-beta.1", "1.0.0"]) {
+      await fs.writeFile(
+        `/cache/pkg@${version}/package.json`,
+        JSON.stringify({ name: "pkg", version }),
+      );
+      cache.setVersion(`pkg@${version}`, version);
+    }
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {

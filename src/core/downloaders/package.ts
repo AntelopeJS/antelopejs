@@ -74,7 +74,7 @@ function pickBestVersion(versions: string[], spec: string): string | undefined {
   if (range) {
     return maxSatisfying(versions, range) ?? undefined;
   }
-  return versions[versions.length - 1];
+  return maxSatisfying(versions, "*") ?? versions[versions.length - 1];
 }
 
 async function fetchRegistryVersion(
