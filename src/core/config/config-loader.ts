@@ -5,8 +5,10 @@ import {
   isFunction,
   isObject,
   isObjectOrNull,
+  isParsedJson,
   isString,
   mergeDeep,
+  type ParsedJson,
 } from "../../utils";
 import {
   assertLoadedConfig,
@@ -123,10 +125,12 @@ export class ConfigLoader {
    */
   private async loadJsonFile(
     filePath: string,
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- an antelope.<module>.json merged into a module config whose values are user data of any shape
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, ParsedJson>> {
     const content = await this.fs.readFileString(filePath);
     const parsed: unknown = JSON.parse(content);
+    if (!isParsedJson(parsed)) {
+      return {};
+    }
     if (isObject(parsed)) {
       return parsed;
     }
@@ -134,8 +138,7 @@ export class ConfigLoader {
       return Object.fromEntries(parsed.split("").entries());
     }
     if (Array.isArray(parsed)) {
-      const items: unknown[] = parsed;
-      return Object.fromEntries(items.entries());
+      return Object.fromEntries(parsed.entries());
     }
     return {};
   }

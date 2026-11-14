@@ -59,7 +59,7 @@ export class ConfigVarStore {
   }
 
   /** The consumer configuration with every reference replaced by its value. */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- substitutes config variables into a module config, user JS data that can hold RegExp and functions, and returns it with its unreferenced branches by identity
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- substitutes config variables into a module config, any JS value (docs/2.concepts/4.configuration.md, Referencing), through substituteConfigVars, which rebuilds only the arrays and plain objects that hold a reference and returns every other value, such as a RegExp, a Date or a class instance, by identity
   resolve(consumerId: string, config: unknown): unknown {
     return substituteConfigVars(config, (reference) =>
       this.lookup(consumerId, reference),

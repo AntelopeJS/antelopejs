@@ -234,7 +234,6 @@ function serializeError(error: Error, ancestors: Set<Error>): string {
  * @returns A string representation of the value
  */
 export function serializeLogValue(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- serializes a log argument, aggregate member or cause, which JS lets be any value
   value: unknown,
   ancestors = new Set<Error>(),
 ): string {

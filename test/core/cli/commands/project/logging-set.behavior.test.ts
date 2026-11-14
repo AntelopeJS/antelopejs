@@ -322,6 +322,52 @@ describe("project logging set with an environment", () => {
     );
   });
 
+  it("writes the changed settings in the order of the built-in block", async () => {
+    const config: AntelopeConfig = {
+      name: "test-project",
+      environments: { staging: {} },
+    };
+    stubSetCommand(config);
+
+    await runSet(
+      "--env",
+      "staging",
+      "--date-format",
+      "yyyy",
+      "--level",
+      "info",
+      "--format",
+      "[info]",
+      "--include-module",
+      "modA",
+      "--disable",
+    );
+
+    expect(
+      Object.keys(config.environments?.staging?.logging ?? {}),
+    ).to.deep.equal(["enabled", "moduleTracking", "formatter", "dateFormat"]);
+  });
+
+  it("copies none of the project block's other keys into the environment block", async () => {
+    const logging = {
+      enabled: false,
+      channelFilter: { db: "debug" },
+      since: new Date(0),
+    };
+    const config: AntelopeConfig = {
+      name: "test-project",
+      logging,
+      environments: { staging: {} },
+    };
+    stubSetCommand(config);
+
+    await runSet("--env", "staging", "--enable");
+
+    expect(config.environments?.staging?.logging).to.deep.equal({
+      enabled: true,
+    });
+  });
+
   it("sees the project block's settings from an environment", async () => {
     const config: AntelopeConfig = {
       name: "test-project",

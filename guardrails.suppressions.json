@@ -2,9 +2,9 @@
   "rules": {
     "anti-slop/no-known-value-widening": 0,
     "anti-slop/no-runtime-typeof": 0,
-    "anti-slop/no-unknown-parameters": 21,
+    "anti-slop/no-unknown-parameters": 8,
     "anti-slop/no-unknown-returns": 7,
-    "anti-slop/no-unsafe-dictionary-type": 9,
+    "anti-slop/no-unsafe-dictionary-type": 6,
     "anti-slop/require-safety-comment-for-type-assertion": 0,
     "eslint/no-control-regex": 0,
     "import/no-cycle": 0,

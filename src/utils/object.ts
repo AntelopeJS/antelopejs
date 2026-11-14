@@ -1,7 +1,6 @@
-import { isDeepStrictEqual } from "node:util";
 import { isObjectOrNull } from "./type-guards";
 
-// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The result of a plain-object guard: its keys are known to be strings and its leaves are what the guard's caller goes on to decode.
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- its two users hold records whose values are any JS value: diffConfig in src/cli/config-source.ts compares the evaluated antelope.config.ts with the config a command writes back, whose module config is any JS value (docs/2.concepts/4.configuration.md, Referencing), and definedFields in src/core/test/test-module.ts drops the undefined fields of what a test.setup hook returns before assertLoadedConfig decodes them
 export type UnknownDictionary = Record<string, unknown>;
 
 export function isObject(item: unknown): item is Record<string, unknown> {
@@ -28,7 +27,7 @@ export function isPlainObject(item: unknown): item is Record<string, unknown> {
  * A deep copy of `value`: arrays and plain objects are rebuilt, and every other
  * value, such as a RegExp, a function or a class instance, is kept by identity.
  */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- copies user JS config data of any shape, keeping RegExp, functions and class instances by identity
+// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- copies a project config whose module config is any JS value (docs/2.concepts/4.configuration.md, Referencing): rebuilds arrays and plain objects, and returns every other value, such as a RegExp, a Date, a function or a class instance, by identity
 export function cloneValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     const items: unknown[] = value;
@@ -42,16 +41,6 @@ export function cloneValue(value: unknown): unknown {
   }
 
   return value;
-}
-
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- merges and sets paths in user config data of any shape
-function ownDataProperty(value: unknown) {
-  return {
-    value,
-    enumerable: true,
-    writable: true,
-    configurable: true,
-  };
 }
 
 export function mergeDeep<T extends object>(
@@ -69,15 +58,15 @@ export function mergeDeep<T extends object>(
         key,
       )?.value;
 
-      Object.defineProperty(
-        result,
-        key,
-        ownDataProperty(
+      Object.defineProperty(result, key, {
+        value:
           isObject(sourceValue) && isObject(targetValue)
             ? mergeDeep(targetValue, sourceValue)
             : sourceValue,
-        ),
-      );
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
   }
 
@@ -86,48 +75,26 @@ export function mergeDeep<T extends object>(
 
 type ObjectEntry = [string, unknown];
 
-/**
- * The keys of `after` whose value differs from `before`, nested plain objects
- * reduced to their own differing keys. Merging the result into `before` with
- * {@link mergeDeep} yields `after`, as long as no key was removed.
- */
-export function diffDeep<T extends object>(
-  before: T,
-  after: T,
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
-): Record<string, unknown> {
-  const entries: ObjectEntry[] = Object.entries(after);
-  return Object.fromEntries(
-    entries.flatMap(([key, value]): ObjectEntry[] => {
-      const previous: unknown = Object.getOwnPropertyDescriptor(
-        before,
-        key,
-      )?.value;
-      if (isPlainObject(previous) && isPlainObject(value)) {
-        const nested = diffDeep(previous, value);
-        return Object.keys(nested).length > 0 ? [[key, nested]] : [];
-      }
-      return isDeepStrictEqual(previous, value) ? [] : [[key, value]];
-    }),
-  );
-}
-
 function assignKey(
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- writes into an object on an applyEnvOverrides path: a plain object of the copy cloneValue made, an empty object set creates for a missing segment, or any other object of a module config, any JS value (docs/2.concepts/4.configuration.md, Referencing), such as a class instance or a RegExp, which cloneValue keeps by identity, so that write goes through its setters into the user's own object
   target: Record<string, unknown>,
   key: string,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- takes an override value or the empty container set creates for a missing segment; the union with that container moves the row to no-unsafe-dictionary-type and object trips no-object-parameters
-  value: unknown,
+  value: string | number | boolean | Record<string, never>,
 ): void {
   if (key === "__proto__") {
-    Object.defineProperty(target, key, ownDataProperty(value));
+    Object.defineProperty(target, key, {
+      value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   } else {
     target[key] = value;
   }
 }
 
 export function set(
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- its one caller, applyEnvOverrides, passes its project config copy, whose module config is any JS value (docs/2.concepts/4.configuration.md, Referencing): set descends into any non-array object on the path, a class instance or a RegExp included, and assigns through its setters
   obj: Record<string, unknown>,
   path: string,
   value: string | number | boolean,
@@ -143,8 +110,7 @@ export function set(
     if (present && isObject(existing)) {
       current = existing;
     } else {
-      // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- merges and sets paths in user config data of any shape
-      const created: Record<string, unknown> = {};
+      const created = {};
       assignKey(current, key, created);
       current = created;
     }
