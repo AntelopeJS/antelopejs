@@ -312,17 +312,18 @@ export class ModuleCache {
 
   /**
    * Checks, when this process holds the download lock of `module`, that the
-   * lock still holds the token of this hold, before the folder of `module`
-   * is replaced or listed.
+   * lock still holds the token of this hold. A downloader calls it before
+   * each step that replaces the folder of `module`, and `getFolder` and
+   * `commitVersion` call it before they clean the folder and list it.
    *
    * @throws when another process took the lock over, as after this process
    * stalled for 60 s, since that process now downloads `module`.
    */
-  private async ensureDownloadLockHeld(module: string): Promise<void> {
+  async ensureDownloadLockHeld(module: string): Promise<void> {
     const lock = heldDownloads.get(downloadKey(this.path, module));
     if (lock !== undefined && !(await lock.isHeld())) {
       throw new Error(
-        `Another process took over the download lock of ${module} in ${this.path}; this run stopped before it replaced or listed the folder. Run the command again.`,
+        `Another process took over the download lock of ${module} in ${this.path}; this run stopped so that it does not write over that download. Run the command again.`,
       );
     }
   }

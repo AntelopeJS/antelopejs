@@ -1,7 +1,12 @@
+import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import {
+  DownloaderRegistry,
+  registerGitDownloader,
+} from "../../../src/core/downloaders";
 import { downloadLockOf, ModuleCache } from "../../../src/core/modules";
 import {
   CHILD_TIMEOUT_MS,
@@ -16,6 +21,7 @@ import {
   seedCache,
   thisProcess,
 } from "../../helpers/cache-leases";
+import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 
 const ENTRY = "pkg@1.0.0";
@@ -98,5 +104,50 @@ describe("A download whose lock another process took over", function () {
     expect(existsSync(path.join(run.cachePath, ENTRY, "index.js"))).to.equal(
       true,
     );
+  });
+});
+
+describe("A git update whose download lock another process took over", () => {
+  it("stops after the fetch, before it checks out, resets or installs the clone, and lists no version", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    const remote = "https://github.com/org/repo.git";
+    const name = remote.replace(/[^a-zA-Z0-9_]/g, "_");
+    await fs.writeFile(`/cache/${name}/package.json`, "{}");
+    await fs.writeFile(`/cache/${name}/.git/HEAD`, "ref: refs/heads/main");
+    cache.setVersion(name, "git:main:oldcommit");
+    const afterTakeover: string[] = [];
+    let takenOver = false;
+    const exec = async (command: string) => {
+      if (takenOver) {
+        afterTakeover.push(command);
+      }
+      if (command === "git fetch") {
+        await fs.writeFile(
+          `/cache/${downloadLockOf(name)}/owner.json`,
+          JSON.stringify({ ...thisProcess(), token: TAKEN_OVER, beat: 0 }),
+        );
+        takenOver = true;
+      }
+      const stdout = command.startsWith("git rev-parse") ? "newcommit" : "";
+      return { stdout, stderr: "", code: 0 };
+    };
+    const registry = new DownloaderRegistry();
+    registerGitDownloader(registry, { fs, exec });
+    const source: ModuleSourceGit = {
+      type: "git",
+      remote,
+      branch: "develop",
+      installCommand: ["npm install"],
+    };
+
+    const failure = await failureOf(registry.load("/project", cache, source));
+
+    expect(failure)
+      .to.be.a("string")
+      .that.includes("took over the download lock");
+    expect(afterTakeover).to.deep.equal([]);
+    expect(cache.getVersion(name)).to.equal("git:main:oldcommit");
   });
 });
