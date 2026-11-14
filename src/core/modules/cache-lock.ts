@@ -96,15 +96,24 @@ function isLockOwner(value: unknown): value is LockOwner {
   );
 }
 
+/** The owner `text` holds, or `undefined` when it is not one. */
+function parseOwner(text: string): LockOwner | undefined {
+  try {
+    const owner: unknown = JSON.parse(text);
+    return isLockOwner(owner) ? owner : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function readOwner(
   lockFolder: string,
   fs: IFileSystem,
 ): Promise<LockOwner | undefined> {
   try {
-    const owner: unknown = JSON.parse(
+    return parseOwner(
       await fs.readFileString(path.join(lockFolder, OWNER_FILE)),
     );
-    return isLockOwner(owner) ? owner : undefined;
   } catch {
     return undefined;
   }
@@ -161,10 +170,16 @@ async function removeUnlessOwnedByAnother(
   token: string,
   fs: IFileSystem,
 ): Promise<void> {
-  if (
-    !(await fs.exists(path.join(lockFolder, OWNER_FILE))) ||
-    (await holdsToken(lockFolder, token, fs))
-  ) {
+  let text: string;
+  try {
+    text = await fs.readFileString(path.join(lockFolder, OWNER_FILE));
+  } catch (error) {
+    if (error instanceof Error && hasErrorCode(error, "ENOENT")) {
+      await removeLockFolder(lockFolder, fs);
+    }
+    return;
+  }
+  if (parseOwner(text)?.token === token) {
     await removeLockFolder(lockFolder, fs);
   }
 }
