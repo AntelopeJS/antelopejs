@@ -108,6 +108,13 @@ function describeHolder(lease: HeldLease): string {
   return `the run with pid ${lease.pid} on ${lease.host} (lease ${lease.file})`;
 }
 
+/** The download locks this process holds, by {@link downloadKey}. */
+const heldDownloads = new Set<string>();
+
+function downloadKey(cachePath: string, module: string): string {
+  return `${path.resolve(cachePath)}\n${module}`;
+}
+
 export class ModuleCache {
   private readonly manifest: CacheManifest;
   private readonly claims = new Map<string, Promise<void>>();
@@ -179,9 +186,26 @@ export class ModuleCache {
     }
     const claimed = this.lease
       .add(entry)
-      .then(() => waitWhileCacheLocked(this.path, PRUNE_LOCK, this.fs));
+      .then(() => waitWhileCacheLocked(this.path, PRUNE_LOCK, this.fs))
+      .then(() => this.waitForOtherDownloads(entry));
     this.claims.set(entry, claimed);
     return claimed;
+  }
+
+  /**
+   * Waits while another process downloads into the folder of `entry`: the
+   * download lock of each manifest key that could hold it, such as `pkg@1.0.0`
+   * or `@scope/pkg@1.0.0` for `@scope/pkg@1.0.0/dist`. A lock this process
+   * holds is not waited for, since its own download claims its folder.
+   */
+  private async waitForOtherDownloads(entry: string): Promise<void> {
+    const segments = entry.split("/");
+    for (let count = 1; count <= segments.length; count++) {
+      const key = segments.slice(0, count).join("/");
+      if (!heldDownloads.has(downloadKey(this.path, key))) {
+        await waitWhileCacheLocked(this.path, downloadLockOf(key), this.fs);
+      }
+    }
   }
 
   /**
@@ -259,9 +283,14 @@ export class ModuleCache {
         `Cannot take the download lock of ${module} in ${this.path} (${refusal.failure}); going on without it`,
       );
     }
+    const held = downloadKey(this.path, module);
+    if (lock !== undefined) {
+      heldDownloads.add(held);
+    }
     try {
       return await run();
     } finally {
+      heldDownloads.delete(held);
       await lock?.release();
     }
   }
