@@ -123,7 +123,8 @@ export async function pruneModuleLocks(
 
 interface RefreshedLock {
   key: ModuleLockKey;
-  change: ModuleLockChange | "missing";
+  /** `kept`: another live run uses the folder, so it was kept, not resolved again. */
+  change: ModuleLockChange | "missing" | "kept";
 }
 
 /** Whether `modules update` wrote a new or different lock for the module. */
@@ -184,6 +185,9 @@ async function refreshModuleLock(
     package: module.source.package,
     version: manifest.manifest.version ?? module.source.version,
   };
+  if (context.cache.wasKeptInUse(`${key.package}@${key.version}`)) {
+    return { key, change: "kept" };
+  }
   const after = await store.read(key);
   return {
     key,
@@ -197,6 +201,13 @@ function reportRefreshedLock({ key, change }: RefreshedLock): void {
   }
   const ui = getProcessUi();
   const lock = getProcessPalette().bold(ModuleLockStore.relativePath(key));
+  if (change === "kept") {
+    ui.message(
+      "warn",
+      `${key.package}@${key.version} is in use by another run: kept its folder, dependencies not resolved again`,
+    );
+    return;
+  }
   if (change === "missing") {
     ui.message(
       "warn",
