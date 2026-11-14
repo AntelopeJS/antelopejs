@@ -24,6 +24,12 @@ const TRASH_FOLDER = ".trash";
 export type CacheKeep = (entry: string) => boolean;
 
 /**
+ * What a prune did with the folder of an unused entry: moved it to the trash,
+ * found it already gone, or kept it because it could not be moved.
+ */
+type TrashOutcome = "moved" | "absent" | "kept";
+
+/**
  * Whether `entry`, a path relative to the cache with `/` separators, lies in
  * the folder of the manifest entry `key`.
  */
@@ -36,10 +42,7 @@ export function entryCovers(entry: string, key: string): boolean {
  * relative to the cache with `/` separators, or `undefined` for a folder
  * outside the cache.
  */
-export function cacheEntryOf(
-  cachePath: string,
-  folder: string,
-): string | undefined {
+function cacheEntryOf(cachePath: string, folder: string): string | undefined {
   const relative = path.relative(cachePath, path.resolve(folder));
   if (
     relative === "" ||
@@ -50,6 +53,32 @@ export function cacheEntryOf(
     return undefined;
   }
   return relative.split(path.sep).join("/");
+}
+
+async function realPathOrResolved(target: string): Promise<string> {
+  try {
+    return await fsNode.realpath(target);
+  } catch {
+    return path.resolve(target);
+  }
+}
+
+/**
+ * The entry of the cache at `cachePath` that holds `folder`, as
+ * {@link cacheEntryOf} finds it, comparing real paths when the two are
+ * spelled through different symbolic links.
+ */
+export async function findCacheEntry(
+  cachePath: string,
+  folder: string,
+): Promise<string | undefined> {
+  return (
+    cacheEntryOf(cachePath, folder) ??
+    cacheEntryOf(
+      await realPathOrResolved(cachePath),
+      await realPathOrResolved(folder),
+    )
+  );
 }
 
 function isVersionManifest(value: unknown): value is Record<string, string> {
@@ -118,9 +147,11 @@ export class ModuleCache {
    * names it and no live prune holds the cache, so a folder checked on disk
    * afterwards stays. A folder outside the cache is not recorded.
    */
-  claimFolder(folder: string): Promise<void> {
-    const entry = cacheEntryOf(this.path, folder);
-    return entry === undefined ? Promise.resolve() : this.claim(entry);
+  async claimFolder(folder: string): Promise<void> {
+    const entry = await findCacheEntry(this.path, folder);
+    if (entry !== undefined) {
+      await this.claim(entry);
+    }
   }
 
   private claim(entry: string): Promise<void> {
@@ -219,33 +250,39 @@ export class ModuleCache {
     }
     const trash = path.join(this.path, TRASH_FOLDER);
     await this.fs.mkdir(trash, { recursive: true });
+    const removed: string[] = [];
     const trashed: string[] = [];
     for (const key of unused) {
       const target = path.join(trash, randomUUID());
-      if (await this.moveIfPresent(path.join(this.path, key), target)) {
+      const outcome = await this.moveToTrash(path.join(this.path, key), target);
+      if (outcome !== "kept") {
+        removed.push(key);
+      }
+      if (outcome === "moved") {
         trashed.push(target);
       }
     }
     await this.load();
-    for (const key of unused) {
+    for (const key of removed) {
       delete this.manifest[key];
     }
     await this.save();
     return trashed;
   }
 
-  private async moveIfPresent(
+  private async moveToTrash(
     source: string,
     target: string,
-  ): Promise<boolean> {
+  ): Promise<TrashOutcome> {
     try {
       await this.fs.rename(source, target);
-      return true;
+      return "moved";
     } catch (error) {
       if (error instanceof Error && hasErrorCode(error, "ENOENT")) {
-        return false;
+        return "absent";
       }
-      throw error;
+      Logger.Debug(`Could not move ${source} out of the cache; keeping it`);
+      return "kept";
     }
   }
 

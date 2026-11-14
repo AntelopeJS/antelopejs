@@ -6,8 +6,8 @@ import type { IFileSystem } from "../../types";
 import { isObject, isString } from "../../utils";
 import {
   type CacheKeep,
-  cacheEntryOf,
   entryCovers,
+  findCacheEntry,
   getBuildArtifactPath,
   type ModuleCache,
   readBuildArtifactFile,
@@ -117,10 +117,11 @@ async function readBuildKeep(
   const folders = await Promise.all(
     [...buildFiles].map((buildFile) => readBuiltFolders(buildFile, fs)),
   );
-  const kept = folders
-    .flat()
-    .map((folder) => cacheEntryOf(cache.path, folder))
-    .filter(isString);
+  const kept = (
+    await Promise.all(
+      folders.flat().map((folder) => findCacheEntry(cache.path, folder)),
+    )
+  ).filter(isString);
   return (entry) => kept.some((folder) => entryCovers(folder, entry));
 }
 

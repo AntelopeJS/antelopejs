@@ -84,10 +84,15 @@ async function tryCreateLock(
     }
     throw error;
   }
-  await fs.writeFile(
-    path.join(lockFolder, OWNER_FILE),
-    JSON.stringify(currentProcess()),
-  );
+  try {
+    await fs.writeFile(
+      path.join(lockFolder, OWNER_FILE),
+      JSON.stringify(currentProcess()),
+    );
+  } catch (error) {
+    await fs.rm(lockFolder, { recursive: true, force: true });
+    throw error;
+  }
   return {
     release: () => fs.rm(lockFolder, { recursive: true, force: true }),
   };

@@ -25,6 +25,7 @@ const LEASES_FOLDER = ".leases";
 const LEASE_EXTENSION = ".json";
 const TEMP_SUFFIX = ".tmp";
 const UNSAFE_NAME_CHARACTERS = /[^A-Za-z0-9_.-]/g;
+const LEASE_NAME = /^(.+)-([1-9]\d*)-[0-9a-f]{8}-[0-9a-f-]{27}\.json$/;
 const READ_ONLY_CODES = ["EACCES", "EPERM", "EROFS"];
 
 const Logger = new Logging.Channel("loader");
@@ -94,6 +95,21 @@ function releaseAtExit(file: string): void {
 function leaseFileName(owner: ProcessRef): string {
   const name = `${owner.host}-${owner.pid}-${randomUUID()}`;
   return `${name.replace(UNSAFE_NAME_CHARACTERS, "_")}${LEASE_EXTENSION}`;
+}
+
+/**
+ * Whether the lease file `name`, as {@link leaseFileName} spells it, names a
+ * process of this machine that has exited. It decides on a lease whose
+ * content cannot be read, such as one a power loss left empty.
+ */
+function namesExitedRunOfThisMachine(name: string): boolean {
+  const match = LEASE_NAME.exec(name);
+  if (match === null) {
+    return false;
+  }
+  const [, host, pid] = match;
+  const thisHost = os.hostname().replace(UNSAFE_NAME_CHARACTERS, "_");
+  return host === thisHost && !isProcessAlive(Number(pid));
 }
 
 /**
@@ -197,7 +213,16 @@ export async function readLiveLeaseEntries(
   const entries: string[] = [];
   for (const name of names.filter((item) => item.endsWith(LEASE_EXTENSION))) {
     const file = path.join(folder, name);
-    const lease = await readLease(file, fs);
+    let lease: RunLease | undefined;
+    try {
+      lease = await readLease(file, fs);
+    } catch (error) {
+      if (!namesExitedRunOfThisMachine(name)) {
+        throw error;
+      }
+      lease = undefined;
+      await fs.rm(file, { force: true });
+    }
     if (lease === undefined) {
       continue;
     }

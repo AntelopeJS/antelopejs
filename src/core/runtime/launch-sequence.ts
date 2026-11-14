@@ -11,7 +11,7 @@ import {
 import { NodeFileSystem } from "../filesystem";
 import type { BuildArtifact } from "../modules";
 import {
-  cacheEntryOf,
+  findCacheEntry,
   INSTANCES_FOLDER,
   ModuleManager,
   unpackErrors,
@@ -186,6 +186,27 @@ export const prepareFromConfig: ProjectPreparer = async (
   };
 };
 
+/**
+ * Claims, in this run's lease, every module folder of `artifact` that lies in
+ * the cache at `cacheFolder`. The cache is not opened when none does, so a
+ * build of local modules starts on a file system it may not write.
+ */
+async function claimBuiltFolders(
+  artifact: BuildArtifact,
+  cacheFolder: string,
+  loadContext: LoaderContextProvider,
+): Promise<void> {
+  const folders = Object.values(artifact.modules).map(({ folder }) => folder);
+  const entries = await Promise.all(
+    folders.map((folder) => findCacheEntry(cacheFolder, folder)),
+  );
+  if (entries.every((entry) => entry === undefined)) {
+    return;
+  }
+  const { cache } = await loadContext();
+  await Promise.all(folders.map((folder) => cache.claimFolder(folder)));
+}
+
 function prepareFromBuiltArtifact(
   artifact: BuildArtifact,
   projectFolder: string,
@@ -199,11 +220,6 @@ function prepareFromBuiltArtifact(
   const loadContext = memoizeLoaderContext(() =>
     createLoaderContext(loaderConfig, fs),
   );
-  const cachedFolders = Object.values(artifact.modules)
-    .map(({ folder }) => folder)
-    .filter(
-      (folder) => cacheEntryOf(loaderConfig.cacheFolder, folder) !== undefined,
-    );
 
   return {
     fs,
@@ -211,12 +227,7 @@ function prepareFromBuiltArtifact(
     logging: artifact.config.logging,
     loadContext,
     verify: async () => {
-      if (cachedFolders.length > 0) {
-        const { cache } = await loadContext();
-        await Promise.all(
-          cachedFolders.map((folder) => cache.claimFolder(folder)),
-        );
-      }
+      await claimBuiltFolders(artifact, loaderConfig.cacheFolder, loadContext);
       await verify();
     },
     createEntries: async () => mapArtifactModuleEntries(artifact),

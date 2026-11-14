@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -148,4 +148,54 @@ export class VanishingFileSystem extends NodeFileSystem {
 /** The pid of a process of this machine that has exited. */
 export function deadPid(): number {
   return spawnSync(process.execPath, ["-e", ""]).pid;
+}
+
+/** A process of this machine that runs until `stop` is called. */
+export interface IdleProcess {
+  pid: number;
+  stop(): Promise<void>;
+}
+
+/** Starts a Node process that does nothing until it is stopped. */
+export function startIdleProcess(): Promise<IdleProcess> {
+  const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+    stdio: "ignore",
+  });
+  return new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("spawn", () => {
+      const pid = child.pid;
+      if (pid === undefined) {
+        reject(new Error("The idle process has no pid"));
+        return;
+      }
+      resolve({
+        pid,
+        stop: () =>
+          new Promise<void>((done) => {
+            child.once("exit", () => done());
+            child.kill();
+          }),
+      });
+    });
+  });
+}
+
+/** This machine's hostname as a lease file name spells it. */
+export function hostnameInLeaseName(): string {
+  return os.hostname().replace(/[^A-Za-z0-9_.-]/g, "_");
+}
+
+/** The real filesystem, except that writing a prune lock's owner fails with `ENOSPC`. */
+export class FailingOwnerFileSystem extends NodeFileSystem {
+  override writeFile(file: string, data: Buffer | string) {
+    if (path.basename(file) === "owner.json") {
+      return Promise.reject(
+        Object.assign(new Error("ENOSPC: no space left on device"), {
+          code: "ENOSPC",
+        }),
+      );
+    }
+    return super.writeFile(file, data);
+  }
 }
