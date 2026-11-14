@@ -4,6 +4,7 @@ import * as path from "node:path";
 
 import type { IFileSystem } from "../../../types";
 import { FileHasher, isVanishedPathError } from "./file-hasher";
+import { MissingFolders } from "./missing-folders";
 
 export type ModuleChangeListener = (moduleId: string) => void;
 export type FileChangeListener = (filePath: string) => void;
@@ -47,14 +48,18 @@ export class FileWatcher {
   private watchedFiles = new Map<string, WatchedFile>();
   private changeChains = new Map<string, Promise<void>>();
   private scanRoots = new Map<string, string>();
-  private rootWatchers = new Map<string, { dir: string; watcher: FSWatcher }>();
+  private missingFolders: MissingFolders;
   private watching = false;
   private stopped = false;
 
   constructor(
     private fs: IFileSystem,
     private hasher: FileHasher = new FileHasher(fs),
-  ) {}
+  ) {
+    this.missingFolders = new MissingFolders(fs, (root) =>
+      this.awaitRoot(root),
+    );
+  }
 
   onModuleChanged(listener: ModuleChangeListener): void {
     this.listeners.push(listener);
@@ -163,9 +168,7 @@ export class FileWatcher {
     for (const watcher of this.watchers.values()) {
       watcher.close();
     }
-    for (const root of this.rootWatchers.keys()) {
-      this.closeRootWatcher(root);
-    }
+    this.missingFolders.close();
     this.watchers.clear();
     this.changeChains.clear();
   }
@@ -194,46 +197,14 @@ export class FileWatcher {
   private async followRoot(root: string): Promise<void> {
     const moduleId = this.scanRoots.get(root);
     if (this.stopped || moduleId === undefined || this.watchedDirs.has(root)) {
-      this.closeRootWatcher(root);
+      this.missingFolders.forget(root);
       return;
     }
-    if (await this.fs.exists(root)) {
-      this.closeRootWatcher(root);
+    if (await this.missingFolders.follow(root)) {
       await this.forgetIfVanished(root, () => this.exploreDir(moduleId, root));
       this.startWatching();
       this.notifyModuleChange(moduleId);
-      return;
     }
-    const dir = await this.nearestExistingAncestor(root);
-    if (this.rootWatchers.get(root)?.dir === dir) {
-      return;
-    }
-    this.closeRootWatcher(root);
-    try {
-      const watcher = watch(dir, () => this.awaitRoot(root));
-      watcher.on("error", (err) => {
-        console.error(`FileWatcher error for ${dir}:`, err);
-      });
-      this.rootWatchers.set(root, { dir, watcher });
-    } catch (err) {
-      if (!(err instanceof Error && isVanishedPathError(err))) {
-        console.error(`Failed to watch directory ${dir}:`, err);
-        return;
-      }
-    }
-    this.awaitRoot(root);
-  }
-
-  private async nearestExistingAncestor(dirPath: string): Promise<string> {
-    const parent = path.dirname(dirPath);
-    return parent === dirPath || (await this.fs.exists(parent))
-      ? parent
-      : this.nearestExistingAncestor(parent);
-  }
-
-  private closeRootWatcher(root: string): void {
-    this.rootWatchers.get(root)?.watcher.close();
-    this.rootWatchers.delete(root);
   }
 
   private async forgetVanishedDir(dir: string): Promise<void> {

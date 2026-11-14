@@ -107,3 +107,98 @@ describe("FileWatcher Integration with a recreated module folder", () => {
     await expectEditReloads();
   });
 });
+
+describe("FileWatcher Integration while waiting for a missing folder", () => {
+  const QUIET_MS = 300;
+  const MAX_QUIET_STATS = 20;
+  let parentDir: string;
+
+  class SlowCountingFileSystem extends NodeFileSystem {
+    stats = 0;
+
+    constructor(private delayMs = 0) {
+      super();
+    }
+
+    async stat(filePath: string) {
+      await this.count();
+      return super.stat(filePath);
+    }
+
+    async exists(filePath: string) {
+      await this.count();
+      return super.exists(filePath);
+    }
+
+    private async count() {
+      this.stats++;
+      await new Promise((resolve) => setTimeout(resolve, this.delayMs));
+    }
+  }
+
+  const openWatchers = () =>
+    process
+      .getActiveResourcesInfo()
+      .filter((resource) => resource === "FSEventWrap").length;
+
+  const statsWhileQuiet = async (fs: SlowCountingFileSystem) => {
+    const before = fs.stats;
+    await new Promise((resolve) => setTimeout(resolve, QUIET_MS));
+    return fs.stats - before;
+  };
+
+  beforeEach(async () => {
+    parentDir = await mkdtemp(path.join(tmpdir(), "ajs-test-"));
+  });
+
+  afterEach(async () => {
+    await rm(parentDir, { recursive: true, force: true });
+  });
+
+  it("waits quietly on a scanned folder that is a file, then watches it once it is a folder", async () => {
+    const root = path.join(parentDir, "test");
+    await writeFile(root, "not a folder");
+    const fs = new SlowCountingFileSystem();
+    const watcher = new FileWatcher(fs);
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+    await watcher.scanModule("test", root);
+    watcher.startWatching();
+    try {
+      expect(await statsWhileQuiet(fs)).to.be.at.most(MAX_QUIET_STATS);
+      await rm(root);
+      await mkdir(root);
+      await writeFile(path.join(root, "a.js"), "export const a = 1;");
+      await new Promise((resolve) => setTimeout(resolve, QUIET_MS));
+      expect(changes).to.include("test");
+    } finally {
+      watcher.stopWatching();
+    }
+  });
+
+  it("waits quietly on a folder whose parent is missing too", async () => {
+    const fs = new SlowCountingFileSystem();
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("test", path.join(parentDir, "modules", "test"), [
+      "src",
+    ]);
+    watcher.startWatching();
+    try {
+      expect(await statsWhileQuiet(fs)).to.be.at.most(MAX_QUIET_STATS);
+    } finally {
+      watcher.stopWatching();
+    }
+  });
+
+  it("leaves no watcher open when stopped while it looks for the folder", async () => {
+    const baseline = openWatchers();
+    const fs = new SlowCountingFileSystem(50);
+    const watcher = new FileWatcher(fs);
+    await watcher.scanModule("test", path.join(parentDir, "missing"));
+    watcher.startWatching();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    watcher.stopWatching();
+    await new Promise((resolve) => setTimeout(resolve, QUIET_MS));
+    expect(openWatchers()).to.equal(baseline);
+  });
+});
