@@ -267,6 +267,13 @@ async function downloadPackage(
   );
   const key = { package: source.package, version: packedVersion ?? version };
   const entry = cacheEntry(key.package, key.version);
+  const requested = cacheEntry(source.package, version);
+  if (entry !== requested) {
+    await ctx.fs.rm(tmp, { recursive: true, force: true });
+    throw new Error(
+      `${packCommand} returned version ${key.version}, not the ${requested} this run downloads; check the registry`,
+    );
+  }
   const record = await ctx.locks.find(key);
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);
   const folder = await cache.transfer(tmpPackage, entry);
