@@ -1,6 +1,6 @@
 export * from "./build-artifact";
 export * as buildArtifactModule from "./build-artifact";
-export * from "./cache-prune-lock";
+export * from "./cache-lock";
 export * from "./diagnostics";
 export * from "./interface-bumps";
 export * from "./interface-registry";

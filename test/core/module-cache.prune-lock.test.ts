@@ -11,10 +11,11 @@ import path from "node:path";
 
 import { NodeFileSystem } from "../../src/core/filesystem";
 import {
-  acquirePruneLock,
   type CacheKeep,
   ModuleCache,
-  waitWhilePruneLocked,
+  PRUNE_LOCK,
+  tryAcquireCacheLock,
+  waitWhileCacheLocked,
 } from "../../src/core/modules";
 import {
   deadPid,
@@ -23,7 +24,7 @@ import {
   otherNamespace,
   pruneLockPath,
   readLeases,
-  readLockBeat,
+  readLockOwner,
   seedCache,
 } from "../helpers/cache-leases";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
@@ -50,6 +51,11 @@ function settlesWithin(promise: Promise<unknown>, ms: number) {
 function skewLockClock(cachePath: string): void {
   const past = new Date(Date.now() - SKEWED_BY_MS);
   utimesSync(pruneLockPath(cachePath), past, past);
+}
+
+/** The heartbeat count in the owner of the prune lock of `cachePath`, if it can be read. */
+function readLockBeat(cachePath: string): number | undefined {
+  return readLockOwner(pruneLockPath(cachePath))?.beat;
 }
 
 /** A monotonic clock that moves only when the test sets `at`. */
@@ -123,7 +129,7 @@ describe("ModuleCache prune lock", () => {
   });
 
   it("raises the heartbeat in its owner while it holds the lock, and removes the lock on release", async () => {
-    const lock = await acquirePruneLock(cachePath, fs, 10);
+    const lock = await tryAcquireCacheLock(cachePath, PRUNE_LOCK, fs, 10);
     expect(lock).to.not.equal(undefined);
     const first = readLockBeat(cachePath) ?? 0;
 
@@ -136,6 +142,21 @@ describe("ModuleCache prune lock", () => {
 
     expect(beat).to.be.greaterThan(first);
     expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
+  });
+
+  it("stops beating, and leaves the lock on release, once another process holds it", async () => {
+    const lock = await tryAcquireCacheLock(cachePath, PRUNE_LOCK, fs, 10);
+    holdPruneLock(cachePath, { pid: process.pid, token: "taken-over" });
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const held = await lock?.isHeld();
+    await lock?.release();
+
+    expect(held).to.equal(false);
+    expect(readLockOwner(pruneLockPath(cachePath))).to.deep.equal({
+      token: "taken-over",
+      beat: 0,
+    });
   });
 });
 
@@ -177,7 +198,7 @@ describe("A run claiming a cache folder while a prune holds the lock", () => {
     skewLockClock(cachePath);
     const clock = fakeClock();
 
-    const waiting = waitWhilePruneLocked(cachePath, fs, clock.now);
+    const waiting = waitWhileCacheLocked(cachePath, PRUNE_LOCK, fs, clock.now);
 
     expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
     clock.at = SILENT_LOCK_MS - 1;
@@ -194,7 +215,12 @@ describe("A run claiming a cache folder while a prune holds the lock", () => {
     it(`counts the 60 s from the last change of the owner, as when ${label}`, async () => {
       holdPruneLock(cachePath, OTHER_MACHINE());
       const clock = fakeClock();
-      const waiting = waitWhilePruneLocked(cachePath, fs, clock.now);
+      const waiting = waitWhileCacheLocked(
+        cachePath,
+        PRUNE_LOCK,
+        fs,
+        clock.now,
+      );
       expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
 
       clock.at = 50_000;
@@ -212,7 +238,7 @@ describe("A run claiming a cache folder while a prune holds the lock", () => {
     mkdirSync(pruneLockPath(cachePath));
     const clock = fakeClock();
 
-    const waiting = waitWhilePruneLocked(cachePath, fs, clock.now);
+    const waiting = waitWhileCacheLocked(cachePath, PRUNE_LOCK, fs, clock.now);
     expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
     clock.at = SILENT_LOCK_MS;
 
@@ -223,7 +249,7 @@ describe("A run claiming a cache folder while a prune holds the lock", () => {
   it("stops waiting, but keeps the lock, when its owner turns unreadable and stays so for 60 s", async () => {
     holdPruneLock(cachePath, OTHER_MACHINE());
     const clock = fakeClock();
-    const waiting = waitWhilePruneLocked(cachePath, fs, clock.now);
+    const waiting = waitWhileCacheLocked(cachePath, PRUNE_LOCK, fs, clock.now);
     expect(await settlesWithin(waiting, PENDING_WINDOW_MS)).to.equal(false);
 
     writeFileSync(path.join(pruneLockPath(cachePath), "owner.json"), "{");

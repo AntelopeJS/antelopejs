@@ -16,7 +16,12 @@ import {
   readOtherLiveLeases,
   RunLeaseFile,
 } from "./cache-leases";
-import { acquirePruneLock, waitWhilePruneLocked } from "./cache-prune-lock";
+import {
+  type CacheLock,
+  PRUNE_LOCK,
+  tryAcquireCacheLock,
+  waitWhileCacheLocked,
+} from "./cache-lock";
 
 const Logger = new Logging.Channel("loader");
 
@@ -227,7 +232,7 @@ export class ModuleCache {
     }
     const claimed = this.lease
       .add(entry)
-      .then(() => waitWhilePruneLocked(this.path, this.fs));
+      .then(() => waitWhileCacheLocked(this.path, PRUNE_LOCK, this.fs));
     this.claims.set(entry, claimed);
     return claimed;
   }
@@ -313,8 +318,10 @@ export class ModuleCache {
    * its lease, so an entry in use shows in one of them. A run that claims an
    * entry while a prune holds the lock waits for it, then finds a removed
    * folder gone. The folders are moved to `.trash` under the lock and deleted
-   * once it is released. A run whose lease the file system refused does not
-   * prune, since no lease protects what it loaded. Nothing is removed while
+   * once it is released; before each move the prune checks that it still
+   * holds the lock, and stops once another process has taken it over. A run
+   * whose lease the file system refused does not prune, since no lease
+   * protects what it loaded. Nothing is removed while
    * the lease of a run on another machine or in another pid namespace is
    * present, since this process cannot tell whether that run still lives,
    * and over a shared file system it may not see that run's newest lease. A
@@ -331,14 +338,14 @@ export class ModuleCache {
       return;
     }
     await this.emptyTrash();
-    const lock = await acquirePruneLock(this.path, this.fs);
+    const lock = await tryAcquireCacheLock(this.path, PRUNE_LOCK, this.fs);
     if (lock === undefined) {
       Logger.Debug(`Another process prunes ${this.path}; skipping`);
       return;
     }
     let trashed: string[];
     try {
-      trashed = await this.moveUnusedToTrash(readKeep);
+      trashed = await this.moveUnusedToTrash(readKeep, lock);
     } finally {
       await lock.release();
     }
@@ -347,6 +354,7 @@ export class ModuleCache {
 
   private async moveUnusedToTrash(
     readKeep: () => Promise<CacheKeep>,
+    lock: CacheLock,
   ): Promise<string[]> {
     await this.load();
     const leases = await readLiveLeases(this.path, this.fs);
@@ -367,14 +375,25 @@ export class ModuleCache {
           !keep(key) &&
           !leased.some((entry) => entryCovers(entry, key)),
       );
-    if (unused.length === 0) {
-      return [];
-    }
+    return this.trashEntries(unused, lock);
+  }
+
+  /** Moves the folders of `keys` to the trash and forgets them, while `lock` is held. */
+  private async trashEntries(
+    keys: string[],
+    lock: CacheLock,
+  ): Promise<string[]> {
     const trash = path.join(this.path, TRASH_FOLDER);
-    await this.fs.mkdir(trash, { recursive: true });
     const removed: string[] = [];
     const trashed: string[] = [];
-    for (const key of unused) {
+    for (const key of keys) {
+      if (!(await lock.isHeld())) {
+        Logger.Warn(
+          `Another process took over the prune lock of ${this.path}; not removing unused modules`,
+        );
+        break;
+      }
+      await this.fs.mkdir(trash, { recursive: true });
       const target = path.join(trash, randomUUID());
       const outcome = await this.moveToTrash(path.join(this.path, key), target);
       if (outcome !== "kept") {
@@ -384,10 +403,10 @@ export class ModuleCache {
         trashed.push(target);
       }
     }
-    for (const key of removed) {
-      this.forget(key);
+    if (removed.length > 0) {
+      removed.forEach((key) => this.forget(key));
+      await this.save();
     }
-    await this.save();
     return trashed;
   }
 

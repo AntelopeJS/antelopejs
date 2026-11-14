@@ -1,21 +1,28 @@
 import { expect } from "chai";
-import { spawn } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { ModuleCache } from "../../src/core/modules";
 import {
+  CHILD_TIMEOUT_MS,
+  openGate,
+  pruneInChild,
+  runInChild,
+} from "../helpers/cache-children";
+import {
   hasEntryFolder,
+  holdPruneLock,
   leaseNames,
+  manifestKeys,
+  pruneLockPath,
   readLeases,
+  readLockOwner,
   seedCache,
   thisProcess,
 } from "../helpers/cache-leases";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
 
-const REPO_ROOT = path.resolve(__dirname, "../..");
-const MODULE_CACHE_SOURCE = path.join(REPO_ROOT, "src/core/modules");
-const CHILD_TIMEOUT_MS = 30_000;
+const MODULE_CACHE_SOURCE = path.resolve(__dirname, "../../src/core/modules");
 const PENDING_WINDOW_MS = 200;
 const quoted = JSON.stringify;
 
@@ -24,42 +31,6 @@ function settlesWithin(promise: Promise<unknown>, ms: number) {
     setTimeout(() => resolve(false), ms).unref(),
   );
   return Promise.race([promise.then(() => true), timeout]);
-}
-
-/**
- * Runs `script` in a Node child. `exited` resolves with what it printed once
- * it exits with code 0; `printed` resolves once it has printed `text`.
- */
-function runInChild(script: string) {
-  const child = spawn(
-    process.execPath,
-    ["-r", "ts-node/register", "-e", script],
-    {
-      cwd: REPO_ROOT,
-      env: { ...process.env, TS_NODE_TRANSPILE_ONLY: "true" },
-      timeout: CHILD_TIMEOUT_MS,
-    },
-  );
-  let output = "";
-  child.stdout.on("data", (chunk) => (output += String(chunk)));
-  child.stderr.on("data", (chunk) => (output += String(chunk)));
-  const exited = new Promise<string>((resolve, reject) => {
-    child.on("error", reject);
-    child.on("close", (code) =>
-      code === 0 ? resolve(output) : reject(new Error(output)),
-    );
-  });
-  const printed = (text: string) =>
-    new Promise<void>((resolve, reject) => {
-      const check = () => output.includes(text) && resolve();
-      child.stdout.on("data", check);
-      exited.then(
-        () => reject(new Error(`Exited without printing ${text}: ${output}`)),
-        reject,
-      );
-      check();
-    });
-  return { exited, printed };
 }
 
 /** Runs a Node child that claims `entry` in the cache, prints its lease file names, and exits. */
@@ -74,26 +45,6 @@ function claimInChild(cachePath: string, entry: string): Promise<string> {
       `});`,
     ].join("\n"),
   ).exited;
-}
-
-/**
- * Runs a Node child that prunes the cache, keeping nothing. Under the lock,
- * its keep rule prints `ready`, then waits for `goFile` before the prune goes
- * on.
- */
-function pruneInChild(cachePath: string, goFile: string) {
-  return runInChild(
-    [
-      `const { ModuleCache } = require(${quoted(MODULE_CACHE_SOURCE)});`,
-      `const { existsSync } = require("node:fs");`,
-      `const pause = () => new Promise((resolve) => setTimeout(resolve, 20));`,
-      `new ModuleCache(${quoted(cachePath)}).prune(async () => {`,
-      `  process.stdout.write("ready\\n");`,
-      `  while (!existsSync(${quoted(goFile)})) await pause();`,
-      `  return () => false;`,
-      `});`,
-    ].join("\n"),
-  );
 }
 
 describe("ModuleCache run leases", () => {
@@ -163,6 +114,29 @@ describe("ModuleCache run leases", () => {
       writeFileSync(goFile, "");
       await pruner.exited.catch(() => undefined);
     }
+  });
+
+  it("makes a prune that loses its lock after reading the leases move nothing, and leave the new holder's lock", async function () {
+    this.timeout(CHILD_TIMEOUT_MS + 5000);
+    seedCache(cachePath, ["a@1.0.0", "b@1.0.0"]);
+    const goFile = path.join(root, "go");
+    const pruner = pruneInChild(cachePath, goFile);
+    try {
+      await pruner.printed("ready");
+      holdPruneLock(cachePath, { pid: process.pid, token: "taken-over" });
+      openGate(goFile);
+      await pruner.exited;
+    } finally {
+      openGate(goFile);
+      await pruner.exited.catch(() => undefined);
+    }
+
+    expect(manifestKeys(cachePath)).to.deep.equal(["a@1.0.0", "b@1.0.0"]);
+    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
+    expect(hasEntryFolder(cachePath, "b@1.0.0")).to.equal(true);
+    expect(readLockOwner(pruneLockPath(cachePath))?.token).to.equal(
+      "taken-over",
+    );
   });
 
   it("removes the lease when the process that claimed exits", async function () {

@@ -15,6 +15,7 @@ import {
   isNumber,
   isObject,
   isParsedJson,
+  isString,
   type ParsedJson,
 } from "../../src/utils";
 import type { JsonValue } from "./json";
@@ -161,13 +162,17 @@ export function holdPruneLock(
   });
 }
 
-/** The heartbeat count in the owner of the prune lock of the cache at `cachePath`, if it can be read. */
-export function readLockBeat(cachePath: string): number | undefined {
+/** The token and heartbeat count in the owner of the lock at `lockFolder`, if it can be read. */
+export function readLockOwner(
+  lockFolder: string,
+): Pick<LockOwner, "token" | "beat"> | undefined {
   try {
     const owner: unknown = JSON.parse(
-      readText(path.join(pruneLockPath(cachePath), "owner.json")),
+      readText(path.join(lockFolder, "owner.json")),
     );
-    return isObject(owner) && isNumber(owner.beat) ? owner.beat : undefined;
+    return isObject(owner) && isString(owner.token) && isNumber(owner.beat)
+      ? { token: owner.token, beat: owner.beat }
+      : undefined;
   } catch {
     return undefined;
   }
