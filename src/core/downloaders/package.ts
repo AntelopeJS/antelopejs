@@ -21,6 +21,7 @@ import {
   hasInstalledDependencies,
   installFailure,
   readDeclaredDependencies,
+  underDownloadLock,
 } from "./utils";
 
 export interface PackageDownloaderDeps {
@@ -254,6 +255,7 @@ async function downloadPackage(
   const record = await ctx.locks.find(key);
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);
   const folder = await cache.transfer(tmpPackage, entry);
+  await cache.ensureDownloadLockHeld(entry);
   await ctx.locks.replay(folder, record);
 
   Logger.Debug(`Installing dependencies for ${source.package}@${version}`);
@@ -383,7 +385,10 @@ async function loadPackage(
   const entry = cacheEntry(source.package, target);
   const record = await ctx.locks.find(key);
   return cache.withDownloadLock(entry, () =>
-    loadUnderDownloadLock({ cache, source, key, entry, record }, ctx),
+    loadUnderDownloadLock(
+      { cache, source, key, entry, record },
+      { ...ctx, exec: underDownloadLock(cache, entry, ctx.exec) },
+    ),
   );
 }
 

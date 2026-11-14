@@ -5,7 +5,26 @@ import * as path from "node:path";
 import type { IFileSystem } from "../../types";
 import { isObject } from "../../utils";
 import { CliError, ExecError, FAILURE_EXIT_CODE, runTask } from "../output";
+import { DownloadLockTakenOverError, type ModuleCache } from "../modules";
 import type { CommandRunner, DebugLogger } from "./types";
+
+/**
+ * `exec`, except that each command first checks that this run still holds
+ * the download lock of `module` in `cache`, as
+ * {@link ModuleCache.ensureDownloadLockHeld} does. A download runs its git
+ * and install commands through it, so that none of them writes the folder
+ * after another process took the lock over.
+ */
+export function underDownloadLock(
+  cache: ModuleCache,
+  module: string,
+  exec: CommandRunner,
+): CommandRunner {
+  return async (command, options) => {
+    await cache.ensureDownloadLockHeld(module);
+    return exec(command, options);
+  };
+}
 
 const PACKAGE_JSON = "package.json";
 const NODE_MODULES = "node_modules";
@@ -84,6 +103,9 @@ async function runInstallCommand(
       ? undefined
       : new ExecError({ ...result, command });
   } catch (err) {
+    if (err instanceof DownloadLockTakenOverError) {
+      throw err;
+    }
     if (err instanceof ExecError) {
       return err;
     }

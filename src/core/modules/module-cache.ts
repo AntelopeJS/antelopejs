@@ -111,6 +111,15 @@ function describeHolder(lease: HeldLease): string {
   return `the run with pid ${lease.pid} on ${lease.host} (lease ${lease.file})`;
 }
 
+/**
+ * Thrown when another process took over the download lock this process held,
+ * so that the download stops at its next step instead of writing over the
+ * download of that process.
+ */
+export class DownloadLockTakenOverError extends Error {
+  override readonly name = "DownloadLockTakenOverError";
+}
+
 /** The download locks this process holds, by {@link downloadKey}. */
 const heldDownloads = new Map<string, CacheLock>();
 
@@ -316,9 +325,10 @@ export class ModuleCache {
   /**
    * Checks, when this process holds the download lock of `module`, that the
    * lock still holds the token of this hold. `getFolder` calls it before it
-   * cleans the folder of `module`, `commitVersion` before it lists it, and
-   * the git downloader after a fetch, before it checks out or resets the
-   * clone. A step between two checks, such as an install, is not checked.
+   * cleans the folder of `module`, `commitVersion` before it lists it, the
+   * package downloader before it replays a lockfile into the folder, and
+   * each git or install command of a download before it runs. A command
+   * that has started runs to its end.
    *
    * A check that finds another owner, or none it can read, is tried again
    * after a pause, up to three times, since on Windows a read of
@@ -339,7 +349,7 @@ export class ModuleCache {
       await delay(HELD_CHECK_PAUSE_MS);
     }
     if (!(await lock.isHeld())) {
-      throw new Error(
+      throw new DownloadLockTakenOverError(
         `Another process took over the download lock of ${module} in ${this.path}; this run stopped so that it does not write over that download. Run the command again.`,
       );
     }

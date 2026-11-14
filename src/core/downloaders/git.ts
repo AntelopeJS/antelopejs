@@ -4,8 +4,11 @@ import * as path from "node:path";
 
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
-import type { ModuleCache } from "../modules";
-import { ModuleManifest } from "../modules";
+import {
+  DownloadLockTakenOverError,
+  type ModuleCache,
+  ModuleManifest,
+} from "../modules";
 import type { TaskHandle } from "../output";
 import { ExecError, ExecuteCMD, runTask } from "../output";
 import type { DownloaderRegistry } from "./registry";
@@ -14,6 +17,7 @@ import {
   hasInstalledDependencies,
   readDeclaredDependencies,
   runInstallCommands,
+  underDownloadLock,
 } from "./utils";
 
 const Logger = new Logging.Channel("loader.git");
@@ -55,11 +59,14 @@ function execToResult(
   command: string,
   cwd: string,
 ): Promise<CommandResult> {
-  return exec(command, { cwd }).catch((err: unknown): CommandResult =>
-    err instanceof ExecError
+  return exec(command, { cwd }).catch((err: unknown): CommandResult => {
+    if (err instanceof DownloadLockTakenOverError) {
+      throw err;
+    }
+    return err instanceof ExecError
       ? { stdout: err.stdout, stderr: err.stderr, code: err.exitCode }
-      : { stdout: "", stderr: String(err), code: 1 },
-  );
+      : { stdout: "", stderr: String(err), code: 1 };
+  });
 }
 
 async function runGitCommand(
@@ -83,6 +90,9 @@ async function commitAt(
   try {
     res = await exec(`git rev-parse ${branch}`, { cwd });
   } catch (err) {
+    if (err instanceof DownloadLockTakenOverError) {
+      throw err;
+    }
     throw new Error(`Failed to get commit hash for ${branch}: ${String(err)}`);
   }
   if (res.code !== 0) {
@@ -157,8 +167,6 @@ interface RepoUpdateRequest {
   exec: CommandRunner;
   folder: string;
   cacheVersion: string;
-  /** Checks that this run still holds the download lock of the clone, as `ModuleCache.ensureDownloadLockHeld` does. */
-  ensureHeld: () => Promise<void>;
 }
 
 async function syncRepo(
@@ -174,7 +182,6 @@ async function syncRepo(
     return UNCHANGED_REPO;
   }
   const newBranch = branch ?? (await mainBranch(folder, exec));
-  await request.ensureHeld();
   if (prevBranch !== newBranch) {
     await runGitCommand(`git checkout ${newBranch}`, folder, exec);
   }
@@ -315,13 +322,7 @@ async function cloneOrFetchRepo(
       : undefined;
   if (holder === undefined) {
     if (!source.ignoreCache && listed !== undefined && repoPresent) {
-      return updateRepo({
-        source,
-        exec,
-        folder,
-        cacheVersion: listed,
-        ensureHeld: () => cache.ensureDownloadLockHeld(name),
-      });
+      return updateRepo({ source, exec, folder, cacheVersion: listed });
     }
     return cloneRepo(cache, source, exec, name, folder);
   }
@@ -373,7 +374,13 @@ export function registerGitDownloader(
       const name = urlToFile(source.remote);
       Logger.Trace(`Starting Git module load for ${name}`);
       const folder = await cache.withDownloadLock(name, () =>
-        loadRepo({ cache, source, exec, fs, name }),
+        loadRepo({
+          cache,
+          source,
+          exec: underDownloadLock(cache, name, exec),
+          fs,
+          name,
+        }),
       );
       const moduleName = source.id ?? name;
       const manifest = await ModuleManifest.create(
