@@ -101,11 +101,18 @@ export class ModuleCache {
     await this.save();
   }
 
-  /** Removes every manifest entry, and its folder, that no `getFolder` call of this run touched. */
-  async prune(): Promise<void> {
-    const unused = Object.keys(this.manifest).filter(
-      (module) => !this.used.has(module),
-    );
+  /**
+   * Removes every manifest entry, and its folder, that no `getFolder` call of
+   * this run touched and that `keep` does not claim.
+   */
+  async prune(
+    keep: (module: string, version: string) => boolean,
+  ): Promise<void> {
+    const unused = Object.entries(this.manifest)
+      .filter(
+        ([module, version]) => !this.used.has(module) && !keep(module, version),
+      )
+      .map(([module]) => module);
     if (unused.length === 0) {
       return;
     }

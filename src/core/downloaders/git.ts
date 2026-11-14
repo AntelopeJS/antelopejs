@@ -22,7 +22,8 @@ export interface GitDownloaderDeps {
   exec?: CommandRunner;
 }
 
-function urlToFile(url: string): string {
+/** The cache entry, and folder, that holds the clone of a git remote. */
+export function urlToFile(url: string): string {
   return url.replace(/[^a-zA-Z0-9_]/g, "_");
 }
 

@@ -23,6 +23,7 @@ import {
   readBuildArtifactOrThrow,
   warnIfBuildIsStale,
 } from "./build-runtime";
+import { pruneModuleCache } from "./cache-pruning";
 import { registerCoreRuntimeInterface } from "./dev-server-registry";
 import {
   type LaunchStep,
@@ -172,7 +173,7 @@ export const prepareFromConfig: ProjectPreparer = async (
     createEntries: async () => {
       const context = await loadContext();
       const entries = await buildModuleConfigs(normalizedConfig, context);
-      await context.cache.prune();
+      await pruneModuleCache(context.cache, projectFolder, fs);
       return entries;
     },
     instanceRoot: path.join(normalizedConfig.cacheFolder, INSTANCES_FOLDER),

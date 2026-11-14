@@ -213,7 +213,7 @@ describe("ModuleCache manifest file", () => {
     await cache.load();
 
     await cache.getFolder("pkg@2.0.0", true, true);
-    await cache.prune();
+    await cache.prune(() => false);
 
     expect(
       JSON.parse(await fs.readFileString("/cache/manifest.json")),

@@ -142,7 +142,7 @@ function queuePerPackage(): (
 }
 
 /** The cache entry, and folder, that holds one version of a package. */
-function cacheEntry(pkg: string, version: string): string {
+export function packageCacheEntry(pkg: string, version: string): string {
   return `${pkg}@${valid(version) ?? version}`;
 }
 
@@ -151,7 +151,7 @@ function cachedVersions(cache: ModuleCache, pkg: string): string[] {
   return sort(
     cache
       .entries()
-      .filter(([entry, version]) => entry === cacheEntry(pkg, version))
+      .filter(([entry, version]) => entry === packageCacheEntry(pkg, version))
       .map(([, version]) => version),
   );
 }
@@ -256,7 +256,7 @@ async function downloadPackage(
     await ctx.fs.readFileString(path.join(tmpPackage, PACKAGE_JSON)),
   );
   const key = { package: source.package, version: packedVersion ?? version };
-  const entry = cacheEntry(key.package, key.version);
+  const entry = packageCacheEntry(key.package, key.version);
   const record = await ctx.locks.find(key);
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);
   await cache.clearVersion(entry);
@@ -294,7 +294,7 @@ async function loadPackage(
     (await resolveTargetVersion(source, cache, fetchVersion));
   const key = { package: source.package, version: target };
   const record = await ctx.locks.find(key);
-  const entry = cacheEntry(source.package, target);
+  const entry = packageCacheEntry(source.package, target);
   if (ctx.locks.reusesCache && cache.hasVersion(entry, target)) {
     const cachedFolder = await findCachedFolder(cache, entry, ctx.fs);
     if (cachedFolder && (await ctx.locks.matches(cachedFolder, record))) {

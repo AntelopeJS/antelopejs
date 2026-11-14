@@ -9,6 +9,7 @@ export * as moduleLoadingModule from "./module-loading";
 export * from "./process-claim";
 export * as processClaimModule from "./process-claim";
 export * from "./runtime-bootstrap";
+export * from "./cache-pruning";
 export * from "./runtime-policy";
 export * from "./runtime-types";
 export * from "./shutdown/process-tree";
