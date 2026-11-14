@@ -152,6 +152,8 @@ interface RepoUpdateRequest {
   exec: CommandRunner;
   folder: string;
   cacheVersion: string;
+  /** Checks that this run still holds the download lock of the clone, as `ModuleCache.ensureDownloadLockHeld` does. */
+  ensureHeld: () => Promise<void>;
 }
 
 async function syncRepo(
@@ -167,6 +169,7 @@ async function syncRepo(
     return UNCHANGED_REPO;
   }
   const newBranch = branch ?? (await mainBranch(folder, exec));
+  await request.ensureHeld();
   if (prevBranch !== newBranch) {
     await runGitCommand(`git checkout ${newBranch}`, folder, exec);
   }
@@ -284,7 +287,13 @@ async function cloneOrFetchRepo(
       : undefined;
   if (holder === undefined) {
     if (!source.ignoreCache && listed !== undefined && repoPresent) {
-      return updateRepo({ source, exec, folder, cacheVersion: listed });
+      return updateRepo({
+        source,
+        exec,
+        folder,
+        cacheVersion: listed,
+        ensureHeld: () => cache.ensureDownloadLockHeld(name),
+      });
     }
     return cloneRepo(cache, source, exec, name, folder);
   }

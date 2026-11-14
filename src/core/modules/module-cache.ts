@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import * as fsNode from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { satisfies } from "semver";
 
 import type { IFileSystem } from "../../types";
@@ -30,6 +31,8 @@ import { CacheManifest } from "./cache-manifest";
 const Logger = new Logging.Channel("loader");
 
 const TRASH_FOLDER = ".trash";
+const HELD_CHECKS = 3;
+const HELD_CHECK_PAUSE_MS = 25;
 
 /** Whether a prune keeps a manifest entry that no live run's lease covers. */
 export type CacheKeep = (entry: string) => boolean;
@@ -109,7 +112,7 @@ function describeHolder(lease: HeldLease): string {
 }
 
 /** The download locks this process holds, by {@link downloadKey}. */
-const heldDownloads = new Set<string>();
+const heldDownloads = new Map<string, CacheLock>();
 
 function downloadKey(cachePath: string, module: string): string {
   return `${path.resolve(cachePath)}\n${module}`;
@@ -230,6 +233,7 @@ export class ModuleCache {
       await this.claim(entry);
     }
     if (!noClean) {
+      await this.ensureDownloadLockHeld(module);
       await this.removeFolder(module, folder);
     }
     if (!noCreate) {
@@ -299,13 +303,45 @@ export class ModuleCache {
     }
     const held = downloadKey(this.path, module);
     if (lock !== undefined) {
-      heldDownloads.add(held);
+      heldDownloads.set(held, lock);
     }
     try {
       return await run();
     } finally {
       heldDownloads.delete(held);
       await lock?.release();
+    }
+  }
+
+  /**
+   * Checks, when this process holds the download lock of `module`, that the
+   * lock still holds the token of this hold. `getFolder` calls it before it
+   * cleans the folder of `module`, `commitVersion` before it lists it, and
+   * the git downloader after a fetch, before it checks out or resets the
+   * clone. A step between two checks, such as an install, is not checked.
+   *
+   * A check that finds another owner, or none it can read, is tried again
+   * after a pause, up to three times, since on Windows a read of
+   * `owner.json` fails while the heartbeat of this process renames it.
+   *
+   * @throws when another process took the lock over, as after this process
+   * stalled for 60 s, since that process now downloads `module`.
+   */
+  async ensureDownloadLockHeld(module: string): Promise<void> {
+    const lock = heldDownloads.get(downloadKey(this.path, module));
+    if (lock === undefined) {
+      return;
+    }
+    for (let check = 1; check < HELD_CHECKS; check += 1) {
+      if (await lock.isHeld()) {
+        return;
+      }
+      await delay(HELD_CHECK_PAUSE_MS);
+    }
+    if (!(await lock.isHeld())) {
+      throw new Error(
+        `Another process took over the download lock of ${module} in ${this.path}; this run stopped so that it does not write over that download. Run the command again.`,
+      );
     }
   }
 
@@ -320,7 +356,14 @@ export class ModuleCache {
     return dest;
   }
 
+  /**
+   * Lists `module` at `version` in the manifest and saves it.
+   *
+   * @throws when another process took over the download lock of `module`
+   * that this process holds, as {@link ensureDownloadLockHeld} checks.
+   */
   async commitVersion(module: string, version: string): Promise<void> {
+    await this.ensureDownloadLockHeld(module);
     this.setVersion(module, version);
     await this.save();
   }
