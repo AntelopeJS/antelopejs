@@ -109,7 +109,7 @@ function describeHolder(lease: HeldLease): string {
 }
 
 /** The download locks this process holds, by {@link downloadKey}. */
-const heldDownloads = new Set<string>();
+const heldDownloads = new Map<string, CacheLock>();
 
 function downloadKey(cachePath: string, module: string): string {
   return `${path.resolve(cachePath)}\n${module}`;
@@ -230,6 +230,7 @@ export class ModuleCache {
       await this.claim(entry);
     }
     if (!noClean) {
+      await this.ensureDownloadLockHeld(module);
       await this.removeFolder(module, folder);
     }
     if (!noCreate) {
@@ -299,13 +300,30 @@ export class ModuleCache {
     }
     const held = downloadKey(this.path, module);
     if (lock !== undefined) {
-      heldDownloads.add(held);
+      heldDownloads.set(held, lock);
     }
     try {
       return await run();
     } finally {
       heldDownloads.delete(held);
       await lock?.release();
+    }
+  }
+
+  /**
+   * Checks, when this process holds the download lock of `module`, that the
+   * lock still holds the token of this hold, before the folder of `module`
+   * is replaced or listed.
+   *
+   * @throws when another process took the lock over, as after this process
+   * stalled for 60 s, since that process now downloads `module`.
+   */
+  private async ensureDownloadLockHeld(module: string): Promise<void> {
+    const lock = heldDownloads.get(downloadKey(this.path, module));
+    if (lock !== undefined && !(await lock.isHeld())) {
+      throw new Error(
+        `Another process took over the download lock of ${module} in ${this.path}; this run stopped before it replaced or listed the folder. Run the command again.`,
+      );
     }
   }
 
@@ -320,7 +338,14 @@ export class ModuleCache {
     return dest;
   }
 
+  /**
+   * Lists `module` at `version` in the manifest and saves it.
+   *
+   * @throws when another process took over the download lock of `module`
+   * that this process holds, as {@link ensureDownloadLockHeld} checks.
+   */
   async commitVersion(module: string, version: string): Promise<void> {
+    await this.ensureDownloadLockHeld(module);
     this.setVersion(module, version);
     await this.save();
   }
