@@ -2,7 +2,7 @@
   "rules": {
     "anti-slop/no-known-value-widening": 0,
     "anti-slop/no-runtime-typeof": 0,
-    "anti-slop/no-unknown-parameters": 23,
+    "anti-slop/no-unknown-parameters": 21,
     "anti-slop/no-unknown-returns": 7,
     "anti-slop/no-unsafe-dictionary-type": 9,
     "anti-slop/require-safety-comment-for-type-assertion": 0,
