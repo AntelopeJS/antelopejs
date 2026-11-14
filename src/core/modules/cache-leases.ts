@@ -1,3 +1,4 @@
+import { Logging } from "@antelopejs/interface-core/logging";
 import { randomUUID } from "node:crypto";
 import { unlinkSync } from "node:fs";
 import * as os from "node:os";
@@ -24,6 +25,9 @@ const LEASES_FOLDER = ".leases";
 const LEASE_EXTENSION = ".json";
 const TEMP_SUFFIX = ".tmp";
 const UNSAFE_NAME_CHARACTERS = /[^A-Za-z0-9_.-]/g;
+const READ_ONLY_CODES = ["EACCES", "EPERM", "EROFS"];
+
+const Logger = new Logging.Channel("loader");
 
 /** Whether `error` is a system error with `code`, such as `ENOENT`. */
 export function hasErrorCode(error: Error, code: string): boolean {
@@ -108,7 +112,11 @@ export class RunLeaseFile {
     private readonly fs: IFileSystem,
   ) {}
 
-  /** Adds `entry` to the lease; resolves once the lease file names it. */
+  /**
+   * Adds `entry` to the lease; resolves once the lease file names it. On a
+   * cache this process may not write, it resolves with no lease written,
+   * since this process cannot prune that cache either.
+   */
   add(entry: string): Promise<void> {
     this.entries.add(entry);
     const write = this.pendingWrite.then(() => this.performWrite());
@@ -125,9 +133,19 @@ export class RunLeaseFile {
     }
     const lease: RunLease = { ...owner, entries: [...this.entries] };
     const temp = `${this.file}${TEMP_SUFFIX}`;
-    await this.fs.mkdir(folder, { recursive: true });
-    await this.fs.writeFile(temp, JSON.stringify(lease));
-    await this.fs.rename(temp, this.file);
+    try {
+      await this.fs.mkdir(folder, { recursive: true });
+      await this.fs.writeFile(temp, JSON.stringify(lease));
+      await this.fs.rename(temp, this.file);
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !READ_ONLY_CODES.some((code) => hasErrorCode(error, code))
+      ) {
+        throw error;
+      }
+      Logger.Debug(`Cannot write a lease in ${folder}; running without one`);
+    }
   }
 }
 

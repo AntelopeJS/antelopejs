@@ -31,6 +31,27 @@ export function entryCovers(entry: string, key: string): boolean {
   return entry === key || entry.startsWith(`${key}/`);
 }
 
+/**
+ * The entry of the cache at `cachePath` that holds `folder`, as a path
+ * relative to the cache with `/` separators, or `undefined` for a folder
+ * outside the cache.
+ */
+export function cacheEntryOf(
+  cachePath: string,
+  folder: string,
+): string | undefined {
+  const relative = path.relative(cachePath, path.resolve(folder));
+  if (
+    relative === "" ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
+    return undefined;
+  }
+  return relative.split(path.sep).join("/");
+}
+
 function isVersionManifest(value: unknown): value is Record<string, string> {
   return isPlainObject(value) && Object.values(value).every(isString);
 }
@@ -92,30 +113,13 @@ export class ModuleCache {
   }
 
   /**
-   * The cache entry that holds `folder`, as a path relative to the cache with
-   * `/` separators, or `undefined` for a folder outside the cache.
-   */
-  entryOf(folder: string): string | undefined {
-    const relative = path.relative(this.path, path.resolve(folder));
-    if (
-      relative === "" ||
-      relative === ".." ||
-      relative.startsWith(`..${path.sep}`) ||
-      path.isAbsolute(relative)
-    ) {
-      return undefined;
-    }
-    return relative.split(path.sep).join("/");
-  }
-
-  /**
    * Records the cache entry that holds `folder` in this run's lease, so that
    * no prune removes it while this process runs. Resolves once the lease
    * names it and no live prune holds the cache, so a folder checked on disk
    * afterwards stays. A folder outside the cache is not recorded.
    */
   claimFolder(folder: string): Promise<void> {
-    const entry = this.entryOf(folder);
+    const entry = cacheEntryOf(this.path, folder);
     return entry === undefined ? Promise.resolve() : this.claim(entry);
   }
 

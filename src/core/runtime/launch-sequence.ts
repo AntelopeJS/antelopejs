@@ -10,7 +10,12 @@ import {
 } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { BuildArtifact } from "../modules";
-import { INSTANCES_FOLDER, ModuleManager, unpackErrors } from "../modules";
+import {
+  cacheEntryOf,
+  INSTANCES_FOLDER,
+  ModuleManager,
+  unpackErrors,
+} from "../modules";
 import { terminalDisplay } from "../output";
 import {
   applyBuildEnvOverrides,
@@ -194,7 +199,11 @@ function prepareFromBuiltArtifact(
   const loadContext = memoizeLoaderContext(() =>
     createLoaderContext(loaderConfig, fs),
   );
-  const folders = Object.values(artifact.modules).map(({ folder }) => folder);
+  const cachedFolders = Object.values(artifact.modules)
+    .map(({ folder }) => folder)
+    .filter(
+      (folder) => cacheEntryOf(loaderConfig.cacheFolder, folder) !== undefined,
+    );
 
   return {
     fs,
@@ -202,8 +211,12 @@ function prepareFromBuiltArtifact(
     logging: artifact.config.logging,
     loadContext,
     verify: async () => {
-      const { cache } = await loadContext();
-      await Promise.all(folders.map((folder) => cache.claimFolder(folder)));
+      if (cachedFolders.length > 0) {
+        const { cache } = await loadContext();
+        await Promise.all(
+          cachedFolders.map((folder) => cache.claimFolder(folder)),
+        );
+      }
       await verify();
     },
     createEntries: async () => mapArtifactModuleEntries(artifact),
