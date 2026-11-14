@@ -344,7 +344,7 @@ export class ModuleCache {
         .map((lease) => `${describeHolder(lease)} in ${lease.namespace}`)
         .join("; ");
       Logger.Warn(
-        `Not removing unused modules: these runs on another machine or in another pid namespace hold leases: ${holders}. If those runs are gone, delete their lease files.`,
+        `Not removing unused modules: these runs on another machine or in another pid namespace hold leases: ${holders}. If those runs are gone, delete their lease files, or run ajs project modules release-leases --foreign.`,
       );
       return [];
     }

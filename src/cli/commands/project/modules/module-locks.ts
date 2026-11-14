@@ -66,13 +66,20 @@ export function createModuleRegistry(
   return registry;
 }
 
+/** The folder of the module cache of the project. */
+export function moduleCachePath(
+  project: string,
+  config: AntelopeConfig,
+): string {
+  return path.resolve(project, config.cacheFolder ?? DEFAULT_CACHE_FOLDER);
+}
+
 /** The module cache of the project, loaded. */
 export async function openModuleCache(
   project: string,
   config: AntelopeConfig,
 ): Promise<ModuleCache> {
-  const cacheFolder = config.cacheFolder ?? DEFAULT_CACHE_FOLDER;
-  const cache = new ModuleCache(path.resolve(project, cacheFolder));
+  const cache = new ModuleCache(moduleCachePath(project, config));
   await cache.load();
   return cache;
 }

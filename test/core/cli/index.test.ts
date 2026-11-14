@@ -125,6 +125,7 @@ describe("CLI Entry Point", () => {
       "add",
       "install",
       "list",
+      "release-leases",
       "remove",
       "update",
     ]);

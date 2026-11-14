@@ -129,6 +129,20 @@ function isThisProcess(ref: ProcessRef): boolean {
   return !isForeignProcess(ref) && ref.pid === process.pid;
 }
 
+/**
+ * What the core can tell of the run that holds a lease: it lives, it has
+ * exited, or it is foreign, on another machine or pid namespace or named by
+ * no readable owner, so that whether it lives is unknown.
+ */
+export type LeaseState = "live" | "exited" | "foreign";
+
+function stateOf(ref: ProcessRef): LeaseState {
+  if (isForeignProcess(ref)) {
+    return "foreign";
+  }
+  return isProcessAlive(ref.pid) ? "live" : "exited";
+}
+
 const heldLeases = new Set<string>();
 
 function unlinkIfPresent(file: string): void {
@@ -164,22 +178,22 @@ function leaseFileName(owner: ProcessRef): string {
 }
 
 /**
- * Whether the lease file `name`, as {@link leaseFileName} spells it, names a
- * process of this machine and pid namespace that has exited. It decides on a
- * lease whose content cannot be read, such as one a power loss left empty.
+ * The state of the run that the lease file `name` names, as
+ * {@link leaseFileName} spells it. It decides on a lease whose content cannot
+ * be read, such as one a power loss left empty; a name spelled otherwise is
+ * foreign.
  */
-function namesExitedRunOfThisMachine(name: string): boolean {
+function stateFromName(name: string): LeaseState {
   const match = LEASE_NAME.exec(name);
   if (match === null) {
-    return false;
+    return "foreign";
   }
   const [, host, namespace, pid] = match;
   const thisHost = os.hostname().replace(UNSAFE_NAME_CHARACTERS, "_");
-  return (
-    host === thisHost &&
-    namespace === namespaceDigits(pidNamespace) &&
-    !isProcessAlive(Number(pid))
-  );
+  if (host !== thisHost || namespace !== namespaceDigits(pidNamespace)) {
+    return "foreign";
+  }
+  return isProcessAlive(Number(pid)) ? "live" : "exited";
 }
 
 /**
@@ -320,16 +334,16 @@ export async function readLiveLeases(
     try {
       lease = await readLease(file, fs);
     } catch (error) {
-      if (!namesExitedRunOfThisMachine(path.basename(file))) {
+      if (stateFromName(path.basename(file)) !== "exited") {
         throw error;
       }
-      lease = undefined;
       await fs.rm(file, { force: true });
+      continue;
     }
     if (lease === undefined) {
       continue;
     }
-    if (!isLiveProcess(lease)) {
+    if (stateOf(lease) === "exited") {
       await fs.rm(file, { force: true });
       continue;
     }
@@ -355,4 +369,49 @@ export async function readOtherLiveLeases(
     }
   }
   return leases;
+}
+
+/** A lease file of a cache, with the state of the run that holds it. */
+export interface LeaseStatus {
+  file: string;
+  state: LeaseState;
+  /** What the lease holds, `undefined` when its file cannot be parsed. */
+  lease: RunLease | undefined;
+}
+
+async function readLeaseStatus(
+  file: string,
+  fs: IFileSystem,
+): Promise<LeaseStatus | undefined> {
+  try {
+    const lease = await readLease(file, fs);
+    return lease === undefined
+      ? undefined
+      : { file, state: stateOf(lease), lease };
+  } catch {
+    return {
+      file,
+      state: stateFromName(path.basename(file)),
+      lease: undefined,
+    };
+  }
+}
+
+/**
+ * Every lease of the cache at `cachePath`, with the state of its run. A lease
+ * whose file cannot be parsed is judged by its file name, and one removed
+ * while it is read is skipped. It deletes nothing.
+ */
+export async function readLeaseStatuses(
+  cachePath: string,
+  fs: IFileSystem,
+): Promise<LeaseStatus[]> {
+  const statuses: LeaseStatus[] = [];
+  for (const file of await listLeaseFiles(cachePath, fs)) {
+    const status = await readLeaseStatus(file, fs);
+    if (status !== undefined) {
+      statuses.push(status);
+    }
+  }
+  return statuses;
 }
