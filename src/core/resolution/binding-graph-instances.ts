@@ -33,10 +33,21 @@ export class InstanceTable {
     return key;
   }
 
-  /** Keys the instance of `interfaceName` that imports the instances `dependencies` name. */
+  /**
+   * Keys the instance of `interfaceName` that imports the instances
+   * `dependencies` name, private when it imports a private one.
+   */
   selfHosted(interfaceName: string, dependencies: readonly string[]): string {
     const key = `${interfaceName}{${dependencies.join(",")}}`;
-    this.instances.set(key, { key, interfaceName, dependencies });
+    const isPrivate = dependencies.some(
+      (dependency) => this.instances.get(dependency)?.private,
+    );
+    this.instances.set(key, {
+      key,
+      interfaceName,
+      dependencies,
+      ...(isPrivate && { private: true }),
+    });
     return key;
   }
 
@@ -56,21 +67,32 @@ export class InstanceTable {
     }
     const unbound = [...hidden]
       .filter((interfaceName) => !reachable.has(interfaceName))
-      .map((interfaceName) => this.unbound(interfaceName));
+      .flatMap((interfaceName) => this.unbound(interfaceName) ?? []);
     return unbound.length > 0 ? this.closure([...bound, ...unbound]) : named;
   }
 
-  private unbound(interfaceName: string): string {
+  /** `undefined` when the interface's unprovided dependencies form a cycle. */
+  private unbound(
+    interfaceName: string,
+    visiting: ReadonlySet<string> = new Set(),
+  ): string | undefined {
     const provider = this.providers.defaultProvider(interfaceName);
     if (provider) {
       return this.provided(interfaceName, provider);
     }
-    return this.selfHosted(
-      interfaceName,
-      this.dependenciesOf(interfaceName).map((dependency) =>
-        this.unbound(dependency),
-      ),
-    );
+    if (visiting.has(interfaceName)) {
+      return undefined;
+    }
+    const inner = new Set(visiting).add(interfaceName);
+    const dependencies: string[] = [];
+    for (const dependency of this.dependenciesOf(interfaceName)) {
+      const key = this.unbound(dependency, inner);
+      if (key === undefined) {
+        return undefined;
+      }
+      dependencies.push(key);
+    }
+    return this.selfHosted(interfaceName, dependencies);
   }
 
   private closure(keys: readonly string[]): Map<string, InstanceDescriptor> {

@@ -36,6 +36,8 @@ const INTERFACES = {
   logs: [],
   i1: [],
   i2: [],
+  "cycle-a": ["cycle-b"],
+  "cycle-b": ["cycle-a"],
 } satisfies Record<string, string[]>;
 
 function interfaces(): Map<string, BindingInterface> {
@@ -250,6 +252,37 @@ describe("buildBindingGraph: disabled exports", () => {
       "database{}",
       "decorators@decorators",
       "decorators{api@api,database{}}",
+    ]);
+  });
+
+  it("marks an instance built on a private one private, and adds an unbound one in its place", () => {
+    const graph = resolve({
+      mongodb: { implements: [DB], uses: [DEC], disabled: [DB] },
+      api: { implements: [HTTP] },
+    });
+    const instances = [...graph.instances.values()]
+      .map(({ key, private: isPrivate }) =>
+        isPrivate ? `${key} private` : key,
+      )
+      .sort();
+
+    expect(instances).to.deep.equal([
+      "api@api",
+      "database@mongodb private",
+      "database{}",
+      "decorators{api@api,database@mongodb} private",
+      "decorators{api@api,database{}}",
+    ]);
+  });
+
+  it("adds no unbound instance for a disabled export on a dependency cycle", () => {
+    const graph = resolve({
+      m: { implements: ["cycle-a"], uses: ["cycle-a"], disabled: ["cycle-a"] },
+    });
+
+    expect([...graph.instances.keys()].sort()).to.deep.equal([
+      "cycle-a@m",
+      "cycle-b{cycle-a@m}",
     ]);
   });
 
