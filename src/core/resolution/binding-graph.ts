@@ -243,7 +243,16 @@ class BindingGraphBuilder {
       this.edges.get(moduleId)!.add(provider);
     }
     const key = `${interfaceName}@${provider}`;
-    this.instances.set(key, { key, interfaceName, provider, dependencies: [] });
+    const isPrivate =
+      this.input.modules.get(provider)?.disabledExports?.has(interfaceName) ??
+      false;
+    this.instances.set(key, {
+      key,
+      interfaceName,
+      provider,
+      dependencies: [],
+      ...(isPrivate && { private: true }),
+    });
     return key;
   }
 
