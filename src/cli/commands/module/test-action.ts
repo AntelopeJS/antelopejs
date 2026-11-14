@@ -14,6 +14,7 @@ import { isString } from "../../../utils";
 
 interface TestOptions {
   file?: string[];
+  timeout?: number;
 }
 
 const TEST_COMMAND = "ajs module test <path>";
@@ -83,7 +84,11 @@ export async function moduleTestCommand(
     `Valid module found: ${getProcessPalette().bold(moduleName)}`,
   );
 
-  const failures = await TestModule(resolvedPath, options.file);
+  const failures = await TestModule(
+    resolvedPath,
+    options.file,
+    options.timeout,
+  );
   if (failures > 0) {
     process.exitCode = 1;
   }

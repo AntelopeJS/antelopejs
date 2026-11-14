@@ -117,7 +117,7 @@ describe("test-module", () => {
       });
     });
 
-    it("forwards explicit file filter to executeTests after full bootstrap", async () => {
+    it("forwards the file filter and timeout to executeTests after full bootstrap", async () => {
       const destroyAllStub = sinon.stub().resolves();
       const mockConfig = loadedConfigFixture({
         name: "test",
@@ -141,12 +141,15 @@ describe("test-module", () => {
         .resolves(0);
 
       const files = ["/module/test/only-this.test.js"];
-      const result = await testModule.TestModule("/module", files);
+      const result = await testModule.TestModule("/module", files, 5000);
 
       expect(result).to.equal(0);
       expect(setupEnvStub.calledOnce).to.equal(true);
       expect(executeStub.calledOnce).to.equal(true);
-      expect(executeStub.firstCall.args[4]).to.deep.equal(files);
+      expect(executeStub.firstCall.args[4]).to.deep.equal({
+        files,
+        timeout: 5000,
+      });
     });
   });
 });
