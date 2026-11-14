@@ -1,5 +1,8 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+
 import { isString } from "../../utils";
-import type { ModulePackageJson } from "./module-package-json";
+import type { ModuleManifest } from "./module-manifest";
 
 const NOT_FOUND_CODES: ReadonlySet<string> = new Set([
   "MODULE_NOT_FOUND",
@@ -40,14 +43,33 @@ function notFoundRequest(error: Error): string | undefined {
   return NOT_FOUND_REQUEST.exec(error.message)?.[1];
 }
 
+function isInstalledFrom(folder: string, packageName: string): boolean {
+  let current = path.resolve(folder);
+  while (true) {
+    if (existsSync(path.join(current, "node_modules", packageName))) {
+      return true;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return false;
+    }
+    current = parent;
+  }
+}
+
 /**
  * Names the package behind a module's failed load when Node could not find a
- * package the module declares in `dependencies` or `optionalDependencies`.
- * Returns `undefined` for any other failure.
+ * package the module declares in `dependencies` or `optionalDependencies`,
+ * and no `node_modules` folder above the module's folder holds it. Returns
+ * `undefined` for any other failure, such as a missing file inside an
+ * installed package or a request a dependency of the module made.
  */
 export function findMissingPackage(
-  moduleId: string,
-  manifest: ModulePackageJson,
+  {
+    name,
+    folder,
+    manifest,
+  }: Pick<ModuleManifest, "name" | "folder" | "manifest">,
   error: Error,
 ): MissingPackageError | undefined {
   const request = notFoundRequest(error);
@@ -59,8 +81,11 @@ export function findMissingPackage(
     ...manifest.dependencies,
     ...manifest.optionalDependencies,
   };
-  if (!Object.hasOwn(declared, packageName)) {
+  if (
+    !Object.hasOwn(declared, packageName) ||
+    isInstalledFrom(folder, packageName)
+  ) {
     return undefined;
   }
-  return new MissingPackageError(moduleId, packageName, { cause: error });
+  return new MissingPackageError(name, packageName, { cause: error });
 }

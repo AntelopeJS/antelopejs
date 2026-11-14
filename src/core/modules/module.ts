@@ -212,7 +212,7 @@ export class Module {
     } catch (err) {
       const failure =
         err instanceof Error
-          ? (findMissingPackage(this.id, this.manifest.manifest, err) ?? err)
+          ? (findMissingPackage(this.manifest, err) ?? err)
           : err;
       Logger.Error(`Failed to load module ${this.id}`, failure);
       Events.ModuleDestroyed.emit(this.id);
