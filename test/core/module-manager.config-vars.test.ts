@@ -68,12 +68,18 @@ function addModule(
       module.providedWith = config;
       return options.provide?.(config);
     },
-    construct: async (config) => {
-      module.received = config;
-      module.constructed = true;
-      module.state = ModuleState.Constructed;
-      await options.construct?.(config);
-    },
+    construct: sinon
+      .stub()
+      .callsFake(
+        async (
+          ...args: Parameters<NonNullable<ModuleCallbacks["construct"]>>
+        ) => {
+          module.received = args[0];
+          module.constructed = true;
+          module.state = ModuleState.Constructed;
+          return options.construct?.(...args);
+        },
+      ),
     destroy: async () => {
       module.state = ModuleState.Loaded;
     },
