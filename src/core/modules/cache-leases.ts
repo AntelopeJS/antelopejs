@@ -45,6 +45,12 @@ export function hasErrorCode(error: Error, code: string): boolean {
   return systemError.code === code;
 }
 
+/** The system error code of `error`, such as `ENOSPC`, or its message. */
+function failureCode(error: Error): string {
+  const systemError: NodeJS.ErrnoException = error;
+  return systemError.code ?? error.message;
+}
+
 function isPid(value: unknown): value is number {
   return isNumber(value) && Number.isInteger(value) && value > 0;
 }
@@ -179,16 +185,17 @@ export class RunLeaseFile {
   }
 
   /**
-   * Adds `entry` to the lease; resolves once the lease file names it. When
-   * the file system refuses the write (`EACCES`, `EPERM`, `EROFS`), it
-   * resolves with no lease written, as on a read-only image, and
-   * {@link wasRefused} turns true.
+   * Adds `entry` to the lease; resolves once the lease file names it. When a
+   * write fails, whatever the error, it resolves with no lease written, and
+   * {@link wasRefused} turns true: the run goes on without a lease and does
+   * not prune. The first failure is logged, at debug level when the cache is
+   * read-only (`EACCES`, `EPERM`, `EROFS`) and as a warning otherwise, such as
+   * on a full disk.
    */
   add(entry: string): Promise<void> {
     this.entries.add(entry);
-    const write = this.pendingWrite.then(() => this.performWrite());
-    this.pendingWrite = write.catch(() => undefined);
-    return write;
+    this.pendingWrite = this.pendingWrite.then(() => this.performWrite());
+    return this.pendingWrite;
   }
 
   private async performWrite(): Promise<void> {
@@ -205,15 +212,23 @@ export class RunLeaseFile {
       await this.fs.writeFile(temp, JSON.stringify(lease));
       await this.fs.rename(temp, this.file);
     } catch (error) {
-      if (
-        !(error instanceof Error) ||
-        !READ_ONLY_CODES.some((code) => hasErrorCode(error, code))
-      ) {
-        throw error;
-      }
-      this.refused = true;
-      Logger.Debug(`Cannot write a lease in ${folder}; running without one`);
+      this.refuse(
+        folder,
+        error instanceof Error ? failureCode(error) : String(error),
+      );
     }
+  }
+
+  private refuse(folder: string, failure: string): void {
+    if (!this.refused) {
+      const message = `Cannot write a lease in ${folder} (${failure}); running without one`;
+      if (READ_ONLY_CODES.includes(failure)) {
+        Logger.Debug(message);
+      } else {
+        Logger.Warn(message);
+      }
+    }
+    this.refused = true;
   }
 }
 

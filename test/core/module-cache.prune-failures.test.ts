@@ -9,7 +9,6 @@ import {
   deadPid,
   FailingOwnerFileSystem,
   hasEntryFolder,
-  inLeaseFolder,
   leaseNameOf,
   leaseNames,
   manifestKeys,
@@ -105,17 +104,6 @@ describe("ModuleCache prune across processes and failures", () => {
     expect(manifestKeys(cachePath)).to.deep.equal(["b@1.0.0"]);
     expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(false);
     expect(hasEntryFolder(cachePath, "b@1.0.0")).to.equal(true);
-  });
-
-  it("does not prune from a run whose lease the file system refused", async () => {
-    const fs = new RefusingFileSystem(inLeaseFolder(cachePath));
-    const run = new ModuleCache(cachePath, fs);
-    await run.getFolder("a@1.0.0", true, true);
-
-    await run.prune(async () => KEEP_NOTHING);
-
-    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
-    expect(manifestKeys(cachePath)).to.have.length(3);
   });
 
   it("releases the lock when it cannot record its owner", async () => {

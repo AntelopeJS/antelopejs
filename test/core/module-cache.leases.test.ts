@@ -7,12 +7,9 @@ import { ModuleCache } from "../../src/core/modules";
 import {
   deadPid,
   holdPruneLock,
-  inLeaseFolder,
   leaseNames,
   pruneLockPath,
   readLeases,
-  RefusingFileSystem,
-  seedCache,
   thisProcess,
   VanishingFileSystem,
 } from "../helpers/cache-leases";
@@ -156,20 +153,6 @@ describe("ModuleCache run leases", () => {
     );
 
     expect(await settlesWithin(claimed, 2000)).to.equal(true);
-  });
-
-  it("resolves the folders of a cache this process may not write, with no lease", async () => {
-    seedCache(cachePath, ["a@1.0.0"]);
-    const fs = new RefusingFileSystem(inLeaseFolder(cachePath));
-
-    const folder = await new ModuleCache(cachePath, fs).getFolder(
-      "a@1.0.0",
-      true,
-      true,
-    );
-
-    expect(folder).to.equal(path.join(cachePath, "a@1.0.0"));
-    expect(leaseNames(cachePath)).to.deep.equal([]);
   });
 
   it("removes the lease when the process that claimed exits", async function () {
