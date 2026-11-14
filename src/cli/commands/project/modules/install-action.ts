@@ -4,6 +4,8 @@ import type {
   ModuleSourceLocal,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+import { existsSync, realpathSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 import {
@@ -37,7 +39,6 @@ import {
   type InterfaceConsumer,
   type InterfaceProvider,
 } from "../../../../core/resolution";
-import { resolvePackage } from "../../../../utils";
 import { displayNonDefaultGitWarning, resolveGit } from "../../../common";
 import {
   loadInterfaceFromGit,
@@ -77,9 +78,25 @@ interface ConfigAnalyze {
 }
 
 /**
+ * Whether a folder Node searches from the real path of `fromFolder` holds the
+ * package's `package.json`. A package counts as installed without a JavaScript
+ * entry `require` can load, as a types-only or `bin`-only package has none.
+ * The search paths are those of `<package>/package.json`, which Node gives
+ * for a package named like a builtin too.
+ */
+function isPackageInstalled(packageName: string, fromFolder: string): boolean {
+  const searchPaths = createRequire(
+    path.join(realpathSync(fromFolder), "__antelope_resolver__.js"),
+  ).resolve.paths(`${packageName}/package.json`);
+  return (searchPaths ?? []).some((folder) =>
+    existsSync(path.join(folder, packageName, "package.json")),
+  );
+}
+
+/**
  * Lists the required dependencies no provider implements, no module of the
- * project is, and nothing installed resolves from the consumer's folder. The
- * interface analysis cannot tell whether such a package is an interface.
+ * project is, and no folder Node searches from the consumer's folder holds.
+ * The interface analysis cannot tell whether such a package is an interface.
  */
 function findMissingPackages(
   providers: InterfaceProvider[],
@@ -96,7 +113,7 @@ function findMissingPackages(
       .filter(
         (packageName) =>
           !supplied.has(packageName) &&
-          resolvePackage(packageName, consumer.folder) === undefined,
+          !isPackageInstalled(packageName, consumer.folder),
       )
       .map((packageName) => ({ moduleId: consumer.id, packageName })),
   );
