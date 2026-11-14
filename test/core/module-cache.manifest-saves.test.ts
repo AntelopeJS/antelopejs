@@ -6,6 +6,7 @@ import {
   DownloaderRegistry,
   registerPackageDownloader,
 } from "../../src/core/downloaders";
+import { NodeFileSystem } from "../../src/core/filesystem";
 import { type CacheKeep, ModuleCache } from "../../src/core/modules";
 import {
   CHILD_TIMEOUT_MS,
@@ -13,11 +14,18 @@ import {
   openGate,
 } from "../helpers/cache-children";
 import {
+  deadPid,
   hasEntryFolder,
   manifestKeys,
   seedCache,
+  thisProcess,
 } from "../helpers/cache-leases";
-import { cleanupTempDir, makeTempDir, readText } from "../helpers/temp";
+import {
+  cleanupTempDir,
+  makeTempDir,
+  readText,
+  writeJson,
+} from "../helpers/temp";
 
 const KEEP_NOTHING: CacheKeep = () => false;
 const RUNS = 3;
@@ -47,6 +55,38 @@ function countingRegistry(tempRoot: string, packs: string[]) {
     getTemp: async () => mkdtempSync(path.join(tempRoot, "pack-")),
   });
   return registry;
+}
+
+/**
+ * The real file system, except that the first time a run writes its new
+ * manifest, another process takes the manifest lock over, as after 60 s of
+ * silence, and commits `other@1.0.0` before it exits.
+ */
+class TakenOverFileSystem extends NodeFileSystem {
+  private hasTakenOver = false;
+
+  constructor(private readonly cachePath: string) {
+    super();
+  }
+
+  override async writeFile(file: string, data: Buffer | string) {
+    if (
+      !this.hasTakenOver &&
+      path.basename(file).startsWith("manifest.json.")
+    ) {
+      this.hasTakenOver = true;
+      writeJson(path.join(this.cachePath, ".manifest.lock", "owner.json"), {
+        ...thisProcess(),
+        pid: deadPid(),
+        token: "taken-over",
+        beat: 0,
+      });
+      writeJson(path.join(this.cachePath, "manifest.json"), {
+        "other@1.0.0": "1.0.0",
+      });
+    }
+    return super.writeFile(file, data);
+  }
 }
 
 describe("ModuleCache manifest saved by several runs", () => {
@@ -84,6 +124,21 @@ describe("ModuleCache manifest saved by several runs", () => {
     }
 
     expect(manifestKeys(cachePath)).to.deep.equal(expected.sort());
+  });
+
+  it("saves again, renaming nothing, when another process took the manifest lock over during the save", async () => {
+    const cache = new ModuleCache(
+      cachePath,
+      new TakenOverFileSystem(cachePath),
+    );
+    await cache.load();
+
+    await cache.commitVersion("mine@1.0.0", "1.0.0");
+
+    expect(manifestKeys(cachePath)).to.deep.equal([
+      "mine@1.0.0",
+      "other@1.0.0",
+    ]);
   });
 
   it("downloads again an entry that a later save listed after a prune moved its folder to the trash", async () => {
