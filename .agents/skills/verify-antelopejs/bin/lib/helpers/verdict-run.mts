@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -15,13 +15,19 @@ export interface DrivenVerdict {
   full: JsonRead;
 }
 
+/** The `known:` journey ids of each fixture feature file, keyed by feature name. */
+export type KnownFixture = Record<string, string[]>;
+
 const JUDGEMENT = { doors: { none: "test", rows: [] }, docs: [], notVerified: [], attention: [], verifier: "verdict test" };
 
-function writeRun(dir: string, failing: Set<string>): void {
+function git(cwd: string, args: string[]): string {
+  return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+}
+
+function writeRun(dir: string, repo: string, failing: Set<string>): void {
   const evidence = path.join(dir, "evidence");
-  const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO_DIR, encoding: "utf8" }).trim();
   mkdirSync(evidence, { recursive: true });
-  const state = { id: "x", dir, home: path.join(dir, "home"), work: path.join(dir, "work"), evidence, manifestUrl: "file:///x", createdAt: new Date().toISOString(), headSha: head, baseRef: "HEAD", baseSha: "", baseCli: "", processes: [] };
+  const state = { id: "x", dir, home: path.join(dir, "home"), work: path.join(dir, "work"), evidence, manifestUrl: "file:///x", createdAt: new Date().toISOString(), headSha: git(repo, ["rev-parse", "HEAD"]), baseRef: "HEAD", baseSha: "", baseCli: "", processes: [] };
   writeFileSync(path.join(dir, "run.json"), JSON.stringify(state));
   for (const [feature, journeys] of FEATURE_JOURNEYS) {
     mkdirSync(path.join(evidence, feature), { recursive: true });
@@ -31,17 +37,39 @@ function writeRun(dir: string, failing: Set<string>): void {
   writeFileSync(path.join(evidence, "judgement.json"), JSON.stringify(JUDGEMENT));
 }
 
+function fixtureRepo(root: string, known: KnownFixture): string {
+  const skill = path.join(root, path.relative(REPO_DIR, SKILL_DIR));
+  const features = path.join(SKILL_DIR, "features");
+  cpSync(SKILL_DIR, skill, { recursive: true, filter: (source) => source !== features });
+  mkdirSync(path.join(skill, "features"));
+  for (const [feature, ids] of Object.entries(known)) {
+    writeFileSync(path.join(skill, "features", `${feature}.md`), ["---", "known:", ...ids.map((id) => `  - ${id}`), "---", ""].join("\n"));
+  }
+  symlinkSync(path.join(REPO_DIR, "node_modules"), path.join(root, "node_modules"), "junction");
+  git(root, ["init", "--quiet"]);
+  git(root, ["add", "--all"]);
+  git(root, ["-c", "user.name=verdict test", "-c", "user.email=verdict@test", "-c", "commit.gpgsign=false", "commit", "--quiet", "--message", "fixture"]);
+  return skill;
+}
+
 /**
  * Crafts a run whose base is HEAD, so the diff is empty, with the named
  * `<feature>/<journey>` results failing and every other journey passing, and
- * drives `verify-ajs verdict` on it with `args`. Throws with the verdict's stderr when it wrote no plan.
+ * drives `verify-ajs verdict` on it with `args`. With `known`, the verdict
+ * runs in a scratch repository whose committed feature files are those
+ * fixtures, so the base lists their `known:` ids; without it, in this
+ * repository against the real feature files. Throws with the verdict's
+ * stderr when it wrote no plan.
  */
-export function driveVerdict(failing: string[], args: string[]): DrivenVerdict {
+export function driveVerdict(failing: string[], args: string[], known?: KnownFixture): DrivenVerdict {
   const dir = mkdtempSync(path.join(tmpdir(), "verify-ajs-verdict-"));
   try {
-    writeRun(dir, new Set(failing));
-    const run = spawnSync(process.execPath, [path.join(SKILL_DIR, "bin", "verify-ajs.mts"), "verdict", dir, "--pr", "1", ...args], { cwd: REPO_DIR, encoding: "utf8" });
-    const planFile = path.join(dir, "evidence", "plan.json");
+    const repo = known ? path.join(dir, "repo") : REPO_DIR;
+    const skill = known ? fixtureRepo(repo, known) : SKILL_DIR;
+    const runDir = path.join(dir, "run");
+    writeRun(runDir, repo, new Set(failing));
+    const run = spawnSync(process.execPath, [path.join(skill, "bin", "verify-ajs.mts"), "verdict", runDir, "--pr", "1", ...args], { cwd: repo, encoding: "utf8" });
+    const planFile = path.join(runDir, "evidence", "plan.json");
     if (!existsSync(planFile)) {
       throw new Error(`verdict exited ${run.status} without writing plan.json\nstdout: ${run.stdout}\nstderr: ${run.stderr}`);
     }
