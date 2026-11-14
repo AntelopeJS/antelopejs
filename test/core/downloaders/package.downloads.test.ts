@@ -1,5 +1,6 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import assert from "node:assert/strict";
 import path from "node:path";
 import {
   DownloaderRegistry,
@@ -8,6 +9,7 @@ import {
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { ModuleCache } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { fakeNpm } from "../../helpers/fake-npm";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import { writeTarball } from "../../helpers/tarball";
 describe("PackageDownloader", () => {
@@ -368,5 +370,42 @@ describe("PackageDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result[0].manifest.name).to.equal("pkg");
+  });
+});
+
+describe("PackageDownloader: loads of one package", () => {
+  it("runs the next load of a package after the previous one failed", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    const npm = fakeNpm(fs, () => "lock");
+    let installs = 0;
+    const registry = new DownloaderRegistry();
+    registerPackageDownloader(registry, {
+      fs,
+      ...npm,
+      exec: async (command, options) => {
+        if (command.startsWith("npm pack") || (installs += 1) > 1) {
+          return npm.exec(command, options);
+        }
+        return { stdout: "", stderr: "network down", code: 1 };
+      },
+    });
+    const load = (id: string) =>
+      registry.load("/project", cache, {
+        type: "package",
+        package: "shared",
+        version: "1.0.0",
+        id,
+      });
+
+    const [first, second] = await Promise.allSettled([
+      load("first"),
+      load("second"),
+    ]);
+
+    expect(first.status).to.equal("rejected");
+    assert(second.status === "fulfilled", "second load succeeds");
+    expect(second.value[0].name).to.equal("second");
   });
 });

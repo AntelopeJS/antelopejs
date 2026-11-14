@@ -117,6 +117,29 @@ function memoizeVersionFetcher(exec: CommandRunner): VersionFetcher {
   };
 }
 
+/**
+ * Runs the loads that share a cache folder one after another. Every version
+ * of a package is installed into the same folder, so a second load waits for
+ * the first and then reuses what it installed.
+ */
+function queuePerFolder(): (
+  folder: string,
+  load: () => Promise<string>,
+) => Promise<string> {
+  const tails = new Map<string, Promise<unknown>>();
+  return (folder, load) => {
+    const loaded = (tails.get(folder) ?? Promise.resolve()).then(load);
+    const tail = loaded.catch(() => undefined);
+    tails.set(folder, tail);
+    void tail.then(() => {
+      if (tails.get(folder) === tail) {
+        tails.delete(folder);
+      }
+    });
+    return loaded;
+  };
+}
+
 function cacheSatisfiesSpec(cached: string, spec: string): boolean {
   const range = validRange(spec);
   return range === null || satisfies(cached, range);
@@ -281,13 +304,16 @@ export function registerPackageDownloader(
     locks: new PackageLocks(deps.lock, fs),
   };
   const fetchVersion = memoizeVersionFetcher(ctx.exec);
+  const queue = queuePerFolder();
 
   registry.register(
     "package",
     "package",
     async (cache: ModuleCache, source: ModuleSourcePackage) => {
       Logger.Debug(`Loading package: ${source.package}@${source.version}`);
-      const folder = await loadPackage(cache, source, ctx, fetchVersion);
+      const folder = await queue(path.join(cache.path, source.package), () =>
+        loadPackage(cache, source, ctx, fetchVersion),
+      );
       Logger.Debug(`Successfully loaded ${source.package}@${source.version}`);
       const name = source.id ?? source.package;
       const moduleManifest = await ModuleManifest.create(
