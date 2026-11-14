@@ -159,6 +159,52 @@ describe("project modules install behavior: runs a local module's install comman
     expect(output.summary.called).to.equal(false);
   });
 
+  it("counts a dependency installed when its folder holds a package.json without a JavaScript entry", async () => {
+    const consumerModules = path.join(
+      projectFolder,
+      "consumer",
+      "node_modules",
+    );
+    writeJson(
+      path.join(consumerModules, "@types", "ajs-only", "package.json"),
+      {
+        name: "@types/ajs-only",
+        version: "1.0.0",
+        main: "",
+        types: "index.d.ts",
+      },
+    );
+    writeJson(path.join(consumerModules, "ajs-import-only", "package.json"), {
+      name: "ajs-import-only",
+      version: "1.0.0",
+      exports: { ".": { import: "./index.mjs" } },
+    });
+    writeJson(
+      path.join(projectFolder, "node_modules", "ajs-bin-only", "package.json"),
+      { name: "ajs-bin-only", version: "1.0.0", bin: { "ajs-bin": "cli.js" } },
+    );
+    writeJson(path.join(projectFolder, "consumer", "package.json"), {
+      name: "consumer",
+      version: "1.0.0",
+      main: "index.js",
+      dependencies: {
+        "@types/ajs-only": "^1.0.0",
+        "ajs-import-only": "^1.0.0",
+        "ajs-bin-only": "^1.0.0",
+      },
+    });
+    await writeConfig(projectFolder, {
+      name: "proj",
+      modules: { consumer: { source: { type: "local", path: "./consumer" } } },
+    });
+
+    await cmdInstall().parseAsync(["node", "test", "--project", projectFolder]);
+
+    expect(output.summary.firstCall.args[0]).to.deep.include({
+      headline: "All interfaces are implemented",
+    });
+  });
+
   it("checks each environment against what its own install commands install", async () => {
     await writeProjectWithEnvironmentCommands(projectFolder);
 
