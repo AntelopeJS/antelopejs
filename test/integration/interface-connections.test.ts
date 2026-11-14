@@ -12,11 +12,13 @@ import {
 } from "../helpers/interface-project";
 
 const RESULTS_KEY = "__antelopeInterfaceConnectionsResults";
+const SOLO = "@instances/interface-solo";
 
 interface ProviderConnection {
   provider?: string;
   selected: boolean;
-  answer: string;
+  answer?: string;
+  path?: string;
 }
 
 type Results = Record<string, ProviderConnection[]>;
@@ -113,6 +115,41 @@ describe("interface connections", () => {
     }));
     expect(listed).to.deep.equal([
       { provider: "mongodb-erp", selected: false },
+    ]);
+  });
+
+  it("marks selected a source-less connection to a self-hosted interface, the one its plain import reaches", async function () {
+    this.timeout(20000);
+    projectFolder = await createProject(
+      [
+        {
+          name: SOLO,
+          files: { "index.js": "exports.Ping = () => 'pong';" },
+          antelopeJs: { standalone: true },
+        },
+        {
+          name: "consumer",
+          dependencies: [SOLO],
+          files: {
+            "index.js": `
+const { GetInterfaceInstances } = require(${JSON.stringify(CORE_INTERFACE_NAME)});
+exports.construct = () => {
+  global[${JSON.stringify(RESULTS_KEY)}].consumer = GetInterfaceInstances(${JSON.stringify(SOLO)}).map(
+    ({ selected, path }) => ({ selected, path }),
+  );
+};
+exports.destroy = () => {};
+`,
+          },
+        },
+      ],
+      { consumer: { importOverrides: [{ interface: SOLO }] } },
+    );
+
+    manager = await launch(projectFolder);
+
+    expect(connectionsOf("consumer")).to.deep.equal([
+      { selected: true, path: SOLO },
     ]);
   });
 });

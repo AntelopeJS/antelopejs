@@ -5,6 +5,7 @@ import type {
   BindingGraph,
   BindingInterface,
   BindingModule,
+  ModuleBindings,
 } from "../resolution";
 import {
   buildBindingGraph,
@@ -55,6 +56,27 @@ function toBindingModule(
     listedConnections: toBindingConnections(listed.get(module.id)),
     exportPriority: config.exportPriority ?? new Map(),
   };
+}
+
+/**
+ * Index of the connection a module's plain import of `interfaceName` reaches:
+ * the one to the provider its binding names, keyed like the plain import. An
+ * interface the graph does not bind selects its first connection to a provider.
+ */
+function selectedConnection(
+  bindings: ModuleBindings | undefined,
+  interfaceName: string,
+  listed: readonly InterfaceConnectionRef[],
+): number {
+  const binding = bindings?.scope.get(interfaceName);
+  if (!bindings || !binding) {
+    return listed[0]?.module === undefined ? -1 : 0;
+  }
+  const plain = bindings.keys.get(interfaceName);
+  const keys = bindings.connectionKeys.get(interfaceName) ?? [];
+  return listed.findIndex(
+    ({ module }, index) => module === binding.provider && keys[index] === plain,
+  );
 }
 
 export function checkReplacement(
@@ -125,14 +147,13 @@ export function buildBindings(this: ManagerContext): void {
   this.bindingGraph = graph;
   this.resolver.setBindings(graph);
   for (const [moduleId, connections] of this.resolvedConnections) {
-    const scope = graph.modules.get(moduleId)?.scope;
-    const selected = new Map<string, string>();
+    const bindings = graph.modules.get(moduleId);
+    const selected = new Map<string, number>();
     for (const [interfaceName, listed] of connections) {
-      const binding = scope?.get(interfaceName);
-      const provider = binding ? binding.provider : listed[0]?.module;
-      if (provider !== undefined) {
-        selected.set(interfaceName, provider);
-      }
+      selected.set(
+        interfaceName,
+        selectedConnection(bindings, interfaceName, listed),
+      );
     }
     this.interfaceRegistry.setConnections(moduleId, connections, selected);
   }

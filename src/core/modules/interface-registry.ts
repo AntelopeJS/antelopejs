@@ -35,18 +35,18 @@ export class InterfaceRegistry {
   private readonly owner = Symbol("interface-registry");
   private readonly moduleIds = new Set<string>();
 
+  /**
+   * Publishes a module's connections. `selected` holds, per interface, the
+   * index of the connection a plain import reaches; none is selected without one.
+   */
   setConnections(
     moduleId: string,
     connections: Map<string, InterfaceConnectionRef[]>,
-    selectedProviders: Map<string, string | undefined> = new Map(),
+    selected: ReadonlyMap<string, number> = new Map(),
   ): void {
     const connectionIDs: ModuleConnections = {};
     for (const [interfaceName, listed] of connections) {
-      const selectedIndex = selectedProviders.has(interfaceName)
-        ? listed.findIndex(
-            ({ module }) => module === selectedProviders.get(interfaceName),
-          )
-        : -1;
+      const selectedIndex = selected.get(interfaceName) ?? -1;
       connectionIDs[interfaceName] = listed.map((connection, index) =>
         createEntry(interfaceName, connection, index, index === selectedIndex),
       );
