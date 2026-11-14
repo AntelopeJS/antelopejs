@@ -17,7 +17,11 @@ import { ExecError, ExecuteCMD, getModuleCacheInstallCommand } from "../output";
 import { type PackageLockPolicy, PackageLocks } from "./package-locks";
 import type { DownloaderRegistry } from "./registry";
 import type { CommandRunner } from "./types";
-import { installFailure } from "./utils";
+import {
+  hasInstalledDependencies,
+  installFailure,
+  readDeclaredDependencies,
+} from "./utils";
 
 export interface PackageDownloaderDeps {
   fs?: IFileSystem;
@@ -41,7 +45,6 @@ type VersionFetcher = (
 const Logger = new Logging.Channel("loader.package");
 
 const PACKAGE_JSON = "package.json";
-const NODE_MODULES = "node_modules";
 
 function defaultExtract(from: string, to: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -200,65 +203,17 @@ async function resolveTargetVersion(
   );
 }
 
-/**
- * The names of the dependencies a cached package.json declares that an
- * install always puts in place, or `undefined` when its shape is not a
- * manifest. A name `optionalDependencies` also lists is left out, since npm
- * skips it on a platform it does not support.
- */
-function declaredDependencies(text: string): string[] | undefined {
-  const parsed: unknown = JSON.parse(text);
-  if (!isObject(parsed)) {
-    return undefined;
-  }
-  const { dependencies, optionalDependencies } = parsed;
-  if (dependencies === undefined || dependencies === null) {
-    return [];
-  }
-  if (!isObject(dependencies)) {
-    return undefined;
-  }
-  const optional = isObject(optionalDependencies) ? optionalDependencies : {};
-  return Object.keys(dependencies).filter(
-    (name) => !Object.hasOwn(optional, name),
-  );
-}
-
-/** Whether `node_modules` of `folder` holds a `package.json` for each of `dependencies`. */
-async function hasInstalledDependencies(
-  folder: string,
-  dependencies: string[],
-  fs: IFileSystem,
-): Promise<boolean> {
-  const installed = await Promise.all(
-    dependencies.map((name) =>
-      fs.exists(path.join(folder, NODE_MODULES, name, PACKAGE_JSON)),
-    ),
-  );
-  return installed.every(Boolean);
-}
-
 async function findCachedFolder(
   cache: ModuleCache,
   entry: string,
   fs: IFileSystem,
 ): Promise<string | undefined> {
   const folder = await cache.getFolder(entry, true, true);
-  const manifestPath = path.join(folder, PACKAGE_JSON);
-  if (!(await fs.exists(manifestPath))) {
-    return undefined;
-  }
-  try {
-    const dependencies = declaredDependencies(
-      await fs.readFileString(manifestPath),
-    );
-    if (
-      dependencies === undefined ||
-      !(await hasInstalledDependencies(folder, dependencies, fs))
-    ) {
-      return undefined;
-    }
-  } catch {
+  const dependencies = await readDeclaredDependencies(folder, fs);
+  if (
+    dependencies === undefined ||
+    !(await hasInstalledDependencies(folder, dependencies, fs))
+  ) {
     return undefined;
   }
   return folder;

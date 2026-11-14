@@ -10,11 +10,16 @@ import type { TaskHandle } from "../output";
 import { ExecError, ExecuteCMD, runTask } from "../output";
 import type { DownloaderRegistry } from "./registry";
 import type { CommandResult, CommandRunner } from "./types";
-import { runInstallCommands } from "./utils";
+import {
+  hasInstalledDependencies,
+  readDeclaredDependencies,
+  runInstallCommands,
+} from "./utils";
 
 const Logger = new Logging.Channel("loader.git");
 
 const GIT_DIR = ".git";
+const NODE_MODULES = "node_modules";
 const SAFE_GIT_ARGUMENT = /^[A-Za-z0-9._:/@~-]+$/;
 
 export interface GitDownloaderDeps {
@@ -264,6 +269,29 @@ async function assertOnRequestedRef(
 }
 
 /**
+ * Whether the clone in `folder` holds, in its `node_modules`, a
+ * `package.json` for each dependency its `package.json` declares, as the
+ * package downloader requires of a cached folder. A clone with no
+ * `package.json`, or one that is not a manifest, declares none. A clone with
+ * no `node_modules` is not checked, since its install command puts its
+ * dependencies elsewhere, as a Yarn Plug'n'Play install or a project that
+ * installs them above the cache does.
+ */
+async function hasDeclaredDependencies(
+  folder: string,
+  fs: IFileSystem,
+): Promise<boolean> {
+  if (!(await fs.exists(path.join(folder, NODE_MODULES)))) {
+    return true;
+  }
+  const dependencies = await readDeclaredDependencies(folder, fs);
+  return (
+    dependencies === undefined ||
+    hasInstalledDependencies(folder, dependencies, fs)
+  );
+}
+
+/**
  * Brings the repository of `load` into the cache while this run holds its
  * download lock. It reads the manifest again. A listed clone that the live
  * run of another process uses is kept as it is, neither fetched nor
@@ -305,12 +333,20 @@ async function cloneOrFetchRepo(
   return { newVersion: "", shouldInstallDependencies: false };
 }
 
-/** Loads the repository of `load`, installs it, and lists its version, under its download lock. */
+/**
+ * Loads the repository of `load`, installs it, and lists its version, under
+ * its download lock. A clone that another live run does not use and that
+ * lacks a dependency its `package.json` declares, as
+ * {@link hasDeclaredDependencies} checks, has its install commands run again,
+ * though its commit did not change.
+ */
 async function loadRepo(load: GitLoad): Promise<string> {
-  const { cache, source, exec, name } = load;
+  const { cache, source, exec, fs, name } = load;
   const folder = await cache.getFolder(name, true, true);
   const updateResult = await cloneOrFetchRepo(load, folder);
-  if (updateResult.shouldInstallDependencies) {
+  const reinstall =
+    !cache.wasKeptInUse(name) && !(await hasDeclaredDependencies(folder, fs));
+  if (updateResult.shouldInstallDependencies || reinstall) {
     Logger.Debug(`Running install commands for ${name}`);
     await runInstallCommands(exec, Logger, name, folder, source.installCommand);
   }
