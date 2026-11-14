@@ -32,7 +32,7 @@ export interface LeaseOwner {
 }
 
 /** The pid namespace of this process, read on its own so that it checks the core's reading. */
-export function pidNamespace(): string {
+function pidNamespace(): string {
   try {
     return readlinkSync("/proc/self/ns/pid");
   } catch {

@@ -10,11 +10,12 @@ import os from "node:os";
 import path from "node:path";
 
 import { NodeFileSystem } from "../../src/core/filesystem";
-import { type CacheKeep, ModuleCache } from "../../src/core/modules";
 import {
   acquirePruneLock,
+  type CacheKeep,
+  ModuleCache,
   waitWhilePruneLocked,
-} from "../../src/core/modules/cache-prune-lock";
+} from "../../src/core/modules";
 import {
   deadPid,
   holdPruneLock,
