@@ -76,7 +76,7 @@ Guide: <https://framework.antelopejs.com/docs/guides/embedded-runtime>.
 
 ```bash
 ajs module init <path>       # scaffold a module from a template (same flags as project init: -t, --interfaces, --pm, -y)
-ajs module test [path]       # run the module's tests (-f, --file <path>, repeatable)
+ajs module test [path]       # run the module's tests (-f, --file <path>, repeatable; --timeout <ms> for every test and hook, default 2000)
 ```
 
 `ajs module test` reads the module's `antelopeJs.test` entry (e.g. `src/antelope.test.ts`) as a test *config* (`folder`, `setup`, `cleanup`) and runs the test files found there. `init` and `test` are the only `ajs module` subcommands.

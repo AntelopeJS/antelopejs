@@ -237,16 +237,24 @@ export function runInTestModuleContext<T>(
   return testModule ? testModule.runInContext(callback) : callback();
 }
 
+/** The files one test run is limited to, and the timeout of its tests and hooks. */
+interface TestRun {
+  /** Test files to run instead of the discovered ones; none runs them all. */
+  files: string[];
+  /** Milliseconds each test and hook may take; mocha's default when absent. */
+  timeout?: number;
+}
+
 async function executeTests(
   moduleRoot: string,
   test: AntelopeTestConfig,
   manager: ModuleManager | null,
   fs: IFileSystem,
-  files: string[] = [],
+  run: TestRun,
 ): Promise<number> {
   const testFiles =
-    files.length > 0
-      ? files
+    run.files.length > 0
+      ? run.files
       : await discoverTestFiles(moduleRoot, test, manager, fs);
 
   if (testFiles.length === 0) {
@@ -255,7 +263,7 @@ async function executeTests(
   }
 
   const Mocha = (await import("mocha")).default;
-  const mocha = new Mocha();
+  const mocha = new Mocha({ timeout: run.timeout });
   for (const file of testFiles) {
     mocha.addFile(file);
   }
@@ -387,9 +395,19 @@ export const testSteps = {
   setupTestEnvironment,
 };
 
+/**
+ * Runs the tests of the module in `moduleFolder` with the test configuration
+ * its package.json names, and resolves to the number of failures.
+ *
+ * @param files - Test files to run instead of the discovered ones.
+ * @param timeout - Milliseconds each test and hook may take, interface
+ * conformance suites included; mocha's 2000 ms default when absent. A
+ * positive integer: mocha takes `0` or less as no timeout at all.
+ */
 export async function TestModule(
   moduleFolder: string = ".",
   files: string[] = [],
+  timeout?: number,
 ): Promise<number> {
   const moduleRoot = path.resolve(moduleFolder);
   const fs = new NodeFileSystem();
@@ -424,7 +442,7 @@ export async function TestModule(
       loadedConfig.test,
       manager,
       fs,
-      files,
+      { files, timeout },
     );
     if (failures === EXIT_CODE_ERROR) {
       await manager.destroyAll();
