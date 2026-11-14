@@ -72,8 +72,9 @@ function writeProject(context: JourneyContext, name: string, modules: ModuleVers
 
 const BOTH_MODULES = { [PNPM_MODULE]: "1.0.0", [NPM_MODULE]: "1.0.0" } satisfies ModuleVersions;
 
-function installedDep(project: string, module: string): string {
-  const manifest = path.join(project, ".antelope", "cache", module, "node_modules", DEP, "package.json");
+/** The version of the dependency installed in the cache folder of `module` at `moduleVersion`, `missing` when there is none. */
+function installedDep(project: string, module: string, moduleVersion = "1.0.0"): string {
+  const manifest = path.join(project, ".antelope", "cache", `${module}@${moduleVersion}`, "node_modules", DEP, "package.json");
   return existsSync(manifest) ? requireText(parseJson(readFileSync(manifest, "utf8")), "version", manifest) : "missing";
 }
 
