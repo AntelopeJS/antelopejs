@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as ts from "typescript";
+import * as ts from "@typescript/typescript6";
 
 import {
   ConfigEditError,

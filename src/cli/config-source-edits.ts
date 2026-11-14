@@ -1,4 +1,4 @@
-import type * as TypeScript from "typescript";
+import type * as TypeScript from "@typescript/typescript6";
 
 const SAFE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 

@@ -1,4 +1,4 @@
-import type * as TypeScript from "typescript";
+import type * as TypeScript from "@typescript/typescript6";
 import { isObjectOrNull } from "../../utils";
 import type { ModuleDeclarationChanges } from "./module-entry";
 

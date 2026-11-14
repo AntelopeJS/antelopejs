@@ -75,6 +75,7 @@
     "@antelopejs/interface-core": ">=0.5.1 <0.6.0",
     "@clack/prompts": "^1.8.1",
     "@types/proper-lockfile": "^4.1.4",
+    "@typescript/typescript6": "^6.0.2",
     "commander": "^13.1.0",
     "inly": "^5.0.1",
     "jiti": "^2.6.1",
@@ -82,8 +83,7 @@
     "picocolors": "^1.1.1",
     "proper-lockfile": "^4.1.2",
     "reflect-metadata": "^0.2.2",
-    "semver": "^7.7.4",
-    "typescript": "^5.9.3"
+    "semver": "^7.7.4"
   },
   "devDependencies": {
     "@antelopejs/core": "link:.",
@@ -113,7 +113,8 @@
     "release-it-changelogen": "^0.1.0",
     "rimraf": "^6.1.3",
     "sinon": "^17.0.2",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   },
   "c8": {
     "exclude": [

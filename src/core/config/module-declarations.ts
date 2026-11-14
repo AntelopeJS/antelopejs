@@ -82,8 +82,10 @@ function editConfigFile(
   return run;
 }
 
-async function loadTypeScript(): Promise<typeof import("typescript")> {
-  return import("typescript");
+async function loadTypeScript(): Promise<
+  typeof import("@typescript/typescript6")
+> {
+  return import("@typescript/typescript6");
 }
 
 export async function saveModuleDeclaration(

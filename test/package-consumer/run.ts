@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { dependencies } from "../../package.json";
 import { buildProcessInvocation } from "../../src/core/output";
 import { isObject } from "../../src/utils";
 import { overriddenInterfaceCore } from "../helpers/interface-core-override";
@@ -13,6 +14,7 @@ const temp = fs.mkdtempSync(path.join(os.tmpdir(), "ajs-package-consumer-"));
 const packFolder = path.join(temp, "pack");
 const consumerFolder = path.join(temp, "consumer");
 const pinnedInterfaceCores = ["0.0.4", "0.0.11"];
+const typeScript7 = "7.0.2";
 const typeScriptCompiler = path.join(
   root,
   "node_modules",
@@ -227,6 +229,50 @@ function verifyPinnedConsumer(tarball: string, version: string): void {
   verifyConsumer("verify-pinned-interface-core.cjs", pinnedFolder, [version]);
 }
 
+function verifyCoreReachesNoTsNode(folder: string): void {
+  const core = path.join(folder, "node_modules", "@antelopejs", "core");
+  const result = spawnSync(
+    process.execPath,
+    ["-p", 'require.resolve("ts-node")'],
+    { cwd: core, encoding: "utf8", env: { ...process.env, NODE_PATH: "" } },
+  );
+  if (result.status === 0) {
+    throw new Error(
+      `Core resolves ts-node in the TypeScript 7 project: ${result.stdout}`,
+    );
+  }
+}
+
+function verifyTypeScript7Consumer(tarball: string): void {
+  const folder = path.join(temp, "typescript7");
+  const interfaceCore = interfaceCoreTarball
+    ? interfaceCoreSpec
+    : dependencies["@antelopejs/interface-core"];
+  fs.mkdirSync(folder, { recursive: true });
+  fs.writeFileSync(
+    path.join(folder, "package.json"),
+    JSON.stringify({
+      private: true,
+      dependencies: {
+        "@antelopejs/core": `file:${tarball}`,
+        "@antelopejs/interface-core": interfaceCore,
+        "reflect-metadata": "0.2.2",
+      },
+      devDependencies: {
+        "@types/node": "22.19.15",
+        typescript: typeScript7,
+      },
+    }),
+  );
+  fs.writeFileSync(
+    path.join(folder, "pnpm-workspace.yaml"),
+    `overrides:\n  "@antelopejs/interface-core": ${JSON.stringify(interfaceCore)}\n  typescript: ${typeScript7}\n`,
+  );
+  run(pnpm, ["install"], folder);
+  verifyCoreReachesNoTsNode(folder);
+  verifyConsumer("verify-typescript7.cjs", folder);
+}
+
 try {
   const tarball = packCore();
   inspectManifest(tarball);
@@ -240,8 +286,9 @@ try {
   for (const version of pinnedInterfaceCores) {
     verifyPinnedConsumer(tarball, version);
   }
+  verifyTypeScript7Consumer(tarball);
   process.stdout.write(
-    "Package consumer routing, CLI startup, CLI API, ES2020 types, CLI types and pinned interface-core verified.\n",
+    "Package consumer routing, CLI startup, CLI API, ES2020 types, CLI types, pinned interface-core and TypeScript 7 project verified.\n",
   );
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });

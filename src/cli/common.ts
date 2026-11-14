@@ -101,7 +101,7 @@ async function renderTsConfig(
   data: Partial<AntelopeConfig>,
   fileSystem: IFileSystem,
 ): Promise<string> {
-  const ts = await import("typescript");
+  const ts = await import("@typescript/typescript6");
   const snapshot = readSnapshots.get(data);
   return rewriteConfigSource(ts, {
     fileName: path.basename(configPath),

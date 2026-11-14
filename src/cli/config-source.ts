@@ -1,6 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { isDeepStrictEqual } from "node:util";
-import type * as TypeScript from "typescript";
+import type * as TypeScript from "@typescript/typescript6";
 
 import { CliError } from "../core/output";
 import { printNode, toNode } from "./config-layout";
