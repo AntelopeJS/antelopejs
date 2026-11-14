@@ -158,6 +158,33 @@ exports.destroy = () => {};
   ];
 }
 
+function disabledExportPackages(): FixturePackage[] {
+  return [
+    { name: DATABASE, files: DATABASE_FILES },
+    databaseProvider("mongodb"),
+    databaseProvider("mongodb-erp"),
+    {
+      name: "dms",
+      dependencies: [DATABASE],
+      files: {
+        "index.js": `
+const { Query } = require(${JSON.stringify(DATABASE)});
+exports.construct = async () => {
+  global[${JSON.stringify(RESULTS_KEY)}].plain = await new Query("t").run();
+};
+exports.destroy = () => {};
+`,
+      },
+    },
+  ];
+}
+
+const DISABLED_DATABASE = { disabledExports: [DATABASE] };
+const DISABLED_EXPORT_ORDERS = [
+  { mongodb: DISABLED_DATABASE, "mongodb-erp": {} },
+  { "mongodb-erp": {}, mongodb: DISABLED_DATABASE },
+];
+
 const CONNECTION_MODULES = {
   mongo: {},
   pg: {},
@@ -236,6 +263,20 @@ describe("interface instances", () => {
       clientApi: "pg:t",
     });
   });
+
+  for (const providers of DISABLED_EXPORT_ORDERS) {
+    it(`keeps a disabled export's implementation out of another provider's instance (${Object.keys(providers).join(", ")})`, async function () {
+      this.timeout(20000);
+      projectFolder = await createProject(disabledExportPackages(), {
+        ...providers,
+        dms: { importOverrides: { [DATABASE]: "mongodb-erp" } },
+      });
+
+      manager = await launch(projectFolder);
+
+      expect(results().plain).to.equal("mongodb-erp:t");
+    });
+  }
 
   it("shares one instance, and its classes, between modules bound the same way", async function () {
     this.timeout(20000);
