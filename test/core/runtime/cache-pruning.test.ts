@@ -13,12 +13,14 @@ import { pruneModuleCache, writeBuildPin } from "../../../src/core/runtime";
 import {
   cacheFolderNames,
   hasEntryFolder,
+  leaseNames,
   manifestKeys,
   seedCache,
 } from "../../helpers/cache-leases";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 const fs = new NodeFileSystem();
+const NO_PRUNE_VARIABLE = "ANTELOPEJS_NO_CACHE_PRUNE";
 
 /** Writes a `build.json` for `project` whose only module lives in `folder`. */
 async function writeBuild(project: string, folder: string): Promise<string> {
@@ -147,4 +149,50 @@ describe("pruneModuleCache", () => {
       expect(manifestKeys(cachePath)).to.deep.equal(["a@1.0.0", "b@1.0.0"]);
     });
   }
+});
+
+describe("pruneModuleCache with ANTELOPEJS_NO_CACHE_PRUNE", () => {
+  let root: string;
+  let cachePath: string;
+  let project: string;
+  const saved = process.env[NO_PRUNE_VARIABLE];
+
+  beforeEach(() => {
+    root = makeTempDir("ajs-cache-no-prune-");
+    cachePath = path.join(root, "cache");
+    project = path.join(root, "project");
+    mkdirSync(project);
+    seedCache(cachePath, ["a@1.0.0", "b@1.0.0"]);
+  });
+
+  afterEach(() => {
+    if (saved === undefined) {
+      delete process.env[NO_PRUNE_VARIABLE];
+    } else {
+      process.env[NO_PRUNE_VARIABLE] = saved;
+    }
+    cleanupTempDir(root);
+  });
+
+  for (const value of ["1", " TRUE "]) {
+    it(`removes nothing while it is ${JSON.stringify(value)}, though the run still writes its lease`, async () => {
+      process.env[NO_PRUNE_VARIABLE] = value;
+      const run = new ModuleCache(cachePath);
+      await run.getFolder("a@1.0.0", true, true);
+
+      await pruneModuleCache(run, project, fs);
+
+      expect(manifestKeys(cachePath)).to.deep.equal(["a@1.0.0", "b@1.0.0"]);
+      expect(hasEntryFolder(cachePath, "b@1.0.0")).to.equal(true);
+      expect(leaseNames(cachePath)).to.have.length(1);
+    });
+  }
+
+  it("prunes while it holds another value, such as 0", async () => {
+    process.env[NO_PRUNE_VARIABLE] = "0";
+
+    await pruneModuleCache(new ModuleCache(cachePath), project, fs);
+
+    expect(manifestKeys(cachePath)).to.deep.equal([]);
+  });
 });

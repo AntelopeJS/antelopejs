@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import * as path from "node:path";
 
 import type { IFileSystem } from "../../types";
-import { isObject, isString } from "../../utils";
+import { isEnvironmentFlagSet, isObject, isString } from "../../utils";
 import {
   type CacheKeep,
   entryCovers,
@@ -18,6 +18,7 @@ const Logger = new Logging.Channel("loader");
 const PINS_FOLDER = ".builds";
 const PIN_EXTENSION = ".json";
 const PIN_NAME_LENGTH = 16;
+const NO_PRUNE_ENV = "ANTELOPEJS_NO_CACHE_PRUNE";
 
 /**
  * What `<cache>/.builds/<hash>.json` holds: the absolute path of a
@@ -130,13 +131,18 @@ async function readBuildKeep(
  * the lease of each live run keeps what it loaded, and the project's
  * `.antelope/build/build.json` and every pinned build keep their module
  * folders. A failure is logged, never thrown, since the modules have already
- * loaded.
+ * loaded. `ANTELOPEJS_NO_CACHE_PRUNE=1` or `true` turns it off; runs still
+ * write their leases.
  */
 export async function pruneModuleCache(
   cache: ModuleCache,
   projectFolder: string,
   fs: IFileSystem,
 ): Promise<void> {
+  if (isEnvironmentFlagSet(NO_PRUNE_ENV)) {
+    Logger.Debug(`${NO_PRUNE_ENV} is set; not removing unused modules`);
+    return;
+  }
   try {
     await cache.prune(() => readBuildKeep(cache, projectFolder, fs));
   } catch (error) {
