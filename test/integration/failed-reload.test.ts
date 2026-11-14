@@ -10,6 +10,7 @@ import launch, { type ModuleManager } from "../../src";
 import {
   ShutdownManager,
   createLoaderContext,
+  getActiveShutdownManager,
   reloadWatchedModule,
 } from "../../src/core/runtime";
 import { ModuleState } from "../../src/types";
@@ -138,6 +139,7 @@ describe("a module that fails to reload in watch mode", () => {
       await manager.destroyAll();
       manager = undefined;
     }
+    await getActiveShutdownManager()?.shutdown();
     delete testGlobals[STATE_KEY];
     if (projectFolder) {
       await fs.rm(projectFolder, { recursive: true, force: true });

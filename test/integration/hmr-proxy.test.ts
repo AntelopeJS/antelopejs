@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import launch, { type ModuleManager } from "../../src";
+import { getActiveShutdownManager } from "../../src/core/runtime";
 import { isObject } from "../../src/utils";
 
 const MARKER_TIMEOUT_MS = 8000;
@@ -212,6 +213,7 @@ describe("HMR propagates RegisteringProxy changes across module reloads", () => 
         await manager.stopAll();
         await manager.destroyAll();
       }
+      await getActiveShutdownManager()?.shutdown();
       await fs.rm(projectFolder, { recursive: true, force: true });
     }
   });

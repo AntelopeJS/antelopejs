@@ -36,7 +36,6 @@ async function writeFile(file: string, content: string): Promise<void> {
 type DependencyLayout = "flat" | "pnpm";
 
 const LAYOUTS: DependencyLayout[] = ["flat", "pnpm"];
-const LAUNCH_BUDGET_MS = 20_000;
 
 async function writePackage(
   folder: string,
@@ -157,8 +156,7 @@ for (const layout of LAYOUTS) {
     let projectFolder: string;
     let manager: ModuleManager | undefined;
 
-    beforeEach(async function () {
-      this.timeout(LAUNCH_BUDGET_MS);
+    beforeEach(async () => {
       projectFolder = await fs.mkdtemp(
         path.join(os.tmpdir(), "ajs-isolation-"),
       );
