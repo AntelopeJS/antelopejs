@@ -5,7 +5,7 @@ import {
   MissingFolders,
   WATCH_RETRY_DELAY_MS,
   WATCH_RETRY_LIMIT,
-} from "../../../src/core/runtime/watch/missing-folders";
+} from "../../../src/core/runtime";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
 describe("MissingFolders with an ancestor watcher that always fails", () => {
