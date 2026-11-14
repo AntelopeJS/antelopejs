@@ -71,6 +71,26 @@ describe("ModuleCache prune across processes and failures", () => {
     expect(leaseNames(cachePath)).to.deep.equal([]);
   });
 
+  for (const { label, owner } of [
+    {
+      label: "a live run of this machine",
+      owner: () => `${hostnameInLeaseName()}-${process.pid}`,
+    },
+    {
+      label: "a run of another machine",
+      owner: () => `${hostnameInLeaseName()}_elsewhere-${deadPid()}`,
+    },
+  ]) {
+    it(`removes nothing when an unreadable lease names ${label}`, async () => {
+      writeLeaseText(cachePath, `${owner()}-${randomUUID()}.json`, "");
+
+      await assert.rejects(prune(cachePath), /JSON/);
+
+      expect(manifestKeys(cachePath)).to.have.length(3);
+      expect(leaseNames(cachePath)).to.have.length(1);
+    });
+  }
+
   it("removes the folders it can move and keeps the entry of one it cannot", async () => {
     const locked = path.join(cachePath, "b@1.0.0");
     chmodSync(locked, READ_ONLY_MODE);
