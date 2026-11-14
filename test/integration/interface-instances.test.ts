@@ -158,14 +158,16 @@ exports.destroy = () => {};
   ];
 }
 
-function disabledExportPackages(): FixturePackage[] {
+function disabledExportPackages(
+  consumerDependencies: string[] = [DATABASE],
+): FixturePackage[] {
   return [
     { name: DATABASE, files: DATABASE_FILES },
     databaseProvider("mongodb"),
     databaseProvider("mongodb-erp"),
     {
       name: "dms",
-      dependencies: [DATABASE],
+      dependencies: consumerDependencies,
       files: {
         "index.js": `
 const { Query } = require(${JSON.stringify(DATABASE)});
@@ -277,6 +279,18 @@ describe("interface instances", () => {
       expect(results().plain).to.equal("mongodb-erp:t");
     });
   }
+
+  it("gives an undeclared import the exported instance, not a disabled export's own", async function () {
+    this.timeout(20000);
+    projectFolder = await createProject(disabledExportPackages([]), {
+      ...DISABLED_EXPORT_ORDERS[1],
+      dms: {},
+    });
+
+    manager = await launch(projectFolder);
+
+    expect(results().plain).to.equal("mongodb-erp:t");
+  });
 
   it("shares one instance, and its classes, between modules bound the same way", async function () {
     this.timeout(20000);
