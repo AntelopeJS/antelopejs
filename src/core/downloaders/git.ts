@@ -203,6 +203,31 @@ interface GitLoad {
 }
 
 /**
+ * Throws unless the clone in `folder`, which the live run of another process
+ * uses, has the commit `load` asks for checked out: its commit, else the
+ * remote tip of its branch, else of the default branch. That run reads the
+ * clone, so it cannot be switched to another ref.
+ */
+async function assertOnRequestedRef(
+  load: GitLoad,
+  folder: string,
+  holder: NonNullable<Awaited<ReturnType<ModuleCache["findOtherLease"]>>>,
+): Promise<void> {
+  const { source, exec, name } = load;
+  const requested =
+    source.commit || source.branch || (await mainBranch(folder, exec));
+  const head = await commitAt("HEAD", folder, exec);
+  const wanted =
+    source.commit || (await commitAt(`origin/${requested}`, folder, exec));
+  if (head.startsWith(wanted)) {
+    return;
+  }
+  throw new Error(
+    `${name} is checked out at ${head}, not ${requested}, and the run with pid ${holder.pid} on ${holder.host} uses it (lease ${holder.file}), so it cannot be switched. Stop that run, then try again. If that run is gone, delete ${holder.file}.`,
+  );
+}
+
+/**
  * Brings the repository of `load` into the cache while this run holds its
  * download lock. It reads the manifest again, then fetches the clone the
  * manifest lists; else keeps a clone that the live run of another process
@@ -222,6 +247,7 @@ async function cloneOrFetchRepo(
   }
   const holder = repoPresent ? await cache.findOtherLease(name) : undefined;
   if (holder !== undefined) {
+    await assertOnRequestedRef(load, folder, holder);
     Logger.Info(
       `${name} is in use by the run with pid ${holder.pid} on ${holder.host} (lease ${holder.file}); keeping its clone instead of cloning it again`,
     );

@@ -1,4 +1,5 @@
 import { Logging } from "@antelopejs/interface-core/logging";
+import type { ModuleSourceGit } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -37,6 +38,9 @@ interface Recorded {
 function recordingExec(recorded: Recorded) {
   return async (command: string) => {
     recorded.commands.push(command);
+    if (command === "git rev-parse origin/feature") {
+      return { stdout: "featurecommit", stderr: "", code: 0 };
+    }
     if (command.startsWith("git rev-parse")) {
       return { stdout: "headcommit", stderr: "", code: 0 };
     }
@@ -89,16 +93,20 @@ describe("Downloaders and a folder that another live run leases", () => {
     return path.join(cachePath, ".leases", "other.json");
   }
 
-  async function loadGit(ignoreCache: boolean) {
+  async function loadGit(ignoreCache: boolean, branch?: string) {
     const registry = new DownloaderRegistry();
     registerGitDownloader(registry, { exec: recordingExec(recorded) });
     const cache = new ModuleCache(cachePath);
     await cache.load();
-    const [loaded] = await registry.load(root, cache, {
+    const source: ModuleSourceGit = {
       type: "git",
       remote: REMOTE,
       ignoreCache,
-    });
+    };
+    if (branch !== undefined) {
+      source.branch = branch;
+    }
+    const [loaded] = await registry.load(root, cache, source);
     return loaded;
   }
 
@@ -129,6 +137,21 @@ describe("Downloaders and a folder that another live run leases", () => {
     expect(info.args.map(([message]) => String(message)).join("\n")).to.include(
       "other.json",
     );
+  });
+
+  it("refuses a cloned repository that another run uses on another branch, naming its lease", async () => {
+    seedRepo();
+    const lease = leaseToOther(REPO_ENTRY);
+
+    await assert.rejects(loadGit(true, "feature"), (error: Error) =>
+      [lease, "feature"].every((part) => error.message.includes(part)),
+    );
+
+    expect(
+      recorded.commands.some(
+        (command) => command.includes("clone") || command.includes("checkout"),
+      ),
+    ).to.equal(false);
   });
 
   it("lists again a cloned repository that another run uses when the manifest lost it", async () => {
