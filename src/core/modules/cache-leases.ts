@@ -23,7 +23,7 @@ export interface ProcessRef {
  * cache entries one run resolves, as paths relative to the cache folder with
  * `/` separators.
  */
-interface RunLease extends ProcessRef {
+export interface RunLease extends ProcessRef {
   entries: string[];
 }
 
@@ -103,6 +103,10 @@ export function isForeignProcess(ref: ProcessRef): boolean {
  */
 export function isLiveProcess(ref: ProcessRef): boolean {
   return isForeignProcess(ref) || isProcessAlive(ref.pid);
+}
+
+function isThisProcess(ref: ProcessRef): boolean {
+  return !isForeignProcess(ref) && ref.pid === process.pid;
 }
 
 const heldLeases = new Set<string>();
@@ -243,6 +247,17 @@ export async function readFolderNames(
   return fs.readdir(folder);
 }
 
+async function listLeaseFiles(
+  cachePath: string,
+  fs: IFileSystem,
+): Promise<string[]> {
+  const folder = path.join(cachePath, LEASES_FOLDER);
+  const names = await readFolderNames(folder, fs);
+  return names
+    .filter((name) => name.endsWith(LEASE_EXTENSION))
+    .map((name) => path.join(folder, name));
+}
+
 async function readLease(
   file: string,
   fs: IFileSystem,
@@ -275,16 +290,13 @@ export async function readLiveLeaseEntries(
   cachePath: string,
   fs: IFileSystem,
 ): Promise<string[]> {
-  const folder = path.join(cachePath, LEASES_FOLDER);
-  const names = await readFolderNames(folder, fs);
   const entries: string[] = [];
-  for (const name of names.filter((item) => item.endsWith(LEASE_EXTENSION))) {
-    const file = path.join(folder, name);
+  for (const file of await listLeaseFiles(cachePath, fs)) {
     let lease: RunLease | undefined;
     try {
       lease = await readLease(file, fs);
     } catch (error) {
-      if (!namesExitedRunOfThisMachine(name)) {
+      if (!namesExitedRunOfThisMachine(path.basename(file))) {
         throw error;
       }
       lease = undefined;
@@ -300,4 +312,23 @@ export async function readLiveLeaseEntries(
     entries.push(...lease.entries);
   }
   return entries;
+}
+
+/**
+ * The leases of the live runs of other processes on the cache at
+ * `cachePath`; a foreign run counts as live. It deletes nothing, and skips a
+ * lease that cannot be read.
+ */
+export async function readOtherLiveLeases(
+  cachePath: string,
+  fs: IFileSystem,
+): Promise<RunLease[]> {
+  const leases: RunLease[] = [];
+  for (const file of await listLeaseFiles(cachePath, fs)) {
+    const lease = await readLease(file, fs).catch(() => undefined);
+    if (lease !== undefined && !isThisProcess(lease) && isLiveProcess(lease)) {
+      leases.push(lease);
+    }
+  }
+  return leases;
 }

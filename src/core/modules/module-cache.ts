@@ -12,6 +12,7 @@ import {
   hasErrorCode,
   readFolderNames,
   readLiveLeaseEntries,
+  readOtherLiveLeases,
   RunLeaseFile,
 } from "./cache-leases";
 import { acquirePruneLock, waitWhilePruneLocked } from "./cache-prune-lock";
@@ -173,20 +174,49 @@ export class ModuleCache {
     return claimed;
   }
 
+  /**
+   * Claims the folder of `module` in the cache, as {@link claimFolder} does,
+   * and returns its path. Unless `noClean`, it removes what the folder holds;
+   * unless `noCreate`, it creates the folder.
+   *
+   * @throws when it would remove a folder that the live run of another
+   * process leases, since that run may be reading it.
+   */
   async getFolder(
     module: string,
     noClean?: boolean,
     noCreate?: boolean,
   ): Promise<string> {
     const folder = path.join(this.path, module);
-    await this.claimFolder(folder);
+    const entry = await findCacheEntry(this.path, folder);
+    if (entry !== undefined) {
+      await this.claim(entry);
+    }
     if (!noClean) {
-      await this.fs.rm(folder, { recursive: true, force: true });
+      await this.removeFolder(folder, entry);
     }
     if (!noCreate) {
       await this.fs.mkdir(folder, { recursive: true });
     }
     return folder;
+  }
+
+  private async removeFolder(
+    folder: string,
+    entry: string | undefined,
+  ): Promise<void> {
+    if (entry !== undefined && (await this.fs.exists(folder))) {
+      const leases = await readOtherLiveLeases(this.path, this.fs);
+      const holder = leases.find((lease) =>
+        lease.entries.some((leased) => entryCovers(leased, entry)),
+      );
+      if (holder !== undefined) {
+        throw new Error(
+          `Cannot replace ${entry} in ${this.path}: the run with pid ${holder.pid} on ${holder.host} uses it. Stop that run, or wait for it to exit, then try again.`,
+        );
+      }
+    }
+    await this.fs.rm(folder, { recursive: true, force: true });
   }
 
   static getTemp(): Promise<string> {
