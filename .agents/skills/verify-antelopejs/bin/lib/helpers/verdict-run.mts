@@ -21,7 +21,7 @@ export type KnownFixture = Record<string, string[]>;
 const JUDGEMENT = { doors: { none: "test", rows: [] }, docs: [], notVerified: [], attention: [], verifier: "verdict test" };
 
 function git(cwd: string, args: string[]): string {
-  return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
 function writeRun(dir: string, repo: string, failing: Set<string>): void {
@@ -45,10 +45,10 @@ function fixtureRepo(root: string, known: KnownFixture): string {
   for (const [feature, ids] of Object.entries(known)) {
     writeFileSync(path.join(skill, "features", `${feature}.md`), ["---", "known:", ...ids.map((id) => `  - ${id}`), "---", ""].join("\n"));
   }
-  symlinkSync(path.join(REPO_DIR, "node_modules"), path.join(root, "node_modules"), "junction");
   git(root, ["init", "--quiet"]);
   git(root, ["add", "--all"]);
   git(root, ["-c", "user.name=verdict test", "-c", "user.email=verdict@test", "-c", "commit.gpgsign=false", "commit", "--quiet", "--message", "fixture"]);
+  symlinkSync(path.join(REPO_DIR, "node_modules"), path.join(root, "node_modules"), "junction");
   return skill;
 }
 
@@ -76,6 +76,7 @@ export function driveVerdict(failing: string[], args: string[], known?: KnownFix
     const plan = parseJson(readFileSync(planFile, "utf8"));
     return { status: run.status, stdout: run.stdout, stderr: run.stderr, full: field(plan, "full") ?? null };
   } finally {
+    rmSync(path.join(dir, "repo", "node_modules"), { force: true });
     rmSync(dir, { recursive: true, force: true });
   }
 }

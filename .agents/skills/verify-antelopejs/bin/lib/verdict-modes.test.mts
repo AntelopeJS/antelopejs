@@ -28,6 +28,12 @@ await test("a failing known journey of an untouched feature is reported as a kno
   assert.doesNotMatch(driven.stdout, /### Why it fails/);
 });
 
+await test("a known journey that passes is not listed as a known finding", () => {
+  const driven = driveVerdict([], ["--all"], KNOWN);
+  assert.equal(driven.status, 0);
+  assert.doesNotMatch(driven.stdout, /### Known findings/);
+});
+
 await test("a known journey does not excuse a non-known failure in the same full set", () => {
   const driven = driveVerdict(["project-dev/dev-readd-root-module", "project-dev/dev-call-stop"], ["--all"], KNOWN);
   assert.equal(driven.status, 1);
