@@ -271,8 +271,7 @@ async function assertOnRequestedRef(
  * Whether the clone in `folder` holds, in its `node_modules`, a
  * `package.json` for each dependency its `package.json` declares, as the
  * package downloader requires of a cached folder. A clone with no
- * `package.json`, or one that is not a manifest, declares none, since
- * cloning it again would give the same file.
+ * `package.json`, or one that is not a manifest, declares none.
  */
 async function hasDeclaredDependencies(
   folder: string,
@@ -292,9 +291,7 @@ async function hasDeclaredDependencies(
  * switched, when it has the requested commit checked out; otherwise the load
  * fails. A clone the manifest does not list is never adopted, since its
  * clone or install may have stopped halfway. Else it fetches the clone the
- * manifest lists, or clones the repository. A clone that lacks a dependency
- * its `package.json` declares, as {@link hasDeclaredDependencies} checks, is
- * cloned again.
+ * manifest lists, or clones the repository.
  */
 async function cloneOrFetchRepo(
   load: GitLoad,
@@ -304,9 +301,7 @@ async function cloneOrFetchRepo(
   await cache.load();
   const cached = cache.getVersion(name);
   const listed = cached?.startsWith("git:") ? cached : undefined;
-  const repoPresent =
-    (await fs.exists(path.join(folder, GIT_DIR))) &&
-    (await hasDeclaredDependencies(folder, fs));
+  const repoPresent = await fs.exists(path.join(folder, GIT_DIR));
   const holder =
     repoPresent && listed !== undefined
       ? await cache.findOtherLease(name)
@@ -331,12 +326,20 @@ async function cloneOrFetchRepo(
   return { newVersion: "", shouldInstallDependencies: false };
 }
 
-/** Loads the repository of `load`, installs it, and lists its version, under its download lock. */
+/**
+ * Loads the repository of `load`, installs it, and lists its version, under
+ * its download lock. A clone that another live run does not use and that
+ * lacks a dependency its `package.json` declares, as
+ * {@link hasDeclaredDependencies} checks, has its install commands run again,
+ * though its commit did not change.
+ */
 async function loadRepo(load: GitLoad): Promise<string> {
-  const { cache, source, exec, name } = load;
+  const { cache, source, exec, fs, name } = load;
   const folder = await cache.getFolder(name, true, true);
   const updateResult = await cloneOrFetchRepo(load, folder);
-  if (updateResult.shouldInstallDependencies) {
+  const reinstall =
+    !cache.wasKeptInUse(name) && !(await hasDeclaredDependencies(folder, fs));
+  if (updateResult.shouldInstallDependencies || reinstall) {
     Logger.Debug(`Running install commands for ${name}`);
     await runInstallCommands(exec, Logger, name, folder, source.installCommand);
   }
