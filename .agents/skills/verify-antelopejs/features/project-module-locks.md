@@ -4,6 +4,10 @@ covers:
   - src/core/downloaders/package-locks.ts
   - src/cli/commands/project/modules/module-locks.ts
   - src/core/runtime/module-loading.ts
+  - src/core/runtime/cache-pruning.ts
+  - src/core/modules/module-cache.ts
+  - src/core/modules/cache-*.ts
+  - src/cli/commands/project/modules/release-leases*.ts
 docs:
   - docs/5.cli/2.project.md
   - docs/5.cli/3.project-modules.md
@@ -21,6 +25,7 @@ The dependencies of an npm module are installed inside `.antelope/cache/<module>
 - `locks-update-moves`: `modules update` rewrites the lock with the new dependency version (diff in the evidence); a module upgrade adds the new version's lock and removes the old one.
 - `locks-frozen`: error path: `build --frozen-modules` without locks exits 1, writes no lock and no build; with locks it installs the recorded versions; `ANTELOPEJS_FROZEN_MODULES=1` does the same.
 - `locks-environments`: two environments pinning two versions get one lock each.
+- `locks-update-while-dev`: two runs on one cache: while `dev` runs from a cache holding `verify-lock-npm@1.0.0`, `modules update` exits 0, keeps that folder and its manifest entry, records its lock, and dev keeps answering. `modules release-leases` lists dev's lease as running and a hand-written lease of another host as foreign, keeps both; `--foreign` without a terminal exits 2 asking for `--yes`; `--foreign --yes` deletes only the foreign lease. Once dev stops, its lease is gone.
 
 ## How to get to it (user POV)
 

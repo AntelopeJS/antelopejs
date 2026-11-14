@@ -1,10 +1,13 @@
-import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { absent, equal, exists, exitIs, fileHas, has } from "../lib/checks.mts";
+import { absent, answers, equal, exists, exitIs, fileHas, has, lacks } from "../lib/checks.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
 import { parseJson, requireText } from "../lib/json.mts";
+import { FIXTURE_MODULE, listModules } from "../lib/project.mts";
 import { LocalRegistry } from "../lib/registry.mts";
+import { useProject } from "../lib/shared-project.mts";
+import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
 const DEP = "verify-lock-dep";
 const PNPM_MODULE = "verify-lock-pnpm";
@@ -100,6 +103,31 @@ async function recordedProject(locked: Locked, name: string): Promise<string> {
   const first = await build(locked, project, `project build ${name}`);
   locked.context.expect(first.folder, [exitIs(first, 0), fileHas(lockFile(project, PNPM_MODULE, "1.0.0"), DEP_10), fileHas(lockFile(project, NPM_MODULE, "1.0.0"), DEP_10), equal("installed dependency versions", [installedDep(project, PNPM_MODULE), installedDep(project, NPM_MODULE)], ["1.0.0", "1.0.0"])], { critical: true });
   return project;
+}
+
+const CACHE = path.join(".antelope", "cache");
+const FOREIGN_LEASE = "elsewhere-0-4242-00000000-0000-4000-8000-000000000000.json";
+
+function leaseFiles(project: string): string[] {
+  const folder = path.join(project, CACHE, ".leases");
+  return existsSync(folder) ? readdirSync(folder).filter((name) => name.endsWith(".json")).sort() : [];
+}
+
+/**
+ * The shared fixture project with `verify-lock-npm@1.0.0` added from the local
+ * registry, and `ajs project dev` serving it in the background, so that its
+ * lease covers the npm module's cache folder.
+ */
+async function devWithNpmModule(locked: Locked) {
+  const { context, env } = locked;
+  const project = await useProject(context);
+  const add = await context.ajs(`modules add ${NPM_MODULE}@1.0.0`, ["project", "modules", "add", `${NPM_MODULE}@1.0.0`], { cwd: project, env, timeoutMs: 300_000 });
+  const listed = await listModules(context, project, "modules list --json after add");
+  context.expect(add.folder, [exitIs(add, 0), exists(path.join(project, CACHE, `${NPM_MODULE}@1.0.0`, "node_modules", DEP)), equal("modules read back", listed.names, [NPM_MODULE, FIXTURE_MODULE].sort())], { critical: true });
+  const dev = await context.background("project dev", ["project", "dev"], { cwd: project, env });
+  const ready = await context.waitReady("ready", dev);
+  context.expect(ready.folder, [answers(ready, "message", FIXTURE_MESSAGE), equal("dev holds one lease", leaseFiles(project).length, 1)], { critical: true });
+  return { project, dev };
 }
 
 /** `ajs project build` records each npm module's lockfile in antelope-lock/, replays it, and `--frozen-modules` requires it. */
@@ -203,6 +231,33 @@ export const journeys: Journey[] = [
         context.expect(staging.folder, [exitIs(staging, 0), exists(lockFile(project, PNPM_MODULE, "1.0.0")), exists(lockFile(project, PNPM_MODULE, "1.0.1"))]);
         const frozen = await build(locked, project, "project build --frozen-modules (default) after staging", ["--frozen-modules"]);
         context.expect(frozen.folder, [exitIs(frozen, 0), equal("default environment installs 1.0.0", [installedDep(project, PNPM_MODULE)], ["1.0.0"])]);
+      });
+    },
+  },
+  {
+    id: "locks-update-while-dev",
+    title: "modules update keeps the cache folder a running dev uses and records its lock; release-leases deletes a foreign lease only with --foreign --yes, never dev's",
+    entryPoint: "ajs project dev, then ajs project modules update and ajs project modules release-leases in another terminal",
+    async run(context) {
+      await withRegistry(context, async (locked) => {
+        const { project, dev } = await devWithNpmModule(locked);
+        const update = await context.ajs("modules update while dev runs", ["project", "modules", "update"], { cwd: project, env: locked.env, timeoutMs: 300_000 });
+        context.tree("tree after update", project);
+        context.expect(update.folder, [exitIs(update, 0), lacks("stderr", update.stderr, /Cannot replace/), fileHas(path.join(project, CACHE, "manifest.json"), /"verify-lock-npm@1\.0\.0": "1\.0\.0"/), fileHas(lockFile(project, NPM_MODULE, "1.0.0"), DEP_10)]);
+        const served = await context.http("fixture after update", dev);
+        context.expect(served.folder, [answers(served, "message", FIXTURE_MESSAGE)]);
+        const foreign = path.join(project, CACHE, ".leases", FOREIGN_LEASE);
+        context.edit("lease of a container run that was killed", foreign, JSON.stringify({ host: "elsewhere", namespace: "none", pid: 4242, entries: [`${NPM_MODULE}@1.0.0`] }));
+        const list = await context.ajs("modules release-leases", ["project", "modules", "release-leases"], { cwd: project });
+        context.expect(list.folder, [exitIs(list, 0), has("stdout", list.stdout, /running/), has("stdout", list.stdout, /foreign\s+elsewhere\s+none\s+4242\s+verify-lock-npm@1\.0\.0/), has("stderr", list.stderr, /--foreign/), exists(foreign), equal("dev and foreign leases kept", leaseFiles(project).length, 2)]);
+        const unconfirmed = await context.ajs("modules release-leases --foreign without a terminal", ["project", "modules", "release-leases", "--foreign"], { cwd: project });
+        context.expect(unconfirmed.folder, [exitIs(unconfirmed, 2), has("stderr", unconfirmed.stderr, /release-leases --foreign --yes/), exists(foreign)]);
+        const released = await context.ajs("modules release-leases --foreign --yes", ["project", "modules", "release-leases", "--foreign", "--yes"], { cwd: project });
+        context.expect(released.folder, [exitIs(released, 0), has("stderr", released.stderr, new RegExp(`Removed ${FOREIGN_LEASE}`)), absent(foreign), equal("dev's lease kept", leaseFiles(project).length, 1)]);
+        const stop = await context.stop("stop dev with SIGINT", dev);
+        context.expect(stop.folder, [exitIs(stop, 130), equal("dev deleted its lease", leaseFiles(project), [])]);
+        const empty = await context.ajs("modules release-leases after dev exited", ["project", "modules", "release-leases"], { cwd: project });
+        context.expect(empty.folder, [exitIs(empty, 0), has("stderr", empty.stderr, /No leases/)]);
       });
     },
   },
