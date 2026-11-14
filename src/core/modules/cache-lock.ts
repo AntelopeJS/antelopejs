@@ -96,15 +96,24 @@ function isLockOwner(value: unknown): value is LockOwner {
   );
 }
 
+/** The owner `text` holds, or `undefined` when it is not one. */
+function parseOwner(text: string): LockOwner | undefined {
+  try {
+    const owner: unknown = JSON.parse(text);
+    return isLockOwner(owner) ? owner : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function readOwner(
   lockFolder: string,
   fs: IFileSystem,
 ): Promise<LockOwner | undefined> {
   try {
-    const owner: unknown = JSON.parse(
+    return parseOwner(
       await fs.readFileString(path.join(lockFolder, OWNER_FILE)),
     );
-    return isLockOwner(owner) ? owner : undefined;
   } catch {
     return undefined;
   }
@@ -148,6 +157,31 @@ async function removeLockFolder(
     }
   }
   await fs.rm(lockFolder, { recursive: true, force: true });
+}
+
+/**
+ * Removes the lock at `lockFolder` that this process created and failed to
+ * write its owner in, when `owner.json` is missing or holds `token`. An
+ * `owner.json` of another hold, or one that cannot be read, as while another
+ * process renames it, keeps the folder.
+ */
+async function removeUnlessOwnedByAnother(
+  lockFolder: string,
+  token: string,
+  fs: IFileSystem,
+): Promise<void> {
+  let text: string;
+  try {
+    text = await fs.readFileString(path.join(lockFolder, OWNER_FILE));
+  } catch (error) {
+    if (error instanceof Error && hasErrorCode(error, "ENOENT")) {
+      await removeLockFolder(lockFolder, fs);
+    }
+    return;
+  }
+  if (parseOwner(text)?.token === token) {
+    await removeLockFolder(lockFolder, fs);
+  }
 }
 
 /** Removes the lock at `lockFolder` when its owner still holds `token`. */
@@ -264,7 +298,7 @@ async function tryCreateLock(
   try {
     await writeOwner(lockFolder, owner, fs);
   } catch (error) {
-    await removeLockFolder(lockFolder, fs);
+    await removeUnlessOwnedByAnother(lockFolder, owner.token, fs);
     throw error;
   }
   const stopHeartbeat = startHeartbeat(lockFolder, owner, fs, heartbeatMs);
