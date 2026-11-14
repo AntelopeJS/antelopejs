@@ -119,6 +119,22 @@ describe("A git download whose lock another process takes over at one of its ste
     expect(cache.getVersion(REPO)).to.equal("git:main:oldcommit");
   });
 
+  it("reports the takeover itself when a clone with no branch reads its commit next", async () => {
+    const { fs, cache } = await emptyCache();
+
+    const { afterTakeover, failure } = await loadGitTakenOverAt(
+      fs,
+      cache,
+      `git clone ${REMOTE} ${REPO}`,
+      { installCommand: ["npm install"] },
+    );
+
+    expect(failure)
+      .to.be.a("string")
+      .that.matches(/^DownloadLockTakenOverError: Another process took over/);
+    expect(afterTakeover).to.deep.equal([]);
+  });
+
   it("runs no later install command after one the takeover happened during", async () => {
     const { fs, cache } = await emptyCache();
 

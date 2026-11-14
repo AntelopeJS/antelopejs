@@ -90,6 +90,9 @@ async function commitAt(
   try {
     res = await exec(`git rev-parse ${branch}`, { cwd });
   } catch (err) {
+    if (err instanceof DownloadLockTakenOverError) {
+      throw err;
+    }
     throw new Error(`Failed to get commit hash for ${branch}: ${String(err)}`);
   }
   if (res.code !== 0) {
