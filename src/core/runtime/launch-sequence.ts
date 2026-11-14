@@ -191,15 +191,21 @@ function prepareFromBuiltArtifact(
     artifact.config,
     projectFolder,
   );
+  const loadContext = memoizeLoaderContext(() =>
+    createLoaderContext(loaderConfig, fs),
+  );
+  const folders = Object.values(artifact.modules).map(({ folder }) => folder);
 
   return {
     fs,
     dev: false,
     logging: artifact.config.logging,
-    loadContext: memoizeLoaderContext(() =>
-      createLoaderContext(loaderConfig, fs),
-    ),
-    verify,
+    loadContext,
+    verify: async () => {
+      const { cache } = await loadContext();
+      await Promise.all(folders.map((folder) => cache.claimFolder(folder)));
+      await verify();
+    },
     createEntries: async () => mapArtifactModuleEntries(artifact),
     instanceRoot: path.join(loaderConfig.cacheFolder, INSTANCES_FOLDER),
   };
