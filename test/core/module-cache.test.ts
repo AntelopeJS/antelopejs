@@ -5,6 +5,43 @@ import path from "node:path";
 import { ModuleCache } from "../../src/core/modules";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
+/**
+ * An in-memory file system whose next write of a `manifest.json` file, once
+ * armed, lands half its text, signals `torn`, and lands the rest once `finish`
+ * is called, as a write that another process reads halfway.
+ */
+class TearingFileSystem extends InMemoryFileSystem {
+  private armed = false;
+  private tear: () => void = () => undefined;
+  private finishWrite: () => void = () => undefined;
+  readonly torn = new Promise<void>((resolve) => {
+    this.tear = resolve;
+  });
+  private readonly finished = new Promise<void>((resolve) => {
+    this.finishWrite = resolve;
+  });
+
+  arm(): void {
+    this.armed = true;
+  }
+
+  finish(): void {
+    this.finishWrite();
+  }
+
+  override async writeFile(file: string, data: Buffer | string) {
+    if (!this.armed || !path.basename(file).startsWith("manifest.json")) {
+      return super.writeFile(file, data);
+    }
+    this.armed = false;
+    const text = String(data);
+    await super.writeFile(file, text.slice(0, text.length / 2));
+    this.tear();
+    await this.finished;
+    await super.writeFile(file, text);
+  }
+}
+
 describe("ModuleCache", () => {
   it("should load and persist manifest data", async () => {
     const fs = new InMemoryFileSystem();
@@ -193,5 +230,28 @@ describe("ModuleCache manifest file", () => {
         JSON.parse(await fs.readFileString("/cache/manifest.json")),
       ).to.deep.equal({ other: "1.0.0" });
     }
+  });
+
+  it("lets another run read the whole previous manifest while it saves", async () => {
+    const fs = new TearingFileSystem();
+    await fs.writeFile("/cache/manifest.json", '{"kept":"1.0.0"}');
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    cache.setVersion("added", "2.0.0");
+
+    fs.arm();
+    const saving = cache.save();
+    await fs.torn;
+    const reader = new ModuleCache("/cache", fs);
+    await reader.load();
+    fs.finish();
+    await saving;
+
+    expect(reader.entries()).to.deep.equal([["kept", "1.0.0"]]);
+    await reader.load();
+    expect(reader.entries()).to.deep.equal([
+      ["kept", "1.0.0"],
+      ["added", "2.0.0"],
+    ]);
   });
 });

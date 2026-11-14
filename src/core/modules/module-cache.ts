@@ -113,11 +113,18 @@ export class ModuleCache {
     }
   }
 
+  /**
+   * Writes the manifest after the saves before it. It is written to a
+   * temporary file renamed over `manifest.json`, so that another run never
+   * reads it halfway.
+   */
   save(): Promise<void> {
     const manifestPath = path.join(this.path, "manifest.json");
-    this.pendingSave = this.pendingSave.then(() =>
-      this.fs.writeFile(manifestPath, JSON.stringify(this.manifest, null, 2)),
-    );
+    this.pendingSave = this.pendingSave.then(async () => {
+      const temp = `${manifestPath}.${randomUUID()}.tmp`;
+      await this.fs.writeFile(temp, JSON.stringify(this.manifest, null, 2));
+      await this.fs.rename(temp, manifestPath);
+    });
     return this.pendingSave;
   }
 
