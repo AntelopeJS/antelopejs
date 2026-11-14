@@ -8,6 +8,7 @@ import {
   DownloaderRegistry,
   registerGitDownloader,
   registerPackageDownloader,
+  underDownloadLock,
 } from "../../../src/core/downloaders";
 import {
   downloadLockOf,
@@ -85,6 +86,38 @@ async function emptyCache() {
   return { fs, cache };
 }
 
+describe("A command a download runs under its lock", () => {
+  it("runs no command, of any kind, once another process took the lock over", async () => {
+    const { fs, cache } = await emptyCache();
+    const ran: string[] = [];
+    const exec = underDownloadLock(cache, REPO, async (command) => {
+      ran.push(command);
+      return { stdout: "", stderr: "", code: 0 };
+    });
+    const commands = [
+      "git fetch",
+      `git clone ${REMOTE} ${REPO}`,
+      "git symbolic-ref refs/remotes/origin/HEAD",
+      "git rev-parse HEAD",
+      "git reset --hard origin/main",
+      'npm pack "pkg@1.0.0"',
+      "npm install",
+    ];
+
+    const failures = await cache.withDownloadLock(REPO, async () => {
+      await takeOver(fs, REPO);
+      return Promise.all(
+        commands.map((command) => failureOf(exec(command, { cwd: "/" }))),
+      );
+    });
+
+    expect(ran).to.deep.equal([]);
+    expect(
+      failures.every((failure) => failure?.includes("took over")),
+    ).to.equal(true);
+  });
+});
+
 describe("A git download whose lock another process takes over at one of its steps", () => {
   it("runs nothing after a clone the takeover happened during, and lists no version", async () => {
     const { fs, cache } = await emptyCache();
@@ -99,6 +132,59 @@ describe("A git download whose lock another process takes over at one of its ste
     expect(failure).to.be.a("string").that.includes("took over");
     expect(afterTakeover).to.deep.equal([]);
     expect(cache.getVersion(REPO)).to.equal(undefined);
+  });
+
+  it("runs no clone after a clean of the folder the takeover happened during", async () => {
+    const { fs, cache } = await emptyCache();
+    await fs.writeFile(`/cache/${REPO}/stale.txt`, "{}");
+    const rm = fs.rm.bind(fs);
+    fs.rm = async (file, options) => {
+      await rm(file, options);
+      if (file === `/cache/${REPO}`) {
+        await takeOver(fs, REPO);
+      }
+    };
+
+    const { afterTakeover, failure } = await loadGitTakenOverAt(
+      fs,
+      cache,
+      "never",
+      { branch: "main", installCommand: ["npm install"] },
+    );
+
+    expect(failure).to.be.a("string").that.includes("took over");
+    expect(afterTakeover).to.deep.equal([]);
+  });
+
+  it("runs no first install after a clone whose commit read the takeover happened during", async () => {
+    const { fs, cache } = await emptyCache();
+
+    const { afterTakeover, failure } = await loadGitTakenOverAt(
+      fs,
+      cache,
+      "git rev-parse HEAD",
+      { branch: "main", installCommand: ["npm install"] },
+    );
+
+    expect(failure).to.be.a("string").that.includes("took over");
+    expect(afterTakeover).to.deep.equal([]);
+  });
+
+  it("runs no reset after the read of the remote commit of an update the takeover happened during", async () => {
+    const { fs, cache } = await emptyCache();
+    await fs.writeFile(`/cache/${REPO}/package.json`, "{}");
+    await fs.writeFile(`/cache/${REPO}/.git/HEAD`, "ref: refs/heads/main");
+    cache.setVersion(REPO, "git:main:oldcommit");
+
+    const { afterTakeover, failure } = await loadGitTakenOverAt(
+      fs,
+      cache,
+      "git rev-parse origin/main",
+      { branch: "main", installCommand: ["npm install"] },
+    );
+
+    expect(failure).to.be.a("string").that.includes("took over");
+    expect(afterTakeover).to.deep.equal([]);
   });
 
   it("runs no reset or install after a checkout of an update the takeover happened during", async () => {
