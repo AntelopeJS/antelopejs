@@ -1,5 +1,6 @@
 export * from "./build-refresh";
 export * from "./build-runtime";
+export * from "./cache-pruning";
 export * from "./dev-server-registry";
 export * from "./launch-sequence";
 export * from "./launch-steps";
