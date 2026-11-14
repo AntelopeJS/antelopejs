@@ -216,6 +216,17 @@ async function resolveCommit(
   return result.code === 0 && commit !== "" ? commit : undefined;
 }
 
+/** The commit of the remote's default branch in the clone in `cwd`, if it resolves. */
+async function resolveDefaultCommit(
+  cwd: string,
+  exec: CommandRunner,
+): Promise<string | undefined> {
+  const branch = await mainBranch(cwd, exec).catch(() => undefined);
+  return branch === undefined
+    ? undefined
+    : resolveCommit(`origin/${branch}`, cwd, exec);
+}
+
 /**
  * Throws unless the clone in `folder`, which the live run of another process
  * uses, has the commit `load` asks for checked out: the one its `commit`
@@ -229,12 +240,17 @@ async function assertOnRequestedRef(
 ): Promise<void> {
   const { source, exec, name } = load;
   const requested =
-    source.commit || source.branch || (await mainBranch(folder, exec));
-  const wanted = await resolveCommit(
-    source.commit || `origin/${requested}`,
-    folder,
-    exec,
-  );
+    source.commit ||
+    source.branch ||
+    (await mainBranch(folder, exec).catch(() => "the default branch"));
+  const wanted =
+    source.commit || source.branch
+      ? await resolveCommit(
+          source.commit || `origin/${requested}`,
+          folder,
+          exec,
+        )
+      : await resolveDefaultCommit(folder, exec);
   const head = await commitAt("HEAD", folder, exec);
   if (wanted === head) {
     return;

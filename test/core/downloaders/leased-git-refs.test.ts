@@ -20,29 +20,35 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 const REMOTE = "https://github.com/org/repo.git";
 const REPO_ENTRY = REMOTE.replace(/[^a-zA-Z0-9_]/g, "_");
 const HEAD_COMMIT = "headcommit";
+const REV_LIST = "git rev-list -n 1 ";
 
 /**
  * Answers git as a clone checked out at {@link HEAD_COMMIT} on `main` would:
- * the tag `v1` and `origin/main` name that commit, `origin/feature` names
- * another one, and `origin/later` was never fetched.
+ * only the tag `v1` and `origin/main` resolve to that commit,
+ * `origin/feature` resolves to another one, and any other ref, such as
+ * `origin/v1` or the never fetched `origin/later`, is unknown.
  */
-function cloneExec(commands: string[]) {
+function cloneExec(commands: string[], noDefaultBranch = false) {
+  const commits = new Map([
+    ["v1", HEAD_COMMIT],
+    ["origin/main", HEAD_COMMIT],
+    ["origin/feature", "featurecommit"],
+  ]);
   return async (command: string) => {
     commands.push(command);
-    if (command === "git rev-list -n 1 origin/feature") {
-      return { stdout: "featurecommit", stderr: "", code: 0 };
+    if (command.startsWith(REV_LIST)) {
+      const commit = commits.get(command.slice(REV_LIST.length));
+      return commit === undefined
+        ? { stdout: "", stderr: "unknown revision", code: 128 }
+        : { stdout: commit, stderr: "", code: 0 };
     }
-    if (command === "git rev-list -n 1 origin/later") {
-      return { stdout: "", stderr: "unknown revision", code: 128 };
-    }
-    if (
-      command.startsWith("git rev-parse") ||
-      command.startsWith("git rev-list")
-    ) {
+    if (command.startsWith("git rev-parse")) {
       return { stdout: HEAD_COMMIT, stderr: "", code: 0 };
     }
     if (command.startsWith("git symbolic-ref")) {
-      return { stdout: "refs/remotes/origin/main", stderr: "", code: 0 };
+      return noDefaultBranch
+        ? { stdout: "", stderr: "not a symbolic ref", code: 128 }
+        : { stdout: "refs/remotes/origin/main", stderr: "", code: 0 };
     }
     return { stdout: "", stderr: "", code: 0 };
   };
@@ -81,9 +87,14 @@ describe("The git downloader and a clone that another live run uses", () => {
 
   const lease = () => path.join(cachePath, ".leases", "other.json");
 
-  async function loadGit(options: Partial<ModuleSourceGit>) {
+  async function loadGit(
+    options: Partial<ModuleSourceGit>,
+    noDefaultBranch = false,
+  ) {
     const registry = new DownloaderRegistry();
-    registerGitDownloader(registry, { exec: cloneExec(commands) });
+    registerGitDownloader(registry, {
+      exec: cloneExec(commands, noDefaultBranch),
+    });
     const cache = new ModuleCache(cachePath);
     await cache.load();
     const source: ModuleSourceGit = { type: "git", remote: REMOTE, ...options };
@@ -121,6 +132,14 @@ describe("The git downloader and a clone that another live run uses", () => {
       loadGit({ branch: "later", ignoreCache: true }),
       (error: Error) =>
         [lease(), "later"].every((part) => error.message.includes(part)),
+    );
+
+    expect(changedTheClone()).to.equal(false);
+  });
+
+  it("refuses the clone, naming the lease, when the default branch of its remote cannot be resolved", async () => {
+    await assert.rejects(loadGit({ ignoreCache: true }, true), (error: Error) =>
+      [lease(), "default branch"].every((part) => error.message.includes(part)),
     );
 
     expect(changedTheClone()).to.equal(false);
