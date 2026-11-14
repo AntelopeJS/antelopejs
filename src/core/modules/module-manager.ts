@@ -48,8 +48,6 @@ export class ModuleManager {
     Map<string, InterfaceConnectionRef[]>
   >();
 
-  private readonly selectedProviders = new Map<string, Map<string, string>>();
-
   private readonly staticModules: ManagedModule[] = [];
 
   private readonly loaded = new Map<string, ManagedModule>();
@@ -96,7 +94,6 @@ export class ModuleManager {
         resolverDetour: () => manager.resolverDetour,
         resolvedAssociations: () => manager.resolvedAssociations,
         resolvedConnections: () => manager.resolvedConnections,
-        selectedProviders: () => manager.selectedProviders,
         staticModules: () => manager.staticModules,
         loaded: () => manager.loaded,
         stubbedInterfacePackages: () => manager.stubbedInterfacePackages,

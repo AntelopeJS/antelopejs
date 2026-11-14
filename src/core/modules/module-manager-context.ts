@@ -78,7 +78,6 @@ interface ManagerFields {
   resolverDetour: ResolverDetour;
   resolvedAssociations: Map<string, Set<string>>;
   resolvedConnections: Map<string, Map<string, InterfaceConnectionRef[]>>;
-  selectedProviders: Map<string, Map<string, string>>;
   staticModules: ManagedModule[];
   loaded: Map<string, ManagedModule>;
   stubbedInterfacePackages: Map<string, StubbedInterfacePackage>;
@@ -241,14 +240,12 @@ export interface ManagerMethods {
   addDefaultAssociations(
     module: Module,
     connections: Map<string, InterfaceConnectionRef[]>,
-    selected: Map<string, string>,
     interfaceSources: Map<string, Module[]>,
   ): void;
   applyImportOverrides(
     moduleId: string,
     importOverrides: Map<string, InterfaceConnectionRef[]> | undefined,
     connections: Map<string, InterfaceConnectionRef[]>,
-    selected: Map<string, string | undefined>,
   ): void;
   addInterfaceSource(
     sources: Map<string, Module[]>,
@@ -378,9 +375,6 @@ function createContext({
     },
     get resolvedConnections() {
       return fields.resolvedConnections();
-    },
-    get selectedProviders() {
-      return fields.selectedProviders();
     },
     get staticModules() {
       return fields.staticModules();

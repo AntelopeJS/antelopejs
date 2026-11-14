@@ -5,6 +5,7 @@ import type {
   BindingGraph,
   BindingInterface,
   BindingModule,
+  ModuleBindings,
 } from "../resolution";
 import {
   buildBindingGraph,
@@ -55,6 +56,27 @@ function toBindingModule(
     listedConnections: toBindingConnections(listed.get(module.id)),
     exportPriority: config.exportPriority ?? new Map(),
   };
+}
+
+/**
+ * Index of the connection a module's plain import of `interfaceName` reaches:
+ * the one to the provider its binding names, keyed like the plain import. An
+ * interface the graph does not bind selects its first connection to a provider.
+ */
+function selectedConnection(
+  bindings: ModuleBindings | undefined,
+  interfaceName: string,
+  listed: readonly InterfaceConnectionRef[],
+): number {
+  const binding = bindings?.scope.get(interfaceName);
+  if (!bindings || !binding) {
+    return listed[0]?.module === undefined ? -1 : 0;
+  }
+  const plain = bindings.keys.get(interfaceName);
+  const keys = bindings.connectionKeys.get(interfaceName) ?? [];
+  return listed.findIndex(
+    ({ module }, index) => module === binding.provider && keys[index] === plain,
+  );
 }
 
 export function checkReplacement(
@@ -124,6 +146,17 @@ export function buildBindings(this: ManagerContext): void {
   }
   this.bindingGraph = graph;
   this.resolver.setBindings(graph);
+  for (const [moduleId, connections] of this.resolvedConnections) {
+    const bindings = graph.modules.get(moduleId);
+    const selected = new Map<string, number>();
+    for (const [interfaceName, listed] of connections) {
+      selected.set(
+        interfaceName,
+        selectedConnection(bindings, interfaceName, listed),
+      );
+    }
+    this.interfaceRegistry.setConnections(moduleId, connections, selected);
+  }
 }
 
 export function runningBindings(
@@ -200,7 +233,6 @@ export function collectInterfaceSources(
   this.interfacePackagePlans.clear();
   this.resolvedAssociations.clear();
   this.resolvedConnections.clear();
-  this.selectedProviders.clear();
   this.moduleTracker.clear();
   this.interfaceRegistry.clear();
 
@@ -241,23 +273,10 @@ export function buildModuleAssociations(
 ): void {
   for (const { module, config } of this.loaded.values()) {
     const connections = new Map<string, InterfaceConnectionRef[]>();
-    const selected = new Map<string, string>();
-    this.addDefaultAssociations(
-      module,
-      connections,
-      selected,
-      interfaceSources,
-    );
-    this.applyImportOverrides(
-      module.id,
-      config.importOverrides,
-      connections,
-      selected,
-    );
+    this.addDefaultAssociations(module, connections, interfaceSources);
+    this.applyImportOverrides(module.id, config.importOverrides, connections);
     this.resolvedAssociations.set(module.id, new Set(connections.keys()));
     this.resolvedConnections.set(module.id, connections);
-    this.selectedProviders.set(module.id, selected);
-    this.interfaceRegistry.setConnections(module.id, connections, selected);
   }
 }
 
@@ -265,7 +284,6 @@ export function addDefaultAssociations(
   this: ManagerContext,
   module: Module,
   connections: Map<string, InterfaceConnectionRef[]>,
-  selected: Map<string, string>,
   interfaceSources: Map<string, Module[]>,
 ): void {
   const dependencies = module.manifest.manifest.dependencies ?? {};
@@ -274,15 +292,12 @@ export function addDefaultAssociations(
   for (const [iface, providers] of interfaceSources) {
     if (iface in dependencies || iface in optionalDependencies) {
       const providerIds = providers.map(({ id }) => id).sort();
-      const defaultProvider = providerIds[0];
-      if (!defaultProvider) {
-        continue;
+      if (providerIds.length > 0) {
+        connections.set(
+          iface,
+          providerIds.map((provider) => ({ module: provider })),
+        );
       }
-      connections.set(
-        iface,
-        providerIds.map((provider) => ({ module: provider })),
-      );
-      selected.set(iface, defaultProvider);
     }
   }
 }
@@ -292,7 +307,6 @@ export function applyImportOverrides(
   moduleId: string,
   importOverrides: Map<string, InterfaceConnectionRef[]> | undefined,
   connections: Map<string, InterfaceConnectionRef[]>,
-  selected: Map<string, string | undefined>,
 ): void {
   if (!importOverrides) {
     return;
@@ -300,11 +314,6 @@ export function applyImportOverrides(
   for (const [iface, overrides] of importOverrides.entries()) {
     this.validateImportOverrides(moduleId, iface, overrides);
     connections.set(iface, overrides);
-    if (overrides[0].module === undefined) {
-      selected.delete(iface);
-    } else {
-      selected.set(iface, overrides[0].module);
-    }
   }
 }
 

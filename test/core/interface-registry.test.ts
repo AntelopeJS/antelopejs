@@ -25,7 +25,7 @@ describe("InterfaceRegistry", () => {
     registry.setConnections(
       "consumer",
       connections,
-      new Map([["core@beta", "modA"]]),
+      new Map([["core@beta", 0]]),
     );
 
     expect(internal.interfaceConnections.consumer["core@beta"]).to.deep.equal([
