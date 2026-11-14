@@ -201,19 +201,29 @@ export function createBuildArtifact(params: BuildArtifactInput): BuildArtifact {
   };
 }
 
+/**
+ * Writes `artifact` as the project's `build.json`. It writes a temporary
+ * file beside it, then renames that file over it, so that a run that reads
+ * `build.json` meanwhile reads the whole previous build or the whole new one.
+ */
 export async function writeBuildArtifact(
   projectFolder: string,
   artifact: BuildArtifact,
   fs: IFileSystem = new NodeFileSystem(),
 ): Promise<void> {
-  const buildFolder = getBuildFolderPath(projectFolder);
   const artifactPath = getBuildArtifactPath(projectFolder);
-  await fs.rm(buildFolder, { recursive: true, force: true });
-  await fs.mkdir(buildFolder, { recursive: true });
-  await fs.writeFile(
-    artifactPath,
-    `${JSON.stringify(artifact, null, JSON_INDENT)}\n`,
-  );
+  const temp = `${artifactPath}.${crypto.randomUUID()}.tmp`;
+  await fs.mkdir(getBuildFolderPath(projectFolder), { recursive: true });
+  try {
+    await fs.writeFile(
+      temp,
+      `${JSON.stringify(artifact, null, JSON_INDENT)}\n`,
+    );
+    await fs.rename(temp, artifactPath);
+  } catch (error) {
+    await fs.rm(temp, { force: true });
+    throw error;
+  }
 }
 
 /** A module entry as `build.json` stores it, its manifest not yet decoded. */

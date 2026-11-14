@@ -19,6 +19,49 @@ import {
 } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
+/**
+ * An in-memory file system that reads the project's build each time a file
+ * is written or renamed in its build folder, as a `start` that reads
+ * `build.json` while `ajs project build` rewrites it.
+ */
+class ReadingWhileWritingFileSystem extends InMemoryFileSystem {
+  readonly seen: string[] = [];
+
+  override async writeFile(file: string, data: Buffer | string) {
+    await this.readBuild(file);
+    return super.writeFile(file, data);
+  }
+
+  override async rename(source: string, target: string) {
+    await this.readBuild(target);
+    return super.rename(source, target);
+  }
+
+  private async readBuild(file: string) {
+    if (file.startsWith("/project/.antelope/build/")) {
+      const build = await readBuildArtifact("/project", this).then(
+        ({ configHash }) => configHash,
+        (error: unknown) => String(error),
+      );
+      this.seen.push(build);
+    }
+  }
+}
+
+function sampleArtifact(configHash: string) {
+  return createBuildArtifact({
+    configHash,
+    env: "production",
+    config: {
+      name: "sample",
+      cacheFolder: "/project/.antelope/cache",
+      projectFolder: "/project",
+      envOverrides: {},
+    },
+    modules: {},
+  });
+}
+
 describe("build artifact", () => {
   afterEach(() => {
     sinon.restore();
@@ -132,6 +175,24 @@ describe("build artifact", () => {
     expect(loaded.configHash).to.equal("abc123");
     expect(loaded.buildTime).to.equal("2026-01-01T00:00:00.000Z");
     expect(loaded.modules).to.deep.equal({});
+  });
+});
+
+describe("writeBuildArtifact while another run reads build.json", () => {
+  it("leaves the previous build readable until the new one replaces it, and no temporary file behind", async () => {
+    const fs = new ReadingWhileWritingFileSystem();
+    await writeBuildArtifact("/project", sampleArtifact("first"), fs);
+    fs.seen.length = 0;
+
+    await writeBuildArtifact("/project", sampleArtifact("second"), fs);
+
+    expect(fs.seen).to.deep.equal(["first", "first"]);
+    expect((await readBuildArtifact("/project", fs)).configHash).to.equal(
+      "second",
+    );
+    expect(await fs.readdir("/project/.antelope/build")).to.deep.equal([
+      "build.json",
+    ]);
   });
 });
 
