@@ -36,7 +36,7 @@ const PENDING_WINDOW_MS = 200;
 const SETTLE_WINDOW_MS = 2000;
 const SILENT_LOCK_MS = 60_000;
 const PAST_CREATION_WINDOW_MS = 61_000;
-const STALLED_CREATOR_MS = 30_000;
+const STALLED_CREATOR_MS = 59_000;
 const SKEWED_BY_MS = 120_000;
 const fs = new NodeFileSystem();
 
@@ -361,7 +361,7 @@ describe("A waiter on a lock without owner", () => {
   for (const { label, age, files } of [
     { label: "just created", age: 0, files: fs },
     {
-      label: "whose creator stalls 30 s before writing its owner",
+      label: "whose creator stalls 59 s before writing its owner",
       age: STALLED_CREATOR_MS,
       files: fs,
     },
