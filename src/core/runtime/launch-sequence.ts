@@ -207,11 +207,52 @@ async function claimBuiltFolders(
   await Promise.all(folders.map((folder) => cache.claimFolder(folder)));
 }
 
+function builtFolders(artifact: BuildArtifact): string {
+  return JSON.stringify(
+    Object.values(artifact.modules)
+      .map(({ folder }) => folder)
+      .sort(),
+  );
+}
+
+/**
+ * Claims the module folders of `artifact`, then reads the build again with
+ * `read`, until the build names the folders this run has claimed. A build
+ * that wrote another `build.json` before the claims, and whose prune then
+ * removed the folders `artifact` names, is so started instead of failing on
+ * a missing folder.
+ *
+ * @returns the build whose folders this run has claimed.
+ */
+async function claimCurrentBuild(
+  artifact: BuildArtifact,
+  read: () => Promise<BuildArtifact>,
+  cacheFolder: string,
+  loadContext: LoaderContextProvider,
+): Promise<BuildArtifact> {
+  let claimed = artifact;
+  for (;;) {
+    await claimBuiltFolders(claimed, cacheFolder, loadContext);
+    const current = await read();
+    if (builtFolders(current) === builtFolders(claimed)) {
+      return claimed;
+    }
+    claimed = current;
+  }
+}
+
+/**
+ * The project of the build `read` returns, first read as `artifact`. Its
+ * `verify` claims the module folders of the build, as
+ * {@link claimCurrentBuild} does, then calls `verify` with the claimed build,
+ * whose modules `createEntries` returns.
+ */
 function prepareFromBuiltArtifact(
   artifact: BuildArtifact,
+  read: () => Promise<BuildArtifact>,
   projectFolder: string,
   fs: NodeFileSystem,
-  verify: () => Promise<void>,
+  verify: (claimed: BuildArtifact) => Promise<void>,
 ): PreparedProject {
   const loaderConfig = resolveRuntimeLoaderConfig(
     artifact.config,
@@ -220,6 +261,7 @@ function prepareFromBuiltArtifact(
   const loadContext = memoizeLoaderContext(() =>
     createLoaderContext(loaderConfig, fs),
   );
+  let claimed = artifact;
 
   return {
     fs,
@@ -227,10 +269,15 @@ function prepareFromBuiltArtifact(
     logging: artifact.config.logging,
     loadContext,
     verify: async () => {
-      await claimBuiltFolders(artifact, loaderConfig.cacheFolder, loadContext);
-      await verify();
+      claimed = await claimCurrentBuild(
+        artifact,
+        read,
+        loaderConfig.cacheFolder,
+        loadContext,
+      );
+      await verify(claimed);
     },
-    createEntries: async () => mapArtifactModuleEntries(artifact),
+    createEntries: async () => mapArtifactModuleEntries(claimed),
     instanceRoot: path.join(loaderConfig.cacheFolder, INSTANCES_FOLDER),
   };
 }
@@ -248,14 +295,20 @@ export const prepareFromArtifact: ProjectPreparer = async (
 ) => {
   const fs = new NodeFileSystem();
   loadProjectEnv(projectFolder);
-  const built = await readBuildArtifactOrThrow(projectFolder, fs);
-  const artifact = applyBuildEnvOverrides(built);
+  const read = async () =>
+    applyBuildEnvOverrides(await readBuildArtifactOrThrow(projectFolder, fs));
 
-  return prepareFromBuiltArtifact(artifact, projectFolder, fs, async () => {
-    logEnvironmentMismatch(env, artifact.env);
-    await warnIfBuildIsStale(projectFolder, artifact, fs);
-    await ensureBuildModulesExist(artifact, fs);
-  });
+  return prepareFromBuiltArtifact(
+    await read(),
+    read,
+    projectFolder,
+    fs,
+    async (artifact) => {
+      logEnvironmentMismatch(env, artifact.env);
+      await warnIfBuildIsStale(projectFolder, artifact, fs);
+      await ensureBuildModulesExist(artifact, fs);
+    },
+  );
 };
 
 /**
@@ -270,10 +323,14 @@ export const prepareFromRefreshedArtifact: ProjectPreparer = async (
   env,
 ) => {
   const fs = new NodeFileSystem();
-  const artifact = await readRefreshedBuildArtifact(projectFolder, env, fs);
+  const read = () => readRefreshedBuildArtifact(projectFolder, env, fs);
 
-  return prepareFromBuiltArtifact(artifact, projectFolder, fs, () =>
-    ensureBuildModulesExist(artifact, fs),
+  return prepareFromBuiltArtifact(
+    await read(),
+    read,
+    projectFolder,
+    fs,
+    (artifact) => ensureBuildModulesExist(artifact, fs),
   );
 };
 
