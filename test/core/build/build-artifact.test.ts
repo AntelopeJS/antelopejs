@@ -14,6 +14,7 @@ import {
 import {
   computeConfigHash,
   createBuildArtifact,
+  getBuildFolderPath,
   loadBuildConfig,
   readBuildArtifact,
   toStableJson,
@@ -42,7 +43,7 @@ class ReadingWhileWritingFileSystem extends InMemoryFileSystem {
   }
 
   private async readBuild(file: string) {
-    if (file.startsWith("/project/.antelope/build/")) {
+    if (path.dirname(file) === getBuildFolderPath("/project")) {
       const build = await readBuildArtifact("/project", this).then(
         ({ configHash }) => configHash,
         (error: unknown) => String(error),
@@ -194,7 +195,7 @@ describe("writeBuildArtifact while another run reads build.json", () => {
     expect((await readBuildArtifact("/project", fs)).configHash).to.equal(
       "second",
     );
-    expect(await fs.readdir("/project/.antelope/build")).to.deep.equal([
+    expect(await fs.readdir(getBuildFolderPath("/project"))).to.deep.equal([
       "build.json",
     ]);
   });
