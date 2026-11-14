@@ -296,7 +296,14 @@ export async function readBuildArtifact(
   projectFolder: string,
   fs: IFileSystem = new NodeFileSystem(),
 ): Promise<BuildArtifact> {
-  const artifactPath = getBuildArtifactPath(projectFolder);
+  return readBuildArtifactFile(getBuildArtifactPath(projectFolder), fs);
+}
+
+/** Reads the `build.json` at `artifactPath` back, as {@link readBuildArtifact} does. */
+export async function readBuildArtifactFile(
+  artifactPath: string,
+  fs: IFileSystem,
+): Promise<BuildArtifact> {
   const content = await fs.readFileString(artifactPath, "utf-8");
   const stored: unknown = JSON.parse(content);
   storedArtifact(stored, "");

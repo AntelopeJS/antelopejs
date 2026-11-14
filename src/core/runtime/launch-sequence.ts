@@ -10,7 +10,12 @@ import {
 } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { BuildArtifact } from "../modules";
-import { INSTANCES_FOLDER, ModuleManager, unpackErrors } from "../modules";
+import {
+  findCacheEntry,
+  INSTANCES_FOLDER,
+  ModuleManager,
+  unpackErrors,
+} from "../modules";
 import { terminalDisplay } from "../output";
 import {
   applyBuildEnvOverrides,
@@ -23,6 +28,7 @@ import {
   readBuildArtifactOrThrow,
   warnIfBuildIsStale,
 } from "./build-runtime";
+import { pruneModuleCache } from "./cache-pruning";
 import { registerCoreRuntimeInterface } from "./dev-server-registry";
 import {
   type LaunchStep,
@@ -169,12 +175,37 @@ export const prepareFromConfig: ProjectPreparer = async (
         await checkOutdatedModules(normalizedConfig.modules, stopping),
       );
     },
-    createEntries: async () =>
-      buildModuleConfigs(normalizedConfig, await loadContext()),
+    createEntries: async () => {
+      const context = await loadContext();
+      const entries = await buildModuleConfigs(normalizedConfig, context);
+      await pruneModuleCache(context.cache, projectFolder, fs);
+      return entries;
+    },
     instanceRoot: path.join(normalizedConfig.cacheFolder, INSTANCES_FOLDER),
     readHashes,
   };
 };
+
+/**
+ * Claims, in this run's lease, every module folder of `artifact` that lies in
+ * the cache at `cacheFolder`. The cache is not opened when none does, so a
+ * build of local modules starts on a file system it may not write.
+ */
+async function claimBuiltFolders(
+  artifact: BuildArtifact,
+  cacheFolder: string,
+  loadContext: LoaderContextProvider,
+): Promise<void> {
+  const folders = Object.values(artifact.modules).map(({ folder }) => folder);
+  const entries = await Promise.all(
+    folders.map((folder) => findCacheEntry(cacheFolder, folder)),
+  );
+  if (entries.every((entry) => entry === undefined)) {
+    return;
+  }
+  const { cache } = await loadContext();
+  await Promise.all(folders.map((folder) => cache.claimFolder(folder)));
+}
 
 function prepareFromBuiltArtifact(
   artifact: BuildArtifact,
@@ -186,15 +217,19 @@ function prepareFromBuiltArtifact(
     artifact.config,
     projectFolder,
   );
+  const loadContext = memoizeLoaderContext(() =>
+    createLoaderContext(loaderConfig, fs),
+  );
 
   return {
     fs,
     dev: false,
     logging: artifact.config.logging,
-    loadContext: memoizeLoaderContext(() =>
-      createLoaderContext(loaderConfig, fs),
-    ),
-    verify,
+    loadContext,
+    verify: async () => {
+      await claimBuiltFolders(artifact, loaderConfig.cacheFolder, loadContext);
+      await verify();
+    },
     createEntries: async () => mapArtifactModuleEntries(artifact),
     instanceRoot: path.join(loaderConfig.cacheFolder, INSTANCES_FOLDER),
   };

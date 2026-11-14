@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import { commandsProjectModulesLocksModule as moduleLocks } from "../../../../../src/cli";
@@ -9,6 +10,10 @@ import {
 import { ModuleCache, ModuleLockStore } from "../../../../../src/core/modules";
 import { getProcessUi } from "../../../../../src/core/output";
 import { fakeNpm } from "../../../../helpers/fake-npm";
+import {
+  startIdleProcess,
+  thisProcess,
+} from "../../../../helpers/cache-leases";
 import { InMemoryFileSystem } from "../../../../helpers/in-memory-filesystem";
 
 const PROJECT = "/project";
@@ -100,4 +105,94 @@ describe("project modules behavior: refreshModuleLocks", () => {
       reported.filter((text) => text.includes("fresh@3.0.0"))[0],
     ).to.include("added");
   });
+
+  it("warns that a module whose install writes no lockfile has none to record, and records none", async () => {
+    const message = sinon.stub(getProcessUi(), "message");
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    const store = new ModuleLockStore(PROJECT, fs);
+    const npm = fakeNpm(fs, () => "never kept");
+    const registry = new DownloaderRegistry();
+    registerPackageDownloader(registry, {
+      fs,
+      ...npm,
+      exec: async (command, options) => {
+        const result = await npm.exec(command, options);
+        if (!command.startsWith("npm pack")) {
+          await fs.rm(path.join(options.cwd ?? "", "pnpm-lock.yaml"));
+        }
+        return result;
+      },
+      lock: { store, mode: "refresh" },
+    });
+
+    const refreshed = await moduleLocks.refreshModuleLocks(
+      PROJECT,
+      { name: "proj" },
+      [packageModule("bare", "1.0.0")],
+      { project: PROJECT, cache, registry, store },
+    );
+
+    expect(refreshed.map(({ change }) => change)).to.deep.equal(["missing"]);
+    expect(await store.versions("bare")).to.deep.equal([]);
+    expect(
+      message.calledWith("warn", "No lockfile to record for bare@1.0.0"),
+    ).to.equal(true);
+  });
+});
+
+describe("project modules behavior: refreshModuleLocks on a folder in use", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  for (const version of ["1.0.0", "1.0.0+b1"]) {
+    it(`reports a module whose folder another live run uses as kept, not as resolved again (${version})`, async () => {
+      const message = sinon.stub(getProcessUi(), "message");
+      const other = await startIdleProcess();
+      try {
+        const fs = new InMemoryFileSystem();
+        await fs.writeFile(
+          "/cache/used@1.0.0/package.json",
+          JSON.stringify({ name: "used", version }),
+        );
+        await fs.writeFile(
+          "/cache/used@1.0.0/pnpm-lock.yaml",
+          "resolved used@1.0.0 last year",
+        );
+        await fs.writeFile(
+          "/cache/manifest.json",
+          JSON.stringify({ "used@1.0.0": version }),
+        );
+        await fs.writeFile(
+          "/cache/.leases/other.json",
+          JSON.stringify({
+            ...thisProcess(),
+            pid: other.pid,
+            entries: ["used@1.0.0"],
+          }),
+        );
+        const context = await createRefreshContext(fs);
+
+        const refreshed = await moduleLocks.refreshModuleLocks(
+          PROJECT,
+          { name: "proj" },
+          [packageModule("used", version)],
+          context,
+        );
+
+        expect(refreshed.map(({ change }) => change)).to.deep.equal(["kept"]);
+        expect(moduleLocks.isChangedLock(refreshed[0])).to.equal(false);
+        const texts = message.args.map(([, text]) => String(text));
+        expect(
+          texts.some(
+            (text) => text.includes("used@1.0.0") && text.includes("in use"),
+          ),
+        ).to.equal(true);
+      } finally {
+        await other.stop();
+      }
+    });
+  }
 });

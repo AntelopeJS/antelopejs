@@ -144,6 +144,29 @@ describe("project modules behavior: update locks", () => {
     );
   });
 
+  it("update says a module was kept, not resolved again, when another run uses its folder", async () => {
+    sinon
+      .stub(common, "readConfig")
+      .resolves({ name: "proj", modules: { pkg: packageModule("1.0.0") } });
+    stubLoadedConfig({ modules: { pkg: packageModule("1.0.0") } });
+    sinon
+      .stub(command, "ExecuteFile")
+      .resolves({ code: 0, stdout: "1.0.0", stderr: "" });
+    const summary = sinon.stub(getProcessUi(), "summary");
+    sinon
+      .stub(moduleLocks, "refreshModuleLocks")
+      .resolves([
+        { key: { package: "pkg", version: "1.0.0" }, change: "kept" },
+      ]);
+    sinon.stub(moduleLocks, "pruneModuleLocks").resolves([]);
+
+    await cmdUpdate().parseAsync(["node", "test", "--project", temp.folder]);
+
+    expect(summary.firstCall.args[0].headline).to.equal(
+      "Versions up to date (1 npm module checked), 1 module kept as another run uses it",
+    );
+  });
+
   it("update --dry-run touches no lock", async () => {
     sinon
       .stub(common, "readConfig")

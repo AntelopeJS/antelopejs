@@ -9,7 +9,7 @@ covers:
   - src/core/output/prompt.ts
   - src/core/output/package-manager*.ts
 docs:
-  - docs/5.cli/4.module.md
+  - docs/5.cli/5.module.md
   - docs/3.module-development/1.creating-a-module.md
 ---
 

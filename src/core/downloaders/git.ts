@@ -101,6 +101,18 @@ interface RepoUpdateResult {
   shouldInstallDependencies: boolean;
 }
 
+/** The cache version of the repository checked out in `folder`: `git:<branch>:<commit>`. */
+async function describeRepo(
+  source: ModuleSourceGit,
+  folder: string,
+  exec: CommandRunner,
+): Promise<string> {
+  const activeCommit = await commitAt("HEAD", folder, exec);
+  const branch =
+    source.commit || source.branch || (await mainBranch(folder, exec));
+  return `git:${branch}:${activeCommit}`;
+}
+
 async function cloneRepo(
   cache: ModuleCache,
   source: ModuleSourceGit,
@@ -124,10 +136,8 @@ async function cloneRepo(
     },
     { done: `Cloned ${source.remote}` },
   );
-  const newActiveCommit = await commitAt("HEAD", folder, exec);
-  const newBranch = branch ?? (await mainBranch(folder, exec));
   return {
-    newVersion: `git:${newBranch}:${newActiveCommit}`,
+    newVersion: await describeRepo(source, folder, exec),
     shouldInstallDependencies: true,
   };
 }
@@ -184,19 +194,122 @@ function updateRepo(request: RepoUpdateRequest): Promise<RepoUpdateResult> {
   );
 }
 
-async function cloneOrFetchRepo(
-  cache: ModuleCache,
-  source: ModuleSourceGit,
+interface GitLoad {
+  cache: ModuleCache;
+  source: ModuleSourceGit;
+  exec: CommandRunner;
+  fs: IFileSystem;
+  name: string;
+}
+
+/**
+ * The commit `ref` names in the clone in `cwd`, such as a tag, a commit or
+ * `origin/<branch>`; `undefined` when the clone does not know it.
+ */
+async function resolveCommit(
+  ref: string,
+  cwd: string,
   exec: CommandRunner,
-  fs: IFileSystem,
-  { name, folder }: { name: string; folder: string },
+): Promise<string | undefined> {
+  const result = await execToResult(exec, `git rev-list -n 1 ${ref}`, cwd);
+  const commit = result.stdout.trim();
+  return result.code === 0 && commit !== "" ? commit : undefined;
+}
+
+/** The commit of the remote's default branch in the clone in `cwd`, if it resolves. */
+async function resolveDefaultCommit(
+  cwd: string,
+  exec: CommandRunner,
+): Promise<string | undefined> {
+  const branch = await mainBranch(cwd, exec).catch(() => undefined);
+  return branch === undefined
+    ? undefined
+    : resolveCommit(`origin/${branch}`, cwd, exec);
+}
+
+/**
+ * Throws unless the clone in `folder`, which the live run of another process
+ * uses, has the commit `load` asks for checked out: the one its `commit`
+ * names, else the remote tip of its branch, else of the default branch. That
+ * run reads the clone, so it cannot be switched to another ref.
+ */
+async function assertOnRequestedRef(
+  load: GitLoad,
+  folder: string,
+  holder: NonNullable<Awaited<ReturnType<ModuleCache["findOtherLease"]>>>,
+): Promise<void> {
+  const { source, exec, name } = load;
+  const requested =
+    source.commit ||
+    source.branch ||
+    (await mainBranch(folder, exec).catch(() => "the default branch"));
+  const wanted =
+    source.commit || source.branch
+      ? await resolveCommit(
+          source.commit || `origin/${requested}`,
+          folder,
+          exec,
+        )
+      : await resolveDefaultCommit(folder, exec);
+  const head = await commitAt("HEAD", folder, exec);
+  if (wanted === head) {
+    return;
+  }
+  throw new Error(
+    `${name} is checked out at ${head}, not ${requested}, and the run with pid ${holder.pid} on ${holder.host} uses it (lease ${holder.file}), so it cannot be switched. Stop that run, then try again. If that run is gone, delete ${holder.file}.`,
+  );
+}
+
+/**
+ * Brings the repository of `load` into the cache while this run holds its
+ * download lock. It reads the manifest again. A listed clone that the live
+ * run of another process uses is kept as it is, neither fetched nor
+ * switched, when it has the requested commit checked out; otherwise the load
+ * fails. A clone the manifest does not list is never adopted, since its
+ * clone or install may have stopped halfway. Else it fetches the clone the
+ * manifest lists, or clones the repository.
+ */
+async function cloneOrFetchRepo(
+  load: GitLoad,
+  folder: string,
 ): Promise<RepoUpdateResult> {
-  const cacheVersion = cache.getVersion(name);
+  const { cache, source, exec, fs, name } = load;
+  await cache.load();
+  const cached = cache.getVersion(name);
+  const listed = cached?.startsWith("git:") ? cached : undefined;
   const repoPresent = await fs.exists(path.join(folder, GIT_DIR));
-  if (source.ignoreCache || !cacheVersion?.startsWith("git:") || !repoPresent) {
+  const holder =
+    repoPresent && listed !== undefined
+      ? await cache.findOtherLease(name)
+      : undefined;
+  if (holder === undefined) {
+    if (!source.ignoreCache && listed !== undefined && repoPresent) {
+      return updateRepo({ source, exec, folder, cacheVersion: listed });
+    }
     return cloneRepo(cache, source, exec, name, folder);
   }
-  return updateRepo({ source, exec, folder, cacheVersion });
+  await assertOnRequestedRef(load, folder, holder);
+  Logger.Info(
+    `${name} is in use by the run with pid ${holder.pid} on ${holder.host} (lease ${holder.file}); keeping its clone as it is instead of fetching or cloning it`,
+  );
+  cache.markKeptInUse(name);
+  return { newVersion: "", shouldInstallDependencies: false };
+}
+
+/** Loads the repository of `load`, installs it, and lists its version, under its download lock. */
+async function loadRepo(load: GitLoad): Promise<string> {
+  const { cache, source, exec, name } = load;
+  const folder = await cache.getFolder(name, true, true);
+  const updateResult = await cloneOrFetchRepo(load, folder);
+  if (updateResult.shouldInstallDependencies) {
+    Logger.Debug(`Running install commands for ${name}`);
+    await runInstallCommands(exec, Logger, name, folder, source.installCommand);
+  }
+  Logger.Trace(`Git module load completed for ${name}`);
+  if (updateResult.newVersion) {
+    await cache.commitVersion(name, updateResult.newVersion);
+  }
+  return folder;
 }
 
 export function registerGitDownloader(
@@ -214,28 +327,9 @@ export function registerGitDownloader(
       validateSource(source);
       const name = urlToFile(source.remote);
       Logger.Trace(`Starting Git module load for ${name}`);
-      const folder = await cache.getFolder(name, true, true);
-      const updateResult = await cloneOrFetchRepo(cache, source, exec, fs, {
-        name,
-        folder,
-      });
-
-      if (updateResult.shouldInstallDependencies) {
-        Logger.Debug(`Running install commands for ${name}`);
-        await runInstallCommands(
-          exec,
-          Logger,
-          name,
-          folder,
-          source.installCommand,
-        );
-      }
-
-      Logger.Trace(`Git module load completed for ${name}`);
-      if (updateResult.newVersion) {
-        await cache.commitVersion(name, updateResult.newVersion);
-      }
-
+      const folder = await cache.withDownloadLock(name, () =>
+        loadRepo({ cache, source, exec, fs, name }),
+      );
       const moduleName = source.id ?? name;
       const manifest = await ModuleManifest.create(
         folder,

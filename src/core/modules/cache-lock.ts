@@ -1,0 +1,313 @@
+import { createHash, randomUUID } from "node:crypto";
+import * as path from "node:path";
+import { performance } from "node:perf_hooks";
+import { setTimeout as delay } from "node:timers/promises";
+
+import type { IFileSystem } from "../../types";
+import { isNumber, isObject, isString } from "../../utils";
+import {
+  currentProcess,
+  hasErrorCode,
+  isLiveProcess,
+  isProcessRef,
+  type ProcessRef,
+} from "./cache-leases";
+
+const OWNER_FILE = "owner.json";
+const HEARTBEAT_INTERVAL_MS = 10_000;
+const SILENT_AFTER_MS = 60_000;
+const POLL_INTERVAL_MS = 25;
+const REMOVE_ATTEMPTS = 10;
+const DOWNLOADS_FOLDER = ".downloads";
+const LOCK_EXTENSION = ".lock";
+const MAX_ENCODED_LENGTH = 200;
+const KEPT_BY_URI_ENCODING = /[!'()*~]/g;
+
+/** The lock that one prune of a cache at a time holds. */
+export const PRUNE_LOCK = ".prune.lock";
+
+/** The lock held around each read, merge and rename of a cache's `manifest.json`. */
+export const MANIFEST_LOCK = ".manifest.lock";
+
+/**
+ * A lock of a cache, named by its folder relative to the cache: the prune
+ * lock, the manifest lock, or the download lock of one cache entry.
+ */
+export type CacheLockName =
+  | typeof PRUNE_LOCK
+  | typeof MANIFEST_LOCK
+  | `${typeof DOWNLOADS_FOLDER}/${string}${typeof LOCK_EXTENSION}`;
+
+/**
+ * The download lock of the cache entry `entry`, such as `@scope/pkg@1.0.0`:
+ * `.downloads/<entry>.lock`, with the entry percent-encoded into one file
+ * name, or hashed when that name would be too long for a file system.
+ */
+export function downloadLockOf(entry: string): CacheLockName {
+  const encoded = encodeURIComponent(entry).replace(
+    KEPT_BY_URI_ENCODING,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  const name =
+    encoded.length > MAX_ENCODED_LENGTH
+      ? createHash("sha256").update(entry).digest("hex")
+      : encoded;
+  return `${DOWNLOADS_FOLDER}/${name}${LOCK_EXTENSION}`;
+}
+
+/**
+ * What `<cache>/<lock>/owner.json` holds: the process that holds the lock, a
+ * token that names this hold of the lock, and a heartbeat count that the
+ * holder raises while it holds the lock.
+ */
+interface LockOwner extends ProcessRef {
+  token: string;
+  beat: number;
+}
+
+/** A clock that never goes back, in milliseconds, such as `performance.now`. */
+type MonotonicClock = () => number;
+
+/** A lock this process holds on a cache. */
+export interface CacheLock {
+  /**
+   * Whether `owner.json` still holds the token of this hold, so that no
+   * other process has taken the lock over. A holder checks it before each
+   * step that removes or replaces what the lock guards.
+   */
+  isHeld(): Promise<boolean>;
+  /** Stops the heartbeat, and removes the lock unless another process holds it now. */
+  release(): Promise<void>;
+}
+
+function isLockOwner(value: unknown): value is LockOwner {
+  return (
+    isProcessRef(value) &&
+    isObject(value) &&
+    isString(value.token) &&
+    isNumber(value.beat)
+  );
+}
+
+async function readOwner(
+  lockFolder: string,
+  fs: IFileSystem,
+): Promise<LockOwner | undefined> {
+  try {
+    const owner: unknown = JSON.parse(
+      await fs.readFileString(path.join(lockFolder, OWNER_FILE)),
+    );
+    return isLockOwner(owner) ? owner : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function writeOwner(
+  lockFolder: string,
+  owner: LockOwner,
+  fs: IFileSystem,
+): Promise<void> {
+  const file = path.join(lockFolder, OWNER_FILE);
+  const temp = `${file}.${randomUUID()}.tmp`;
+  await fs.writeFile(temp, JSON.stringify(owner));
+  await fs.rename(temp, file);
+}
+
+/** Whether the owner of the lock at `lockFolder` holds `token`; `undefined` stands for an owner that cannot be read. */
+async function holdsToken(
+  lockFolder: string,
+  token: string | undefined,
+  fs: IFileSystem,
+): Promise<boolean> {
+  return (await readOwner(lockFolder, fs))?.token === token;
+}
+
+/**
+ * Removes the lock folder at `lockFolder`. On Windows a waiter that reads
+ * `owner.json` at that moment keeps the folder from being removed, so a
+ * failed removal is tried again after a pause, up to ten times.
+ */
+async function removeLockFolder(
+  lockFolder: string,
+  fs: IFileSystem,
+): Promise<void> {
+  for (let attempt = 1; attempt < REMOVE_ATTEMPTS; attempt += 1) {
+    try {
+      await fs.rm(lockFolder, { recursive: true, force: true });
+      return;
+    } catch {
+      await delay(POLL_INTERVAL_MS);
+    }
+  }
+  await fs.rm(lockFolder, { recursive: true, force: true });
+}
+
+/** Removes the lock at `lockFolder` when its owner still holds `token`. */
+async function removeIfHeldBy(
+  lockFolder: string,
+  token: string | undefined,
+  fs: IFileSystem,
+): Promise<void> {
+  if (await holdsToken(lockFolder, token, fs)) {
+    await removeLockFolder(lockFolder, fs);
+  }
+}
+
+/** Whether `owner` ran on this machine and pid namespace and has exited. */
+function hasExited(owner: LockOwner | undefined): boolean {
+  return owner !== undefined && !isLiveProcess(owner);
+}
+
+/**
+ * Rewrites the owner of the lock every `intervalMs` with its heartbeat raised
+ * by one, so that a waiter sees the holder is alive. It stops once the lock
+ * holds another token, so that it never writes over the owner of another
+ * process. A failed beat is skipped.
+ *
+ * @returns a function that stops the heartbeat once its last write is done.
+ */
+function startHeartbeat(
+  lockFolder: string,
+  owner: LockOwner,
+  fs: IFileSystem,
+  intervalMs: number,
+): () => Promise<void> {
+  let beat = owner.beat;
+  let pending = Promise.resolve();
+  const timer = setInterval(() => {
+    pending = pending
+      .then(async () => {
+        if (!(await holdsToken(lockFolder, owner.token, fs))) {
+          clearInterval(timer);
+          return;
+        }
+        beat += 1;
+        await writeOwner(lockFolder, { ...owner, beat }, fs);
+      })
+      .catch(() => undefined);
+  }, intervalMs);
+  timer.unref();
+  return () => {
+    clearInterval(timer);
+    return pending;
+  };
+}
+
+async function tryCreateLock(
+  lockFolder: string,
+  fs: IFileSystem,
+  heartbeatMs: number,
+): Promise<CacheLock | undefined> {
+  await fs.mkdir(path.dirname(lockFolder), { recursive: true });
+  try {
+    await fs.mkdir(lockFolder);
+  } catch (error) {
+    if (error instanceof Error && hasErrorCode(error, "EEXIST")) {
+      return undefined;
+    }
+    throw error;
+  }
+  const owner: LockOwner = {
+    ...currentProcess(),
+    token: randomUUID(),
+    beat: 0,
+  };
+  try {
+    await writeOwner(lockFolder, owner, fs);
+  } catch (error) {
+    await removeLockFolder(lockFolder, fs);
+    throw error;
+  }
+  const stopHeartbeat = startHeartbeat(lockFolder, owner, fs, heartbeatMs);
+  return {
+    isHeld: () => holdsToken(lockFolder, owner.token, fs),
+    release: async () => {
+      await stopHeartbeat();
+      await removeIfHeldBy(lockFolder, owner.token, fs);
+    },
+  };
+}
+
+/**
+ * Takes the lock `name` of the cache at `cachePath` if no live process holds
+ * it, and keeps its heartbeat every `heartbeatMs` until it is released. A
+ * lock whose owner ran on this machine and pid namespace and has exited is
+ * taken over. Any other lock is left alone, whatever its age, since another
+ * machine's clock may disagree.
+ *
+ * @returns the lock, or `undefined` when another process may hold it.
+ */
+export async function tryAcquireCacheLock(
+  cachePath: string,
+  name: CacheLockName,
+  fs: IFileSystem,
+  heartbeatMs = HEARTBEAT_INTERVAL_MS,
+): Promise<CacheLock | undefined> {
+  const lockFolder = path.join(cachePath, name);
+  const taken = await tryCreateLock(lockFolder, fs, heartbeatMs);
+  if (taken !== undefined) {
+    return taken;
+  }
+  const owner = await readOwner(lockFolder, fs);
+  if (owner === undefined || !hasExited(owner)) {
+    return undefined;
+  }
+  await removeIfHeldBy(lockFolder, owner.token, fs);
+  return tryCreateLock(lockFolder, fs, heartbeatMs);
+}
+
+function isSameHold(owner: LockOwner | undefined, seen: LockOwner | undefined) {
+  return owner?.token === seen?.token && owner?.beat === seen?.beat;
+}
+
+/**
+ * Resolves once no live process holds the lock `name` of the cache at
+ * `cachePath`: the lock is gone, or its owner ran on this machine and pid
+ * namespace and has exited, or its owner has not changed for 60 s on `now`,
+ * the clock of this process, so that machines whose clocks disagree still
+ * agree. An owner that cannot be read counts as unchanged. A lock silent for
+ * 60 s is removed when it still holds the token last seen.
+ */
+export async function waitWhileCacheLocked(
+  cachePath: string,
+  name: CacheLockName,
+  fs: IFileSystem,
+  now: MonotonicClock = () => performance.now(),
+): Promise<void> {
+  const lockFolder = path.join(cachePath, name);
+  let seen: LockOwner | undefined;
+  let changedAt = now();
+  while (await fs.exists(lockFolder)) {
+    const owner = await readOwner(lockFolder, fs);
+    if (hasExited(owner)) {
+      return;
+    }
+    if (owner !== undefined && !isSameHold(owner, seen)) {
+      seen = owner;
+      changedAt = now();
+    } else if (now() - changedAt >= SILENT_AFTER_MS) {
+      await removeIfHeldBy(lockFolder, seen?.token, fs);
+      return;
+    }
+    await delay(POLL_INTERVAL_MS);
+  }
+}
+
+/**
+ * Takes the lock `name` of the cache at `cachePath`, waiting while another
+ * live process holds it, as {@link waitWhileCacheLocked} decides.
+ */
+export async function acquireCacheLock(
+  cachePath: string,
+  name: CacheLockName,
+  fs: IFileSystem,
+  now: MonotonicClock = () => performance.now(),
+): Promise<CacheLock> {
+  let lock = await tryAcquireCacheLock(cachePath, name, fs);
+  while (lock === undefined) {
+    await waitWhileCacheLocked(cachePath, name, fs, now);
+    lock = await tryAcquireCacheLock(cachePath, name, fs);
+  }
+  return lock;
+}

@@ -1,5 +1,11 @@
 export * from "./build-artifact";
 export * as buildArtifactModule from "./build-artifact";
+export * from "./cache-lock";
+export {
+  type LeaseState,
+  type LeaseStatus,
+  readLeaseStatuses,
+} from "./cache-leases";
 export * from "./diagnostics";
 export * from "./interface-bumps";
 export * from "./interface-registry";
