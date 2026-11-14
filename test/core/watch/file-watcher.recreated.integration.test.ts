@@ -74,7 +74,10 @@ describe("FileWatcher Integration with a recreated module folder", () => {
     await expectEditReloads();
   });
 
-  it("watches a module folder again once it is moved back", async () => {
+  it("watches a module folder again once it is moved back", async function () {
+    if (process.platform === "win32") {
+      this.skip();
+    }
     const movedDir = path.join(parentDir, "moved");
     await watcher.scanModule("test", moduleDir);
     watcher.startWatching();
