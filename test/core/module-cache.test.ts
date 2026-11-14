@@ -10,6 +10,23 @@ import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
  * armed, lands half its text, signals `torn`, and lands the rest once `finish`
  * is called, as a write that another process reads halfway.
  */
+/** An in-memory file system whose next read of `manifest.json` fails with `EIO`, once armed. */
+class FailingReadFileSystem extends InMemoryFileSystem {
+  private failing = false;
+
+  failNextManifestRead(): void {
+    this.failing = true;
+  }
+
+  override async readFileString(file: string, encoding?: BufferEncoding) {
+    if (this.failing && path.basename(file) === "manifest.json") {
+      this.failing = false;
+      throw Object.assign(new Error("EIO: i/o error, read"), { code: "EIO" });
+    }
+    return super.readFileString(file, encoding);
+  }
+}
+
 class TearingFileSystem extends InMemoryFileSystem {
   private armed = false;
   private tear: () => void = () => undefined;
@@ -243,6 +260,20 @@ describe("ModuleCache manifest file", () => {
     await second.commitVersion("foo@1.0.0", "1.0.0");
     await second.clearVersion("gone");
     await first.commitVersion("bar@1.0.0", "1.0.0");
+
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.deep.equal({ "foo@1.0.0": "1.0.0", "bar@1.0.0": "1.0.0" });
+  });
+
+  it("keeps the entries it loaded when it cannot read the manifest again to save", async () => {
+    const fs = new FailingReadFileSystem();
+    await fs.writeFile("/cache/manifest.json", '{"foo@1.0.0":"1.0.0"}');
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    fs.failNextManifestRead();
+    await cache.commitVersion("bar@1.0.0", "1.0.0");
 
     expect(
       JSON.parse(await fs.readFileString("/cache/manifest.json")),

@@ -133,10 +133,14 @@ export class ModuleCache {
 
   async load(): Promise<void> {
     await this.fs.mkdir(this.path, { recursive: true });
-    this.manifest = await this.readManifest();
+    this.manifest = (await this.readManifest()) ?? {};
   }
 
-  private async readManifest(): Promise<Record<string, string>> {
+  /**
+   * The manifest on disk: empty when there is none yet, `undefined` when it
+   * exists but cannot be read or does not map entries to versions.
+   */
+  private async readManifest(): Promise<Record<string, string> | undefined> {
     const manifestPath = path.join(this.path, MANIFEST_FILE);
     if (!(await this.fs.exists(manifestPath))) {
       return {};
@@ -145,16 +149,18 @@ export class ModuleCache {
       const parsed: unknown = JSON.parse(
         await this.fs.readFileString(manifestPath),
       );
-      return isVersionManifest(parsed) ? parsed : {};
+      return isVersionManifest(parsed) ? parsed : undefined;
     } catch {
-      return {};
+      return undefined;
     }
   }
 
   /**
    * Writes the manifest after the saves before it. It re-reads
    * `manifest.json` and applies only the versions this run set or cleared,
-   * so that the entries another run committed meanwhile stay. It writes a
+   * so that the entries another run committed meanwhile stay. When the file
+   * cannot be read again, it applies them to the manifest this run holds
+   * instead, so that no entry it loaded is dropped. It writes a
    * temporary file renamed over `manifest.json`, so that another run never
    * reads it halfway.
    */
@@ -165,7 +171,7 @@ export class ModuleCache {
 
   private async writeChanges(): Promise<void> {
     const written = new Map(this.changes);
-    const merged = await this.readManifest();
+    const merged = (await this.readManifest()) ?? { ...this.manifest };
     applyChanges(merged, written);
     const manifestPath = path.join(this.path, MANIFEST_FILE);
     const temp = `${manifestPath}.${randomUUID()}.tmp`;
