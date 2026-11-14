@@ -68,6 +68,14 @@ export function describeImplementedPin(
   return `Module '${moduleId}' implements ${interfaceName} but pins it to '${pinned}'.`;
 }
 
+export function describeUnprovidedCycle(
+  moduleId: string,
+  imported: string,
+  cycle: readonly string[],
+): string {
+  return `Module '${moduleId}' cannot import ${imported}: the interfaces ${cycle.join(PATH_SEPARATOR)} depend on each other and no module provides any of them.`;
+}
+
 export function describeUnsettledCycle(modules: readonly string[]): string {
   return `Interface bindings do not settle in the module cycle ${modules.join(", ")}.`;
 }
@@ -111,7 +119,8 @@ export function describeStartupDivergence(
 /**
  * Thrown when the configured pins cannot bind every module consistently: a
  * module reached through two paths that carry different bindings, a module
- * pinning an interface it implements, a cycle whose bindings never settle, or
+ * pinning an interface it implements, a cycle whose bindings never settle, a
+ * module importing interfaces that depend on each other with no provider, or
  * a module loaded at runtime that would re-bind a running one.
  */
 export class InterfaceBindingError extends Error {

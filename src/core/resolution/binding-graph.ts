@@ -5,6 +5,7 @@ import {
   describePinWithoutProvider,
   describeRunningProviderGone,
   describeRunningRebind,
+  describeUnprovidedCycle,
   describeUnsettledCycle,
 } from "./binding-diagnostics";
 import { InstanceTable } from "./binding-graph-instances";
@@ -31,8 +32,12 @@ type Pins = ReadonlyMap<string, string>;
 interface ResolutionTarget {
   scope: Scope;
   keys: Map<string, string>;
+  /** Interfaces being keyed, outermost first. */
+  keying: Set<string>;
   overrides?: Pins;
   recordsEdges: boolean;
+  /** Records a problem met while keying, where the graph's errors read it. */
+  report: (problem: string) => void;
 }
 
 function compareIds(left: string, right: string): number {
@@ -181,7 +186,9 @@ class BindingGraphBuilder {
     const target: ResolutionTarget = {
       scope: new Map(),
       keys: new Map(),
+      keying: new Set(),
       recordsEdges: true,
+      report: (problem) => this.addModuleError(moduleId, problem),
     };
     this.edges.set(moduleId, new Set());
     this.moduleErrors.delete(moduleId);
@@ -204,6 +211,10 @@ class BindingGraphBuilder {
     if (existing) {
       return existing;
     }
+    if (target.keying.has(interfaceName)) {
+      return this.unprovidedCycle(moduleId, interfaceName, target);
+    }
+    target.keying.add(interfaceName);
     const binding =
       target.scope.get(interfaceName) ??
       this.bind(moduleId, interfaceName, target.overrides);
@@ -211,8 +222,28 @@ class BindingGraphBuilder {
     const key = binding.provider
       ? this.providedInstance(moduleId, interfaceName, binding.provider, target)
       : this.selfHostedInstance(moduleId, interfaceName, target);
+    target.keying.delete(interfaceName);
     target.keys.set(interfaceName, key);
     return key;
+  }
+
+  /**
+   * Reports an interface reached again while its own self-hosted instance is
+   * being keyed, and returns a key no instance has, since such an instance
+   * would import itself.
+   */
+  private unprovidedCycle(
+    moduleId: string,
+    interfaceName: string,
+    target: ResolutionTarget,
+  ): string {
+    const keying = [...target.keying];
+    const cycle = [
+      ...keying.slice(keying.indexOf(interfaceName)),
+      interfaceName,
+    ];
+    target.report(describeUnprovidedCycle(moduleId, keying[0], cycle));
+    return `${interfaceName}{cycle}`;
   }
 
   private providedInstance(
@@ -468,8 +499,10 @@ class BindingGraphBuilder {
     return this.keyOf(moduleId, interfaceName, {
       scope: new Map(),
       keys: new Map(),
+      keying: new Set(),
       overrides: this.connectionScope(moduleId, interfaceName, connection),
       recordsEdges: false,
+      report: (problem) => this.errors.add(problem),
     });
   }
 
