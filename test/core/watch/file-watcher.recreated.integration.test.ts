@@ -193,6 +193,35 @@ describe("FileWatcher Integration while waiting for a missing folder", () => {
     }
   });
 
+  it("keeps waiting for a folder whose first stat is refused", async () => {
+    const root = path.join(parentDir, "test");
+    const fs = new SlowCountingFileSystem();
+    const stat = fs.stat.bind(fs);
+    let refused = false;
+    fs.stat = async (filePath: string) => {
+      if (filePath === root && !refused) {
+        refused = true;
+        throw Object.assign(new Error("EPERM"), { code: "EPERM" });
+      }
+      return stat(filePath);
+    };
+    const watcher = new FileWatcher(fs);
+    const changes: string[] = [];
+    watcher.onModuleChanged((id) => changes.push(id));
+    await watcher.scanModule("test", root);
+    watcher.startWatching();
+    try {
+      await new Promise((resolve) => setTimeout(resolve, QUIET_MS));
+      await mkdir(root);
+      await writeFile(path.join(root, "a.js"), "export const a = 1;");
+      await new Promise((resolve) => setTimeout(resolve, QUIET_MS));
+      expect(refused).to.equal(true);
+      expect(changes).to.include("test");
+    } finally {
+      watcher.stopWatching();
+    }
+  });
+
   it("leaves no watcher open when stopped while it looks for the folder", async () => {
     const baseline = openWatchers();
     const fs = new SlowCountingFileSystem(50);

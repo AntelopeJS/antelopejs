@@ -77,11 +77,8 @@ export class MissingFolders {
   private async isDirectory(dirPath: string): Promise<boolean> {
     try {
       return (await this.fs.stat(dirPath)).isDirectory();
-    } catch (error) {
-      if (error instanceof Error && isVanishedPathError(error)) {
-        return false;
-      }
-      throw error;
+    } catch {
+      return false;
     }
   }
 }
