@@ -4,6 +4,7 @@ import type {
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 import path from "node:path";
+import { valid } from "semver";
 
 import { ConfigLoader } from "../../../../core/config";
 import {
@@ -185,7 +186,8 @@ async function refreshModuleLock(
     package: module.source.package,
     version: manifest.manifest.version ?? module.source.version,
   };
-  if (context.cache.wasKeptInUse(`${key.package}@${key.version}`)) {
+  const entry = `${key.package}@${valid(key.version) ?? key.version}`;
+  if (context.cache.wasKeptInUse(entry)) {
     return { key, change: "kept" };
   }
   const after = await store.read(key);

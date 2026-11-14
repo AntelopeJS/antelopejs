@@ -147,50 +147,52 @@ describe("project modules behavior: refreshModuleLocks on a folder in use", () =
     sinon.restore();
   });
 
-  it("reports a module whose folder another live run uses as kept, not as resolved again", async () => {
-    const message = sinon.stub(getProcessUi(), "message");
-    const other = await startIdleProcess();
-    try {
-      const fs = new InMemoryFileSystem();
-      await fs.writeFile(
-        "/cache/used@1.0.0/package.json",
-        JSON.stringify({ name: "used", version: "1.0.0" }),
-      );
-      await fs.writeFile(
-        "/cache/used@1.0.0/pnpm-lock.yaml",
-        "resolved used@1.0.0 last year",
-      );
-      await fs.writeFile(
-        "/cache/manifest.json",
-        JSON.stringify({ "used@1.0.0": "1.0.0" }),
-      );
-      await fs.writeFile(
-        "/cache/.leases/other.json",
-        JSON.stringify({
-          ...thisProcess(),
-          pid: other.pid,
-          entries: ["used@1.0.0"],
-        }),
-      );
-      const context = await createRefreshContext(fs);
+  for (const version of ["1.0.0", "1.0.0+b1"]) {
+    it(`reports a module whose folder another live run uses as kept, not as resolved again (${version})`, async () => {
+      const message = sinon.stub(getProcessUi(), "message");
+      const other = await startIdleProcess();
+      try {
+        const fs = new InMemoryFileSystem();
+        await fs.writeFile(
+          "/cache/used@1.0.0/package.json",
+          JSON.stringify({ name: "used", version }),
+        );
+        await fs.writeFile(
+          "/cache/used@1.0.0/pnpm-lock.yaml",
+          "resolved used@1.0.0 last year",
+        );
+        await fs.writeFile(
+          "/cache/manifest.json",
+          JSON.stringify({ "used@1.0.0": version }),
+        );
+        await fs.writeFile(
+          "/cache/.leases/other.json",
+          JSON.stringify({
+            ...thisProcess(),
+            pid: other.pid,
+            entries: ["used@1.0.0"],
+          }),
+        );
+        const context = await createRefreshContext(fs);
 
-      const refreshed = await moduleLocks.refreshModuleLocks(
-        PROJECT,
-        { name: "proj" },
-        [packageModule("used", "1.0.0")],
-        context,
-      );
+        const refreshed = await moduleLocks.refreshModuleLocks(
+          PROJECT,
+          { name: "proj" },
+          [packageModule("used", version)],
+          context,
+        );
 
-      expect(refreshed.map(({ change }) => change)).to.deep.equal(["kept"]);
-      expect(moduleLocks.isChangedLock(refreshed[0])).to.equal(false);
-      const texts = message.args.map(([, text]) => String(text));
-      expect(
-        texts.some(
-          (text) => text.includes("used@1.0.0") && text.includes("in use"),
-        ),
-      ).to.equal(true);
-    } finally {
-      await other.stop();
-    }
-  });
+        expect(refreshed.map(({ change }) => change)).to.deep.equal(["kept"]);
+        expect(moduleLocks.isChangedLock(refreshed[0])).to.equal(false);
+        const texts = message.args.map(([, text]) => String(text));
+        expect(
+          texts.some(
+            (text) => text.includes("used@1.0.0") && text.includes("in use"),
+          ),
+        ).to.equal(true);
+      } finally {
+        await other.stop();
+      }
+    });
+  }
 });
