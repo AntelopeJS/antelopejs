@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@antelopejs/interface-core':
-        specifier: 0.5.1
+        specifier: '>=0.5.1 <0.6.0'
         version: 0.5.1
     devDependencies:
       '@types/node':

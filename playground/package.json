@@ -6,6 +6,6 @@
   },
   "dependencies": {
     "@antelopejs/core": "link:..",
-    "@antelopejs/interface-core": ">=0.5.1 <1.0.0"
+    "@antelopejs/interface-core": ">=0.5.1 <0.6.0"
   }
 }

@@ -4,7 +4,7 @@
   "private": true,
   "main": "dist/index.js",
   "dependencies": {
-    "@antelopejs/interface-core": "0.5.1"
+    "@antelopejs/interface-core": ">=0.5.1 <0.6.0"
   },
   "devDependencies": {
     "@types/node": "22.19.15",

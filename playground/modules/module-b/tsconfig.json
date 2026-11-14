@@ -6,7 +6,10 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "interface-greeter": ["../../packages/interface-greeter"]
+    }
   },
   "include": ["**/*.ts"]
 }
