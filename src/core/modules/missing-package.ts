@@ -20,11 +20,11 @@ export class MissingPackageError extends Error {
   constructor(
     readonly moduleId: string,
     readonly packageName: string,
-    options?: ErrorOptions,
+    cause: Error,
   ) {
     super(
       `${moduleId} requires ${packageName}, which is not installed. Install the dependencies of ${moduleId}, then run 'ajs project modules install' to add the modules that implement its interfaces.`,
-      options,
+      { cause },
     );
     this.name = "MissingPackageError";
   }
@@ -85,5 +85,5 @@ export function findMissingPackage(
   ) {
     return undefined;
   }
-  return new MissingPackageError(name, packageName, { cause: error });
+  return new MissingPackageError(name, packageName, error);
 }
