@@ -93,7 +93,7 @@ Verify a boundary against the imports a developer or agent would plausibly write
 | A type guard checks each member it narrows to; keys with `Object.hasOwn`           | `antelopejs/no-presence-only-type-guard`            |
 | A type guard checks the nested elements and values it claims                       | review; no tool                                     |
 | A startup read does not decide an insert another replica can race                  | `antelopejs/no-read-then-insert`                    |
-| An async function or promise callback returns no unrun database query              | `antelopejs/no-unrun-query`                         |
+| An awaited function or a promise resolves to no unrun database query               | `antelopejs/no-unrun-query`                         |
 | `Object.assign` writes no `unknown`, `any` or mistyped value over a field          | `antelopejs/no-unsafe-object-assign`                |
 | Every file type-aware lint reads is listed by a tsconfig that resolves its imports | `antelopejs/require-tsconfig-include`               |
 | Params ≤ 5, function ≤ 120 lines, file ≤ 500 lines, depth ≤ 4, complexity ≤ 20     | `eslint/max-*`, `eslint/complexity`                 |

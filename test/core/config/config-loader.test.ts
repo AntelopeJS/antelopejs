@@ -15,6 +15,24 @@ import {
 } from "../../../src/core/config";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
+const MODULE_DOCUMENTS = [
+  ["null", "null", {}],
+  ["a number", "5", {}],
+  ["a boolean", "true", {}],
+  ["an empty array", "[]", {}],
+  ["a string", '"ab"', { 0: "a", 1: "b" }],
+  ["an array", '[1,{"x":2}]', { 0: 1, 1: { x: 2 } }],
+  [
+    "numbers past the double range",
+    '{"host":"h","limit":1e999,"floor":-1e999}',
+    {
+      host: "h",
+      limit: Number.POSITIVE_INFINITY,
+      floor: Number.NEGATIVE_INFINITY,
+    },
+  ],
+] as const;
+
 {
   let registerConfigLoader: (this: Mocha.Suite) => void;
 
@@ -136,14 +154,7 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         });
       });
 
-      for (const [label, document, expected] of [
-        ["null", "null", {}],
-        ["a number", "5", {}],
-        ["a boolean", "true", {}],
-        ["an empty array", "[]", {}],
-        ["a string", '"ab"', { 0: "a", 1: "b" }],
-        ["an array", '[1,{"x":2}]', { 0: 1, 1: { x: 2 } }],
-      ] as const) {
+      for (const [label, document, expected] of MODULE_DOCUMENTS) {
         it(`loads a module config file holding ${label} as the historic merge does`, async () => {
           await mockTsConfig({
             name: "test",
