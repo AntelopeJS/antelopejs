@@ -11,6 +11,7 @@ covers:
 docs:
   - docs/5.cli/2.project.md
   - docs/5.cli/3.project-modules.md
+  - docs/5.cli/4.module-cache.md
   - docs/2.concepts/4.configuration.md
 ---
 

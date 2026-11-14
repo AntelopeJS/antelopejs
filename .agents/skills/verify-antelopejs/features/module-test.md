@@ -4,7 +4,7 @@ covers:
   - src/core/test/**
   - src/core/resolution/stub-interface-runtime.ts
 docs:
-  - docs/5.cli/4.module.md
+  - docs/5.cli/5.module.md
   - docs/3.module-development/3.testing.md
 ---
 

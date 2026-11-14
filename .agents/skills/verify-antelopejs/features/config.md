@@ -6,7 +6,7 @@ covers:
   - src/cli/text-width*.ts
   - src/cli/git-url.ts
 docs:
-  - docs/5.cli/5.config.md
+  - docs/5.cli/6.config.md
 ---
 
 # Config
