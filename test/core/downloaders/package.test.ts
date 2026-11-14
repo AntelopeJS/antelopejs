@@ -255,10 +255,18 @@ describe("PackageDownloader", () => {
       );
     });
   }
+});
 
-  async function loadWithCachedManifest(manifest: string): Promise<string[]> {
+describe("PackageDownloader on a cached folder", () => {
+  async function loadWithCachedManifest(
+    manifest: string,
+    installed: string[] = [],
+  ): Promise<string[]> {
     const fs = new InMemoryFileSystem();
     await fs.writeFile("/cache/pkg@1.0.0/package.json", manifest);
+    for (const file of installed) {
+      await fs.writeFile(`/cache/pkg@1.0.0/node_modules/${file}`, "{}");
+    }
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
     cache.setVersion("pkg@1.0.0", "1.0.0");
@@ -308,6 +316,48 @@ describe("PackageDownloader", () => {
     );
 
     expect(execCalls).to.include('npm pack "pkg@1.0.0"');
+  });
+
+  const DEPENDENT_MANIFEST = JSON.stringify({
+    name: "pkg",
+    version: "1.0.0",
+    dependencies: { dep: "^1.0.0", "@scope/other": "^1.0.0" },
+  });
+
+  for (const [label, installed] of [
+    ["one of them was emptied", ["dep/index.js", "@scope/other/package.json"]],
+    ["a scoped one is missing", ["dep/package.json"]],
+  ] as const) {
+    it(`re-downloads when node_modules holds the declared dependencies but ${label}`, async () => {
+      const execCalls = await loadWithCachedManifest(DEPENDENT_MANIFEST, [
+        ...installed,
+      ]);
+
+      expect(execCalls).to.include('npm pack "pkg@1.0.0"');
+    });
+  }
+
+  it("serves the cached folder when a dependency optionalDependencies also lists was skipped by the install", async () => {
+    const execCalls = await loadWithCachedManifest(
+      JSON.stringify({
+        name: "pkg",
+        version: "1.0.0",
+        dependencies: { dep: "^1.0.0", "dep-darwin": "^1.0.0" },
+        optionalDependencies: { "dep-darwin": "^1.0.0" },
+      }),
+      ["dep/package.json"],
+    );
+
+    expect(execCalls).to.deep.equal([]);
+  });
+
+  it("serves the cached folder when node_modules holds a package.json for each declared dependency", async () => {
+    const execCalls = await loadWithCachedManifest(DEPENDENT_MANIFEST, [
+      "dep/package.json",
+      "@scope/other/package.json",
+    ]);
+
+    expect(execCalls).to.deep.equal([]);
   });
 
   for (const [label, manifest] of [

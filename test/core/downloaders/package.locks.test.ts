@@ -70,7 +70,7 @@ async function createHarness(
     if (!(await fs.exists(lock))) {
       await fs.writeFile(lock, RESOLVED_LOCK);
     }
-    await fs.mkdir(`${folder}/node_modules`, { recursive: true });
+    await fs.writeFile(`${folder}/node_modules/dep/package.json`, "{}");
     return { stdout: "", stderr: "", code: 0 };
   };
   const registry = new DownloaderRegistry();
@@ -106,7 +106,7 @@ async function createHarness(
 async function warmCache(harness: Harness, version: string, lock: string) {
   const folder = cacheFolder(version);
   await harness.fs.writeFile(`${folder}/package.json`, MANIFEST(version));
-  await harness.fs.mkdir(`${folder}/node_modules`, { recursive: true });
+  await harness.fs.writeFile(`${folder}/node_modules/dep/package.json`, "{}");
   await harness.fs.writeFile(`${folder}/pnpm-lock.yaml`, lock);
   await harness.cache.commitVersion(`${PKG}@${version}`, version);
 }
