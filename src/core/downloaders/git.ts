@@ -10,7 +10,11 @@ import type { TaskHandle } from "../output";
 import { ExecError, ExecuteCMD, runTask } from "../output";
 import type { DownloaderRegistry } from "./registry";
 import type { CommandResult, CommandRunner } from "./types";
-import { runInstallCommands } from "./utils";
+import {
+  hasInstalledDependencies,
+  readDeclaredDependencies,
+  runInstallCommands,
+} from "./utils";
 
 const Logger = new Logging.Channel("loader.git");
 
@@ -264,13 +268,33 @@ async function assertOnRequestedRef(
 }
 
 /**
+ * Whether the clone in `folder` holds, in its `node_modules`, a
+ * `package.json` for each dependency its `package.json` declares, as the
+ * package downloader requires of a cached folder. A clone with no
+ * `package.json`, or one that is not a manifest, declares none, since
+ * cloning it again would give the same file.
+ */
+async function hasDeclaredDependencies(
+  folder: string,
+  fs: IFileSystem,
+): Promise<boolean> {
+  const dependencies = await readDeclaredDependencies(folder, fs);
+  return (
+    dependencies === undefined ||
+    hasInstalledDependencies(folder, dependencies, fs)
+  );
+}
+
+/**
  * Brings the repository of `load` into the cache while this run holds its
  * download lock. It reads the manifest again. A listed clone that the live
  * run of another process uses is kept as it is, neither fetched nor
  * switched, when it has the requested commit checked out; otherwise the load
  * fails. A clone the manifest does not list is never adopted, since its
  * clone or install may have stopped halfway. Else it fetches the clone the
- * manifest lists, or clones the repository.
+ * manifest lists, or clones the repository. A clone that lacks a dependency
+ * its `package.json` declares, as {@link hasDeclaredDependencies} checks, is
+ * cloned again.
  */
 async function cloneOrFetchRepo(
   load: GitLoad,
@@ -280,7 +304,9 @@ async function cloneOrFetchRepo(
   await cache.load();
   const cached = cache.getVersion(name);
   const listed = cached?.startsWith("git:") ? cached : undefined;
-  const repoPresent = await fs.exists(path.join(folder, GIT_DIR));
+  const repoPresent =
+    (await fs.exists(path.join(folder, GIT_DIR))) &&
+    (await hasDeclaredDependencies(folder, fs));
   const holder =
     repoPresent && listed !== undefined
       ? await cache.findOtherLease(name)
