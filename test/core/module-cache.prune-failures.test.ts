@@ -9,11 +9,13 @@ import {
   deadPid,
   FailingOwnerFileSystem,
   hasEntryFolder,
+  holdPruneLock,
   leaseNameOf,
   leaseNames,
   manifestKeys,
   otherNamespace,
   pruneLockPath,
+  readLockOwner,
   RefusingFileSystem,
   seedCache,
   startIdleProcess,
@@ -27,6 +29,24 @@ const KEEP_NOTHING: CacheKeep = () => false;
 
 function prune(cachePath: string) {
   return new ModuleCache(cachePath).prune(async () => KEEP_NOTHING);
+}
+
+/**
+ * Fails to write the owner of the prune lock of `cachePath`, as
+ * {@link FailingOwnerFileSystem} does, after another live prune took the
+ * lock folder over and wrote its own owner.
+ */
+class TakenOverOwnerFileSystem extends FailingOwnerFileSystem {
+  constructor(private readonly cachePath: string) {
+    super();
+  }
+
+  override writeFile(file: string, data: Buffer | string) {
+    if (path.basename(file).startsWith("owner.json")) {
+      holdPruneLock(this.cachePath, { pid: process.pid, token: "taken-over" });
+    }
+    return super.writeFile(file, data);
+  }
 }
 
 describe("ModuleCache prune across processes and failures", () => {
@@ -134,6 +154,20 @@ describe("ModuleCache prune across processes and failures", () => {
     );
 
     expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
+    expect(manifestKeys(cachePath)).to.have.length(3);
+  });
+
+  it("leaves the lock another prune took over while it failed to record its owner", async () => {
+    const fs = new TakenOverOwnerFileSystem(cachePath);
+
+    await assert.rejects(
+      new ModuleCache(cachePath, fs).prune(async () => KEEP_NOTHING),
+      /ENOSPC/,
+    );
+
+    expect(readLockOwner(pruneLockPath(cachePath))?.token).to.equal(
+      "taken-over",
+    );
     expect(manifestKeys(cachePath)).to.have.length(3);
   });
 });
