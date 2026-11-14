@@ -203,10 +203,24 @@ interface GitLoad {
 }
 
 /**
+ * The commit `ref` names in the clone in `cwd`, such as a tag, a commit or
+ * `origin/<branch>`; `undefined` when the clone does not know it.
+ */
+async function resolveCommit(
+  ref: string,
+  cwd: string,
+  exec: CommandRunner,
+): Promise<string | undefined> {
+  const result = await execToResult(exec, `git rev-list -n 1 ${ref}`, cwd);
+  const commit = result.stdout.trim();
+  return result.code === 0 && commit !== "" ? commit : undefined;
+}
+
+/**
  * Throws unless the clone in `folder`, which the live run of another process
- * uses, has the commit `load` asks for checked out: its commit, else the
- * remote tip of its branch, else of the default branch. That run reads the
- * clone, so it cannot be switched to another ref.
+ * uses, has the commit `load` asks for checked out: the one its `commit`
+ * names, else the remote tip of its branch, else of the default branch. That
+ * run reads the clone, so it cannot be switched to another ref.
  */
 async function assertOnRequestedRef(
   load: GitLoad,
@@ -216,10 +230,13 @@ async function assertOnRequestedRef(
   const { source, exec, name } = load;
   const requested =
     source.commit || source.branch || (await mainBranch(folder, exec));
+  const wanted = await resolveCommit(
+    source.commit || `origin/${requested}`,
+    folder,
+    exec,
+  );
   const head = await commitAt("HEAD", folder, exec);
-  const wanted =
-    source.commit || (await commitAt(`origin/${requested}`, folder, exec));
-  if (head.startsWith(wanted)) {
+  if (wanted === head) {
     return;
   }
   throw new Error(
@@ -229,9 +246,11 @@ async function assertOnRequestedRef(
 
 /**
  * Brings the repository of `load` into the cache while this run holds its
- * download lock. It reads the manifest again, then fetches the clone the
- * manifest lists; else keeps a clone that the live run of another process
- * uses, listing it again; else clones the repository.
+ * download lock. It reads the manifest again. A clone that the live run of
+ * another process uses is kept as it is, neither fetched nor switched, when
+ * it has the requested commit checked out, and listed again; otherwise the
+ * load fails. Else it fetches the clone the manifest lists, or clones the
+ * repository.
  */
 async function cloneOrFetchRepo(
   load: GitLoad,
@@ -242,22 +261,22 @@ async function cloneOrFetchRepo(
   const cached = cache.getVersion(name);
   const listed = cached?.startsWith("git:") ? cached : undefined;
   const repoPresent = await fs.exists(path.join(folder, GIT_DIR));
-  if (!source.ignoreCache && listed !== undefined && repoPresent) {
-    return updateRepo({ source, exec, folder, cacheVersion: listed });
-  }
   const holder = repoPresent ? await cache.findOtherLease(name) : undefined;
-  if (holder !== undefined) {
-    await assertOnRequestedRef(load, folder, holder);
-    Logger.Info(
-      `${name} is in use by the run with pid ${holder.pid} on ${holder.host} (lease ${holder.file}); keeping its clone instead of cloning it again`,
-    );
-    return {
-      newVersion:
-        listed === undefined ? await describeRepo(source, folder, exec) : "",
-      shouldInstallDependencies: false,
-    };
+  if (holder === undefined) {
+    if (!source.ignoreCache && listed !== undefined && repoPresent) {
+      return updateRepo({ source, exec, folder, cacheVersion: listed });
+    }
+    return cloneRepo(cache, source, exec, name, folder);
   }
-  return cloneRepo(cache, source, exec, name, folder);
+  await assertOnRequestedRef(load, folder, holder);
+  Logger.Info(
+    `${name} is in use by the run with pid ${holder.pid} on ${holder.host} (lease ${holder.file}); keeping its clone as it is instead of fetching or cloning it`,
+  );
+  return {
+    newVersion:
+      listed === undefined ? await describeRepo(source, folder, exec) : "",
+    shouldInstallDependencies: false,
+  };
 }
 
 /** Loads the repository of `load`, installs it, and lists its version, under its download lock. */

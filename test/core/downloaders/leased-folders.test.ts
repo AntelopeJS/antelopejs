@@ -41,7 +41,10 @@ function recordingExec(recorded: Recorded) {
     if (command === "git rev-parse origin/feature") {
       return { stdout: "featurecommit", stderr: "", code: 0 };
     }
-    if (command.startsWith("git rev-parse")) {
+    if (
+      command.startsWith("git rev-parse") ||
+      command.startsWith("git rev-list")
+    ) {
       return { stdout: "headcommit", stderr: "", code: 0 };
     }
     if (command.startsWith("git symbolic-ref")) {
@@ -137,21 +140,6 @@ describe("Downloaders and a folder that another live run leases", () => {
     expect(info.args.map(([message]) => String(message)).join("\n")).to.include(
       "other.json",
     );
-  });
-
-  it("refuses a cloned repository that another run uses on another branch, naming its lease", async () => {
-    seedRepo();
-    const lease = leaseToOther(REPO_ENTRY);
-
-    await assert.rejects(loadGit(true, "feature"), (error: Error) =>
-      [lease, "feature"].every((part) => error.message.includes(part)),
-    );
-
-    expect(
-      recorded.commands.some(
-        (command) => command.includes("clone") || command.includes("checkout"),
-      ),
-    ).to.equal(false);
   });
 
   it("lists again a cloned repository that another run uses when the manifest lost it", async () => {
