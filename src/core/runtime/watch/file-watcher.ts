@@ -160,10 +160,17 @@ export class FileWatcher {
     const previous = this.changeChains.get(dir) ?? Promise.resolve();
     const next = previous
       .then(() => this.handleFileChange(filePath))
+      .then(() => this.forgetVanishedDir(dir))
       .catch((err: unknown) => {
         console.error(`FileWatcher error handling ${filePath}:`, err);
       });
     this.changeChains.set(dir, next);
+  }
+
+  private async forgetVanishedDir(dir: string): Promise<void> {
+    if (this.watchers.has(dir) && !(await this.fs.exists(dir))) {
+      this.handleRemovedDir(dir);
+    }
   }
 
   private setFileEntry(filePath: string, moduleId: string, hash: string): void {
