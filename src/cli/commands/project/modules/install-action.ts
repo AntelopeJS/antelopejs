@@ -4,7 +4,7 @@ import type {
   ModuleSourceLocal,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
@@ -78,14 +78,16 @@ interface ConfigAnalyze {
 }
 
 /**
- * Whether a folder Node searches from `fromFolder` holds the package's
- * `package.json`. A package counts as installed without a JavaScript entry
- * `require` can load, as a types-only or `bin`-only package has none.
+ * Whether a folder Node searches from the real path of `fromFolder` holds the
+ * package's `package.json`. A package counts as installed without a JavaScript
+ * entry `require` can load, as a types-only or `bin`-only package has none.
+ * The search paths are those of `<package>/package.json`, which Node gives
+ * for a package named like a builtin too.
  */
 function isPackageInstalled(packageName: string, fromFolder: string): boolean {
   const searchPaths = createRequire(
-    path.join(path.resolve(fromFolder), "__antelope_resolver__.js"),
-  ).resolve.paths(packageName);
+    path.join(realpathSync(fromFolder), "__antelope_resolver__.js"),
+  ).resolve.paths(`${packageName}/package.json`);
   return (searchPaths ?? []).some((folder) =>
     existsSync(path.join(folder, packageName, "package.json")),
   );
