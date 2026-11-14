@@ -303,10 +303,11 @@ function isSameHold(owner: LockOwner | undefined, seen: LockOwner | undefined) {
 /**
  * Resolves once no live process holds the lock `name` of the cache at
  * `cachePath`: the lock is gone, or its owner ran on this machine and pid
- * namespace and has exited, or it has no owner and its file system dates it
- * past the creation window, which removes it, or its owner has not changed for 60 s on `now`,
- * the clock of this process, so that machines whose clocks disagree still
- * agree. An owner that cannot be read counts as unchanged. A lock silent for
+ * namespace and has exited, or it has no `owner.json` and its file system
+ * dates it past the creation window, or its owner has not changed for 60 s on
+ * `now`, the clock of this process, so that machines whose clocks disagree
+ * still agree. A lock without `owner.json` past the creation window is
+ * removed. An owner that cannot be read counts as unchanged. A lock silent for
  * 60 s is removed when it still holds the token last seen.
  */
 export async function waitWhileCacheLocked(
