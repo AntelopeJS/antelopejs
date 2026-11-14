@@ -14,6 +14,7 @@ function isVersionManifest(value: unknown): value is Record<string, string> {
 export class ModuleCache {
   private manifest: Record<string, string> = {};
   private pendingSave: Promise<void> = Promise.resolve();
+  private readonly used = new Set<string>();
 
   constructor(
     public readonly path: string,
@@ -69,6 +70,7 @@ export class ModuleCache {
     noCreate?: boolean,
   ): Promise<string> {
     const folder = path.join(this.path, module);
+    this.used.add(module);
     if (!noClean) {
       await this.fs.rm(folder, { recursive: true, force: true });
     }
@@ -96,6 +98,24 @@ export class ModuleCache {
 
   async clearVersion(module: string): Promise<void> {
     delete this.manifest[module];
+    await this.save();
+  }
+
+  /** Removes every manifest entry, and its folder, that no `getFolder` call of this run touched. */
+  async prune(): Promise<void> {
+    const unused = Object.keys(this.manifest).filter(
+      (module) => !this.used.has(module),
+    );
+    if (unused.length === 0) {
+      return;
+    }
+    for (const module of unused) {
+      await this.fs.rm(path.join(this.path, module), {
+        recursive: true,
+        force: true,
+      });
+      delete this.manifest[module];
+    }
     await this.save();
   }
 

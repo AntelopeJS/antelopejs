@@ -194,4 +194,33 @@ describe("ModuleCache manifest file", () => {
       ).to.deep.equal({ other: "1.0.0" });
     }
   });
+
+  it("prunes the entries and folders no load of this run touched", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile(
+      "/cache/manifest.json",
+      JSON.stringify({
+        pkg: "1.0.0",
+        "pkg@1.0.0": "1.0.0",
+        "pkg@2.0.0": "2.0.0",
+      }),
+    );
+    await fs.writeFile("/cache/pkg/package.json", "{}");
+    await fs.writeFile("/cache/pkg@1.0.0/package.json", "{}");
+    await fs.writeFile("/cache/pkg@2.0.0/package.json", "{}");
+    await fs.writeFile("/cache/.instances/keep.txt", "kept");
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    await cache.getFolder("pkg@2.0.0", true, true);
+    await cache.prune();
+
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.deep.equal({ "pkg@2.0.0": "2.0.0" });
+    expect(await fs.exists("/cache/pkg")).to.equal(false);
+    expect(await fs.exists("/cache/pkg@1.0.0")).to.equal(false);
+    expect(await fs.exists("/cache/pkg@2.0.0/package.json")).to.equal(true);
+    expect(await fs.exists("/cache/.instances/keep.txt")).to.equal(true);
+  });
 });

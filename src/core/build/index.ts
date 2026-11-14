@@ -6,6 +6,7 @@ import {
 } from "../modules";
 import type { BuildOptions } from "../runtime";
 import {
+  createLoaderContext,
   createModuleEntriesForManager,
   ensureGraphIsValid,
   ensureNoRangeConflicts,
@@ -21,8 +22,9 @@ export type { ProjectInterfaceCheck } from "./interface-ranges";
 /**
  * Loads the modules of the project for `env`, checks that their interfaces
  * resolve and that each shared interface package satisfies the range every
- * module declares, then writes `.antelope/build/build.json`. Nothing is
- * written when a check fails. The check follows a launch: the required
+ * module declares, then writes `.antelope/build/build.json` and removes the
+ * cached modules it did not load. Nothing is written or removed when a check
+ * fails. The check follows a launch: the required
  * modules decide it, and an `optional: true` module that would fail it is
  * only warned about, since a launch runs without it.
  *
@@ -47,10 +49,15 @@ export async function build(
   await withRaisedMaxListeners(async () => {
     const manager = new ModuleManager();
     try {
+      const loaderContext = await createLoaderContext(
+        runtimeConfig.normalizedConfig,
+        runtimeConfig.fs,
+      );
       const entries = await createModuleEntriesForManager(
         manager,
         runtimeConfig.normalizedConfig,
         false,
+        loaderContext,
       );
       ensureNoRangeConflicts(
         await findEntryRangeConflicts(manager, entries, ensureGraphIsValid),
@@ -61,6 +68,7 @@ export async function build(
         entries,
         runtimeConfig.fs,
       );
+      await loaderContext.cache.prune();
     } finally {
       await manager.destroyAll();
     }

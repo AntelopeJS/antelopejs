@@ -169,8 +169,12 @@ export const prepareFromConfig: ProjectPreparer = async (
         await checkOutdatedModules(normalizedConfig.modules, stopping),
       );
     },
-    createEntries: async () =>
-      buildModuleConfigs(normalizedConfig, await loadContext()),
+    createEntries: async () => {
+      const context = await loadContext();
+      const entries = await buildModuleConfigs(normalizedConfig, context);
+      await context.cache.prune();
+      return entries;
+    },
     instanceRoot: path.join(normalizedConfig.cacheFolder, INSTANCES_FOLDER),
     readHashes,
   };
