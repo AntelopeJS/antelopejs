@@ -3,6 +3,7 @@ import type {
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 
 import {
   DownloaderRegistry,
@@ -142,7 +143,7 @@ describe("A git download whose lock another process takes over at one of its ste
     const rm = fs.rm.bind(fs);
     fs.rm = async (file, options) => {
       await rm(file, options);
-      if (file === `/cache/${REPO}`) {
+      if (path.resolve(file) === path.resolve("/cache", REPO)) {
         await takeOver(fs, REPO);
       }
     };
@@ -252,14 +253,20 @@ class TakenOverFileSystem extends InMemoryFileSystem {
 
   override async copyFile(source: string, target: string) {
     await super.copyFile(source, target);
-    if (this.when === "copy" && target.startsWith(`/cache/${ENTRY}/`)) {
+    if (
+      this.when === "copy" &&
+      path.resolve(target).startsWith(path.resolve("/cache", ENTRY) + path.sep)
+    ) {
       await this.takeOverOnce();
     }
   }
 
   override async writeFile(file: string, data: Buffer | string) {
     await super.writeFile(file, data);
-    if (this.when === "lockfile" && file === `/cache/${ENTRY}/pnpm-lock.yaml`) {
+    if (
+      this.when === "lockfile" &&
+      path.resolve(file) === path.resolve("/cache", ENTRY, "pnpm-lock.yaml")
+    ) {
       await this.takeOverOnce();
     }
   }
