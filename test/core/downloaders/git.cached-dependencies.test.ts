@@ -102,10 +102,21 @@ describe("GitDownloader on a listed clone at an unchanged commit", () => {
     expect(cloned(commands)).to.equal(false);
   });
 
+  it("fetches it without installing when its install command keeps no node_modules in the clone, as Yarn Plug'n'Play does", async () => {
+    const commands = await loadListedClone([], [INSTALL]);
+
+    expect(commands).to.include("git fetch");
+    expect(commands).to.not.include(INSTALL);
+  });
+
   it("leaves a clone that another live run uses as it is, without installing", async () => {
     const other = await startIdleProcess();
     try {
-      const commands = await loadListedClone([], [INSTALL], other.pid);
+      const commands = await loadListedClone(
+        ["dep/index.js"],
+        [INSTALL],
+        other.pid,
+      );
 
       expect(commands).to.not.include(INSTALL);
       expect(commands).to.not.include("git fetch");

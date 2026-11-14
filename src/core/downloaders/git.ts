@@ -19,6 +19,7 @@ import {
 const Logger = new Logging.Channel("loader.git");
 
 const GIT_DIR = ".git";
+const NODE_MODULES = "node_modules";
 const SAFE_GIT_ARGUMENT = /^[A-Za-z0-9._:/@~-]+$/;
 
 export interface GitDownloaderDeps {
@@ -271,12 +272,18 @@ async function assertOnRequestedRef(
  * Whether the clone in `folder` holds, in its `node_modules`, a
  * `package.json` for each dependency its `package.json` declares, as the
  * package downloader requires of a cached folder. A clone with no
- * `package.json`, or one that is not a manifest, declares none.
+ * `package.json`, or one that is not a manifest, declares none. A clone with
+ * no `node_modules` is not checked, since its install command puts its
+ * dependencies elsewhere, as a Yarn Plug'n'Play install or a project that
+ * installs them above the cache does.
  */
 async function hasDeclaredDependencies(
   folder: string,
   fs: IFileSystem,
 ): Promise<boolean> {
+  if (!(await fs.exists(path.join(folder, NODE_MODULES)))) {
+    return true;
+  }
   const dependencies = await readDeclaredDependencies(folder, fs);
   return (
     dependencies === undefined ||
