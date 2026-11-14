@@ -13,7 +13,10 @@ import {
   commonModule as common,
   gitOperationsModule as gitOps,
 } from "../../../../../../src/cli";
-import { InterfaceResolutionError } from "../../../../../../src/core/output";
+import {
+  CliError,
+  InterfaceResolutionError,
+} from "../../../../../../src/core/output";
 import {
   cleanupTempDir,
   makeTempDir,
@@ -131,6 +134,29 @@ describe("project modules install behavior: runs a local module's install comman
     expect(output.summary.firstCall.args[0]).to.deep.include({
       headline: "All interfaces are implemented",
     });
+  });
+
+  it("exits naming the module and the package when a required dependency is not installed", async () => {
+    writeJson(path.join(projectFolder, "consumer", "package.json"), {
+      name: "consumer",
+      version: "1.0.0",
+      main: "index.js",
+      dependencies: { "ajs-uninstalled-interface": "^1.0.0" },
+    });
+    await writeConfig(projectFolder, {
+      name: "proj",
+      modules: { consumer: { source: { type: "local", path: "./consumer" } } },
+    });
+
+    const failure = await rejectionOf(
+      cmdInstall().parseAsync(["node", "test", "--project", projectFolder]),
+    );
+
+    assert.ok(failure instanceof CliError);
+    expect(failure.problem.reason).to.equal(
+      "consumer requires ajs-uninstalled-interface, which is not installed",
+    );
+    expect(output.summary.called).to.equal(false);
   });
 
   it("checks each environment against what its own install commands install", async () => {
