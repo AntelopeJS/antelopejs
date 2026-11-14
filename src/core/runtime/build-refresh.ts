@@ -178,18 +178,50 @@ export function refreshBuildArtifact(
   };
 }
 
+/** The project's build artifact refreshed for a start, and how to read it again. */
+export interface RefreshedBuild {
+  /** The build artifact, refreshed with `antelope.config.ts` resolved for the environment. */
+  artifact: BuildArtifact;
+  /**
+   * Reads the build artifact again and refreshes it with the same
+   * configuration. When the build now loads other modules, as after
+   * `antelope.config.ts` was edited and the project rebuilt, the
+   * configuration is resolved again first.
+   */
+  readAgain: () => Promise<BuildArtifact>;
+}
+
 /**
- * Read the project's build artifact and refresh it with `antelope.config.ts`
- * resolved for `env`, without writing it back.
+ * Reads the project's build artifact, then refreshes it with
+ * `antelope.config.ts` resolved for `env`, without writing it back.
+ *
+ * @throws when there is no build, before `antelope.config.ts` is resolved.
  */
-export async function readRefreshedBuildArtifact(
+export async function readRefreshedBuild(
   projectFolder: string,
   env: string,
   fs: IFileSystem,
-): Promise<BuildArtifact> {
-  const artifact = await readBuildArtifactOrThrow(projectFolder, fs);
-  const config = await new ConfigLoader(fs).load(projectFolder, env);
-  return refreshBuildArtifact(artifact, config, env, projectFolder);
+): Promise<RefreshedBuild> {
+  const built = await readBuildArtifactOrThrow(projectFolder, fs);
+  const load = () => new ConfigLoader(fs).load(projectFolder, env);
+  let config = await load();
+  const refresh = (artifact: BuildArtifact) =>
+    refreshBuildArtifact(artifact, config, env, projectFolder);
+  return {
+    artifact: refresh(built),
+    readAgain: async () => {
+      const rebuilt = await readBuildArtifactOrThrow(projectFolder, fs);
+      try {
+        return refresh(rebuilt);
+      } catch (error) {
+        if (!(error instanceof BuildModuleSetChangedError)) {
+          throw error;
+        }
+        config = await load();
+        return refresh(rebuilt);
+      }
+    },
+  };
 }
 
 function expandedModuleConfig(entry: BuildModuleEntry): ExpandedModuleConfig {
