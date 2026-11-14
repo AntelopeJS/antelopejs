@@ -127,18 +127,22 @@ export const resolutionJourneys: Journey[] = [
   {
     id: "resolution-missing-provider",
     title: "a consumer of an interface no module implements fails the start and names the interface",
-    entryPoint: "ajs project dev without the provider module",
+    entryPoint: "ajs project dev without the provider module, consumer with its own installed verify-greeter",
     async run(context) {
       const greeter = copyGreeter(context);
+      setConsumerRange(greeter, "file:../verify-greeter");
+      await installFixture(context, path.join(greeter, "consumer"));
       const remove = await context.ajs("modules remove provider", ["project", "modules", "remove", "greeter-provider"], { cwd: greeter });
       context.expect(remove.folder, [exitIs(remove, 0)], { critical: true });
       const dev = await context.background("project dev", ["project", "dev"], { cwd: greeter });
       const ready = await context.waitReady("ready or exit", dev, 30_000);
       const exit = await Promise.race([dev.exited, new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 1_000))]);
+      const stderr = readFileSync(path.join(dev.folder, "stderr.txt"), "utf8");
       context.expect(ready.folder, [
         { name: "no greeting is served", pass: field(ready.json, "greeting") === undefined || ready.status !== 200, detail: `status ${ready.status}, body ${ready.body}` },
         { name: "dev exits non-zero", pass: exit !== undefined && exit.exitCode !== 0, detail: exit ? `exit code ${exit.exitCode}` : "still running" },
-        has("stderr", readFileSync(path.join(dev.folder, "stderr.txt"), "utf8"), /verify-greeter/),
+        has("stderr", stderr, /Unresolved interface dependencies/),
+        has("stderr", stderr, /greeter-consumer requires verify-greeter/),
       ]);
     },
   },

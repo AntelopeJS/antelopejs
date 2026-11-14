@@ -1,6 +1,10 @@
 import { ExecError } from "./command";
 import { describeInterfaceConflicts } from "./interface-conflicts";
 import { InterfaceResolutionError } from "./interface-resolution-error";
+import {
+  describeUnresolvedInterfaces,
+  UnresolvedInterfacesError,
+} from "./interface-unresolved-error";
 import { stripAnsiCodes } from "./logging-utils";
 import type { CliProblem } from "./types";
 import { isString } from "../../utils";
@@ -148,6 +152,9 @@ export function translateFailure(cause: unknown): CliProblem | undefined {
   }
   if (cause instanceof InterfaceResolutionError) {
     return describeInterfaceConflicts(cause);
+  }
+  if (cause instanceof UnresolvedInterfacesError) {
+    return describeUnresolvedInterfaces(cause);
   }
   if (isSystemError(cause)) {
     return SYSTEM_ERROR_TRANSLATIONS.get(cause.code ?? "")?.(cause);
