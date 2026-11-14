@@ -13,7 +13,7 @@ The TLA+ spec models what `ajs project dev --watch` does to module generations: 
 node .agents/skills/formal-module-lifecycle/check.mjs
 ```
 
-It needs Node 24, `pnpm install` done (the runner comes from `@antelopejs/tooling-configs/formal`), and Java 11 or later from `$JAVA`, else `java` on PATH, else the `eclipse-temurin:21-jre` Docker image (set `TLC_DOCKER_PREFIX` to name the containers). The first run downloads TLC 1.7.4 into `~/.cache/antelopejs-formal` (or `$XDG_CACHE_HOME/antelopejs-formal`) and checks its SHA-256. A run takes about 10 s on 4 cores and explores 502,410 states. CI runs it as the `formal-module-lifecycle` job.
+It needs Node 24, `pnpm install` done (the runner comes from `@antelopejs/tooling-configs/formal`), and Java 11 or later from `$JAVA`, else `java` on PATH, else the `eclipse-temurin:21-jre` Docker image (set `TLC_DOCKER_PREFIX` to name the containers). The first run downloads TLC 1.7.4 into `~/.cache/antelopejs-formal` (or `$XDG_CACHE_HOME/antelopejs-formal`) and checks its SHA-256. A run takes about 10 s on 4 cores and explores 754,476 states. CI runs it as the `formal-module-lifecycle` job.
 
 - Exit 0 means every rule that held still holds, and each finding still breaks with its recorded counterexample length.
 - Exit 1 means a rule changed. `BROKEN` names a rule that held and now breaks. `CHANGED` names a finding whose shortest counterexample changed length. `HOLDS` names a finding that no longer breaks. The script keeps TLC's output in a temporary folder and prints its path.
@@ -69,8 +69,10 @@ Replay the counterexample against the code, one action per step, with the covera
 | `ConstructApply`, `LaunchConstructed` | `constructAll`, `constructReadyModules` (src/core/modules/module-manager-construction.ts), `Module.construct` (module.ts), `ModuleLifecycle.construct` (module-lifecycle.ts) |
 | `StartApply`, `LaunchStarted` | `startAll`, `startModules` (module-manager-lifecycle.ts), `Module.start`, `ModuleLifecycle.start`, `enqueue` |
 | `LaunchWatch`, `LaunchHashConfig`, `LaunchWatching` | `setupWatching`, `keepRunningThroughFailedReloads` (project-launch.ts), `FileWatcher.scanModule`, `watchFile`, `startWatching`, `checkWatchedFilesIn` (src/core/runtime/watch/file-watcher.ts), `tolerateInvalidatedModuleWork` (runtime-bootstrap.ts) |
+| `LaunchReturns` | `startProject`, `POST_LAUNCH_STEPS` (project-launch.ts), `runLaunchSteps`, `throwIfStopping` (launch-steps.ts) |
 | `ConfigEdit`, `ConfigNoticed` | `writeConfig` (src/cli/common.ts), `FileWatcher.handleFileChange`, `handleWatchedFileChange` |
-| `RestartRequested`, `RestartLaunches` | `restartUnlessOwnWrite`, `restartProject`, `isRestarting` (project-launch.ts), `getActiveShutdownManager` (src/core/runtime/process-claim.ts), `runLaunchSequence` / `armShutdown` (launch-sequence.ts) |
+| `RestartRequested`, `RestartLaunches` | `restartUnlessOwnWrite`, `restartProject`, `isRestarting` (project-launch.ts), `getActiveShutdownManager` (src/core/runtime/process-claim.ts), `ShutdownManager.active`, `runLaunchSequence` / `armShutdown` (launch-sequence.ts) |
+| `RestartInterrupted` | the `catch` and `finally` of `restartProject`, `LaunchInterruptedError` (launch-steps.ts), `cleanupFailedLaunch` (launch-sequence.ts) |
 | `Sigint`, `BeginShutdown` | `ShutdownManager.handleSignal`, `shutdown` (src/core/runtime/shutdown/shutdown-manager.ts) |
 | `SdStop`, `SdStopDone`, `SdDestroy`, `SdClear` | `shutdownModules`, `registerModuleShutdownHandler` (process-claim.ts), `stopAll`, `destroyAll`, `getReverseLifecycleModules`, `clearManagedState` (module-manager-lifecycle.ts), `Module.stop`, `Module.destroy`, `ModuleLifecycle.stop`, `destroy` |
 | `SdWatcher` | the priority-20 handler in `setupWatching`, `HotReload.clear`, `FileWatcher.stopWatching` |
@@ -79,11 +81,11 @@ Replay the counterexample against the code, one action per step, with the covera
 | `SourceEdit`, `FlushStarts`, `ReloadBegins`, `BatchEnds` | `FileWatcher.notifyModuleChange`, `HotReload.queue`, `scheduleFlush`, `flush`, `reloadOne` (src/core/runtime/watch/hot-reload.ts), the reload handler in `setupWatching` |
 | `RlManifestLoaded` .. `RlRecovered` | `reloadLoadedModuleFromSource`, `activateReplacement`, `cleanupReplacement`, `recoverPreviousModule` (src/core/runtime/module-reloading.ts), `placeModule`, `replaceLoadedModule` (module-manager-records.ts), `checkReplacement` (module-manager-bindings.ts), `unrequireModuleFiles` (module-manager-cache.ts) |
 
-The sync commit is `9b81264` on AntelopeJS/antelopejs `main`. The actions the F1, F2 and F3 fixes changed cite `main` after those fixes: `Closed` and `LaunchHashConfig` cite the code of their fixes, and `LaunchPrepare` cites `1d5229e`.
+The sync commit is `4299737` on AntelopeJS/antelopejs `main`. Every `\* file.ts:NN` comment cites the code at that commit.
 
 ## Bounds and what is left out
 
-The check runs with modules `a` and `b` (`a` declared at start), at most 2 config edits (so at most 3 launches) and 1 module source edit, which gives 502,410 states. The charts use 0 edits with 1 source edit (1,334 states), and 1 edit with 0 source edits (2,123 states). A pass covers these bounds only.
+The check runs with modules `a` and `b` (`a` declared at start), at most 2 config edits (so at most 3 launches) and 1 module source edit, which gives 754,476 states. The charts use 0 edits with 1 source edit (2,757 states), and 1 edit with 0 source edits (2,825 states). Within these bounds only Ctrl+C interrupts the launch of a restart, and Ctrl+C exits the process, so `RestartInterrupted` never runs. It stays in the model because `restartProject` ends that way on `main`. A pass covers these bounds only.
 
 The model leaves out:
 
@@ -95,4 +97,4 @@ The model leaves out:
 - files that antelope.config.ts imports: jiti's module cache is off for the config, but Node's own loader still caches an imported `.json`, `.cjs`, CommonJS `.js` or `.mjs` file across restarts, and the watcher does not watch them;
 - `FileWatcher.scanModule` on a missing watch dir, such as the `src` that `ajs project modules add --mode local` writes for a module with no `src/`. The scan skips it and watches the module's other watch dirs, outside the lifecycle orders the model checks.
 
-Every await is a point where another step may run, including Ctrl+C, a file edit, and a timer. Node delivers those only between macrotasks, so the model allows some orders the code cannot produce. Every finding above was replayed, and each replay says which real await it needs.
+Every await is a point where another step may run, including Ctrl+C, a file edit, and a timer. Node delivers those only between macrotasks, so the model allows some orders the code cannot produce. It excludes one: `ConfigNoticed` never runs while its launch is in `postLaunch`, because the fs reads of `handleWatchedFileChange` resolve in a later poll phase than the `setImmediate` that `LaunchReturns` awaits. A signal can still land there. Every finding above was replayed, and each replay says which real await it needs.
