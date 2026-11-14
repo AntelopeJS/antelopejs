@@ -337,6 +337,20 @@ describe("PackageDownloader on a cached folder", () => {
     });
   }
 
+  it("serves the cached folder when a dependency optionalDependencies also lists was skipped by the install", async () => {
+    const execCalls = await loadWithCachedManifest(
+      JSON.stringify({
+        name: "pkg",
+        version: "1.0.0",
+        dependencies: { dep: "^1.0.0", "dep-darwin": "^1.0.0" },
+        optionalDependencies: { "dep-darwin": "^1.0.0" },
+      }),
+      ["dep/package.json"],
+    );
+
+    expect(execCalls).to.deep.equal([]);
+  });
+
   it("serves the cached folder when node_modules holds a package.json for each declared dependency", async () => {
     const execCalls = await loadWithCachedManifest(DEPENDENT_MANIFEST, [
       "dep/package.json",
