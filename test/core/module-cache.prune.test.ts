@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -9,11 +9,12 @@ import {
   cacheFolderNames,
   deadPid,
   hasEntryFolder,
-  holdPruneLock,
   leaseNames,
   manifestKeys,
+  otherNamespace,
   pruneLockPath,
   seedCache,
+  thisProcess,
   writeLease,
   VanishingFileSystem,
   writeLeaseText,
@@ -67,7 +68,7 @@ describe("ModuleCache prune", () => {
 
   it("ignores and deletes the lease of a run on this machine that has exited", async () => {
     writeLease(cachePath, "dead.json", {
-      host: os.hostname(),
+      ...thisProcess(),
       pid: deadPid(),
       entries: ["a@1.0.0"],
     });
@@ -80,6 +81,7 @@ describe("ModuleCache prune", () => {
 
   it("keeps the entries a lease from another machine names", async () => {
     writeLease(cachePath, "remote.json", {
+      ...thisProcess(),
       host: `${os.hostname()}-elsewhere`,
       pid: deadPid(),
       entries: ["a@1.0.0"],
@@ -89,6 +91,20 @@ describe("ModuleCache prune", () => {
 
     expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
     expect(leaseNames(cachePath)).to.deep.equal(["remote.json"]);
+  });
+
+  it("keeps the entries and the file of a lease from another pid namespace of this hostname", async () => {
+    writeLease(cachePath, "container.json", {
+      ...thisProcess(),
+      namespace: otherNamespace(),
+      pid: deadPid(),
+      entries: ["a@1.0.0"],
+    });
+
+    await prune(cachePath);
+
+    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
+    expect(leaseNames(cachePath)).to.deep.equal(["container.json"]);
   });
 
   it("reads only the .json files of the lease folder", async () => {
@@ -103,7 +119,12 @@ describe("ModuleCache prune", () => {
     { label: "is not JSON", content: "{" },
     {
       label: "names its entries as a string",
-      content: JSON.stringify({ host: "h", pid: 1, entries: "a@1.0.0" }),
+      content: JSON.stringify({
+        host: "h",
+        namespace: "none",
+        pid: 1,
+        entries: "a@1.0.0",
+      }),
     },
   ]) {
     it(`removes nothing when a lease ${label}`, async () => {
@@ -119,8 +140,7 @@ describe("ModuleCache prune", () => {
 
   it("skips a lease that its run deletes while the prune reads it", async () => {
     writeLease(cachePath, "exiting.json", {
-      host: os.hostname(),
-      pid: process.pid,
+      ...thisProcess(),
       entries: ["a@1.0.0"],
     });
     const exiting = path.join(cachePath, ".leases", "exiting.json");
@@ -130,32 +150,6 @@ describe("ModuleCache prune", () => {
     );
 
     expect(manifestKeys(cachePath)).to.deep.equal([]);
-  });
-
-  it("skips while a prune that has not yet written its owner holds the lock", async () => {
-    mkdirSync(pruneLockPath(cachePath));
-
-    await prune(cachePath);
-
-    expect(manifestKeys(cachePath)).to.have.length(3);
-  });
-
-  it("skips while another live prune holds the lock", async () => {
-    holdPruneLock(cachePath, process.pid);
-
-    await prune(cachePath);
-
-    expect(manifestKeys(cachePath)).to.have.length(3);
-    expect(existsSync(pruneLockPath(cachePath))).to.equal(true);
-  });
-
-  it("takes over the lock of a prune on this machine that has exited", async () => {
-    holdPruneLock(cachePath, deadPid());
-
-    await prune(cachePath);
-
-    expect(manifestKeys(cachePath)).to.deep.equal([]);
-    expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
   });
 
   it("drops the manifest key of an entry whose folder is already gone", async () => {

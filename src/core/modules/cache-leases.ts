@@ -1,21 +1,27 @@
 import { Logging } from "@antelopejs/interface-core/logging";
 import { randomUUID } from "node:crypto";
-import { unlinkSync } from "node:fs";
+import { readlinkSync, unlinkSync } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
 import type { IFileSystem } from "../../types";
 import { isNumber, isObject, isProcessAlive, isString } from "../../utils";
 
-/** A process that holds a file in a cache folder: the machine it runs on and its pid. */
+/**
+ * A process that holds a file in a cache folder: the machine it runs on, its
+ * pid namespace (`/proc/self/ns/pid` on Linux, `none` where it cannot be
+ * read) and its pid in that namespace.
+ */
 export interface ProcessRef {
   host: string;
+  namespace: string;
   pid: number;
 }
 
 /**
- * What `<cache>/.leases/<host>-<pid>-<uuid>.json` holds: the cache entries one
- * run resolves, as paths relative to the cache folder with `/` separators.
+ * What `<cache>/.leases/<host>-<namespace>-<pid>-<uuid>.json` holds: the
+ * cache entries one run resolves, as paths relative to the cache folder with
+ * `/` separators.
  */
 interface RunLease extends ProcessRef {
   entries: string[];
@@ -25,7 +31,10 @@ const LEASES_FOLDER = ".leases";
 const LEASE_EXTENSION = ".json";
 const TEMP_SUFFIX = ".tmp";
 const UNSAFE_NAME_CHARACTERS = /[^A-Za-z0-9_.-]/g;
-const LEASE_NAME = /^(.+)-([1-9]\d*)-[0-9a-f]{8}-[0-9a-f-]{27}\.json$/;
+const LEASE_NAME = /^(.+)-(\d+)-([1-9]\d*)-[0-9a-f]{8}-[0-9a-f-]{27}\.json$/;
+const PID_NAMESPACE_LINK = "/proc/self/ns/pid";
+const NO_NAMESPACE = "none";
+const NAMESPACE_DIGITS = /\d+/;
 const READ_ONLY_CODES = ["EACCES", "EPERM", "EROFS"];
 
 const Logger = new Logging.Channel("loader");
@@ -42,30 +51,52 @@ function isPid(value: unknown): value is number {
 
 /** Whether `value` names a process as {@link ProcessRef} does. */
 export function isProcessRef(value: unknown): value is ProcessRef {
-  return isObject(value) && isString(value.host) && isPid(value.pid);
+  return (
+    isObject(value) &&
+    isString(value.host) &&
+    isString(value.namespace) &&
+    isPid(value.pid)
+  );
 }
 
 function isRunLease(value: unknown): value is RunLease {
   return (
+    isProcessRef(value) &&
     isObject(value) &&
-    isString(value.host) &&
-    isPid(value.pid) &&
     Array.isArray(value.entries) &&
     value.entries.every(isString)
   );
 }
 
+function readPidNamespace(): string {
+  try {
+    return readlinkSync(PID_NAMESPACE_LINK);
+  } catch {
+    return NO_NAMESPACE;
+  }
+}
+
+const pidNamespace = readPidNamespace();
+
 /** This process, as a {@link ProcessRef}. */
 export function currentProcess(): ProcessRef {
-  return { host: os.hostname(), pid: process.pid };
+  return { host: os.hostname(), namespace: pidNamespace, pid: process.pid };
 }
 
 /**
- * Whether the process `ref` names may still run. A process on another machine
- * cannot be probed, so it counts as running.
+ * Whether `ref` runs on another machine or in another pid namespace, where
+ * this process cannot tell whether its pid still runs.
+ */
+export function isForeignProcess(ref: ProcessRef): boolean {
+  return ref.host !== os.hostname() || ref.namespace !== pidNamespace;
+}
+
+/**
+ * Whether the process `ref` names may still run. A foreign process (see
+ * {@link isForeignProcess}) cannot be probed, so it counts as running.
  */
 export function isLiveProcess(ref: ProcessRef): boolean {
-  return ref.host !== os.hostname() || isProcessAlive(ref.pid);
+  return isForeignProcess(ref) || isProcessAlive(ref.pid);
 }
 
 const heldLeases = new Set<string>();
@@ -92,24 +123,33 @@ function releaseAtExit(file: string): void {
   heldLeases.add(file);
 }
 
+function namespaceDigits(namespace: string): string {
+  return NAMESPACE_DIGITS.exec(namespace)?.[0] ?? "0";
+}
+
 function leaseFileName(owner: ProcessRef): string {
-  const name = `${owner.host}-${owner.pid}-${randomUUID()}`;
+  const namespace = namespaceDigits(owner.namespace);
+  const name = `${owner.host}-${namespace}-${owner.pid}-${randomUUID()}`;
   return `${name.replace(UNSAFE_NAME_CHARACTERS, "_")}${LEASE_EXTENSION}`;
 }
 
 /**
  * Whether the lease file `name`, as {@link leaseFileName} spells it, names a
- * process of this machine that has exited. It decides on a lease whose
- * content cannot be read, such as one a power loss left empty.
+ * process of this machine and pid namespace that has exited. It decides on a
+ * lease whose content cannot be read, such as one a power loss left empty.
  */
 function namesExitedRunOfThisMachine(name: string): boolean {
   const match = LEASE_NAME.exec(name);
   if (match === null) {
     return false;
   }
-  const [, host, pid] = match;
+  const [, host, namespace, pid] = match;
   const thisHost = os.hostname().replace(UNSAFE_NAME_CHARACTERS, "_");
-  return host === thisHost && !isProcessAlive(Number(pid));
+  return (
+    host === thisHost &&
+    namespace === namespaceDigits(pidNamespace) &&
+    !isProcessAlive(Number(pid))
+  );
 }
 
 /**

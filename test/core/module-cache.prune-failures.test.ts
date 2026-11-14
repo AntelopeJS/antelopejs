@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -10,14 +9,16 @@ import {
   deadPid,
   FailingOwnerFileSystem,
   hasEntryFolder,
-  hostnameInLeaseName,
   inLeaseFolder,
+  leaseNameOf,
   leaseNames,
   manifestKeys,
+  otherNamespace,
   pruneLockPath,
   RefusingFileSystem,
   seedCache,
   startIdleProcess,
+  thisProcess,
   writeLease,
   writeLeaseText,
 } from "../helpers/cache-leases";
@@ -47,7 +48,7 @@ describe("ModuleCache prune across processes and failures", () => {
     const other = await startIdleProcess();
     try {
       writeLease(cachePath, "other.json", {
-        host: os.hostname(),
+        ...thisProcess(),
         pid: other.pid,
         entries: ["a@1.0.0"],
       });
@@ -62,8 +63,7 @@ describe("ModuleCache prune across processes and failures", () => {
   });
 
   it("ignores and deletes an unreadable lease whose name is a run on this machine that has exited", async () => {
-    const name = `${hostnameInLeaseName()}-${deadPid()}-${randomUUID()}.json`;
-    writeLeaseText(cachePath, name, "");
+    writeLeaseText(cachePath, leaseNameOf({ pid: deadPid() }), "");
 
     await prune(cachePath);
 
@@ -71,18 +71,23 @@ describe("ModuleCache prune across processes and failures", () => {
     expect(leaseNames(cachePath)).to.deep.equal([]);
   });
 
-  for (const { label, owner } of [
+  for (const { label, name } of [
     {
       label: "a live run of this machine",
-      owner: () => `${hostnameInLeaseName()}-${process.pid}`,
+      name: () => leaseNameOf({ pid: process.pid }),
     },
     {
       label: "a run of another machine",
-      owner: () => `${hostnameInLeaseName()}_elsewhere-${deadPid()}`,
+      name: () =>
+        leaseNameOf({ host: `${os.hostname()}-elsewhere`, pid: deadPid() }),
+    },
+    {
+      label: "a run of this hostname in another pid namespace",
+      name: () => leaseNameOf({ namespace: otherNamespace(), pid: deadPid() }),
     },
   ]) {
     it(`removes nothing when an unreadable lease names ${label}`, async () => {
-      writeLeaseText(cachePath, `${owner()}-${randomUUID()}.json`, "");
+      writeLeaseText(cachePath, name(), "");
 
       await assert.rejects(prune(cachePath), /JSON/);
 

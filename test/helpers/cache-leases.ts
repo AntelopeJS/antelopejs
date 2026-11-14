@@ -1,9 +1,10 @@
 import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
   readdirSync,
-  utimesSync,
+  readlinkSync,
   writeFileSync,
 } from "node:fs";
 import os from "node:os";
@@ -16,7 +17,33 @@ import { readText, writeJson } from "./temp";
 
 const LEASES_FOLDER = ".leases";
 const LOCK_FOLDER = ".prune.lock";
-const OLDER_THAN_STALE_MS = 120_000;
+const HELD_LOCK_TOKEN = "held-by-the-test";
+
+/** A process as a lease or a prune lock names it. */
+export interface LeaseOwner {
+  host: string;
+  namespace: string;
+  pid: number;
+}
+
+/** The pid namespace of this process, read on its own so that it checks the core's reading. */
+export function pidNamespace(): string {
+  try {
+    return readlinkSync("/proc/self/ns/pid");
+  } catch {
+    return "none";
+  }
+}
+
+/** This process, as a lease or a prune lock names it. */
+export function thisProcess(): LeaseOwner {
+  return { host: os.hostname(), namespace: pidNamespace(), pid: process.pid };
+}
+
+/** A pid namespace other than the one of this process. */
+export function otherNamespace(): string {
+  return pidNamespace() === "pid:[1]" ? "pid:[2]" : "pid:[1]";
+}
 
 /**
  * Seeds the cache at `cachePath` with a package module for each
@@ -107,20 +134,20 @@ export function pruneLockPath(cachePath: string): string {
 }
 
 /**
- * Holds the prune lock of the cache at `cachePath` for the process `pid` of
- * this machine. An `aged` lock is dated two minutes back.
+ * Holds the prune lock of the cache at `cachePath` for the process `owner`,
+ * at heartbeat `beat`. Holding it again with another `beat` is a heartbeat.
  */
 export function holdPruneLock(
   cachePath: string,
-  pid: number,
-  aged = false,
+  owner: Partial<LeaseOwner> & { pid: number },
+  beat = 0,
 ): void {
-  const lock = pruneLockPath(cachePath);
-  writeJson(path.join(lock, "owner.json"), { host: os.hostname(), pid });
-  if (aged) {
-    const past = new Date(Date.now() - OLDER_THAN_STALE_MS);
-    utimesSync(lock, past, past);
-  }
+  writeJson(path.join(pruneLockPath(cachePath), "owner.json"), {
+    ...thisProcess(),
+    ...owner,
+    token: HELD_LOCK_TOKEN,
+    beat,
+  });
 }
 
 /**
@@ -181,9 +208,16 @@ export function startIdleProcess(): Promise<IdleProcess> {
   });
 }
 
-/** This machine's hostname as a lease file name spells it. */
-export function hostnameInLeaseName(): string {
-  return os.hostname().replace(/[^A-Za-z0-9_.-]/g, "_");
+/**
+ * The name of a lease file of `owner`, spelled as the core spells it: the
+ * hostname, the digits of the pid namespace (`0` for none), the pid and a
+ * random id.
+ */
+export function leaseNameOf(owner: Partial<LeaseOwner> & { pid: number }) {
+  const { host, namespace, pid } = { ...thisProcess(), ...owner };
+  const digits = /\d+/.exec(namespace)?.[0] ?? "0";
+  const safeHost = host.replace(/[^A-Za-z0-9_.-]/g, "_");
+  return `${safeHost}-${digits}-${pid}-${randomUUID()}.json`;
 }
 
 function systemError(code: string): Error {
@@ -192,29 +226,32 @@ function systemError(code: string): Error {
 
 /**
  * The real filesystem, except that `mkdir`, `writeFile` and `rename` fail
- * with `EACCES` on every path `refuses` accepts, as on a folder this process
- * may not write.
+ * with the system error `code` on every path `refuses` accepts: `EACCES` on a
+ * folder this process may not write, `ENOSPC` on a full disk.
  */
 export class RefusingFileSystem extends NodeFileSystem {
-  constructor(private readonly refuses: (file: string) => boolean) {
+  constructor(
+    private readonly refuses: (file: string) => boolean,
+    private readonly code = "EACCES",
+  ) {
     super();
   }
 
   override mkdir(file: string, options?: { recursive?: boolean }) {
     return this.refuses(file)
-      ? Promise.reject(systemError("EACCES"))
+      ? Promise.reject(systemError(this.code))
       : super.mkdir(file, options);
   }
 
   override writeFile(file: string, data: Buffer | string) {
     return this.refuses(file)
-      ? Promise.reject(systemError("EACCES"))
+      ? Promise.reject(systemError(this.code))
       : super.writeFile(file, data);
   }
 
   override rename(source: string, target: string) {
     return this.refuses(source) || this.refuses(target)
-      ? Promise.reject(systemError("EACCES"))
+      ? Promise.reject(systemError(this.code))
       : super.rename(source, target);
   }
 }
@@ -228,7 +265,7 @@ export function inLeaseFolder(cachePath: string): (file: string) => boolean {
 /** The real filesystem, except that writing a prune lock's owner fails with `ENOSPC`. */
 export class FailingOwnerFileSystem extends NodeFileSystem {
   override writeFile(file: string, data: Buffer | string) {
-    if (path.basename(file) === "owner.json") {
+    if (path.basename(file).startsWith("owner.json")) {
       return Promise.reject(
         Object.assign(new Error("ENOSPC: no space left on device"), {
           code: "ENOSPC",

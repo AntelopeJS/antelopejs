@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { spawn } from "node:child_process";
-import { rmSync } from "node:fs";
-import os from "node:os";
+import { rmSync, utimesSync } from "node:fs";
 import path from "node:path";
 
 import { ModuleCache } from "../../src/core/modules";
@@ -14,6 +13,7 @@ import {
   readLeases,
   RefusingFileSystem,
   seedCache,
+  thisProcess,
   VanishingFileSystem,
 } from "../helpers/cache-leases";
 import { cleanupTempDir, makeTempDir } from "../helpers/temp";
@@ -79,7 +79,7 @@ describe("ModuleCache run leases", () => {
     await cache.getFolder("@scope/pkg@1.0.0", true, true);
 
     expect(readLeases(cachePath)).to.deep.equal([
-      { host: os.hostname(), pid: process.pid, entries: ["@scope/pkg@1.0.0"] },
+      { ...thisProcess(), entries: ["@scope/pkg@1.0.0"] },
     ]);
   });
 
@@ -96,11 +96,7 @@ describe("ModuleCache run leases", () => {
     await cache.getFolder("a@1.0.0", true, true);
 
     expect(readLeases(cachePath)).to.deep.equal([
-      {
-        host: os.hostname(),
-        pid: process.pid,
-        entries: ["a@1.0.0", "b@1.0.0", "c@1.0.0/sub"],
-      },
+      { ...thisProcess(), entries: ["a@1.0.0", "b@1.0.0", "c@1.0.0/sub"] },
     ]);
   });
 
@@ -112,7 +108,7 @@ describe("ModuleCache run leases", () => {
   });
 
   it("waits while a live prune holds the cache, then returns once it is released", async () => {
-    holdPruneLock(cachePath, process.pid);
+    holdPruneLock(cachePath, { pid: process.pid });
     const claimed = new ModuleCache(cachePath).getFolder("a@1.0.0", true, true);
 
     expect(await settlesWithin(claimed, PENDING_WINDOW_MS)).to.equal(false);
@@ -125,11 +121,15 @@ describe("ModuleCache run leases", () => {
   for (const { label, hold } of [
     {
       label: "whose owner on this machine has exited",
-      hold: (cache: string) => holdPruneLock(cache, deadPid()),
+      hold: (cache: string) => holdPruneLock(cache, { pid: deadPid() }),
     },
     {
       label: "older than a minute",
-      hold: (cache: string) => holdPruneLock(cache, process.pid, true),
+      hold: (cache: string) => {
+        holdPruneLock(cache, { pid: process.pid });
+        const past = new Date(Date.now() - 120_000);
+        utimesSync(pruneLockPath(cache), past, past);
+      },
     },
   ]) {
     it(`does not wait for a prune lock ${label}`, async () => {
@@ -146,7 +146,7 @@ describe("ModuleCache run leases", () => {
   }
 
   it("does not wait for a prune lock released while the claim reads it", async () => {
-    holdPruneLock(cachePath, process.pid);
+    holdPruneLock(cachePath, { pid: process.pid });
     const fs = new VanishingFileSystem(pruneLockPath(cachePath));
 
     const claimed = new ModuleCache(cachePath, fs).getFolder(
