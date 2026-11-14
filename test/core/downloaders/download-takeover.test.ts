@@ -7,6 +7,7 @@ import {
   DownloaderRegistry,
   registerGitDownloader,
 } from "../../../src/core/downloaders";
+import { NodeFileSystem } from "../../../src/core/filesystem";
 import { downloadLockOf, ModuleCache } from "../../../src/core/modules";
 import {
   CHILD_TIMEOUT_MS,
@@ -149,5 +150,48 @@ describe("A git update whose download lock another process took over", () => {
       .that.includes("took over the download lock");
     expect(afterTakeover).to.deep.equal([]);
     expect(cache.getVersion(name)).to.equal("git:main:oldcommit");
+  });
+});
+
+/** The real file system, except that the next read of an `owner.json` fails with `EBUSY` once `failNextOwnerRead` is set, as on Windows while a heartbeat renames it. */
+class BusyOwnerFileSystem extends NodeFileSystem {
+  failNextOwnerRead = false;
+
+  override readFileString(file: string, encoding?: BufferEncoding) {
+    if (this.failNextOwnerRead && path.basename(file) === "owner.json") {
+      this.failNextOwnerRead = false;
+      return Promise.reject(
+        Object.assign(new Error("EBUSY: resource busy or locked"), {
+          code: "EBUSY",
+        }),
+      );
+    }
+    return super.readFileString(file, encoding);
+  }
+}
+
+describe("A download that holds its lock while its owner cannot be read for a moment", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = makeTempDir("ajs-download-busy-owner-");
+  });
+
+  afterEach(() => {
+    cleanupTempDir(root);
+  });
+
+  it("lists the version", async () => {
+    const cachePath = path.join(root, "cache");
+    const fs = new BusyOwnerFileSystem();
+    const cache = new ModuleCache(cachePath, fs);
+    await cache.load();
+
+    await cache.withDownloadLock(ENTRY, async () => {
+      fs.failNextOwnerRead = true;
+      await cache.commitVersion(ENTRY, "1.0.0");
+    });
+
+    expect(manifestKeys(cachePath)).to.deep.equal([ENTRY]);
   });
 });

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import * as fsNode from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { satisfies } from "semver";
 
 import type { IFileSystem } from "../../types";
@@ -30,6 +31,8 @@ import { CacheManifest } from "./cache-manifest";
 const Logger = new Logging.Channel("loader");
 
 const TRASH_FOLDER = ".trash";
+const HELD_CHECKS = 3;
+const HELD_CHECK_PAUSE_MS = 25;
 
 /** Whether a prune keeps a manifest entry that no live run's lease covers. */
 export type CacheKeep = (entry: string) => boolean;
@@ -316,12 +319,25 @@ export class ModuleCache {
    * each step that replaces the folder of `module`, and `getFolder` and
    * `commitVersion` call it before they clean the folder and list it.
    *
+   * A check that finds another owner, or none it can read, is tried again
+   * after a pause, up to three times, since on Windows a read of
+   * `owner.json` fails while the heartbeat of this process renames it.
+   *
    * @throws when another process took the lock over, as after this process
    * stalled for 60 s, since that process now downloads `module`.
    */
   async ensureDownloadLockHeld(module: string): Promise<void> {
     const lock = heldDownloads.get(downloadKey(this.path, module));
-    if (lock !== undefined && !(await lock.isHeld())) {
+    if (lock === undefined) {
+      return;
+    }
+    for (let check = 1; check < HELD_CHECKS; check += 1) {
+      if (await lock.isHeld()) {
+        return;
+      }
+      await delay(HELD_CHECK_PAUSE_MS);
+    }
+    if (!(await lock.isHeld())) {
       throw new Error(
         `Another process took over the download lock of ${module} in ${this.path}; this run stopped so that it does not write over that download. Run the command again.`,
       );
