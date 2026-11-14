@@ -165,30 +165,44 @@ function verifyConsumer(
   run(process.execPath, [target, ...args], folder);
 }
 
-function verifyEs2020Types(): void {
+function verifyTypes(
+  name: string,
+  source: string,
+  module: "commonjs" | "node16",
+): void {
+  fs.writeFileSync(path.join(consumerFolder, `${name}.ts`), source);
   fs.writeFileSync(
-    path.join(consumerFolder, "types.ts"),
-    'export * from "@antelopejs/core";\n',
-  );
-  fs.writeFileSync(
-    path.join(consumerFolder, "tsconfig.json"),
+    path.join(consumerFolder, `tsconfig.${name}.json`),
     JSON.stringify({
       compilerOptions: {
         target: "ES2020",
         lib: ["ES2020"],
-        module: "commonjs",
+        module,
         strict: true,
         noEmit: true,
+        skipLibCheck: false,
         esModuleInterop: true,
         experimentalDecorators: true,
         emitDecoratorMetadata: true,
         typeRoots: [path.join(root, "node_modules", "@types")],
         types: ["node"],
       },
-      files: ["types.ts"],
+      files: [`${name}.ts`],
     }),
   );
-  run(process.execPath, [typeScriptCompiler, "-p", "."], consumerFolder);
+  run(
+    process.execPath,
+    [typeScriptCompiler, "-p", `tsconfig.${name}.json`],
+    consumerFolder,
+  );
+}
+
+function verifyEs2020Types(): void {
+  verifyTypes("types", 'export * from "@antelopejs/core";\n', "commonjs");
+}
+
+function verifyCliTypes(): void {
+  verifyTypes("cli-types", 'export * from "@antelopejs/core/cli";\n', "node16");
 }
 
 function verifyPinnedConsumer(tarball: string, version: string): void {
@@ -222,11 +236,12 @@ try {
   verifyConsumer("verify-cli.cjs");
   verifyConsumer("verify-cli-api.cjs");
   verifyEs2020Types();
+  verifyCliTypes();
   for (const version of pinnedInterfaceCores) {
     verifyPinnedConsumer(tarball, version);
   }
   process.stdout.write(
-    "Package consumer routing, CLI startup, CLI API, ES2020 types and pinned interface-core verified.\n",
+    "Package consumer routing, CLI startup, CLI API, ES2020 types, CLI types and pinned interface-core verified.\n",
   );
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
