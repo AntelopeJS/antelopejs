@@ -5,8 +5,15 @@ import os from "node:os";
 import path from "node:path";
 
 import { NodeFileSystem } from "../../src/core/filesystem";
-import { type CacheKeep, ModuleCache } from "../../src/core/modules";
 import {
+  type CacheKeep,
+  downloadLockOf,
+  ModuleCache,
+  PRUNE_LOCK,
+  tryAcquireCacheLock,
+} from "../../src/core/modules";
+import {
+  cacheFolderNames,
   deadPid,
   FailingOwnerFileSystem,
   hasEntryFolder,
@@ -33,20 +40,38 @@ function prune(cachePath: string) {
 }
 
 /**
- * Fails to write the owner of the prune lock of `cachePath`, as
- * {@link FailingOwnerFileSystem} does, after `takeOver` ran, as another live
- * prune that took the lock folder over would.
+ * {@link FailingOwnerFileSystem}, recording each folder it is asked to
+ * create, as a full disk would refuse the owner of a lock.
  */
-class TakenOverOwnerFileSystem extends FailingOwnerFileSystem {
+class FullDiskFileSystem extends FailingOwnerFileSystem {
+  readonly created: string[] = [];
+
+  override mkdir(file: string, options?: { recursive?: boolean }) {
+    this.created.push(file);
+    return super.mkdir(file, options);
+  }
+}
+
+/**
+ * The real file system, except that moving the owner of a lock into its
+ * folder fails with `EPERM` after `takeOver` ran, as another live prune that
+ * took the lock folder over meanwhile would.
+ */
+class TakenOverOwnerFileSystem extends NodeFileSystem {
   constructor(private readonly takeOver: () => void) {
     super();
   }
 
-  override writeFile(file: string, data: Buffer | string) {
-    if (path.basename(file).startsWith("owner.json")) {
+  override rename(source: string, target: string) {
+    if (path.basename(target) === "owner.json") {
       this.takeOver();
+      return Promise.reject(
+        Object.assign(new Error("EPERM: operation not permitted"), {
+          code: "EPERM",
+        }),
+      );
     }
-    return super.writeFile(file, data);
+    return super.rename(source, target);
   }
 }
 
@@ -192,26 +217,69 @@ describe("ModuleCache prune that cannot record its lock owner", () => {
     cleanupTempDir(root);
   });
 
-  it("releases the lock when it cannot record its owner", async () => {
-    const fs = new FailingOwnerFileSystem();
+  it("takes the download lock of a module whose name is as long as a lock name gets", async () => {
+    const fs = new NodeFileSystem();
+
+    const lock = await tryAcquireCacheLock(
+      cachePath,
+      downloadLockOf("a".repeat(200)),
+      fs,
+    );
+    await lock?.release();
+
+    expect(lock).to.not.equal(undefined);
+  });
+
+  it("waits for a lock another live prune holds though the disk refuses its own owner", async () => {
+    holdPruneLock(cachePath, { pid: process.pid, token: "held" });
+
+    const lock = await tryAcquireCacheLock(
+      cachePath,
+      PRUNE_LOCK,
+      new FailingOwnerFileSystem(),
+    );
+
+    expect(lock).to.equal(undefined);
+    expect(readLockOwner(pruneLockPath(cachePath))?.token).to.equal("held");
+  });
+
+  it("fails before it creates the lock folder when the disk refuses its owner", async () => {
+    const fs = new FullDiskFileSystem();
 
     await assert.rejects(
       new ModuleCache(cachePath, fs).prune(async () => KEEP_NOTHING),
       /ENOSPC/,
     );
 
+    expect(fs.created).to.not.include(pruneLockPath(cachePath));
     expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
     expect(manifestKeys(cachePath)).to.have.length(3);
   });
 
-  it("leaves the lock another prune took over while it failed to record its owner", async () => {
+  it("releases the lock, and leaves no staged owner, when it cannot move its owner into the folder", async () => {
+    const fs = new TakenOverOwnerFileSystem(() => undefined);
+
+    await assert.rejects(
+      new ModuleCache(cachePath, fs).prune(async () => KEEP_NOTHING),
+      /EPERM/,
+    );
+
+    expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
+    expect(
+      cacheFolderNames(cachePath, ".").filter((name) =>
+        name.includes("owner.json"),
+      ),
+    ).to.deep.equal([]);
+  });
+
+  it("leaves the lock another prune took over while it moved its owner into the folder", async () => {
     const fs = new TakenOverOwnerFileSystem(() =>
       holdPruneLock(cachePath, { pid: process.pid, token: "taken-over" }),
     );
 
     await assert.rejects(
       new ModuleCache(cachePath, fs).prune(async () => KEEP_NOTHING),
-      /ENOSPC/,
+      /EPERM/,
     );
 
     expect(readLockOwner(pruneLockPath(cachePath))?.token).to.equal(
@@ -220,14 +288,14 @@ describe("ModuleCache prune that cannot record its lock owner", () => {
     expect(manifestKeys(cachePath)).to.have.length(3);
   });
 
-  it("leaves the lock whose owner.json exists but cannot be read for a moment when it failed to record its own", async () => {
+  it("leaves the lock whose owner.json exists but cannot be read for a moment when it failed to move its own in", async () => {
     const fs = new BusyOwnerFileSystem(() =>
       holdPruneLock(cachePath, { pid: process.pid, token: "taken-over" }),
     );
 
     await assert.rejects(
       new ModuleCache(cachePath, fs).prune(async () => KEEP_NOTHING),
-      /ENOSPC/,
+      /EPERM/,
     );
 
     expect(readLockOwner(pruneLockPath(cachePath))?.token).to.equal(
@@ -235,7 +303,7 @@ describe("ModuleCache prune that cannot record its lock owner", () => {
     );
   });
 
-  it("releases the lock when its owner was written though the write reported a failure", async () => {
+  it("releases the lock when its owner was moved in though the move reported a failure", async () => {
     const fs = new RenamedThenFailingFileSystem();
 
     await assert.rejects(
@@ -246,7 +314,7 @@ describe("ModuleCache prune that cannot record its lock owner", () => {
     expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
   });
 
-  it("leaves the lock whose owner.json cannot be read when it failed to record its own", async () => {
+  it("leaves the lock whose owner.json cannot be parsed when it failed to move its own in", async () => {
     const ownerFile = path.join(pruneLockPath(cachePath), "owner.json");
     const fs = new TakenOverOwnerFileSystem(() =>
       writeFileSync(ownerFile, "{"),
@@ -254,7 +322,7 @@ describe("ModuleCache prune that cannot record its lock owner", () => {
 
     await assert.rejects(
       new ModuleCache(cachePath, fs).prune(async () => KEEP_NOTHING),
-      /ENOSPC/,
+      /EPERM/,
     );
 
     expect(existsSync(ownerFile)).to.equal(true);

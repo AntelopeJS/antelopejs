@@ -276,30 +276,69 @@ function startHeartbeat(
   };
 }
 
+/**
+ * Creates the lock folder `lockFolder` with `owner` in it. The owner is first
+ * written to a file beside the folder, named after its token alone so that
+ * it fits the file name limit whatever the lock is named, and renamed into
+ * the folder once it exists, so that a write the file system refuses, as on
+ * a full disk, fails before any lock folder exists. A refused write while
+ * the folder exists counts as a lock another process holds. Only that rename
+ * can fail once this process created the folder, and then the folder is
+ * removed unless another hold owns it.
+ *
+ * @returns whether this process created the folder; `false` when it exists.
+ */
+async function createLockFolder(
+  lockFolder: string,
+  owner: LockOwner,
+  fs: IFileSystem,
+): Promise<boolean> {
+  await fs.mkdir(path.dirname(lockFolder), { recursive: true });
+  const staged = path.join(
+    path.dirname(lockFolder),
+    `.${owner.token}.${OWNER_FILE}.tmp`,
+  );
+  try {
+    try {
+      await fs.writeFile(staged, JSON.stringify(owner));
+    } catch (error) {
+      if (await fs.exists(lockFolder)) {
+        return false;
+      }
+      throw error;
+    }
+    try {
+      await fs.mkdir(lockFolder);
+    } catch (error) {
+      if (error instanceof Error && hasErrorCode(error, "EEXIST")) {
+        return false;
+      }
+      throw error;
+    }
+    try {
+      await fs.rename(staged, path.join(lockFolder, OWNER_FILE));
+    } catch (error) {
+      await removeUnlessOwnedByAnother(lockFolder, owner.token, fs);
+      throw error;
+    }
+    return true;
+  } finally {
+    await fs.rm(staged, { force: true });
+  }
+}
+
 async function tryCreateLock(
   lockFolder: string,
   fs: IFileSystem,
   heartbeatMs: number,
 ): Promise<CacheLock | undefined> {
-  await fs.mkdir(path.dirname(lockFolder), { recursive: true });
-  try {
-    await fs.mkdir(lockFolder);
-  } catch (error) {
-    if (error instanceof Error && hasErrorCode(error, "EEXIST")) {
-      return undefined;
-    }
-    throw error;
-  }
   const owner: LockOwner = {
     ...currentProcess(),
     token: randomUUID(),
     beat: 0,
   };
-  try {
-    await writeOwner(lockFolder, owner, fs);
-  } catch (error) {
-    await removeUnlessOwnedByAnother(lockFolder, owner.token, fs);
-    throw error;
+  if (!(await createLockFolder(lockFolder, owner, fs))) {
+    return undefined;
   }
   const stopHeartbeat = startHeartbeat(lockFolder, owner, fs, heartbeatMs);
   return {

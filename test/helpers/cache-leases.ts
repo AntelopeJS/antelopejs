@@ -297,7 +297,7 @@ export function inLeaseFolder(cachePath: string): (file: string) => boolean {
 /** The real filesystem, except that writing a prune lock's owner fails with `ENOSPC`. */
 export class FailingOwnerFileSystem extends NodeFileSystem {
   override writeFile(file: string, data: Buffer | string) {
-    if (path.basename(file).startsWith("owner.json")) {
+    if (path.basename(file).includes("owner.json")) {
       return Promise.reject(
         Object.assign(new Error("ENOSPC: no space left on device"), {
           code: "ENOSPC",
