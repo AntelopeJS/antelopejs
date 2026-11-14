@@ -401,7 +401,8 @@ export const testSteps = {
  *
  * @param files - Test files to run instead of the discovered ones.
  * @param timeout - Milliseconds each test and hook may take, interface
- * conformance suites included; mocha's 2000 ms default when absent.
+ * conformance suites included; mocha's 2000 ms default when absent. A
+ * positive integer: mocha takes `0` or less as no timeout at all.
  */
 export async function TestModule(
   moduleFolder: string = ".",

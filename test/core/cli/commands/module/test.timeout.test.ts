@@ -22,6 +22,7 @@ import {
 import { expectInstanceOf, rejectionOf } from "../../fixtures";
 
 const CHILD_TIMEOUT_MS = 60000;
+const CHILD_KILL_MS = 50000;
 const SLOW_HOOK_MS = 2500;
 const RAISED_TIMEOUT = "10000";
 const REPORT_PREFIX = "REPORT ";
@@ -64,6 +65,7 @@ function runModuleTest(args: string[]): Promise<ChildRun> {
       {
         cwd: REPO_ROOT,
         env: { ...process.env, TS_NODE_TRANSPILE_ONLY: "true" },
+        timeout: CHILD_KILL_MS,
       },
     );
     let output = "";
