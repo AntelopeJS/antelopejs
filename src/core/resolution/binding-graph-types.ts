@@ -63,7 +63,10 @@ export interface InstanceDescriptor {
   key: string;
   interfaceName: string;
   provider?: string;
-  /** Set when the provider disables this export: no other module reaches the instance. */
+  /**
+   * Set when the provider disables this export: no other module binds to the
+   * instance, and an undeclared import never picks it among several.
+   */
   private?: boolean;
   /** Instance keys a self-hosted instance imports. */
   dependencies: readonly string[];
