@@ -16,7 +16,13 @@ import {
 const OWNER_FILE = "owner.json";
 const HEARTBEAT_INTERVAL_MS = 10_000;
 const SILENT_AFTER_MS = 60_000;
-const CREATION_WINDOW_MS = 10_000;
+/**
+ * How long a lock folder may go without `owner.json` before a waiter removes
+ * it. It equals {@link SILENT_AFTER_MS}, so a live creator that stalls between
+ * creating the folder and writing its owner keeps its lock as long as a live
+ * holder whose heartbeat stalls does.
+ */
+const CREATION_WINDOW_MS = SILENT_AFTER_MS;
 const POLL_INTERVAL_MS = 25;
 const REMOVE_ATTEMPTS = 10;
 const DOWNLOADS_FOLDER = ".downloads";
@@ -174,20 +180,23 @@ async function fileSystemNow(folder: string, fs: IFileSystem): Promise<number> {
  * that holds it dates the folder more than {@link CREATION_WINDOW_MS} back,
  * as a lock whose creator stopped between creating the folder and writing
  * its owner. Both dates come from the clock of that file system, so a clock
- * of this machine that disagrees with it does not matter. A lock that cannot
+ * of this machine that disagrees with it does not matter. `owner.json` is
+ * looked for again after the folder is dated, so that a lock another process
+ * took meanwhile and wrote its owner in is not abandoned. A lock that cannot
  * be dated so, as on a cache this process may not write, is not abandoned.
  */
 async function isAbandoned(
   lockFolder: string,
   fs: IFileSystem,
 ): Promise<boolean> {
-  if (await fs.exists(path.join(lockFolder, OWNER_FILE))) {
+  const ownerFile = path.join(lockFolder, OWNER_FILE);
+  if (await fs.exists(ownerFile)) {
     return false;
   }
   try {
     const now = await fileSystemNow(path.dirname(lockFolder), fs);
     const created = (await fs.stat(lockFolder)).mtimeMs;
-    return now - created > CREATION_WINDOW_MS;
+    return now - created > CREATION_WINDOW_MS && !(await fs.exists(ownerFile));
   } catch {
     return false;
   }
