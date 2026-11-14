@@ -21,6 +21,7 @@ import { acquirePruneLock, waitWhilePruneLocked } from "./cache-prune-lock";
 const Logger = new Logging.Channel("loader");
 
 const TRASH_FOLDER = ".trash";
+const MANIFEST_FILE = "manifest.json";
 
 /** Whether a prune keeps a manifest entry that no live run's lease covers. */
 export type CacheKeep = (entry: string) => boolean;
@@ -95,12 +96,30 @@ export async function findCacheEntry(
   );
 }
 
+/**
+ * Applies to `manifest` each version of `changes`: a version sets its entry,
+ * `undefined` removes it.
+ */
+function applyChanges(
+  manifest: Record<string, string>,
+  changes: ReadonlyMap<string, string | undefined>,
+): void {
+  for (const [module, version] of changes) {
+    if (version === undefined) {
+      delete manifest[module];
+    } else {
+      manifest[module] = version;
+    }
+  }
+}
+
 function isVersionManifest(value: unknown): value is Record<string, string> {
   return isPlainObject(value) && Object.values(value).every(isString);
 }
 
 export class ModuleCache {
   private manifest: Record<string, string> = {};
+  private readonly changes = new Map<string, string | undefined>();
   private pendingSave: Promise<void> = Promise.resolve();
   private readonly claims = new Map<string, Promise<void>>();
   private readonly lease: RunLeaseFile;
@@ -114,32 +133,51 @@ export class ModuleCache {
 
   async load(): Promise<void> {
     await this.fs.mkdir(this.path, { recursive: true });
-    const manifestPath = path.join(this.path, "manifest.json");
-    this.manifest = {};
-    if (await this.fs.exists(manifestPath)) {
-      try {
-        const data = await this.fs.readFileString(manifestPath);
-        const parsed: unknown = JSON.parse(data);
-        this.manifest = isVersionManifest(parsed) ? parsed : {};
-      } catch {
-        this.manifest = {};
-      }
+    this.manifest = await this.readManifest();
+  }
+
+  private async readManifest(): Promise<Record<string, string>> {
+    const manifestPath = path.join(this.path, MANIFEST_FILE);
+    if (!(await this.fs.exists(manifestPath))) {
+      return {};
+    }
+    try {
+      const parsed: unknown = JSON.parse(
+        await this.fs.readFileString(manifestPath),
+      );
+      return isVersionManifest(parsed) ? parsed : {};
+    } catch {
+      return {};
     }
   }
 
   /**
-   * Writes the manifest after the saves before it. It is written to a
+   * Writes the manifest after the saves before it. It re-reads
+   * `manifest.json` and applies only the versions this run set or cleared,
+   * so that the entries another run committed meanwhile stay. It writes a
    * temporary file renamed over `manifest.json`, so that another run never
    * reads it halfway.
    */
   save(): Promise<void> {
-    const manifestPath = path.join(this.path, "manifest.json");
-    this.pendingSave = this.pendingSave.then(async () => {
-      const temp = `${manifestPath}.${randomUUID()}.tmp`;
-      await this.fs.writeFile(temp, JSON.stringify(this.manifest, null, 2));
-      await this.fs.rename(temp, manifestPath);
-    });
+    this.pendingSave = this.pendingSave.then(() => this.writeChanges());
     return this.pendingSave;
+  }
+
+  private async writeChanges(): Promise<void> {
+    const written = new Map(this.changes);
+    const merged = await this.readManifest();
+    applyChanges(merged, written);
+    const manifestPath = path.join(this.path, MANIFEST_FILE);
+    const temp = `${manifestPath}.${randomUUID()}.tmp`;
+    await this.fs.writeFile(temp, JSON.stringify(merged, null, 2));
+    await this.fs.rename(temp, manifestPath);
+    for (const [module, version] of written) {
+      if (this.changes.get(module) === version) {
+        this.changes.delete(module);
+      }
+    }
+    applyChanges(merged, this.changes);
+    this.manifest = merged;
   }
 
   getVersion(module: string): string | undefined {
@@ -155,6 +193,7 @@ export class ModuleCache {
 
   setVersion(module: string, version: string): void {
     this.manifest[module] = version;
+    this.changes.set(module, version);
   }
 
   hasVersion(module: string, version: string): boolean {
@@ -225,7 +264,7 @@ export class ModuleCache {
       );
       if (holder !== undefined) {
         throw new Error(
-          `Cannot replace ${entry} in ${this.path}: the run with pid ${holder.pid} on ${holder.host} uses it. Stop that run, or wait for it to exit, then try again.`,
+          `Cannot replace ${entry} in ${this.path}: the run with pid ${holder.pid} on ${holder.host} uses it (lease ${holder.file}). Stop that run, or wait for it to exit, then try again. If that run is gone, delete ${holder.file}.`,
         );
       }
     }
@@ -249,8 +288,13 @@ export class ModuleCache {
   }
 
   async clearVersion(module: string): Promise<void> {
-    delete this.manifest[module];
+    this.forget(module);
     await this.save();
+  }
+
+  private forget(module: string): void {
+    delete this.manifest[module];
+    this.changes.set(module, undefined);
   }
 
   /**
@@ -302,8 +346,8 @@ export class ModuleCache {
     const leases = await readLiveLeases(this.path, this.fs);
     const foreign = leases.find(isForeignProcess);
     if (foreign !== undefined) {
-      Logger.Debug(
-        `The run with pid ${foreign.pid} on ${foreign.host} (${foreign.namespace}) leases ${this.path} from another machine or pid namespace; not removing unused modules`,
+      Logger.Warn(
+        `Not removing unused modules: the run with pid ${foreign.pid} on ${foreign.host} (${foreign.namespace}) holds the lease ${foreign.file} from another machine or pid namespace. If that run is gone, delete ${foreign.file}.`,
       );
       return [];
     }
@@ -334,9 +378,8 @@ export class ModuleCache {
         trashed.push(target);
       }
     }
-    await this.load();
     for (const key of removed) {
-      delete this.manifest[key];
+      this.forget(key);
     }
     await this.save();
     return trashed;

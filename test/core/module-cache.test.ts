@@ -232,6 +232,23 @@ describe("ModuleCache manifest file", () => {
     }
   });
 
+  it("keeps the entries another run committed or cleared since this run loaded the manifest", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/cache/manifest.json", '{"gone":"1.0.0"}');
+    const first = new ModuleCache("/cache", fs);
+    const second = new ModuleCache("/cache", fs);
+    await first.load();
+    await second.load();
+
+    await second.commitVersion("foo@1.0.0", "1.0.0");
+    await second.clearVersion("gone");
+    await first.commitVersion("bar@1.0.0", "1.0.0");
+
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.deep.equal({ "foo@1.0.0": "1.0.0", "bar@1.0.0": "1.0.0" });
+  });
+
   it("lets another run read the whole previous manifest while it saves", async () => {
     const fs = new TearingFileSystem();
     await fs.writeFile("/cache/manifest.json", '{"kept":"1.0.0"}');

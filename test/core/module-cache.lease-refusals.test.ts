@@ -18,6 +18,11 @@ const KEEP_NOTHING: CacheKeep = () => false;
 
 const REFUSALS = [
   { code: "EACCES", level: "Debug", reason: "a read-only cache" },
+  {
+    code: "ENOENT",
+    level: "Debug",
+    reason: "a read-only mount without a lease folder",
+  },
   { code: "ENOSPC", level: "Warn", reason: "a full disk" },
 ] as const;
 

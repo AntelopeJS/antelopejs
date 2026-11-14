@@ -132,23 +132,27 @@ describe("ModuleCache prune reading the leases of other runs", () => {
       owner: () => ({ namespace: otherNamespace(), pid: deadPid() }),
     },
   ]) {
-    it(`removes nothing, and keeps the lease, while a lease of ${label} is present`, async () => {
-      const debug = sinon.stub(Logging.Channel.prototype, "Debug");
+    it(`removes nothing, keeps the lease, and warns naming its file, while a lease of ${label} is present`, async () => {
+      const warn = sinon.stub(Logging.Channel.prototype, "Warn");
       const foreign = { ...thisProcess(), ...owner(), entries: ["a@1.0.0"] };
       writeLease(seeded.cachePath, "foreign.json", foreign);
 
       try {
         await prune(seeded.cachePath);
       } finally {
-        debug.restore();
+        warn.restore();
       }
 
       expect(manifestKeys(seeded.cachePath)).to.have.length(3);
       expect(hasEntryFolder(seeded.cachePath, "b@1.0.0")).to.equal(true);
       expect(leaseNames(seeded.cachePath)).to.deep.equal(["foreign.json"]);
-      expect(debug.args.map(([message]) => String(message))).to.satisfy(
+      expect(warn.args.map(([message]) => String(message))).to.satisfy(
         (messages: string[]) =>
-          messages.some((message) => message.includes(String(foreign.pid))),
+          messages.some((message) =>
+            [String(foreign.pid), "foreign.json", "delete"].every((part) =>
+              message.includes(part),
+            ),
+          ),
       );
     });
   }

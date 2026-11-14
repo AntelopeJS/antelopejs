@@ -85,8 +85,8 @@ describe("ModuleCache replacing a cached folder", () => {
         await assert.rejects(
           replace(new ModuleCache(cachePath), source),
           (error: Error) =>
-            [ENTRY, ...names(), "Stop that run"].every((part) =>
-              error.message.includes(part),
+            [ENTRY, ...names(), "Stop that run", "holder.json", "delete"].every(
+              (part) => error.message.includes(part),
             ),
         );
 

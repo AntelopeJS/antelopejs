@@ -23,7 +23,7 @@ export interface ProcessRef {
  * cache entries one run resolves, as paths relative to the cache folder with
  * `/` separators.
  */
-export interface RunLease extends ProcessRef {
+interface RunLease extends ProcessRef {
   entries: string[];
 }
 
@@ -35,7 +35,7 @@ const LEASE_NAME = /^(.+)-(\d+)-([1-9]\d*)-[0-9a-f]{8}-[0-9a-f-]{27}\.json$/;
 const PID_NAMESPACE_LINK = "/proc/self/ns/pid";
 const NO_NAMESPACE = "none";
 const NAMESPACE_DIGITS = /\d+/;
-const READ_ONLY_CODES = ["EACCES", "EPERM", "EROFS"];
+const READ_ONLY_CODES = ["EACCES", "EPERM", "EROFS", "ENOENT"];
 
 const Logger = new Logging.Channel("loader");
 
@@ -258,10 +258,15 @@ async function listLeaseFiles(
     .map((name) => path.join(folder, name));
 }
 
+/** A run lease read from disk, with the path of its file. */
+export interface HeldLease extends RunLease {
+  file: string;
+}
+
 async function readLease(
   file: string,
   fs: IFileSystem,
-): Promise<RunLease | undefined> {
+): Promise<HeldLease | undefined> {
   let content: string;
   try {
     content = await fs.readFileString(file);
@@ -275,7 +280,7 @@ async function readLease(
   if (!isRunLease(lease)) {
     throw new Error(`The cache lease ${file} does not hold a run lease`);
   }
-  return lease;
+  return { ...lease, file };
 }
 
 /**
@@ -290,10 +295,10 @@ async function readLease(
 export async function readLiveLeases(
   cachePath: string,
   fs: IFileSystem,
-): Promise<RunLease[]> {
-  const leases: RunLease[] = [];
+): Promise<HeldLease[]> {
+  const leases: HeldLease[] = [];
   for (const file of await listLeaseFiles(cachePath, fs)) {
-    let lease: RunLease | undefined;
+    let lease: HeldLease | undefined;
     try {
       lease = await readLease(file, fs);
     } catch (error) {
@@ -323,8 +328,8 @@ export async function readLiveLeases(
 export async function readOtherLiveLeases(
   cachePath: string,
   fs: IFileSystem,
-): Promise<RunLease[]> {
-  const leases: RunLease[] = [];
+): Promise<HeldLease[]> {
+  const leases: HeldLease[] = [];
   for (const file of await listLeaseFiles(cachePath, fs)) {
     const lease = await readLease(file, fs).catch(() => undefined);
     if (lease !== undefined && !isThisProcess(lease) && isLiveProcess(lease)) {
