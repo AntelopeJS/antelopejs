@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import launch, { type ModuleManager } from "../../src";
+import { getActiveShutdownManager } from "../../src/core/runtime";
 
 const MARKER_TIMEOUT_MS = 8000;
 const MARKER_POLL_MS = 50;
@@ -116,6 +117,7 @@ exports.destroy = () => {};
             await manager.stopAll();
             await manager.destroyAll();
           }
+          await getActiveShutdownManager()?.shutdown();
           await fs.rm(projectFolder, { recursive: true, force: true });
         }
       });
@@ -198,6 +200,7 @@ exports.destroy = () => {};
           await manager.stopAll();
           await manager.destroyAll();
         }
+        await getActiveShutdownManager()?.shutdown();
         await fs.rm(projectFolder, { recursive: true, force: true });
       }
     });
@@ -274,6 +277,7 @@ exports.destroy = () => {};
             await manager.stopAll();
             await manager.destroyAll();
           }
+          await getActiveShutdownManager()?.shutdown();
           await fs.rm(projectFolder, { recursive: true, force: true });
         }
       });
