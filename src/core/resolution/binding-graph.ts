@@ -7,13 +7,13 @@ import {
   describeRunningRebind,
   describeUnsettledCycle,
 } from "./binding-diagnostics";
+import { InstanceTable } from "./binding-graph-instances";
 import { orderComponents } from "./binding-graph-order";
 import type {
   BindingConnection,
   BindingGraph,
   BindingGraphInput,
   BindingModule,
-  InstanceDescriptor,
   InterfaceBinding,
   ModuleBindings,
 } from "./binding-graph-types";
@@ -51,13 +51,14 @@ class BindingGraphBuilder {
   private readonly scopes = new Map<string, Scope>();
   private readonly keys = new Map<string, Map<string, string>>();
   private readonly edges = new Map<string, Set<string>>();
-  private readonly instances = new Map<string, InstanceDescriptor>();
+  private readonly instances: InstanceTable;
   private readonly moduleErrors = new Map<string, Set<string>>();
   private readonly errors = new Set<string>();
 
   constructor(private readonly input: BindingGraphInput) {
     this.moduleIds = [...input.modules.keys()].sort(compareIds);
     this.providers = new ProviderTable(input.modules);
+    this.instances = new InstanceTable(input, this.providers);
     for (const id of this.moduleIds) {
       this.pins.set(id, this.readPins(input.modules.get(id)!));
     }
@@ -80,36 +81,17 @@ class BindingGraphBuilder {
       providers: this.providers,
     });
     const modules = this.collectModuleBindings();
+    const bound = [...modules.values()].flatMap((bindings) => [
+      ...bindings.keys.values(),
+      ...[...bindings.connectionKeys.values()].flat(),
+    ]);
     return {
       modules,
-      instances: this.referencedInstances(modules),
+      instances: this.instances.referenced(bound),
       edges: this.edges,
       errors: [...this.errors],
       warnings: [...new Set(warnings)],
     };
-  }
-
-  /**
-   * The instances the final bindings name, with the instances self-hosted
-   * ones import; a cycle's earlier rounds may have keyed others.
-   */
-  private referencedInstances(
-    modules: ReadonlyMap<string, ModuleBindings>,
-  ): Map<string, InstanceDescriptor> {
-    const pending = [...modules.values()].flatMap((bindings) => [
-      ...bindings.keys.values(),
-      ...[...bindings.connectionKeys.values()].flat(),
-    ]);
-    const referenced = new Map<string, InstanceDescriptor>();
-    while (pending.length > 0) {
-      const key = pending.pop()!;
-      const descriptor = this.instances.get(key);
-      if (descriptor && !referenced.has(key)) {
-        referenced.set(key, descriptor);
-        pending.push(...descriptor.dependencies);
-      }
-    }
-    return referenced;
   }
 
   private readPins(module: BindingModule): Pins {
@@ -135,7 +117,7 @@ class BindingGraphBuilder {
   }
 
   private dependenciesOf(interfaceName: string): readonly string[] {
-    return this.input.interfaces.get(interfaceName)?.dependencies ?? [];
+    return this.instances.dependenciesOf(interfaceName);
   }
 
   private importsOf(moduleId: string): string[] {
@@ -242,18 +224,7 @@ class BindingGraphBuilder {
     if (target.recordsEdges && provider !== moduleId) {
       this.edges.get(moduleId)!.add(provider);
     }
-    const key = `${interfaceName}@${provider}`;
-    const isPrivate =
-      this.input.modules.get(provider)?.disabledExports?.has(interfaceName) ??
-      false;
-    this.instances.set(key, {
-      key,
-      interfaceName,
-      provider,
-      dependencies: [],
-      ...(isPrivate && { private: true }),
-    });
-    return key;
+    return this.instances.provided(interfaceName, provider);
   }
 
   private selfHostedInstance(
@@ -264,9 +235,7 @@ class BindingGraphBuilder {
     const dependencies = this.dependenciesOf(interfaceName).map((dependency) =>
       this.keyOf(moduleId, dependency, target),
     );
-    const key = `${interfaceName}{${dependencies.join(",")}}`;
-    this.instances.set(key, { key, interfaceName, dependencies });
-    return key;
+    return this.instances.selfHosted(interfaceName, dependencies);
   }
 
   private bind(
