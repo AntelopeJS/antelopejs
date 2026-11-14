@@ -136,9 +136,9 @@ Init ==
 (* executeHandlers, whose first handler (shutdownModules, priority 30)     *)
 (* starts stopAll at once; a later call returns the same promise.          *)
 BeginShutdown(L) ==
-  IF sd[L] = "none"                                      \* shutdown-manager.ts:127
+  IF sd[L] = "none"                                      \* shutdown-manager.ts:126
   THEN /\ sd' = [sd EXCEPT ![L] = "stopAll"]             \* shutdown-manager.ts:131-132
-       /\ sdLeft' = [sdLeft EXCEPT ![L] = Held(L)]       \* module-manager-lifecycle.ts:117
+       /\ sdLeft' = [sdLeft EXCEPT ![L] = Held(L)]       \* module-manager-lifecycle.ts:149
   ELSE UNCHANGED <<sd, sdLeft>>
 
 Stopping(L) == sd[L] /= "none"

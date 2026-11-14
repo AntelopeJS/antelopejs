@@ -26,12 +26,12 @@ Interrupt(L) ==
 (* runLaunchSteps, then the addModules step. *)
 LaunchAddModules(L) ==
   /\ ~exited /\ lpc[L] = "addModules"
-  /\ IF Stopping(L)                                       \* launch-steps.ts:35
+  /\ IF Stopping(L)                                       \* launch-steps.ts:60
      THEN Interrupt(L)
      ELSE LET S == cfgSeen[L]
               G(m) == nextGen + Cardinality({x \in S : Index(x) < Index(m)})
           IN /\ nextGen + Cardinality(S) <= MaxGen + 1
-             /\ loaded' = [loaded EXCEPT ![L] =           \* launch-sequence.ts:323
+             /\ loaded' = [loaded EXCEPT ![L] =           \* launch-sequence.ts:368
                   [m \in Modules |-> IF m \in S THEN G(m) ELSE None]]
              /\ gmod' = [g \in Gens |->
                   IF \E m \in S : G(m) = g THEN CHOOSE m \in S : G(m) = g ELSE gmod[g]]
@@ -43,9 +43,9 @@ LaunchAddModules(L) ==
 (* runLaunchSteps, then constructAll calls construct on every loaded module. *)
 LaunchConstruct(L) ==
   /\ ~exited /\ lpc[L] = "construct"
-  /\ IF Stopping(L)                                       \* launch-steps.ts:35
+  /\ IF Stopping(L)                                       \* launch-steps.ts:60
      THEN Interrupt(L)
-     ELSE /\ awaiting' = [awaiting EXCEPT ![L] = HeldGens(L)] \* module-manager-construction.ts:190
+     ELSE /\ awaiting' = [awaiting EXCEPT ![L] = HeldGens(L)] \* module-manager-construction.ts:24
           /\ lpc' = [lpc EXCEPT ![L] = "constructing"]
           /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, loaded, lateStart, sdVars,
                          watchVars, restartVars, hrVars, procVars>>
@@ -56,9 +56,9 @@ LaunchConstruct(L) ==
 ConstructApply(L, g) ==
   /\ ~exited /\ lpc[L] = "constructing" /\ g \in awaiting[L]
   /\ awaiting' = [awaiting EXCEPT ![L] = @ \ {g}]
-  /\ state' = IF state[g] = "Loaded"                      \* module-lifecycle.ts:63
+  /\ state' = IF state[g] = "Loaded"                      \* module-lifecycle.ts:54
                  /\ ~Closed(L)                             \* module-manager-construction.ts:330
-              THEN [state EXCEPT ![g] = "Constructed"]    \* module-lifecycle.ts:76
+              THEN [state EXCEPT ![g] = "Constructed"]    \* module-lifecycle.ts:59
               ELSE state
   /\ UNCHANGED <<editVars, gmod, nextGen, startPending, launch, lpc, cfgSeen, loaded,
                  lateStart, sdVars, watchVars, restartVars, hrVars, procVars>>
@@ -72,9 +72,9 @@ LaunchConstructed(L) ==
 (* runLaunchSteps, then startAll queues `start` on every loaded module. *)
 LaunchStart(L) ==
   /\ ~exited /\ lpc[L] = "start"
-  /\ IF Stopping(L)                                       \* launch-steps.ts:35
+  /\ IF Stopping(L)                                       \* launch-steps.ts:60
      THEN Interrupt(L)
-     ELSE /\ startPending' = startPending \cup HeldGens(L) \* module-manager-lifecycle.ts:106
+     ELSE /\ startPending' = startPending \cup HeldGens(L) \* module-manager-lifecycle.ts:104
           /\ awaiting' = [awaiting EXCEPT ![L] = HeldGens(L)]
           /\ lateStart' = (lateStart \/ Stopping(L))
           /\ lpc' = [lpc EXCEPT ![L] = "starting"]
@@ -85,8 +85,8 @@ LaunchStart(L) ==
 StartApply(g) ==
   /\ ~exited /\ g \in startPending
   /\ startPending' = startPending \ {g}
-  /\ state' = IF state[g] = "Constructed"                 \* module-lifecycle.ts:87
-              THEN [state EXCEPT ![g] = "Active"]         \* module-lifecycle.ts:100
+  /\ state' = IF state[g] = "Constructed"                 \* module-lifecycle.ts:72
+              THEN [state EXCEPT ![g] = "Active"]         \* module-lifecycle.ts:85
               ELSE state
   /\ UNCHANGED <<editVars, gmod, nextGen, launchVars, sdVars, watchVars,
                  restartVars, hrVars, procVars>>
@@ -102,11 +102,11 @@ LaunchStarted(L) ==
 (* shutdown handler and the tolerance, then scans every loaded module.    *)
 LaunchWatch(L) ==
   /\ ~exited /\ lpc[L] = "watch"
-  /\ IF Stopping(L)                                       \* launch-steps.ts:35
+  /\ IF Stopping(L)                                       \* launch-steps.ts:60
      THEN Interrupt(L)
-     ELSE /\ watching' = [watching EXCEPT ![L] = "setup"]  \* project-launch.ts:93-94
-          /\ tolerance' = tolerance + 1                   \* runtime-bootstrap.ts:76
-          /\ watched' = [watched EXCEPT ![L] = Held(L)]   \* project-launch.ts:101
+     ELSE /\ watching' = [watching EXCEPT ![L] = "setup"]  \* project-launch.ts:94-97
+          /\ tolerance' = tolerance + 1                   \* runtime-bootstrap.ts:73
+          /\ watched' = [watched EXCEPT ![L] = Held(L)]   \* project-launch.ts:100-103
           /\ lpc' = [lpc EXCEPT ![L] = "hashConfig"]
           /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, awaiting, loaded, lateStart,
                          sdVars, cfgHash, cfgEvent, restartReq, restartVars, hrVars,
@@ -115,29 +115,39 @@ LaunchWatch(L) ==
 (* FileWatcher.watchFile keeps the hash prepareFromConfig took. *)
 LaunchHashConfig(L) ==
   /\ ~exited /\ lpc[L] = "hashConfig"
-  /\ lpc' = [lpc EXCEPT ![L] = "startWatching"]          \* project-launch.ts:109-116, file-watcher.ts:98
+  /\ lpc' = [lpc EXCEPT ![L] = "startWatching"]          \* project-launch.ts:108-127, file-watcher.ts:91-94
   /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, awaiting, loaded, lateStart,
                  sdVars, watching, watched, cfgHash, cfgEvent, restartReq, restartVars, hrVars,
                  procVars>>
 
 (* FileWatcher.startWatching, which checks antelope.config.ts against    *)
-(* its hash once; startProject returns, and restartProject withdraws its *)
-(* tolerance and clears isRestarting.                                     *)
+(* its hash once.                                                         *)
 LaunchWatching(L) ==
   /\ ~exited /\ lpc[L] = "startWatching"
   /\ watching' = [watching EXCEPT ![L] =
-       IF watching[L] = "stopped" THEN "stopped" ELSE "yes"] \* file-watcher.ts:120, project-launch.ts:129
+       IF watching[L] = "stopped" THEN "stopped" ELSE "yes"] \* file-watcher.ts:113, project-launch.ts:130
   /\ cfgEvent' = [cfgEvent EXCEPT ![L] =
-       cfgEvent[L] \/ watching[L] /= "stopped"]          \* file-watcher.ts:142, :149-155
-  /\ lpc' = [lpc EXCEPT ![L] = "running"]
-  /\ IF restartPc = "start" /\ L = launch
-     THEN /\ tolerance' = tolerance - 1                   \* project-launch.ts:233
-          /\ isRestarting' = FALSE                        \* project-launch.ts:234
-          /\ restartPc' = "idle"
-     ELSE UNCHANGED <<isRestarting, restartPc, tolerance>>
+       cfgEvent[L] \/ watching[L] /= "stopped"]          \* file-watcher.ts:135, :142-147
+  /\ lpc' = [lpc EXCEPT ![L] = "postLaunch"]
   /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, awaiting, loaded, lateStart,
-                 sdVars, watched, cfgHash, restartReq, restartFrom, hrVars,
-                 staleWork, sigint, exited, crashed, crashedWhileWatching>>
+                 sdVars, watched, cfgHash, restartReq, restartVars, hrVars, procVars>>
+
+(* runLaunchSteps checks once more before the REPL step; startProject     *)
+(* returns, and restartProject withdraws its tolerance and clears         *)
+(* isRestarting.                                                          *)
+LaunchReturns(L) ==
+  /\ ~exited /\ lpc[L] = "postLaunch"
+  /\ IF Stopping(L)                                       \* launch-steps.ts:60
+     THEN Interrupt(L)
+     ELSE /\ lpc' = [lpc EXCEPT ![L] = "running"]
+          /\ IF restartPc = "start" /\ L = launch
+             THEN /\ tolerance' = tolerance - 1           \* project-launch.ts:242
+                  /\ isRestarting' = FALSE                \* project-launch.ts:243
+                  /\ restartPc' = "idle"
+             ELSE UNCHANGED <<isRestarting, restartPc, tolerance>>
+          /\ UNCHANGED <<editVars, genVars, launch, cfgSeen, awaiting, loaded, lateStart,
+                         sdVars, watchVars, restartFrom, hrVars, staleWork, sigint,
+                         exited, crashed, crashedWhileWatching>>
 
 (* ----------------------- config edits and restarts ---------------------- *)
 
@@ -153,30 +163,34 @@ ConfigEdit(m) ==
                  restartReq, restartVars, hrVars, procVars>>
 
 (* FileWatcher.handleWatchedFileChange: hash, compare, call the listener. *)
+(* Its fs reads resolve in a later poll phase than the setImmediate       *)
+(* LaunchReturns awaits, so it never runs while L is in postLaunch.       *)
 ConfigNoticed(L) ==
-  /\ ~exited /\ cfgEvent[L]
+  /\ ~exited /\ cfgEvent[L] /\ lpc[L] /= "postLaunch"
   /\ cfgEvent' = [cfgEvent EXCEPT ![L] = FALSE]
-  /\ IF watching[L] = "yes"                               \* file-watcher.ts:160, :219
-        /\ declared /= cfgHash[L]                         \* file-watcher.ts:214
-     THEN /\ cfgHash' = [cfgHash EXCEPT ![L] = declared]  \* file-watcher.ts:218
-          /\ restartReq' = [restartReq EXCEPT ![L] = TRUE] \* file-watcher.ts:223
+  /\ IF watching[L] = "yes"                               \* file-watcher.ts:201, :260
+        /\ declared /= cfgHash[L]                         \* file-watcher.ts:255
+     THEN /\ cfgHash' = [cfgHash EXCEPT ![L] = declared]  \* file-watcher.ts:259
+          /\ restartReq' = [restartReq EXCEPT ![L] = TRUE] \* file-watcher.ts:263-264
      ELSE UNCHANGED <<cfgHash, restartReq>>
   /\ UNCHANGED <<editVars, genVars, launchVars, sdVars, watching, watched,
                  restartVars, hrVars, procVars>>
 
 (* restartUnlessOwnWrite read the file (not the runtime's own write), and *)
-(* restartProject runs: it holds a tolerance for the whole restart, then  *)
+(* restartProject runs: unless a restart runs or the active launch is     *)
+(* already stopping, it holds a tolerance for the whole restart, then     *)
 (* shuts the active launch down.                                          *)
 RestartRequested(L) ==
   /\ ~exited /\ restartReq[L]
   /\ restartReq' = [restartReq EXCEPT ![L] = FALSE]
-  /\ IF isRestarting                                      \* project-launch.ts:221
+  /\ IF \/ isRestarting                                   \* project-launch.ts:228
+        \/ armed /= None /\ Stopping(armed)               \* project-launch.ts:229-230
      THEN UNCHANGED <<isRestarting, restartPc, restartFrom, sd, sdLeft, tolerance>>
-     ELSE /\ isRestarting' = TRUE                         \* project-launch.ts:222
-          /\ tolerance' = tolerance + 1                   \* project-launch.ts:223
+     ELSE /\ isRestarting' = TRUE                         \* project-launch.ts:231
+          /\ tolerance' = tolerance + 1                   \* project-launch.ts:232
           /\ restartPc' = "shutdown"
           /\ restartFrom' = armed
-          /\ IF armed /= None THEN BeginShutdown(armed)   \* project-launch.ts:228
+          /\ IF armed /= None THEN BeginShutdown(armed)   \* project-launch.ts:235
              ELSE UNCHANGED <<sd, sdLeft>>
   /\ UNCHANGED <<editVars, genVars, launchVars, exitReq, armed, watching, watched,
                  cfgHash, cfgEvent, hrVars, staleWork, sigint, exited, crashed,
@@ -188,12 +202,24 @@ RestartLaunches ==
   /\ ~exited /\ restartPc = "shutdown"
   /\ IF restartFrom = None THEN TRUE ELSE sd[restartFrom] = "done"
   /\ launch < MaxLaunch
-  /\ launch' = launch + 1                                 \* project-launch.ts:231
+  /\ launch' = launch + 1                                 \* project-launch.ts:236
   /\ lpc' = [lpc EXCEPT ![launch + 1] = "prepare"]
-  /\ armed' = launch + 1                                  \* launch-sequence.ts:253, process-claim.ts:160
+  /\ armed' = launch + 1                                  \* launch-sequence.ts:297, process-claim.ts:160
   /\ restartPc' = "start"
   /\ UNCHANGED <<editVars, genVars, cfgSeen, awaiting, loaded, lateStart, sd, sdLeft,
                  exitReq, watchVars, isRestarting, restartFrom, hrVars, procVars>>
+
+(* A shutdown interrupted the restart's launch: once it resolves, the     *)
+(* launch rejects with LaunchInterruptedError, and restartProject ends    *)
+(* there, withdraws its tolerance and clears isRestarting.                *)
+RestartInterrupted ==
+  /\ ~exited /\ restartPc = "start"
+  /\ lpc[launch] = "interrupted" /\ sd[launch] = "done"  \* launch-sequence.ts:305, project-launch.ts:208
+  /\ tolerance' = tolerance - 1                           \* project-launch.ts:238, :242
+  /\ isRestarting' = FALSE                                \* project-launch.ts:243
+  /\ restartPc' = "idle"
+  /\ UNCHANGED <<editVars, genVars, launchVars, sdVars, watchVars, restartFrom, hrVars,
+                 staleWork, sigint, exited, crashed, crashedWhileWatching>>
 
 (* ------------------------------ shutdown -------------------------------- *)
 
@@ -202,8 +228,8 @@ RestartLaunches ==
 Sigint ==
   /\ ~exited /\ ~sigint
   /\ sigint' = TRUE
-  /\ IF armed /= None                                     \* process-claim.ts:39
-     THEN /\ exitReq' = [exitReq EXCEPT ![armed] = TRUE]  \* shutdown-manager.ts:191
+  /\ IF armed /= None                                     \* process-claim.ts:42, :52
+     THEN /\ exitReq' = [exitReq EXCEPT ![armed] = TRUE]  \* shutdown-manager.ts:190
           /\ BeginShutdown(armed)
           /\ UNCHANGED exited
      ELSE /\ exited' = TRUE
@@ -214,10 +240,10 @@ Sigint ==
 (* stopAll stops one module: entry.module as the loop reaches it.         *)
 SdStop(L, m) ==
   /\ ~exited /\ sd[L] = "stopAll" /\ m \in sdLeft[L]
-  /\ loaded[L][m] \notin startPending                     \* module-lifecycle.ts:179
+  /\ loaded[L][m] \notin startPending                     \* module-lifecycle.ts:164
   /\ sdLeft' = [sdLeft EXCEPT ![L] = @ \ {m}]
-  /\ state' = IF loaded[L][m] /= None /\ state[loaded[L][m]] = "Active" \* module-lifecycle.ts:108
-              THEN [state EXCEPT ![loaded[L][m]] = "Constructed"]     \* module-lifecycle.ts:123
+  /\ state' = IF loaded[L][m] /= None /\ state[loaded[L][m]] = "Active" \* module-lifecycle.ts:93
+              THEN [state EXCEPT ![loaded[L][m]] = "Constructed"]     \* module-lifecycle.ts:108
               ELSE state
   /\ UNCHANGED <<editVars, gmod, nextGen, startPending, launchVars, sd, exitReq, armed,
                  watchVars, restartVars, hrVars, procVars>>
@@ -225,17 +251,17 @@ SdStop(L, m) ==
 SdStopDone(L) ==
   /\ ~exited /\ sd[L] = "stopAll" /\ sdLeft[L] = {}
   /\ sd' = [sd EXCEPT ![L] = "destroyAll"]
-  /\ sdLeft' = [sdLeft EXCEPT ![L] = Held(L)]             \* module-manager-lifecycle.ts:127
+  /\ sdLeft' = [sdLeft EXCEPT ![L] = Held(L)]             \* module-manager-lifecycle.ts:160
   /\ UNCHANGED <<editVars, genVars, launchVars, exitReq, armed, watchVars, restartVars,
                  hrVars, procVars>>
 
 (* destroyAll destroys one module: entry.module as the loop reaches it.   *)
 SdDestroy(L, m) ==
   /\ ~exited /\ sd[L] = "destroyAll" /\ m \in sdLeft[L]
-  /\ loaded[L][m] \notin startPending                     \* module-lifecycle.ts:179
+  /\ loaded[L][m] \notin startPending                     \* module-lifecycle.ts:164
   /\ sdLeft' = [sdLeft EXCEPT ![L] = @ \ {m}]
-  /\ IF loaded[L][m] /= None /\ state[loaded[L][m]] /= "Loaded" \* module.ts:145
-     THEN /\ state' = [state EXCEPT ![loaded[L][m]] = "Loaded"] \* module-lifecycle.ts:161
+  /\ IF loaded[L][m] /= None /\ state[loaded[L][m]] /= "Loaded" \* module.ts:240
+     THEN /\ state' = [state EXCEPT ![loaded[L][m]] = "Loaded"] \* module-lifecycle.ts:146
           /\ staleWork' = TRUE
      ELSE UNCHANGED <<state, staleWork>>
   /\ UNCHANGED <<editVars, gmod, nextGen, startPending, launchVars, sd, exitReq, armed,
@@ -245,7 +271,7 @@ SdDestroy(L, m) ==
 (* clearManagedState empties ModuleManager.loaded. *)
 SdClear(L) ==
   /\ ~exited /\ sd[L] = "destroyAll" /\ sdLeft[L] = {}
-  /\ loaded' = [loaded EXCEPT ![L] = [m \in Modules |-> None]] \* module-manager-lifecycle.ts:140, :168
+  /\ loaded' = [loaded EXCEPT ![L] = [m \in Modules |-> None]] \* module-manager-lifecycle.ts:175, :203
   /\ sd' = [sd EXCEPT ![L] = "watcher"]
   /\ UNCHANGED <<editVars, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdLeft,
                  exitReq, armed, watchVars, restartVars, hrVars, procVars>>
@@ -254,7 +280,7 @@ SdClear(L) ==
 SdWatcher(L) ==
   /\ ~exited /\ sd[L] = "watcher"
   /\ IF watching[L] /= "none"
-     THEN /\ watching' = [watching EXCEPT ![L] = "stopped"] \* project-launch.ts:94
+     THEN /\ watching' = [watching EXCEPT ![L] = "stopped"] \* project-launch.ts:95-96
           /\ pending' = [pending EXCEPT ![L] = {}]        \* hot-reload.ts:34
           /\ rePending' = [rePending EXCEPT ![L] = {}]    \* hot-reload.ts:35
      ELSE UNCHANGED <<watching, pending, rePending>>
@@ -273,7 +299,7 @@ SdRelease(L) ==
 (* Priority 10, registered by setupWatching: withdraw the tolerance. *)
 SdTolerance(L) ==
   /\ ~exited /\ sd[L] = "tolerance"
-  /\ tolerance' = IF watching[L] /= "none" THEN tolerance - 1 ELSE tolerance \* project-launch.ts:55
+  /\ tolerance' = IF watching[L] /= "none" THEN tolerance - 1 ELSE tolerance \* project-launch.ts:57
   /\ sd' = [sd EXCEPT ![L] = "exiting"]
   /\ UNCHANGED <<editVars, genVars, launchVars, sdLeft, exitReq, armed, watchVars,
                  restartVars, hrVars, staleWork, sigint, exited, crashed,
@@ -283,7 +309,7 @@ SdTolerance(L) ==
 SdExit(L) ==
   /\ ~exited /\ sd[L] = "exiting"
   /\ sd' = [sd EXCEPT ![L] = "done"]
-  /\ exited' = exitReq[L]                                 \* shutdown-manager.ts:234
+  /\ exited' = exitReq[L]                                 \* shutdown-manager.ts:231-232
   /\ UNCHANGED <<editVars, genVars, launchVars, sdLeft, exitReq, armed, watchVars,
                  restartVars, hrVars, tolerance, staleWork, sigint, crashed,
                  crashedWhileWatching>>
@@ -293,13 +319,13 @@ SdExit(L) ==
 StaleWorkFails ==
   /\ ~exited /\ staleWork
   /\ staleWork' = FALSE
-  /\ IF tolerance > 0                                     \* runtime-bootstrap.ts:37
+  /\ IF tolerance > 0                                     \* runtime-bootstrap.ts:49
      THEN UNCHANGED <<crashed, crashedWhileWatching, exitReq, sd, sdLeft, exited>>
      ELSE /\ crashed' = (crashed \/ ~sigint)
           /\ crashedWhileWatching' = (crashedWhileWatching \/
                (~sigint /\ \E L \in Launches : watching[L] = "yes"))
-          /\ IF armed /= None                             \* runtime-bootstrap.ts:24
-             THEN /\ exitReq' = [exitReq EXCEPT ![armed] = TRUE] \* runtime-bootstrap.ts:111
+          /\ IF armed /= None                             \* runtime-bootstrap.ts:25
+             THEN /\ exitReq' = [exitReq EXCEPT ![armed] = TRUE] \* runtime-bootstrap.ts:116, :26
                   /\ BeginShutdown(armed)
                   /\ UNCHANGED exited
              ELSE /\ exited' = TRUE                       \* runtime-bootstrap.ts:30
