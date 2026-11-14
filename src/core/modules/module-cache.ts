@@ -10,8 +10,9 @@ import { NodeFileSystem } from "../filesystem";
 import { isPlainObject, isString } from "../../utils";
 import {
   hasErrorCode,
+  isForeignProcess,
   readFolderNames,
-  readLiveLeaseEntries,
+  readLiveLeases,
   readOtherLiveLeases,
   RunLeaseFile,
 } from "./cache-leases";
@@ -263,7 +264,11 @@ export class ModuleCache {
    * entry while a prune holds the lock waits for it, then finds a removed
    * folder gone. The folders are moved to `.trash` under the lock and deleted
    * once it is released. A run whose lease the file system refused does not
-   * prune, since no lease protects what it loaded.
+   * prune, since no lease protects what it loaded. Nothing is removed while
+   * the lease of a run on another machine or in another pid namespace is
+   * present, since this process cannot tell whether that run still lives,
+   * and over a shared file system it may not see that run's newest lease. A
+   * manifest key outside the cache or under a dot folder is never removed.
    *
    * @throws when a lease cannot be parsed, with nothing removed.
    */
@@ -294,7 +299,15 @@ export class ModuleCache {
     readKeep: () => Promise<CacheKeep>,
   ): Promise<string[]> {
     await this.load();
-    const leased = await readLiveLeaseEntries(this.path, this.fs);
+    const leases = await readLiveLeases(this.path, this.fs);
+    const foreign = leases.find(isForeignProcess);
+    if (foreign !== undefined) {
+      Logger.Debug(
+        `The run with pid ${foreign.pid} on ${foreign.host} (${foreign.namespace}) leases ${this.path} from another machine or pid namespace; not removing unused modules`,
+      );
+      return [];
+    }
+    const leased = leases.flatMap((lease) => lease.entries);
     const keep = await readKeep();
     const unused = this.entries()
       .map(([key]) => key)

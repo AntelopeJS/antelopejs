@@ -1,8 +1,10 @@
+import { Logging } from "@antelopejs/interface-core/logging";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import * as sinon from "sinon";
 
 import { type CacheKeep, ModuleCache } from "../../src/core/modules";
 import {
@@ -27,92 +29,136 @@ function prune(cachePath: string, keep: CacheKeep = KEEP_NOTHING) {
   return new ModuleCache(cachePath).prune(async () => keep);
 }
 
-describe("ModuleCache prune", () => {
-  let root: string;
-  let cachePath: string;
+/** A fresh cache holding `a`, `b` and `@scope/c` for each test, under a temporary root. */
+function useSeededCache() {
+  const seeded = { root: "", cachePath: "" };
 
   beforeEach(() => {
-    root = makeTempDir("ajs-cache-prune-");
-    cachePath = path.join(root, "cache");
-    seedCache(cachePath, ["a@1.0.0", "b@1.0.0", "@scope/c@1.0.0"]);
+    seeded.root = makeTempDir("ajs-cache-prune-");
+    seeded.cachePath = path.join(seeded.root, "cache");
+    seedCache(seeded.cachePath, ["a@1.0.0", "b@1.0.0", "@scope/c@1.0.0"]);
   });
 
   afterEach(() => {
-    cleanupTempDir(root);
+    cleanupTempDir(seeded.root);
   });
 
+  return seeded;
+}
+
+describe("ModuleCache prune", () => {
+  const seeded = useSeededCache();
+
   it("removes every entry no live lease covers and keeps the leased ones", async () => {
-    const run = new ModuleCache(cachePath);
+    const run = new ModuleCache(seeded.cachePath);
     await run.getFolder("a@1.0.0", true, true);
-    await run.claimFolder(path.join(cachePath, "@scope", "c@1.0.0", "lib"));
+    await run.claimFolder(
+      path.join(seeded.cachePath, "@scope", "c@1.0.0", "lib"),
+    );
 
-    await prune(cachePath);
+    await prune(seeded.cachePath);
 
-    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
-    expect(hasEntryFolder(cachePath, "@scope/c@1.0.0")).to.equal(true);
-    expect(hasEntryFolder(cachePath, "b@1.0.0")).to.equal(false);
-    expect(manifestKeys(cachePath)).to.deep.equal([
+    expect(hasEntryFolder(seeded.cachePath, "a@1.0.0")).to.equal(true);
+    expect(hasEntryFolder(seeded.cachePath, "@scope/c@1.0.0")).to.equal(true);
+    expect(hasEntryFolder(seeded.cachePath, "b@1.0.0")).to.equal(false);
+    expect(manifestKeys(seeded.cachePath)).to.deep.equal([
       "@scope/c@1.0.0",
       "a@1.0.0",
     ]);
-    expect(cacheFolderNames(cachePath, ".trash")).to.deep.equal([]);
+    expect(cacheFolderNames(seeded.cachePath, ".trash")).to.deep.equal([]);
   });
 
   it("keeps the entries the keep rule claims", async () => {
-    await prune(cachePath, (entry) => entry === "b@1.0.0");
+    await prune(seeded.cachePath, (entry) => entry === "b@1.0.0");
 
-    expect(manifestKeys(cachePath)).to.deep.equal(["b@1.0.0"]);
-    expect(hasEntryFolder(cachePath, "b@1.0.0")).to.equal(true);
-    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(false);
+    expect(manifestKeys(seeded.cachePath)).to.deep.equal(["b@1.0.0"]);
+    expect(hasEntryFolder(seeded.cachePath, "b@1.0.0")).to.equal(true);
+    expect(hasEntryFolder(seeded.cachePath, "a@1.0.0")).to.equal(false);
   });
+
+  it("drops the manifest key of an entry whose folder is already gone", async () => {
+    writeJson(path.join(seeded.cachePath, "manifest.json"), {
+      "a@1.0.0": "1.0.0",
+      "ghost@1.0.0": "1.0.0",
+    });
+
+    await prune(seeded.cachePath, (entry) => entry === "a@1.0.0");
+
+    expect(manifestKeys(seeded.cachePath)).to.deep.equal(["a@1.0.0"]);
+  });
+
+  it("leaves every folder the manifest does not list, and empties leftover trash", async () => {
+    writeJson(path.join(seeded.cachePath, "instances", "x", "file.json"), {});
+    writeJson(
+      path.join(seeded.cachePath, "installing@2.0.0", "package.json"),
+      {},
+    );
+    writeJson(
+      path.join(seeded.cachePath, ".trash", "left-over", "file.json"),
+      {},
+    );
+
+    await prune(seeded.cachePath);
+
+    expect(hasEntryFolder(seeded.cachePath, "instances/x")).to.equal(true);
+    expect(hasEntryFolder(seeded.cachePath, "installing@2.0.0")).to.equal(true);
+    expect(cacheFolderNames(seeded.cachePath, ".trash")).to.deep.equal([]);
+  });
+});
+
+describe("ModuleCache prune reading the leases of other runs", () => {
+  const seeded = useSeededCache();
 
   it("ignores and deletes the lease of a run on this machine that has exited", async () => {
-    writeLease(cachePath, "dead.json", {
+    writeLease(seeded.cachePath, "dead.json", {
       ...thisProcess(),
       pid: deadPid(),
       entries: ["a@1.0.0"],
     });
 
-    await prune(cachePath);
+    await prune(seeded.cachePath);
 
-    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(false);
-    expect(leaseNames(cachePath)).to.deep.equal([]);
+    expect(hasEntryFolder(seeded.cachePath, "a@1.0.0")).to.equal(false);
+    expect(leaseNames(seeded.cachePath)).to.deep.equal([]);
   });
 
-  it("keeps the entries a lease from another machine names", async () => {
-    writeLease(cachePath, "remote.json", {
-      ...thisProcess(),
-      host: `${os.hostname()}-elsewhere`,
-      pid: deadPid(),
-      entries: ["a@1.0.0"],
+  for (const { label, owner } of [
+    {
+      label: "another machine",
+      owner: () => ({ host: `${os.hostname()}-elsewhere`, pid: deadPid() }),
+    },
+    {
+      label: "this hostname in another pid namespace",
+      owner: () => ({ namespace: otherNamespace(), pid: deadPid() }),
+    },
+  ]) {
+    it(`removes nothing, and keeps the lease, while a lease of ${label} is present`, async () => {
+      const debug = sinon.stub(Logging.Channel.prototype, "Debug");
+      const foreign = { ...thisProcess(), ...owner(), entries: ["a@1.0.0"] };
+      writeLease(seeded.cachePath, "foreign.json", foreign);
+
+      try {
+        await prune(seeded.cachePath);
+      } finally {
+        debug.restore();
+      }
+
+      expect(manifestKeys(seeded.cachePath)).to.have.length(3);
+      expect(hasEntryFolder(seeded.cachePath, "b@1.0.0")).to.equal(true);
+      expect(leaseNames(seeded.cachePath)).to.deep.equal(["foreign.json"]);
+      expect(debug.args.map(([message]) => String(message))).to.satisfy(
+        (messages: string[]) =>
+          messages.some((message) => message.includes(String(foreign.pid))),
+      );
     });
-
-    await prune(cachePath);
-
-    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
-    expect(leaseNames(cachePath)).to.deep.equal(["remote.json"]);
-  });
-
-  it("keeps the entries and the file of a lease from another pid namespace of this hostname", async () => {
-    writeLease(cachePath, "container.json", {
-      ...thisProcess(),
-      namespace: otherNamespace(),
-      pid: deadPid(),
-      entries: ["a@1.0.0"],
-    });
-
-    await prune(cachePath);
-
-    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
-    expect(leaseNames(cachePath)).to.deep.equal(["container.json"]);
-  });
+  }
 
   it("reads only the .json files of the lease folder", async () => {
-    writeLeaseText(cachePath, "partial.json.tmp", "{ not json");
+    writeLeaseText(seeded.cachePath, "partial.json.tmp", "{ not json");
 
-    await prune(cachePath);
+    await prune(seeded.cachePath);
 
-    expect(manifestKeys(cachePath)).to.deep.equal([]);
+    expect(manifestKeys(seeded.cachePath)).to.deep.equal([]);
   });
 
   for (const { label, content } of [
@@ -128,50 +174,28 @@ describe("ModuleCache prune", () => {
     },
   ]) {
     it(`removes nothing when a lease ${label}`, async () => {
-      writeLeaseText(cachePath, "broken.json", content);
+      writeLeaseText(seeded.cachePath, "broken.json", content);
 
-      await assert.rejects(prune(cachePath), /lease|JSON/);
+      await assert.rejects(prune(seeded.cachePath), /lease|JSON/);
 
-      expect(manifestKeys(cachePath)).to.have.length(3);
-      expect(hasEntryFolder(cachePath, "b@1.0.0")).to.equal(true);
-      expect(existsSync(pruneLockPath(cachePath))).to.equal(false);
+      expect(manifestKeys(seeded.cachePath)).to.have.length(3);
+      expect(hasEntryFolder(seeded.cachePath, "b@1.0.0")).to.equal(true);
+      expect(existsSync(pruneLockPath(seeded.cachePath))).to.equal(false);
     });
   }
 
   it("skips a lease that its run deletes while the prune reads it", async () => {
-    writeLease(cachePath, "exiting.json", {
+    writeLease(seeded.cachePath, "exiting.json", {
       ...thisProcess(),
       entries: ["a@1.0.0"],
     });
-    const exiting = path.join(cachePath, ".leases", "exiting.json");
+    const exiting = path.join(seeded.cachePath, ".leases", "exiting.json");
 
-    await new ModuleCache(cachePath, new VanishingFileSystem(exiting)).prune(
-      async () => KEEP_NOTHING,
-    );
+    await new ModuleCache(
+      seeded.cachePath,
+      new VanishingFileSystem(exiting),
+    ).prune(async () => KEEP_NOTHING);
 
-    expect(manifestKeys(cachePath)).to.deep.equal([]);
-  });
-
-  it("drops the manifest key of an entry whose folder is already gone", async () => {
-    writeJson(path.join(cachePath, "manifest.json"), {
-      "a@1.0.0": "1.0.0",
-      "ghost@1.0.0": "1.0.0",
-    });
-
-    await prune(cachePath, (entry) => entry === "a@1.0.0");
-
-    expect(manifestKeys(cachePath)).to.deep.equal(["a@1.0.0"]);
-  });
-
-  it("leaves every folder the manifest does not list, and empties leftover trash", async () => {
-    writeJson(path.join(cachePath, "instances", "x", "file.json"), {});
-    writeJson(path.join(cachePath, "installing@2.0.0", "package.json"), {});
-    writeJson(path.join(cachePath, ".trash", "left-over", "file.json"), {});
-
-    await prune(cachePath);
-
-    expect(hasEntryFolder(cachePath, "instances/x")).to.equal(true);
-    expect(hasEntryFolder(cachePath, "installing@2.0.0")).to.equal(true);
-    expect(cacheFolderNames(cachePath, ".trash")).to.deep.equal([]);
+    expect(manifestKeys(seeded.cachePath)).to.deep.equal([]);
   });
 });

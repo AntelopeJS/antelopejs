@@ -279,18 +279,19 @@ async function readLease(
 }
 
 /**
- * The entries the leases of every live run on the cache at `cachePath` name.
- * The lease of a dead process on this machine is deleted, and a lease that
- * disappears while it is read is skipped.
+ * The leases of every live run on the cache at `cachePath`; a foreign run
+ * counts as live. The lease of an exited process of this machine and pid
+ * namespace is deleted, and a lease that disappears while it is read is
+ * skipped. No foreign lease is deleted.
  *
  * @throws when a lease file cannot be parsed, since the entries it names
  * are then unknown.
  */
-export async function readLiveLeaseEntries(
+export async function readLiveLeases(
   cachePath: string,
   fs: IFileSystem,
-): Promise<string[]> {
-  const entries: string[] = [];
+): Promise<RunLease[]> {
+  const leases: RunLease[] = [];
   for (const file of await listLeaseFiles(cachePath, fs)) {
     let lease: RunLease | undefined;
     try {
@@ -309,9 +310,9 @@ export async function readLiveLeaseEntries(
       await fs.rm(file, { force: true });
       continue;
     }
-    entries.push(...lease.entries);
+    leases.push(lease);
   }
-  return entries;
+  return leases;
 }
 
 /**
