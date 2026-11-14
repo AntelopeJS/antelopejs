@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.23.3
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.2...v1.23.3)
+
+### 🩹 Fixes
+
+- **cli:** Count a module dependency installed when its package.json is present, entry or not ([#486](https://github.com/AntelopeJS/antelopejs/pull/486))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.23.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.1...v1.23.2)
