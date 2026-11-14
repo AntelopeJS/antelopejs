@@ -308,7 +308,13 @@ async function readLease(
     }
     throw error;
   }
-  const lease: unknown = JSON.parse(content);
+  let lease: unknown;
+  try {
+    lease = JSON.parse(content);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`The cache lease ${file} is not JSON (${reason})`);
+  }
   if (!isRunLease(lease)) {
     throw new Error(`The cache lease ${file} does not hold a run lease`);
   }

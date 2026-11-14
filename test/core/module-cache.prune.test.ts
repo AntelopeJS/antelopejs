@@ -201,10 +201,10 @@ describe("ModuleCache prune reading the leases of other runs", () => {
       }),
     },
   ]) {
-    it(`removes nothing when a lease ${label}`, async () => {
+    it(`removes nothing, and names the lease file, when a lease ${label}`, async () => {
       writeLeaseText(seeded.cachePath, "broken.json", content);
 
-      await assert.rejects(prune(seeded.cachePath), /lease|JSON/);
+      await assert.rejects(prune(seeded.cachePath), /broken\.json/);
 
       expect(manifestKeys(seeded.cachePath)).to.have.length(3);
       expect(hasEntryFolder(seeded.cachePath, "b@1.0.0")).to.equal(true);
