@@ -244,12 +244,11 @@ class BindingGraphBuilder {
     overrides?: Pins,
   ): InterfaceBinding {
     const module = this.input.modules.get(moduleId)!;
-    if (module.implements.includes(interfaceName)) {
+    const override = overrides?.get(interfaceName);
+    if (override === undefined && module.implements.includes(interfaceName)) {
       return { provider: moduleId, reason: "implements" };
     }
-    const pinned =
-      overrides?.get(interfaceName) ??
-      this.pins.get(moduleId)!.get(interfaceName);
+    const pinned = override ?? this.pins.get(moduleId)!.get(interfaceName);
     if (pinned) {
       if (!this.providers.providersOf(interfaceName).includes(pinned)) {
         this.addModuleError(
