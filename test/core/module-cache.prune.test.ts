@@ -157,6 +157,30 @@ describe("ModuleCache prune reading the leases of other runs", () => {
     });
   }
 
+  it("names every foreign lease in one warning", async () => {
+    const warn = sinon.stub(Logging.Channel.prototype, "Warn");
+    const machine = { ...thisProcess(), host: "elsewhere", pid: deadPid() };
+    const container = { ...thisProcess(), namespace: otherNamespace() };
+    writeLease(seeded.cachePath, "machine.json", { ...machine, entries: [] });
+    writeLease(seeded.cachePath, "container.json", {
+      ...container,
+      pid: deadPid(),
+      entries: [],
+    });
+
+    try {
+      await prune(seeded.cachePath);
+    } finally {
+      warn.restore();
+    }
+
+    const naming = warn.args
+      .map(([message]) => String(message))
+      .filter((message) => message.includes(".json"));
+    expect(naming).to.have.length(1);
+    expect(naming[0]).to.include("machine.json").and.include("container.json");
+  });
+
   it("reads only the .json files of the lease folder", async () => {
     writeLeaseText(seeded.cachePath, "partial.json.tmp", "{ not json");
 

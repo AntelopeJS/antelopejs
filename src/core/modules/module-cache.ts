@@ -9,6 +9,7 @@ import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import {
   hasErrorCode,
+  type HeldLease,
   isForeignProcess,
   readFolderNames,
   readLiveLeases,
@@ -98,6 +99,10 @@ export async function findCacheEntry(
       await realPathOrResolved(folder),
     )
   );
+}
+
+function describeHolder(lease: HeldLease): string {
+  return `the run with pid ${lease.pid} on ${lease.host} (lease ${lease.file})`;
 }
 
 export class ModuleCache {
@@ -293,10 +298,13 @@ export class ModuleCache {
   ): Promise<string[]> {
     await this.load();
     const leases = await readLiveLeases(this.path, this.fs);
-    const foreign = leases.find(isForeignProcess);
-    if (foreign !== undefined) {
+    const foreign = leases.filter(isForeignProcess);
+    if (foreign.length > 0) {
+      const holders = foreign
+        .map((lease) => `${describeHolder(lease)} in ${lease.namespace}`)
+        .join("; ");
       Logger.Warn(
-        `Not removing unused modules: the run with pid ${foreign.pid} on ${foreign.host} (${foreign.namespace}) holds the lease ${foreign.file} from another machine or pid namespace. If that run is gone, delete ${foreign.file}.`,
+        `Not removing unused modules: these runs on another machine or in another pid namespace hold leases: ${holders}. If those runs are gone, delete their lease files.`,
       );
       return [];
     }
