@@ -122,6 +122,7 @@ export class RunLeaseFile {
   private file?: string;
   private readonly entries = new Set<string>();
   private pendingWrite: Promise<void> = Promise.resolve();
+  private refused = false;
 
   constructor(
     private readonly cachePath: string,
@@ -129,9 +130,19 @@ export class RunLeaseFile {
   ) {}
 
   /**
-   * Adds `entry` to the lease; resolves once the lease file names it. On a
-   * cache this process may not write, it resolves with no lease written,
-   * since this process cannot prune that cache either.
+   * Whether the file system refused a write of this lease, so that no prune
+   * sees the entries of this run. It waits for the pending writes first.
+   */
+  async wasRefused(): Promise<boolean> {
+    await this.pendingWrite;
+    return this.refused;
+  }
+
+  /**
+   * Adds `entry` to the lease; resolves once the lease file names it. When
+   * the file system refuses the write (`EACCES`, `EPERM`, `EROFS`), it
+   * resolves with no lease written, as on a read-only image, and
+   * {@link wasRefused} turns true.
    */
   add(entry: string): Promise<void> {
     this.entries.add(entry);
@@ -160,6 +171,7 @@ export class RunLeaseFile {
       ) {
         throw error;
       }
+      this.refused = true;
       Logger.Debug(`Cannot write a lease in ${folder}; running without one`);
     }
   }

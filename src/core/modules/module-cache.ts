@@ -213,12 +213,19 @@ export class ModuleCache {
    * its lease, so an entry in use shows in one of them. A run that claims an
    * entry while a prune holds the lock waits for it, then finds a removed
    * folder gone. The folders are moved to `.trash` under the lock and deleted
-   * once it is released.
+   * once it is released. A run whose lease the file system refused does not
+   * prune, since no lease protects what it loaded.
    *
    * @throws when a lease cannot be parsed, with nothing removed.
    */
   async prune(readKeep: () => Promise<CacheKeep>): Promise<void> {
     await this.pendingSave;
+    if (await this.lease.wasRefused()) {
+      Logger.Warn(
+        `Cannot write a lease in ${this.path}; not removing unused modules`,
+      );
+      return;
+    }
     await this.emptyTrash();
     const lock = await acquirePruneLock(this.path, this.fs);
     if (lock === undefined) {

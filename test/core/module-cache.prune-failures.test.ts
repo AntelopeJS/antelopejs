@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { chmodSync, existsSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -83,6 +83,23 @@ describe("ModuleCache prune across processes and failures", () => {
     expect(manifestKeys(cachePath)).to.deep.equal(["b@1.0.0"]);
     expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(false);
     expect(hasEntryFolder(cachePath, "b@1.0.0")).to.equal(true);
+  });
+
+  it("does not prune from a run whose lease the file system refused", async () => {
+    const leases = path.join(cachePath, ".leases");
+    mkdirSync(leases);
+    chmodSync(leases, READ_ONLY_MODE);
+    try {
+      const run = new ModuleCache(cachePath);
+      await run.getFolder("a@1.0.0", true, true);
+
+      await run.prune(async () => KEEP_NOTHING);
+    } finally {
+      chmodSync(leases, WRITABLE_MODE);
+    }
+
+    expect(hasEntryFolder(cachePath, "a@1.0.0")).to.equal(true);
+    expect(manifestKeys(cachePath)).to.have.length(3);
   });
 
   it("releases the lock when it cannot record its owner", async () => {
