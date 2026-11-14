@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import path from "node:path";
 
 import { isString } from "../../utils";
@@ -30,11 +30,6 @@ export class MissingPackageError extends Error {
   }
 }
 
-function packageNameOf(request: string): string {
-  const segments = request.split("/");
-  return segments.slice(0, request.startsWith("@") ? 2 : 1).join("/");
-}
-
 function notFoundRequest(error: Error): string | undefined {
   const { code }: NodeJS.ErrnoException = error;
   if (!isString(code) || !NOT_FOUND_CODES.has(code)) {
@@ -44,9 +39,13 @@ function notFoundRequest(error: Error): string | undefined {
 }
 
 function isInstalledFrom(folder: string, packageName: string): boolean {
-  let current = path.resolve(folder);
+  let current = realpathSync(folder);
   while (true) {
-    if (existsSync(path.join(current, "node_modules", packageName))) {
+    if (
+      existsSync(
+        path.join(current, "node_modules", packageName, "package.json"),
+      )
+    ) {
       return true;
     }
     const parent = path.dirname(current);
@@ -60,9 +59,9 @@ function isInstalledFrom(folder: string, packageName: string): boolean {
 /**
  * Names the package behind a module's failed load when Node could not find a
  * package the module declares in `dependencies` or `optionalDependencies`,
- * and no `node_modules` folder above the module's folder holds it. Returns
- * `undefined` for any other failure, such as a missing file inside an
- * installed package or a request a dependency of the module made.
+ * and no `node_modules` folder above the module's real folder holds its
+ * `package.json`. Returns `undefined` for any other failure, such as a
+ * missing subpath of a package or a request a dependency of the module made.
  */
 export function findMissingPackage(
   {
@@ -72,11 +71,10 @@ export function findMissingPackage(
   }: Pick<ModuleManifest, "name" | "folder" | "manifest">,
   error: Error,
 ): MissingPackageError | undefined {
-  const request = notFoundRequest(error);
-  if (request === undefined) {
+  const packageName = notFoundRequest(error);
+  if (packageName === undefined) {
     return undefined;
   }
-  const packageName = packageNameOf(request);
   const declared = {
     ...manifest.dependencies,
     ...manifest.optionalDependencies,
