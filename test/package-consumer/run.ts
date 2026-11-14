@@ -185,7 +185,6 @@ function verifyTypes(
         esModuleInterop: true,
         experimentalDecorators: true,
         emitDecoratorMetadata: true,
-        skipLibCheck: false,
         types: ["node"],
       },
       files: [`${name}.ts`],

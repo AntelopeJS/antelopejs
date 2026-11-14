@@ -99,7 +99,7 @@ describe("PackageDownloader with registry data that breaks its types", () => {
       const result = await load("latest");
 
       expect(result[0].manifest.version).to.equal("1.0.0");
-      expect(cache.getVersion("pkg")).to.equal("1.0.0");
+      expect(cache.getVersion("pkg@1.0.0")).to.equal("1.0.0");
       expect(
         commands.some((command) => command.startsWith("npm pack")),
       ).to.equal(false);

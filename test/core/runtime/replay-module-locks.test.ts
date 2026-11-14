@@ -22,7 +22,7 @@ const VERSION = "1.0.0";
 const SOURCE = { type: "package", package: PKG, version: VERSION } as const;
 
 function warmCache(cacheFolder: string): void {
-  const folder = path.join(cacheFolder, PKG);
+  const folder = path.join(cacheFolder, `${PKG}@${VERSION}`);
   fs.mkdirSync(folder, { recursive: true });
   fs.writeFileSync(
     path.join(folder, "package.json"),
@@ -31,7 +31,7 @@ function warmCache(cacheFolder: string): void {
   fs.writeFileSync(path.join(folder, "pnpm-lock.yaml"), "resolved: today");
   fs.writeFileSync(
     path.join(cacheFolder, "manifest.json"),
-    JSON.stringify({ [PKG]: VERSION }),
+    JSON.stringify({ [`${PKG}@${VERSION}`]: VERSION }),
   );
 }
 
