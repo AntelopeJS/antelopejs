@@ -8,6 +8,15 @@ import { satisfies } from "semver";
 import type { IFileSystem } from "../../types";
 import { NodeFileSystem } from "../filesystem";
 import {
+  acquireCacheLock,
+  type CacheLock,
+  downloadLockOf,
+  PRUNE_LOCK,
+  tryAcquireCacheLock,
+  waitWhileCacheLocked,
+} from "./cache-lock";
+import {
+  describeRefusal,
   hasErrorCode,
   type HeldLease,
   isForeignProcess,
@@ -16,12 +25,6 @@ import {
   readOtherLiveLeases,
   RunLeaseFile,
 } from "./cache-leases";
-import {
-  type CacheLock,
-  PRUNE_LOCK,
-  tryAcquireCacheLock,
-  waitWhileCacheLocked,
-} from "./cache-lock";
 import { CacheManifest } from "./cache-manifest";
 
 const Logger = new Logging.Channel("loader");
@@ -183,11 +186,13 @@ export class ModuleCache {
 
   /**
    * Claims the folder of `module` in the cache, as {@link claimFolder} does,
-   * and returns its path. Unless `noClean`, it removes what the folder holds;
-   * unless `noCreate`, it creates the folder.
+   * and returns its path. Unless `noClean`, it removes what the folder holds,
+   * and the manifest entry of `module` with it; unless `noCreate`, it creates
+   * the folder.
    *
    * @throws when it would remove a folder that the live run of another
-   * process leases, since that run may be reading it.
+   * process leases, since that run may be reading it. A downloader that finds
+   * such a folder complete keeps it instead of replacing it.
    */
   async getFolder(
     module: string,
@@ -200,7 +205,7 @@ export class ModuleCache {
       await this.claim(entry);
     }
     if (!noClean) {
-      await this.removeFolder(folder, entry);
+      await this.removeFolder(module, folder);
     }
     if (!noCreate) {
       await this.fs.mkdir(folder, { recursive: true });
@@ -208,22 +213,57 @@ export class ModuleCache {
     return folder;
   }
 
-  private async removeFolder(
-    folder: string,
-    entry: string | undefined,
-  ): Promise<void> {
-    if (entry !== undefined && (await this.fs.exists(folder))) {
-      const leases = await readOtherLiveLeases(this.path, this.fs);
-      const holder = leases.find((lease) =>
-        lease.entries.some((leased) => entryCovers(leased, entry)),
-      );
+  private async removeFolder(module: string, folder: string): Promise<void> {
+    if (await this.fs.exists(folder)) {
+      const holder = await this.findOtherLease(module);
       if (holder !== undefined) {
         throw new Error(
-          `Cannot replace ${entry} in ${this.path}: the run with pid ${holder.pid} on ${holder.host} uses it (lease ${holder.file}). Stop that run, or wait for it to exit, then try again. If that run is gone, delete ${holder.file}.`,
+          `Cannot replace ${module} in ${this.path}: ${describeHolder(holder)} uses it, and its folder is incomplete. Stop that run, or wait for it to exit, then try again. If that run is gone, delete ${holder.file}.`,
         );
       }
     }
+    await this.clearVersion(module);
     await this.fs.rm(folder, { recursive: true, force: true });
+  }
+
+  /**
+   * The lease of the live run of another process, or of another machine or
+   * pid namespace, that covers the folder of `module`, if any.
+   */
+  async findOtherLease(module: string): Promise<HeldLease | undefined> {
+    const entry = await findCacheEntry(this.path, path.join(this.path, module));
+    if (entry === undefined) {
+      return undefined;
+    }
+    const leases = await readOtherLiveLeases(this.path, this.fs);
+    return leases.find((lease) =>
+      lease.entries.some((leased) => entryCovers(leased, entry)),
+    );
+  }
+
+  /**
+   * Runs `run` while this process holds the download lock of `module`, so
+   * that one run at a time downloads it into the cache: a run that downloads
+   * it meanwhile is waited for. When the cache refuses the lock, as a
+   * read-only cache does, `run` runs without it.
+   */
+  async withDownloadLock<T>(module: string, run: () => Promise<T>): Promise<T> {
+    let lock: CacheLock | undefined;
+    try {
+      lock = await acquireCacheLock(this.path, downloadLockOf(module), this.fs);
+    } catch (error) {
+      const refusal = describeRefusal(
+        error instanceof Error ? error : new Error(String(error)),
+      );
+      Logger[refusal.level](
+        `Cannot take the download lock of ${module} in ${this.path} (${refusal.failure}); going on without it`,
+      );
+    }
+    try {
+      return await run();
+    } finally {
+      await lock?.release();
+    }
   }
 
   static getTemp(): Promise<string> {
@@ -260,11 +300,11 @@ export class ModuleCache {
    * once it is released; before each move the prune checks that it still
    * holds the lock, and stops once another process has taken it over. A run
    * whose lease the file system refused does not prune, since no lease
-   * protects what it loaded. Nothing is removed while
-   * the lease of a run on another machine or in another pid namespace is
-   * present, since this process cannot tell whether that run still lives,
-   * and over a shared file system it may not see that run's newest lease. A
-   * manifest key outside the cache or under a dot folder is never removed.
+   * protects what it loaded. Nothing is removed while the lease of a run on
+   * another machine or in another pid namespace is present, since this
+   * process cannot tell whether that run still lives, and over a shared file
+   * system it may not see that run's newest lease. A manifest key outside the
+   * cache or under a dot folder is never removed.
    *
    * @throws when a lease cannot be parsed, with nothing removed.
    */

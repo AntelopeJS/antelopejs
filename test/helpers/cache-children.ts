@@ -2,8 +2,11 @@ import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 
+import type { ModuleLockMode } from "../../src/core/modules";
+
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const MODULES_SOURCE = path.join(REPO_ROOT, "src/core/modules");
+const DOWNLOADERS_SOURCE = path.join(REPO_ROOT, "src/core/downloaders");
 const RUN_VARIABLE = "AJS_CACHE_CHILD_RUN";
 
 /** How long a child of these tests may run before it is killed. */
@@ -66,6 +69,71 @@ const RUN_PRELUDE = [
   `const pause = () => new Promise((resolve) => setTimeout(resolve, 20));`,
   `const waitFor = async (file) => { while (file && !fs.existsSync(file)) await pause(); };`,
 ];
+
+/** Where the package double installs and logs, and what one child run loads. */
+export interface PackageRun {
+  cachePath: string;
+  project: string;
+  /** A folder for the temporary folders of the download. */
+  tempRoot: string;
+  /** A file the `npm pack` double appends the pid of the child to. */
+  packLog: string;
+  mode?: ModuleLockMode;
+  ignoreCache?: boolean;
+  /** A file the install double waits for after printing `installing`. */
+  installGate?: string;
+  /** A file the child waits for after printing `loaded`, so that its lease lives until then. */
+  exitGate?: string;
+}
+
+/** The lockfile the install double writes in the folder it installs. */
+export const INSTALLED_LOCKFILE = "package-lock.json";
+
+/**
+ * Starts a child that loads `pkg@1.0.0` into the cache through a
+ * `DownloaderRegistry` with the package downloader, whose `npm pack`, extract
+ * and install are doubles: the pack appends its pid to `packLog`, and the
+ * install writes `node_modules` and a lockfile naming its pid. It prints
+ * `loading`, then `loaded <folder>` once the module is loaded.
+ */
+export function loadPackageInChild(run: PackageRun): ChildRun {
+  return runInChild(
+    [
+      ...RUN_PRELUDE,
+      `const { DownloaderRegistry, registerPackageDownloader } = require(${quoted(DOWNLOADERS_SOURCE)});`,
+      `const { ModuleCache, ModuleLockStore } = require(${quoted(MODULES_SOURCE)});`,
+      `const exec = async (command, { cwd }) => {`,
+      `  if (command.startsWith("npm pack")) { fs.appendFileSync(run.packLog, process.pid + "\\n"); return { stdout: "pkg-1.0.0.tgz", stderr: "", code: 0 }; }`,
+      `  process.stdout.write("installing\\n");`,
+      `  await waitFor(run.installGate);`,
+      `  fs.mkdirSync(path.join(cwd, "node_modules", "dep"), { recursive: true });`,
+      `  fs.writeFileSync(path.join(cwd, ${quoted(INSTALLED_LOCKFILE)}), "installed by " + process.pid);`,
+      `  return { stdout: "", stderr: "", code: 0 };`,
+      `};`,
+      `const extract = async (_from, to) => {`,
+      `  fs.mkdirSync(path.join(to, "package"), { recursive: true });`,
+      `  fs.writeFileSync(path.join(to, "package", "package.json"), JSON.stringify({ name: "pkg", version: "1.0.0", main: "index.js", dependencies: { dep: "^1.0.0" } }));`,
+      `  fs.writeFileSync(path.join(to, "package", "index.js"), "module.exports = " + process.pid + ";\\n");`,
+      `};`,
+      `const registry = new DownloaderRegistry();`,
+      `registerPackageDownloader(registry, {`,
+      `  exec, extract,`,
+      `  getInstallCommand: async () => "install",`,
+      `  getTemp: () => fs.promises.mkdtemp(path.join(run.tempRoot, "pack-")),`,
+      `  lock: run.mode ? { store: new ModuleLockStore(run.project), mode: run.mode } : undefined,`,
+      `});`,
+      `(async () => {`,
+      `  const cache = new ModuleCache(run.cachePath);`,
+      `  await cache.load();`,
+      `  process.stdout.write("loading\\n");`,
+      `  const [loaded] = await registry.load(run.project, cache, { type: "package", package: "pkg", version: "1.0.0", id: "pkg", ignoreCache: run.ignoreCache });`,
+      `  process.stdout.write("loaded " + loaded.folder + "\\n");`,
+      `  await waitFor(run.exitGate);`,
+      `})().catch((error) => { console.error(error); process.exit(1); });`,
+    ].join("\n"),
+    JSON.stringify(run),
+  );
+}
 
 /**
  * Starts a child that loads the cache at `cachePath`, prints `ready`, waits
