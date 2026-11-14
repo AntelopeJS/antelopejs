@@ -69,7 +69,11 @@ function decodePackedVersion(packageJsonText: string): string | undefined {
     : undefined;
 }
 
-function pickBestVersion(versions: string[], spec: string): string | undefined {
+/** The version a `spec` picks among `versions`, sorted lowest first. */
+export function pickBestVersion(
+  versions: string[],
+  spec: string,
+): string | undefined {
   const range = validRange(spec);
   if (range) {
     return maxSatisfying(versions, range) ?? undefined;
@@ -147,7 +151,7 @@ export function packageCacheEntry(pkg: string, version: string): string {
 }
 
 /** The versions of a package the cache holds, lowest first. */
-function cachedVersions(cache: ModuleCache, pkg: string): string[] {
+export function cachedVersions(cache: ModuleCache, pkg: string): string[] {
   return sort(
     cache
       .entries()

@@ -22,6 +22,7 @@ const CONFIG = `export default {
     production: {
       modules: {
         repo: { source: { type: "git", remote: "https://example.com/repo.git" } },
+        pre: { source: { type: "package", package: "pre", version: "next" } },
         tagged: { source: { type: "package", package: "tagged", version: "latest" } },
       },
     },
@@ -35,11 +36,13 @@ const STALE = {
   "dropped@1.0.0": "1.0.0",
   "pinned@2.0.0": "2.0.0",
   "tagged@2.0.0": "2.0.0",
+  "pre@1.0.0": "1.0.0",
 };
 
 const KEPT = {
   "pinned@2.1.0": "2.1.0",
   "tagged@3.0.0": "3.0.0",
+  "pre@2.0.0-beta.1": "2.0.0-beta.1",
   https___example_com_repo_git: "git:main:abc",
 };
 
@@ -78,14 +81,14 @@ describe("pruneModuleCache", () => {
       `export default (ctx: { env: string }) => ({
         name: "pruning",
         modules: ctx.env === "production"
-          ? { db: { source: { type: "package", package: "real-db", version: "^1.0.0" } } }
+          ? { db: { source: { type: "package", package: "@scope/real-db", version: "^1.0.0" } } }
           : { db: { source: { type: "package", package: "mock-db", version: "^1.0.0" } } },
       });\n`,
     );
-    const folder = "/cache/real-db@1.0.0";
+    const folder = "/cache/@scope/real-db@1.0.0";
     const source: ModuleSourcePackage = {
       type: "package",
-      package: "real-db",
+      package: "@scope/real-db",
       version: "^1.0.0",
     };
     await writeBuildArtifact(
@@ -103,9 +106,9 @@ describe("pruneModuleCache", () => {
           db: {
             folder,
             source,
-            name: "real-db",
+            name: "@scope/real-db",
             main: `${folder}/index.js`,
-            manifest: { name: "real-db", version: "1.0.0" },
+            manifest: { name: "@scope/real-db", version: "1.0.0" },
             baseUrl: folder,
             paths: [],
           },
@@ -116,7 +119,10 @@ describe("pruneModuleCache", () => {
     const cacheFs = new InMemoryFileSystem();
     await cacheFs.writeFile(
       "/cache/manifest.json",
-      JSON.stringify({ "mock-db@1.0.0": "1.0.0", "real-db@1.0.0": "1.0.0" }),
+      JSON.stringify({
+        "mock-db@1.0.0": "1.0.0",
+        "@scope/real-db@1.0.0": "1.0.0",
+      }),
     );
     const cache = new ModuleCache("/cache", cacheFs);
     await cache.load();
@@ -125,7 +131,7 @@ describe("pruneModuleCache", () => {
 
     expect(Object.fromEntries(cache.entries())).to.deep.equal({
       "mock-db@1.0.0": "1.0.0",
-      "real-db@1.0.0": "1.0.0",
+      "@scope/real-db@1.0.0": "1.0.0",
     });
   });
 

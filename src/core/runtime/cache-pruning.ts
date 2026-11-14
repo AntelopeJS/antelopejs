@@ -5,7 +5,6 @@ import type {
 } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
 import * as path from "node:path";
-import { maxSatisfying, validRange } from "semver";
 
 import {
   ConfigLoader,
@@ -29,24 +28,22 @@ function isGitSource(source: ModuleSource): source is ModuleSourceGit {
 }
 
 /**
- * The cached version an offline start of `source` falls back to: the highest
- * one in its range, or the highest one for a dist-tag, which only the registry
- * resolves.
+ * The cache entry an offline start of `source` falls back to, picked as the
+ * package downloader picks it.
  */
 async function fallbackEntry(
   source: ModuleSourcePackage,
   cache: ModuleCache,
 ): Promise<string | undefined> {
-  const { packageCacheEntry } = await import("../downloaders");
-  const versions = cache
-    .entries()
-    .filter(
-      ([entry, version]) =>
-        entry === packageCacheEntry(source.package, version),
-    )
-    .map(([, version]) => version);
-  const best = maxSatisfying(versions, validRange(source.version) ?? "*");
-  return best === null ? undefined : packageCacheEntry(source.package, best);
+  const { cachedVersions, packageCacheEntry, pickBestVersion } =
+    await import("../downloaders");
+  const best = pickBestVersion(
+    cachedVersions(cache, source.package),
+    source.version,
+  );
+  return best === undefined
+    ? undefined
+    : packageCacheEntry(source.package, best);
 }
 
 async function keepForSource(
@@ -84,16 +81,15 @@ async function declaredSources(
   );
 }
 
-/** The cache entries the project's `build.json` points at; none without a build. */
-async function builtEntries(
-  cache: ModuleCache,
+/** The absolute module folders the project's `build.json` points at; none without a build. */
+async function builtFolders(
   projectFolder: string,
   fs: NodeFileSystem,
 ): Promise<string[]> {
   try {
     const artifact = await readBuildArtifact(projectFolder, fs);
     return Object.values(artifact.modules).map(({ folder }) =>
-      path.relative(cache.path, folder),
+      path.resolve(folder),
     );
   } catch {
     return [];
@@ -117,10 +113,11 @@ export async function pruneModuleCache(
         keepForSource(source, cache),
       ),
     );
-    const built = new Set(await builtEntries(cache, projectFolder, fs));
+    const built = new Set(await builtFolders(projectFolder, fs));
     await cache.prune(
       (entry, version) =>
-        built.has(entry) || keeps.some((keep) => keep(entry, version)),
+        built.has(path.resolve(cache.path, entry)) ||
+        keeps.some((keep) => keep(entry, version)),
     );
   } catch (err) {
     Logger.Warn("Could not remove unused modules from the cache:", err);
