@@ -37,7 +37,6 @@ export class ModuleLifecycle {
    * transition, it only feeds the configuration of the modules that reference
    * them.
    */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- ModuleLifecycle is emitted in the published declarations through Module.state, so provide keeps its unknown application config parameter.
   provide(config: unknown): Promise<ConfigVars | void> {
     return this.enqueue(async () => {
       if (this._state !== ModuleState.Loaded) {
@@ -48,7 +47,6 @@ export class ModuleLifecycle {
     });
   }
 
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- ModuleLifecycle is emitted in the published declarations through Module.state, so construct keeps its unknown application config parameter.
   construct(config: unknown): Promise<void> {
     return this.enqueue(() => {
       if (this._state !== ModuleState.Loaded) {

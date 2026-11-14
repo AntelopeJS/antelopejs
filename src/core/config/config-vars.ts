@@ -40,12 +40,11 @@ export function declaredConfigVars(source?: {
 }
 
 /** Every config variable reference a configuration holds, at any depth. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, to collect its config variable references
 export function scanConfigVars(config: unknown): ConfigVarScan {
   const references = new Map<string, ConfigVarReference>();
   const malformed = new Set<string>();
 
-  visitStrings(config, (value) => {
+  for (const value of stringsIn(config, [])) {
     for (const reference of matchReferences(value)) {
       references.set(reference.token, reference);
     }
@@ -54,7 +53,7 @@ export function scanConfigVars(config: unknown): ConfigVarScan {
         malformed.add(token);
       }
     }
-  });
+  }
 
   return { references: [...references.values()], malformed: [...malformed] };
 }
@@ -68,10 +67,10 @@ export function scanConfigVars(config: unknown): ConfigVarScan {
  * came in.
  */
 export function substituteConfigVars(
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- takes a module config, any JS value (docs/2.concepts/4.configuration.md, Referencing): substitutes its strings, rebuilds an array or a plain object only when a member changed, and returns every other value, such as a RegExp, a Date or a class instance, by identity
   config: unknown,
   lookup: ConfigVarLookup,
-  // oxlint-disable-next-line anti-slop/no-unknown-returns -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- returns the module config it takes, any JS value (docs/2.concepts/4.configuration.md, Referencing), with its strings substituted, an array or a plain object rebuilt only when a member changed, and every other value, such as a RegExp, a Date or a class instance, by identity
 ): unknown {
   if (isString(config)) {
     return substituteString(config, lookup);
@@ -98,10 +97,10 @@ function substituteArray(
 }
 
 function substituteObject(
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- takes a plain object of a module config, whose values are any JS value (docs/2.concepts/4.configuration.md, Referencing), and passes each through substituteConfigVars, which returns a RegExp, a Date or a class instance by identity
   config: Record<string, unknown>,
   lookup: ConfigVarLookup,
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- walks a module config, user JS data that can hold RegExp and functions, and returns branches it cannot clone by identity
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- returns the plain object it takes, whose values are any JS value (docs/2.concepts/4.configuration.md, Referencing), by identity when no value changed, or rebuilt with the changed values and every other value, such as a RegExp, a Date or a class instance, by identity
 ): Record<string, unknown> {
   const original = Object.entries(config);
   const entries = original.map(
@@ -139,19 +138,18 @@ function matchReferences(value: string): ConfigVarReference[] {
   );
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks a module config, user JS data that can hold RegExp and functions, visiting each string it holds
-function visitStrings(value: unknown, visit: (value: string) => void): void {
+/** `found`, with the strings `value` holds in its arrays and plain objects pushed on, depth first. */
+function stringsIn(value: unknown, found: string[]): string[] {
   if (isString(value)) {
-    visit(value);
-    return;
+    found.push(value);
+  } else if (Array.isArray(value)) {
+    value.forEach((item) => {
+      stringsIn(item, found);
+    });
+  } else if (isPlainObject(value)) {
+    Object.values(value).forEach((item) => {
+      stringsIn(item, found);
+    });
   }
-
-  if (Array.isArray(value)) {
-    value.forEach((item) => visitStrings(item, visit));
-    return;
-  }
-
-  if (isPlainObject(value)) {
-    Object.values(value).forEach((item) => visitStrings(item, visit));
-  }
+  return found;
 }

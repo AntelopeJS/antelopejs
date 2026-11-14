@@ -94,12 +94,10 @@ function lineIndent(source: string, position: number): string {
 }
 
 /** `value` as source text, its continuation lines indented by `indent`. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
 function serializeValue(value: unknown, unit: string, indent: string): string {
   return serializeAt(value, unit, 0).split(NEWLINE).join(`${NEWLINE}${indent}`);
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
 function serializeAt(value: unknown, unit: string, depth: number): string {
   if (value === null || !isObjectOrNull(value)) {
     return JSON.stringify(value) ?? "undefined";
@@ -137,7 +135,6 @@ function insertProperty(
   source: string,
   object: TypeScript.ObjectLiteralExpression,
   key: string,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
   value: unknown,
 ): TextEdit {
   const close = closingBrace(object);
@@ -162,7 +159,6 @@ function replaceValue(
   context: EditContext,
   source: string,
   property: TypeScript.PropertyAssignment,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
   value: unknown,
 ): TextEdit {
   const indent = lineIndent(source, property.getStart());
@@ -258,7 +254,7 @@ function setEntryField(
   source: string,
   key: string,
   field: string,
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes module fields a caller chooses, user config data of any shape, as source text
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- writes a field a module passes to SaveModuleDeclaration, whose config interface-core types unknown because module config is any JS value (docs/2.concepts/4.configuration.md, Referencing): null or undefined removes the field, and serializeAt writes any other object, a RegExp, a Date or a class instance included, as its own enumerable entries and a function as undefined
   value: unknown,
 ): string {
   const object = entryObject(context, source, key);
@@ -298,7 +294,7 @@ function expandShorthand(
 
 function definedFields(
   changes: ModuleDeclarationChanges,
-  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Object.fromEntries rebuilds the defined fields, module config user data included, with unknown values; typing it as the all-optional changes type would be an unchecked claim
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- keeps the defined fields a module passes to SaveModuleDeclaration, whose config interface-core types unknown because module config is any JS value (docs/2.concepts/4.configuration.md, Referencing); typing the Object.fromEntries result as the all-optional changes type would be an unchecked claim
 ): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(changes).filter(

@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import assert from "node:assert/strict";
+import sinon from "sinon";
 import { isObject } from "../../../src/utils";
 
 import {
@@ -60,6 +61,34 @@ const lookup = () => 5010;
         const scan = scanConfigVars({ url: "${@api}" });
 
         expect(scan.malformed).to.deep.equal(["${@api}"]);
+      });
+
+      it("walks an Array subclass with its own forEach, never flatMap or map, and builds no instance of it", () => {
+        let built = 0;
+        class Hosts extends Array<string> {
+          constructor(...hosts: string[]) {
+            super(...hosts);
+            built += 1;
+          }
+        }
+        const hosts = new Hosts("${@db.PRIMARY}", "${@db.REPLICA}");
+        const builtBeforeScan = built;
+        const forEach = sinon.spy(hosts, "forEach");
+        const flatMap = sinon.spy(hosts, "flatMap");
+        const map = sinon.spy(hosts, "map");
+
+        const scan = scanConfigVars({ hosts });
+
+        expect(scan.references.map(({ token }) => token)).to.deep.equal([
+          "${@db.PRIMARY}",
+          "${@db.REPLICA}",
+        ]);
+        expect({
+          forEach: forEach.callCount,
+          flatMap: flatMap.callCount,
+          map: map.callCount,
+        }).to.deep.equal({ forEach: 1, flatMap: 0, map: 0 });
+        expect(built).to.equal(builtBeforeScan);
       });
     };
   }

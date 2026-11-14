@@ -103,7 +103,7 @@ function isRawProjectConfig(value: unknown): value is Record<string, unknown> {
   return isObjectOrNull(value) && value !== null;
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- recursively hashes the resolved project config, whose module config is user JS data of any shape, or a module source
+// oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- walks the resolved project config, whose module config is any JS value (docs/2.concepts/4.configuration.md, Referencing), or a module source: maps arrays, rebuilds every other object, a RegExp, a Date or a class instance included, from its own enumerable keys in sorted order, and returns functions and primitives as they are
 function toStableHashValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => toStableHashValue(item));
