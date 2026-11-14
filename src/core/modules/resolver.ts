@@ -431,7 +431,9 @@ export class Resolver {
     if (bound) {
       return bound;
     }
-    const keys = this.instances.keysOf(packageName);
+    const keys = this.instances
+      .keysOf(packageName)
+      .filter((key) => !this.instances.describe(key)?.private);
     if (keys.length <= 1) {
       return keys[0];
     }

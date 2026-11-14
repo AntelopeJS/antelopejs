@@ -13,7 +13,11 @@ export class ProviderTable {
   constructor(private readonly modules: ReadonlyMap<string, BindingModule>) {
     const ids = [...modules.keys()].sort(compareIds);
     for (const id of ids) {
-      for (const interfaceName of modules.get(id)!.implements) {
+      const module = modules.get(id)!;
+      for (const interfaceName of module.implements) {
+        if (module.disabledExports?.has(interfaceName)) {
+          continue;
+        }
         const providers = this.providers.get(interfaceName) ?? [];
         providers.push(id);
         this.providers.set(interfaceName, providers);

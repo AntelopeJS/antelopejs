@@ -46,9 +46,10 @@ function toBindingModule(
   const connections = toBindingConnections(config.importOverrides);
   return {
     id: module.id,
-    implements: (module.manifest.implements ?? []).filter(
-      (name) => packages.has(name) && !config.disabledExports?.has(name),
+    implements: (module.manifest.implements ?? []).filter((name) =>
+      packages.has(name),
     ),
+    disabledExports: config.disabledExports,
     uses: Object.keys(declared).filter((name) => packages.has(name)),
     connections,
     listedConnections: toBindingConnections(listed.get(module.id)),

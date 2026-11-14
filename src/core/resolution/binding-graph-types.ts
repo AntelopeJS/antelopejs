@@ -14,8 +14,13 @@ export interface BindingConnection {
 /** A module, as far as binding is concerned. */
 export interface BindingModule {
   id: string;
-  /** Interfaces the module provides (its `implements`, minus `disabledExports`). */
+  /** Interfaces the module implements. It binds each to an instance of its own. */
   implements: readonly string[];
+  /**
+   * Implemented interfaces the module does not provide: no other module binds
+   * them to it, and its own instance stays its own. Defaults to none.
+   */
+  disabledExports?: ReadonlySet<string>;
   /** Interface packages the module depends on directly. */
   uses: readonly string[];
   /** `importOverrides` entries, in configured order, keyed by interface. */
@@ -58,6 +63,11 @@ export interface InstanceDescriptor {
   key: string;
   interfaceName: string;
   provider?: string;
+  /**
+   * Set when the provider disables this export: no other module binds to the
+   * instance, and an undeclared import never picks it among several.
+   */
+  private?: boolean;
   /** Instance keys a self-hosted instance imports. */
   dependencies: readonly string[];
 }
