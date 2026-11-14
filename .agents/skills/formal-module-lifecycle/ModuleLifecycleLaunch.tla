@@ -7,17 +7,15 @@ EXTENDS ModuleLifecycleState
 (* ---------------------------- launch -------------------------------- *)
 
 (* prepareFromConfig hashes antelope.config.ts, then imports it through  *)
-(* ConfigLoader.load, which asks jiti without `fresh`: jiti's module cache *)
-(* answers with the content this process imported first.                 *)
+(* ConfigLoader.load, which asks jiti with `fresh`: jiti's module cache   *)
+(* is off, so every launch reads the file as it is now.                   *)
 LaunchPrepare(L) ==
   /\ ~exited /\ lpc[L] = "prepare"
-  /\ cfgHash' = [cfgHash EXCEPT ![L] = declared]          \* launch-sequence.ts:150
-  /\ LET read == IF jitiCache = {"none"} THEN declared ELSE jitiCache \* config-loader.ts:145, :42-49
-     IN /\ cfgSeen' = [cfgSeen EXCEPT ![L] = read]       \* launch-sequence.ts:154
-        /\ jitiCache' = read
-        /\ staleRead' = (staleRead \/ read /= declared)
+  /\ cfgHash' = [cfgHash EXCEPT ![L] = declared]          \* launch-sequence.ts:151
+  /\ cfgSeen' = [cfgSeen EXCEPT ![L] = declared]          \* launch-sequence.ts:155, config-loader.ts:115
+  /\ staleRead' = (staleRead \/ cfgSeen'[L] /= declared)
   /\ lpc' = [lpc EXCEPT ![L] = "addModules"]
-  /\ UNCHANGED <<declared, edits, configOwner, changes, genVars, launch, awaiting, loaded, lateStart,
+  /\ UNCHANGED <<declared, edits, changes, genVars, launch, awaiting, loaded, lateStart,
                  sdVars, watching, watched, cfgEvent, restartReq, restartVars, hrVars, procVars>>
 
 Interrupt(L) ==
@@ -149,7 +147,7 @@ ConfigEdit(m) ==
   /\ ~exited /\ edits < MaxEdits
   /\ declared' = IF m \in declared THEN declared \ {m} ELSE declared \cup {m}
   /\ edits' = edits + 1
-  /\ UNCHANGED <<jitiCache, staleRead, configOwner>>
+  /\ UNCHANGED staleRead
   /\ cfgEvent' = [L \in Launches |-> cfgEvent[L] \/ watching[L] = "yes"]
   /\ UNCHANGED <<changes, genVars, launchVars, sdVars, watching, watched, cfgHash,
                  restartReq, restartVars, hrVars, procVars>>
@@ -244,15 +242,12 @@ SdDestroy(L, m) ==
                  watchVars, restartVars, hrVars, tolerance, sigint, exited, crashed,
                  crashedWhileWatching>>
 
-(* destroyAll evicts each loaded module's files from require.cache, which *)
-(* drops jiti's cached config when it sits in a module folder, then       *)
-(* clearManagedState empties ModuleManager.loaded.                        *)
+(* clearManagedState empties ModuleManager.loaded. *)
 SdClear(L) ==
   /\ ~exited /\ sd[L] = "destroyAll" /\ sdLeft[L] = {}
-  /\ EvictConfig(Held(L))                                 \* module-manager-lifecycle.ts:135-136
   /\ loaded' = [loaded EXCEPT ![L] = [m \in Modules |-> None]] \* module-manager-lifecycle.ts:140, :168
   /\ sd' = [sd EXCEPT ![L] = "watcher"]
-  /\ UNCHANGED <<declared, edits, staleRead, configOwner, changes, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdLeft,
+  /\ UNCHANGED <<editVars, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdLeft,
                  exitReq, armed, watchVars, restartVars, hrVars, procVars>>
 
 (* Priority 20: hotReload.clear() and watcher.stopWatching(). *)

@@ -13,7 +13,7 @@ The TLA+ spec models what `ajs project dev --watch` does to module generations: 
 node .agents/skills/formal-module-lifecycle/check.mjs
 ```
 
-It needs Node 24, `pnpm install` done (the runner comes from `@antelopejs/tooling-configs/formal`), and Java 11 or later from `$JAVA`, else `java` on PATH, else the `eclipse-temurin:21-jre` Docker image (set `TLC_DOCKER_PREFIX` to name the containers). The first run downloads TLC 1.7.4 into `~/.cache/antelopejs-formal` (or `$XDG_CACHE_HOME/antelopejs-formal`) and checks its SHA-256. A run takes about 55 s on 4 cores and explores 994,674 states. CI runs it as the `formal-module-lifecycle` job.
+It needs Node 24, `pnpm install` done (the runner comes from `@antelopejs/tooling-configs/formal`), and Java 11 or later from `$JAVA`, else `java` on PATH, else the `eclipse-temurin:21-jre` Docker image (set `TLC_DOCKER_PREFIX` to name the containers). The first run downloads TLC 1.7.4 into `~/.cache/antelopejs-formal` (or `$XDG_CACHE_HOME/antelopejs-formal`) and checks its SHA-256. A run takes about 10 s on 4 cores and explores 502,410 states. CI runs it as the `formal-module-lifecycle` job.
 
 - Exit 0 means every rule that held still holds, and each finding still breaks with its recorded counterexample length.
 - Exit 1 means a rule changed. `BROKEN` names a rule that held and now breaks. `CHANGED` names a finding whose shortest counterexample changed length. `HOLDS` names a finding that no longer breaks. The script keeps TLC's output in a temporary folder and prints its path.
@@ -33,24 +33,22 @@ Run it when a change touches any file in the coverage record below. A changed ru
 | `DevSurvivesFailedReload` | While a watcher is up, a failed reload and the work it leaves behind never stop the dev process. | holds |
 | `NoCrashFromStaleWork` | Work a destroyed generation leaves behind never stops the dev process unless the user stopped it. | holds |
 | `NoOrphanGeneration` | Every constructed or running generation is one the project still holds, so a stop or destroy can reach it. | holds (F1 fixed) |
-| `LaunchReadsCurrentConfig` | Every launch, restarts included, loads antelope.config.ts as the file holds it. | finding F2 |
-| `ConfigEditsReachProject` | Once the project settles, it holds exactly the modules antelope.config.ts declares. | finding F2 |
+| `LaunchReadsCurrentConfig` | Every launch, restarts included, loads antelope.config.ts as the file holds it. | holds (F2 fixed) |
+| `ConfigEditsReachProject` | Once the project settles, it holds exactly the modules antelope.config.ts declares. | holds (F2 fixed) |
 
-`TypeOK` holds too. `check.mjs` records each finding's counterexample length in `FINDINGS`.
+`TypeOK` holds too. `check.mjs` records each finding's counterexample length in `FINDINGS`, which is empty while every rule holds.
 
 ## Findings on main
 
 Each finding was replayed against the real code at the sync commit. The replays were scratch scripts and are not committed.
 
 - **F1, generation outside the project (`NoOrphanGeneration`), fixed.** Ctrl+C landed while `constructAll` awaited an async `provide` callback (a module that declares `antelopeJs.configVars`). `destroyAll` passed over the modules still `Loaded`, `clearManagedState` emptied `loaded`, and when the `provide` resolved those modules constructed and nothing destroyed them. In the reload variant, a replacement whose `provide` awaited constructed and started outside every manager. Now `stopAll` and `destroyAll` close the manager before their first await, then wait for the constructs already past their check. `constructAll`, `constructModules`, `provideEntry` and `constructEntry` do nothing on a closed manager, so a replacement installed during the shutdown is covered too. `Closed` models that flag, and `ConstructApply` and `RlConstruct` check it. `test/core/module-manager.shutdown-race.test.ts` replays both variants, and a `provide` that resolves as the shutdown starts, through `constructAll` and `constructModules` with the shutdown handler's `stopAll` then `destroyAll`.
-- **F2, restart reads a stale config (`LaunchReadsCurrentConfig`).** `importConfigInput` builds a new jiti instance per call, but jiti answers from the shared `require.cache` while the config's entry is there and loaded (config-loader.ts:42-50, jiti 2.6.1 with `moduleCache` on). The only thing that deletes that entry is `evictModuleFiles` (module-manager-cache.ts:39-51), which `destroyAll` runs for every loaded module, and `reloadLoadedModuleFromSource` for the reloaded one. It deletes only files under the module's folder. So a restart reads the edited file when a loaded module lives at the project root (`path: "."`, the layout the templates use), and reads the first import otherwise. The model has `configOwner`, the module whose folder holds antelope.config.ts, and `Init` lets TLC try both layouts. Replays on the built CLI with `ajs project dev --watch`:
-  - Modules in subfolders (`./a`, `./b`): with dev on `{a}`, writing `{a, b}` logged "Configuration file changed, restarting project...", then "Loaded 1 module", and `b` never constructed.
-  - Module `a` at the root: writing `{a, b}` gave "Loaded 2 modules", as the parent's template journey saw. Then writing `{b}` gave "Loaded 1 module", and writing `{a, b}` again gave "Loaded 1 module" with only `b` constructed. With the root module removed, nothing evicts the cached config, so every later restart reads `{b}`.
-- **F3, edit lost during startup, fixed (#248).** An edit after `prepareFromConfig` read the config and before `FileWatcher.startWatching` produced no fs.watch event, and `watchFile` hashed the already-edited file, so the project ran without the change. `prepareFromConfig` now hashes antelope.config.ts and `.env` before it loads them, `watchFile` keeps that hash, and `startWatching` checks each watched file against it once its directory is watched. `LaunchPrepare` sets `cfgHash` and `LaunchWatching` raises `cfgEvent`. `test/integration/config-edit-during-launch.test.ts` replays it: a module's `construct` writes `b` into the config during launch, and dev restarts and starts `b`. `ConfigEditsReachProject` still breaks through F2.
+- **F2, restart reads a stale config (`LaunchReadsCurrentConfig`, `ConfigEditsReachProject`), fixed (#244).** `ConfigLoader.load` imported antelope.config.ts through jiti with its module cache on, so a restart got the first import back from `require.cache` unless `evictModuleFiles` had dropped the config's entry, which it did only when a loaded module lived at the project root. With modules in `./a` and `./b`, adding `b` while dev ran restarted the project with `a` alone. Now `ConfigLoader.load` passes `fresh`, and `importConfigInput` turns jiti's module cache off, so every load reads the file as it is (config-loader.ts:115, ts-config-file.ts). `LaunchPrepare` reads `declared`, and the model no longer tracks a jiti cache or which module folder holds the config. `test/integration/config-edit-during-launch.test.ts` restarts dev on that `./a`, `./b` layout and starts `b`, `test/core/config/config-loader.reload.test.ts` reads the modules one edit of the file added and removed, and the verify journey `project-dev/dev-readd-root-module` re-adds the root module (`path: "."`) while dev runs and restarts with it loaded.
+- **F3, edit lost during startup, fixed (#248).** An edit after `prepareFromConfig` read the config and before `FileWatcher.startWatching` produced no fs.watch event, and `watchFile` hashed the already-edited file, so the project ran without the change. `prepareFromConfig` now hashes antelope.config.ts and `.env` before it loads them, `watchFile` keeps that hash, and `startWatching` checks each watched file against it once its directory is watched. `LaunchPrepare` sets `cfgHash` and `LaunchWatching` raises `cfgEvent`. `test/integration/config-edit-during-launch.test.ts` replays it: a module's `construct` writes `b` into the config during launch, and dev restarts and starts `b`.
 
 ## Read every result with /statechart
 
-Read each TLC result with the pstack `/statechart` skill. Work on a copy of the three `.tla` files, the map and the chart configs in a scratch folder outside the repo, since it writes its output next to its input. The spec is `ModuleLifecycle.tla`. Use `ModuleLifecycle.map.mjs` as the mapping. The full bound is too large to chart, so chart two views. Use `chart-hmr.cfg` for HMR and Ctrl+C (no config edits), and `chart-config.cfg` for config add/remove and Ctrl+C (no source edits). Pass today's findings as the rules expected to break. A new bug shows as a new numbered path, and a fix shows which bug paths it removes.
+Read each TLC result with the pstack `/statechart` skill. Work on a copy of the three `.tla` files, the map and the chart configs in a scratch folder outside the repo, since it writes its output next to its input. The spec is `ModuleLifecycle.tla`. Use `ModuleLifecycle.map.mjs` as the mapping. The full bound is too large to chart, so chart two views. Use `chart-hmr.cfg` for HMR and Ctrl+C (no config edits), and `chart-config.cfg` for config add/remove and Ctrl+C (no source edits). Pass today's findings, if any, as the rules expected to break. A new bug shows as a new numbered path, and a fix shows which bug paths it removes.
 
 ## Real bug or modeling error
 
@@ -66,7 +64,7 @@ Replay the counterexample against the code, one action per step, with the covera
 
 | Model action | Code |
 | --- | --- |
-| `LaunchPrepare`, `EvictConfig` (in `SdClear`, `RlInstall`) | `prepareFromConfig`, `hashRestartFiles` (src/core/runtime/launch-sequence.ts), `loadProjectConfig` (runtime-bootstrap.ts), `ConfigLoader.load` / `importConfigInput` (src/core/config/config-loader.ts), `evictModuleFiles` (src/core/modules/module-manager-cache.ts) |
+| `LaunchPrepare` | `prepareFromConfig`, `hashRestartFiles` (src/core/runtime/launch-sequence.ts), `loadProjectConfig` (runtime-bootstrap.ts), `ConfigLoader.load` (src/core/config/config-loader.ts), `loadTsConfigFile` / `importConfigInput` (src/core/config/ts-config-file.ts) |
 | `LaunchAddModules`, `LaunchConstruct`, `LaunchStart`, `LaunchWatch` gates | `runLaunchSteps` (src/core/runtime/launch-steps.ts), `MODULE_STEPS`, `LAUNCH_STEPS` (launch-sequence.ts), `POST_LAUNCH_STEPS` (src/core/repl/project-launch.ts) |
 | `ConstructApply`, `LaunchConstructed` | `constructAll`, `constructReadyModules` (src/core/modules/module-manager-construction.ts), `Module.construct` (module.ts), `ModuleLifecycle.construct` (module-lifecycle.ts) |
 | `StartApply`, `LaunchStarted` | `startAll`, `startModules` (module-manager-lifecycle.ts), `Module.start`, `ModuleLifecycle.start`, `enqueue` |
@@ -81,11 +79,11 @@ Replay the counterexample against the code, one action per step, with the covera
 | `SourceEdit`, `FlushStarts`, `ReloadBegins`, `BatchEnds` | `FileWatcher.notifyModuleChange`, `HotReload.queue`, `scheduleFlush`, `flush`, `reloadOne` (src/core/runtime/watch/hot-reload.ts), the reload handler in `setupWatching` |
 | `RlManifestLoaded` .. `RlRecovered` | `reloadLoadedModuleFromSource`, `activateReplacement`, `cleanupReplacement`, `recoverPreviousModule` (src/core/runtime/module-reloading.ts), `placeModule`, `replaceLoadedModule` (module-manager-records.ts), `checkReplacement` (module-manager-bindings.ts), `unrequireModuleFiles` (module-manager-cache.ts) |
 
-The sync commit is `9b81264` on AntelopeJS/antelopejs `main`.
+The sync commit is `9b81264` on AntelopeJS/antelopejs `main`. The actions the F1, F2 and F3 fixes changed cite `main` after those fixes: `Closed` and `LaunchHashConfig` cite the code of their fixes, and `LaunchPrepare` cites `1d5229e`.
 
 ## Bounds and what is left out
 
-The check runs with modules `a` and `b` (`a` declared at start), at most 2 config edits (so at most 3 launches) and 1 module source edit, with both config layouts (the config in no module folder, or in `a`'s folder at the project root), which gives 994,674 states. The charts use 0 edits with 1 source edit (1,996 states), and 1 edit with 0 source edits (4,300 states). A pass covers these bounds only.
+The check runs with modules `a` and `b` (`a` declared at start), at most 2 config edits (so at most 3 launches) and 1 module source edit, which gives 502,410 states. The charts use 0 edits with 1 source edit (1,334 states), and 1 edit with 0 source edits (2,123 states). A pass covers these bounds only.
 
 The model leaves out:
 
@@ -94,6 +92,7 @@ The model leaves out:
 - the `destroyAll` of `cleanupFailedLaunch`, which only repeats the shutdown's own `destroyAll`;
 - a destroy that fails during shutdown, `pendingCleanup`, start failures and the 120 s start deadline, and a second Ctrl+C;
 - the reload's signature check, which skips a reload when no file changed, and directories added or removed under a module;
+- files that antelope.config.ts imports: jiti's module cache is off for the config, but Node's own loader still caches an imported `.json`, `.cjs`, CommonJS `.js` or `.mjs` file across restarts, and the watcher does not watch them;
 - `FileWatcher.scanModule` on a missing watch dir, such as the `src` that `ajs project modules add --mode local` writes for a module with no `src/`. The scan skips it and watches the module's other watch dirs, outside the lifecycle orders the model checks.
 
 Every await is a point where another step may run, including Ctrl+C, a file edit, and a timer. Node delivers those only between macrotasks, so the model allows some orders the code cannot produce. Every finding above was replayed, and each replay says which real await it needs.
