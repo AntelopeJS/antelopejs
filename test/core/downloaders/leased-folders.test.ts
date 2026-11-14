@@ -10,7 +10,8 @@ import {
   registerGitDownloader,
   registerPackageDownloader,
 } from "../../../src/core/downloaders";
-import { ModuleCache } from "../../../src/core/modules";
+import { NodeFileSystem } from "../../../src/core/filesystem";
+import { ModuleCache, ModuleLockStore } from "../../../src/core/modules";
 import {
   type IdleProcess,
   manifestKeys,
@@ -173,6 +174,76 @@ describe("Downloaders and a folder that another live run leases", () => {
 
     expect(readText(path.join(cachePath, entry, "index.js"))).to.equal(
       SEEDED_INDEX,
+    );
+  });
+});
+
+describe("A frozen install and a folder that another live run uses", () => {
+  let root: string;
+  let cachePath: string;
+  let other: IdleProcess;
+  let recorded: Recorded;
+
+  beforeEach(async () => {
+    root = makeTempDir("ajs-frozen-in-use-");
+    cachePath = path.join(root, "cache");
+    recorded = { commands: [] };
+    other = await startIdleProcess();
+  });
+
+  afterEach(async () => {
+    await other.stop();
+    cleanupTempDir(root);
+  });
+
+  function writeOtherLease(entry: string): string {
+    writeLease(cachePath, "other.json", {
+      ...thisProcess(),
+      pid: other.pid,
+      entries: [entry],
+    });
+    return path.join(cachePath, ".leases", "other.json");
+  }
+
+  it("refuses, in frozen mode, a folder that another run uses when it was installed from another lockfile", async () => {
+    const entry = "pkg@1.0.0";
+    const folder = path.join(cachePath, entry);
+    seedPackage(folder, true);
+    writeFileSync(path.join(folder, "pnpm-lock.yaml"), "installed: other\n");
+    const lease = writeOtherLease(entry);
+    const store = new ModuleLockStore(root, new NodeFileSystem());
+    await store.write({
+      package: "pkg",
+      version: "1.0.0",
+      lockfile: "pnpm-lock.yaml",
+      content: "installed: locked\n",
+    });
+    const registry = new DownloaderRegistry();
+    registerPackageDownloader(registry, {
+      exec: async (command) => {
+        recorded.commands.push(command);
+        return { stdout: "pkg-1.0.0.tgz", stderr: "", code: 0 };
+      },
+      lock: { store, mode: "frozen" },
+    });
+    const cache = new ModuleCache(cachePath);
+    await cache.load();
+
+    await assert.rejects(
+      registry.load(root, cache, {
+        type: "package",
+        package: "pkg",
+        version: "1.0.0",
+      }),
+      (error: Error) =>
+        [lease, "frozen", "pnpm-lock.yaml"].every((part) =>
+          error.message.includes(part),
+        ),
+    );
+
+    expect(recorded.commands).to.deep.equal([]);
+    expect(readText(path.join(folder, "pnpm-lock.yaml"))).to.equal(
+      "installed: other\n",
     );
   });
 });

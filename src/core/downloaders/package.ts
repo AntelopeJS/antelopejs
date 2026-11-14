@@ -334,7 +334,7 @@ async function findFolderInUse(
   load: PackageLoad,
   ctx: PackageLoaderContext,
 ): Promise<string | undefined> {
-  const { cache, key, entry } = load;
+  const { cache, key, entry, record } = load;
   const holder = await cache.findOtherLease(entry);
   if (holder === undefined) {
     return undefined;
@@ -342,6 +342,15 @@ async function findFolderInUse(
   const folder = await findCachedFolder(cache, entry, ctx.fs);
   if (folder === undefined) {
     return undefined;
+  }
+  if (
+    ctx.locks.isFrozen &&
+    record !== undefined &&
+    !(await ctx.locks.matches(folder, record))
+  ) {
+    throw new Error(
+      `${entry} was installed from another ${record.lockfile} than its lock, and the run with pid ${holder.pid} on ${holder.host} uses it (lease ${holder.file}), so the frozen install cannot replace it. Stop that run, then try again. If that run is gone, delete ${holder.file}.`,
+    );
   }
   Logger.Info(
     `${entry} is in use by the run with pid ${holder.pid} on ${holder.host} (lease ${holder.file}); keeping its folder instead of downloading it again`,
