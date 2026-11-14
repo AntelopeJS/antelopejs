@@ -5,7 +5,13 @@ import os from "node:os";
 import path from "node:path";
 
 import { NodeFileSystem } from "../../src/core/filesystem";
-import { type CacheKeep, ModuleCache } from "../../src/core/modules";
+import {
+  type CacheKeep,
+  downloadLockOf,
+  ModuleCache,
+  PRUNE_LOCK,
+  tryAcquireCacheLock,
+} from "../../src/core/modules";
 import {
   cacheFolderNames,
   deadPid,
@@ -209,6 +215,32 @@ describe("ModuleCache prune that cannot record its lock owner", () => {
 
   afterEach(() => {
     cleanupTempDir(root);
+  });
+
+  it("takes the download lock of a module whose name is as long as a lock name gets", async () => {
+    const fs = new NodeFileSystem();
+
+    const lock = await tryAcquireCacheLock(
+      cachePath,
+      downloadLockOf("a".repeat(200)),
+      fs,
+    );
+    await lock?.release();
+
+    expect(lock).to.not.equal(undefined);
+  });
+
+  it("waits for a lock another live prune holds though the disk refuses its own owner", async () => {
+    holdPruneLock(cachePath, { pid: process.pid, token: "held" });
+
+    const lock = await tryAcquireCacheLock(
+      cachePath,
+      PRUNE_LOCK,
+      new FailingOwnerFileSystem(),
+    );
+
+    expect(lock).to.equal(undefined);
+    expect(readLockOwner(pruneLockPath(cachePath))?.token).to.equal("held");
   });
 
   it("fails before it creates the lock folder when the disk refuses its owner", async () => {

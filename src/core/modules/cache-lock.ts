@@ -278,10 +278,13 @@ function startHeartbeat(
 
 /**
  * Creates the lock folder `lockFolder` with `owner` in it. The owner is first
- * written to a file beside the folder, which is renamed into the folder once
- * it exists, so that a write the file system refuses, as on a full disk,
- * fails before any lock folder exists. Only that rename can fail once the
- * folder exists, and then the folder is removed unless another hold owns it.
+ * written to a file beside the folder, named after its token alone so that
+ * it fits the file name limit whatever the lock is named, and renamed into
+ * the folder once it exists, so that a write the file system refuses, as on
+ * a full disk, fails before any lock folder exists. A refused write while
+ * the folder exists counts as a lock another process holds. Only that rename
+ * can fail once this process created the folder, and then the folder is
+ * removed unless another hold owns it.
  *
  * @returns whether this process created the folder; `false` when it exists.
  */
@@ -291,9 +294,19 @@ async function createLockFolder(
   fs: IFileSystem,
 ): Promise<boolean> {
   await fs.mkdir(path.dirname(lockFolder), { recursive: true });
-  const staged = `${lockFolder}.${OWNER_FILE}.${owner.token}.tmp`;
+  const staged = path.join(
+    path.dirname(lockFolder),
+    `.${owner.token}.${OWNER_FILE}.tmp`,
+  );
   try {
-    await fs.writeFile(staged, JSON.stringify(owner));
+    try {
+      await fs.writeFile(staged, JSON.stringify(owner));
+    } catch (error) {
+      if (await fs.exists(lockFolder)) {
+        return false;
+      }
+      throw error;
+    }
     try {
       await fs.mkdir(lockFolder);
     } catch (error) {
