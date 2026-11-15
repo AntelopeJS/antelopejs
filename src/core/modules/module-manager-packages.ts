@@ -5,8 +5,8 @@ import {
   type ResolvedPackage,
   resolvePackage,
   resolvePackageAtRoot,
-  satisfiesRange,
 } from "../../utils";
+import { satisfiesRange } from "../../utils/version-range";
 import {
   type InterfaceRangeConflict,
   InterfaceResolutionError,

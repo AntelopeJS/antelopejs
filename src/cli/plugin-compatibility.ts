@@ -1,5 +1,5 @@
 import { getProcessPalette, type CliProblem } from "../core/output";
-import { satisfiesRange } from "../utils";
+import { satisfiesRange } from "../utils/version-range";
 import { CORE_PACKAGE_NAME } from "./core-version";
 import type { ResolvedExecutable } from "./executable-lookup";
 import {

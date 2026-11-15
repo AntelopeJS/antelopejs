@@ -4,7 +4,8 @@ import type {
 } from "@antelopejs/interface-core/config";
 import { lt, valid, validRange } from "semver";
 
-import { isString, satisfiesRange } from "../../utils";
+import { isString } from "../../utils";
+import { satisfiesRange } from "../../utils/version-range";
 
 import type {
   InterfacePackageConsumer,
