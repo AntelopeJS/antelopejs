@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import sinon from "sinon";
 
@@ -30,6 +31,7 @@ describe("project init for a template that syncs its guardrails", function () {
   let projectDir: string;
   let restoreEnvironment: () => void;
   let executed: string[];
+  let repositoryAtSync: boolean[];
 
   async function initWith(sync: string, gitInit: string): Promise<void> {
     await cmdInit().parseAsync([
@@ -50,9 +52,13 @@ describe("project init for a template that syncs its guardrails", function () {
     projectDir = path.join(root, "project");
     restoreEnvironment = isolateHome(root);
     executed = [];
+    repositoryAtSync = [];
     const run = command.ExecuteCMD;
     sinon.stub(command, "ExecuteCMD").callsFake((line, options) => {
       executed.push(line);
+      if (line === SYNC) {
+        repositoryAtSync.push(existsSync(path.join(projectDir, ".git")));
+      }
       return line === SYNC
         ? Promise.resolve({ stdout: "", stderr: "", code: 0 })
         : run(line, options);
@@ -75,6 +81,7 @@ describe("project init for a template that syncs its guardrails", function () {
     await initWith("antelopejs-sync --profile template", "--git-init");
 
     expect(executed).to.include(SYNC);
+    expect(repositoryAtSync).to.deep.equal([true]);
   });
 
   it("runs no sync without a git repository, which antelopejs-sync needs", async () => {
