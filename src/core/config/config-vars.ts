@@ -1,5 +1,6 @@
 import type { ConfigVarValue } from "@antelopejs/interface-core/config";
 
+import type { ConfigValue } from "../../types";
 import { isPlainObject, isString } from "../../utils";
 
 const RESERVED_PREFIX = "@";
@@ -40,7 +41,7 @@ export function declaredConfigVars(source?: {
 }
 
 /** Every config variable reference a configuration holds, at any depth. */
-export function scanConfigVars(config: unknown): ConfigVarScan {
+export function scanConfigVars(config: ConfigValue): ConfigVarScan {
   const references = new Map<string, ConfigVarReference>();
   const malformed = new Set<string>();
 
@@ -139,11 +140,11 @@ function matchReferences(value: string): ConfigVarReference[] {
 }
 
 /** `found`, with the strings `value` holds in its arrays and plain objects pushed on, depth first. */
-function stringsIn(value: unknown, found: string[]): string[] {
+function stringsIn(value: ConfigValue, found: string[]): string[] {
   if (isString(value)) {
     found.push(value);
   } else if (Array.isArray(value)) {
-    value.forEach((item) => {
+    value.forEach((item: ConfigValue) => {
       stringsIn(item, found);
     });
   } else if (isPlainObject(value)) {

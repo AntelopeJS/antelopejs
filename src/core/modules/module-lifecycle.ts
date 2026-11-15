@@ -1,7 +1,11 @@
 import type { ConfigVars } from "@antelopejs/interface-core/config";
 import { Events } from "@antelopejs/interface-core/modules";
 
-import { type ModuleCallbacks, ModuleState } from "../../types";
+import {
+  type ConfigValue,
+  type ModuleCallbacks,
+  ModuleState,
+} from "../../types";
 import {
   ModuleDiagnostics,
   type ModuleDiagnosticsContext,
@@ -37,7 +41,7 @@ export class ModuleLifecycle {
    * transition, it only feeds the configuration of the modules that reference
    * them.
    */
-  provide(config: unknown): Promise<ConfigVars | void> {
+  provide(config: ConfigValue): Promise<ConfigVars | void> {
     return this.enqueue(async () => {
       if (this._state !== ModuleState.Loaded) {
         return undefined;
@@ -47,7 +51,7 @@ export class ModuleLifecycle {
     });
   }
 
-  construct(config: unknown): Promise<void> {
+  construct(config: ConfigValue): Promise<void> {
     return this.enqueue(() => {
       if (this._state !== ModuleState.Loaded) {
         return Promise.resolve();

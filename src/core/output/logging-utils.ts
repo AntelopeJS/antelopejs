@@ -197,7 +197,7 @@ function aggregatedErrors(error: Error, ancestors: Set<Error>): string[] {
   if (!(error instanceof AggregateError) || !Array.isArray(error.errors)) {
     return [];
   }
-  return error.errors.map((inner) =>
+  return error.errors.map((inner: LogValue) =>
     indentInnerError(serializeLogValue(inner, ancestors)),
   );
 }
@@ -227,6 +227,9 @@ function serializeError(error: Error, ancestors: Set<Error>): string {
   return [summary, ...details].join("\n");
 }
 
+/** One argument of a log call: a value of any type, as `console.log` takes it. */
+type LogValue = {} | null | undefined;
+
 /**
  * Serializes a value for logging, handling objects, arrays, and other types appropriately
  * @param value - The value to serialize
@@ -234,7 +237,7 @@ function serializeError(error: Error, ancestors: Set<Error>): string {
  * @returns A string representation of the value
  */
 export function serializeLogValue(
-  value: unknown,
+  value: LogValue,
   ancestors = new Set<Error>(),
 ): string {
   if (value === null) return "null";
