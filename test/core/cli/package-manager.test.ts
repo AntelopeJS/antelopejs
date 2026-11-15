@@ -330,6 +330,28 @@ import {
           );
         });
 
+        it("installs a project that owns a pnpm workspace whole, and a module of the cache alone even when it declares one", async () => {
+          sinon
+            .stub(require("node:child_process"), "execSync")
+            .returns("0.20.0");
+          const fs = new InMemoryFileSystem();
+          await fs.writeFile(
+            "/project/package.json",
+            JSON.stringify({ packageManager: "pnpm@10.6.5" }),
+          );
+          await fs.writeFile(
+            "/project/pnpm-workspace.yaml",
+            "packages:\n  - demo\n",
+          );
+
+          expect(
+            await getInstallCommand("/project", false, fs, "update"),
+          ).to.equal("corepack pnpm@10.6.5 install --no-frozen-lockfile");
+          expect(await getModuleCacheInstallCommand("/project", fs)).to.equal(
+            "corepack pnpm@10.6.5 install --prod --ignore-workspace",
+          );
+        });
+
         it("keeps project installs free of --legacy-peer-deps", async () => {
           const fs = new InMemoryFileSystem();
           await fs.writeFile("/project/package.json", JSON.stringify({}));

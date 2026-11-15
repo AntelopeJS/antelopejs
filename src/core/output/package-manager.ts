@@ -13,6 +13,7 @@ import {
 } from "./package-manager-name";
 import { getProcessPalette } from "./tasks";
 import { isObject, isString } from "../../utils";
+const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
 const PACKAGE_MANAGER_PATTERN = /^(npm|yarn|pnpm)@([0-9A-Za-z._+-]+)$/;
 const LOCKFILES: Record<PackageManagerName, string[]> = {
   npm: ["npm-shrinkwrap.json", "package-lock.json"],
@@ -39,6 +40,8 @@ interface InstallPackagesParams {
 interface InstallDependenciesParams {
   executable: string;
   hasLockfile: boolean;
+  /** Install the folder alone, as pnpm's `--ignore-workspace` does, even inside a workspace. */
+  ignoreWorkspace: boolean;
   isLockfileFrozen: boolean;
   isLockfileUpdated: boolean;
   isProduction: boolean;
@@ -99,7 +102,7 @@ const UNINSTALL_COMMANDS: Record<
 > = {
   pnpm: (params) =>
     compactCommand(
-      `${params.executable} install ${params.isProduction ? "--prod" : ""} --ignore-workspace ${getLockfileFlag(params)} ${params.hasLockfile ? "--prefer-offline" : ""}`,
+      `${params.executable} install ${params.isProduction ? "--prod" : ""} ${params.ignoreWorkspace ? "--ignore-workspace" : ""} ${getLockfileFlag(params)} ${params.hasLockfile ? "--prefer-offline" : ""}`,
     ),
   yarn: (params) =>
     compactCommand(
@@ -292,12 +295,19 @@ export async function getInstallPackagesCommand(
   });
 }
 
-export async function getInstallCommand(
-  directory: string = ".",
-  isProduction = true,
-  fileSystem: IFileSystem = new NodeFileSystem(),
-  lockfileMode: LockfileMode = "frozen",
-  useLegacyPeerDeps = false,
+/** How {@link installDependenciesCommand} installs a folder. */
+interface InstallCommandOptions {
+  isProduction: boolean;
+  lockfileMode: LockfileMode;
+  useLegacyPeerDeps: boolean;
+  /** Whether pnpm installs the folder alone, ignoring a workspace it is part of. */
+  ignoreWorkspace: boolean;
+}
+
+async function installDependenciesCommand(
+  directory: string,
+  fileSystem: IFileSystem,
+  options: InstallCommandOptions,
 ): Promise<string> {
   const packageManager = resolvePackageManager(
     await getModulePackageManager(directory, fileSystem),
@@ -310,27 +320,54 @@ export async function getInstallCommand(
   return UNINSTALL_COMMANDS[packageManager.name]({
     executable: packageManager.executable,
     hasLockfile,
-    isLockfileFrozen: hasLockfile && lockfileMode === "frozen",
-    isLockfileUpdated: lockfileMode === "update",
-    isProduction,
-    useLegacyPeerDeps,
+    ignoreWorkspace: options.ignoreWorkspace,
+    isLockfileFrozen: hasLockfile && options.lockfileMode === "frozen",
+    isLockfileUpdated: options.lockfileMode === "update",
+    isProduction: options.isProduction,
+    useLegacyPeerDeps: options.useLegacyPeerDeps,
   });
 }
 
 /**
- * Install command for a module downloaded into the module cache.
- *
- * Cached modules are installed standalone, outside of the project they belong
- * to, so their peer dependencies are almost never satisfiable. npm's resolver
- * chokes on such graphs (it can even crash with
- * "Cannot read properties of null (reading 'edgesOut')"), so peer resolution is
- * relaxed. Only the runtime dependencies of the module are needed at that point.
+ * The command that installs the dependencies of the project or module in
+ * `directory`. A folder that holds a `pnpm-workspace.yaml` is the root of its
+ * own workspace, and pnpm installs every package of that workspace; any
+ * other folder is installed alone, ignoring a workspace that encloses it.
+ */
+export async function getInstallCommand(
+  directory: string = ".",
+  isProduction = true,
+  fileSystem: IFileSystem = new NodeFileSystem(),
+  lockfileMode: LockfileMode = "frozen",
+  useLegacyPeerDeps = false,
+): Promise<string> {
+  const ownsWorkspace = await fileSystem.exists(
+    path.join(directory, PNPM_WORKSPACE_FILE),
+  );
+  return installDependenciesCommand(directory, fileSystem, {
+    isProduction,
+    lockfileMode,
+    useLegacyPeerDeps,
+    ignoreWorkspace: !ownsWorkspace,
+  });
+}
+
+/**
+ * The command that installs a module in the module cache: production
+ * dependencies, from its lockfile when it has one, with npm peer conflicts
+ * relaxed, and always alone, ignoring any workspace that encloses the cache
+ * or that the module declares.
  */
 export function getModuleCacheInstallCommand(
   directory: string = ".",
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<string> {
-  return getInstallCommand(directory, true, fileSystem, "frozen", true);
+  return installDependenciesCommand(directory, fileSystem, {
+    isProduction: true,
+    lockfileMode: "frozen",
+    useLegacyPeerDeps: true,
+    ignoreWorkspace: true,
+  });
 }
 
 export function parsePackageInfoOutput(output: string): string {
