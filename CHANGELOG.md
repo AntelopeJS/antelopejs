@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.24.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.1...v1.24.2)
+
+### 🚀 Enhancements
+
+- **cli:** List AntelopeJS Cloud as an official plugin ([#451](https://github.com/AntelopeJS/antelopejs/pull/451))
+
+### 🩹 Fixes
+
+- **modules:** Admit interface preview versions inside a range ([#512](https://github.com/AntelopeJS/antelopejs/pull/512))
+
+### 💅 Refactors
+
+- **verify:** Remove the verdict gates and behaviour fingerprints ([#509](https://github.com/AntelopeJS/antelopejs/pull/509))
+
+### 📦 Build
+
+- Move to @antelopejs/tooling-configs 0.8 and the three-tier CI ([#510](https://github.com/AntelopeJS/antelopejs/pull/510))
+
+### ❤️ Contributors
+
+- dada-sudo
+- Antony Rizzitelli
+
 ## v1.24.1
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.0...v1.24.1)
