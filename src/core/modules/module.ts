@@ -6,7 +6,11 @@ import {
   RunWithModuleContext,
 } from "@antelopejs/interface-core/modules";
 
-import { type ModuleCallbacks, ModuleState } from "../../types";
+import {
+  type ConfigValue,
+  type ModuleCallbacks,
+  ModuleState,
+} from "../../types";
 import { isFunction, isObjectOrNull } from "../../utils";
 import {
   ModuleDiagnostics,
@@ -173,7 +177,7 @@ export class Module {
    * The module code is loaded here rather than in `construct`, because the
    * callback lives in it; `construct` then reuses the very same instance.
    */
-  async provide(config: unknown): Promise<ConfigVars | void> {
+  async provide(config: ConfigValue): Promise<ConfigVars | void> {
     if (this.lifecycle.state !== ModuleState.Loaded) {
       return;
     }
@@ -184,7 +188,7 @@ export class Module {
     });
   }
 
-  async construct(config: unknown): Promise<void> {
+  async construct(config: ConfigValue): Promise<void> {
     if (this.lifecycle.state !== ModuleState.Loaded) {
       Logger.Info(`Module ${this.id} already constructed`);
       return;

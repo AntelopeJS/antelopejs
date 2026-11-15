@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
+import type { ConfigValue } from "../types";
 import { isBoolean, isNumber, isObject, isString } from "../utils";
 import { textWidth } from "./text-width";
 
@@ -53,7 +54,7 @@ function literal(text: string, numeric = false, keepsKeyLine = false) {
 }
 
 /** A config value of any shape as the source tree {@link printNode} lays out. */
-export function toNode(value: unknown): SourceNode {
+export function toNode(value: ConfigValue): SourceNode {
   if (isString(value)) {
     return literal(quote(value));
   }
@@ -69,7 +70,10 @@ export function toNode(value: unknown): SourceNode {
     return literal(String(value), false, true);
   }
   if (Array.isArray(value)) {
-    return { kind: "array", items: value.map((item) => toNode(item)) };
+    return {
+      kind: "array",
+      items: value.map((item: ConfigValue) => toNode(item)),
+    };
   }
   if (isObject(value)) {
     const properties = Object.entries(value).map(

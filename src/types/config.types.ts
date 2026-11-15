@@ -14,3 +14,11 @@ export interface BuildLaunchOptions extends LaunchOptions {
    */
   refreshConfig?: boolean;
 }
+
+/**
+ * A value anywhere in an AntelopeJS configuration, a module's `config` section
+ * included. By the documented contract (docs/2.concepts/4.configuration.md,
+ * "Referencing") a RegExp, a Date or a class instance comes out of
+ * substitution untouched, so a value may be any primitive or any object.
+ */
+export type ConfigValue = {} | null | undefined;

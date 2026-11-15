@@ -1,4 +1,5 @@
 import type * as TypeScript from "typescript";
+import type { ConfigValue } from "../../types";
 import { isObjectOrNull } from "../../utils";
 import type { ModuleDeclarationChanges } from "./module-entry";
 
@@ -94,11 +95,15 @@ function lineIndent(source: string, position: number): string {
 }
 
 /** `value` as source text, its continuation lines indented by `indent`. */
-function serializeValue(value: unknown, unit: string, indent: string): string {
+function serializeValue(
+  value: ConfigValue,
+  unit: string,
+  indent: string,
+): string {
   return serializeAt(value, unit, 0).split(NEWLINE).join(`${NEWLINE}${indent}`);
 }
 
-function serializeAt(value: unknown, unit: string, depth: number): string {
+function serializeAt(value: ConfigValue, unit: string, depth: number): string {
   if (value === null || !isObjectOrNull(value)) {
     return JSON.stringify(value) ?? "undefined";
   }
@@ -106,13 +111,15 @@ function serializeAt(value: unknown, unit: string, depth: number): string {
   const outer = unit.repeat(depth);
   if (Array.isArray(value)) {
     if (value.length === 0) return "[]";
-    const items = value.map((item) => serializeAt(item, unit, depth + 1));
+    const items = value.map((item: ConfigValue) =>
+      serializeAt(item, unit, depth + 1),
+    );
     return `[\n${items.map((item) => `${inner}${item}`).join(",\n")},\n${outer}]`;
   }
   const entries = Object.entries(value).filter(([, v]) => v !== undefined);
   if (entries.length === 0) return "{}";
   const lines = entries.map(
-    ([key, v]) =>
+    ([key, v]: [string, ConfigValue]) =>
       `${inner}${formatKey(key)}: ${serializeAt(v, unit, depth + 1)}`,
   );
   return `{\n${lines.join(",\n")},\n${outer}}`;
@@ -135,7 +142,7 @@ function insertProperty(
   source: string,
   object: TypeScript.ObjectLiteralExpression,
   key: string,
-  value: unknown,
+  value: ConfigValue,
 ): TextEdit {
   const close = closingBrace(object);
   const closeIndent = lineIndent(source, close);
@@ -159,7 +166,7 @@ function replaceValue(
   context: EditContext,
   source: string,
   property: TypeScript.PropertyAssignment,
-  value: unknown,
+  value: ConfigValue,
 ): TextEdit {
   const indent = lineIndent(source, property.getStart());
   return {

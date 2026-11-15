@@ -1,19 +1,22 @@
 name: Release
 
 on:
+  push:
+    branches: [next]
   workflow_dispatch:
     inputs:
-      channel:
-        description: npm distribution channel
-        required: true
-        default: latest
-        type: choice
-        options:
-          - latest
-          - next
       release-version:
-        description: Exact stable version; empty uses the automatic increment
+        description: Stable version to release, set by the release train
         required: false
+        type: string
+      release-commit:
+        description: Commit SHA to release, set by the release train
+        required: false
+        type: string
+      dependency-ranges:
+        description: JSON object of stable ranges that replace preview pins, set by the release train
+        required: false
+        default: "{}"
         type: string
 
 permissions:
@@ -22,9 +25,10 @@ permissions:
 
 jobs:
   release:
-    uses: AntelopeJS/.github/.github/workflows/release-npm-public.yml@v1
+    uses: AntelopeJS/.github/.github/workflows/release-npm-public.yml@v2
     with:
-      channel: ${{ inputs.channel }}
       release-version: ${{ inputs.release-version }}
+      release-commit: ${{ inputs.release-commit }}
+      dependency-ranges: ${{ inputs.dependency-ranges }}
     secrets:
       RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
