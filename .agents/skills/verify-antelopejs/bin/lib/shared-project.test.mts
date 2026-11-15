@@ -104,7 +104,7 @@ await test("a passing shared init runs once, however many callers ask at the sam
   });
 });
 
-await test("a shared init that crashed leaves no verdict, so the next caller runs it again", async () => {
+await test("a shared init that crashed leaves no result, so the next caller runs it again", async () => {
   await inRunDir(async (dir) => {
     const init = attempts(new Error("interrupted"), "PASS");
     await assert.rejects(settleOnce(dir, init.run), /interrupted/);
