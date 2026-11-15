@@ -1,6 +1,6 @@
 import { ModuleState } from "../../types";
 import { clearPathResolutionCache } from "../../utils";
-import { clearStubInterfaceWarnings } from "../resolution";
+import { clearStubInterfaceWarnings, orderComponents } from "../resolution";
 import {
   announceModulesStopping,
   beginModulesStart,
@@ -193,10 +193,46 @@ export function getReverseLifecycleModules(
     return entry ? [entry] : [];
   });
   const loadedInstances = new Set(loadedModules.map(({ module }) => module));
-  return [
-    ...loadedModules,
-    ...this.pendingCleanup.filter(({ module }) => !loadedInstances.has(module)),
-  ];
+  return consumersBeforeProviders(
+    [
+      ...loadedModules,
+      ...this.pendingCleanup.filter(
+        ({ module }) => !loadedInstances.has(module),
+      ),
+    ],
+    this.bindingGraph?.edges ?? new Map(),
+  );
+}
+
+/**
+ * Reorders `entries` so that each module comes before every provider it is
+ * bound to, keeping the given order between modules the bindings do not
+ * order. Modules on a binding cycle keep their given order among themselves.
+ */
+function consumersBeforeProviders(
+  entries: readonly ManagedModule[],
+  edges: ReadonlyMap<string, ReadonlySet<string>>,
+): ManagedModule[] {
+  const ids = [...new Set(entries.map(({ module }) => module.id))];
+  const componentOf = new Map<string, number>();
+  orderComponents(ids, edges).forEach((component, index) => {
+    component.forEach((id) => componentOf.set(id, index));
+  });
+  const bindsTo = (consumer: string, provider: string) =>
+    componentOf.get(consumer) !== componentOf.get(provider) &&
+    (edges.get(consumer)?.has(provider) ?? false);
+  const remaining = [...entries];
+  const ordered: ManagedModule[] = [];
+  while (remaining.length > 0) {
+    const next = remaining.findIndex(
+      (candidate) =>
+        !remaining.some(({ module }) =>
+          bindsTo(module.id, candidate.module.id),
+        ),
+    );
+    ordered.push(...remaining.splice(next, 1));
+  }
+  return ordered;
 }
 
 export function clearManagedState(this: ManagerContext): unknown[] {
