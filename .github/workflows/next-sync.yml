@@ -1,0 +1,16 @@
+name: Next sync
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  next-sync:
+    permissions:
+      issues: write
+    uses: AntelopeJS/.github/.github/workflows/next-sync.yml@v2
+    secrets:
+      RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
