@@ -15,7 +15,7 @@ Use Node 24 from `.nvmrc` and install the pinned lockfile dependencies. From the
 TERM=xterm-256color FC_SEED=20261028 pnpm exec mocha --no-config --require ts-node/register --require test/setup.ts test/core/module-manager.interface-ranges.test.ts --exit
 ```
 
-Expect `2 passing` and exit code 0. Both properties also run in `pnpm test`.
+Expect `5 passing` and exit code 0: the two properties and three preview-version examples. All of them also run in `pnpm test`.
 `--no-config` prevents `.mocharc.json` from adding every unit test to this focused run.
 Change `FC_SEED` to explore another sample. Keep the failing seed and printed counterexample when reporting a failure.
 Rerunning the same command with the failing seed reproduces the same generation and shrinking with the pinned dependency version.
@@ -25,7 +25,7 @@ Rerunning the same command with the failing seed reproduces the same generation 
 The properties use fast-check 4.10.2 to drive the real TypeScript implementation, rather than a separate model.
 This is bounded, generated testing, not an exhaustive proof over every semver string.
 
-1. For each collected consumer, construction reports a range conflict exactly when `semver.validRange` accepts the range and `semver.satisfies` rejects the canonical version with default prerelease rules.
+1. For each collected consumer, construction reports a range conflict exactly when `semver.validRange` accepts the range and the range does not admit the canonical version. A range admits a version that `semver.satisfies` accepts with default prerelease rules. It also admits a prerelease that it accepts with `includePrerelease` when it accepts the release that prerelease precedes too. So `>=0.5.1 <0.6.0` admits the preview `0.5.2-next.113.g5abe1f0` and refuses `0.6.0-next.1`.
 2. Construction throws `InterfaceResolutionError` exactly when a collected consumer conflicts or has a preloaded noncanonical copy, and reports every such consumer with no missing or extra entries.
 
 The first property prevents incompatible interfaces from being shared and valid or ignored declarations from being rejected.
@@ -44,7 +44,7 @@ Check these facts before calling the failure a product bug.
 
 - The generated version is valid semver, including its prerelease and build suffixes.
 - The fixture declares the reported range in `dependencies` or `optionalDependencies` and the provider implements `interface-shared`.
-- The oracle uses the raw range and default semver options. It does not reuse the implementation's normalized range.
+- The oracle parses the raw range with `semver.validRange` under default rules and applies the admission rule with its own semver calls. It does not reuse the implementation's normalized range or `satisfiesRange`.
 - A `preloaded` fixture really requires a private copy before `addModules`. A `canonical-preloaded` fixture requires the canonical real path instead.
 - Assertions compare the error's public fields, not extra internal fields carried by a resolved package.
 
@@ -59,7 +59,7 @@ Version components and numeric prerelease identifiers range from 0 through 4.
 Prereleases are absent, numeric, or `alpha`, `beta`, or `rc` followed by a numeric identifier.
 Build metadata is absent, `build.0`, or `sha.abc123`.
 Ranges include exact versions, `^`, `~`, `>=`, `<`, `=`, minor and major `x` ranges, hyphen ranges, two-arm `||` unions, wildcards, whitespace, empty declarations, and five malformed strings.
-Explicit examples cover prerelease admission, build metadata equality, `0.x` caret boundaries, tilde and wildcard boundaries, inclusive hyphen endpoints, unions, and invalid ranges.
+Explicit examples cover prerelease admission, preview versions inside a range, at its floor (including a `0.x` caret floor) and at its cap, build metadata equality, `0.x` caret boundaries, tilde and wildcard boundaries, inclusive hyphen endpoints, unions, and invalid ranges.
 
 The aggregate property generates zero through six consumers, required or optional dependencies, five copy states, and forward or reversed declaration order.
 It also has explicit mixed-conflict, preloaded-only, and empty-consumer cases.
@@ -68,10 +68,11 @@ The check does not cover multiple competing providers, stub-only canonical selec
 
 ## Coverage record
 
-Last synchronized product commit is `9b812646a162b4601410ac82cded506df571f9fa`.
+Last synchronized product commit is `327b9628babfd0da43f05c5fb92fbb7ba5d525b9`.
 
 | File | Functions exercised |
 | --- | --- |
+| `src/version-ranges/index.ts` | `satisfiesRange`, the admission rule both range checks use |
 | `src/core/modules/module-manager-packages.ts` | `collectInterfacePackageConsumers`, `resolveInterfacePackagePaths`, `resolveImplementedPackage`, `registerInterfacePackage`, `findRangeConflicts`, `findPreloadedCopies`, `validateInterfacePackages` |
 | `src/core/modules/module-manager-construction.ts` | `constructAll`, including validation before module construction |
 | `src/core/output/interface-resolution-error.ts` | `InterfaceResolutionError` and the exposed conflict records |
@@ -87,15 +88,16 @@ Use `pstack:maintain-formal-verification-skill` for changes that landed without 
 
 ## Confirm the check can fail
 
-On a disposable checkout, apply one scratch break at a time in `src/core/modules/module-manager-packages.ts`, then run the command above.
+On a disposable checkout, apply one scratch break at a time in the named file, `src/core/modules/module-manager-packages.ts` when none is named, then run the command above.
 Keep each break only long enough to observe the failing property. Restore the source before the final passing run.
 These breaks were caught at the sync commit.
 
 | Scratch break | Failing observation |
 | --- | --- |
-| Pass `{ includePrerelease: true }` to `satisfies` | First property fails for canonical `1.2.3-alpha.0`, consumer `*`, because construction no longer rejects it. |
+| In `src/version-ranges/index.ts`, drop the release check after `includePrerelease` | First property fails for canonical `0.6.0-next.1`, consumer `>=0.5.1 <0.6.0`, because construction no longer rejects it. |
+| In `src/version-ranges/index.ts`, drop the default-rules arm | First property fails for canonical `1.2.3-alpha.0+build.0`, consumer `>=1.2.3-alpha.0 <1.2.3`, because construction now rejects it. |
 | Drop `!range ||` from the range guard, using `range!` only to keep the scratch variant type-correct | First property fails for canonical `2.0.0`, consumer `not-a-range`, because construction now rejects an ignored range. |
 | Pass only `rangeConflicts.slice(0, 1)` into the error | Aggregate property fails for canonical `2.0.0` and two `^1.0.0` consumers because `consumer-1` is missing. |
 | Return when `rangeConflicts.length === 0`, ignoring preloaded copies | Aggregate property fails for canonical `1.0.0`, one `*` consumer, and its preloaded `9.9.9` copy because construction succeeds. |
 
-Every scratch run exited 1. After restoration, both properties passed with the same seed.
+Every scratch run exited 1. After restoration, all five tests passed with the same seed.

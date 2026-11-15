@@ -122,6 +122,7 @@ const config: VerifyConfig = {
         "src/core/modules/module-manager-packages.ts",
         "src/core/modules/module-manager-construction.ts",
         "src/core/output/interface-resolution-error.ts",
+        "src/version-ranges/index.ts",
       ],
       command: ["pnpm", "exec", "mocha", "--no-config", "--require", "ts-node/register", "--require", "test/setup.ts", "test/core/module-manager.interface-ranges.test.ts", "--exit"],
       files: ["test/core/module-manager.interface-ranges.test.ts"],

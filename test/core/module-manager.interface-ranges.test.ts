@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { satisfies, validRange } from "semver";
+import { major, minor, patch, satisfies, validRange } from "semver";
 import { InterfaceResolutionError } from "../../src/core/output";
 import {
   consumerRange,
@@ -14,10 +14,18 @@ import {
   type RangeConsumer,
 } from "../helpers/interface-range-project";
 
-function conflicts(version: string, range: string): boolean {
+function admits(version: string, range: string): boolean {
+  const release = `${major(version)}.${minor(version)}.${patch(version)}`;
   return (
-    range !== "" && validRange(range) !== null && !satisfies(version, range)
+    satisfies(version, range) ||
+    (satisfies(version, range, { includePrerelease: true }) &&
+      satisfies(release, range))
   );
+}
+
+function conflicts(version: string, range: string): boolean {
+  const parsed = validRange(range);
+  return range !== "" && parsed !== null && !admits(version, parsed);
 }
 
 const boundaryCases: [string, string][] = [
@@ -36,12 +44,56 @@ const boundaryCases: [string, string][] = [
   ["2.0.0", "not-a-range"],
   ["1.0.0-alpha.0", ""],
   ["1.0.0-alpha.0", " "],
+  ["0.5.2-next.113.g5abe1f0", ">=0.5.1 <0.6.0"],
+  ["0.6.0-next.1", ">=0.5.1 <0.6.0"],
+  ["0.5.1-next.1", ">=0.5.1 <0.6.0"],
+  ["0.5.1-next.1", "^0.5.1"],
+  ["0.1.2-alpha.0", "^0.1.2"],
+  ["1.3.0-rc.0", "^1.2.3"],
 ];
+
+async function rangeConflictsFor(version: string, range: string) {
+  const { error } = await constructRangeProject(
+    version,
+    [{ range, optional: false, copy: "private" }],
+    false,
+  );
+  if (error === undefined) {
+    return [];
+  }
+  assert.ok(error instanceof InterfaceResolutionError);
+  return error.conflicts.rangeConflicts.map((entry) => entry.range);
+}
+
+describe("ModuleManager interface preview versions", function () {
+  this.timeout(60000);
+
+  it("shares a preview of a version the range admits", async () => {
+    assert.deepEqual(
+      await rangeConflictsFor("0.5.2-next.113.g5abe1f0", ">=0.5.1 <0.6.0"),
+      [],
+    );
+  });
+
+  it("refuses a preview of the minor the range caps", async () => {
+    assert.deepEqual(
+      await rangeConflictsFor("0.6.0-next.1", ">=0.5.1 <0.6.0"),
+      [">=0.5.1 <0.6.0"],
+    );
+  });
+
+  it("refuses a preview of the version the range starts at", async () => {
+    assert.deepEqual(
+      await rangeConflictsFor("0.5.1-next.1", ">=0.5.1 <0.6.0"),
+      [">=0.5.1 <0.6.0"],
+    );
+  });
+});
 
 describe("ModuleManager interface range properties", function () {
   this.timeout(60000);
 
-  it("matches semver without admitting prereleases or rejecting invalid declarations", async () => {
+  it("matches semver, admitting a prerelease only when its release is in range too, without rejecting invalid declarations", async () => {
     await fc.assert(
       fc.asyncProperty(
         interfaceVersion,

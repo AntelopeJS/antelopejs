@@ -65,7 +65,7 @@ describe("Official plugin compatibility", () => {
       installedDependencies({
         coreVersion: "2.0.0-rc.1",
         packageLookup: {
-          reader: createInstalledReader({ peerRange: "^1.5.0" }),
+          reader: createInstalledReader({ peerRange: ">=1.5.0 <2.0.0" }),
         },
         processOptions: { processRunner: runner },
         output,
