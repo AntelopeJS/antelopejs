@@ -18,6 +18,12 @@ export default function () {
         "Install every npm module from its lock in antelope-lock/ and fail when one has none, instead of recording it (also enabled by ANTELOPEJS_FROZEN_MODULES=1 or true)",
       ),
     )
+    .addOption(
+      new Option(
+        "--modules-only",
+        "Only download and install the npm and git modules, from antelope.config.ts and antelope-lock/ alone: skip the local modules, check nothing and write no build artifact. A later build reuses them",
+      ),
+    )
     .action(lazyAction(async () => (await import("./build-action")).runBuild));
   return withExamples(command, [
     {
@@ -27,6 +33,11 @@ export default function () {
     {
       description: "Build in CI from the committed module locks only",
       command: "ajs project build --frozen-modules",
+    },
+    {
+      description:
+        "Install the modules in a container layer of their own, before the sources are copied",
+      command: "ajs project build -e production --modules-only",
     },
   ]);
 }
