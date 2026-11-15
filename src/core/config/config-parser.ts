@@ -5,6 +5,7 @@ import type {
   ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+import type { ConfigValue } from "../../types";
 import type { ModuleEntryConfig } from "./module-entry";
 
 import {
@@ -87,7 +88,7 @@ export class ConfigParser {
   }
 
   private flattenConfig(
-    value: unknown,
+    value: ConfigValue,
     prefix = "",
     result = new Map<string, string>(),
   ): Map<string, string> {

@@ -4,6 +4,9 @@ import * as path from "node:path";
 import type { IFileSystem } from "../../../types";
 import { isVanishedPathError } from "./file-hasher";
 
+/** What a failed watch threw or emitted: an `Error` from the watcher, or any value `watch` threw. */
+type WatchFailure = {} | null | undefined;
+
 /** How many times a failing ancestor watcher is re-created before giving up. */
 export const WATCH_RETRY_LIMIT = 5;
 
@@ -102,7 +105,7 @@ export class MissingFolders {
     }
   }
 
-  private retry(folder: string, dir: string, err: unknown): void {
+  private retry(folder: string, dir: string, err: WatchFailure): void {
     const failures = (this.failures.get(folder) ?? 0) + 1;
     this.failures.set(folder, failures);
     if (failures > WATCH_RETRY_LIMIT) {
