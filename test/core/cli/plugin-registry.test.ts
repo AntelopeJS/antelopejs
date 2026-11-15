@@ -34,9 +34,10 @@ describe("Official plugin registry", () => {
   });
 
   it("lists plugins and their names", () => {
-    expect(officialPluginNames()).to.deep.equal(["dms"]);
+    expect(officialPluginNames()).to.deep.equal(["dms", "cloud"]);
     expect(listOfficialPlugins().map((plugin) => plugin.bin)).to.deep.equal([
       "ajs-dms",
+      "ajs-cloud",
     ]);
   });
 
@@ -51,5 +52,17 @@ describe("Official plugin registry", () => {
     expect(help).to.contain("dms");
     expect(help).to.contain("@antelopejs/dms-frontend");
     expect(help).to.contain("DMS frontend commands");
+    expect(help).to.contain("cloud");
+    expect(help).to.contain("@antelopejs/cloud");
+    expect(help).to.contain("Deploy and operate AntelopeJS Cloud projects");
+  });
+
+  it("finds the AntelopeJS Cloud plugin and its binary", () => {
+    expect(findOfficialPlugin("cloud")).to.deep.equal({
+      name: "cloud",
+      package: "@antelopejs/cloud",
+      bin: "ajs-cloud",
+      description: "Deploy and operate AntelopeJS Cloud projects",
+    });
   });
 });
