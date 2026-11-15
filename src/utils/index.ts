@@ -6,3 +6,4 @@ export * from "./package-resolution";
 export * from "./process";
 export * from "./promise";
 export * from "./type-guards";
+export * from "./version-range";

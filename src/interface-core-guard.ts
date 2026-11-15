@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { satisfies } from "semver";
 
 import {
   isObject,
   isString,
   type ResolvedPackage,
   resolvePackage,
+  satisfiesRange,
 } from "./utils";
 import { CliError } from "./core/output";
 
@@ -47,10 +47,7 @@ export function assertInterfaceCoreCopy(
 ): void {
   const { coreVersion, requiredRange, installed } = copy;
   const version = installed?.version;
-  if (
-    version !== undefined &&
-    satisfies(version, requiredRange, { includePrerelease: true })
-  ) {
+  if (version !== undefined && satisfiesRange(version, requiredRange)) {
     return;
   }
   throw new CliError({

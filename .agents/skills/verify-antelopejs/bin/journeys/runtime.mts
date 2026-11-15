@@ -4,7 +4,7 @@ import path from "node:path";
 import { answers, equal, exitIs, exitFails, has, refused } from "../lib/checks.mts";
 import { field, lastJsonLine } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, installFixture, setConsumerRange } from "../lib/project.mts";
+import { copyGreeter, installFixture, setConsumerRange, setSharedVersion } from "../lib/project.mts";
 import { useProject } from "../lib/shared-project.mts";
 import { CORE_ENTRY } from "../lib/run.mts";
 import { FIXTURE_MESSAGE, FIXTURES_DIR } from "../lib/sources.mts";
@@ -126,6 +126,36 @@ export const resolutionJourneys: Journey[] = [
       const ready = await context.waitReady("ready", dev);
       context.expect(ready.folder, [answers(ready, "greeting", "Hello, verifier")]);
       await context.stop("stop with SIGINT", dev);
+    },
+  },
+  {
+    id: "resolution-range-preview",
+    title: "a consumer range admits a preview of a version inside it and starts normally",
+    entryPoint: "ajs project dev, consumer requires verify-greeter >=0.5.1 <0.6.0, shared copy 0.5.2-next.113.g5abe1f0",
+    async run(context) {
+      const greeter = copyGreeter(context);
+      setSharedVersion(greeter, "0.5.2-next.113.g5abe1f0");
+      setConsumerRange(greeter, ">=0.5.1 <0.6.0");
+      const dev = await context.background("project dev", ["project", "dev"], { cwd: greeter });
+      const ready = await context.waitReady("ready", dev);
+      context.expect(ready.folder, [answers(ready, "greeting", "Hello, verifier")]);
+      await context.stop("stop with SIGINT", dev);
+    },
+  },
+  {
+    id: "resolution-range-preview-cap",
+    title: "a consumer range that caps below a minor refuses a preview of that minor",
+    entryPoint: "ajs project dev, consumer requires verify-greeter >=0.5.1 <0.6.0, shared copy 0.6.0-next.1",
+    async run(context) {
+      const greeter = copyGreeter(context);
+      setSharedVersion(greeter, "0.6.0-next.1");
+      setConsumerRange(greeter, ">=0.5.1 <0.6.0");
+      const dev = await context.ajs("project dev", ["project", "dev"], { cwd: greeter });
+      context.expect(dev.folder, [
+        exitIs(dev, 1),
+        has("stderr", dev.stderr, /Incompatible interface package resolution/),
+        has("stderr", dev.stderr, /greeter-consumer requires verify-greeter@>=0\.5\.1 <0\.6\.0, but the shared copy is 0\.6\.0-next\.1/),
+      ]);
     },
   },
   {

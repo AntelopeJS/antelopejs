@@ -1,10 +1,11 @@
-import { compare, satisfies, valid, validRange } from "semver";
+import { compare, valid, validRange } from "semver";
 
 import {
   createLoadedFileMatcher,
   type ResolvedPackage,
   resolvePackage,
   resolvePackageAtRoot,
+  satisfiesRange,
 } from "../../utils";
 import {
   type InterfaceRangeConflict,
@@ -65,7 +66,7 @@ function satisfiesEveryRange(
 ): boolean {
   return consumers.every((consumer) => {
     const range = validRange(consumer.range);
-    return !range || satisfies(version, range);
+    return !range || satisfiesRange(version, range);
   });
 }
 
@@ -303,7 +304,7 @@ export function findRangeConflicts(
   return plan.consumers.flatMap((consumer) => {
     const range = validRange(consumer.range);
     const { version } = plan.canonicalPackage;
-    if (!range || (version !== undefined && satisfies(version, range))) {
+    if (!range || (version !== undefined && satisfiesRange(version, range))) {
       return [];
     }
     return [

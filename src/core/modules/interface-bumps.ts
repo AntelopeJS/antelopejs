@@ -2,9 +2,9 @@ import type {
   ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
-import { lt, satisfies, valid, validRange } from "semver";
+import { lt, valid, validRange } from "semver";
 
-import { isString } from "../../utils";
+import { isString, satisfiesRange } from "../../utils";
 
 import type {
   InterfacePackageConsumer,
@@ -81,7 +81,7 @@ function packageSource(source: ModuleSource): ModuleSourcePackage | undefined {
 
 function acceptsVersion(range: string, version: string): boolean {
   const parsed = validRange(range);
-  return !parsed || satisfies(version, parsed);
+  return !parsed || satisfiesRange(version, parsed);
 }
 
 /**

@@ -1,6 +1,5 @@
-import semver from "semver";
-
 import { getProcessPalette, type CliProblem } from "../core/output";
+import { satisfiesRange } from "../utils";
 import { CORE_PACKAGE_NAME } from "./core-version";
 import type { ResolvedExecutable } from "./executable-lookup";
 import {
@@ -43,10 +42,7 @@ export function evaluatePluginCompatibility(
     return { status: "unknown" };
   }
   const requiredRange = packageJson.peerDependencies?.[CORE_PACKAGE_NAME];
-  if (
-    !requiredRange ||
-    semver.satisfies(coreVersion, requiredRange, { includePrerelease: true })
-  ) {
+  if (!requiredRange || satisfiesRange(coreVersion, requiredRange)) {
     return { status: "compatible" };
   }
   return {

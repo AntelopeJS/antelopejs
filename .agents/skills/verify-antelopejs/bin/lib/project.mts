@@ -55,6 +55,12 @@ export function setConsumerRange(greeter: string, range: string): void {
   writeFileSync(file, readFileSync(file, "utf8").replace('"^1.0.0"', JSON.stringify(range)));
 }
 
+/** Sets the version of the greeter's shared `verify-greeter` copy. */
+export function setSharedVersion(greeter: string, version: string): void {
+  const file = path.join(greeter, "verify-greeter", "package.json");
+  writeFileSync(file, readFileSync(file, "utf8").replace('"1.0.0"', JSON.stringify(version)));
+}
+
 /** Copies the greeter fixture project into the journey's own folder. */
 export function copyGreeter(context: JourneyContext): string {
   const target = path.join(context.work, "greeter");

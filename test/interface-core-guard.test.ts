@@ -48,6 +48,12 @@ describe("assertInterfaceCoreCopy", () => {
     ).not.to.throw();
   });
 
+  it("refuses a prerelease of the minor the range caps", () => {
+    const { problem } = thrownBy(copyAt("0.6.0-next.1"));
+
+    expect(problem.title).to.include("0.6.0-next.1");
+  });
+
   it("names the pinned version, the required range and the copy's folder", () => {
     const { problem } = thrownBy(copyAt("0.0.11"));
 
