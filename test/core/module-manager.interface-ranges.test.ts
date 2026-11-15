@@ -24,7 +24,8 @@ function admits(version: string, range: string): boolean {
 }
 
 function conflicts(version: string, range: string): boolean {
-  return range !== "" && validRange(range) !== null && !admits(version, range);
+  const parsed = validRange(range);
+  return range !== "" && parsed !== null && !admits(version, parsed);
 }
 
 const boundaryCases: [string, string][] = [
@@ -46,6 +47,8 @@ const boundaryCases: [string, string][] = [
   ["0.5.2-next.113.g5abe1f0", ">=0.5.1 <0.6.0"],
   ["0.6.0-next.1", ">=0.5.1 <0.6.0"],
   ["0.5.1-next.1", ">=0.5.1 <0.6.0"],
+  ["0.5.1-next.1", "^0.5.1"],
+  ["0.1.2-alpha.0", "^0.1.2"],
   ["1.3.0-rc.0", "^1.2.3"],
 ];
 

@@ -44,7 +44,7 @@ Check these facts before calling the failure a product bug.
 
 - The generated version is valid semver, including its prerelease and build suffixes.
 - The fixture declares the reported range in `dependencies` or `optionalDependencies` and the provider implements `interface-shared`.
-- The oracle uses the raw range and its own semver calls. It does not reuse the implementation's normalized range or `satisfiesRange`.
+- The oracle parses the raw range with `semver.validRange` under default rules and applies the admission rule with its own semver calls. It does not reuse the implementation's normalized range or `satisfiesRange`.
 - A `preloaded` fixture really requires a private copy before `addModules`. A `canonical-preloaded` fixture requires the canonical real path instead.
 - Assertions compare the error's public fields, not extra internal fields carried by a resolved package.
 
@@ -59,7 +59,7 @@ Version components and numeric prerelease identifiers range from 0 through 4.
 Prereleases are absent, numeric, or `alpha`, `beta`, or `rc` followed by a numeric identifier.
 Build metadata is absent, `build.0`, or `sha.abc123`.
 Ranges include exact versions, `^`, `~`, `>=`, `<`, `=`, minor and major `x` ranges, hyphen ranges, two-arm `||` unions, wildcards, whitespace, empty declarations, and five malformed strings.
-Explicit examples cover prerelease admission, preview versions inside a range, at its floor and at its cap, build metadata equality, `0.x` caret boundaries, tilde and wildcard boundaries, inclusive hyphen endpoints, unions, and invalid ranges.
+Explicit examples cover prerelease admission, preview versions inside a range, at its floor (including a `0.x` caret floor) and at its cap, build metadata equality, `0.x` caret boundaries, tilde and wildcard boundaries, inclusive hyphen endpoints, unions, and invalid ranges.
 
 The aggregate property generates zero through six consumers, required or optional dependencies, five copy states, and forward or reversed declaration order.
 It also has explicit mixed-conflict, preloaded-only, and empty-consumer cases.
