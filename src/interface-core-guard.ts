@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { satisfies } from "semver";
 
 import {
   isObject,
@@ -8,6 +7,7 @@ import {
   type ResolvedPackage,
   resolvePackage,
 } from "./utils";
+import { satisfiesRange } from "./version-ranges";
 import { CliError } from "./core/output";
 
 const INTERFACE_CORE = "@antelopejs/interface-core";
@@ -47,10 +47,7 @@ export function assertInterfaceCoreCopy(
 ): void {
   const { coreVersion, requiredRange, installed } = copy;
   const version = installed?.version;
-  if (
-    version !== undefined &&
-    satisfies(version, requiredRange, { includePrerelease: true })
-  ) {
+  if (version !== undefined && satisfiesRange(version, requiredRange)) {
     return;
   }
   throw new CliError({

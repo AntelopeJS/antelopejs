@@ -13,6 +13,7 @@ const modules = [
   { name: "logging", path: "src/logging", layer: 6 },
   { name: "output", path: "src/core/output", layer: 6.2 },
   { name: "filesystem", path: "src/core/filesystem", layer: 6.4 },
+  { name: "version-ranges", path: "src/version-ranges", layer: 6.5 },
   { name: "utils", path: "src/utils", layer: 6.6 },
   { name: "types", path: "src/types", layer: 6.8 },
 ];
