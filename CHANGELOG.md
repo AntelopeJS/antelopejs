@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.24.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.3...v1.24.0)
+
+### 🚀 Enhancements
+
+- **cache:** Prune module versions no live run or build uses, through run leases ([#487](https://github.com/AntelopeJS/antelopejs/pull/487))
+
+### 🩹 Fixes
+
+- **runtime:** Keep a disabled export's implementation in its own interface instance ([#489](https://github.com/AntelopeJS/antelopejs/pull/489))
+- **runtime:** Give an undeclared import of an interface whose every instance is private an unprovided instance ([#491](https://github.com/AntelopeJS/antelopejs/pull/491))
+- **runtime:** Mark selected the connection a module's plain import reaches, from its binding ([#492](https://github.com/AntelopeJS/antelopejs/pull/492))
+- **runtime:** Report an interface dependency cycle with no provider instead of overflowing the stack ([#495](https://github.com/AntelopeJS/antelopejs/pull/495))
+- **runtime:** Bind an implementer's connection to another provider to that provider ([#496](https://github.com/AntelopeJS/antelopejs/pull/496))
+- **cache:** Remove at once a lock folder left without owner past its creation window ([#494](https://github.com/AntelopeJS/antelopejs/pull/494))
+- **runtime:** Retry the ancestor watch of a missing folder when it cannot start ([#493](https://github.com/AntelopeJS/antelopejs/pull/493))
+- **cache:** Download again a cached package whose declared dependency lacks its package.json ([#498](https://github.com/AntelopeJS/antelopejs/pull/498))
+- **runtime:** Read build.json again after start claims its module folders ([#497](https://github.com/AntelopeJS/antelopejs/pull/497))
+- **cache:** Stop a download whose lock another process took over before it replaces or lists the folder ([#499](https://github.com/AntelopeJS/antelopejs/pull/499))
+- **cache:** Leave a lock another process took over when this one fails to write its owner ([#500](https://github.com/AntelopeJS/antelopejs/pull/500))
+- **cache:** Install again a listed git clone whose declared dependency lacks its package.json ([#502](https://github.com/AntelopeJS/antelopejs/pull/502))
+- **build:** Replace build.json through a temporary file and a rename ([#501](https://github.com/AntelopeJS/antelopejs/pull/501))
+- **cache:** Write a lock's owner before its folder exists, so a full disk fails before any lock folder ([#504](https://github.com/AntelopeJS/antelopejs/pull/504))
+- **cache:** Check the download lock before each git and install step of a download ([#503](https://github.com/AntelopeJS/antelopejs/pull/503))
+- **cli:** Run a scaffolded project's antelopejs-sync so its managed agent files exist ([#507](https://github.com/AntelopeJS/antelopejs/pull/507))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of core 1.24.0 ([#505](https://github.com/AntelopeJS/antelopejs/pull/505))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ### Upgrade notes
 
 1.24.0 is a minor release. Ranges such as `^1.23.0` or `<2` accept it; `~1.23.0` does not.

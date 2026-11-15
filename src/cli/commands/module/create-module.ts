@@ -17,7 +17,7 @@ import {
   warning,
   withDependency,
 } from "../../../core/output";
-import { isObject } from "../../../utils";
+import { isObject, isString } from "../../../utils";
 import {
   copyTemplate,
   type InterfaceInfo,
@@ -32,6 +32,8 @@ export interface ModuleInitAnswers {
 }
 
 const LATEST_VERSION = "latest";
+const SYNC_SCRIPT = "sync";
+const GUARDRAIL_SYNC = "antelopejs-sync";
 
 function unusableManifest(pkgJsonPath: string, reason: string): CliError {
   return new CliError({
@@ -124,6 +126,51 @@ async function initializeGitRepository(modulePath: string): Promise<void> {
   }
 }
 
+/** The `sync` script of the package.json in `modulePath`, when it runs `antelopejs-sync`. */
+function guardrailSyncScript(modulePath: string): string | undefined {
+  try {
+    const pkgJson: unknown = JSON.parse(
+      readFileSync(path.resolve(modulePath, "package.json"), "utf8"),
+    );
+    const scripts = isObject(pkgJson) ? pkgJson.scripts : undefined;
+    const script = isObject(scripts) ? scripts[SYNC_SCRIPT] : undefined;
+    return isString(script) && script.includes(GUARDRAIL_SYNC)
+      ? script
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Runs the project's `sync` script once its dependencies are installed and
+ * its git repository exists, when that script runs `antelopejs-sync`. The
+ * template copy leaves out the template's agent layer, which holds the files
+ * that tool manages, so the project's own sync writes them for this project.
+ * A failed sync is reported as a warning, since the project itself is made.
+ */
+async function syncGuardrails(
+  modulePath: string,
+  packageManager: PackageManagerName,
+): Promise<void> {
+  if (guardrailSyncScript(modulePath) === undefined) {
+    return;
+  }
+  const syncSpinner = new Spinner("Syncing the project guardrails");
+  await syncSpinner.start();
+  try {
+    await ExecuteCMD(`${packageManager} run ${SYNC_SCRIPT}`, {
+      cwd: path.resolve(modulePath),
+    });
+    await syncSpinner.succeed("Project guardrails synced");
+  } catch (error) {
+    await syncSpinner.fail("Could not sync the project guardrails");
+    warning(
+      `Run \`${packageManager} run ${SYNC_SCRIPT}\` in the project to write the files antelopejs-sync manages (${error instanceof Error ? error.message : String(error)})`,
+    );
+  }
+}
+
 async function populateModule(
   modulePath: string,
   answers: ModuleInitAnswers,
@@ -142,6 +189,9 @@ async function populateModule(
   );
   if (answers.isGitInitialized) {
     await initializeGitRepository(modulePath);
+    if (answers.packageManager !== undefined) {
+      await syncGuardrails(modulePath, answers.packageManager);
+    }
   }
 }
 
