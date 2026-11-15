@@ -6,7 +6,7 @@ import {
   resolvePackage,
   resolvePackageAtRoot,
 } from "../../utils";
-import { satisfiesRange } from "../../utils/version-range";
+import { satisfiesRange } from "../../version-ranges";
 import {
   type InterfaceRangeConflict,
   InterfaceResolutionError,

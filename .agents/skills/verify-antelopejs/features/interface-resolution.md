@@ -9,7 +9,7 @@ covers:
   - src/core/output/interface-*.ts
   - src/utils/package-resolution.ts
   - src/interface-core-guard.ts
-  - src/utils/version-range.ts
+  - src/version-ranges/**
 docs:
   - docs/2.concepts/1.interfaces.md
   - docs/2.concepts/9.diagnostics.md

@@ -5,7 +5,7 @@ import type {
 import { lt, valid, validRange } from "semver";
 
 import { isString } from "../../utils";
-import { satisfiesRange } from "../../utils/version-range";
+import { satisfiesRange } from "../../version-ranges";
 
 import type {
   InterfacePackageConsumer,

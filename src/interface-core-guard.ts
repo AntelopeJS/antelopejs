@@ -7,7 +7,7 @@ import {
   type ResolvedPackage,
   resolvePackage,
 } from "./utils";
-import { satisfiesRange } from "./utils/version-range";
+import { satisfiesRange } from "./version-ranges";
 import { CliError } from "./core/output";
 
 const INTERFACE_CORE = "@antelopejs/interface-core";

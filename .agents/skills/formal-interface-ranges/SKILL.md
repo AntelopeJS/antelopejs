@@ -72,7 +72,7 @@ Last synchronized product commit is `327b9628babfd0da43f05c5fb92fbb7ba5d525b9`.
 
 | File | Functions exercised |
 | --- | --- |
-| `src/utils/version-range.ts` | `satisfiesRange`, the admission rule both range checks use |
+| `src/version-ranges/index.ts` | `satisfiesRange`, the admission rule both range checks use |
 | `src/core/modules/module-manager-packages.ts` | `collectInterfacePackageConsumers`, `resolveInterfacePackagePaths`, `resolveImplementedPackage`, `registerInterfacePackage`, `findRangeConflicts`, `findPreloadedCopies`, `validateInterfacePackages` |
 | `src/core/modules/module-manager-construction.ts` | `constructAll`, including validation before module construction |
 | `src/core/output/interface-resolution-error.ts` | `InterfaceResolutionError` and the exposed conflict records |
@@ -94,8 +94,8 @@ These breaks were caught at the sync commit.
 
 | Scratch break | Failing observation |
 | --- | --- |
-| In `src/utils/version-range.ts`, drop the release check after `includePrerelease` | First property fails for canonical `0.6.0-next.1`, consumer `>=0.5.1 <0.6.0`, because construction no longer rejects it. |
-| In `src/utils/version-range.ts`, drop the default-rules arm | First property fails for canonical `1.2.3-alpha.0+build.0`, consumer `>=1.2.3-alpha.0 <1.2.3`, because construction now rejects it. |
+| In `src/version-ranges/index.ts`, drop the release check after `includePrerelease` | First property fails for canonical `0.6.0-next.1`, consumer `>=0.5.1 <0.6.0`, because construction no longer rejects it. |
+| In `src/version-ranges/index.ts`, drop the default-rules arm | First property fails for canonical `1.2.3-alpha.0+build.0`, consumer `>=1.2.3-alpha.0 <1.2.3`, because construction now rejects it. |
 | Drop `!range ||` from the range guard, using `range!` only to keep the scratch variant type-correct | First property fails for canonical `2.0.0`, consumer `not-a-range`, because construction now rejects an ignored range. |
 | Pass only `rangeConflicts.slice(0, 1)` into the error | Aggregate property fails for canonical `2.0.0` and two `^1.0.0` consumers because `consumer-1` is missing. |
 | Return when `rangeConflicts.length === 0`, ignoring preloaded copies | Aggregate property fails for canonical `1.0.0`, one `*` consumer, and its preloaded `9.9.9` copy because construction succeeds. |
