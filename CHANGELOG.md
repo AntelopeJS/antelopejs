@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.24.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.0...v1.24.1)
+
+### 🩹 Fixes
+
+- **cli:** Install every package of a template's pnpm workspace in project init ([#506](https://github.com/AntelopeJS/antelopejs/pull/506))
+
+### 📖 Documentation
+
+- Point mongodb examples at 1.8.4 ([#508](https://github.com/AntelopeJS/antelopejs/pull/508))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.24.0
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.3...v1.24.0)
