@@ -52,6 +52,7 @@ async function plan(modules: IncidentModules, fromNpm: string[]) {
       folder,
       conflicts: manager.findInterfaceRangeConflicts(),
       bumps: manager.findInterfaceBumps(),
+      sharedRoot: manager.resolver.interfacePackages.get(INCIDENT_INTERFACE),
     };
   } finally {
     await manager.destroyAll();
@@ -96,7 +97,7 @@ describe("ModuleManager interface bumps of a stubbed preview", () => {
   cleanupProjects();
 
   it("shares the highest copy every range admits when it is a preview", async () => {
-    const { folder, conflicts, bumps } = await plan(
+    const { folder, conflicts, bumps, sharedRoot } = await plan(
       [
         { name: "app", range: ">=0.5.1 <0.6.0", copy: "0.5.1", optional: true },
         {
@@ -109,6 +110,9 @@ describe("ModuleManager interface bumps of a stubbed preview", () => {
       ["cms"],
     );
 
+    expect(sharedRoot).to.equal(
+      path.join(folder, "modules", "cms", "node_modules", INCIDENT_INTERFACE),
+    );
     expect(conflicts).to.deep.equal([]);
     expect(bumps).to.deep.equal([
       {
