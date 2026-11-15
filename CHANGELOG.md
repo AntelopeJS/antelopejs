@@ -1,5 +1,23 @@
 # Changelog
 
+### Upgrade notes
+
+1.24.0 is a minor release. Ranges such as `^1.23.0` or `<2` accept it; `~1.23.0` does not.
+
+#### The module cache is pruned
+
+- **Unused module versions are removed.** Once `ajs project dev`, `ajs project run` or `ajs project build` has loaded the modules, it removes every folder of `.antelope/cache` that no lease of a live run, the project's `build.json` or a build pin keeps ([#487](https://github.com/AntelopeJS/antelopejs/pull/487)). `docs/5.cli/4.module-cache.md` describes the rule.
+- **A run of an older core holds no lease.** When a run started by an older core and this core use one cache, this core's `dev`, `run` or `build` can remove the folders the older run uses. Restart the older runs on this core first, or set `ANTELOPEJS_NO_CACHE_PRUNE=1` (or `true`) for that deploy; runs then still write their leases, and nothing is removed.
+
+#### Interfaces
+
+- **A disabled export stays in its own instance.** A module that lists an interface in `disabledExports` while it implements it no longer writes its implementation into the instance of the interface's default provider. A module pinned to that provider through `importOverrides` now reaches that provider, where it could be answered by the disabled module before ([#489](https://github.com/AntelopeJS/antelopejs/pull/489)).
+- **A cycle of interfaces that no module provides is refused at startup.** A module that imports interfaces depending on each other in a cycle, none of them provided, now stops the start with an `InterfaceBindingError` naming the cycle, for example `Module 'm' cannot import b: the interfaces b -> a -> b depend on each other and no module provides any of them.` Before, the start failed with a stack overflow ([#495](https://github.com/AntelopeJS/antelopejs/pull/495)).
+
+#### Downloads
+
+- **A download whose lock another process took over stops.** When another process takes over the download lock of a module, as after this run stalled for 60 seconds, the download stops at its next step with `Another process took over the download lock of <module> in <cache>; this run stopped so that it does not write over that download. Run the command again.` (`DownloadLockTakenOverError`). Before, both runs wrote the same module folder ([#499](https://github.com/AntelopeJS/antelopejs/pull/499), [#503](https://github.com/AntelopeJS/antelopejs/pull/503)).
+
 ## v1.23.3
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.2...v1.23.3)
