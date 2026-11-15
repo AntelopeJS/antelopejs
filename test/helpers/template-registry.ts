@@ -34,7 +34,7 @@ function commitRepository(repo: string): void {
   git(repo, "commit", "--message", "fixture");
 }
 
-function buildTemplate(root: string): string {
+function buildTemplate(root: string, files: Record<string, string>): string {
   const repo = path.join(root, "template");
   mkdirSync(repo);
   writeFileSync(path.join(repo, "package.json"), '{"name":"custom-tpl"}\n');
@@ -42,6 +42,10 @@ function buildTemplate(root: string): string {
     path.join(repo, "antelope.config.ts"),
     "export default { name: 'custom', modules: {} };\n",
   );
+  for (const [file, content] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+    writeFileSync(path.join(repo, file), content);
+  }
   commitRepository(repo);
   return repo;
 }
@@ -49,13 +53,15 @@ function buildTemplate(root: string): string {
 /**
  * A template registry on disk: a git repository whose manifest lists one
  * project template, backed by a template repository, both real. `fields`
- * adds manifest fields to the template.
+ * adds manifest fields to the template, and `files` adds files to its
+ * repository, by path relative to it.
  */
 export function buildRegistry(
   root: string,
   fields: Partial<gitOperationsModule.Template> = {},
+  files: Record<string, string> = {},
 ): string {
-  const template = buildTemplate(root);
+  const template = buildTemplate(root, files);
   const repo = path.join(root, "registry");
   mkdirSync(repo);
   writeFileSync(
