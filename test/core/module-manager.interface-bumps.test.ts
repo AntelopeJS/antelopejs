@@ -92,6 +92,42 @@ describe("ModuleManager interface bumps of a stubbed interface", () => {
   }
 });
 
+describe("ModuleManager interface bumps of a stubbed preview", () => {
+  cleanupProjects();
+
+  it("shares the highest copy every range admits when it is a preview", async () => {
+    const { folder, conflicts, bumps } = await plan(
+      [
+        { name: "app", range: ">=0.5.1 <0.6.0", copy: "0.5.1", optional: true },
+        {
+          name: "cms",
+          range: ">=0.5.1 <0.6.0",
+          copy: "0.5.2-next.113.g5abe1f0",
+          optional: true,
+        },
+      ],
+      ["cms"],
+    );
+
+    expect(conflicts).to.deep.equal([]);
+    expect(bumps).to.deep.equal([
+      {
+        kind: "range",
+        moduleId: "app",
+        packageName: INCIDENT_INTERFACE,
+        current: "0.5.1",
+        target: "0.5.2-next.113.g5abe1f0",
+        requiredBy: [],
+        required: false,
+        folder: path.join(folder, "modules", "app"),
+        field: "optionalDependencies",
+        from: ">=0.5.1 <0.6.0",
+        to: ">=0.5.2-next.113.g5abe1f0 <0.6.0",
+      },
+    ]);
+  });
+});
+
 describe("ModuleManager interface bumps of an implemented interface", () => {
   cleanupProjects();
 
