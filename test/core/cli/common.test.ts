@@ -16,6 +16,7 @@ import {
 } from "../../../src/cli";
 import { tsConfigFileModule as tsConfigFile } from "../../../src/core/config";
 import { getProcessUi } from "../../../src/core/output";
+import { redirectHome } from "../../helpers/home";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
@@ -43,23 +44,20 @@ import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
   let registerUserConfig: (this: Mocha.Suite) => void;
   {
-    const initializeOriginalHome = () => process.env.HOME;
-    let originalHome: ReturnType<typeof initializeOriginalHome>;
-
     const initializeTempHome = () => "";
     let tempHome: ReturnType<typeof initializeTempHome>;
+    let restoreHome: () => void;
 
     registerUserConfig = () => {
-      originalHome = initializeOriginalHome();
       tempHome = initializeTempHome();
 
       beforeEach(() => {
         tempHome = makeTempDir("antelope-home-");
-        process.env.HOME = tempHome;
+        restoreHome = redirectHome(tempHome);
       });
 
       afterEach(() => {
-        process.env.HOME = originalHome;
+        restoreHome();
         cleanupTempDir(tempHome);
         sinon.restore();
       });

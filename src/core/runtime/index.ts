@@ -1,5 +1,6 @@
 export * from "./build-refresh";
 export * from "./build-runtime";
+export * from "./cache-pruning";
 export * from "./dev-server-registry";
 export * from "./launch-sequence";
 export * from "./launch-steps";
@@ -19,3 +20,4 @@ export * from "./watch/file-watcher";
 export * as watchFileWatcherModule from "./watch/file-watcher";
 export * from "./watch/hot-reload";
 export * as watchHotReloadModule from "./watch/hot-reload";
+export * from "./watch/missing-folders";

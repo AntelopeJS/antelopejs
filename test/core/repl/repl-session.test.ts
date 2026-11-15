@@ -3,7 +3,7 @@ import { REPLServer } from "node:repl";
 import sinon from "sinon";
 
 import { ModuleManager } from "../../../src/core/modules";
-import { type ReplContext, ReplSession } from "../../../src/core/repl";
+import { type ReplContext, ReplSession } from "../../../src/core/repl-session";
 
 describe("ReplSession", () => {
   it("should start and close a repl session with context", () => {

@@ -5,6 +5,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -21,7 +22,7 @@ import {
 import {
   BuildModuleSetChangedError,
   findBuildModuleSetChange,
-  readRefreshedBuildArtifact,
+  readRefreshedBuild,
   refreshBuildArtifact,
 } from "../../../src/core/runtime";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
@@ -34,8 +35,7 @@ const OVERRIDE_VARIABLE = "ANTELOPEJS_TEST_DATABASE_HOST";
 function createEntry(
   name: string,
   source: (ModuleSourceLocal | ModuleSourcePackage) & { id: string },
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a fixture field mirroring BuildModuleEntry.config, user config data
-  config: unknown,
+  config: BuildModuleEntry["config"],
 ): BuildModuleEntry {
   const folder = `/project/.antelope/cache/${name}`;
   return {
@@ -67,7 +67,11 @@ function createArtifact(): BuildArtifact {
     modules: {
       api: createEntry(
         "api",
-        { type: "local", path: "/project/modules/api", id: "api" },
+        {
+          type: "local",
+          path: path.resolve(PROJECT, "modules", "api"),
+          id: "api",
+        },
         { token: "placeholder" },
       ),
       database: createEntry(
@@ -309,7 +313,11 @@ async function refreshError(
         await writeBuildArtifact(PROJECT, createArtifact(), fs);
         const onDisk = await fs.readFileString(getBuildArtifactPath(PROJECT));
 
-        const refreshed = await readRefreshedBuildArtifact(PROJECT, ENV, fs);
+        const { artifact: refreshed } = await readRefreshedBuild(
+          PROJECT,
+          ENV,
+          fs,
+        );
 
         expect(refreshed.modules.api.config).to.deep.equal({ token: SECRET });
         expect(await fs.readFileString(getBuildArtifactPath(PROJECT))).to.equal(

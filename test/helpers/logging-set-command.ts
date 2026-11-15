@@ -21,9 +21,16 @@ interface SetCommandStubs {
   warning: sinon.SinonStub;
 }
 
-export function stubSetCommand(
-  config: Partial<AntelopeConfig>,
-): SetCommandStubs {
+/** A config as a file can hold it: any logging field may be `null`, which the type of a loaded config does not admit. */
+export type StoredConfig = Omit<Partial<AntelopeConfig>, "logging"> & {
+  logging?: {
+    [Field in keyof NonNullable<AntelopeConfig["logging"]>]:
+      | NonNullable<AntelopeConfig["logging"]>[Field]
+      | null;
+  };
+};
+
+export function stubSetCommand(config: StoredConfig): SetCommandStubs {
   const readConfig: sinon.SinonStub = sinon.stub(common, "readConfig");
   readConfig.resolves(config);
   const stubs: SetCommandStubs = {

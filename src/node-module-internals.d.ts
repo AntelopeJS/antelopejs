@@ -1,5 +1,15 @@
 export {};
 
+declare const loadedExports: unique symbol;
+
+/**
+ * The `exports` Node's CommonJS loader hands to a `require` call. Node does
+ * not describe their shape, so a loader hook passes them through unread.
+ */
+interface LoadedExports {
+  readonly [loadedExports]: true;
+}
+
 declare module "module" {
   namespace Module {
     /**
@@ -21,7 +31,7 @@ declare module "module" {
       request: string,
       parent?: { filename?: string } | null,
       isMain?: boolean,
-    ) => ReturnType<NodeJS.Require>;
+    ) => LoadedExports | undefined;
 
     /**
      * Node's registry of loaded CommonJS modules, keyed by filename. Node

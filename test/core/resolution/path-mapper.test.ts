@@ -41,7 +41,7 @@ describe("PathMapper", () => {
   });
 
   it("should resolve mapped paths when target exists", () => {
-    const existing = new Set<string>(["/mod/src/lib/util.js"]);
+    const existing = new Set<string>([path.join("/mod/src/lib", "util.js")]);
     const mapper = new PathMapper((p) => existing.has(p));
 
     const result = mapper.resolve("@lib/util", manifest);
@@ -50,7 +50,9 @@ describe("PathMapper", () => {
   });
 
   it("should resolve index.js when present", () => {
-    const existing = new Set<string>(["/mod/src/lib/util/index.js"]);
+    const existing = new Set<string>([
+      path.join("/mod/src/lib", "util", "index.js"),
+    ]);
     const mapper = new PathMapper((p) => existing.has(p));
 
     const result = mapper.resolve("@lib/util", manifest);
@@ -59,7 +61,7 @@ describe("PathMapper", () => {
   });
 
   it("should use the first matching value", () => {
-    const mapper = new PathMapper((p) => p === "/second/util.js");
+    const mapper = new PathMapper((p) => p === path.join("/second", "util.js"));
     const custom = manifestFixture({
       paths: [{ key: "@lib/", values: ["/first", "/second"] }],
     });

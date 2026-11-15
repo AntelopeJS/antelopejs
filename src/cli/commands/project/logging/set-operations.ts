@@ -1,5 +1,5 @@
 import { getProcessPalette } from "../../../../core/output";
-import { levelMap } from "../../../../logging";
+import { isLevelName, levelMap } from "../../../../logging";
 import type { LoggingDraft, ModuleTrackingDraft } from "./logging-draft";
 
 export interface SetOptions {
@@ -44,9 +44,7 @@ const MODULE_LIST_NAMES: Record<ModuleListKey, string> = {
 };
 
 export function formatterKeyOf(level: string): string {
-  return Object.hasOwn(levelMap, level)
-    ? String(levelMap[level])
-    : DEFAULT_FORMATTER_LEVEL;
+  return isLevelName(level) ? String(levelMap[level]) : DEFAULT_FORMATTER_LEVEL;
 }
 
 function toggle(

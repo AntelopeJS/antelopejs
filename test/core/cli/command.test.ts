@@ -13,6 +13,8 @@ import {
   nonInteractiveOptions,
 } from "../../../src/core/output";
 
+const FAILING_COMMAND = `node -e "console.log('partial'); console.error('oops'); process.exit(3)"`;
+
 describe("Command Execution", () => {
   afterEach(() => {
     sinon.restore();
@@ -67,32 +69,30 @@ describe("Command Execution", () => {
 
   describe("ExecuteCMD", () => {
     it("should execute simple command", async () => {
-      const result = await ExecuteCMD('echo "hello"', {});
+      const result = await ExecuteCMD("echo hello", {});
       expect(result.stdout.trim()).to.equal("hello");
       expect(result.code).to.equal(0);
     });
 
     it("should capture stderr", async () => {
-      const result = await ExecuteCMD('echo "error" >&2', {});
+      const result = await ExecuteCMD("echo error 1>&2", {});
       expect(result.stderr.trim()).to.equal("error");
     });
 
     it("rejects with an ExecError carrying the command, its output and exit code", async () => {
       try {
-        await ExecuteCMD("sh -c 'echo partial; echo oops 1>&2; exit 3'", {});
+        await ExecuteCMD(FAILING_COMMAND, {});
         expect.fail("Should have rejected");
       } catch (failure) {
         expectInstanceOf(failure, ExecError);
         expect(failure.name).to.equal("ExecError");
-        expect(failure.command).to.equal(
-          "sh -c 'echo partial; echo oops 1>&2; exit 3'",
-        );
+        expect(failure.command).to.equal(FAILING_COMMAND);
         expect(failure.stdout.trim()).to.equal("partial");
         expect(failure.stderr.trim()).to.equal("oops");
         expect(failure.exitCode).to.equal(3);
         expect(failure.output.trim()).to.equal("oops\npartial");
         expect(failure.message).to.equal(
-          "Command 'sh -c 'echo partial; echo oops 1>&2; exit 3'' failed with exit code 3",
+          `Command '${FAILING_COMMAND}' failed with exit code 3`,
         );
       }
     });

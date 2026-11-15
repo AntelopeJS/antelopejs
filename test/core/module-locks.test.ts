@@ -73,7 +73,7 @@ describe("ModuleLockStore", () => {
     );
     expect(
       ModuleLockStore.relativePath({ ...API, version: "v1.5.0" }),
-    ).to.equal("antelope-lock/@antelopejs/api@1.5.0");
+    ).to.equal(path.join("antelope-lock", "@antelopejs", "api@1.5.0"));
   });
 
   it("has no record for a version it never wrote, nor for a folder without a lockfile", async () => {
@@ -257,7 +257,7 @@ describe("ModuleLockStore prune", () => {
 
   it("names the record folder relative to the project", () => {
     expect(ModuleLockStore.relativePath(API)).to.equal(
-      "antelope-lock/@antelopejs/api@1.5.0",
+      path.join("antelope-lock", "@antelopejs", "api@1.5.0"),
     );
   });
 });

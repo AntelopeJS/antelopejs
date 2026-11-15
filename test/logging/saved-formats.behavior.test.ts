@@ -6,6 +6,7 @@ import * as sinon from "sinon";
 
 import {
   defaultConfigLogging,
+  setLogAudience,
   setupAntelopeProjectLogging,
 } from "../../src/logging";
 import { captureOutput } from "../helpers/capture-output";
@@ -25,6 +26,10 @@ function setupWithFormatter(
 
 describe("saved logging formats", () => {
   useColorLevel(false);
+
+  beforeEach(() => {
+    setLogAudience("app");
+  });
 
   afterEach(() => {
     sinon.restore();

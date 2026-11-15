@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 import {
   loadedConfigFixture,
@@ -8,7 +9,7 @@ import {
 import { ConfigLoader } from "../src/core/config";
 import { DownloaderRegistry } from "../src/core/downloaders";
 import { ModuleCache, ModuleManager } from "../src/core/modules";
-import { ReplSession } from "../src/core/repl";
+import { ReplSession } from "../src/core/repl-session";
 import { FileWatcher, HotReload } from "../src/core/runtime";
 import { launch } from "../src/index";
 
@@ -155,8 +156,8 @@ function stubWatchedModuleDownloads() {
           true,
         );
         expect(excludeStub.args).to.deep.equal([
-          ["/project/.antelope"],
-          ["/project/.antelope/cache"],
+          [path.resolve("/project", ".antelope")],
+          [path.resolve("/project", ".antelope", "cache")],
         ]);
         expect(startWatchingStub.calledOnce).to.equal(true);
         expect(replStub.calledWith("> ")).to.equal(true);

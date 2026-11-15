@@ -33,6 +33,11 @@ export class PackageLocks {
     private readonly fs: IFileSystem,
   ) {}
 
+  /** Whether every module must be installed exactly from its record. */
+  get isFrozen(): boolean {
+    return this.policy?.mode === "frozen";
+  }
+
   /** Whether a cached module may be reused instead of downloaded again. */
   get reusesCache(): boolean {
     return this.policy?.mode !== "refresh";

@@ -8,5 +8,5 @@
       "@antelopejs/core": ["../src/index.ts"]
     }
   },
-  "include": ["./*.ts"]
+  "include": ["./*.ts", "../src/**/*.d.ts"]
 }

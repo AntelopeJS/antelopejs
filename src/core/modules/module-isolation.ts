@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { createPathWithinMatcher } from "../../utils";
+import { createLoadedFileMatcher } from "../../utils";
 import {
   createInstanceCopy,
   nextInstanceCopyPath,
@@ -47,7 +47,7 @@ function warnFollowedLinks(
 }
 
 function evictFolder(folder: string): void {
-  const isInFolder = createPathWithinMatcher(folder);
+  const isInFolder = createLoadedFileMatcher(folder);
   for (const filePath of Object.keys(require.cache)) {
     if (isInFolder(filePath)) {
       delete require.cache[filePath];

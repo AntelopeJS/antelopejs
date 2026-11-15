@@ -193,30 +193,49 @@ function projectFields(loaded: LoadedConfig): FieldChecks<LoadedConfig> {
   };
 }
 
+/** What changed a loaded configuration before a check, as its errors name it. */
+type ConfigChange =
+  | "templates and environment overrides"
+  | "the test setup overrides";
+
+const LOADER_CHANGE: ConfigChange = "templates and environment overrides";
+
 /**
- * Asserts that templates and environment overrides left every declared
- * field of the project configuration with its declared type. A field that
- * still equals what the configuration file gave it passes as loaded, so a
- * file the loader accepted before keeps loading. A field that a pure `${key}`
- * template or an environment override turned into another type throws an
- * error naming the field. Module `config` sections are not checked: modules
- * take them as `unknown`.
+ * Asserts that `change` left every declared field of the project
+ * configuration with its declared type. A field that still equals what the
+ * configuration file gave it passes as loaded, so a file the loader accepted
+ * before keeps loading. A field that a pure `${key}` template, an environment
+ * override or a test setup override turned into another type throws an error
+ * naming the field. Module `config` sections are not checked: modules take
+ * them as `unknown`.
  */
 export function assertLoadedConfig(
   value: unknown,
   loaded: LoadedConfig,
+  change: ConfigChange = LOADER_CHANGE,
 ): asserts value is LoadedConfig {
-  try {
+  reportFieldErrors(change, () => {
     checkProjectFields(value, loaded);
+  });
+}
+
+function reportFieldErrors(change: ConfigChange, check: () => void): void {
+  try {
+    check();
   } catch (error) {
     if (!(error instanceof FieldError)) throw error;
-    throw configFieldError(error.field, error.takes, error);
+    throw configFieldError(error.field, error.takes, change, error);
   }
 }
 
-function configFieldError(field: string, takes: string, cause?: Error) {
+function configFieldError(
+  field: string,
+  takes: string,
+  change: ConfigChange,
+  cause?: Error,
+) {
   return new Error(
-    `Configuration field '${field}' does not hold ${takes} after templates and environment overrides.`,
+    `Configuration field '${field}' does not hold ${takes} after ${change}.`,
     { cause },
   );
 }
@@ -270,7 +289,7 @@ export function decodeOverride(path: string, text: string): OverrideValue {
   const [, takes, decode] = typed;
   const read = decode(text);
   if (read === undefined) {
-    throw configFieldError(path, takes);
+    throw configFieldError(path, takes, LOADER_CHANGE);
   }
   return read;
 }
@@ -359,13 +378,32 @@ const moduleContract: FieldCheck<string | AntelopeModuleConfig> = (
   moduleEntryContract(value, field);
 };
 
+const modulesContract: FieldCheck<AntelopeConfig["modules"]> = optional(
+  mapOf("a map of module entries", moduleContract),
+);
+
+/**
+ * Asserts that `value` holds the `modules` contract of a configuration file:
+ * version strings, and entries with either form of `importOverrides`. Throws
+ * the error {@link assertLoadedConfig} throws for `change`, naming the first
+ * field that does not.
+ */
+export function assertConfigModules(
+  value: unknown,
+  change: ConfigChange,
+): asserts value is AntelopeConfig["modules"] {
+  reportFieldErrors(change, () => {
+    modulesContract(value, "modules");
+  });
+}
+
 function configContract(
   name: FieldCheck<string | undefined>,
 ): FieldChecks<Partial<AntelopeConfig>> {
   return {
     name,
     cacheFolder: optional(text),
-    modules: optional(mapOf("a map of module entries", moduleContract)),
+    modules: modulesContract,
     logging: optional(loggingCheck),
     envOverrides: optional(mapOf("a map of environment overrides", textOrList)),
     environments: optional(

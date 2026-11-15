@@ -1,7 +1,7 @@
 import { compare, satisfies, valid, validRange } from "semver";
 
 import {
-  createPathWithinMatcher,
+  createLoadedFileMatcher,
   type ResolvedPackage,
   resolvePackage,
   resolvePackageAtRoot,
@@ -330,7 +330,7 @@ export function findPreloadedCopies(
     if (!copy || copy.realRoot === canonicalRoot) {
       return [];
     }
-    const isInCopy = createPathWithinMatcher(copy.root);
+    const isInCopy = createLoadedFileMatcher(copy.root);
     const loadedFile = loadedFiles.find((filePath) => isInCopy(filePath));
     return loadedFile
       ? [

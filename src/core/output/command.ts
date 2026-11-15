@@ -13,7 +13,6 @@ import { isNumber } from "../../utils";
 let channel: Logging.Channel | undefined;
 
 function loadLogging(): typeof import("@antelopejs/interface-core/logging") {
-  // oxlint-disable-next-line typescript/no-unsafe-return -- lazy Node require of interface-core logging returns any
   return require("@antelopejs/interface-core/logging");
 }
 

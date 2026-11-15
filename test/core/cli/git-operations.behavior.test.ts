@@ -4,13 +4,13 @@ import path from "node:path";
 import sinon from "sinon";
 
 import { commandModule as command } from "../../../src/core/output";
+import { redirectHome } from "../../helpers/home";
 import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 
 {
   let registerGitOperationsBehavior: (this: Mocha.Suite) => void;
 
-  async function loadGitOpsWithHome(homeDir: string) {
-    process.env.HOME = homeDir;
+  async function loadGitOps() {
     const gitOpsPath = require.resolve("../../../src/cli");
     const lockPath = require.resolve("../../../src/utils");
     delete require.cache[gitOpsPath];
@@ -24,9 +24,9 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
     function () {
       it("loads manifest and interface info from git cache", async () => {
         const homeDir = makeTempDir();
-        const originalHome = process.env.HOME;
+        const restoreHome = redirectHome(homeDir);
         try {
-          const gitOps = await loadGitOpsWithHome(homeDir);
+          const gitOps = await loadGitOps();
           const gitUrl = "https://example.com/repo.git";
           const folderName = gitUrl.replace(/[^a-zA-Z0-9_]/g, "_");
           const repoPath = path.join(
@@ -66,16 +66,16 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
           expect(infos.foo).to.not.equal(undefined);
           expect(infos.missing).to.equal(undefined);
         } finally {
-          process.env.HOME = originalHome;
+          restoreHome();
           cleanupTempDir(homeDir);
         }
       });
 
       it("pulls when git cache already exists", async () => {
         const homeDir = makeTempDir();
-        const originalHome = process.env.HOME;
+        const restoreHome = redirectHome(homeDir);
         try {
-          const gitOps = await loadGitOpsWithHome(homeDir);
+          const gitOps = await loadGitOps();
           const gitUrl = "https://example.com/repo.git";
           const folderName = gitUrl.replace(/[^a-zA-Z0-9_]/g, "_");
           const repoPath = path.join(
@@ -101,16 +101,16 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
             true,
           );
         } finally {
-          process.env.HOME = originalHome;
+          restoreHome();
           cleanupTempDir(homeDir);
         }
       });
 
       it("copies template using git commands", async () => {
         const moduleDir = makeTempDir();
-        const originalHome = process.env.HOME;
+        const restoreHome = redirectHome(moduleDir);
         try {
-          const gitOps = await loadGitOpsWithHome(moduleDir);
+          const gitOps = await loadGitOps();
           const execStub = sinon
             .stub(command, "ExecuteCMD")
             .resolves({ code: 0, stdout: "", stderr: "" });
@@ -127,7 +127,7 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 
           expect(execStub.called).to.equal(true);
         } finally {
-          process.env.HOME = originalHome;
+          restoreHome();
           cleanupTempDir(moduleDir);
         }
       });
@@ -137,9 +137,9 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
     function () {
       it("throws when git clone fails during setup", async () => {
         const homeDir = makeTempDir();
-        const originalHome = process.env.HOME;
+        const restoreHome = redirectHome(homeDir);
         try {
-          const gitOps = await loadGitOpsWithHome(homeDir);
+          const gitOps = await loadGitOps();
           sinon
             .stub(command, "ExecuteCMD")
             .resolves({ code: 1, stdout: "", stderr: "fail" });
@@ -153,16 +153,16 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 
           expect(caught).to.be.instanceOf(Error);
         } finally {
-          process.env.HOME = originalHome;
+          restoreHome();
           cleanupTempDir(homeDir);
         }
       });
 
       it("throws when sparse-checkout setup fails", async () => {
         const homeDir = makeTempDir();
-        const originalHome = process.env.HOME;
+        const restoreHome = redirectHome(homeDir);
         try {
-          const gitOps = await loadGitOpsWithHome(homeDir);
+          const gitOps = await loadGitOps();
           const execStub = sinon.stub(command, "ExecuteCMD");
           execStub.onFirstCall().resolves({ code: 0, stdout: "", stderr: "" });
           execStub
@@ -178,16 +178,16 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 
           expect(caught).to.be.instanceOf(Error);
         } finally {
-          process.env.HOME = originalHome;
+          restoreHome();
           cleanupTempDir(homeDir);
         }
       });
 
       it("throws when checkout fails", async () => {
         const homeDir = makeTempDir();
-        const originalHome = process.env.HOME;
+        const restoreHome = redirectHome(homeDir);
         try {
-          const gitOps = await loadGitOpsWithHome(homeDir);
+          const gitOps = await loadGitOps();
           const execStub = sinon.stub(command, "ExecuteCMD");
           execStub.onCall(0).resolves({ code: 0, stdout: "", stderr: "" });
           execStub.onCall(1).resolves({ code: 0, stdout: "", stderr: "" });
@@ -204,7 +204,7 @@ import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 
           expect(caught).to.be.instanceOf(Error);
         } finally {
-          process.env.HOME = originalHome;
+          restoreHome();
           cleanupTempDir(homeDir);
         }
       });

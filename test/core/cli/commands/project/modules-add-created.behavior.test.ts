@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -108,7 +109,7 @@ describe("project modules behavior: add-created", () => {
       headline: "1 module added to antelope.config.ts",
       nextSteps: [
         {
-          command: "ajs project modules install --project /tmp/project",
+          command: `ajs project modules install --project ${path.resolve("/tmp/project")}`,
           description: "resolve the interfaces they need",
         },
       ],

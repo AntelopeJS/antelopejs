@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -60,6 +61,6 @@ describe("project modules install behavior: uses absolute cache folder when conf
     const cmd = cmdInstall();
     await cmd.parseAsync(["node", "test", "--project", "/tmp/project"]);
 
-    expect(capturedPath).to.equal("/tmp/cache");
+    expect(capturedPath).to.equal(path.resolve("/tmp/cache"));
   });
 });

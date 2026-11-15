@@ -1,3 +1,4 @@
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import * as moduleInterfaceBeta from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import assert from "node:assert/strict";
@@ -14,6 +15,7 @@ import {
   registerCoreModuleInterface,
 } from "../../../src/core/runtime";
 import { ModuleState } from "../../../src/types";
+import { isObject } from "../../../src/utils";
 import { fakeNpm } from "../../helpers/fake-npm";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 import {
@@ -52,15 +54,17 @@ describe("runtime module-loading", () => {
     manager.getLoadedModuleEntry.returns(undefined);
     await moduleInterfaceBeta.ReloadModule("unknown");
 
-    manager.getModuleEntry.returns({
-      module: moduleFixture({
-        // @ts-expect-error Exercises GetModuleInfo's fallback for an unrecognized runtime state.
-        state: "unexpected",
-        manifest: manifestFixture({
-          source: { type: "local" },
-          folder: "/mods/alpha",
-        }),
+    const unrecognizedStateModule = moduleFixture({
+      manifest: manifestFixture({
+        source: { type: "local" },
+        folder: "/mods/alpha",
       }),
+    });
+    Object.defineProperty(unrecognizedStateModule, "state", {
+      value: "unexpected",
+    });
+    manager.getModuleEntry.returns({
+      module: unrecognizedStateModule,
       config: {
         config: {},
       },
@@ -330,5 +334,113 @@ describe("runtime module-loading: recorded module locks", () => {
       .filter((text) => text.includes("antelope-lock"));
     expect(reported).to.have.length(1);
     expect(reported[0]).to.include("Recorded 2 module locks");
+  });
+});
+
+describe("runtime module-loading: modules sharing a package", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("starts two modules that need the same package from an empty cache", async () => {
+    sinon.stub(getProcessTasks().ui, "message");
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    const npm = fakeNpm(fs, () => "lock");
+    const commands: string[] = [];
+    const installing = new Set<string>();
+    const registry = new DownloaderRegistry();
+    registerPackageDownloader(registry, {
+      fs,
+      ...npm,
+      exec: async (command, options) => {
+        commands.push(command);
+        const cwd = options?.cwd ?? "";
+        if (command.startsWith("npm pack")) {
+          return npm.exec(command, options);
+        }
+        if (installing.has(cwd)) {
+          throw new Error(`${cwd} was replaced during its install`);
+        }
+        installing.add(cwd);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        installing.delete(cwd);
+        return npm.exec(command, options);
+      },
+    });
+    const config = loadedConfigFixture({
+      modules: {
+        first: {
+          source: { type: "package", package: "shared", version: "1.0.0" },
+        },
+        second: {
+          source: { type: "package", package: "shared", version: "1.0.0" },
+        },
+      },
+      moduleLocks: undefined,
+    });
+
+    const entries = await buildModuleConfigs(config, {
+      fs: new NodeFileSystem(),
+      cache,
+      registry,
+      projectFolder: "/project",
+      locks: new ModuleLockStore("/project", fs),
+    });
+
+    expect(entries.map(({ manifest }) => manifest.name)).to.have.members([
+      "first",
+      "second",
+    ]);
+    expect(commands.filter((c) => c.startsWith("npm pack"))).to.deep.equal([
+      'npm pack "shared@1.0.0"',
+    ]);
+  });
+});
+
+describe("runtime module-loading: modules pinning two versions of a package", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("starts each module on the version it pins", async () => {
+    sinon.stub(getProcessTasks().ui, "message");
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    const registry = new DownloaderRegistry();
+    registerPackageDownloader(registry, { fs, ...fakeNpm(fs, () => "lock") });
+    const pinned = (version: string) => ({
+      source: {
+        type: "package",
+        package: "@antelopejs/mongodb",
+        version,
+      } satisfies ModuleSourcePackage,
+    });
+    const config = loadedConfigFixture({
+      modules: { old: pinned("1.7.0"), current: pinned("1.8.0") },
+      moduleLocks: undefined,
+    });
+
+    const entries = await buildModuleConfigs(config, {
+      fs: new NodeFileSystem(),
+      cache,
+      registry,
+      projectFolder: "/project",
+      locks: new ModuleLockStore("/project", fs),
+    });
+
+    const installed = await Promise.all(
+      entries.map(async ({ manifest }) => {
+        const text = await fs.readFileString(`${manifest.folder}/package.json`);
+        const parsed: unknown = JSON.parse(text);
+        return [manifest.name, isObject(parsed) ? parsed.version : undefined];
+      }),
+    );
+    expect(Object.fromEntries(installed)).to.deep.equal({
+      old: "1.7.0",
+      current: "1.8.0",
+    });
   });
 });

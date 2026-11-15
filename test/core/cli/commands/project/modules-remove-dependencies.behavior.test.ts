@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import {
@@ -53,7 +54,7 @@ describe("project modules behavior: remove-dependencies", () => {
       headline: "1 module removed from antelope.config.ts",
       nextSteps: [
         {
-          command: "ajs project modules install --project /tmp/project",
+          command: `ajs project modules install --project ${path.resolve("/tmp/project")}`,
           description: "check that every interface is still implemented",
         },
       ],

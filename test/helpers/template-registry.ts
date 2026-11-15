@@ -13,6 +13,7 @@ const ENVIRONMENT_KEYS = [
   "USERPROFILE",
   "ANTELOPEJS_GIT",
   "npm_config_offline",
+  "GIT_CONFIG_NOSYSTEM",
 ];
 const GIT_IDENTITY = [
   "-c",
@@ -33,7 +34,7 @@ function commitRepository(repo: string): void {
   git(repo, "commit", "--message", "fixture");
 }
 
-function buildTemplate(root: string): string {
+function buildTemplate(root: string, files: Record<string, string>): string {
   const repo = path.join(root, "template");
   mkdirSync(repo);
   writeFileSync(path.join(repo, "package.json"), '{"name":"custom-tpl"}\n');
@@ -41,6 +42,10 @@ function buildTemplate(root: string): string {
     path.join(repo, "antelope.config.ts"),
     "export default { name: 'custom', modules: {} };\n",
   );
+  for (const [file, content] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+    writeFileSync(path.join(repo, file), content);
+  }
   commitRepository(repo);
   return repo;
 }
@@ -48,13 +53,15 @@ function buildTemplate(root: string): string {
 /**
  * A template registry on disk: a git repository whose manifest lists one
  * project template, backed by a template repository, both real. `fields`
- * adds manifest fields to the template.
+ * adds manifest fields to the template, and `files` adds files to its
+ * repository, by path relative to it.
  */
 export function buildRegistry(
   root: string,
   fields: Partial<gitOperationsModule.Template> = {},
+  files: Record<string, string> = {},
 ): string {
-  const template = buildTemplate(root);
+  const template = buildTemplate(root, files);
   const repo = path.join(root, "registry");
   mkdirSync(repo);
   writeFileSync(
@@ -80,7 +87,9 @@ export function buildRegistry(
 
 /**
  * Gives the test its own home folder whose CLI setting points at a missing
- * registry, and returns the function that puts the environment back.
+ * registry, and returns the function that puts the environment back. Git
+ * reads no system configuration either, so a host setting such as Git for
+ * Windows' `core.autocrlf=true` does not rewrite the files a test checks out.
  */
 export function isolateHome(root: string): () => void {
   const saved = new Map(ENVIRONMENT_KEYS.map((key) => [key, process.env[key]]));
@@ -94,6 +103,7 @@ export function isolateHome(root: string): () => void {
   process.env.USERPROFILE = home;
   delete process.env.ANTELOPEJS_GIT;
   process.env.npm_config_offline = "true";
+  process.env.GIT_CONFIG_NOSYSTEM = "1";
   return () => {
     for (const [key, value] of saved) {
       if (value === undefined) {

@@ -7,7 +7,7 @@ export enum ModuleState {
 }
 
 export interface ModuleCallbacks {
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Published lifecycle callbacks accept application-defined configuration; narrowing this parameter changes the callback contract.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- by the documented contract (docs/2.concepts/4.configuration.md, "Referencing") a RegExp, a Date or a class instance in a module's config comes out of substitution untouched, so no data type narrower than unknown describes the config a module receives
   construct?(config: unknown): Promise<void> | void;
   destroy?(): Promise<void> | void;
   provide?: ConfigVarProvider;

@@ -53,7 +53,6 @@ function literal(text: string, numeric = false, keepsKeyLine = false) {
 }
 
 /** A config value of any shape as the source tree {@link printNode} lays out. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- parses a module config value, user JS data that can hold any value, into the source tree
 export function toNode(value: unknown): SourceNode {
   if (isString(value)) {
     return literal(quote(value));

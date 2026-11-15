@@ -1,5 +1,7 @@
 import "@antelopejs/interface-core/logging";
 
+import { setImmediate as nextCheckPhase } from "node:timers/promises";
+
 import { getProcessTasks } from "../src/core/output";
 
 type SignalName = "SIGINT" | "SIGTERM";
@@ -7,10 +9,12 @@ type SignalListener = NodeJS.SignalsListener;
 
 const SIGNALS: SignalName[] = ["SIGINT", "SIGTERM"];
 const FAILING_EXIT_CODE = 1;
+const FS_WATCH_RESOURCE = "FSEventWrap";
 
 const baseline = new Map<SignalName, Set<SignalListener>>();
 let runFinished = false;
 let isExitGuardInstalled = false;
+let fsWatchHandlesBeforeTest = 0;
 
 function listenersOf(signal: SignalName): SignalListener[] {
   return process.listeners(signal);
@@ -42,6 +46,31 @@ function releaseLeakedSignalListeners(): void {
         process.removeListener(signal, listener);
       }
     }
+  }
+}
+
+function countFsWatchHandles(): number {
+  return process
+    .getActiveResourcesInfo()
+    .filter((resource) => resource === FS_WATCH_RESOURCE).length;
+}
+
+/**
+ * Fails the test that leaves an `fs.watch` handle open.
+ *
+ * A watcher that outlives its test keeps watching directories the test
+ * removes, and on Windows every later launch pays for it. A closed watcher
+ * releases its handle in the close phase of the event loop, so the count waits
+ * for two check phases, which puts a close phase behind it.
+ */
+async function assertNoLeakedFsWatchHandles(): Promise<void> {
+  await nextCheckPhase();
+  await nextCheckPhase();
+  const leaked = countFsWatchHandles() - fsWatchHandlesBeforeTest;
+  if (leaked > 0) {
+    throw new Error(
+      `The test left ${leaked} fs.watch handle(s) open: close every watcher it starts, for example by shutting its project down.`,
+    );
   }
 }
 
@@ -98,8 +127,12 @@ export const mochaHooks = {
     installPrematureExitGuard();
     snapshotSignalListeners();
   },
-  afterEach(): void {
+  beforeEach(): void {
+    fsWatchHandlesBeforeTest = countFsWatchHandles();
+  },
+  async afterEach(): Promise<void> {
     releaseLeakedSignalListeners();
+    await assertNoLeakedFsWatchHandles();
   },
   afterAll(): void {
     runFinished = true;

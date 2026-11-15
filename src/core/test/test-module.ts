@@ -1,14 +1,31 @@
 import type {
   AntelopeConfig,
+  AntelopeModuleConfig,
   AntelopeTestConfig,
+  AntelopeTestOverrides,
 } from "@antelopejs/interface-core/config";
 import { internal } from "@antelopejs/interface-core/internal";
 import path from "node:path";
 
 import { setupAntelopeProjectLogging } from "../../logging";
 import type { IFileSystem } from "../../types";
-import { isObject, isString, mergeDeep } from "../../utils";
-import { ConfigLoader, DEFAULT_ENV, type LoadedConfig } from "../config";
+import {
+  isObject,
+  isPlainObject,
+  isString,
+  mergeDeep,
+  type UnknownDictionary,
+} from "../../utils";
+import {
+  assertConfigModules,
+  assertLoadedConfig,
+  ConfigLoader,
+  ConfigParser,
+  DEFAULT_ENV,
+  type ExpandedModuleConfig,
+  expandImportOverrides,
+  type LoadedConfig,
+} from "../config";
 import { NodeFileSystem } from "../filesystem";
 import { ModuleManager } from "../modules";
 import { CliError } from "../output";
@@ -220,16 +237,24 @@ export function runInTestModuleContext<T>(
   return testModule ? testModule.runInContext(callback) : callback();
 }
 
+/** The files one test run is limited to, and the timeout of its tests and hooks. */
+interface TestRun {
+  /** Test files to run instead of the discovered ones; none runs them all. */
+  files: string[];
+  /** Milliseconds each test and hook may take; mocha's default when absent. */
+  timeout?: number;
+}
+
 async function executeTests(
   moduleRoot: string,
   test: AntelopeTestConfig,
   manager: ModuleManager | null,
   fs: IFileSystem,
-  files: string[] = [],
+  run: TestRun,
 ): Promise<number> {
   const testFiles =
-    files.length > 0
-      ? files
+    run.files.length > 0
+      ? run.files
       : await discoverTestFiles(moduleRoot, test, manager, fs);
 
   if (testFiles.length === 0) {
@@ -238,7 +263,7 @@ async function executeTests(
   }
 
   const Mocha = (await import("mocha")).default;
-  const mocha = new Mocha();
+  const mocha = new Mocha({ timeout: run.timeout });
   for (const file of testFiles) {
     mocha.addFile(file);
   }
@@ -273,12 +298,83 @@ async function discoverTestFiles(
   return [...localTestFiles, ...interfaceTestFiles];
 }
 
+const SETUP_CHANGE = "the test setup overrides";
+
+/**
+ * A copy of `fields` without the keys whose value is `undefined`, in nested
+ * plain objects too, so an optional field written as `undefined` is absent.
+ */
+function definedFields(fields: UnknownDictionary): UnknownDictionary {
+  const entries: [string, unknown][] = Object.entries(fields);
+  return Object.fromEntries(
+    entries.flatMap(([key, value]): [string, unknown][] =>
+      value === undefined
+        ? []
+        : [[key, isPlainObject(value) ? definedFields(value) : value]],
+    ),
+  );
+}
+
+/**
+ * `loaded` with the fields `entry` writes merged in, its `importOverrides` in
+ * list form. The module's `config` is merged as written, `undefined`
+ * included, since modules take it as `unknown`.
+ */
+function overrideEntry(
+  loaded: ExpandedModuleConfig,
+  entry: AntelopeModuleConfig,
+): object {
+  const { config, importOverrides, ...fields } = entry;
+  const written = definedFields(fields);
+  if (importOverrides !== undefined) {
+    written.importOverrides = expandImportOverrides(importOverrides);
+  }
+  if (Object.hasOwn(entry, "config")) {
+    written.config = config;
+  }
+  return mergeDeep<object>(loaded, written);
+}
+
+/**
+ * The `loaded` module entries with the `written` ones applied. An entry
+ * written as an object over a loaded one is merged into it. Any other entry,
+ * one the overrides add, write as a version string or disable, is expanded
+ * as the loader expands `antelope.config.ts`: it replaces the loaded entry,
+ * or removes it when disabled.
+ */
+function overrideModules(
+  loaded: LoadedConfig["modules"],
+  written: NonNullable<AntelopeConfig["modules"]>,
+) {
+  const parser = new ConfigParser();
+  const modules = new Map<string, object>(Object.entries(loaded));
+  for (const [name, entry] of Object.entries(written)) {
+    if (!isString(entry) && !entry.disabled && Object.hasOwn(loaded, name)) {
+      modules.set(name, overrideEntry(loaded[name], entry));
+      continue;
+    }
+    const expanded = parser.expandModuleShorthand({ [name]: entry });
+    if (Object.hasOwn(expanded, name)) {
+      modules.set(name, expanded[name]);
+    } else {
+      modules.delete(name);
+    }
+  }
+  return Object.fromEntries(modules);
+}
+
 function applySetupOverrides(
   config: LoadedConfig,
-  overrides: Partial<AntelopeConfig>,
+  overrides: AntelopeTestOverrides,
 ): LoadedConfig {
-  // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Setup overrides can overwrite required fields; validating the historic merge would change accepted configuration (#228).
-  return mergeDeep<object>(config, overrides) as LoadedConfig;
+  const { modules, ...fields } = overrides;
+  assertConfigModules(modules, SETUP_CHANGE);
+  const merged = {
+    ...mergeDeep<object>(config, definedFields(fields)),
+    modules: overrideModules(config.modules, modules ?? {}),
+  };
+  assertLoadedConfig(merged, config, SETUP_CHANGE);
+  return merged;
 }
 
 function clearStubModulePath(manager: ModuleManager | null): void {
@@ -299,9 +395,19 @@ export const testSteps = {
   setupTestEnvironment,
 };
 
+/**
+ * Runs the tests of the module in `moduleFolder` with the test configuration
+ * its package.json names, and resolves to the number of failures.
+ *
+ * @param files - Test files to run instead of the discovered ones.
+ * @param timeout - Milliseconds each test and hook may take, interface
+ * conformance suites included; mocha's 2000 ms default when absent. A
+ * positive integer: mocha takes `0` or less as no timeout at all.
+ */
 export async function TestModule(
   moduleFolder: string = ".",
   files: string[] = [],
+  timeout?: number,
 ): Promise<number> {
   const moduleRoot = path.resolve(moduleFolder);
   const fs = new NodeFileSystem();
@@ -336,7 +442,7 @@ export async function TestModule(
       loadedConfig.test,
       manager,
       fs,
-      files,
+      { files, timeout },
     );
     if (failures === EXIT_CODE_ERROR) {
       await manager.destroyAll();

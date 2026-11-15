@@ -7,6 +7,7 @@ covers:
   - src/cli/lock.ts
   - src/cli/process-runner.ts
   - src/core/repl/**
+  - src/core/repl-session/**
   - src/core/runtime/**
   - src/core/modules/**
   - src/core/config/**
@@ -19,8 +20,6 @@ docs:
   - docs/5.cli/2.project.md
   - docs/2.concepts/7.runtime.md
   - docs/2.concepts/2.modules.md
-known:
-  - dev-readd-root-module
 ---
 
 # Project dev
@@ -33,8 +32,9 @@ known:
 - `dev-hmr`: with `--watch`, two edits of `src/message.ts` each reach the HTTP answer.
 - `dev-failed-reload`: error path: a syntax error logs `Failed to reload module`, the old answer keeps serving, the next good edit recovers.
 - `dev-modules-add-while-running`: persistence path: `ajs project modules add --mode local` and then `remove` while `dev --watch` runs each restart the project, with two modules and then one loaded, and the fixture keeps answering.
-- `dev-readd-root-module`: persistence path: after `modules remove` of the project's root module (path `.`) while `dev --watch` runs, `modules add . --mode local` must restart with it loaded again. A known finding (F2 of `formal-module-lifecycle`): it fails on `main`, because only destroying a module evicts files under its folder from `require.cache`, and with the root module gone nothing evicts the cached `antelope.config.ts`.
+- `dev-readd-root-module`: persistence path: after `modules remove` of the project's root module (path `.`) while `dev --watch` runs, `modules add . --mode local` must restart with it loaded again. It replays F2 of `formal-module-lifecycle`: the restart must read `antelope.config.ts` as the file holds it, not a cached copy.
 - `dev-watch-module-without-src`: error path: a local module with no `src/` folder, added while `dev --watch` runs, does not crash dev, and the fixture keeps answering.
+- `dev-watch-recreated-src`: with `--watch`, `src/` moved out of the project and back is watched again: the next edit of `src/message.ts` reaches the HTTP answer.
 - `dev-run-alias`: `ajs project run` behaves as `dev`.
 - `dev-project-flag`: `--project ./app` from the parent folder.
 - `dev-cancel-during-start`: cancel path: SIGINT before the module answers exits 130 and nothing binds the port afterwards.
@@ -58,6 +58,6 @@ Each journey's steps, checks and evidence are in `bin/journeys/` and under `$RUN
 ## Gotchas
 
 - The watcher arms after the modules start and prints nothing when armed; HMR journeys wait 3 s after the first answer (`settle`) or the first edit is absorbed into the baseline hash.
-- `--interactive` (REPL) is not driven: it needs a terminal. Report it under Not verified when the diff touches `src/core/repl/repl-session.ts`.
+- `--interactive` (REPL) is not driven: it needs a terminal. Report it under Not verified when the diff touches `src/core/repl-session/index.ts`.
 - Module add or remove while dev runs goes through the configuration watcher, which restarts the project. `dev-modules-add-while-running` drives it. The formal model `formal-module-lifecycle` covers the orderings a journey cannot time.
-- `ajs project modules add --mode local` always writes `watchDir: ["src"]` (`add-action.ts`). For a module without `src/`, the watcher skips the missing folder, so edits to that module do not reload it.
+- `ajs project modules add --mode local` always writes `watchDir: ["src"]` (`add-action.ts`). For a module without `src/`, the watcher waits for the folder: once `src/` is created, edits in it reload the module.

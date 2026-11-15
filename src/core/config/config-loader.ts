@@ -1,7 +1,15 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import type { IFileSystem } from "../../types";
-import { isObject, isString, mergeDeep } from "../../utils";
+import {
+  isFunction,
+  isObject,
+  isObjectOrNull,
+  isParsedJson,
+  isString,
+  mergeDeep,
+  type ParsedJson,
+} from "../../utils";
 import {
   assertLoadedConfig,
   decodeOverride,
@@ -56,13 +64,14 @@ export class ConfigLoader {
       const moduleConfigPath = getModuleConfigPath(projectFolder, moduleName);
       if (await this.fs.exists(moduleConfigPath)) {
         const moduleConfig = await this.loadJsonFile(moduleConfigPath);
-        expandedModules[moduleName].config = mergeDeep(
-          // oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- Module config can contain arbitrary unchecked values; narrowing the historic merge would reject existing inputs (#228).
-          (expandedModules[moduleName].config as Parameters<
-            typeof mergeDeep
-          >[0]) ?? {},
-          moduleConfig,
-        );
+        const declared = expandedModules[moduleName].config;
+        const target =
+          isObjectOrNull(declared) || isFunction(declared)
+            ? (declared ?? {})
+            : Object.fromEntries(
+                isString(declared) ? declared.split("").entries() : [],
+              );
+        expandedModules[moduleName].config = mergeDeep(target, moduleConfig);
       }
     }
 
@@ -116,10 +125,12 @@ export class ConfigLoader {
    */
   private async loadJsonFile(
     filePath: string,
-    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- an antelope.<module>.json merged into a module config whose values are user data of any shape
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, ParsedJson>> {
     const content = await this.fs.readFileString(filePath);
     const parsed: unknown = JSON.parse(content);
+    if (!isParsedJson(parsed)) {
+      return {};
+    }
     if (isObject(parsed)) {
       return parsed;
     }
@@ -127,8 +138,7 @@ export class ConfigLoader {
       return Object.fromEntries(parsed.split("").entries());
     }
     if (Array.isArray(parsed)) {
-      const items: unknown[] = parsed;
-      return Object.fromEntries(items.entries());
+      return Object.fromEntries(parsed.entries());
     }
     return {};
   }

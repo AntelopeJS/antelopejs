@@ -1,5 +1,274 @@
 # Changelog
 
+## v1.24.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.0...v1.24.1)
+
+### 🩹 Fixes
+
+- **cli:** Install every package of a template's pnpm workspace in project init ([#506](https://github.com/AntelopeJS/antelopejs/pull/506))
+
+### 📖 Documentation
+
+- Point mongodb examples at 1.8.4 ([#508](https://github.com/AntelopeJS/antelopejs/pull/508))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
+## v1.24.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.3...v1.24.0)
+
+### 🚀 Enhancements
+
+- **cache:** Prune module versions no live run or build uses, through run leases ([#487](https://github.com/AntelopeJS/antelopejs/pull/487))
+
+### 🩹 Fixes
+
+- **runtime:** Keep a disabled export's implementation in its own interface instance ([#489](https://github.com/AntelopeJS/antelopejs/pull/489))
+- **runtime:** Give an undeclared import of an interface whose every instance is private an unprovided instance ([#491](https://github.com/AntelopeJS/antelopejs/pull/491))
+- **runtime:** Mark selected the connection a module's plain import reaches, from its binding ([#492](https://github.com/AntelopeJS/antelopejs/pull/492))
+- **runtime:** Report an interface dependency cycle with no provider instead of overflowing the stack ([#495](https://github.com/AntelopeJS/antelopejs/pull/495))
+- **runtime:** Bind an implementer's connection to another provider to that provider ([#496](https://github.com/AntelopeJS/antelopejs/pull/496))
+- **cache:** Remove at once a lock folder left without owner past its creation window ([#494](https://github.com/AntelopeJS/antelopejs/pull/494))
+- **runtime:** Retry the ancestor watch of a missing folder when it cannot start ([#493](https://github.com/AntelopeJS/antelopejs/pull/493))
+- **cache:** Download again a cached package whose declared dependency lacks its package.json ([#498](https://github.com/AntelopeJS/antelopejs/pull/498))
+- **runtime:** Read build.json again after start claims its module folders ([#497](https://github.com/AntelopeJS/antelopejs/pull/497))
+- **cache:** Stop a download whose lock another process took over before it replaces or lists the folder ([#499](https://github.com/AntelopeJS/antelopejs/pull/499))
+- **cache:** Leave a lock another process took over when this one fails to write its owner ([#500](https://github.com/AntelopeJS/antelopejs/pull/500))
+- **cache:** Install again a listed git clone whose declared dependency lacks its package.json ([#502](https://github.com/AntelopeJS/antelopejs/pull/502))
+- **build:** Replace build.json through a temporary file and a rename ([#501](https://github.com/AntelopeJS/antelopejs/pull/501))
+- **cache:** Write a lock's owner before its folder exists, so a full disk fails before any lock folder ([#504](https://github.com/AntelopeJS/antelopejs/pull/504))
+- **cache:** Check the download lock before each git and install step of a download ([#503](https://github.com/AntelopeJS/antelopejs/pull/503))
+- **cli:** Run a scaffolded project's antelopejs-sync so its managed agent files exist ([#507](https://github.com/AntelopeJS/antelopejs/pull/507))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of core 1.24.0 ([#505](https://github.com/AntelopeJS/antelopejs/pull/505))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
+### Upgrade notes
+
+1.24.0 is a minor release. Ranges such as `^1.23.0` or `<2` accept it; `~1.23.0` does not.
+
+#### The module cache is pruned
+
+- **Unused module versions are removed.** Once `ajs project dev`, `ajs project run` or `ajs project build` has loaded the modules, it removes every folder of `.antelope/cache` that no lease of a live run, the project's `build.json` or a build pin keeps ([#487](https://github.com/AntelopeJS/antelopejs/pull/487)). `docs/5.cli/4.module-cache.md` describes the rule.
+- **A run of an older core holds no lease.** When a run started by an older core and this core use one cache, this core's `dev`, `run` or `build` can remove the folders the older run uses. Restart the older runs on this core first, or set `ANTELOPEJS_NO_CACHE_PRUNE=1` (or `true`) for that deploy; runs then still write their leases, and nothing is removed.
+
+#### Interfaces
+
+- **A disabled export stays in its own instance.** A module that lists an interface in `disabledExports` while it implements it no longer writes its implementation into the instance of the interface's default provider. A module pinned to that provider through `importOverrides` now reaches that provider, where it could be answered by the disabled module before ([#489](https://github.com/AntelopeJS/antelopejs/pull/489)).
+- **A cycle of interfaces that no module provides is refused at startup.** A module that imports interfaces depending on each other in a cycle, none of them provided, now stops the start with an `InterfaceBindingError` naming the cycle, for example `Module 'm' cannot import b: the interfaces b -> a -> b depend on each other and no module provides any of them.` Before, the start failed with a stack overflow ([#495](https://github.com/AntelopeJS/antelopejs/pull/495)).
+
+#### Downloads
+
+- **A download whose lock another process took over stops.** When another process takes over the download lock of a module, as after this run stalled for 60 seconds, the download stops at its next step with `Another process took over the download lock of <module> in <cache>; this run stopped so that it does not write over that download. Run the command again.` (`DownloadLockTakenOverError`). Before, both runs wrote the same module folder ([#499](https://github.com/AntelopeJS/antelopejs/pull/499), [#503](https://github.com/AntelopeJS/antelopejs/pull/503)).
+
+## v1.23.3
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.2...v1.23.3)
+
+### 🩹 Fixes
+
+- **cli:** Count a module dependency installed when its package.json is present, entry or not ([#486](https://github.com/AntelopeJS/antelopejs/pull/486))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
+## v1.23.2
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.1...v1.23.2)
+
+### 🩹 Fixes
+
+- **cli:** Exit naming the module and package when modules install meets an uninstalled dependency ([#485](https://github.com/AntelopeJS/antelopejs/pull/485))
+
+### 💅 Refactors
+
+- **config:** Place the config-walker suppressions: fix, exempt or document each ([#462](https://github.com/AntelopeJS/antelopejs/pull/462))
+
+### ✅ Tests
+
+- **verify:** Fail the verdict when a known journey of a touched feature fails ([#483](https://github.com/AntelopeJS/antelopejs/pull/483))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
+## v1.23.1
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.23.0...v1.23.1)
+
+### 🚀 Enhancements
+
+- **core:** Add --timeout to ajs module test ([#480](https://github.com/AntelopeJS/antelopejs/pull/480))
+
+### 🩹 Fixes
+
+- **cli:** Keep the prompt library types out of the published declarations ([#465](https://github.com/AntelopeJS/antelopejs/pull/465))
+- **core:** Serialize concurrent loads of one npm package ([#466](https://github.com/AntelopeJS/antelopejs/pull/466))
+- **core:** Keep mocha types out of the published root declarations ([#471](https://github.com/AntelopeJS/antelopejs/pull/471))
+- **watch:** Close the watcher of a watched folder once it is deleted ([#472](https://github.com/AntelopeJS/antelopejs/pull/472))
+- **output:** Name each module and interface in the unresolved interface error ([#474](https://github.com/AntelopeJS/antelopejs/pull/474))
+- **core:** Install each version of an npm module in its own cache folder ([#476](https://github.com/AntelopeJS/antelopejs/pull/476))
+- **core:** Name the module and package when a declared dependency is not installed ([#482](https://github.com/AntelopeJS/antelopejs/pull/482))
+- **watch:** Watch a module folder again once it is recreated ([#479](https://github.com/AntelopeJS/antelopejs/pull/479))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of core 1.23.0 ([#461](https://github.com/AntelopeJS/antelopejs/pull/461))
+
+### 📦 Build
+
+- **deps:** Move to tooling-configs 0.6.0 and cap @antelopejs ranges below the next minor ([#475](https://github.com/AntelopeJS/antelopejs/pull/475))
+
+### 🏡 Chore
+
+- Drop the --ignore-workspace workaround from the playground installs ([#470](https://github.com/AntelopeJS/antelopejs/pull/470))
+
+### ✅ Tests
+
+- **verify:** Hand the missing-provider journey a real consumer module ([#467](https://github.com/AntelopeJS/antelopejs/pull/467))
+- **core:** Return the construct hook's value from the config-vars fake ([#468](https://github.com/AntelopeJS/antelopejs/pull/468))
+- Shut down watch-mode projects so their file watchers stop slowing later suites ([#469](https://github.com/AntelopeJS/antelopejs/pull/469))
+- Fail the test that leaves an fs.watch handle open ([#481](https://github.com/AntelopeJS/antelopejs/pull/481))
+- **formal:** Model the fresh config read and mark F2 fixed ([#473](https://github.com/AntelopeJS/antelopejs/pull/473))
+- **verify:** Drive the verdict's known findings from fixture feature files ([#477](https://github.com/AntelopeJS/antelopejs/pull/477))
+- **formal:** Resync the lifecycle model to main at 4299737 ([#478](https://github.com/AntelopeJS/antelopejs/pull/478))
+
+### 🤖 CI
+
+- Run CI on Windows through the shared Node workflow ([#463](https://github.com/AntelopeJS/antelopejs/pull/463))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
+## v1.23.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.22.0...v1.23.0)
+
+### Upgrade notes
+
+1.23.0 is a minor release, and it carries the compile breaks and behaviour changes below. Ranges such as `<2` accept it.
+
+#### `@antelopejs/core/cli` types
+
+- **`OutputStream.write` returns `void`** (was `unknown`). The core never read the value. Code that reads the result of `write` on a value typed `OutputStream` no longer compiles, for example `if (stream.write(chunk))` (TS1345). Read it through the concrete stream type instead. A stream whose `write` returns a value, such as `process.stdout`, still assigns to `OutputStream` ([#460](https://github.com/AntelopeJS/antelopejs/pull/460)).
+- **`FailureTranslator` names its parameter `cause`** (was `error`). Its type is unchanged, so a `translate` option keeps compiling. Only the declaration text and editor hints change ([#460](https://github.com/AntelopeJS/antelopejs/pull/460)).
+
+#### `ajs module test`: setup overrides are read like `antelope.config.ts`
+
+What `test.setup` returns is read the way the loader reads `antelope.config.ts`, then merged into the loaded configuration and checked ([#460](https://github.com/AntelopeJS/antelopejs/pull/460)).
+
+- **A module the overrides add** can be a version string or an object, and it gets the loader's defaults, an empty `config` included. Before, a version string ended the run with exit 0 without running the tests or `cleanup`, and an added object reached its module with `config` undefined.
+- **A version string for a declared module** replaces its whole entry, as a version string in `environments` already does.
+- **`importOverrides` can be a map** of interface names to modules. Before, the run failed with `TypeError: importOverrides.forEach is not a function`.
+- **`disabled: true` leaves the module out.** Before, the module loaded anyway.
+- **A field set to `undefined` keeps its loaded value**, except a module's `config`, which still reaches the module as `undefined`. Before, `modules: undefined` ran with no modules, and `cacheFolder: undefined` failed with a `TypeError`.
+- **A field of the wrong type stops the run** with an error naming it, for example `Configuration field 'cacheFolder' does not hold a string after the test setup overrides.` Before, `name: null`, `modules: null` and `test.folder: 42` ran, and `cacheFolder: 42` failed with a `TypeError`.
+- **Replacing `test.setup` or `test.cleanup` is refused.** Before, the replacement was silently ignored. With interface-core 0.5.1, a `test` key in the overrides no longer compiles.
+- **The configuration file's own `cleanup` still runs** after a refusal.
+- **Unchanged:** a valid partial override, a `test.folder` override and `undefined`. `environments` and `envOverrides` in the overrides are checked but not applied, as before.
+
+### 💅 Refactors
+
+- **core:** ⚠️  Type the published translator and stream write, and decode test setup overrides ([#460](https://github.com/AntelopeJS/antelopejs/pull/460))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of core 1.22.0 ([#459](https://github.com/AntelopeJS/antelopejs/pull/459))
+
+#### ⚠️ Breaking Changes
+
+- **core:** ⚠️  Type the published translator and stream write, and decode test setup overrides ([#460](https://github.com/AntelopeJS/antelopejs/pull/460))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
+## v1.22.0
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.3...v1.22.0)
+
+### Upgrade notes
+
+1.22.0 is a minor release. It raises the `@antelopejs/interface-core` requirement, and that change carries the compile breaks below. Ranges such as `<2` accept it.
+
+#### Requirements
+
+- **`@antelopejs/interface-core` `>=0.5.1 <0.6.0`** (was `>=0.4.0 <0.5.0`) ([#458](https://github.com/AntelopeJS/antelopejs/pull/458)).
+  - When a package-manager override or resolution forces core's own copy outside that range, core refuses to load with `@antelopejs/core 1.22.0 requires @antelopejs/interface-core >=0.5.1 <0.6.0, but it loads <version>`. Drop the override or raise it to 0.5.1.
+  - Raise the interface-core range of your modules and interface packages to `>=0.5.1 <0.6.0`, so they share core's copy.
+- interface-core 0.5.1 was published on 2026-11-13. A package manager that enforces a minimum release age, such as pnpm's `minimumReleaseAge`, refuses to install it until that age has passed. Add it to the exclusions or wait.
+
+#### Types from interface-core 0.5
+
+- Two type arguments no longer compile: `AsyncProxy<T, R>` fails with TS2707 and `InterfaceFunction<T, R>()` with TS2558. Both take a single type argument, the function type, and read the result type from it: `new AsyncProxy<(id: string) => Promise<User>>()`, `InterfaceFunction<(id: string) => Promise<User>>()` ([#458](https://github.com/AntelopeJS/antelopejs/pull/458)).
+- A `test.setup` hook returns `AntelopeTestOverrides`, which is `Partial<AntelopeConfig>` without `test`. A `test` section returned from `setup` no longer compiles. It never took effect: the run kept the loaded `test.setup` and `test.cleanup`.
+
+#### No other API change
+
+- The other changes in this release remove lint suppressions and keep every published declaration and behaviour ([#453](https://github.com/AntelopeJS/antelopejs/pull/453), [#454](https://github.com/AntelopeJS/antelopejs/pull/454), [#455](https://github.com/AntelopeJS/antelopejs/pull/455), [#456](https://github.com/AntelopeJS/antelopejs/pull/456)). Two side effects show only in diagnostics:
+  - A module whose main exports a lifecycle callback that is not a function still fails when that phase runs, with the same message. Under `--verbose`, the stack now starts in the module loader ([#455](https://github.com/AntelopeJS/antelopejs/pull/455)).
+  - The walk that neutralizes interface proxies in module tests no longer recurses. A very deep export graph, 20,000 levels in our probe, now completes instead of overflowing the stack ([#456](https://github.com/AntelopeJS/antelopejs/pull/456)).
+
+### 💅 Refactors
+
+- **test:** Remove the suppressions from the tests and verify fixtures ([#454](https://github.com/AntelopeJS/antelopejs/pull/454))
+- Replace the thrown-value, untyped-require and small-rule suppressions with typed boundaries ([#455](https://github.com/AntelopeJS/antelopejs/pull/455))
+- **config:** Type the module sources and the stub export walk, and drop the config assertions ([#456](https://github.com/AntelopeJS/antelopejs/pull/456))
+
+### 📖 Documentation
+
+- **readme:** Add the Ecosystem section with the framework module table ([#452](https://github.com/AntelopeJS/antelopejs/pull/452))
+
+### 📦 Build
+
+- **playground:** Mark the demo packages private so the API proof skips them ([#453](https://github.com/AntelopeJS/antelopejs/pull/453))
+- **deps:** Adopt @antelopejs/interface-core 0.5 ([#458](https://github.com/AntelopeJS/antelopejs/pull/458))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
+## v1.21.3
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.2...v1.21.3)
+
+### 🔥 Performance
+
+- **cli:** Enable the Node compile cache in the ajs CLI ([#438](https://github.com/AntelopeJS/antelopejs/pull/438))
+- **config:** Keep jiti's file cache when reloading antelope.config.ts ([#439](https://github.com/AntelopeJS/antelopejs/pull/439))
+- **cli:** Run a local module's install commands once per modules install ([#440](https://github.com/AntelopeJS/antelopejs/pull/440))
+- **repl:** Load node:repl only when the interactive session opens ([#450](https://github.com/AntelopeJS/antelopejs/pull/450))
+
+### 🩹 Fixes
+
+- **verify:** Drop base CLI comparisons that predate module locks on main ([#443](https://github.com/AntelopeJS/antelopejs/pull/443))
+
+### 📖 Documentation
+
+- **skills:** Show the EmbeddedInterfaces declaration for runtime.use and provide ([#444](https://github.com/AntelopeJS/antelopejs/pull/444))
+- **embedded:** State the provides and EmbeddedInterfaces requirements of provide() ([#445](https://github.com/AntelopeJS/antelopejs/pull/445))
+- **cli:** Document that writeData and Ui.json take JSON-typed data ([#446](https://github.com/AntelopeJS/antelopejs/pull/446))
+- **readme:** Fix the dead stars badge, film and star-history links ([#449](https://github.com/AntelopeJS/antelopejs/pull/449))
+
+### 📦 Build
+
+- **deps:** Bump @antelopejs/tooling-configs to 0.5.0 ([#442](https://github.com/AntelopeJS/antelopejs/pull/442))
+- **deps:** Bump @antelopejs/tooling-configs to 0.5.1 ([#448](https://github.com/AntelopeJS/antelopejs/pull/448))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](https://github.com/Upd4ting))
+
 ## v1.21.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.21.1...v1.21.2)

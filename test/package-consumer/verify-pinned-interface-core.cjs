@@ -3,7 +3,7 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 
 const PINNED_VERSION = process.argv[2] ?? "";
-const REQUIRED_RANGE = ">=0.4.0 <0.5.0";
+const REQUIRED_RANGE = ">=0.5.1 <0.6.0";
 
 /** @param {string} root */
 async function createProject(root) {

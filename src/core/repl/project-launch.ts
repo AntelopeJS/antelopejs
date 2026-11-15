@@ -168,7 +168,7 @@ async function startInteractiveSession({
   if (!started.dev || !options.interactive) {
     return;
   }
-  const { ReplSession } = await import("./repl-session");
+  const { ReplSession } = await import("../repl-session");
   const repl = new ReplSession({ moduleManager: started.manager });
   started.shutdownManager.register(async () => {
     repl.close();

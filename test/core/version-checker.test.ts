@@ -430,7 +430,7 @@ import { useAsciiSymbols } from "../helpers/ascii-symbols";
           expect(err).to.be.instanceOf(command.ExecError);
           assert.ok(err instanceof command.ExecError);
           expect(err.command).to.equal(
-            "npm view some-package dist-tags --json",
+            `${process.platform === "win32" ? "npm.cmd" : "npm"} view some-package dist-tags --json`,
           );
           assert.ok(err instanceof command.ExecError);
           expect(err.stderr).to.equal("not found");

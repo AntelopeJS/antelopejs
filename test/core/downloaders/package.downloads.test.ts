@@ -1,6 +1,6 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
-import { execFileSync } from "node:child_process";
+import assert from "node:assert/strict";
 import path from "node:path";
 import {
   DownloaderRegistry,
@@ -9,17 +9,19 @@ import {
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { ModuleCache } from "../../../src/core/modules";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
-import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
+import { fakeNpm } from "../../helpers/fake-npm";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { writeTarball } from "../../helpers/tarball";
 describe("PackageDownloader", () => {
   it("resolves dist-tags to exact versions and caches them", async () => {
     const fs = new InMemoryFileSystem();
     await fs.writeFile(
-      "/cache/pkg/package.json",
+      "/cache/pkg@2.0.0/package.json",
       JSON.stringify({ name: "pkg", version: "2.0.0" }),
     );
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "2.0.0");
+    cache.setVersion("pkg@2.0.0", "2.0.0");
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -97,7 +99,7 @@ describe("PackageDownloader", () => {
 
     expect(result[0].manifest.version).to.equal("2.0.0");
     expect(execCalls).to.include('npm pack "pkg@2.0.0"');
-    expect(cache.getVersion("pkg")).to.equal("2.0.0");
+    expect(cache.getVersion("pkg@2.0.0")).to.equal("2.0.0");
   });
 });
 
@@ -106,7 +108,7 @@ describe("PackageDownloader", () => {
     const fs = new InMemoryFileSystem();
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
-    cache.setVersion("pkg", "1.0.0");
+    cache.setVersion("pkg@1.0.0", "1.0.0");
 
     const execCalls: string[] = [];
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -185,10 +187,10 @@ describe("PackageDownloader", () => {
 
     expect(result).to.have.length(1);
     expect(result[0].manifest.version).to.equal("1.2.3");
-    expect(await fs.readFileString("/cache/pkg/package.json")).to.include(
+    expect(await fs.readFileString("/cache/pkg@1.2.3/package.json")).to.include(
       "1.2.3",
     );
-    expect(cache.getVersion("pkg")).to.equal("1.2.3");
+    expect(cache.getVersion("pkg@1.2.3")).to.equal("1.2.3");
 
     expect(execCalls[0]).to.deep.equal({
       command: 'npm pack "pkg@1.2.3"',
@@ -196,7 +198,7 @@ describe("PackageDownloader", () => {
     });
     expect(execCalls[1]).to.deep.equal({
       command: "npm install",
-      cwd: "/cache/pkg",
+      cwd: path.join("/cache", "pkg@1.2.3"),
     });
   });
 });
@@ -238,10 +240,11 @@ describe("PackageDownloader", () => {
     }
   });
 
-  it("should throw when install fails", async () => {
+  it("drops the cache entry of a version whose install fails", async () => {
     const fs = new InMemoryFileSystem();
     const cache = new ModuleCache("/cache", fs);
     await cache.load();
+    cache.setVersion("pkg@1.0.0", "1.0.0");
 
     const registry = new DownloaderRegistry();
     const exec = async (command: string, _options: { cwd?: string }) => {
@@ -282,7 +285,7 @@ describe("PackageDownloader", () => {
     } catch (err) {
       expect(err).to.be.instanceOf(Error);
     }
-    expect(cache.getVersion("pkg")).to.equal(undefined);
+    expect(cache.entries()).to.deep.equal([]);
   });
 });
 
@@ -290,16 +293,12 @@ describe("PackageDownloader", () => {
   it("uses the default extractor when no custom extract is provided", async () => {
     const folder = makeTempDir("package-extractor-");
     try {
-      const sourceFolder = path.join(folder, "source");
-      writeJson(path.join(sourceFolder, "package.json"), {
-        name: "pkg",
-        version: "1.0.0",
+      writeTarball(path.join(folder, "pkg-1.0.0.tgz"), {
+        "package/package.json": JSON.stringify({
+          name: "pkg",
+          version: "1.0.0",
+        }),
       });
-      execFileSync(
-        "npm",
-        ["pack", "--ignore-scripts", "--pack-destination", folder],
-        { cwd: sourceFolder, stdio: "pipe" },
-      );
       const fs = new NodeFileSystem();
       const cache = new ModuleCache(path.join(folder, "cache"), fs);
       await cache.load();
@@ -328,7 +327,7 @@ describe("PackageDownloader", () => {
 
       expect(result).to.have.length(1);
       expect(result[0].manifest.version).to.equal("1.0.0");
-      expect(cache.getVersion("pkg")).to.equal("1.0.0");
+      expect(cache.getVersion("pkg@1.0.0")).to.equal("1.0.0");
     } finally {
       cleanupTempDir(folder);
     }
@@ -372,5 +371,42 @@ describe("PackageDownloader", () => {
     const result = await registry.load("/project", cache, source);
 
     expect(result[0].manifest.name).to.equal("pkg");
+  });
+});
+
+describe("PackageDownloader: loads of one package", () => {
+  it("runs the next load of a package after the previous one failed", async () => {
+    const fs = new InMemoryFileSystem();
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    const npm = fakeNpm(fs, () => "lock");
+    let installs = 0;
+    const registry = new DownloaderRegistry();
+    registerPackageDownloader(registry, {
+      fs,
+      ...npm,
+      exec: async (command, options) => {
+        if (command.startsWith("npm pack") || (installs += 1) > 1) {
+          return npm.exec(command, options);
+        }
+        return { stdout: "", stderr: "network down", code: 1 };
+      },
+    });
+    const load = (id: string) =>
+      registry.load("/project", cache, {
+        type: "package",
+        package: "shared",
+        version: "1.0.0",
+        id,
+      });
+
+    const [first, second] = await Promise.allSettled([
+      load("first"),
+      load("second"),
+    ]);
+
+    expect(first.status).to.equal("rejected");
+    assert(second.status === "fulfilled", "second load succeeds");
+    expect(second.value[0].name).to.equal("second");
   });
 });

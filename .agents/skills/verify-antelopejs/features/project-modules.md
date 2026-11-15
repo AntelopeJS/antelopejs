@@ -6,6 +6,7 @@ covers:
   - src/cli/text-width*.ts
   - src/cli/config-source*.ts
   - src/core/downloaders/**
+  - src/inly.d.ts
   - src/core/config/config-editor.ts
   - src/core/config/config-writes.ts
   - src/core/config/module-declarations.ts

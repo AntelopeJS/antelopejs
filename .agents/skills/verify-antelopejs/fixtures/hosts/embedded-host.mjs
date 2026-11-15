@@ -1,7 +1,10 @@
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-const [coreEntry, hostFolder, providerFolder, fixtureFolder] = process.argv.slice(2);
+const [coreEntry, hostFolder, greeterModule, fixtureFolder] = process.argv.slice(2);
+const separator = greeterModule.indexOf("=");
+const greeterId = greeterModule.slice(0, separator);
+const greeterFolder = greeterModule.slice(separator + 1);
 const port = process.env.VERIFY_FIXTURE_PORT;
 const observations = {};
 
@@ -27,27 +30,54 @@ async function fixtureMessage() {
   }
 }
 
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
-const { createRuntime } = await import(pathToFileURL(coreEntry).href);
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
-const runtime = createRuntime({
+/**
+ * @typedef {object} HostRuntime
+ * @property {boolean} isRunning
+ * @property {() => Promise<void>} start
+ * @property {() => Promise<void>} stop
+ * @property {(request: string) => { Greeter: { greet: (name: string) => Promise<string> } }} use
+ */
+
+/**
+ * @typedef {object} HostRuntimeOptions
+ * @property {string} projectFolder
+ * @property {Record<string, { path: string, config?: { prefix: string } }>} modules
+ * @property {string[]} uses
+ */
+
+/**
+ * @param {unknown} value
+ * @returns {value is { createRuntime: (options: HostRuntimeOptions) => HostRuntime }}
+ */
+function exportsCreateRuntime(value) {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Object.hasOwn(value, "createRuntime") &&
+    value.createRuntime instanceof Function
+  );
+}
+
+/** @type {unknown} */
+const core = await import(pathToFileURL(coreEntry).href);
+if (!exportsCreateRuntime(core)) {
+  throw new Error(`${coreEntry} does not export createRuntime`);
+}
+const runtime = core.createRuntime({
   projectFolder: hostFolder,
   modules: {
-    "greeter-provider": { path: providerFolder, config: { prefix: "Hello" } },
+    [greeterId]: { path: greeterFolder, config: { prefix: "Hello" } },
     "verify-http-fixture": { path: fixtureFolder },
   },
   uses: ["verify-greeter"],
 });
 const sigintListeners = process.listenerCount("SIGINT");
 await runtime.start();
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
 observations.runningAfterStart = runtime.isRunning;
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
 observations.greeting = await runtime.use("verify-greeter").Greeter.greet("host");
 observations.fixtureWhileRunning = await fixtureMessage();
 observations.hostKeptSigint = process.listenerCount("SIGINT") === sigintListeners;
 await runtime.stop();
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that imports the core under test by path; import() is any in JS
 observations.runningAfterStop = runtime.isRunning;
 observations.fixtureAfterStop = await fixtureMessage();
 process.stdout.write(`${JSON.stringify(observations)}\n`);

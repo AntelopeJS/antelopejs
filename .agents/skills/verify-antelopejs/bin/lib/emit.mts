@@ -1,11 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { createRequire } from "node:module";
-import { dirname, extname, join, posix } from "node:path";
-import type TypeScript from "typescript";
-
-import { REPO_DIR } from "./run.mts";
-
-let ts: typeof TypeScript;
+import { dirname, extname, posix } from "node:path";
+import ts from "typescript";
 
 /** One top-level item of a covered file: its structure decides equality, its text only describes it. */
 export interface EmitItem {
@@ -49,7 +44,7 @@ function moduleKey(path: string, specifier: string): string {
   return posix.join(dirname(path), specifier).replace(MODULE_EXTENSION, "");
 }
 
-function isPropertyName(node: TypeScript.Identifier): boolean {
+function isPropertyName(node: ts.Identifier): boolean {
   const parent = node.parent;
   return (
     (ts.isPropertyAccessExpression(parent) ||
@@ -89,7 +84,7 @@ function bindingOrigin(covered: Covered, module: string, name: string): string {
 }
 
 function importedBindings(
-  clause: TypeScript.ImportClause,
+  clause: ts.ImportClause,
   module: string,
   covered: Covered,
 ): [string, string][] {
@@ -116,7 +111,7 @@ function importedBindings(
 }
 
 function reexportTexts(
-  statement: TypeScript.ExportDeclaration,
+  statement: ts.ExportDeclaration,
   module: string,
   covered: Covered,
 ): string[] {
@@ -144,7 +139,7 @@ function reexportTexts(
  * imported binding does.
  */
 function localExportTexts(
-  statement: TypeScript.ExportDeclaration,
+  statement: ts.ExportDeclaration,
   bindings: Map<string, string>,
   locals: Map<string, string>,
 ): string[] {
@@ -173,13 +168,13 @@ function localExportTexts(
 function originsOf(
   path: string,
   covered: Covered,
-  file: TypeScript.SourceFile,
+  file: ts.SourceFile,
   locals: Map<string, string>,
 ): Origins {
   const bindings = new Map<string, string>();
   const texts: string[] = [];
   const ordered: string[] = [];
-  const exports: TypeScript.ExportDeclaration[] = [];
+  const exports: ts.ExportDeclaration[] = [];
   for (const statement of file.statements) {
     if (
       !(ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement))
@@ -217,7 +212,7 @@ function originsOf(
   };
 }
 
-function leafOf(node: TypeScript.Node, bindings: Map<string, string>): string {
+function leafOf(node: ts.Node, bindings: Map<string, string>): string {
   if (ts.isIdentifier(node))
     return isPropertyName(node)
       ? node.text
@@ -236,7 +231,7 @@ function leafOf(node: TypeScript.Node, bindings: Map<string, string>): string {
   return "";
 }
 
-function dropped(node: TypeScript.Node): boolean {
+function dropped(node: ts.Node): boolean {
   return (
     node.kind === ts.SyntaxKind.ExportKeyword ||
     node.kind === ts.SyntaxKind.DefaultKeyword
@@ -249,7 +244,7 @@ function dropped(node: TypeScript.Node): boolean {
  * style and line breaks left out, so formatting never changes it. An
  * imported binding stands for its origin.
  */
-function structureOf(node: TypeScript.Node, bindings: Map<string, string>): string {
+function structureOf(node: ts.Node, bindings: Map<string, string>): string {
   if (ts.isParenthesizedExpression(node))
     return structureOf(node.expression, bindings);
   const children: string[] = [];
@@ -267,7 +262,7 @@ function readable(text: string): string {
 /** One script of a covered file, transpiled to JavaScript and parsed. */
 interface Script {
   path: string;
-  file: TypeScript.SourceFile;
+  file: ts.SourceFile;
 }
 
 function parseScript(path: string, source: string): Script {
@@ -292,7 +287,7 @@ function parseScript(path: string, source: string): Script {
   };
 }
 
-function declaredNames(name: TypeScript.BindingName): string[] {
+function declaredNames(name: ts.BindingName): string[] {
   return ts.isIdentifier(name)
     ? [name.text]
     : name.elements.flatMap((element) =>
@@ -301,8 +296,8 @@ function declaredNames(name: TypeScript.BindingName): string[] {
 }
 
 function isFunctionDeclaration(
-  statement: TypeScript.Statement,
-): statement is TypeScript.FunctionDeclaration & { name: TypeScript.Identifier } {
+  statement: ts.Statement,
+): statement is ts.FunctionDeclaration & { name: ts.Identifier } {
   return (
     ts.isFunctionDeclaration(statement) &&
     Boolean(statement.body) &&
@@ -411,8 +406,6 @@ export function emitFingerprint(
   sha: string,
   files: string[],
 ): EmitFingerprint {
-  // oxlint-disable-next-line typescript/no-unsafe-assignment -- loads the verified repository's own typescript through createRequire, whose result Node types as any
-  ts = createRequire(join(REPO_DIR, "package.json"))("typescript");
   const fingerprint: EmitFingerprint = { functions: [], files: {} };
   const parsed = files.flatMap((path) => {
     const source = fileAt(repo, sha, path);

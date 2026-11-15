@@ -1,17 +1,28 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
+import inly = require("inly");
 import * as path from "node:path";
-import { maxSatisfying, satisfies, valid, validRange } from "semver";
+import { maxSatisfying, sort, valid, validRange } from "semver";
 
 import type { IFileSystem } from "../../types";
 import { isObject, isString } from "../../utils";
 import { NodeFileSystem } from "../filesystem";
-import { ModuleCache, ModuleManifest } from "../modules";
+import {
+  ModuleCache,
+  type ModuleLockKey,
+  type ModuleLockRecord,
+  ModuleManifest,
+} from "../modules";
 import { ExecError, ExecuteCMD, getModuleCacheInstallCommand } from "../output";
 import { type PackageLockPolicy, PackageLocks } from "./package-locks";
 import type { DownloaderRegistry } from "./registry";
 import type { CommandRunner } from "./types";
-import { installFailure } from "./utils";
+import {
+  hasInstalledDependencies,
+  installFailure,
+  readDeclaredDependencies,
+  underDownloadLock,
+} from "./utils";
 
 export interface PackageDownloaderDeps {
   fs?: IFileSystem;
@@ -32,18 +43,9 @@ type VersionFetcher = (
   spec: string,
 ) => Promise<string | undefined>;
 
-interface InlyExtraction {
-  on(event: "error", listener: (error: Error) => void): void;
-  on(event: "end", listener: () => void): void;
-}
-
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- inly is an untyped CommonJS module and require returns any
-const inly: (from: string, to: string) => InlyExtraction = require("inly");
-
 const Logger = new Logging.Channel("loader.package");
 
 const PACKAGE_JSON = "package.json";
-const NODE_MODULES = "node_modules";
 
 function defaultExtract(from: string, to: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -81,7 +83,8 @@ function pickBestVersion(versions: string[], spec: string): string | undefined {
   if (range) {
     return maxSatisfying(versions, range) ?? undefined;
   }
-  return versions[versions.length - 1];
+  const last = versions[versions.length - 1];
+  return spec === "latest" ? (maxSatisfying(versions, "*") ?? last) : last;
 }
 
 async function fetchRegistryVersion(
@@ -124,9 +127,47 @@ function memoizeVersionFetcher(exec: CommandRunner): VersionFetcher {
   };
 }
 
-function cacheSatisfiesSpec(cached: string, spec: string): boolean {
-  const range = validRange(spec);
-  return range === null || satisfies(cached, range);
+/**
+ * Runs the loads of one package one after another. The version a load
+ * installs is only known once it runs, so a second load of the same version
+ * waits for the first and then reuses what it installed.
+ */
+function queuePerPackage(): (
+  key: string,
+  load: () => Promise<string>,
+) => Promise<string> {
+  const tails = new Map<string, Promise<unknown>>();
+  return (key, load) => {
+    const loaded = (tails.get(key) ?? Promise.resolve()).then(load);
+    const tail = loaded.catch(() => undefined);
+    tails.set(key, tail);
+    void tail.then(() => {
+      if (tails.get(key) === tail) {
+        tails.delete(key);
+      }
+    });
+    return loaded;
+  };
+}
+
+/** `version` spelled as the cache spells it: `v1.0.0` as `1.0.0`. */
+function cachedVersionOf(version: string): string {
+  return valid(version) ?? version;
+}
+
+/** The cache entry, and folder, that holds one version of a package. */
+function cacheEntry(pkg: string, version: string): string {
+  return `${pkg}@${cachedVersionOf(version)}`;
+}
+
+/** The versions of a package the cache holds, lowest first. */
+function cachedVersions(cache: ModuleCache, pkg: string): string[] {
+  return sort(
+    cache
+      .entries()
+      .filter(([entry, version]) => entry === cacheEntry(pkg, version))
+      .map(([, version]) => version),
+  );
 }
 
 async function resolveTargetVersion(
@@ -142,11 +183,14 @@ async function resolveTargetVersion(
     Logger.Debug(`Resolved ${source.package}@${source.version} to ${resolved}`);
     return resolved;
   }
-  const cached = cache.getVersion(source.package);
-  if (cached && cacheSatisfiesSpec(cached, source.version)) {
+  const cached = pickBestVersion(
+    cachedVersions(cache, source.package),
+    source.version,
+  );
+  if (cached) {
     if (validRange(source.version) === null) {
       Logger.Warn(
-        `Registry unreachable, serving last cached ${source.package}@${cached} for tag '${source.version}' (cannot verify it is current)`,
+        `Registry unreachable, serving cached ${source.package}@${cached} for tag '${source.version}' (cannot verify it is current)`,
       );
     } else {
       Logger.Debug(
@@ -160,43 +204,17 @@ async function resolveTargetVersion(
   );
 }
 
-/** The number of dependencies a cached package.json declares, or `undefined` when its shape is not a manifest. */
-function countDeclaredDependencies(text: string): number | undefined {
-  const parsed: unknown = JSON.parse(text);
-  if (!isObject(parsed)) {
-    return undefined;
-  }
-  const { dependencies } = parsed;
-  if (dependencies === undefined || dependencies === null) {
-    return 0;
-  }
-  return isObject(dependencies) ? Object.keys(dependencies).length : undefined;
-}
-
 async function findCachedFolder(
   cache: ModuleCache,
-  pkg: string,
+  entry: string,
   fs: IFileSystem,
 ): Promise<string | undefined> {
-  const folder = await cache.getFolder(pkg, true, true);
-  const manifestPath = path.join(folder, PACKAGE_JSON);
-  if (!(await fs.exists(manifestPath))) {
-    return undefined;
-  }
-  try {
-    const dependencyCount = countDeclaredDependencies(
-      await fs.readFileString(manifestPath),
-    );
-    if (dependencyCount === undefined) {
-      return undefined;
-    }
-    if (
-      dependencyCount > 0 &&
-      !(await fs.exists(path.join(folder, NODE_MODULES)))
-    ) {
-      return undefined;
-    }
-  } catch {
+  const folder = await cache.getFolder(entry, true, true);
+  const dependencies = await readDeclaredDependencies(folder, fs);
+  if (
+    dependencies === undefined ||
+    !(await hasInstalledDependencies(folder, dependencies, fs))
+  ) {
     return undefined;
   }
   return folder;
@@ -226,10 +244,18 @@ async function downloadPackage(
     await ctx.fs.readFileString(path.join(tmpPackage, PACKAGE_JSON)),
   );
   const key = { package: source.package, version: packedVersion ?? version };
+  const entry = cacheEntry(key.package, key.version);
+  const requested = cacheEntry(source.package, version);
+  if (entry !== requested) {
+    await ctx.fs.rm(tmp, { recursive: true, force: true });
+    throw new Error(
+      `${packCommand} returned version ${key.version}, not the ${requested} this run downloads; check the registry`,
+    );
+  }
   const record = await ctx.locks.find(key);
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);
-  await cache.clearVersion(source.package);
-  const folder = await cache.transfer(tmpPackage, source.package);
+  const folder = await cache.transfer(tmpPackage, entry);
+  await cache.ensureDownloadLockHeld(entry);
   await ctx.locks.replay(folder, record);
 
   Logger.Debug(`Installing dependencies for ${source.package}@${version}`);
@@ -242,10 +268,108 @@ async function downloadPackage(
     );
   }
   if (packedVersion !== undefined) {
-    await cache.commitVersion(source.package, packedVersion);
+    await cache.commitVersion(entry, packedVersion);
   }
   await ctx.locks.keep(key, folder, record);
   return folder;
+}
+
+/**
+ * One load of a package at one exact version: its source, the lock key of
+ * that version, its cache entry, and the lock record it installs from.
+ */
+interface PackageLoad {
+  cache: ModuleCache;
+  source: ModuleSourcePackage;
+  key: ModuleLockKey;
+  entry: string;
+  record: ModuleLockRecord | undefined;
+}
+
+/**
+ * The folder the manifest lists for the version of `load`, when it is
+ * complete and installed from the lock record the mode requires. A refresh,
+ * or a source that ignores the cache, reuses none.
+ */
+async function findListedFolder(
+  load: PackageLoad,
+  ctx: PackageLoaderContext,
+): Promise<string | undefined> {
+  const { cache, source, key, entry, record } = load;
+  if (
+    source.ignoreCache ||
+    !ctx.locks.reusesCache ||
+    !cache.hasVersion(entry, key.version)
+  ) {
+    return undefined;
+  }
+  const folder = await findCachedFolder(cache, entry, ctx.fs);
+  if (folder === undefined || !(await ctx.locks.matches(folder, record))) {
+    return undefined;
+  }
+  Logger.Trace(`Using cached version of ${source.package}@${key.version}`);
+  return folder;
+}
+
+/**
+ * The folder of the version of `load` that the live run of another process
+ * uses, so that this run keeps it as it is instead of replacing it. Only a
+ * folder the manifest lists counts: an entry is listed once its install has
+ * returned, so an install that was stopped or killed halfway is never
+ * adopted, whoever still holds a lease on it.
+ */
+async function findFolderInUse(
+  load: PackageLoad,
+  ctx: PackageLoaderContext,
+): Promise<string | undefined> {
+  const { cache, entry, record } = load;
+  if (cache.getVersion(entry) === undefined) {
+    return undefined;
+  }
+  const holder = await cache.findOtherLease(entry);
+  if (holder === undefined) {
+    return undefined;
+  }
+  const folder = await findCachedFolder(cache, entry, ctx.fs);
+  if (folder === undefined) {
+    return undefined;
+  }
+  if (
+    ctx.locks.isFrozen &&
+    record !== undefined &&
+    !(await ctx.locks.matches(folder, record))
+  ) {
+    throw new Error(
+      `${entry} was installed from another ${record.lockfile} than its lock, and the run with pid ${holder.pid} on ${holder.host} uses it (lease ${holder.file}), so the frozen install cannot replace it. Stop that run, then try again. If that run is gone, delete ${holder.file}.`,
+    );
+  }
+  Logger.Info(
+    `${entry} is in use by the run with pid ${holder.pid} on ${holder.host} (lease ${holder.file}); keeping its folder instead of downloading it again`,
+  );
+  cache.markKeptInUse(entry);
+  return folder;
+}
+
+/**
+ * Loads `load` while this run holds its download lock. It reads the manifest
+ * again, since another run may have just downloaded the version, then reuses
+ * the folder the manifest lists, or else a complete folder that another live
+ * run uses, and downloads the version otherwise. It records the lockfile of
+ * the folder it returns.
+ */
+async function loadUnderDownloadLock(
+  load: PackageLoad,
+  ctx: PackageLoaderContext,
+): Promise<string> {
+  const { cache, source, key, record } = load;
+  await cache.load();
+  const reused =
+    (await findListedFolder(load, ctx)) ?? (await findFolderInUse(load, ctx));
+  if (reused === undefined) {
+    return downloadPackage(cache, source, key.version, ctx);
+  }
+  await ctx.locks.keep(key, reused, record);
+  return reused;
 }
 
 async function loadPackage(
@@ -254,24 +378,18 @@ async function loadPackage(
   ctx: PackageLoaderContext,
   fetchVersion: VersionFetcher,
 ): Promise<string> {
-  if (source.ignoreCache) {
-    const version = (await ctx.locks.recordedVersion(source)) ?? source.version;
-    return downloadPackage(cache, source, version, ctx);
-  }
   const target =
     (await ctx.locks.recordedVersion(source)) ??
     (await resolveTargetVersion(source, cache, fetchVersion));
   const key = { package: source.package, version: target };
+  const entry = cacheEntry(source.package, target);
   const record = await ctx.locks.find(key);
-  if (ctx.locks.reusesCache && cache.hasVersion(source.package, target)) {
-    const cachedFolder = await findCachedFolder(cache, source.package, ctx.fs);
-    if (cachedFolder && (await ctx.locks.matches(cachedFolder, record))) {
-      Logger.Trace(`Using cached version of ${source.package}@${target}`);
-      await ctx.locks.keep(key, cachedFolder, record);
-      return cachedFolder;
-    }
-  }
-  return downloadPackage(cache, source, target, ctx);
+  return cache.withDownloadLock(entry, () =>
+    loadUnderDownloadLock(
+      { cache, source, key, entry, record },
+      { ...ctx, exec: underDownloadLock(cache, entry, ctx.exec) },
+    ),
+  );
 }
 
 export function registerPackageDownloader(
@@ -288,13 +406,16 @@ export function registerPackageDownloader(
     locks: new PackageLocks(deps.lock, fs),
   };
   const fetchVersion = memoizeVersionFetcher(ctx.exec);
+  const queue = queuePerPackage();
 
   registry.register(
     "package",
     "package",
     async (cache: ModuleCache, source: ModuleSourcePackage) => {
       Logger.Debug(`Loading package: ${source.package}@${source.version}`);
-      const folder = await loadPackage(cache, source, ctx, fetchVersion);
+      const folder = await queue(path.join(cache.path, source.package), () =>
+        loadPackage(cache, source, ctx, fetchVersion),
+      );
       Logger.Debug(`Successfully loaded ${source.package}@${source.version}`);
       const name = source.id ?? source.package;
       const moduleManifest = await ModuleManifest.create(

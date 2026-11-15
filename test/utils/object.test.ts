@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { diffDeep, mergeDeep, set } from "../../src/utils";
+import { mergeDeep, set } from "../../src/utils";
 
 interface Tree {
   readonly [key: string]: Leaf | undefined;
@@ -8,7 +8,6 @@ interface Tree {
 type Leaf = number | string | boolean | readonly number[] | Tree;
 
 const merge = mergeDeep<Tree>;
-const diff = diffDeep<Tree>;
 
 describe("Object Utilities", () => {
   describe("mergeDeep", () => {
@@ -52,38 +51,6 @@ describe("Object Utilities", () => {
       const result = merge({ a: 1 }, undefined, { b: 2 });
 
       expect(result).to.deep.equal({ a: 1, b: 2 });
-    });
-  });
-
-  describe("diffDeep", () => {
-    it("keeps only the keys whose value changed", () => {
-      const before = { a: 1, b: { c: 2, d: [1] }, e: "same" };
-      const after = { a: 1, b: { c: 3, d: [1] }, e: "same" };
-
-      expect(diffDeep(before, after)).to.deep.equal({ b: { c: 3 } });
-    });
-
-    it("compares arrays by content and keeps new keys", () => {
-      const before = { list: ["a"], nested: {} };
-      const after = { list: ["a", "b"], nested: { added: true } };
-
-      expect(diffDeep(before, after)).to.deep.equal({
-        list: ["a", "b"],
-        nested: { added: true },
-      });
-    });
-
-    it("treats a key named like an Object.prototype member as absent from before", () => {
-      expect(diff({}, { toString: undefined })).to.deep.equal({});
-      expect(diff({}, { constructor: 1 })).to.deep.equal({
-        constructor: 1,
-      });
-    });
-
-    it("returns an empty object when nothing changed", () => {
-      const value = { a: { b: [1, 2] } };
-
-      expect(diffDeep(value, structuredClone(value))).to.deep.equal({});
     });
   });
 

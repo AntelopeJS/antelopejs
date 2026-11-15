@@ -108,6 +108,7 @@ const config: VerifyConfig = {
       covers: [
         "src/cli/common.ts",
         "src/core/config/config-loader.ts",
+        "src/core/config/ts-config-file.ts",
         "src/core/modules/module-lifecycle.ts",
         "src/core/modules/module-manager-bindings.ts",
         "src/core/modules/module-manager-cache.ts",

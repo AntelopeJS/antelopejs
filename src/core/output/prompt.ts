@@ -11,6 +11,11 @@ import type {
   SelectQuestion,
 } from "./types";
 
+/**
+ * The part of the prompt library a prompter calls.
+ *
+ * @internal
+ */
 export type PromptBackend = Pick<
   typeof Clack,
   "text" | "confirm" | "select" | "multiselect" | "isCancel"
@@ -27,6 +32,8 @@ type Ask<Answer> = (
  * Where prompts come from: whether the session can answer them, the prompt
  * library (imported on first use only, so commands that never ask stay
  * light) and the stream prompts are drawn on. Tests replace its members.
+ *
+ * @internal
  */
 export interface PromptEnvironment {
   isInteractive(): boolean;
@@ -34,6 +41,11 @@ export interface PromptEnvironment {
   output(): PromptOutput;
 }
 
+/**
+ * The {@link PromptEnvironment} of the running process.
+ *
+ * @internal
+ */
 export const promptEnvironment: PromptEnvironment = {
   isInteractive: () =>
     isInteractiveSession({

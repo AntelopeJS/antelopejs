@@ -4,6 +4,7 @@ import type {
 } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
+import { mkdirSync, symlinkSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import sinon from "sinon";
@@ -13,7 +14,10 @@ import {
   commonModule as common,
   gitOperationsModule as gitOps,
 } from "../../../../../../src/cli";
-import { InterfaceResolutionError } from "../../../../../../src/core/output";
+import {
+  CliError,
+  InterfaceResolutionError,
+} from "../../../../../../src/core/output";
 import {
   cleanupTempDir,
   makeTempDir,
@@ -90,6 +94,56 @@ async function writeProjectWithEnvironmentCommands(projectFolder: string) {
   });
 }
 
+/**
+ * `./consumer` links to a folder beside its dependencies, as pnpm lays a
+ * package out. None of them has an entry `require` can load: `events` is named
+ * like a builtin, `@types/ajs-only` holds only types, `ajs-import-only` exports
+ * only an `import` condition, and `ajs-bin-only`, hoisted to the project, has
+ * only a `bin`.
+ */
+async function writeLinkedModuleWithEntrylessDependencies(
+  projectFolder: string,
+) {
+  const storeModules = path.join(projectFolder, "store", "node_modules");
+  const consumerRealFolder = path.join(storeModules, "consumer");
+  writeJson(path.join(storeModules, "events", "package.json"), {
+    name: "events",
+    version: "1.0.0",
+    main: "events.js",
+  });
+  writeJson(path.join(storeModules, "@types", "ajs-only", "package.json"), {
+    name: "@types/ajs-only",
+    version: "1.0.0",
+    main: "",
+    types: "index.d.ts",
+  });
+  writeJson(path.join(storeModules, "ajs-import-only", "package.json"), {
+    name: "ajs-import-only",
+    version: "1.0.0",
+    exports: { ".": { import: "./index.mjs" } },
+  });
+  writeJson(
+    path.join(projectFolder, "node_modules", "ajs-bin-only", "package.json"),
+    { name: "ajs-bin-only", version: "1.0.0", bin: { "ajs-bin": "cli.js" } },
+  );
+  writeJson(path.join(consumerRealFolder, "package.json"), {
+    name: "consumer",
+    version: "1.0.0",
+    main: "index.js",
+    dependencies: {
+      events: "^1.0.0",
+      "@types/ajs-only": "^1.0.0",
+      "ajs-import-only": "^1.0.0",
+      "ajs-bin-only": "^1.0.0",
+    },
+  });
+  symlinkSync(consumerRealFolder, path.join(projectFolder, "consumer"), "dir");
+  await writeConfig(projectFolder, {
+    name: "proj",
+    modules: { consumer: { source: { type: "local", path: "./consumer" } } },
+  });
+}
+
 describe("project modules install behavior: runs a local module's install commands once", function () {
   this.timeout(30000);
   let projectFolder = "";
@@ -125,6 +179,48 @@ describe("project modules install behavior: runs a local module's install comman
         app: localModule("./app", RUN_ONCE_COMMAND),
       },
     });
+
+    await cmdInstall().parseAsync(["node", "test", "--project", projectFolder]);
+
+    expect(output.summary.firstCall.args[0]).to.deep.include({
+      headline: "All interfaces are implemented",
+    });
+  });
+
+  it("exits naming the module and the package when a required dependency is not installed", async () => {
+    writeJson(path.join(projectFolder, "consumer", "package.json"), {
+      name: "consumer",
+      version: "1.0.0",
+      main: "index.js",
+      dependencies: { "ajs-uninstalled-interface": "^1.0.0" },
+    });
+    mkdirSync(
+      path.join(
+        projectFolder,
+        "consumer",
+        "node_modules",
+        "ajs-uninstalled-interface",
+      ),
+      { recursive: true },
+    );
+    await writeConfig(projectFolder, {
+      name: "proj",
+      modules: { consumer: { source: { type: "local", path: "./consumer" } } },
+    });
+
+    const failure = await rejectionOf(
+      cmdInstall().parseAsync(["node", "test", "--project", projectFolder]),
+    );
+
+    assert.ok(failure instanceof CliError);
+    expect(failure.problem.reason).to.equal(
+      "consumer requires ajs-uninstalled-interface, which is not installed",
+    );
+    expect(output.summary.called).to.equal(false);
+  });
+
+  it("counts a dependency installed when Node finds its package.json from the module's real folder, entry or not", async () => {
+    await writeLinkedModuleWithEntrylessDependencies(projectFolder);
 
     await cmdInstall().parseAsync(["node", "test", "--project", projectFolder]);
 

@@ -4,6 +4,7 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "noEmit": true,
+    "declaration": false,
     "composite": false,
     "incremental": false,
     "rootDir": "..",

@@ -5,6 +5,7 @@ import sinon from "sinon";
 
 import {
   clearPathResolutionCache,
+  createLoadedFileMatcher,
   getPathResolutionCacheGeneration,
   isPathWithin,
 } from "../../../src/utils";
@@ -49,7 +50,7 @@ describe("path resolution cache", () => {
   beforeEach(() => {
     fixture = createLinkedRoots();
     clearPathResolutionCache();
-    realpathSpy = sinon.spy(fs.realpathSync, "native");
+    realpathSpy = sinon.spy(fs, "realpathSync");
   });
 
   afterEach(() => {
@@ -67,6 +68,7 @@ describe("path resolution cache", () => {
     );
 
     expect(ownedFiles).to.deep.equal(fixture.files);
+    expect(realpathSpy.callCount).to.be.greaterThan(0);
     expect(realpathSpy.callCount).to.be.at.most(FILE_COUNT + ROOT_COUNT);
   });
 
@@ -81,6 +83,7 @@ describe("path resolution cache", () => {
     isPathWithin(file, root);
 
     expect(getPathResolutionCacheGeneration()).to.equal(generation + 1);
+    expect(firstPassCalls).to.be.greaterThan(0);
     expect(realpathSpy.callCount).to.equal(firstPassCalls * 2);
   });
 
@@ -107,4 +110,80 @@ describe("path resolution cache", () => {
 
     expect(isPathWithin(file, pendingLink)).to.equal(true);
   });
+});
+
+function useLoaderSettings(env: NodeJS.ProcessEnv, execArgv: string[]): void {
+  const {
+    NODE_OPTIONS: _options,
+    NODE_PRESERVE_SYMLINKS: _preserve,
+    ...rest
+  } = process.env;
+  sinon.stub(process, "env").value({ ...rest, ...env });
+  sinon.stub(process, "execArgv").value(execArgv);
+}
+
+describe("loaded file matcher", () => {
+  let fixture: LinkedRootsFixture;
+
+  beforeEach(() => {
+    fixture = createLinkedRoots();
+    clearPathResolutionCache();
+  });
+
+  afterEach(() => {
+    sinon.restore();
+    clearPathResolutionCache();
+    cleanupTempDir(fixture.dir);
+  });
+
+  it("matches a file loaded by its real path against a folder named by its link", () => {
+    const [root] = fixture.roots;
+    const [file] = fixture.files;
+
+    expect(createLoadedFileMatcher(root)(file)).to.equal(true);
+  });
+
+  const realPathSettings: [string, string[]][] = [
+    ["no flag", []],
+    ["--preserve-symlinks-main", ["--preserve-symlinks-main"]],
+  ];
+  for (const [label, execArgv] of realPathSettings) {
+    it(`touches the filesystem for no loaded file with ${label}`, () => {
+      useLoaderSettings({}, execArgv);
+      const isLoaded = createLoadedFileMatcher(fixture.roots[0]);
+      const spies = [
+        sinon.spy(fs, "realpathSync"),
+        sinon.spy(fs.realpathSync, "native"),
+        sinon.spy(fs, "statSync"),
+        sinon.spy(fs, "lstatSync"),
+      ];
+
+      fixture.files.forEach((file) => isLoaded(file));
+
+      expect(spies.map((spy) => spy.callCount)).to.deep.equal([0, 0, 0, 0]);
+    });
+  }
+
+  const preserveSymlinksSettings: [string, NodeJS.ProcessEnv, string[]][] = [
+    ["NODE_PRESERVE_SYMLINKS=1", { NODE_PRESERVE_SYMLINKS: "1" }, []],
+    ["--preserve-symlinks=true", {}, ["--preserve-symlinks=true"]],
+    ["--preserve-symlinks", {}, ["--preserve-symlinks"]],
+    ["--preserve_symlinks", {}, ["--preserve_symlinks"]],
+    ["NODE_OPTIONS and a value", { NODE_OPTIONS: "--preserve-symlinks=1" }, []],
+    [
+      "NODE_OPTIONS",
+      { NODE_OPTIONS: "--max-old-space-size=512 --preserve-symlinks" },
+      [],
+    ],
+  ];
+  for (const [label, env, execArgv] of preserveSymlinksSettings) {
+    it(`matches a file the loader keeps under its link path with ${label}`, () => {
+      const [file] = fixture.files;
+      const realRoot = path.dirname(file);
+      const linkedFile = path.join(fixture.roots[0], path.basename(file));
+      useLoaderSettings(env, execArgv);
+
+      expect(createLoadedFileMatcher(realRoot)(linkedFile)).to.equal(true);
+    });
+  }
 });

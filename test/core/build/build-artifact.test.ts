@@ -1,5 +1,8 @@
+import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
+import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import sinon from "sinon";
 import { isObject } from "../../../src/utils";
 
@@ -11,11 +14,58 @@ import {
 import {
   computeConfigHash,
   createBuildArtifact,
+  getBuildFolderPath,
   loadBuildConfig,
   readBuildArtifact,
+  toStableJson,
   writeBuildArtifact,
 } from "../../../src/core/modules";
+import { NodeFileSystem } from "../../../src/core/filesystem";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
+import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+
+/**
+ * An in-memory file system that reads the project's build each time a file
+ * is written or renamed in its build folder, as a `start` that reads
+ * `build.json` while `ajs project build` rewrites it.
+ */
+class ReadingWhileWritingFileSystem extends InMemoryFileSystem {
+  readonly seen: string[] = [];
+
+  override async writeFile(file: string, data: Buffer | string) {
+    await this.readBuild(file);
+    return super.writeFile(file, data);
+  }
+
+  override async rename(source: string, target: string) {
+    await this.readBuild(target);
+    return super.rename(source, target);
+  }
+
+  private async readBuild(file: string) {
+    if (path.dirname(file) === getBuildFolderPath("/project")) {
+      const build = await readBuildArtifact("/project", this).then(
+        ({ configHash }) => configHash,
+        (error: unknown) => String(error),
+      );
+      this.seen.push(build);
+    }
+  }
+}
+
+function sampleArtifact(configHash: string) {
+  return createBuildArtifact({
+    configHash,
+    env: "production",
+    config: {
+      name: "sample",
+      cacheFolder: "/project/.antelope/cache",
+      projectFolder: "/project",
+      envOverrides: {},
+    },
+    modules: {},
+  });
+}
 
 describe("build artifact", () => {
   afterEach(() => {
@@ -130,6 +180,152 @@ describe("build artifact", () => {
     expect(loaded.configHash).to.equal("abc123");
     expect(loaded.buildTime).to.equal("2026-01-01T00:00:00.000Z");
     expect(loaded.modules).to.deep.equal({});
+  });
+});
+
+describe("writeBuildArtifact while another run reads build.json", () => {
+  it("leaves the previous build readable until the new one replaces it, and no temporary file behind", async () => {
+    const fs = new ReadingWhileWritingFileSystem();
+    await writeBuildArtifact("/project", sampleArtifact("first"), fs);
+    fs.seen.length = 0;
+
+    await writeBuildArtifact("/project", sampleArtifact("second"), fs);
+
+    expect(fs.seen).to.deep.equal(["first", "first"]);
+    expect((await readBuildArtifact("/project", fs)).configHash).to.equal(
+      "second",
+    );
+    expect(await fs.readdir(getBuildFolderPath("/project"))).to.deep.equal([
+      "build.json",
+    ]);
+  });
+});
+
+/** The real file system, except that renaming onto `build.json` fails with `EPERM`, as on Windows while a scanner holds the file. */
+class RefusedRenameFileSystem extends NodeFileSystem {
+  override rename(source: string, target: string) {
+    if (path.basename(target) === "build.json") {
+      return Promise.reject(
+        Object.assign(new Error("EPERM: operation not permitted"), {
+          code: "EPERM",
+        }),
+      );
+    }
+    return super.rename(source, target);
+  }
+}
+
+describe("writeBuildArtifact on the real file system", () => {
+  const fs = new NodeFileSystem();
+  let project: string;
+  let buildFolder: string;
+
+  beforeEach(() => {
+    project = makeTempDir("ajs-build-artifact-");
+    buildFolder = path.join(project, ".antelope", "build");
+    mkdirSync(buildFolder, { recursive: true });
+  });
+
+  afterEach(() => {
+    cleanupTempDir(project);
+  });
+
+  it("removes the temporary file a stopped build left more than a minute ago, and keeps one written within the minute and other old files", async () => {
+    const dated = (name: string, ageMs: number) => {
+      const at = new Date(Date.now() - ageMs);
+      writeFileSync(path.join(buildFolder, name), "{");
+      utimesSync(path.join(buildFolder, name), at, at);
+    };
+    dated("build.json.stopped.tmp", 61_000);
+    dated("build.json.writing.tmp", 30_000);
+    for (const name of ["build.json.bak", "editor.tmp", "notes.txt"]) {
+      dated(name, 120_000);
+    }
+
+    await writeBuildArtifact(project, sampleArtifact("second"), fs);
+
+    expect((await fs.readdir(buildFolder)).sort()).to.deep.equal([
+      "build.json",
+      "build.json.bak",
+      "build.json.writing.tmp",
+      "editor.tmp",
+      "notes.txt",
+    ]);
+  });
+
+  it("writes the build, and removes the other old temporary files, though one cannot be removed", async () => {
+    const past = new Date(Date.now() - 120_000);
+    const stuck = path.join(buildFolder, "build.json.a-stuck.tmp");
+    const stale = path.join(buildFolder, "build.json.z-stopped.tmp");
+    mkdirSync(stuck);
+    writeFileSync(stale, "{");
+    utimesSync(stuck, past, past);
+    utimesSync(stale, past, past);
+
+    await writeBuildArtifact(project, sampleArtifact("second"), fs);
+
+    expect((await readBuildArtifact(project, fs)).configHash).to.equal(
+      "second",
+    );
+    expect((await fs.readdir(buildFolder)).sort()).to.deep.equal([
+      "build.json",
+      "build.json.a-stuck.tmp",
+    ]);
+  });
+
+  it("keeps the previous build and leaves no temporary file when the rename fails", async () => {
+    await writeBuildArtifact(project, sampleArtifact("first"), fs);
+
+    await assert.rejects(
+      writeBuildArtifact(
+        project,
+        sampleArtifact("second"),
+        new RefusedRenameFileSystem(),
+      ),
+      /EPERM/,
+    );
+
+    expect(await fs.readdir(buildFolder)).to.deep.equal(["build.json"]);
+    expect((await readBuildArtifact(project, fs)).configHash).to.equal("first");
+  });
+});
+
+describe("toStableJson", () => {
+  it("serialises every object by its own keys in sorted order, a Date and a class instance included", () => {
+    class Credentials {
+      constructor(
+        readonly user: string,
+        readonly token: string,
+      ) {}
+    }
+    const source: ModuleSourcePackage = {
+      type: "package",
+      package: "p",
+      version: "1",
+    };
+
+    const serialised = toStableJson({
+      name: "n",
+      cacheFolder: "c",
+      envOverrides: {},
+      modules: {
+        m: {
+          source,
+          config: {
+            list: [{ y: 1, x: 2 }],
+            fn: () => 1,
+            b: new Credentials("u", "t"),
+            a: new Date(0),
+          },
+          importOverrides: [],
+          disabledExports: [],
+        },
+      },
+    });
+
+    expect(serialised).to.equal(
+      '{"cacheFolder":"c","envOverrides":{},"modules":{"m":{"config":{"a":{},"b":{"token":"t","user":"u"},"list":[{"x":2,"y":1}]},"disabledExports":[],"importOverrides":[],"source":{"package":"p","type":"package","version":"1"}}},"name":"n"}',
+    );
   });
 });
 

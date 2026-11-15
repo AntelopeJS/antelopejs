@@ -15,6 +15,24 @@ import {
 } from "../../../src/core/config";
 import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
+const MODULE_DOCUMENTS = [
+  ["null", "null", {}],
+  ["a number", "5", {}],
+  ["a boolean", "true", {}],
+  ["an empty array", "[]", {}],
+  ["a string", '"ab"', { 0: "a", 1: "b" }],
+  ["an array", '[1,{"x":2}]', { 0: 1, 1: { x: 2 } }],
+  [
+    "numbers past the double range",
+    '{"host":"h","limit":1e999,"floor":-1e999}',
+    {
+      host: "h",
+      limit: Number.POSITIVE_INFINITY,
+      floor: Number.NEGATIVE_INFINITY,
+    },
+  ],
+] as const;
+
 {
   let registerConfigLoader: (this: Mocha.Suite) => void;
 
@@ -24,7 +42,11 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
 
   let loadTsConfigFileStub: sinon.SinonStub;
 
-  async function mockTsConfig(config: AntelopeConfig): Promise<void> {
+  async function mockTsConfig(
+    config: Omit<AntelopeConfig, "cacheFolder"> & {
+      cacheFolder?: string | null;
+    },
+  ): Promise<void> {
     await fs.writeFile("/project/antelope.config.ts", "");
     loadTsConfigFileStub.resolves(config);
   }
@@ -132,14 +154,7 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         });
       });
 
-      for (const [label, document, expected] of [
-        ["null", "null", {}],
-        ["a number", "5", {}],
-        ["a boolean", "true", {}],
-        ["an empty array", "[]", {}],
-        ["a string", '"ab"', { 0: "a", 1: "b" }],
-        ["an array", '[1,{"x":2}]', { 0: 1, 1: { x: 2 } }],
-      ] as const) {
+      for (const [label, document, expected] of MODULE_DOCUMENTS) {
         it(`loads a module config file holding ${label} as the historic merge does`, async () => {
           await mockTsConfig({
             name: "test",
@@ -168,6 +183,48 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
       });
     };
 
+    const checkMergesIntoDeclaredConfig: (this: Mocha.Suite) => void =
+      function () {
+        class DeclaredSettings {
+          own = 1;
+
+          get inherited(): number {
+            return this.own + 1;
+          }
+        }
+
+        for (const [label, declared, expected] of [
+          ["a string", "ab", { 0: "a", 1: "b" }],
+          ["a number", 5, {}],
+          ["a list", ["x", "y"], { 0: "x", 1: "y" }],
+          ["null", null, {}],
+          ["a class instance", new DeclaredSettings(), { own: 1 }],
+          [
+            "a function",
+            Object.assign(() => 1, { flag: true }),
+            { flag: true },
+          ],
+        ] as const) {
+          it(`merges a module config file into a declared config holding ${label} as the historic merge does`, async () => {
+            await mockTsConfig({
+              name: "test",
+              modules: { database: { version: "1.0.0", config: declared } },
+            });
+            await fs.writeFile(
+              "/project/antelope.database.json",
+              '{"extra":2}',
+            );
+
+            const config = await loader.load("/project");
+
+            expect(config.modules.database.config).to.deep.equal({
+              ...expected,
+              extra: 2,
+            });
+          });
+        }
+      };
+
     const checkDefaultsCacheFolderWhenMissing: (this: Mocha.Suite) => void =
       function () {
         it("defaults cacheFolder when missing", async () => {
@@ -184,7 +241,6 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
         it("defaults cacheFolder when null", async () => {
           await mockTsConfig({
             name: "my-app",
-            // @ts-expect-error A null cache folder exercises the existing defaulting behavior.
             cacheFolder: null,
             modules: {},
           });
@@ -358,6 +414,7 @@ import { InMemoryFileSystem } from "../../helpers/in-memory-filesystem";
     registerLoad = () => {
       describe("loads basic config", function () {
         checkLoadsBasicConfig.call(this);
+        checkMergesIntoDeclaredConfig.call(this);
       });
 
       describe("defaults cacheFolder when missing", function () {
@@ -418,7 +475,7 @@ export default defineConfig({
 
       const loaded = await tsConfigFile.loadTsConfigFile(configPath);
 
-      expect(loaded.name).to.equal(
+      expect(path.normalize(loaded.name)).to.equal(
         require.resolve("@antelopejs/interface-core/config"),
       );
       expect(

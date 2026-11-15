@@ -2,6 +2,51 @@
 
 Each section is the upgrade-notes block of one release. Paste it into the GitHub release body and under the release's heading in `CHANGELOG.md`. The changelog generator writes only commit subjects, and several of these changes have no `!` in theirs.
 
+## v1.23.0
+
+1.23.0 is a minor release, and it carries the compile breaks and behaviour changes below. Ranges such as `<2` accept it.
+
+### `@antelopejs/core/cli` types
+
+- **`OutputStream.write` returns `void`** (was `unknown`). The core never read the value. Code that reads the result of `write` on a value typed `OutputStream` no longer compiles, for example `if (stream.write(chunk))` (TS1345). Read it through the concrete stream type instead. A stream whose `write` returns a value, such as `process.stdout`, still assigns to `OutputStream` ([#460](https://github.com/AntelopeJS/antelopejs/pull/460)).
+- **`FailureTranslator` names its parameter `cause`** (was `error`). Its type is unchanged, so a `translate` option keeps compiling. Only the declaration text and editor hints change ([#460](https://github.com/AntelopeJS/antelopejs/pull/460)).
+
+### `ajs module test`: setup overrides are read like `antelope.config.ts`
+
+What `test.setup` returns is read the way the loader reads `antelope.config.ts`, then merged into the loaded configuration and checked ([#460](https://github.com/AntelopeJS/antelopejs/pull/460)).
+
+- **A module the overrides add** can be a version string or an object, and it gets the loader's defaults, an empty `config` included. Before, a version string ended the run with exit 0 without running the tests or `cleanup`, and an added object reached its module with `config` undefined.
+- **A version string for a declared module** replaces its whole entry, as a version string in `environments` already does.
+- **`importOverrides` can be a map** of interface names to modules. Before, the run failed with `TypeError: importOverrides.forEach is not a function`.
+- **`disabled: true` leaves the module out.** Before, the module loaded anyway.
+- **A field set to `undefined` keeps its loaded value**, except a module's `config`, which still reaches the module as `undefined`. Before, `modules: undefined` ran with no modules, and `cacheFolder: undefined` failed with a `TypeError`.
+- **A field of the wrong type stops the run** with an error naming it, for example `Configuration field 'cacheFolder' does not hold a string after the test setup overrides.` Before, `name: null`, `modules: null` and `test.folder: 42` ran, and `cacheFolder: 42` failed with a `TypeError`.
+- **Replacing `test.setup` or `test.cleanup` is refused.** Before, the replacement was silently ignored. With interface-core 0.5.1, a `test` key in the overrides no longer compiles.
+- **The configuration file's own `cleanup` still runs** after a refusal.
+- **Unchanged:** a valid partial override, a `test.folder` override and `undefined`. `environments` and `envOverrides` in the overrides are checked but not applied, as before.
+
+## v1.22.0
+
+1.22.0 is a minor release. It raises the `@antelopejs/interface-core` requirement, and that change carries the compile breaks below. Ranges such as `<2` accept it.
+
+### Requirements
+
+- **`@antelopejs/interface-core` `>=0.5.1 <0.6.0`** (was `>=0.4.0 <0.5.0`) ([#458](https://github.com/AntelopeJS/antelopejs/pull/458)).
+  - When a package-manager override or resolution forces core's own copy outside that range, core refuses to load with `@antelopejs/core 1.22.0 requires @antelopejs/interface-core >=0.5.1 <0.6.0, but it loads <version>`. Drop the override or raise it to 0.5.1.
+  - Raise the interface-core range of your modules and interface packages to `>=0.5.1 <0.6.0`, so they share core's copy.
+- interface-core 0.5.1 was published on 2026-11-13. A package manager that enforces a minimum release age, such as pnpm's `minimumReleaseAge`, refuses to install it until that age has passed. Add it to the exclusions or wait.
+
+### Types from interface-core 0.5
+
+- Two type arguments no longer compile: `AsyncProxy<T, R>` fails with TS2707 and `InterfaceFunction<T, R>()` with TS2558. Both take a single type argument, the function type, and read the result type from it: `new AsyncProxy<(id: string) => Promise<User>>()`, `InterfaceFunction<(id: string) => Promise<User>>()` ([#458](https://github.com/AntelopeJS/antelopejs/pull/458)).
+- A `test.setup` hook returns `AntelopeTestOverrides`, which is `Partial<AntelopeConfig>` without `test`. A `test` section returned from `setup` no longer compiles. It never took effect: the run kept the loaded `test.setup` and `test.cleanup`.
+
+### No other API change
+
+- The other changes in this release remove lint suppressions and keep every published declaration and behaviour ([#453](https://github.com/AntelopeJS/antelopejs/pull/453), [#454](https://github.com/AntelopeJS/antelopejs/pull/454), [#455](https://github.com/AntelopeJS/antelopejs/pull/455), [#456](https://github.com/AntelopeJS/antelopejs/pull/456)). Two side effects show only in diagnostics:
+  - A module whose main exports a lifecycle callback that is not a function still fails when that phase runs, with the same message. Under `--verbose`, the stack now starts in the module loader ([#455](https://github.com/AntelopeJS/antelopejs/pull/455)).
+  - The walk that neutralizes interface proxies in module tests no longer recurses. A very deep export graph, 20,000 levels in our probe, now completes instead of overflowing the stack ([#456](https://github.com/AntelopeJS/antelopejs/pull/456)).
+
 ## v1.20.0
 
 1.20.0 is a minor release, and it carries the compile breaks below. Ranges such as `<2` accept it.

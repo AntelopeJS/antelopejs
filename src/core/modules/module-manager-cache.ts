@@ -2,6 +2,7 @@ import * as path from "node:path";
 
 import {
   clearPathResolutionCache,
+  createLoadedFileMatcher,
   createPathWithinMatcher,
   type PathMatcher,
 } from "../../utils";
@@ -34,14 +35,15 @@ export function evictModuleFiles(
   const moduleFolder = path.resolve(entry.module.manifest.folder);
   const moduleEntryFile = resolveManifestEntryFile(entry.module.manifest);
   const isInModule = createPathWithinMatcher(moduleFolder);
+  const isLoadedInModule = createLoadedFileMatcher(moduleFolder);
   const avoidedMatchers = this.collectAvoidedFolders(
     moduleId,
     moduleFolder,
     isInModule,
-  ).map((folder) => createPathWithinMatcher(folder));
+  ).map((folder) => createLoadedFileMatcher(folder));
 
   for (const filePath of Object.keys(require.cache)) {
-    if (!isInModule(filePath)) {
+    if (!isLoadedInModule(filePath)) {
       continue;
     }
     if (
@@ -104,7 +106,7 @@ export function evictInterfacePackageCopies(
       ),
     ])
     .flatMap(({ root, realRoot }) => [root, realRoot])
-    .map((root) => createPathWithinMatcher(path.resolve(root)));
+    .map((root) => createLoadedFileMatcher(path.resolve(root)));
   for (const filePath of Object.keys(require.cache)) {
     if (matchers.some((isInCopy) => isInCopy(filePath))) {
       delete require.cache[filePath];

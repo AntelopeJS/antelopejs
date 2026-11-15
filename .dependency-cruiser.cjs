@@ -4,6 +4,7 @@ const modules = [
   { name: "test", path: "src/core/test", layer: 2 },
   { name: "build", path: "src/core/build", layer: 2 },
   { name: "repl", path: "src/core/repl", layer: 2.5 },
+  { name: "repl-session", path: "src/core/repl-session", layer: 2.7 },
   { name: "runtime", path: "src/core/runtime", layer: 3 },
   { name: "downloaders", path: "src/core/downloaders", layer: 4 },
   { name: "modules", path: "src/core/modules", layer: 4.3 },

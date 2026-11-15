@@ -4,6 +4,7 @@ import type { ManagedModule, ModuleManager } from "../modules";
 import {
   type InterfaceRangeConflict,
   InterfaceResolutionError,
+  UnresolvedInterfacesError,
 } from "../output";
 import {
   findUnresolvedInterfaces,
@@ -99,18 +100,6 @@ function toInterfaceConsumer({ module }: ManagedModule): InterfaceConsumer {
   };
 }
 
-function unresolvedInterfacesError(unresolved: UnresolvedInterface[]): Error {
-  const details = unresolved
-    .map(
-      ({ moduleId, interfacePackage }) =>
-        `  - ${moduleId} requires ${interfacePackage}`,
-    )
-    .join("\n");
-  return new Error(
-    `Unresolved interface dependencies:\n${details}\n\nRun 'ajs project modules install' to resolve missing dependencies.`,
-  );
-}
-
 function findInterfaces(
   manager: ModuleManager,
   consumers: Iterable<ManagedModule>,
@@ -145,7 +134,7 @@ function ensureInterfacesResolved(
 ): InterfaceResolutionResult {
   const result = findInterfaces(manager, consumers);
   if (result.unresolved.length > 0) {
-    throw unresolvedInterfacesError(result.unresolved);
+    throw new UnresolvedInterfacesError(result.unresolved);
   }
   return result;
 }

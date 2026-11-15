@@ -11,26 +11,14 @@ import path from "node:path";
 
 import type { IFileSystem } from "../../types";
 import type { ShutdownManager } from "./shutdown/index";
-import { isNumber, isObject } from "../../utils";
+import { isNumber, isObject, isProcessAlive } from "../../utils";
 
 const TEMP_FILE_SUFFIX = ".tmp";
 const JSON_INDENT = 2;
 const SHUTDOWN_PRIORITY_DEV_REGISTRY = 10;
-const PERMISSION_DENIED_CODE = "EPERM";
 const CORE_MODULE_ID = "antelopejs";
 
 type PidProbe = (pid: number) => boolean;
-
-function isProcessAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    if (!(error instanceof Error)) throw error;
-    const systemError: NodeJS.ErrnoException = error;
-    return systemError.code === PERMISSION_DENIED_CODE;
-  }
-}
 
 export interface DevRegistryStoreOptions {
   projectPath: string;

@@ -27,21 +27,54 @@ async function fixtureMessage() {
   }
 }
 
+/**
+ * @typedef {object} LaunchedManager
+ * @property {() => Promise<void>} stopAll
+ * @property {() => Promise<void>} destroyAll
+ */
+
+/**
+ * @typedef {object} CoreEntry
+ * @property {(projectFolder: string) => Promise<LaunchedManager>} launch
+ * @property {(projectFolder: string) => Promise<void>} build
+ * @property {(projectFolder: string) => Promise<LaunchedManager>} launchFromBuild
+ * @property {unknown} [default]
+ */
+
+/**
+ * @param {unknown} value
+ * @returns {value is CoreEntry}
+ */
+function isCoreEntry(value) {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Object.hasOwn(value, "launch") &&
+    value.launch instanceof Function &&
+    Object.hasOwn(value, "build") &&
+    value.build instanceof Function &&
+    Object.hasOwn(value, "launchFromBuild") &&
+    value.launchFromBuild instanceof Function
+  );
+}
+
+/** @param {LaunchedManager} manager */
 async function stopManager(manager) {
   await manager.stopAll();
   await manager.destroyAll();
 }
 
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that requires the core under test by path; require is any
+/** @type {unknown} */
 const core = createRequire(import.meta.url)(coreEntry);
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that requires the core under test by path; require is any
+if (!isCoreEntry(core)) {
+  throw new Error(`${coreEntry} does not export launch, build and launchFromBuild`);
+}
 const launched = await core.launch(projectFolder);
 observations.launchIsDefault = core.default === core.launch;
 observations.afterLaunch = await fixtureMessage();
 await stopManager(launched);
 observations.afterLaunchStop = await fixtureMessage();
 await core.build(projectFolder);
-// oxlint-disable-next-line typescript/no-unsafe-assignment -- a JS host fixture that requires the core under test by path; require is any
 const fromBuild = await core.launchFromBuild(projectFolder);
 observations.afterLaunchFromBuild = await fixtureMessage();
 await stopManager(fromBuild);

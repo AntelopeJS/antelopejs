@@ -17,7 +17,6 @@ function lifecycle(overrides) {
     crashed: false,
     sigint: false,
     staleRead: false,
-    configOwner: "none",
     launch: 1,
     nextGen: 2,
     lpc: { 1: "running", 2: "none" },

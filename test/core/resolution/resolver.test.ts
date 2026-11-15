@@ -65,7 +65,7 @@ describe("Resolver", () => {
       filename: "/modA/src/index.js",
     });
 
-    expect(result?.resolvedPath).to.equal("/modA/src/utils");
+    expect(result?.resolvedPath).to.equal(path.join("/modA/src", "utils"));
     expect(result?.resolveFrom).to.equal(undefined);
   });
 
@@ -89,7 +89,7 @@ describe("Resolver", () => {
       filename: "/modA/src/index.js",
     });
 
-    expect(result?.resolvedPath).to.equal("/modA/src/utils");
+    expect(result?.resolvedPath).to.equal(path.join("/modA/src", "utils"));
   });
 
   it("does not assign sibling folders that only share a prefix", () => {
@@ -189,7 +189,7 @@ describe("Resolver path ownership cache", () => {
 
     resolver.moduleByFolder.set("/modA", moduleA);
     expect(resolver.resolve("@src/utils", parent)?.resolvedPath).to.equal(
-      "/modA/src/utils",
+      path.join("/modA/src", "utils"),
     );
 
     resolver.moduleByFolder.clear();
@@ -212,7 +212,7 @@ describe("Resolver path ownership cache", () => {
       });
     });
     clearPathResolutionCache();
-    const realpathSpy = sinon.spy(fs.realpathSync, "native");
+    const realpathSpy = sinon.spy(fs, "realpathSync");
     try {
       for (let pass = 0; pass < 3; pass += 1) {
         files.forEach((filename) =>

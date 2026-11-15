@@ -6,9 +6,8 @@ export function collectRejectedErrors(
   );
 }
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- unpacks a thrown value into its causes; JS can throw any value
-export function unpackErrors(error: unknown): unknown[] {
-  return error instanceof AggregateError ? error.errors : [error];
+export function unpackErrors(cause: unknown): unknown[] {
+  return cause instanceof AggregateError ? cause.errors : [cause];
 }
 
 /** Throws a single error as it is, or several as one AggregateError. */

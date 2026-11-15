@@ -80,14 +80,23 @@ function packCore(): string {
   return path.join(packFolder, tarball);
 }
 
+function readFromTarball(tarball: string, args: string[]): string {
+  const [flags, ...members] = args;
+  return run(
+    "tar",
+    [flags, path.basename(tarball), ...members],
+    path.dirname(tarball),
+  );
+}
+
 function inspectManifest(tarball: string): void {
-  const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
+  const content = readFromTarball(tarball, ["-xOf", "package/package.json"]);
   const manifest: unknown = JSON.parse(content);
   const dependencies = isObject(manifest) ? manifest.dependencies : undefined;
   const interfaceCoreRange = isObject(dependencies)
     ? dependencies["@antelopejs/interface-core"]
     : undefined;
-  if (interfaceCoreRange !== ">=0.4.0 <0.5.0") {
+  if (interfaceCoreRange !== ">=0.5.1 <0.6.0") {
     throw new Error(
       "Packed core does not pin interface-core to the minor it implements.",
     );
@@ -100,14 +109,14 @@ function inspectManifest(tarball: string): void {
 }
 
 function inspectSkills(tarball: string): void {
-  const content = run("tar", ["-xOf", tarball, "package/package.json"], root);
+  const content = readFromTarball(tarball, ["-xOf", "package/package.json"]);
   const manifest: unknown = JSON.parse(content);
   const antelopeJs = isObject(manifest) ? manifest.antelopeJs : undefined;
   const skills = isObject(antelopeJs) ? antelopeJs.skills : undefined;
   if (!Array.isArray(skills) || !skills.includes(`./${skillsFolder}`)) {
     throw new Error("Packed core does not declare its agent skills.");
   }
-  const packedFiles = run("tar", ["-tf", tarball], root).split(/\r?\n/);
+  const packedFiles = readFromTarball(tarball, ["-tf"]).split(/\r?\n/);
   const missing = listDirectory(path.join(root, skillsFolder))
     .map((skill) => `package/${skillsFolder}/${skill}/${skillFile}`)
     .filter((file) => !packedFiles.includes(file));
@@ -130,6 +139,7 @@ function installConsumer(tarball: string): void {
       dependencies: {
         "@antelopejs/core": `file:${tarball}`,
         "@antelopejs/interface-core": interfaceCoreSpec,
+        "@types/node": "22.19.15",
         "reflect-metadata": "0.2.2",
       },
     }),
@@ -156,30 +166,43 @@ function verifyConsumer(
   run(process.execPath, [target, ...args], folder);
 }
 
-function verifyEs2020Types(): void {
+function verifyTypes(
+  name: string,
+  source: string,
+  module: "commonjs" | "node16",
+): void {
+  fs.writeFileSync(path.join(consumerFolder, `${name}.ts`), source);
   fs.writeFileSync(
-    path.join(consumerFolder, "types.ts"),
-    'export * from "@antelopejs/core";\n',
-  );
-  fs.writeFileSync(
-    path.join(consumerFolder, "tsconfig.json"),
+    path.join(consumerFolder, `tsconfig.${name}.json`),
     JSON.stringify({
       compilerOptions: {
         target: "ES2020",
         lib: ["ES2020"],
-        module: "commonjs",
+        module,
         strict: true,
         noEmit: true,
+        skipLibCheck: false,
         esModuleInterop: true,
         experimentalDecorators: true,
         emitDecoratorMetadata: true,
-        typeRoots: [path.join(root, "node_modules", "@types")],
         types: ["node"],
       },
-      files: ["types.ts"],
+      files: [`${name}.ts`],
     }),
   );
-  run(process.execPath, [typeScriptCompiler, "-p", "."], consumerFolder);
+  run(
+    process.execPath,
+    [typeScriptCompiler, "-p", `tsconfig.${name}.json`],
+    consumerFolder,
+  );
+}
+
+function verifyEs2020Types(): void {
+  verifyTypes("types", 'export * from "@antelopejs/core";\n', "commonjs");
+}
+
+function verifyCliTypes(): void {
+  verifyTypes("cli-types", 'export * from "@antelopejs/core/cli";\n', "node16");
 }
 
 function verifyPinnedConsumer(tarball: string, version: string): void {
@@ -213,11 +236,12 @@ try {
   verifyConsumer("verify-cli.cjs");
   verifyConsumer("verify-cli-api.cjs");
   verifyEs2020Types();
+  verifyCliTypes();
   for (const version of pinnedInterfaceCores) {
     verifyPinnedConsumer(tarball, version);
   }
   process.stdout.write(
-    "Package consumer routing, CLI startup, CLI API, ES2020 types and pinned interface-core verified.\n",
+    "Package consumer routing, CLI startup, CLI API, ES2020 types, CLI types and pinned interface-core verified.\n",
   );
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });

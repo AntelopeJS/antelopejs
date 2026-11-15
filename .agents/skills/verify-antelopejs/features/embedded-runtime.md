@@ -14,7 +14,7 @@ docs:
 ## Sub-features
 
 - `embedded-start-use-stop`: a host starts the runtime, calls `use('verify-greeter')`, reaches a module over HTTP, keeps its SIGINT listeners, and stops it.
-- `embedded-missing-provider`: error path: a host that uses an interface with no provider fails at start.
+- `embedded-missing-provider`: error path: a host that loads the greeter consumer and uses `verify-greeter` with no provider fails at start with `Unresolved interface dependencies`.
 
 ## How to get to it (user POV)
 

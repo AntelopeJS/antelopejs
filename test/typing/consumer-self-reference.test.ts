@@ -14,12 +14,13 @@ function testCompilerOptions(): ts.CompilerOptions {
 }
 
 function resolvedFile(specifier: string): string | undefined {
-  return ts.resolveModuleName(
+  const fileName = ts.resolveModuleName(
     specifier,
     CONSUMER_FILE,
     testCompilerOptions(),
     ts.sys,
   ).resolvedModule?.resolvedFileName;
+  return fileName === undefined ? undefined : path.normalize(fileName);
 }
 
 describe("package consumer scripts", () => {

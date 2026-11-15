@@ -5,14 +5,14 @@ import sinon from "sinon";
 
 import { commandModule as command } from "../../../src/core/output";
 import { rejectionOf } from "./fixtures";
+import { redirectHome } from "../../helpers/home";
 import { cleanupTempDir, makeTempDir, writeJson } from "../../helpers/temp";
 import type { JsonValue } from "../../helpers/json";
 
 const GIT_URL = "https://example.com/catalog.git";
 const COLD_LOAD_TIMEOUT_MS = 60000;
 
-async function loadGitOps(homeDir: string) {
-  process.env.HOME = homeDir;
+async function loadGitOps() {
   delete require.cache[require.resolve("../../../src/cli")];
   delete require.cache[require.resolve("../../../src/utils")];
   const entry = await import("../../../src/cli");
@@ -21,7 +21,7 @@ async function loadGitOps(homeDir: string) {
 
 describe("catalog manifests read from a git catalog", () => {
   let homeDir: string;
-  let originalHome: string | undefined;
+  let restoreHome: () => void;
   let repoPath: string;
 
   before(async function () {
@@ -30,8 +30,8 @@ describe("catalog manifests read from a git catalog", () => {
   });
 
   beforeEach(async () => {
-    originalHome = process.env.HOME;
     homeDir = makeTempDir("ajs-catalog-");
+    restoreHome = redirectHome(homeDir);
     repoPath = path.join(
       homeDir,
       ".antelopejs",
@@ -48,7 +48,7 @@ describe("catalog manifests read from a git catalog", () => {
 
   afterEach(() => {
     sinon.restore();
-    process.env.HOME = originalHome;
+    restoreHome();
     cleanupTempDir(homeDir);
   });
 
@@ -62,7 +62,7 @@ describe("catalog manifests read from a git catalog", () => {
 
   it("loads a catalog that lists only interfaces", async () => {
     writeCatalog({ interfaces: { "@scope/foo": "foo" } });
-    const gitOps = await loadGitOps(homeDir);
+    const gitOps = await loadGitOps();
     const manifest = await gitOps.loadManifestFromGit(GIT_URL);
     expect(manifest.interfaces).to.deep.equal({ "@scope/foo": "foo" });
   });
@@ -73,7 +73,7 @@ describe("catalog manifests read from a git catalog", () => {
       starredInterfaces: [],
       templates: [{ name: "Blank", branch: "main" }],
     });
-    const gitOps = await loadGitOps(homeDir);
+    const gitOps = await loadGitOps();
     const error = await rejectionOf(gitOps.loadManifestFromGit(GIT_URL));
     expect(error.message).to.match(
       /templates\[0\]\.repository must be a string/,
@@ -87,7 +87,7 @@ describe("catalog manifests read from a git catalog", () => {
       package: "@scope/foo",
       modules: [{ name: "foo-impl", source: { type: "svn" } }],
     });
-    const gitOps = await loadGitOps(homeDir);
+    const gitOps = await loadGitOps();
     const error = await rejectionOf(
       gitOps.loadInterfaceFromGit(GIT_URL, "foo"),
     );
@@ -97,7 +97,7 @@ describe("catalog manifests read from a git catalog", () => {
   it("reads an interface manifest that is not an object as one with no implementations", async () => {
     writeCatalog({ interfaces: {}, starredInterfaces: [], templates: [] });
     writeInterface(5);
-    const gitOps = await loadGitOps(homeDir);
+    const gitOps = await loadGitOps();
     const info = await gitOps.loadInterfaceFromGit(GIT_URL, "foo");
     expect(info?.manifest.modules ?? []).to.deep.equal([]);
   });

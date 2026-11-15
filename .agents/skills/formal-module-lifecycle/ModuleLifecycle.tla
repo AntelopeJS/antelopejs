@@ -12,8 +12,8 @@ EXTENDS ModuleLifecycleLaunch
 SourceEdit(m) ==
   /\ ~exited /\ changes < MaxChanges
   /\ changes' = changes + 1
-  /\ UNCHANGED <<jitiCache, staleRead, configOwner>>
-  /\ LET W == {L \in Launches : watching[L] = "yes" /\ m \in watched[L]} \* file-watcher.ts:353
+  /\ UNCHANGED staleRead
+  /\ LET W == {L \in Launches : watching[L] = "yes" /\ m \in watched[L]} \* file-watcher.ts:403
          InFlight(L) == rl[L].pc /= "idle" /\ rl[L].mod = m
      IN /\ rePending' = [L \in Launches |->               \* hot-reload.ts:21-22
              IF L \in W /\ InFlight(L) THEN rePending[L] \cup {m} ELSE rePending[L]]
@@ -74,14 +74,14 @@ RlManifestLoaded(L) ==
 (* Constructed.                                                           *)
 RlDestroyPrevious(L) ==
   /\ ~exited /\ rl[L].pc = "destroy"
-  /\ rl[L].prev \notin startPending                       \* module-lifecycle.ts:179
-  /\ IF state[rl[L].prev] = "Loaded"                      \* module.ts:145
+  /\ rl[L].prev \notin startPending                       \* module-lifecycle.ts:164
+  /\ IF state[rl[L].prev] = "Loaded"                      \* module.ts:240
      THEN /\ rl' = [rl EXCEPT ![L].pc = "install"]
           /\ UNCHANGED <<state, staleWork>>
-     ELSE \/ /\ state' = [state EXCEPT ![rl[L].prev] = "Loaded"] \* module-lifecycle.ts:161
+     ELSE \/ /\ state' = [state EXCEPT ![rl[L].prev] = "Loaded"] \* module-lifecycle.ts:146
              /\ staleWork' = TRUE
              /\ rl' = [rl EXCEPT ![L].pc = "install"]
-          \/ /\ state' = [state EXCEPT ![rl[L].prev] = "Constructed"] \* module-lifecycle.ts:123
+          \/ /\ state' = [state EXCEPT ![rl[L].prev] = "Constructed"] \* module-lifecycle.ts:108
              /\ rl' = [rl EXCEPT ![L].pc = "recover"]     \* module-reloading.ts:71
              /\ UNCHANGED staleWork
   /\ UNCHANGED <<editVars, gmod, nextGen, startPending, launchVars, sdVars, watchVars,
@@ -93,22 +93,21 @@ RlDestroyPrevious(L) ==
 (* manager no longer holds the module.                                    *)
 RlInstall(L) ==
   /\ ~exited /\ rl[L].pc = "install"
-  /\ EvictConfig(IF loaded[L][rl[L].mod] = None THEN {} ELSE {rl[L].mod}) \* module-reloading.ts:83, module-manager-cache.ts:25-28
   /\ IF loaded[L][rl[L].mod] = None                       \* module-reloading.ts:113
      THEN /\ rl' = [rl EXCEPT ![L] = IdleReload]          \* hot-reload.ts:76
           /\ UNCHANGED loaded
      ELSE /\ loaded' = [loaded EXCEPT ![L][rl[L].mod] = rl[L].repl] \* module-reloading.ts:111
           /\ rl' = [rl EXCEPT ![L].pc = "construct"]      \* module-reloading.ts:118
-  /\ UNCHANGED <<declared, edits, staleRead, configOwner, changes, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdVars,
+  /\ UNCHANGED <<editVars, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdVars,
                  watchVars, restartVars, pending, rePending, flushing, batch, procVars>>
 
 (* ModuleLifecycle.construct on the replacement. Its construct callback   *)
 (* can throw after the state became Constructed.                          *)
 RlConstruct(L) ==
   /\ ~exited /\ rl[L].pc = "construct"
-  /\ IF /\ state[rl[L].repl] = "Loaded"                   \* module.ts:97, module-lifecycle.ts:63
+  /\ IF /\ state[rl[L].repl] = "Loaded"                   \* module.ts:188, module-lifecycle.ts:54
         /\ ~Closed(L)                                    \* module-manager-construction.ts:330
-     THEN /\ state' = [state EXCEPT ![rl[L].repl] = "Constructed"] \* module-lifecycle.ts:76
+     THEN /\ state' = [state EXCEPT ![rl[L].repl] = "Constructed"] \* module-lifecycle.ts:59
           /\ \/ /\ rl' = [rl EXCEPT ![L].pc = "callStart"]
                 /\ UNCHANGED staleWork
              \/ /\ rl' = [rl EXCEPT ![L].pc = "cleanup"]  \* module-reloading.ts:120
@@ -137,7 +136,7 @@ RlStarted(L) ==
 RlCleanup(L) ==
   /\ ~exited /\ rl[L].pc = "cleanup"
   /\ IF state[rl[L].repl] /= "Loaded"                     \* module-reloading.ts:122, :133
-     THEN state' = [state EXCEPT ![rl[L].repl] = "Loaded"] \* module-lifecycle.ts:161
+     THEN state' = [state EXCEPT ![rl[L].repl] = "Loaded"] \* module-lifecycle.ts:146
      ELSE UNCHANGED state
   /\ rl' = [rl EXCEPT ![L] = IdleReload]                  \* hot-reload.ts:76
   /\ UNCHANGED <<editVars, gmod, nextGen, startPending, launchVars, sdVars, watchVars,
@@ -167,7 +166,7 @@ LaunchStep(L) ==
   \/ LaunchPrepare(L) \/ LaunchAddModules(L) \/ LaunchConstruct(L)
   \/ \E g \in Gens : ConstructApply(L, g)
   \/ LaunchConstructed(L) \/ LaunchStart(L) \/ LaunchStarted(L)
-  \/ LaunchWatch(L) \/ LaunchHashConfig(L) \/ LaunchWatching(L)
+  \/ LaunchWatch(L) \/ LaunchHashConfig(L) \/ LaunchWatching(L) \/ LaunchReturns(L)
 
 ShutdownStep(L) ==
   \/ \E m \in Modules : SdStop(L, m)
@@ -190,7 +189,7 @@ System ==
   \/ \E L \in Launches : LaunchStep(L) \/ ShutdownStep(L) \/ ReloadStep(L)
                          \/ ConfigNoticed(L) \/ RestartRequested(L)
   \/ \E g \in Gens : StartApply(g)
-  \/ RestartLaunches
+  \/ RestartLaunches \/ RestartInterrupted
   \/ StaleWorkFails
 
 Done == exited /\ UNCHANGED vars
@@ -207,8 +206,6 @@ ReloadPcs == {"idle", "manifest", "destroy", "install", "construct", "callStart"
 
 TypeOK ==
   /\ declared \subseteq Modules
-  /\ jitiCache \subseteq Modules \/ jitiCache = {"none"}
-  /\ configOwner \in {"none", "a"}
   /\ state \in [Gens -> States]
   /\ nextGen \in 1..(MaxGen + 1)
   /\ startPending \subseteq Gens

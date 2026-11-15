@@ -1,5 +1,6 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import path from "node:path";
 import sinon from "sinon";
 
 import { commonModule as common } from "../../../../../src/cli";
@@ -15,6 +16,7 @@ import {
 import {
   messagesOf,
   runSet,
+  type StoredConfig,
   stubSetCommand,
   useSetCommandSandbox,
 } from "../../../../helpers/logging-set-command";
@@ -143,16 +145,12 @@ describe("project logging set --level and --format", () => {
     });
 
     it("tolerates null logging entries, keeping null enabled and dateFormat and setting only the new moduleTracking and formatter values", async () => {
-      const config: Partial<AntelopeConfig> = {
+      const config: StoredConfig = {
         name: "test-project",
         logging: {
-          // @ts-expect-error A null enabled flag is tolerated and stays null in the config after the command.
           enabled: null,
-          // @ts-expect-error A null moduleTracking entry is tolerated and afterwards holds only the included module.
           moduleTracking: null,
-          // @ts-expect-error A null formatter entry is tolerated and afterwards holds only the new level format.
           formatter: null,
-          // @ts-expect-error A null dateFormat is tolerated and stays null in the config after the command.
           dateFormat: null,
         },
       };
@@ -320,8 +318,54 @@ describe("project logging set with an environment", () => {
       "Saved the logging configuration of test-project (staging)",
     );
     expect(stubs.feedback()).to.include(
-      "ajs project logging show --project /tmp/project --env staging",
+      `ajs project logging show --project ${path.resolve("/tmp/project")} --env staging`,
     );
+  });
+
+  it("writes the changed settings in the order of the built-in block", async () => {
+    const config: AntelopeConfig = {
+      name: "test-project",
+      environments: { staging: {} },
+    };
+    stubSetCommand(config);
+
+    await runSet(
+      "--env",
+      "staging",
+      "--date-format",
+      "yyyy",
+      "--level",
+      "info",
+      "--format",
+      "[info]",
+      "--include-module",
+      "modA",
+      "--disable",
+    );
+
+    expect(
+      Object.keys(config.environments?.staging?.logging ?? {}),
+    ).to.deep.equal(["enabled", "moduleTracking", "formatter", "dateFormat"]);
+  });
+
+  it("copies none of the project block's other keys into the environment block", async () => {
+    const logging = {
+      enabled: false,
+      channelFilter: { db: "debug" },
+      since: new Date(0),
+    };
+    const config: AntelopeConfig = {
+      name: "test-project",
+      logging,
+      environments: { staging: {} },
+    };
+    stubSetCommand(config);
+
+    await runSet("--env", "staging", "--enable");
+
+    expect(config.environments?.staging?.logging).to.deep.equal({
+      enabled: true,
+    });
   });
 
   it("sees the project block's settings from an environment", async () => {

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import path from "node:path";
 
 import { answers, equal, exitIs, exitFails, has, refused } from "../lib/checks.mts";
@@ -30,7 +30,7 @@ export const embeddedJourneys: Journey[] = [
       const app = await useProject(context);
       const greeter = await greeterWithHost(context);
       const port = String(await freePort());
-      const host = await context.node("embedded host", EMBEDDED_HOST, [CORE_ENTRY, path.join(greeter, "host"), path.join(greeter, "provider"), app], { env: { VERIFY_FIXTURE_PORT: port } });
+      const host = await context.node("embedded host", EMBEDDED_HOST, [CORE_ENTRY, path.join(greeter, "host"), `greeter-provider=${path.join(greeter, "provider")}`, app], { env: { VERIFY_FIXTURE_PORT: port } });
       const seen = lastJsonLine(host.stdout);
       context.expect(host.folder, [
         exitIs(host, 0),
@@ -46,12 +46,16 @@ export const embeddedJourneys: Journey[] = [
   {
     id: "embedded-missing-provider",
     title: "a host that uses an interface no module implements fails at start with the interface name",
-    entryPoint: "createRuntime({ uses: ['verify-greeter'] }) without its provider",
+    entryPoint: "createRuntime({ modules: { 'greeter-consumer': { path } }, uses: ['verify-greeter'] }) without its provider",
     async run(context) {
       const app = await useProject(context);
-      const greeter = await greeterWithHost(context);
-      const host = await context.node("embedded host without provider", EMBEDDED_HOST, [CORE_ENTRY, path.join(greeter, "host"), path.join(greeter, "missing-provider"), app], { env: { VERIFY_FIXTURE_PORT: String(await freePort()) } });
-      context.expect(host.folder, [exitFails(host), has("stderr", host.stderr, /missing-provider|verify-greeter/)]);
+      const greeter = copyGreeter(context);
+      await installFixture(context, path.join(greeter, "host"));
+      const consumer = path.join(greeter, "consumer");
+      mkdirSync(path.join(consumer, "node_modules"));
+      symlinkSync(path.join(greeter, "verify-greeter"), path.join(consumer, "node_modules", "verify-greeter"), "junction");
+      const host = await context.node("embedded host without provider", EMBEDDED_HOST, [CORE_ENTRY, path.join(greeter, "host"), `greeter-consumer=${consumer}`, app], { env: { VERIFY_FIXTURE_PORT: String(await freePort()) } });
+      context.expect(host.folder, [exitFails(host), has("stderr", host.stderr, /Unresolved interface dependencies:\n(?: {2}- .+\n)* {2}- greeter-consumer requires verify-greeter\n/)]);
     },
   },
 ];
@@ -127,18 +131,37 @@ export const resolutionJourneys: Journey[] = [
   {
     id: "resolution-missing-provider",
     title: "a consumer of an interface no module implements fails the start and names the interface",
-    entryPoint: "ajs project dev without the provider module",
+    entryPoint: "ajs project dev without the provider module, consumer with its own installed verify-greeter",
     async run(context) {
       const greeter = copyGreeter(context);
+      setConsumerRange(greeter, "file:../verify-greeter");
+      await installFixture(context, path.join(greeter, "consumer"));
       const remove = await context.ajs("modules remove provider", ["project", "modules", "remove", "greeter-provider"], { cwd: greeter });
       context.expect(remove.folder, [exitIs(remove, 0)], { critical: true });
       const dev = await context.background("project dev", ["project", "dev"], { cwd: greeter });
       const ready = await context.waitReady("ready or exit", dev, 30_000);
       const exit = await Promise.race([dev.exited, new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 1_000))]);
+      const stderr = readFileSync(path.join(dev.folder, "stderr.txt"), "utf8");
       context.expect(ready.folder, [
         { name: "no greeting is served", pass: field(ready.json, "greeting") === undefined || ready.status !== 200, detail: `status ${ready.status}, body ${ready.body}` },
         { name: "dev exits non-zero", pass: exit !== undefined && exit.exitCode !== 0, detail: exit ? `exit code ${exit.exitCode}` : "still running" },
-        has("stderr", readFileSync(path.join(dev.folder, "stderr.txt"), "utf8"), /verify-greeter/),
+        has("stderr", stderr, /Unresolved interface dependencies/),
+        has("stderr", stderr, /greeter-consumer requires verify-greeter/),
+      ]);
+    },
+  },
+  {
+    id: "resolution-missing-interface-package",
+    title: "a consumer whose interface package is installed nowhere fails the start and names the module, the package and the install command",
+    entryPoint: "ajs project dev without the provider module, consumer without verify-greeter installed",
+    async run(context) {
+      const greeter = copyGreeter(context);
+      const remove = await context.ajs("modules remove provider", ["project", "modules", "remove", "greeter-provider"], { cwd: greeter });
+      context.expect(remove.folder, [exitIs(remove, 0)], { critical: true });
+      const dev = await context.ajs("project dev", ["project", "dev"], { cwd: greeter });
+      context.expect(dev.folder, [
+        exitFails(dev),
+        has("stderr", dev.stderr, /✖ Failed to construct modules\n\s+greeter-consumer requires verify-greeter, which is not installed\. Install the dependencies of greeter-consumer, then run 'ajs project modules install'/),
       ]);
     },
   },

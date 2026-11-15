@@ -1,8 +1,63 @@
 import { expect } from "chai";
 import * as fsPromises from "node:fs/promises";
+import path from "node:path";
 
 import { ModuleCache } from "../../src/core/modules";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
+
+/**
+ * An in-memory file system whose next write of a `manifest.json` file, once
+ * armed, lands half its text, signals `torn`, and lands the rest once `finish`
+ * is called, as a write that another process reads halfway.
+ */
+/** An in-memory file system whose next read of `manifest.json` fails with `EIO`, once armed. */
+class FailingReadFileSystem extends InMemoryFileSystem {
+  private failing = false;
+
+  failNextManifestRead(): void {
+    this.failing = true;
+  }
+
+  override async readFileString(file: string, encoding?: BufferEncoding) {
+    if (this.failing && path.basename(file) === "manifest.json") {
+      this.failing = false;
+      throw Object.assign(new Error("EIO: i/o error, read"), { code: "EIO" });
+    }
+    return super.readFileString(file, encoding);
+  }
+}
+
+class TearingFileSystem extends InMemoryFileSystem {
+  private armed = false;
+  private tear: () => void = () => undefined;
+  private finishWrite: () => void = () => undefined;
+  readonly torn = new Promise<void>((resolve) => {
+    this.tear = resolve;
+  });
+  private readonly finished = new Promise<void>((resolve) => {
+    this.finishWrite = resolve;
+  });
+
+  arm(): void {
+    this.armed = true;
+  }
+
+  finish(): void {
+    this.finishWrite();
+  }
+
+  override async writeFile(file: string, data: Buffer | string) {
+    if (!this.armed || !path.basename(file).startsWith("manifest.json")) {
+      return super.writeFile(file, data);
+    }
+    this.armed = false;
+    const text = String(data);
+    await super.writeFile(file, text.slice(0, text.length / 2));
+    this.tear();
+    await this.finished;
+    await super.writeFile(file, text);
+  }
+}
 
 describe("ModuleCache", () => {
   it("should load and persist manifest data", async () => {
@@ -39,7 +94,7 @@ describe("ModuleCache", () => {
 
     const folder = await cache.getFolder("mod");
 
-    expect(folder).to.equal("/cache/mod");
+    expect(folder).to.equal(path.join("/cache", "mod"));
     expect(await fs.exists("/cache/mod/file.txt")).to.equal(false);
     expect(await fs.exists("/cache/mod")).to.equal(true);
   });
@@ -53,7 +108,7 @@ describe("ModuleCache", () => {
     const dest = await cache.transfer("/tmp/src", "mod");
     await cache.commitVersion("mod", "1.0.0");
 
-    expect(dest).to.equal("/cache/mod");
+    expect(dest).to.equal(path.join("/cache", "mod"));
     expect(await fs.exists("/tmp/src")).to.equal(false);
     expect(await fs.readFileString("/cache/mod/file.txt")).to.equal("hello");
     expect(cache.hasVersion("mod", "^1.0.0")).to.equal(true);
@@ -192,5 +247,59 @@ describe("ModuleCache manifest file", () => {
         JSON.parse(await fs.readFileString("/cache/manifest.json")),
       ).to.deep.equal({ other: "1.0.0" });
     }
+  });
+
+  it("keeps the entries another run committed or cleared since this run loaded the manifest", async () => {
+    const fs = new InMemoryFileSystem();
+    await fs.writeFile("/cache/manifest.json", '{"gone":"1.0.0"}');
+    const first = new ModuleCache("/cache", fs);
+    const second = new ModuleCache("/cache", fs);
+    await first.load();
+    await second.load();
+
+    await second.commitVersion("foo@1.0.0", "1.0.0");
+    await second.clearVersion("gone");
+    await first.commitVersion("bar@1.0.0", "1.0.0");
+
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.deep.equal({ "foo@1.0.0": "1.0.0", "bar@1.0.0": "1.0.0" });
+  });
+
+  it("keeps the entries it loaded when it cannot read the manifest again to save", async () => {
+    const fs = new FailingReadFileSystem();
+    await fs.writeFile("/cache/manifest.json", '{"foo@1.0.0":"1.0.0"}');
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+
+    fs.failNextManifestRead();
+    await cache.commitVersion("bar@1.0.0", "1.0.0");
+
+    expect(
+      JSON.parse(await fs.readFileString("/cache/manifest.json")),
+    ).to.deep.equal({ "foo@1.0.0": "1.0.0", "bar@1.0.0": "1.0.0" });
+  });
+
+  it("lets another run read the whole previous manifest while it saves", async () => {
+    const fs = new TearingFileSystem();
+    await fs.writeFile("/cache/manifest.json", '{"kept":"1.0.0"}');
+    const cache = new ModuleCache("/cache", fs);
+    await cache.load();
+    cache.setVersion("added", "2.0.0");
+
+    fs.arm();
+    const saving = cache.save();
+    await fs.torn;
+    const reader = new ModuleCache("/cache", fs);
+    await reader.load();
+    fs.finish();
+    await saving;
+
+    expect(reader.entries()).to.deep.equal([["kept", "1.0.0"]]);
+    await reader.load();
+    expect(reader.entries()).to.deep.equal([
+      ["kept", "1.0.0"],
+      ["added", "2.0.0"],
+    ]);
   });
 });

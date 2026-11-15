@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, renameSync } from "node:fs";
 import path from "node:path";
 
 import { answers, exitIs, has, lacks, refused } from "../lib/checks.mts";
@@ -148,6 +148,27 @@ export const journeys: Journey[] = [
       context.expect(recovered.folder, [answers(recovered, "message", "recovered")]);
       const stop = await context.stop("stop with SIGINT", dev);
       context.expect(stop.folder, [exitIs(stop, 130), has("stderr", stop.stderr, /Stopped the project/)]);
+    },
+  },
+  {
+    id: "dev-watch-recreated-src",
+    title: "with --watch, a src folder moved away and back is watched again, so the next edit reloads the module",
+    entryPoint: "ajs project dev --watch, move src/ out of the project and back, edit src/message.ts",
+    async run(context) {
+      const { project, dev, message } = await watchedProject(context);
+      const src = path.join(project, "src");
+      const away = path.join(context.work, "src-moved-away");
+      renameSync(src, away);
+      context.tree("src moved out of the project", project);
+      await context.settle("let the watcher see src vanish", WATCH_SETTLE_MS, "the deletion closes the watcher of src and reloads the module");
+      renameSync(away, src);
+      context.tree("src moved back into the project", project);
+      await context.settle("let the watcher see src return", WATCH_SETTLE_MS, "the watcher of the project folder sees src return and rescans it");
+      context.edit("edit message in the returned src", message, messageSource("edited after src returned"));
+      const edited = await context.httpUntil("fixture after the edit", dev, messageIs("edited after src returned"));
+      context.expect(edited.folder, [answers(edited, "message", "edited after src returned")]);
+      const stop = await context.stop("stop with SIGINT", dev);
+      context.expect(stop.folder, [exitIs(stop, 130)]);
     },
   },
   {

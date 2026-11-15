@@ -12,11 +12,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkSpec } from "@antelopejs/tooling-configs/formal";
 
-/** Rules today's code breaks, with the states in TLC's shortest counterexample. */
-const FINDINGS = {
-  LaunchReadsCurrentConfig: 21,
-  ConfigEditsReachProject: 30,
-};
+/**
+ * Rules today's code breaks, with the states in TLC's shortest counterexample.
+ *
+ * @type {Record<string, number>}
+ */
+const FINDINGS = {};
 
 await checkSpec({
   dir: path.dirname(fileURLToPath(import.meta.url)),

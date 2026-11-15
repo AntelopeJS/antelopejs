@@ -70,6 +70,11 @@ function setTTY(stdout: boolean, stderr: boolean, columns?: number) {
         const colored = "\u001b[31mred\u001b[0m";
         expect(stripAnsiCodes(colored)).to.equal("red");
       });
+
+      it("keeps escape sequences that are not color codes", () => {
+        const erased = "\u001b[2Kline\u001b[1A";
+        expect(stripAnsiCodes(erased)).to.equal(erased);
+      });
     };
   }
 

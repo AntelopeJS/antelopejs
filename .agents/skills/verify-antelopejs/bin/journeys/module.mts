@@ -144,7 +144,7 @@ export const testJourneys: Journey[] = [
   },
   {
     id: "module-test-file-from-parent",
-    title: "--file with a module path resolves the file against the current folder, as docs/5.cli/4.module.md shows",
+    title: "--file with a module path resolves the file against the current folder, as docs/5.cli/5.module.md shows",
     entryPoint: "ajs module test mod --file mod/test/http.test.js (from the parent folder)",
     async run(context) {
       const folder = await initModule(context);

@@ -46,6 +46,26 @@ function readExportPriority(name: string, priorities: Record<string, number>) {
 }
 
 /**
+ * The list form of a module entry's `importOverrides`: a map of interface
+ * names to module names becomes one override per interface, and a missing
+ * field an empty list.
+ */
+export function expandImportOverrides(
+  importOverrides: AntelopeModuleConfig["importOverrides"],
+): ImportOverride[] {
+  if (!importOverrides) {
+    return [];
+  }
+  if (Array.isArray(importOverrides)) {
+    return importOverrides;
+  }
+  return Object.entries(importOverrides).map(([iface, src]) => ({
+    interface: iface,
+    source: src,
+  }));
+}
+
+/**
  * Reads the text an `envOverrides` variable gives the configuration path it
  * maps, or `undefined` to leave that path as configured.
  */
@@ -60,18 +80,17 @@ export class ConfigParser {
    * whose value parses as JSON takes the parsed value, so a leaf can change
    * type: the result is `unknown` until a caller checks the fields it reads.
    */
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- takes the project fields with their module config, user JS data of any shape, and a pure template can retype any leaf, so the loader decodes the result in config-fields.ts
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- takes the project fields with their module config, any JS value (docs/2.concepts/4.configuration.md, Referencing), and returns them through processObject, which rebuilds every array and plain object, can turn a string leaf into any JSON value, and returns every other value, such as a RegExp, a Date or a class instance, by identity; the loader decodes the result in config-fields.ts
   processTemplates(config: unknown): unknown {
     const flatValues = this.flattenConfig(config);
     return this.processObject(config, flatValues);
   }
 
   private flattenConfig(
-    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- walks the project fields with their module config, user JS data of any shape, collecting text, number and boolean leaves
     value: unknown,
     prefix = "",
     result = new Map<string, string>(),
-  ) {
+  ): Map<string, string> {
     if (!isObject(value)) {
       return result;
     }
@@ -89,7 +108,7 @@ export class ConfigParser {
     return result;
   }
 
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- rewrites the string leaves of user JS config data of any shape, and a pure template can turn a leaf into any JSON value
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns -- rewrites the string templates of the project fields, whose module config is any JS value (docs/2.concepts/4.configuration.md, Referencing): rebuilds every array and plain object, turns a pure template into any JSON value, and returns every other value, such as a RegExp, a Date or a class instance, by identity
   private processObject(value: unknown, values: Map<string, string>): unknown {
     if (isString(value)) {
       const pureMatch = value.match(/^\$\{([^}]+)\}$/);
@@ -194,24 +213,10 @@ export class ConfigParser {
           } satisfies ModuleSourcePackage;
         }
 
-        let importOverrides: ImportOverride[] = [];
-        if (config.importOverrides) {
-          if (Array.isArray(config.importOverrides)) {
-            importOverrides = config.importOverrides;
-          } else {
-            importOverrides = Object.entries(config.importOverrides).map(
-              ([iface, src]) => ({
-                interface: iface,
-                source: src,
-              }),
-            );
-          }
-        }
-
         const expanded: ExpandedModuleConfig = {
           source: source!,
           config: config.config ?? {},
-          importOverrides,
+          importOverrides: expandImportOverrides(config.importOverrides),
           disabledExports: config.disabledExports ?? [],
         };
         result[name] = expanded;
