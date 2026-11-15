@@ -6,7 +6,7 @@ docs:
 
 # Smoke
 
-The fixed journey every verdict runs, whatever the diff touches: create a project from a template, run it, call its module over HTTP, stop it.
+The fixed journey every run drives, whatever the diff touches: create a project from a template, run it, call its module over HTTP, stop it.
 
 ## Sub-features
 
@@ -28,4 +28,4 @@ Each journey's steps, checks and evidence are in `bin/journeys/` and under `$RUN
 ## Gotchas
 
 - The smoke feature covers no glob: it runs for every diff, so it never marks a file as mapped.
-- A smoke FAIL makes the verdict FAIL even when every touched feature passes.
+- A smoke FAIL makes the result FAIL even when every touched feature passes.

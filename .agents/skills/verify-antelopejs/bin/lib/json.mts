@@ -52,11 +52,6 @@ export function isText(value: JsonRead): value is string {
   return typeof value === "string";
 }
 
-/** Whether a JSON value is a number or a boolean, which a template literal prints as `String` does. */
-export function isPrintable(value: JsonRead): value is number | boolean {
-  return typeof value === "number" || typeof value === "boolean";
-}
-
 /** A string member of a JSON object, or undefined when the member is missing or not a string. */
 export function textField(value: JsonRead, key: string): string | undefined {
   const found = field(value, key);
@@ -99,15 +94,6 @@ export function requireItems(value: JsonRead, key: string, what: string): Json[]
   return found;
 }
 
-/** A required array of strings in a JSON object; throws, naming `what`, when it is missing or holds anything else. */
-export function requireTexts(value: JsonRead, key: string, what: string): string[] {
-  const found = field(value, key);
-  if (!Array.isArray(found) || !found.every(isText)) {
-    throw new Error(`${what}: ${key} must be a list of strings`);
-  }
-  return found;
-}
-
 /** A required boolean member of a JSON object; throws, naming `what`, when it is missing or not a boolean. */
 export function requireBoolean(value: JsonRead, key: string, what: string): boolean {
   const found = field(value, key);
@@ -124,15 +110,6 @@ export function requireNumber(value: JsonRead, key: string, what: string): numbe
     throw new Error(`${what}: ${key} must be a number`);
   }
   return found;
-}
-
-/** A number-or-null member of a JSON object, as a process exit code is recorded; throws, naming `what`, on anything else. */
-export function requireExitCode(value: JsonRead, key: string, what: string): number | null {
-  const found = field(value, key);
-  if (found === null) {
-    return null;
-  }
-  return requireNumber(value, key, what);
 }
 
 /** The last line of a stream parsed as JSON, where a host prints its observations. */

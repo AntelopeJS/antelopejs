@@ -21,7 +21,7 @@ It needs Node 24, `pnpm install` done (the runner comes from `@antelopejs/toolin
 
 ## When to run it
 
-Run it when a change touches any file in the coverage record below. A changed rule (exit 1) makes the Verdict FAIL. The recorded findings fail it only when the diff changes what the covered code does, which `verify-ajs formal` decides by comparing the covered files' JavaScript statements on the base and on HEAD (`verify-antelopejs` verdict rule 5).
+Run it when a change touches any file in the coverage record below. `verify-ajs formal` runs it for such a diff and records its output.
 
 ## The rules
 

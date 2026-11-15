@@ -9,21 +9,9 @@ export interface DoorRule {
 }
 
 /**
- * How the gate decides whether a diff changed what the covered code does:
- * `emit` compares the JavaScript statements of the covered files on the
- * base and on HEAD (types, comments, formatting, imports and export
- * keywords left out); `probe` runs a command on a checkout of each, the
- * checkout's path as last argument, and compares what it prints.
- */
-export type Behaviour = { kind: "emit" } | { kind: "probe"; command: string[] };
-
-/**
  * A formal check: the source files it covers, the check's own files, the
- * command that runs it, how its output names a violated and a passing rule
- * (without `passing` and `violation`, a zero exit is the one rule `property`
- * holding), and how the gate decides that a diff changed the covered
- * behaviour. A diff that changes the covered behaviour or the check's own
- * files also runs the check on the base to tell which findings HEAD fixed.
+ * command that runs it, and how its output names a violated rule (without
+ * `violation`, a non-zero exit is the one rule `property` broken).
  */
 export interface FormalCheck {
   name: string;
@@ -31,8 +19,6 @@ export interface FormalCheck {
   files: string[];
   command: string[];
   violation: RegExp | null;
-  passing: RegExp | null;
-  behaviour: Behaviour;
 }
 
 /**
@@ -129,8 +115,6 @@ const config: VerifyConfig = {
       files: [".agents/skills/formal-module-lifecycle/**"],
       command: ["node", ".agents/skills/formal-module-lifecycle/check.mjs"],
       violation: /^(?:finding|BROKEN) (\w+)/gm,
-      passing: /(?<=^holds +(?:\w+, )*)(\w+)(?=,| \()/gm,
-      behaviour: { kind: "emit" },
     },
     {
       name: "formal-interface-ranges",
@@ -142,8 +126,6 @@ const config: VerifyConfig = {
       command: ["pnpm", "exec", "mocha", "--no-config", "--require", "ts-node/register", "--require", "test/setup.ts", "test/core/module-manager.interface-ranges.test.ts", "--exit"],
       files: ["test/core/module-manager.interface-ranges.test.ts"],
       violation: null,
-      passing: null,
-      behaviour: { kind: "emit" },
     },
   ],
 };

@@ -9,9 +9,8 @@ import { clean, doctor } from "./lib/lifecycle.mts";
 import { checkMap, planFor } from "./lib/map.mts";
 import { buildBaseCli } from "./lib/base.mts";
 import config from "../verify.config.ts";
-import { formalGate, runFormalCheck, touchedFormalChecks } from "./lib/formal.mts";
+import { runFormalCheck, touchedFormalChecks } from "./lib/formal.mts";
 import { doorLine, flaggedDoors, patchFiles } from "./lib/doors.mts";
-import { readJudgement, renderVerdict } from "./lib/verdict.mts";
 import { defaultJobs } from "./lib/pool.mts";
 import { allocateRun, loadRun, REPO_DIR, type RunState, saveRun } from "./lib/run.mts";
 import { scheduleFeatures } from "./lib/schedule.mts";
@@ -33,8 +32,6 @@ const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <
   clean <run>                      stop recorded processes, keep only the evidence
   doors [patch] [--base <ref>]     print the One-way-door line for a patch, or for the diff
   formal <run> [--all]             run the formal checks that cover the diff (or every one) and record them
-  verdict <run> --pr <n> [--all]   render evidence/verdict.md from the results and evidence/judgement.json
-                                   (--all gates on every feature, as plan --all: pass it for a pre-release verdict)
 `;
 
 function print(text: string): void {
@@ -141,11 +138,9 @@ function runFormal(dir: string, all: boolean): number {
   const touched = touchedFormalChecks(plan.changed);
   const checks = all ? config.formal : touched;
   for (const check of checks) {
-    const gate = touched.includes(check);
-    const result = runFormalCheck(state, check, gate ? { baseSha: plan.baseSha, headSha: plan.headSha, changed: plan.changed } : null);
-    const weight = formalGate(result);
-    const outcome = gate ? (weight.fails ? "FAIL" : "PASS") : result.violated.length > 0 ? "VIOLATED" : result.exitCode === 0 ? "HOLDS" : "ERROR";
-    print(`${outcome} ${check.name}: ${gate ? weight.outcome : `${result.violated.join(", ") || "no violated rule"} (does not cover the diff)`} (exit ${result.exitCode})`);
+    const result = runFormalCheck(state, check);
+    const outcome = result.violated.length > 0 ? "VIOLATED" : result.exitCode === 0 ? "HOLDS" : "ERROR";
+    print(`${outcome} ${check.name}: ${result.violated.join(", ") || "no violated rule"}${touched.includes(check) ? "" : " (does not cover the diff)"} (exit ${result.exitCode})`);
   }
   if (checks.length === 0) {
     print("no formal check covers the diff");
@@ -162,19 +157,8 @@ function printDoors(files: string[]): number {
   return 0;
 }
 
-function judge(dir: string, pr: number, all: boolean): number {
-  if (!Number.isInteger(pr) || pr <= 0) {
-    print("verdict needs --pr <number>");
-    return 2;
-  }
-  const state = loadRun(dir);
-  const verdict = renderVerdict(state, pr, readJudgement(path.join(state.evidence, "judgement.json")), all);
-  print(verdict.markdown);
-  return verdict.result === "FAIL" ? 1 : 0;
-}
-
 async function main(argv: string[]): Promise<number> {
-  const { positionals, values } = parseArgs({ args: argv, allowPositionals: true, options: { "no-build": { type: "boolean" }, base: { type: "string", default: "origin/main" }, "no-base": { type: "boolean" }, pr: { type: "string" }, jobs: { type: "string" }, all: { type: "boolean" } } });
+  const { positionals, values } = parseArgs({ args: argv, allowPositionals: true, options: { "no-build": { type: "boolean" }, base: { type: "string", default: "origin/main" }, "no-base": { type: "boolean" }, jobs: { type: "string" }, all: { type: "boolean" } } });
   const [command, ...rest] = positionals;
   switch (command) {
     case "new":
@@ -202,8 +186,6 @@ async function main(argv: string[]): Promise<number> {
       return printDoors(rest[0] ? patchFiles(rest[0]) : planFor(values.base, false).changed);
     case "formal":
       return runFormal(rest[0], Boolean(values.all));
-    case "verdict":
-      return judge(rest[0], Number(values.pr), Boolean(values.all));
     default:
       print(USAGE);
       return command ? 2 : 0;

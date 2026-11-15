@@ -3,7 +3,7 @@ import type { Journey } from "../lib/journey.mts";
 import { initProject } from "../lib/project.mts";
 import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
-/** The fixed journey every verdict runs: init, dev, a fixture call, stop. */
+/** The fixed journey every run drives: init, dev, a fixture call, stop. */
 export const journeys: Journey[] = [
   {
     id: "smoke",

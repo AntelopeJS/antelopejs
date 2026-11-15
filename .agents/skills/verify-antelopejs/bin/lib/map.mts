@@ -12,16 +12,12 @@ export const USER_FACING = ["src/**"];
 /** The feature that always runs, whatever the diff touches. */
 export const SMOKE_FEATURE = "smoke";
 
-/**
- * One feature file of the map, parsed from its frontmatter. `known` lists the
- * journeys that fail on main on purpose, each a documented finding.
- */
+/** One feature file of the map, parsed from its frontmatter. */
 export interface Feature {
   name: string;
   file: string;
   covers: string[];
   docs: string[];
-  known: string[];
   body: string;
 }
 
@@ -57,7 +53,6 @@ export function readFeatures(): Feature[] {
         file: path.relative(REPO_DIR, path.join(FEATURES_DIR, file)),
         covers: lists.get("covers") ?? [],
         docs: lists.get("docs") ?? [],
-        known: lists.get("known") ?? [],
         body: text,
       };
     });
@@ -76,50 +71,10 @@ export function featuresOf(file: string, features: Feature[]): string[] {
   return features.filter((feature) => matches(file, feature.covers)).map((feature) => feature.name);
 }
 
-/** The `known:` ids of a feature that are not among its registered journeys. */
-export function unregisteredKnown(feature: Feature, registered: string[]): string[] {
-  return feature.known.filter((id) => !registered.includes(id));
-}
-
-function knownAt(cwd: string, baseSha: string, file: string): string[] {
-  if (execFileSync("git", ["ls-tree", "--name-only", baseSha, "--", file], { cwd, encoding: "utf8" }).trim() === "") {
-    return [];
-  }
-  return frontmatterLists(execFileSync("git", ["show", `${baseSha}:${file}`], { cwd, encoding: "utf8" })).get("known") ?? [];
-}
-
-/**
- * The `<feature>/<journey>` ids a verdict may excuse as known findings: those
- * a feature file lists under `known:` at `baseSha` and still lists at HEAD.
- * Removing an entry at HEAD withdraws the excuse, and adding one cannot
- * excuse a failure the same diff causes. A feature file missing at the base
- * contributes none.
- */
-export function knownAtBase(cwd: string, baseSha: string, features: Feature[]): Set<string> {
-  const known = new Set<string>();
-  for (const feature of features) {
-    const atBase = knownAt(cwd, baseSha, feature.file);
-    for (const id of feature.known.filter((entry) => atBase.includes(entry))) {
-      known.add(`${feature.name}/${id}`);
-    }
-  }
-  return known;
-}
-
-/**
- * Whether a failing journey is a known finding the diff does not answer for:
- * `known` holds its `<feature>/<journey>` id (see {@link knownAtBase}) and the
- * diff touches no file the feature covers. A journey of a touched feature is
- * never a known finding.
- */
-export function knownFinding(known: ReadonlySet<string>, touched: Selection["touched"], feature: string, journey: string): boolean {
-  return known.has(`${feature}/${journey}`) && !touched.some((entry) => entry.feature === feature);
-}
-
 /**
  * Checks the map against the repository: every user-facing file is covered,
  * every feature has journeys, every journey is named in its feature file,
- * every `known:` id is a journey of its feature, and every docs path exists.
+ * and every docs path exists.
  * Returns one line per problem.
  */
 export function checkMap(): string[] {
@@ -139,9 +94,6 @@ export function checkMap(): string[] {
       if (!feature.body.includes(`\`${journey.id}\``)) {
         problems.push(`${feature.file}: journey \`${journey.id}\` is not described`);
       }
-    }
-    for (const id of unregisteredKnown(feature, (journeys ?? []).map((journey) => journey.id))) {
-      problems.push(`${feature.file}: known journey \`${id}\` is not a registered journey of ${feature.name}`);
     }
     if (feature.name !== SMOKE_FEATURE && feature.covers.length === 0) {
       problems.push(`${feature.file}: lists no covers globs`);
@@ -173,7 +125,7 @@ export function checkMap(): string[] {
 /** Why a plan runs every feature: `--all` asked for it, or the diff changed these shared files. */
 export type FullSet = { reason: "all" } | { reason: "shared"; files: string[] };
 
-/** The features a set of changed files asks a verdict to run. */
+/** The features a set of changed files asks a run to drive. */
 export interface Selection {
   touched: { feature: string; files: string[] }[];
   unmapped: string[];
@@ -182,7 +134,7 @@ export interface Selection {
   run: string[];
 }
 
-/** What a diff asks a verdict to run. */
+/** What a diff asks a run to drive. */
 export interface Plan extends Selection {
   baseRef: string;
   baseSha: string;

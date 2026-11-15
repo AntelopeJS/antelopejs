@@ -176,7 +176,7 @@ export function listProcesses(state: RunState): ProcessRecord[] {
   ];
 }
 
-/** The commit the checkout is at, which every verdict names. */
+/** The commit the checkout is at. */
 export function headSha(): string {
   return execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO_DIR, encoding: "utf8" }).trim();
 }
