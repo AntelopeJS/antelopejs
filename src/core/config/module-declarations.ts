@@ -4,7 +4,7 @@ import { NodeFileSystem } from "../filesystem";
 import { removeModuleEntry, setModuleEntry } from "./config-editor";
 import { loadTsConfigFile } from "./ts-config-file";
 import { findConfigPath } from "./config-paths";
-import { recordOwnConfigWrite } from "./config-writes";
+import { forgetOwnConfigWrites, recordOwnConfigWrite } from "./config-writes";
 import type {
   ModuleDeclaration,
   ModuleDeclarationChanges,
@@ -77,7 +77,12 @@ function editConfigFile(
     const edited = edit(source, configPath);
     if (edited === source) return;
     recordOwnConfigWrite(configPath, bytes, edited);
-    await writeFile(configPath, edited, FILE_ENCODING);
+    await writeFile(configPath, edited, FILE_ENCODING).catch(
+      (error: unknown) => {
+        forgetOwnConfigWrites(configPath);
+        throw error;
+      },
+    );
   });
   pendingWrite = run.catch(() => undefined);
   return run;

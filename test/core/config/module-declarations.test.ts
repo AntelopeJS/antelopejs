@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -81,6 +81,34 @@ describe("module declarations", () => {
     expect(
       consumeOwnConfigWrite(configPath, sha256(original), sha256(written)),
     ).to.equal(true);
+  });
+
+  it("leaves the user's edit to the user when its own write failed", async function () {
+    if (process.getuid?.() === 0) this.skip();
+    const scratch = await mkdtemp(
+      path.join(os.tmpdir(), "module-declarations-"),
+    );
+    await writeFile(path.join(scratch, "antelope.config.ts"), CONFIG);
+    await saveModuleDeclaration(scratch, "@acme/reports", {
+      source: REPORTS_SOURCE,
+    });
+    const userEdit = await readFile(path.join(scratch, "antelope.config.ts"));
+    await rm(scratch, { recursive: true, force: true });
+    await chmod(configPath, 0o444);
+
+    const saving = saveModuleDeclaration(project, "@acme/reports", {
+      source: REPORTS_SOURCE,
+    });
+
+    await saving.then(
+      () => expect.fail("the write to a read-only file succeeded"),
+      () => undefined,
+    );
+    await chmod(configPath, 0o644);
+    await writeFile(configPath, userEdit);
+    expect(
+      consumeOwnConfigWrite(configPath, sha256(CONFIG), sha256(userEdit)),
+    ).to.equal(false);
   });
 
   it("removes the entry it added, giving the file back", async () => {

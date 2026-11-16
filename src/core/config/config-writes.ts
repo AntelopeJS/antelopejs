@@ -32,6 +32,14 @@ export function recordOwnConfigWrite(
 }
 
 /**
+ * Forgets the runtime's own writes to `filePath`, after a write that may not
+ * have landed: the next change the watcher sees there is the user's.
+ */
+export function forgetOwnConfigWrites(filePath: string): void {
+  ownWrites.delete(path.resolve(filePath));
+}
+
+/**
  * Whether the runtime's own writes alone turned `filePath` from the content
  * hashed `previousHash` into the content hashed `currentHash`, both SHA-256
  * hex digests of the file. The writes up to `currentHash` are consumed. A
@@ -51,7 +59,7 @@ export function consumeOwnConfigWrite(
       ? -1
       : run.indexOf(currentHash, from + 1);
   if (to < 0) {
-    ownWrites.delete(resolved);
+    forgetOwnConfigWrites(resolved);
     return false;
   }
   ownWrites.set(resolved, run.slice(to));
