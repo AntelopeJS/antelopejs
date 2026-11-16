@@ -192,12 +192,19 @@ export async function loadInterfacesFromGit(
 /**
  * Paths, relative to a template repository root and written with `/`, that a
  * scaffold never checks out: the template's own agent layer (its verification
- * skill and the symlinks that expose it). `.claude/settings.json` is not listed
- * because templates ship it on purpose. They are left out through a sparse
- * checkout, so files the target directory already holds at these paths are
- * kept.
+ * skill and the symlinks that expose it), and the workflows and scripts that
+ * maintain the template repository itself, whose jobs a project would skip on
+ * every run. `.claude/settings.json` is not listed because templates ship it
+ * on purpose. They are left out through a sparse checkout, so files the target
+ * directory already holds at these paths are kept.
  */
-export const SCAFFOLD_EXCLUDED_PATHS = [".agents", ".claude/skills"] as const;
+export const SCAFFOLD_EXCLUDED_PATHS = [
+  ".agents",
+  ".claude/skills",
+  ".github/workflows/module-locks.yml",
+  ".github/workflows/next-canary.yml",
+  ".github/scripts",
+] as const;
 
 function scaffoldSparsePatterns(): string {
   const exclusions = SCAFFOLD_EXCLUDED_PATHS.flatMap((excluded) => [
