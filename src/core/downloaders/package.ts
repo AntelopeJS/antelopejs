@@ -72,6 +72,7 @@ function decodeViewVersions(output: string): string[] {
 
 /** The scripts of the installed folder itself that npm, pnpm or yarn run during an install. */
 const INSTALL_LIFECYCLE_SCRIPTS: readonly string[] = [
+  "pnpm:devPreinstall",
   "preinstall",
   "install",
   "postinstall",

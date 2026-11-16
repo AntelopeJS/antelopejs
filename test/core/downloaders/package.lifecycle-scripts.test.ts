@@ -18,10 +18,15 @@ const TARBALL = "pkg-1.0.0.tgz";
 const BUILT_MARKER = "built";
 
 const FAILING_LIFECYCLE_SCRIPTS = {
+  "pnpm:devPreinstall": "exit 2",
   preinstall: "exit 3",
   install: "exit 4",
   postinstall: "exit 5",
-  prepare: "exit 7",
+  prepublish: "exit 6",
+  preprepare: "exit 7",
+  prepare: "exit 8",
+  postprepare: "exit 9",
+  dependencies: "exit 10",
 };
 
 const SOURCE: ModuleSourcePackage = {
