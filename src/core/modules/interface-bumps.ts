@@ -2,7 +2,7 @@ import type {
   ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
-import { lt, valid, validRange } from "semver";
+import { lt, prerelease, valid, validRange } from "semver";
 
 import { isString } from "../../utils";
 import { satisfiesRange } from "../../version-ranges";
@@ -88,7 +88,8 @@ function acceptsVersion(range: string, version: string): boolean {
 /**
  * `range` with its floor raised to `version`, keeping its shape: `>=a <b`
  * keeps its cap, `^a` and `~a` keep their prefix, and an exact version is
- * replaced. Any other spec, such as an `npm:` alias, a `workspace:` or
+ * replaced. A prerelease `version` replaces the range whatever its shape, so
+ * the module pins the preview it was raised to. Any other spec, such as an `npm:` alias, a `workspace:` or
  * `file:` link, a dist-tag or a union, has no floor to raise.
  *
  * @returns undefined when the spec has no floor to raise.
@@ -105,6 +106,9 @@ export function raiseRangeFloor(
     raised = `>=${version}${floor[2] ?? ""}`;
   } else if (prefixed && valid(prefixed[2])) {
     raised = `${prefixed[1]}${version}`;
+  }
+  if (raised !== undefined && prerelease(version)) {
+    raised = version;
   }
   return raised !== undefined && acceptsVersion(raised, version)
     ? raised

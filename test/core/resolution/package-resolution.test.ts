@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -131,6 +131,74 @@ describe("package resolution", () => {
       expect(insideFirstAfterMove).to.equal(false);
     } finally {
       process.chdir(originalCwd);
+      cleanupTempDir(root);
+    }
+  });
+});
+
+describe("package resolution after a relink", () => {
+  for (const exportsField of [{ ".": "./dist/index.js" }, undefined, null]) {
+    it(`resolves the copy a package manager relinked after a first resolution, exports ${JSON.stringify(exportsField) ?? "absent"}`, () => {
+      const root = makeTempDir("ajs-package-relink-");
+      const consumer = path.join(root, "consumer");
+      const link = path.join(consumer, "node_modules", "@scope", "relinked");
+      const store = (version: string) => {
+        const folder = path.join(root, "store", version, "relinked");
+        mkdirSync(path.join(folder, "dist"), { recursive: true });
+        writeFileSync(
+          path.join(folder, "package.json"),
+          JSON.stringify({
+            name: "@scope/relinked",
+            version,
+            main: "./dist/index.js",
+            exports: exportsField,
+          }),
+        );
+        writeFileSync(path.join(folder, "dist", "index.js"), "");
+        return folder;
+      };
+      try {
+        mkdirSync(path.dirname(link), { recursive: true });
+        symlinkSync(store("0.4.3"), link, "dir");
+        expect(resolvePackage("@scope/relinked", consumer)?.version).to.equal(
+          "0.4.3",
+        );
+
+        const preview = store("0.4.4-next.1");
+        unlinkSync(link);
+        symlinkSync(preview, link, "dir");
+        const resolvedPackage = resolvePackage("@scope/relinked", consumer);
+
+        expect(resolvedPackage?.version).to.equal("0.4.4-next.1");
+        expect(resolvedPackage?.entry).to.equal(
+          path.join(preview, "dist", "index.js"),
+        );
+      } finally {
+        cleanupTempDir(root);
+      }
+    });
+  }
+
+  it("resolves a package from inside itself before a copy higher up the tree", () => {
+    const root = makeTempDir("ajs-package-self-");
+    const write = (folder: string, version: string) => {
+      mkdirSync(folder, { recursive: true });
+      writeFileSync(
+        path.join(folder, "package.json"),
+        JSON.stringify({ name: "lib", version, exports: "./i.js" }),
+      );
+      writeFileSync(path.join(folder, "i.js"), "");
+    };
+    try {
+      write(path.join(root, "node_modules", "lib"), "1.0.0");
+      const own = path.join(root, "packages", "lib");
+      write(own, "2.0.0");
+
+      const resolvedPackage = resolvePackage("lib", own);
+
+      expect(resolvedPackage?.version).to.equal("2.0.0");
+      expect(resolvedPackage?.entry).to.equal(path.join(own, "i.js"));
+    } finally {
       cleanupTempDir(root);
     }
   });
