@@ -284,7 +284,11 @@ function readResolutionManifest(
       readFileSync(path.join(packageRoot, "package.json"), "utf8"),
     );
     return isObject(parsed)
-      ? { name: parsed.name, declaresExports: parsed.exports !== undefined }
+      ? {
+          name: parsed.name,
+          declaresExports:
+            parsed.exports !== undefined && parsed.exports !== null,
+        }
       : undefined;
   } catch {
     return undefined;

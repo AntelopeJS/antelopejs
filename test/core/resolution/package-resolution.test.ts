@@ -137,8 +137,8 @@ describe("package resolution", () => {
 });
 
 describe("package resolution after a relink", () => {
-  for (const exportsField of [{ ".": "./dist/index.js" }, undefined]) {
-    it(`resolves the copy a package manager relinked after a first resolution, ${exportsField ? "with" : "without"} exports`, () => {
+  for (const exportsField of [{ ".": "./dist/index.js" }, undefined, null]) {
+    it(`resolves the copy a package manager relinked after a first resolution, exports ${JSON.stringify(exportsField) ?? "absent"}`, () => {
       const root = makeTempDir("ajs-package-relink-");
       const consumer = path.join(root, "consumer");
       const link = path.join(consumer, "node_modules", "@scope", "relinked");
