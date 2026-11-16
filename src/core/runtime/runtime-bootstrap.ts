@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { addChannelFilter, setupAntelopeProjectLogging } from "../../logging";
 import type { LaunchOptions } from "../../types";
-import { ConfigLoader, type LoadedConfig } from "../config";
+import { ConfigLoader, logProjectEnv, type LoadedConfig } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type {
   BuildOptions,
@@ -207,6 +207,7 @@ export async function loadProjectRuntimeConfig(
 
   setupAntelopeProjectLogging(config.normalizedConfig.logging);
   applyVerboseChannels(options.verbose);
+  logProjectEnv(projectFolder);
 
   return config;
 }
