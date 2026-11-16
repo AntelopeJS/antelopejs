@@ -178,6 +178,30 @@ describe("package resolution after a relink", () => {
       }
     });
   }
+
+  it("resolves a package from inside itself before a copy higher up the tree", () => {
+    const root = makeTempDir("ajs-package-self-");
+    const write = (folder: string, version: string) => {
+      mkdirSync(folder, { recursive: true });
+      writeFileSync(
+        path.join(folder, "package.json"),
+        JSON.stringify({ name: "lib", version, exports: "./i.js" }),
+      );
+      writeFileSync(path.join(folder, "i.js"), "");
+    };
+    try {
+      write(path.join(root, "node_modules", "lib"), "1.0.0");
+      const own = path.join(root, "packages", "lib");
+      write(own, "2.0.0");
+
+      const resolvedPackage = resolvePackage("lib", own);
+
+      expect(resolvedPackage?.version).to.equal("2.0.0");
+      expect(resolvedPackage?.entry).to.equal(path.join(own, "i.js"));
+    } finally {
+      cleanupTempDir(root);
+    }
+  });
 });
 
 describe("package resolution of fields with the wrong type", () => {

@@ -271,15 +271,49 @@ function requireFrom(folder: string): NodeJS.Require {
   return createRequire(path.join(path.resolve(folder), RESOLVER_FILE));
 }
 
-function declaresExports(packageRoot: string): boolean {
+interface ResolutionManifest {
+  name: unknown;
+  declaresExports: boolean;
+}
+
+function readResolutionManifest(
+  packageRoot: string,
+): ResolutionManifest | undefined {
   try {
     const parsed: unknown = JSON.parse(
       readFileSync(path.join(packageRoot, "package.json"), "utf8"),
     );
-    return isObject(parsed) && parsed.exports !== undefined;
+    return isObject(parsed)
+      ? { name: parsed.name, declaresExports: parsed.exports !== undefined }
+      : undefined;
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+/**
+ * Whether the loader resolves `packageName` from `folder` by self-reference:
+ * the nearest package.json above `folder`, short of a `node_modules` folder,
+ * names `packageName` and declares `exports`. True as well when that
+ * package.json cannot be read, so the loader reports it as it always did.
+ */
+function resolvesBySelfReference(folder: string, packageName: string): boolean {
+  let current = path.resolve(folder);
+  while (path.basename(current) !== "node_modules") {
+    if (existsSync(path.join(current, "package.json"))) {
+      const manifest = readResolutionManifest(current);
+      return (
+        manifest === undefined ||
+        (manifest.name === packageName && manifest.declaresExports)
+      );
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return false;
+    }
+    current = parent;
+  }
+  return false;
 }
 
 /**
@@ -290,22 +324,28 @@ function declaresExports(packageRoot: string): boolean {
  * `require.resolve` still names the old copy. The folder is found and its
  * links followed without that cache, then the entry is resolved inside it:
  * through its `exports`, or as a folder, as the loader does for a bare name.
- * A package found only by self-reference, and every package under
- * `--preserve-symlinks`, keep the loader's resolution, which follows no
- * cached link.
+ * A package `fromFolder` self-references, a package found nowhere on the
+ * lookup path, and every package under `--preserve-symlinks` keep the
+ * loader's resolution, which follows no cached link.
  */
 function resolveCurrentEntry(packageName: string, fromFolder: string): string {
   const resolver = requireFrom(fromFolder);
-  const folder = loaderPreservesSymlinks()
-    ? undefined
-    : (resolver.resolve.paths(packageName) ?? [])
-        .map((lookupFolder) => path.join(lookupFolder, packageName))
-        .find((candidate) => existsSync(path.join(candidate, "package.json")));
+  const folder =
+    loaderPreservesSymlinks() ||
+    resolvesBySelfReference(fromFolder, packageName)
+      ? undefined
+      : (resolver.resolve.paths(packageName) ?? [])
+          .map((lookupFolder) => path.join(lookupFolder, packageName))
+          .find((candidate) =>
+            existsSync(path.join(candidate, "package.json")),
+          );
   if (folder === undefined) {
     return resolver.resolve(packageName);
   }
   const root = realpathSync(folder);
-  return requireFrom(root).resolve(declaresExports(root) ? packageName : root);
+  return requireFrom(root).resolve(
+    readResolutionManifest(root)?.declaresExports ? packageName : root,
+  );
 }
 
 export function resolvePackage(
