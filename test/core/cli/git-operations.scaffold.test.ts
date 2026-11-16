@@ -40,6 +40,17 @@ function buildTemplateRepository(root: string): string {
   );
   writeFileSync(path.join(repo, ".claude", "settings.json"), '{"a":1}\n');
   writeFileSync(path.join(repo, "package.json"), '{"name":"tpl"}\n');
+  mkdirSync(path.join(repo, ".github", "workflows"), { recursive: true });
+  mkdirSync(path.join(repo, ".github", "scripts"), { recursive: true });
+  for (const workflow of ["ci.yml", "module-locks.yml", "next-canary.yml"]) {
+    writeFileSync(
+      path.join(repo, ".github", "workflows", workflow),
+      "on: {}\n",
+    );
+  }
+  for (const script of ["refresh-module-locks.sh", "use-next-previews.mts"]) {
+    writeFileSync(path.join(repo, ".github", "scripts", script), "\n");
+  }
   git(repo, "init", "--initial-branch=main");
   git(repo, "add", "--all");
   git(repo, "commit", "--message", "fixture");
@@ -82,6 +93,33 @@ describe("copyTemplate scaffold", function () {
     );
     expect(readText(path.join(dist, "package.json"))).to.equal(
       '{"name":"tpl"}\n',
+    );
+  });
+
+  it("leaves out the template repository's own workflows and keeps the project's", async function () {
+    this.timeout(30_000);
+    const repo = buildTemplateRepository(root);
+    const dist = path.join(root, "project");
+
+    await gitOperationsModule.copyTemplate(
+      {
+        name: "fixture",
+        repository: pathToFileURL(repo).href,
+        branch: "main",
+      },
+      dist,
+    );
+
+    const github = path.join(dist, ".github");
+    expect(
+      existsSync(path.join(github, "workflows", "module-locks.yml")),
+    ).to.equal(false);
+    expect(
+      existsSync(path.join(github, "workflows", "next-canary.yml")),
+    ).to.equal(false);
+    expect(existsSync(path.join(github, "scripts"))).to.equal(false);
+    expect(readText(path.join(github, "workflows", "ci.yml"))).to.equal(
+      "on: {}\n",
     );
   });
 
