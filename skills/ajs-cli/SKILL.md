@@ -17,6 +17,7 @@ ajs project dev -e production    # select an environment of antelope.config.ts (
 ajs project dev -i           # REPL with the project loaded
 ajs project dev --inspect    # Node inspector (default 127.0.0.1:9229)
 ajs project build            # download & install modules, check they load and interface ranges, write .antelope/build/build.json (--frozen-modules in CI)
+ajs project build --modules-only  # only install the npm and git modules from antelope.config.ts + antelope-lock/: a Dockerfile runs it before copying the sources, so source changes reuse the module layer
 ajs project start            # launch from the build artifact with envOverrides read at start; --refresh-config re-resolves the config at start
 ajs project logging show|set # view/change logging settings
 ```
