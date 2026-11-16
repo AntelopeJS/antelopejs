@@ -172,6 +172,22 @@ const config: VerifyConfig = {
       files: ["test/core/resolution/binding-graph.properties.test.ts", "test/integration/interface-binding.properties.test.ts"],
       violation: null,
     },
+    {
+      name: "formal-watched-folders",
+      covers: [
+        "src/core/runtime/watch/file-hasher.ts",
+        "src/core/runtime/watch/file-watcher.ts",
+        "src/core/runtime/watch/missing-folders.ts",
+      ],
+      command: ["pnpm", "exec", "mocha", "--no-config", "--require", "ts-node/register", "--require", "test/setup.ts", "test/core/watch/file-watcher.folders.property.test.ts", "--exit"],
+      files: [
+        ".agents/skills/formal-watched-folders/**",
+        "test/core/watch/file-watcher.folders.property.test.ts",
+        "test/helpers/watch-folder-scenario.ts",
+        "test/helpers/watch-folder-world.ts",
+      ],
+      violation: null,
+    },
   ],
 };
 
