@@ -47,14 +47,33 @@ function manifestNamed(name: string): ModuleManifest {
   return Object.assign(sinon.createStubInstance(ModuleManifest), { name });
 }
 
-function runModulesOnly(): Promise<Command> {
+function runBuild(...flags: string[]): Promise<Command> {
   return cmdBuild().parseAsync([
     "node",
     "test",
     "--project",
     scratch.project,
-    "--modules-only",
+    ...flags,
   ]);
+}
+
+function runModulesOnly(): Promise<Command> {
+  return runBuild("--modules-only");
+}
+
+const PACKAGE_ONLY_CONFIG =
+  'export default { name: "proj", modules: { pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } } } };\n';
+
+async function failureOf(run: Promise<Command>): Promise<Error> {
+  return run.then(
+    () => expect.fail("expected the command to fail"),
+    (failure: unknown) => {
+      if (failure instanceof Error) {
+        return failure;
+      }
+      throw failure;
+    },
+  );
 }
 
 describe("project build --modules-only: installs", () => {
@@ -115,14 +134,19 @@ describe("project build --modules-only: installs", () => {
   });
 
   it("installs from the module locks only under ANTELOPEJS_FROZEN_MODULES, as a build does", async () => {
-    writeConfig(
-      'export default { name: "proj", modules: { pkg: { source: { type: "package", package: "pkg", version: "1.0.0" } } } };\n',
-    );
+    writeConfig(PACKAGE_ONLY_CONFIG);
     process.env.ANTELOPEJS_FROZEN_MODULES = "1";
 
-    const error = await runModulesOnly().then(
-      () => expect.fail("expected the frozen install to fail"),
-      (failure: unknown) => failure,
+    const error = await failureOf(runModulesOnly());
+
+    expect(String(error)).to.include("No module lock for pkg@1.0.0");
+  });
+
+  it("installs from the module locks only with --frozen-modules, as a build does", async () => {
+    writeConfig(PACKAGE_ONLY_CONFIG);
+
+    const error = await failureOf(
+      runBuild("--modules-only", "--frozen-modules"),
     );
 
     expect(String(error)).to.include("No module lock for pkg@1.0.0");
@@ -180,13 +204,20 @@ describe("project build --modules-only: a configuration that needs the sources",
   it("leaves any other failure of the configuration as it is", async () => {
     writeConfig('throw new Error("broken configuration");\n');
 
-    const error = await runModulesOnly().then(
-      () => expect.fail("expected the configuration to fail"),
-      (failure: unknown) => failure,
+    const error = await failureOf(runModulesOnly());
+
+    expect(String(error)).to.include("broken configuration");
+    expect(error).not.to.have.property("problem");
+  });
+
+  it("leaves a missing import as it is in a full build, where the sources are there", async () => {
+    writeConfig(
+      'import { extra } from "./src/extra";\nexport default { name: "proj", modules: { ...extra } };\n',
     );
 
-    expect(error).to.be.instanceOf(Error);
-    expect(String(error)).to.include("broken configuration");
+    const error = await failureOf(runBuild());
+
+    expect(String(error)).to.include("Cannot find module './src/extra'");
     expect(error).not.to.have.property("problem");
   });
 });
