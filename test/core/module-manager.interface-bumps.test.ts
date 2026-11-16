@@ -126,7 +126,7 @@ describe("ModuleManager interface bumps of a stubbed preview", () => {
         folder: path.join(folder, "modules", "app"),
         field: "optionalDependencies",
         from: ">=0.5.1 <0.6.0",
-        to: ">=0.5.2-next.113.g5abe1f0 <0.6.0",
+        to: "0.5.2-next.113.g5abe1f0",
       },
     ]);
   });
@@ -242,6 +242,11 @@ describe("raiseRangeFloor", () => {
     ["^0.1.8", "0.1.9", "^0.1.9"],
     ["~1.2.0", "1.2.3", "~1.2.3"],
     ["0.1.8", "0.1.9", "0.1.9"],
+    ["^0.4.3", "0.4.4-next.121.g5d83533", "0.4.4-next.121.g5d83533"],
+    ["~0.4.3", "0.4.4-next.1", "0.4.4-next.1"],
+    [">=0.4.3 <0.5.0", "0.4.4-next.1", "0.4.4-next.1"],
+    ["0.4.4-next.1", "0.4.4-next.2", "0.4.4-next.2"],
+    ["workspace:^0.4.3", "0.4.4-next.1", undefined],
     ["0.1.x || 0.2.x", "0.2.1", undefined],
     ["npm:@other-scope/auth-fork@^0.1.8", "0.1.9", undefined],
     ["workspace:*", "0.1.9", undefined],

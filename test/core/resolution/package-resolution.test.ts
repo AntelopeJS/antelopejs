@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -134,6 +134,50 @@ describe("package resolution", () => {
       cleanupTempDir(root);
     }
   });
+});
+
+describe("package resolution after a relink", () => {
+  for (const exportsField of [{ ".": "./dist/index.js" }, undefined]) {
+    it(`resolves the copy a package manager relinked after a first resolution, ${exportsField ? "with" : "without"} exports`, () => {
+      const root = makeTempDir("ajs-package-relink-");
+      const consumer = path.join(root, "consumer");
+      const link = path.join(consumer, "node_modules", "@scope", "relinked");
+      const store = (version: string) => {
+        const folder = path.join(root, "store", version, "relinked");
+        mkdirSync(path.join(folder, "dist"), { recursive: true });
+        writeFileSync(
+          path.join(folder, "package.json"),
+          JSON.stringify({
+            name: "@scope/relinked",
+            version,
+            main: "./dist/index.js",
+            exports: exportsField,
+          }),
+        );
+        writeFileSync(path.join(folder, "dist", "index.js"), "");
+        return folder;
+      };
+      try {
+        mkdirSync(path.dirname(link), { recursive: true });
+        symlinkSync(store("0.4.3"), link, "dir");
+        expect(resolvePackage("@scope/relinked", consumer)?.version).to.equal(
+          "0.4.3",
+        );
+
+        const preview = store("0.4.4-next.1");
+        unlinkSync(link);
+        symlinkSync(preview, link, "dir");
+        const resolvedPackage = resolvePackage("@scope/relinked", consumer);
+
+        expect(resolvedPackage?.version).to.equal("0.4.4-next.1");
+        expect(resolvedPackage?.entry).to.equal(
+          path.join(preview, "dist", "index.js"),
+        );
+      } finally {
+        cleanupTempDir(root);
+      }
+    });
+  }
 });
 
 describe("package resolution of fields with the wrong type", () => {
