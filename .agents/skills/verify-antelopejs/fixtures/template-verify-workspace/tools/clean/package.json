@@ -1,0 +1,7 @@
+{
+  "name": "verify-clean",
+  "version": "1.0.0",
+  "bin": {
+    "verify-clean": "bin.mjs"
+  }
+}

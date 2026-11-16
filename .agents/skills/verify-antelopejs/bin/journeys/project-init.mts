@@ -1,10 +1,14 @@
+import { readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 
-import { absent, equal, exists, exitIs, fileHas, has, interrupted, unchanged } from "../lib/checks.mts";
+import { absent, equal, exists, exitIs, fileHas, has, interrupted, lacks, unchanged } from "../lib/checks.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
 import { FIXTURE_MODULE, initProject, listModules, useOfflineManifest } from "../lib/project.mts";
 import { expectUserCommit, makeUserRepository } from "../lib/repository.mts";
-import { TEMPLATE_SLUG } from "../lib/sources.mts";
+import { TEMPLATE_SLUG, WORKSPACE_TEMPLATE_SLUG } from "../lib/sources.mts";
+
+/** The module the workspace template creates. */
+const WORKSPACE_MODULE = "verify-workspace-fixture";
 
 const FLAGS = ["--template", TEMPLATE_SLUG, "--pm", "pnpm"];
 
@@ -38,6 +42,38 @@ export const journeys: Journey[] = [
         absent(path.join(project, ".git")),
         exists(path.join(project, "node_modules", "@antelopejs", "interface-core")),
       ]);
+    },
+  },
+  {
+    id: "init-workspace-template",
+    title: "a template that is a pnpm workspace installs every workspace package, syncs its guardrails, and runs its own scripts",
+    entryPoint: "ajs project init app --template verify-workspace --pm pnpm --git-init, then pnpm run dev|build and antelopejs-sync --check",
+    async run(context) {
+      await useOfflineManifest(context);
+      const project = path.join(context.work, "app");
+      const init = await context.ajs("project init", ["project", "init", "app", "--template", WORKSPACE_TEMPLATE_SLUG, "--pm", "pnpm", "--git-init"], { timeoutMs: 300_000 });
+      context.tree("tree after init", project);
+      context.expect(
+        init.folder,
+        [
+          exitIs(init, 0),
+          has("stderr", init.stderr, /Dependencies installed/),
+          has("stderr", init.stderr, /Project guardrails synced/),
+          lacks("stderr", init.stderr, /Could not sync/),
+          exists(path.join(project, "node_modules", "typescript")),
+          exists(path.join(project, "demo", "node_modules", ".bin", "verify-clean")),
+        ],
+        { critical: true },
+      );
+      const listed = await listModules(context, project);
+      context.expect(listed.folder, [exitIs(listed, 0), equal("modules read back", listed.names, [WORKSPACE_MODULE])]);
+      const sync = await context.command("antelopejs-sync --check", "pnpm", ["exec", "antelopejs-sync", "--check"], { cwd: project });
+      context.expect(sync.folder, [exitIs(sync, 0), has("stdout", sync.stdout, /Guardrails are in sync/), lacks("stdout", sync.stdout, /Drift:/), exists(path.join(project, ".agents", "setup")), lacks("AGENTS.md", readFileSync(path.join(project, "AGENTS.md"), "utf8"), /verify-template/)]);
+      const dev = await context.command("pnpm run dev", "pnpm", ["run", "dev"], { cwd: project, timeoutMs: 120_000 });
+      context.expect(dev.folder, [exitIs(dev, 0), exists(path.join(project, "demo", "dist", "built.txt")), lacks("stderr", dev.stderr, /not found/)]);
+      rmSync(path.join(project, "demo", "dist"), { recursive: true, force: true });
+      const build = await context.command("pnpm run build", "pnpm", ["run", "build"], { cwd: project, timeoutMs: 120_000 });
+      context.expect(build.folder, [exitIs(build, 0), exists(path.join(project, "demo", "dist", "built.txt")), exists(path.join(project, "dist", "index.js"))]);
     },
   },
   {

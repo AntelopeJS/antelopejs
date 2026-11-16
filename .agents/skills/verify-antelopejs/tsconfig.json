@@ -24,6 +24,9 @@
     "bin/**/*.mts",
     "fixtures/hosts/*.mjs",
     "fixtures/greeter/*/index.js",
-    "fixtures/template-verify-http/test/*.js"
+    "fixtures/template-verify-http/test/*.js",
+    "fixtures/template-verify-workspace/test/*.js",
+    "fixtures/template-verify-workspace/demo/*.mjs",
+    "fixtures/template-verify-workspace/tools/*/bin.mjs"
   ]
 }
