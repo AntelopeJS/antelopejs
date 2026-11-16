@@ -39,13 +39,14 @@ const REMOTE_SOURCE_TYPES: ReadonlySet<ModuleSource["type"]> = new Set([
  * writes no build artifact. A later {@link build} with the same configuration
  * and locks reuses what it installed.
  *
- * @returns The ids of the modules it installed.
+ * @returns How many modules it installed. An `optional: true` module that
+ * fails to install is logged and not counted.
  */
 export async function installRemoteModules(
   projectFolder: string = ".",
   env: string = DEFAULT_ENV,
   options: BuildOptions = {},
-): Promise<string[]> {
+): Promise<number> {
   const { normalizedConfig, fs } = await loadProjectRuntimeConfig(
     projectFolder,
     env,
@@ -56,11 +57,13 @@ export async function installRemoteModules(
       REMOTE_SOURCE_TYPES.has(module.source.type),
     ),
   );
-  await withRaisedMaxListeners(async () => {
-    const loaderContext = await createLoaderContext(normalizedConfig, fs);
-    await buildModuleConfigs({ ...normalizedConfig, modules }, loaderContext);
-  });
-  return Object.keys(modules);
+  const entries = await withRaisedMaxListeners(async () =>
+    buildModuleConfigs(
+      { ...normalizedConfig, modules },
+      await createLoaderContext(normalizedConfig, fs),
+    ),
+  );
+  return entries.length;
 }
 
 /**

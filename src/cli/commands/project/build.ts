@@ -21,7 +21,7 @@ export default function () {
     .addOption(
       new Option(
         "--modules-only",
-        "Only download and install the npm and git modules, from antelope.config.ts and antelope-lock/ alone: skip the local modules, check nothing and write no build artifact. A later build reuses them",
+        "Only download and install the npm and git modules, from antelope.config.ts and antelope-lock/ alone: skip the local modules, do not check that modules load, and write no build artifact. A later build reuses them",
       ),
     )
     .action(lazyAction(async () => (await import("./build-action")).runBuild));

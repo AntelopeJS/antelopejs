@@ -68,26 +68,65 @@ function showBuildConfiguration(
   );
 }
 
-/** Whether `error` is the import of a missing file by the project configuration. */
-function isMissingConfigImport(error: unknown): error is Error {
+/** The error Node and jiti throw for an import of a module that is not there. */
+interface MissingModuleError extends Error {
+  code: typeof MISSING_MODULE_CODE;
+  /** The importing files, the direct importer first. */
+  requireStack: string[];
+}
+
+function isMissingModuleError(error: unknown): error is MissingModuleError {
   return (
     error instanceof Error &&
     isObject(error) &&
     error.code === MISSING_MODULE_CODE &&
     Array.isArray(error.requireStack) &&
-    error.requireStack.some(
-      (file) => isString(file) && path.basename(file) === TS_CONFIG_FILE,
-    )
+    error.requireStack.every(isString)
   );
 }
 
-function missingConfigImportError(error: Error): CliError {
+/** A failed import, by a file of the project, of a module that is not there. */
+interface MissingProjectImport {
+  error: Error;
+  /** The project file that imports it, relative to the project. */
+  importer: string;
+}
+
+function isProjectFile(projectFolder: string, file: string): boolean {
+  const relative = path.relative(projectFolder, file);
+  return (
+    !relative.startsWith("..") &&
+    !path.isAbsolute(relative) &&
+    !relative.split(path.sep).includes("node_modules")
+  );
+}
+
+/**
+ * The missing module `error` reports when a file of the project imported it,
+ * as the configuration and the files it imports do while it is evaluated.
+ */
+function findMissingProjectImport(
+  error: MissingModuleError,
+  projectFolder: string,
+): MissingProjectImport | undefined {
+  const importer = error.requireStack.at(0);
+  const folder = path.resolve(projectFolder);
+  if (importer === undefined || !isProjectFile(folder, importer)) {
+    return undefined;
+  }
+  return { error, importer: path.relative(folder, importer) };
+}
+
+function missingProjectImportError({
+  error,
+  importer,
+}: MissingProjectImport): CliError {
   return new CliError(
     {
       title: `Could not evaluate ${TS_CONFIG_FILE} without the sources of the project`,
-      reason: error.message.split("\n")[0],
+      reason: `${error.message.split("\n")[0]}, imported by ${importer}`,
       fixes: [
-        `Copy the file it names along with ${TS_CONFIG_FILE} and antelope-lock/ before '${MODULES_ONLY_COMMAND}'`,
+        `Copy that file along with ${TS_CONFIG_FILE}, or install the package it names, before '${MODULES_ONLY_COMMAND}'`,
       ],
     },
     { cause: error },
@@ -107,7 +146,7 @@ async function runModulesOnly(
     buildOptions,
   );
   getProcessUi().summary({
-    headline: `Installed ${pluralize(installed.length, "module")}`,
+    headline: `Installed ${pluralize(installed, "module")}`,
     durationMs: Date.now() - startedAt,
     nextSteps: [
       {
@@ -169,9 +208,10 @@ export async function runBuild(
   try {
     await runBuildCommand(commandOptions);
   } catch (error) {
-    if (commandOptions.modulesOnly && isMissingConfigImport(error)) {
-      throw missingConfigImportError(error);
-    }
-    throw error;
+    const missing =
+      commandOptions.modulesOnly && isMissingModuleError(error)
+        ? findMissingProjectImport(error, commandOptions.project)
+        : undefined;
+    throw missing ? missingProjectImportError(missing) : error;
   }
 }
