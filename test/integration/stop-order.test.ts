@@ -125,4 +125,34 @@ describe("module stop order", () => {
       "destroy:redis",
     ]);
   });
+
+  it("stops a consumer of one module of a cycle before every module of the cycle", async function () {
+    this.timeout(20000);
+    projectFolder = await createProject(
+      [
+        sharedInterface(SESSIONS),
+        sharedInterface(PRESENCE),
+        recordingModule("sessions", {
+          implements: [SESSIONS],
+          uses: [PRESENCE],
+        }),
+        recordingModule("api", { uses: [SESSIONS] }),
+        recordingModule("presence", {
+          implements: [PRESENCE],
+          uses: [SESSIONS],
+        }),
+      ],
+      { sessions: {}, api: {}, presence: {} },
+    );
+    manager = await launch(projectFolder);
+
+    expect(await stopAndDestroy()).to.deep.equal([
+      "stop:api",
+      "stop:presence",
+      "stop:sessions",
+      "destroy:api",
+      "destroy:presence",
+      "destroy:sessions",
+    ]);
+  });
 });

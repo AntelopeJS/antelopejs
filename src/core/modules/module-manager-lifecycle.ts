@@ -204,33 +204,67 @@ export function getReverseLifecycleModules(
   );
 }
 
+interface StopGroup {
+  entries: ManagedModule[];
+  /** Position of the group's first entry in the given order. */
+  first: number;
+  providers: Set<StopGroup>;
+  /** Groups still to stop that are bound to this one. */
+  consumers: number;
+}
+
 /**
  * Reorders `entries` so that each module comes before every provider it is
  * bound to, keeping the given order between modules the bindings do not
- * order. Modules on a binding cycle keep their given order among themselves.
+ * order. The modules of a binding cycle come out together, in their given
+ * order, after every module bound to one of them.
  */
 function consumersBeforeProviders(
   entries: readonly ManagedModule[],
   edges: ReadonlyMap<string, ReadonlySet<string>>,
 ): ManagedModule[] {
   const ids = [...new Set(entries.map(({ module }) => module.id))];
-  const componentOf = new Map<string, number>();
-  orderComponents(ids, edges).forEach((component, index) => {
-    component.forEach((id) => componentOf.set(id, index));
+  const groupOf = new Map<string, StopGroup>();
+  for (const component of orderComponents(ids, edges)) {
+    const group: StopGroup = {
+      entries: [],
+      first: Infinity,
+      providers: new Set(),
+      consumers: 0,
+    };
+    component.forEach((id) => groupOf.set(id, group));
+  }
+  entries.forEach((entry, index) => {
+    const group = groupOf.get(entry.module.id)!;
+    group.entries.push(entry);
+    group.first = Math.min(group.first, index);
   });
-  const bindsTo = (consumer: string, provider: string) =>
-    componentOf.get(consumer) !== componentOf.get(provider) &&
-    (edges.get(consumer)?.has(provider) ?? false);
-  const remaining = [...entries];
+  for (const [consumerId, group] of groupOf) {
+    for (const providerId of edges.get(consumerId) ?? []) {
+      const provider = groupOf.get(providerId);
+      if (provider && provider !== group && !group.providers.has(provider)) {
+        group.providers.add(provider);
+        provider.consumers += 1;
+      }
+    }
+  }
+  const ready = [...new Set(groupOf.values())].filter(
+    ({ consumers }) => consumers === 0,
+  );
   const ordered: ManagedModule[] = [];
-  while (remaining.length > 0) {
-    const next = remaining.findIndex(
-      (candidate) =>
-        !remaining.some(({ module }) =>
-          bindsTo(module.id, candidate.module.id),
-        ),
+  while (ready.length > 0) {
+    const next = ready.reduce(
+      (best, group, index) => (group.first < ready[best].first ? index : best),
+      0,
     );
-    ordered.push(...remaining.splice(next, 1));
+    const [group] = ready.splice(next, 1);
+    ordered.push(...group.entries);
+    for (const provider of group.providers) {
+      provider.consumers -= 1;
+      if (provider.consumers === 0) {
+        ready.push(provider);
+      }
+    }
   }
   return ordered;
 }
