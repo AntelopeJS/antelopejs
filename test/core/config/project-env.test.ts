@@ -12,6 +12,7 @@ import {
 } from "../../../src/core/config";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
+const DEBUG_LEVEL = 10;
 const SET_NAME = "AJS_PROJECT_ENV_TEST_SET";
 const KEPT_NAME = "AJS_PROJECT_ENV_TEST_KEPT";
 const SECRET = "s3cr3t-value";
@@ -20,7 +21,7 @@ describe("project .env logging", () => {
   let project: string;
   let lines: string[];
   const collect = (log: Log) => {
-    if (log.channel === "loader.env") {
+    if (log.channel === "loader.env" && log.levelId === DEBUG_LEVEL) {
       lines.push(log.args.map(String).join(" "));
     }
   };

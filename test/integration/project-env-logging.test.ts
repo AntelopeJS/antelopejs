@@ -9,6 +9,7 @@ import path from "node:path";
 import launch, { build } from "../../src";
 import { getActiveShutdownManager } from "../../src/core/runtime";
 
+const DEBUG_LEVEL = 10;
 const VARIABLE = "AJS_PROJECT_ENV_LOGGING_TEST";
 
 async function stopProjects(): Promise<void> {
@@ -25,7 +26,7 @@ describe("project .env names at startup", () => {
   let projectFolder: string;
   let lines: string[];
   const collect = (log: Log) => {
-    if (log.channel === "loader.env") {
+    if (log.channel === "loader.env" && log.levelId === DEBUG_LEVEL) {
       lines.push(log.args.map(String).join(" "));
     }
   };
