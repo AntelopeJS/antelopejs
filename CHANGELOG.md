@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.24.3
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.2...v1.24.3)
+
+### 🚀 Enhancements
+
+- **cli:** Install the remote modules before the sources with project build --modules-only (minor) ([#515](https://github.com/AntelopeJS/antelopejs/pull/515))
+- **core:** Log the names of the variables loaded from .env on the verbose channel (minor) ([#518](https://github.com/AntelopeJS/antelopejs/pull/518))
+
+### 🩹 Fixes
+
+- **modules:** Skip a package module's own install scripts in the cache ([#514](https://github.com/AntelopeJS/antelopejs/pull/514))
+- **modules:** Stop consumers before the providers they are bound to ([#516](https://github.com/AntelopeJS/antelopejs/pull/516))
+- **config:** Restart for a config edit the runtime's own write covers ([#517](https://github.com/AntelopeJS/antelopejs/pull/517))
+- **modules:** Converge install --fix on a prerelease interface ([#525](https://github.com/AntelopeJS/antelopejs/pull/525))
+
+### 💅 Refactors
+
+- **modules:** Restore the stop order of 1.24.2 ([#522](https://github.com/AntelopeJS/antelopejs/pull/522))
+
+### 📖 Documentation
+
+- Remove UPGRADING.md ([#519](https://github.com/AntelopeJS/antelopejs/pull/519))
+
+### ✅ Tests
+
+- **formal:** Add formal targets for the cache lock, build against start, and the binding graph ([#521](https://github.com/AntelopeJS/antelopejs/pull/521))
+- Add a watched-folders formal target and two project journeys ([#520](https://github.com/AntelopeJS/antelopejs/pull/520))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.2
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.1...v1.24.2)
