@@ -62,11 +62,20 @@ describe("config writes", () => {
     );
   });
 
-  it("stops on own writes that come back to a content they left", () => {
+  it("treats a user's edit matching an own write the watcher never saw as the user's", () => {
     recordOwnConfigWrite(configPath, "a", "b");
     recordOwnConfigWrite(configPath, "b", "a");
-    expect(consumeOwnConfigWrite(configPath, hash("a"), hash("c"))).to.equal(
+    expect(consumeOwnConfigWrite(configPath, hash("a"), hash("b"))).to.equal(
       false,
+    );
+  });
+
+  it("continues a run of own writes after writes that came back to the content", () => {
+    recordOwnConfigWrite(configPath, "a", "b");
+    recordOwnConfigWrite(configPath, "b", "a");
+    recordOwnConfigWrite(configPath, "a", "c");
+    expect(consumeOwnConfigWrite(configPath, hash("a"), hash("c"))).to.equal(
+      true,
     );
   });
 

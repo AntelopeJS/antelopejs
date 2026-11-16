@@ -27,7 +27,7 @@ const REPORTS_SOURCE = {
   version: "^2.1.0",
 };
 
-function sha256(content: string): string {
+function sha256(content: string | Uint8Array): string {
   return createHash("sha256").update(content).digest("hex");
 }
 
@@ -66,6 +66,21 @@ describe("module declarations", () => {
     const declarations = await listModuleDeclarations(project);
     expect(declarations["@acme/reports"]).to.include({ optional: true });
     expect(declarations["@acme/reports"].source).to.deep.equal(REPORTS_SOURCE);
+  });
+
+  it("marks its write as its own on a file that is not valid UTF-8", async () => {
+    const original = Buffer.concat([
+      Buffer.from(CONFIG),
+      Buffer.from([0x2f, 0x2f, 0x20, 0xe9, 0x0a]),
+    ]);
+    await writeFile(configPath, original);
+    await saveModuleDeclaration(project, "@acme/reports", {
+      source: REPORTS_SOURCE,
+    });
+    const written = await readFile(configPath);
+    expect(
+      consumeOwnConfigWrite(configPath, sha256(original), sha256(written)),
+    ).to.equal(true);
   });
 
   it("removes the entry it added, giving the file back", async () => {

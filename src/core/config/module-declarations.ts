@@ -72,10 +72,11 @@ function editConfigFile(
       projectFolder,
       new NodeFileSystem(),
     );
-    const source = await readFile(configPath, FILE_ENCODING);
+    const bytes = await readFile(configPath);
+    const source = bytes.toString(FILE_ENCODING);
     const edited = edit(source, configPath);
     if (edited === source) return;
-    recordOwnConfigWrite(configPath, source, edited);
+    recordOwnConfigWrite(configPath, bytes, edited);
     await writeFile(configPath, edited, FILE_ENCODING);
   });
   pendingWrite = run.catch(() => undefined);
