@@ -17,6 +17,8 @@ interface ProjectEnvLoad {
   loaded: Map<string, string>;
   /** The names it declares that the process environment already held. */
   kept: string[];
+  /** Whether {@link logProjectEnv} has logged it. */
+  logged: boolean;
 }
 
 const loadsByEnvFile = new Map<string, ProjectEnvLoad>();
@@ -41,7 +43,7 @@ function forgetPreviousLoad(envPath: string): ProjectEnvLoad {
       delete process.env[name];
     }
   }
-  const load: ProjectEnvLoad = { loaded: new Map(), kept: [] };
+  const load: ProjectEnvLoad = { loaded: new Map(), kept: [], logged: false };
   loadsByEnvFile.set(envPath, load);
   return load;
 }
@@ -82,17 +84,19 @@ export function loadProjectEnv(projectFolder: string): void {
  * Logs, on the debug level of the `loader.env` channel, the names of the
  * variables the last {@link loadProjectEnv} of the project set from its
  * `.env`, and of those it left as the process environment held them, each
- * list in alphabetical order. It never logs a value. Called once logging is set up, since the `.env` is
- * loaded before the `--verbose` channels apply.
+ * list in alphabetical order. It never logs a value, and logs each load once.
+ * Called once logging is set up, since the `.env` is loaded before the
+ * `--verbose` channels apply.
  *
  * @param projectFolder The folder that holds `antelope.config.ts`
  */
 export function logProjectEnv(projectFolder: string): void {
   const envPath = getProjectEnvPath(projectFolder);
   const load = loadsByEnvFile.get(envPath);
-  if (load === undefined) {
+  if (load === undefined || load.logged) {
     return;
   }
+  load.logged = true;
   if (load.loaded.size > 0) {
     Logger.Debug(
       `Loaded from ${envPath}: ${[...load.loaded.keys()].sort().join(", ")}`,
@@ -100,7 +104,24 @@ export function logProjectEnv(projectFolder: string): void {
   }
   if (load.kept.length > 0) {
     Logger.Debug(
-      `Kept from the environment, not ${envPath}: ${load.kept.sort().join(", ")}`,
+      `Kept from the environment, not ${envPath}: ${[...load.kept].sort().join(", ")}`,
     );
   }
+}
+
+/**
+ * `env` without the variables a {@link loadProjectEnv} of this process set
+ * and nothing changed since, for a child process that loads the `.env` of the
+ * project itself and must tell them from the ones its parent was started with.
+ */
+export function withoutProjectEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const filtered = { ...env };
+  for (const { loaded } of loadsByEnvFile.values()) {
+    for (const [name, value] of loaded) {
+      if (filtered[name] === value) {
+        delete filtered[name];
+      }
+    }
+  }
+  return filtered;
 }

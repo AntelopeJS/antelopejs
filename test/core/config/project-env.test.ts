@@ -5,7 +5,11 @@ import { expect } from "chai";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { loadProjectEnv, logProjectEnv } from "../../../src/core/config";
+import {
+  loadProjectEnv,
+  logProjectEnv,
+  withoutProjectEnv,
+} from "../../../src/core/config";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 const SET_NAME = "AJS_PROJECT_ENV_TEST_SET";
@@ -60,5 +64,23 @@ describe("project .env logging", () => {
     expect(lines).to.deep.equal([
       `Loaded from ${path.join(project, ".env")}: ${KEPT_NAME}, ${SET_NAME}`,
     ]);
+  });
+
+  it("logs each load once, so a later launch never repeats an earlier list", () => {
+    loadProjectEnv(project);
+    logProjectEnv(project);
+    logProjectEnv(project);
+
+    expect(lines).to.have.length(1);
+  });
+
+  it("hands a child process the environment without what .env set, so it loads .env itself", () => {
+    process.env[KEPT_NAME] = "from the shell";
+    loadProjectEnv(project);
+
+    const childEnv = withoutProjectEnv(process.env);
+
+    expect(childEnv).not.to.have.property(SET_NAME);
+    expect(childEnv).to.have.property(KEPT_NAME, "from the shell");
   });
 });

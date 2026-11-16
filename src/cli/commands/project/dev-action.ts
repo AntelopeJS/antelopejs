@@ -3,7 +3,7 @@ import { type ChildProcess, fork } from "node:child_process";
 import fs, { unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { DEFAULT_ENV } from "../../../core/config";
+import { DEFAULT_ENV, withoutProjectEnv } from "../../../core/config";
 import { ModuleCache } from "../../../core/modules";
 import {
   getProcessUi,
@@ -99,7 +99,7 @@ function buildRunnerScript(entryPath: string): string {
 
 function buildRunnerEnv(options: DevCommandOptions): RunnerEnv {
   return {
-    ...process.env,
+    ...withoutProjectEnv(process.env),
     ANTELOPE_PROJECT_PATH: options.project,
     ANTELOPE_ENV: options.env,
     ANTELOPE_WATCH: options.watch ? "true" : "false",
