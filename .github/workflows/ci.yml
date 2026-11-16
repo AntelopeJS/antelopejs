@@ -107,14 +107,66 @@ jobs:
       - run: node --test .agents/skills/formal-module-lifecycle/*.test.mjs
       - run: node .agents/skills/formal-module-lifecycle/check.mjs
 
+  formal-module-cache-lock:
+    needs: select
+    if: needs.select.outputs.tier != 'draft' && needs.select.outputs.tier != 'none'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/antelopejs-formal
+          key: tla2tools-1.7.4
+      - run: node .agents/skills/formal-module-cache-lock/check.mjs
+
+  formal-build-start:
+    needs: select
+    if: needs.select.outputs.tier != 'draft' && needs.select.outputs.tier != 'none'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/antelopejs-formal
+          key: tla2tools-1.7.4
+      - run: node .agents/skills/formal-build-start/check.mjs
+
   checks:
     if: always()
-    needs: [select, ci, verify-map, formal-module-lifecycle]
+    needs:
+      [
+        select,
+        ci,
+        verify-map,
+        formal-module-lifecycle,
+        formal-module-cache-lock,
+        formal-build-start,
+      ]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - if: >-
-          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.tier != 'draft' && needs.select.outputs.tier != 'none' && (needs.verify-map.result == 'skipped' || needs.formal-module-lifecycle.result == 'skipped'))
+          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.tier != 'draft' && needs.select.outputs.tier != 'none' && (needs.verify-map.result == 'skipped' || needs.formal-module-lifecycle.result == 'skipped' || needs.formal-module-cache-lock.result == 'skipped' || needs.formal-build-start.result == 'skipped'))
         run: exit 1
       - if: needs.select.outputs.tier == 'draft'
         run: |
