@@ -4,11 +4,11 @@ import path from "node:path";
 import fc from "fast-check";
 import sinon from "sinon";
 
-import { FileWatcher } from "../../src/core/runtime";
 import {
+  FileWatcher,
   WATCH_RETRY_DELAY_MS,
   WATCH_RETRY_LIMIT,
-} from "../../src/core/runtime/watch/missing-folders";
+} from "../../src/core/runtime";
 import { FolderWorld } from "./watch-folder-world";
 
 const project = path.resolve("/proj");
