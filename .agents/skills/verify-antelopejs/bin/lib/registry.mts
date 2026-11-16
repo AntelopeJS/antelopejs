@@ -13,6 +13,8 @@ export interface PublishedPackage {
   version: string;
   dependencies?: Record<string, string>;
   packageManager?: string;
+  /** The `exports` map of the package.json, such as `{ "./interface": { types: "./dist/interface.d.ts" } }`. */
+  exports?: Record<string, Record<string, string>>;
   files?: Record<string, string>;
 }
 
@@ -22,6 +24,7 @@ interface PublishedManifest {
   main: string;
   dependencies: Record<string, string>;
   packageManager?: string;
+  exports?: Record<string, Record<string, string>>;
 }
 
 interface PackumentVersion extends PublishedManifest {
@@ -91,8 +94,12 @@ export class LocalRegistry {
     if (pkg.packageManager) {
       manifest.packageManager = pkg.packageManager;
     }
+    if (pkg.exports) {
+      manifest.exports = pkg.exports;
+    }
     writeFileSync(path.join(source, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
     for (const [file, content] of Object.entries({ "index.js": "module.exports = {};\n", ...pkg.files })) {
+      mkdirSync(path.dirname(path.join(source, file)), { recursive: true });
       writeFileSync(path.join(source, file), content);
     }
     const output = path.join(this.folder, "tarballs");

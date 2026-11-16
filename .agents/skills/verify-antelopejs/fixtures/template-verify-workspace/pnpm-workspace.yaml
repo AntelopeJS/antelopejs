@@ -1,0 +1,4 @@
+packages:
+  - demo
+minimumReleaseAgeExclude:
+  - "@antelopejs/interface-*"

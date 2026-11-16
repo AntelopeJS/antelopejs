@@ -1,0 +1,24 @@
+{
+  "name": "verify-workspace-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "pnpm --filter demo run build && tsc",
+    "dev": "pnpm --filter demo run build",
+    "sync": "antelopejs-sync",
+    "sync:check": "antelopejs-sync --check"
+  },
+  "dependencies": {
+    "@antelopejs/interface-core": ">=0.5.1 <0.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.15",
+    "antelopejs-sync": "file:tools/sync",
+    "typescript": "5.9.3"
+  },
+  "packageManager": "pnpm@10.6.5",
+  "antelopeJs": {
+    "test": "antelope.test.ts"
+  }
+}

@@ -7,5 +7,5 @@
     "strict": true,
     "types": ["node"],
   },
-  "include": ["greeter/antelope.config.ts", "template-verify-http/antelope.test.ts"]
+  "include": ["greeter/antelope.config.ts", "template-verify-http/antelope.test.ts", "template-verify-workspace/antelope.test.ts"]
 }

@@ -8,6 +8,7 @@ import { getActiveShutdownManager } from "../../src/core/runtime";
 
 const MARKER_TIMEOUT_MS = 8000;
 const MARKER_POLL_MS = 50;
+const SETTLE_MS = 1000;
 
 const EDITING_MODULE_SOURCE = `const fs = require("node:fs");
 exports.construct = (c) => {
@@ -17,6 +18,26 @@ exports.construct = (c) => {
   }
 };
 exports.start = () => {};
+exports.stop = () => {};
+exports.destroy = () => {};
+`;
+
+const DECLARING_MODULE_SOURCE = `const fs = require("node:fs");
+let cfg;
+exports.construct = (c) => {
+  cfg = c;
+  if (!fs.existsSync(c.editedPath)) {
+    fs.writeFileSync(c.editedPath, "");
+    fs.writeFileSync(c.configPath, c.editedConfig);
+  }
+};
+exports.start = () => {
+  fs.appendFileSync(cfg.startsPath, "started\\n");
+  return require(cfg.declarationsModule).saveModuleDeclaration(cfg.projectFolder, "c", {
+    source: { type: "local", path: "./c" },
+    disabled: true,
+  });
+};
 exports.stop = () => {};
 exports.destroy = () => {};
 `;
@@ -96,5 +117,70 @@ describe("config edit during a watch-mode launch", () => {
     await launch(projectFolder, "default", { watch: true });
 
     expect(await waitForFile(markerPath)).to.equal(true);
+  });
+
+  it("restarts with a module added before the runtime wrote the config itself", async function () {
+    this.timeout(30000);
+    const configPath = path.join(projectFolder, "antelope.config.ts");
+    const markerPath = path.join(projectFolder, "b-started.txt");
+    await writeModule(projectFolder, "a", DECLARING_MODULE_SOURCE);
+    await writeModule(projectFolder, "b", MARKING_MODULE_SOURCE);
+    const moduleB = {
+      source: { type: "local", path: "./b", main: "index.js" },
+      config: { markerPath },
+    };
+    const moduleA = (editedConfig: string) => ({
+      source: { type: "local", path: "./a", main: "index.js" },
+      config: {
+        configPath,
+        projectFolder,
+        declarationsModule: path.resolve(__dirname, "../../src/core/config"),
+        startsPath: path.join(projectFolder, "a-starts.txt"),
+        editedPath: path.join(projectFolder, "edited.txt"),
+        editedConfig,
+      },
+    });
+    const toSource = (modules: {
+      a: ReturnType<typeof moduleA>;
+      b?: typeof moduleB;
+    }) => `export default ${JSON.stringify({ name: "cfg-race", modules })};\n`;
+    const edited = toSource({ a: moduleA(""), b: moduleB });
+    await fs.writeFile(configPath, toSource({ a: moduleA(edited) }));
+
+    await launch(projectFolder, "default", { watch: true });
+
+    expect(await waitForFile(markerPath)).to.equal(true);
+  });
+
+  it("keeps running through a config write the runtime made itself", async function () {
+    this.timeout(30000);
+    const configPath = path.join(projectFolder, "antelope.config.ts");
+    const startsPath = path.join(projectFolder, "a-starts.txt");
+    const editedPath = path.join(projectFolder, "edited.txt");
+    await writeModule(projectFolder, "a", DECLARING_MODULE_SOURCE);
+    await fs.writeFile(editedPath, "");
+    const modules = {
+      a: {
+        source: { type: "local", path: "./a", main: "index.js" },
+        config: {
+          configPath,
+          projectFolder,
+          declarationsModule: path.resolve(__dirname, "../../src/core/config"),
+          startsPath,
+          editedPath,
+          editedConfig: "",
+        },
+      },
+    };
+    await fs.writeFile(
+      configPath,
+      `export default ${JSON.stringify({ name: "cfg-own", modules })};\n`,
+    );
+
+    await launch(projectFolder, "default", { watch: true });
+    await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
+
+    expect(await fs.readFile(configPath, "utf-8")).to.contain("./c");
+    expect(await fs.readFile(startsPath, "utf-8")).to.equal("started\n");
   });
 });

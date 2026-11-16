@@ -1,0 +1,7 @@
+{
+  "name": "antelopejs-sync",
+  "version": "1.0.0",
+  "bin": {
+    "antelopejs-sync": "bin.mjs"
+  }
+}

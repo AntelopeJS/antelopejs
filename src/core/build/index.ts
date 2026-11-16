@@ -1,3 +1,5 @@
+import type { ModuleSource } from "@antelopejs/interface-core/config";
+
 import { DEFAULT_ENV } from "../config";
 import {
   ModuleManager,
@@ -7,6 +9,7 @@ import {
 } from "../modules";
 import type { BuildOptions } from "../runtime";
 import {
+  buildModuleConfigs,
   createLoaderContext,
   createModuleEntriesForManager,
   ensureGraphIsValid,
@@ -21,6 +24,47 @@ import {
 
 export * as interfaceRangesModule from "./interface-ranges";
 export type { ProjectInterfaceCheck } from "./interface-ranges";
+
+const REMOTE_SOURCE_TYPES: ReadonlySet<ModuleSource["type"]> = new Set([
+  "package",
+  "git",
+]);
+
+/**
+ * Downloads and installs into the module cache the modules of `env` that come
+ * from outside the project, `package` and `git` sources, exactly as
+ * {@link build} does, honouring the module locks and `frozenModules`. It needs
+ * only the configuration and `antelope-lock/`: it skips `local` and
+ * `local-folder` modules, checks nothing about how the modules load, and
+ * writes no build artifact. A later {@link build} with the same configuration
+ * and locks reuses what it installed.
+ *
+ * @returns How many modules it installed. An `optional: true` module that
+ * fails to install is logged and not counted.
+ */
+export async function installRemoteModules(
+  projectFolder: string = ".",
+  env: string = DEFAULT_ENV,
+  options: BuildOptions = {},
+): Promise<number> {
+  const { normalizedConfig, fs } = await loadProjectRuntimeConfig(
+    projectFolder,
+    env,
+    options,
+  );
+  const modules = Object.fromEntries(
+    Object.entries(normalizedConfig.modules).filter(([, module]) =>
+      REMOTE_SOURCE_TYPES.has(module.source.type),
+    ),
+  );
+  const entries = await withRaisedMaxListeners(async () =>
+    buildModuleConfigs(
+      { ...normalizedConfig, modules },
+      await createLoaderContext(normalizedConfig, fs),
+    ),
+  );
+  return entries.length;
+}
 
 /**
  * Loads the modules of the project for `env`, checks that their interfaces

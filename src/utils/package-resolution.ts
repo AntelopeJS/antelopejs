@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
@@ -23,6 +23,7 @@ interface PackageJson {
   antelopeJs?: ResolvedPackage["antelopeJs"];
 }
 
+const RESOLVER_FILE = "__antelope_resolver__.js";
 const realPathCache = new Map<string, string>();
 const pathVariantsCache = new Map<string, string[]>();
 let pathCacheGeneration = 0;
@@ -266,14 +267,97 @@ export function findPackageFromEntry(
   }
 }
 
+function requireFrom(folder: string): NodeJS.Require {
+  return createRequire(path.join(path.resolve(folder), RESOLVER_FILE));
+}
+
+interface ResolutionManifest {
+  name: unknown;
+  declaresExports: boolean;
+}
+
+function readResolutionManifest(
+  packageRoot: string,
+): ResolutionManifest | undefined {
+  try {
+    const parsed: unknown = JSON.parse(
+      readFileSync(path.join(packageRoot, "package.json"), "utf8"),
+    );
+    return isObject(parsed)
+      ? {
+          name: parsed.name,
+          declaresExports:
+            parsed.exports !== undefined && parsed.exports !== null,
+        }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Whether the loader resolves `packageName` from `folder` by self-reference:
+ * the nearest package.json above `folder`, short of a `node_modules` folder,
+ * names `packageName` and declares `exports`. True as well when that
+ * package.json cannot be read, so the loader reports it as it always did.
+ */
+function resolvesBySelfReference(folder: string, packageName: string): boolean {
+  let current = path.resolve(folder);
+  while (path.basename(current) !== "node_modules") {
+    if (existsSync(path.join(current, "package.json"))) {
+      const manifest = readResolutionManifest(current);
+      return (
+        manifest === undefined ||
+        (manifest.name === packageName && manifest.declaresExports)
+      );
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return false;
+    }
+    current = parent;
+  }
+  return false;
+}
+
+/**
+ * The entry of `packageName` as seen from `fromFolder`, read from the disk as
+ * it is now. The module loader keeps the real path of every
+ * `node_modules/<name>` link it followed for the life of the process, so once
+ * a package manager relinks the folder to another version, a plain
+ * `require.resolve` still names the old copy. The folder is found and its
+ * links followed without that cache, then the entry is resolved inside it:
+ * through its `exports`, or as a folder, as the loader does for a bare name.
+ * A package `fromFolder` self-references, a package found nowhere on the
+ * lookup path, and every package under `--preserve-symlinks` keep the
+ * loader's resolution, which follows no cached link.
+ */
+function resolveCurrentEntry(packageName: string, fromFolder: string): string {
+  const resolver = requireFrom(fromFolder);
+  const folder =
+    loaderPreservesSymlinks() ||
+    resolvesBySelfReference(fromFolder, packageName)
+      ? undefined
+      : (resolver.resolve.paths(packageName) ?? [])
+          .map((lookupFolder) => path.join(lookupFolder, packageName))
+          .find((candidate) =>
+            existsSync(path.join(candidate, "package.json")),
+          );
+  if (folder === undefined) {
+    return resolver.resolve(packageName);
+  }
+  const root = realpathSync(folder);
+  return requireFrom(root).resolve(
+    readResolutionManifest(root)?.declaresExports ? packageName : root,
+  );
+}
+
 export function resolvePackage(
   packageName: string,
   fromFolder: string,
 ): ResolvedPackage | undefined {
   try {
-    const entry = createRequire(
-      path.join(path.resolve(fromFolder), "__antelope_resolver__.js"),
-    ).resolve(packageName);
+    const entry = resolveCurrentEntry(packageName, fromFolder);
     return findPackageFromEntry(entry, packageName, fromFolder);
   } catch {
     return undefined;

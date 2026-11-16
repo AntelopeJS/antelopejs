@@ -1,0 +1,11 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "verify-clean dist && node build.mjs"
+  },
+  "devDependencies": {
+    "verify-clean": "file:../tools/clean"
+  }
+}

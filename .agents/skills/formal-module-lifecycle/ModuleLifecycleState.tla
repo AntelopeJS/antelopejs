@@ -53,7 +53,7 @@ VARIABLES
   watched,       \* modules the FileWatcher scanned
   cfgHash,       \* the config content the FileWatcher hashed last
   cfgEvent,      \* fs.watch reported a change of antelope.config.ts
-  restartReq,    \* the config listener is reading the file (restartUnlessOwnWrite)
+  restartReq,    \* the config listener is checking the change (restartUnlessOwnWrite)
   isRestarting,  \* project-launch.ts `isRestarting`
   restartPc,     \* how far restartProject got
   restartFrom,   \* the launch restartProject is shutting down

@@ -70,12 +70,52 @@ function decodeViewVersions(output: string): string[] {
   return answers.filter(isExactVersionString);
 }
 
-/** The `version` of a packed package.json, or `undefined` when it holds no exact version. */
-function decodePackedVersion(packageJsonText: string): string | undefined {
+/** The scripts of the installed folder itself that npm, pnpm or yarn run during an install. */
+const INSTALL_LIFECYCLE_SCRIPTS: readonly string[] = [
+  "pnpm:devPreinstall",
+  "preinstall",
+  "install",
+  "postinstall",
+  "prepublish",
+  "preprepare",
+  "prepare",
+  "postprepare",
+  "predependencies",
+  "dependencies",
+  "postdependencies",
+];
+
+/** What the downloader reads in the package.json of a packed package. */
+interface PackedManifest {
+  /** Its `version`, or `undefined` when it holds no exact version. */
+  version: string | undefined;
+  /**
+   * Its text without the scripts its own install would run, or `undefined`
+   * when it declares none. Those scripts serve the development of the
+   * module, such as installing git hooks, and may be POSIX shell that
+   * cmd.exe cannot run.
+   */
+  withoutInstallScripts: string | undefined;
+}
+
+function parsePackedManifest(packageJsonText: string): PackedManifest {
   const parsed: unknown = JSON.parse(packageJsonText);
-  return isObject(parsed) && isExactVersionString(parsed.version)
-    ? parsed.version
-    : undefined;
+  if (!isObject(parsed)) {
+    return { version: undefined, withoutInstallScripts: undefined };
+  }
+  const declared = Object.entries(
+    isObject(parsed.scripts) ? parsed.scripts : {},
+  );
+  const kept = declared.filter(
+    ([name]) => !INSTALL_LIFECYCLE_SCRIPTS.includes(name),
+  );
+  return {
+    version: isExactVersionString(parsed.version) ? parsed.version : undefined,
+    withoutInstallScripts:
+      kept.length === declared.length
+        ? undefined
+        : `${JSON.stringify({ ...parsed, scripts: Object.fromEntries(kept) }, null, 2)}\n`,
+  };
 }
 
 function pickBestVersion(versions: string[], spec: string): string | undefined {
@@ -240,9 +280,11 @@ async function downloadPackage(
   await ctx.extract(path.join(tmp, filename), tmp);
 
   const tmpPackage = path.join(tmp, "package");
-  const packedVersion = decodePackedVersion(
-    await ctx.fs.readFileString(path.join(tmpPackage, PACKAGE_JSON)),
+  const packageJsonPath = path.join(tmpPackage, PACKAGE_JSON);
+  const manifest = parsePackedManifest(
+    await ctx.fs.readFileString(packageJsonPath),
   );
+  const packedVersion = manifest.version;
   const key = { package: source.package, version: packedVersion ?? version };
   const entry = cacheEntry(key.package, key.version);
   const requested = cacheEntry(source.package, version);
@@ -251,6 +293,9 @@ async function downloadPackage(
     throw new Error(
       `${packCommand} returned version ${key.version}, not the ${requested} this run downloads; check the registry`,
     );
+  }
+  if (manifest.withoutInstallScripts !== undefined) {
+    await ctx.fs.writeFile(packageJsonPath, manifest.withoutInstallScripts);
   }
   const record = await ctx.locks.find(key);
   Logger.Trace(`Transferring ${source.package}@${version} to cache`);

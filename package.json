@@ -67,7 +67,7 @@
     "size": "antelopejs-check-size",
     "sync": "antelopejs-sync",
     "sync:check": "antelopejs-sync --check",
-    "typecheck": "tsc --noEmit && tsc -p test && tsc -p playground && tsc -p .agents/skills/verify-antelopejs && tsc -p .agents/skills/verify-antelopejs/fixtures && tsc -p .agents/skills/formal-module-lifecycle",
+    "typecheck": "tsc --noEmit && tsc -p test && tsc -p playground && tsc -p .agents/skills/verify-antelopejs && tsc -p .agents/skills/verify-antelopejs/fixtures && tsc -p .agents/skills/formal-module-lifecycle && tsc -p .agents/skills/formal-module-cache-lock && tsc -p .agents/skills/formal-build-start",
     "suppressions": "antelopejs-suppressions",
     "suppressions:update": "antelopejs-suppressions --update"
   },
