@@ -36,7 +36,7 @@ export function recordOwnConfigWrite(
  * hashed `previousHash` into the content hashed `currentHash`, both SHA-256
  * hex digests of the file. The writes up to `currentHash` are consumed. A
  * change any other edit took part in is the user's, even when the runtime
- * wrote the file last.
+ * wrote the file last, and it forgets every own write on that path.
  */
 export function consumeOwnConfigWrite(
   filePath: string,
@@ -44,13 +44,14 @@ export function consumeOwnConfigWrite(
   currentHash: string | undefined,
 ): boolean {
   const resolved = path.resolve(filePath);
-  const run = ownWrites.get(resolved);
-  if (!run || previousHash === undefined || currentHash === undefined) {
-    return false;
-  }
-  const from = run.lastIndexOf(previousHash);
-  const to = from < 0 ? -1 : run.indexOf(currentHash, from + 1);
+  const run = ownWrites.get(resolved) ?? [];
+  const from = previousHash === undefined ? -1 : run.lastIndexOf(previousHash);
+  const to =
+    from < 0 || currentHash === undefined
+      ? -1
+      : run.indexOf(currentHash, from + 1);
   if (to < 0) {
+    ownWrites.delete(resolved);
     return false;
   }
   ownWrites.set(resolved, run.slice(to));

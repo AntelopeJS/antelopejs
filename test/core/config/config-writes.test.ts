@@ -36,6 +36,16 @@ describe("config writes", () => {
     );
   });
 
+  it("forgets own writes once the watcher sees a user's edit", () => {
+    recordOwnConfigWrite(configPath, "a", "b");
+    expect(consumeOwnConfigWrite(configPath, hash("a"), hash("c"))).to.equal(
+      false,
+    );
+    expect(consumeOwnConfigWrite(configPath, hash("a"), hash("b"))).to.equal(
+      false,
+    );
+  });
+
   it("treats an own write over a user's edit the watcher missed as the user's edit", () => {
     recordOwnConfigWrite(configPath, "user edit", "user edit + own");
     expect(
