@@ -7,7 +7,17 @@ import { FileHasher, isVanishedPathError } from "./file-hasher";
 import { MissingFolders } from "./missing-folders";
 
 export type ModuleChangeListener = (moduleId: string) => void;
-export type FileChangeListener = (filePath: string) => void;
+/**
+ * A watched file's change, as SHA-256 hex digests of its content,
+ * `undefined` while the file is absent.
+ */
+export interface FileChange {
+  /** The content the watcher last saw, or the one the project read. */
+  previousHash: string | undefined;
+  hash: string | undefined;
+}
+
+export type FileChangeListener = (filePath: string, change: FileChange) => void;
 
 export interface WatchFileOptions {
   /** The file may be absent: its creation and its deletion are changes. */
@@ -296,12 +306,13 @@ export class FileWatcher {
       return;
     }
 
+    const change: FileChange = { previousHash: entry.hash, hash: newHash };
     entry.hash = newHash;
     if (this.stopped) {
       return;
     }
     for (const listener of entry.listeners) {
-      listener(filePath);
+      listener(filePath, change);
     }
   }
 

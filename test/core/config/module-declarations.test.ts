@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -25,6 +26,10 @@ const REPORTS_SOURCE = {
   package: "@acme/reports",
   version: "^2.1.0",
 };
+
+function sha256(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
 
 describe("module declarations", () => {
   let project: string;
@@ -55,7 +60,9 @@ describe("module declarations", () => {
     });
     const written = await readFile(configPath, "utf-8");
     expect(written).to.contain("// Declared by hand.");
-    expect(consumeOwnConfigWrite(configPath, written)).to.equal(true);
+    expect(
+      consumeOwnConfigWrite(configPath, sha256(CONFIG), sha256(written)),
+    ).to.equal(true);
     const declarations = await listModuleDeclarations(project);
     expect(declarations["@acme/reports"]).to.include({ optional: true });
     expect(declarations["@acme/reports"].source).to.deep.equal(REPORTS_SOURCE);

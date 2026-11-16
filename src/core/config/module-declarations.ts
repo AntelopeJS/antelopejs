@@ -75,7 +75,7 @@ function editConfigFile(
     const source = await readFile(configPath, FILE_ENCODING);
     const edited = edit(source, configPath);
     if (edited === source) return;
-    recordOwnConfigWrite(configPath, edited);
+    recordOwnConfigWrite(configPath, source, edited);
     await writeFile(configPath, edited, FILE_ENCODING);
   });
   pendingWrite = run.catch(() => undefined);

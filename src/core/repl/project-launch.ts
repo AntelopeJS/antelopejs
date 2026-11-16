@@ -1,5 +1,4 @@
 import { Logging } from "@antelopejs/interface-core/logging";
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Writable } from "node:stream";
 
@@ -14,6 +13,7 @@ import {
 import type { NodeFileSystem } from "../filesystem";
 import type { ModuleManager } from "../modules";
 import {
+  type FileChange,
   type FileWatcher,
   type LoaderContext,
   type ProjectPreparer,
@@ -38,7 +38,6 @@ const MAX_STREAM_LISTENERS = 20;
 const INTERACTIVE_PROMPT = "> ";
 const SHUTDOWN_PRIORITY_RESOURCES = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
-const CONFIG_ENCODING = "utf-8";
 const UNSUPPORTED_ARTIFACT_OPTIONS_WARNING =
   "Watch and interactive modes are only available when launching from configuration; ignoring them for this build artifact launch.";
 
@@ -109,8 +108,8 @@ async function setupWatching(
   if (configPath) {
     await watcher.watchFile(
       configPath,
-      () => {
-        void restartUnlessOwnWrite(configPath, () =>
+      (_, change) => {
+        void restartUnlessOwnWrite(configPath, change, () =>
           restartProject(projectFolder, env, options),
         );
       },
@@ -261,14 +260,15 @@ export async function launchFromBuild(
 /**
  * Restarts the project for an edit of its configuration file, unless the
  * edit is one the runtime made itself through the module declaration
- * functions: the module it describes is already loaded, stopped or reloaded.
+ * functions on the content the project last loaded: the module it describes
+ * is already loaded, stopped or reloaded.
  */
 async function restartUnlessOwnWrite(
   configPath: string,
+  { previousHash, hash }: FileChange,
   restart: () => Promise<void>,
 ): Promise<void> {
-  const content = await readFile(configPath, CONFIG_ENCODING).catch(() => "");
-  if (consumeOwnConfigWrite(configPath, content)) {
+  if (consumeOwnConfigWrite(configPath, previousHash, hash)) {
     Logger.Debug("Configuration file updated by the runtime, no restart");
     return;
   }
