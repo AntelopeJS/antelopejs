@@ -176,7 +176,7 @@ ConfigNoticed(L) ==
   /\ UNCHANGED <<editVars, genVars, launchVars, sdVars, watching, watched,
                  restartVars, hrVars, procVars>>
 
-(* restartUnlessOwnWrite read the file (not the runtime's own write), and *)
+(* restartUnlessOwnWrite found a change not the runtime's own, and        *)
 (* restartProject runs: unless a restart runs or the active launch is     *)
 (* already stopping, it holds a tolerance for the whole restart, then     *)
 (* shuts the active launch down.                                          *)
