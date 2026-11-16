@@ -29,6 +29,7 @@ docs:
 ## Sub-features
 
 - `dev-call-stop`: the module serves; SIGINT exits 130 with `Stopped the project`; the port is refused afterwards.
+- `dev-stop-consumer-first`: with `greeter-consumer` listed before `greeter-provider` in `antelope.config.ts`, SIGINT stops the consumer before the provider it is bound to.
 - `dev-hmr`: with `--watch`, two edits of `src/message.ts` each reach the HTTP answer.
 - `dev-failed-reload`: error path: a syntax error logs `Failed to reload module`, the old answer keeps serving, the next good edit recovers.
 - `dev-modules-add-while-running`: persistence path: `ajs project modules add --mode local` and then `remove` while `dev --watch` runs each restart the project, with two modules and then one loaded, and the fixture keeps answering.

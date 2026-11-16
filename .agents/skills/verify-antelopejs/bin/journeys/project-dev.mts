@@ -6,7 +6,7 @@ import { freePort } from "../lib/evidence.mts";
 import type { HttpResult } from "../lib/evidence.mts";
 import { field } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, FIXTURE_MODULE, installFixture } from "../lib/project.mts";
+import { copyGreeter, FIXTURE_MODULE, installFixture, listConsumerFirst } from "../lib/project.mts";
 import { useProject } from "../lib/shared-project.mts";
 import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
@@ -48,6 +48,25 @@ export const journeys: Journey[] = [
       context.expect(stop.folder, [exitIs(stop, 130), has("stderr", stop.stderr, /Stopped the project/), has("stderr", stop.stderr, /Watch mode\s+disabled/)]);
       const after = await context.http("fixture after stop", dev);
       context.expect(after.folder, [refused(after)]);
+    },
+  },
+  {
+    id: "dev-stop-consumer-first",
+    title: "SIGINT stops a consumer listed before its provider first, while the provider still runs",
+    entryPoint: "ajs project dev with greeter-consumer listed before greeter-provider, then SIGINT",
+    async run(context) {
+      const greeter = copyGreeter(context);
+      listConsumerFirst(greeter);
+      const dev = await context.background("project dev", ["project", "dev"], { cwd: greeter });
+      const ready = await context.waitReady("ready", dev);
+      context.expect(ready.folder, [answers(ready, "greeting", "Hello, verifier")], { critical: true });
+      const stop = await context.stop("stop with SIGINT", dev);
+      const consumer = stop.stdout.indexOf("greeter-consumer stopped");
+      const provider = stop.stdout.indexOf("greeter-provider stopped");
+      context.expect(stop.folder, [
+        exitIs(stop, 130),
+        { name: "consumer stops before its provider", pass: consumer >= 0 && provider > consumer, detail: `consumer at ${consumer}, provider at ${provider}` },
+      ]);
     },
   },
   {
