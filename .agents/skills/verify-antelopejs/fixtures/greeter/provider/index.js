@@ -5,7 +5,5 @@ exports.construct = function construct(config) {
   ImplementInterface(Greeter, { greet: (name) => `${config?.prefix ?? "Hello"}, ${name}` });
 };
 exports.start = function start() {};
-exports.stop = function stop() {
-  console.log("greeter-provider stopped");
-};
+exports.stop = function stop() {};
 exports.destroy = function destroy() {};

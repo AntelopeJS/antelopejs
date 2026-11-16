@@ -61,28 +61,6 @@ export function setSharedVersion(greeter: string, version: string): void {
   writeFileSync(file, readFileSync(file, "utf8").replace('"1.0.0"', JSON.stringify(version)));
 }
 
-/** Lists `greeter-consumer` before `greeter-provider` in the greeter's `antelope.config.ts`. */
-export function listConsumerFirst(greeter: string): void {
-  writeFileSync(
-    path.join(greeter, "antelope.config.ts"),
-    `import { defineConfig } from "@antelopejs/interface-core/config";
-
-export default defineConfig({
-  name: "greeter",
-  modules: {
-    "greeter-consumer": {
-      source: { type: "local", path: "./consumer" },
-    },
-    "greeter-provider": {
-      source: { type: "local", path: "./provider", installCommand: ["pnpm install --offline"] },
-      config: { prefix: "Hello" },
-    },
-  },
-});
-`,
-  );
-}
-
 /** Copies the greeter fixture project into the journey's own folder. */
 export function copyGreeter(context: JourneyContext): string {
   const target = path.join(context.work, "greeter");
