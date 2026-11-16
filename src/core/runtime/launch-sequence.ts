@@ -6,6 +6,7 @@ import type { LaunchOptions } from "../../types";
 import {
   getProjectEnvPath,
   loadProjectEnv,
+  logProjectEnv,
   tryFindConfigPath,
 } from "../config";
 import { NodeFileSystem } from "../filesystem";
@@ -437,6 +438,7 @@ function setupLogging({ request, project }: ProjectLaunch): void {
   setLogAudience("app");
   setupAntelopeProjectLogging(project.logging);
   applyVerboseChannels(request.options.verbose);
+  logProjectEnv(request.projectFolder);
 }
 
 function verifyProject({
