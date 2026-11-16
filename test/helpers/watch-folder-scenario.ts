@@ -14,7 +14,7 @@ import { FolderWorld } from "./watch-folder-world";
 const project = path.resolve("/proj");
 const moduleRoot = path.join(project, "modules", "mod");
 
-export const folderNames = [
+const folderNames = [
   "project",
   "modules",
   "mod",
@@ -24,10 +24,10 @@ export const folderNames = [
   "nodeModules",
 ] as const;
 
-export type FolderName = (typeof folderNames)[number];
+type FolderName = (typeof folderNames)[number];
 
 /** The folders the operations act on, from the project folder down to a nested one. */
-export const folders: Record<FolderName, string> = {
+const folders: Record<FolderName, string> = {
   project,
   modules: path.join(project, "modules"),
   mod: moduleRoot,
@@ -73,7 +73,7 @@ function isFailure(operation: Operation): boolean {
 }
 
 /** The most injected failures a scenario may hold: more would make the watcher give up on purpose. */
-export const FAILURE_BUDGET = WATCH_RETRY_LIMIT;
+const FAILURE_BUDGET = WATCH_RETRY_LIMIT;
 
 const structuralKinds = ["delete", "recreate", "moveAway", "moveBack"] as const;
 const failureKinds = ["watchFails", "watchErrors"] as const;
@@ -225,10 +225,7 @@ function nearestExistingAncestor(world: FolderWorld, folder: string): string {
  * settles: each existing watched folder once, and the nearest existing
  * ancestor of each scanned root that is missing.
  */
-export function expectedWatchers(
-  world: FolderWorld,
-  roots: string[],
-): string[] {
+function expectedWatchers(world: FolderWorld, roots: string[]): string[] {
   const missing = roots.filter((root) => !world.hasDirectory(root));
   return [
     ...watchedFolders(world, roots),
