@@ -95,7 +95,8 @@ interface MissingProjectImport {
 function isProjectFile(projectFolder: string, file: string): boolean {
   const relative = path.relative(projectFolder, file);
   return (
-    !relative.startsWith("..") &&
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
     !path.isAbsolute(relative) &&
     !relative.split(path.sep).includes("node_modules")
   );
