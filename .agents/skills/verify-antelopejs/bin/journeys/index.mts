@@ -1,4 +1,5 @@
 import type { Journey } from "../lib/journey.mts";
+import { journeys as interfaceLookup } from "./interface-lookup.mts";
 import { initJourneys as moduleInit, testJourneys as moduleTest } from "./module.mts";
 import { buildJourneys, startJourneys } from "./project-build-start.mts";
 import { journeys as projectDev } from "./project-dev.mts";
@@ -27,6 +28,7 @@ const FEATURES = {
   "embedded-runtime": embeddedJourneys,
   "library-launch": launchJourneys,
   "interface-resolution": resolutionJourneys,
+  "interface-lookup": interfaceLookup,
 } satisfies Record<string, Journey[]>;
 
 /** Every feature of the map with its journeys. */

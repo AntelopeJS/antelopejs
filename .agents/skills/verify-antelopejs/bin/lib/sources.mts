@@ -23,6 +23,12 @@ export const TEMPLATE_NAME = "Verify HTTP";
 /** The slug `--template` accepts for the same template. */
 export const TEMPLATE_SLUG = "verify-http";
 
+/** The template name of the pnpm workspace template the offline manifest lists. */
+export const WORKSPACE_TEMPLATE_NAME = "Verify Workspace";
+
+/** The slug `--template` accepts for the workspace template. */
+export const WORKSPACE_TEMPLATE_SLUG = "verify-workspace";
+
 /** The message the fixture module answers with before any edit. */
 export const FIXTURE_MESSAGE = "hello from the fixture";
 
@@ -46,15 +52,23 @@ function bareRepository(source: string, target: string): string {
 /** The folders of the sources a run seeds. */
 export function sourcePaths(state: RunState) {
   const sources = path.join(state.dir, "sources");
-  return { sources, greeter: path.join(sources, "greeter"), template: path.join(sources, "template-verify-http") };
+  return {
+    sources,
+    greeter: path.join(sources, "greeter"),
+    template: path.join(sources, "template-verify-http"),
+    workspaceTemplate: path.join(sources, "template-verify-workspace"),
+  };
 }
 
-function writeManifest(folder: string, templateUrl: string, providerFolder: string): void {
+function writeManifest(folder: string, templateUrls: { http: string; workspace: string }, providerFolder: string): void {
   mkdirSync(path.join(folder, "interfaces", "greeter"), { recursive: true });
   const manifest = {
     interfaces: { "verify-greeter": "greeter" },
     starredInterfaces: ["greeter"],
-    templates: [{ name: TEMPLATE_NAME, repository: templateUrl, branch: "main", packageManager: "pnpm" }],
+    templates: [
+      { name: TEMPLATE_NAME, repository: templateUrls.http, branch: "main", packageManager: "pnpm" },
+      { name: WORKSPACE_TEMPLATE_NAME, repository: templateUrls.workspace, branch: "main", packageManager: "pnpm" },
+    ],
     projectTemplates: [],
   };
   const greeter = {
@@ -76,14 +90,17 @@ function writeManifest(folder: string, templateUrl: string, providerFolder: stri
 export function seedSources(state: RunState): string {
   installPnpmShims();
   warmStore(state);
-  const { sources, greeter, template } = sourcePaths(state);
+  const { sources, greeter, template, workspaceTemplate } = sourcePaths(state);
   mkdirSync(sources, { recursive: true });
   cpSync(path.join(FIXTURES_DIR, "template-verify-http"), template, { recursive: true });
+  cpSync(path.join(FIXTURES_DIR, "template-verify-workspace"), workspaceTemplate, { recursive: true });
+  commitFolder(workspaceTemplate);
   cpSync(path.join(FIXTURES_DIR, "greeter"), greeter, { recursive: true });
   commitFolder(template);
   const templateUrl = bareRepository(template, path.join(sources, "template-verify-http.git"));
   const manifestFolder = path.join(sources, "interfaces");
-  writeManifest(manifestFolder, templateUrl, path.join(greeter, "provider"));
+  const workspaceUrl = bareRepository(workspaceTemplate, path.join(sources, "template-verify-workspace.git"));
+  writeManifest(manifestFolder, { http: templateUrl, workspace: workspaceUrl }, path.join(greeter, "provider"));
   execFileSync("pnpm", ["install", "--offline", "--frozen-lockfile"], { cwd: path.join(greeter, "provider"), env: isolatedEnv(state), stdio: "ignore" });
   commitFolder(manifestFolder);
   return bareRepository(manifestFolder, path.join(sources, "interfaces.git"));
@@ -106,7 +123,7 @@ function installPnpmShims(): void {
 }
 
 function warmStore(state: RunState): void {
-  for (const fixture of ["template-verify-http", path.join("greeter", "provider")]) {
+  for (const fixture of ["template-verify-http", "template-verify-workspace", path.join("greeter", "provider")]) {
     warmFixture(state, fixture);
   }
 }

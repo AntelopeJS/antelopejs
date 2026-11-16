@@ -60,5 +60,5 @@ Each journey's steps, checks and evidence are in `bin/journeys/` and under `$RUN
 
 - The watcher arms after the modules start and prints nothing when armed; HMR journeys wait 3 s after the first answer (`settle`) or the first edit is absorbed into the baseline hash.
 - `--interactive` (REPL) is not driven: it needs a terminal. Report it under Not verified when the diff touches `src/core/repl-session/index.ts`.
-- Module add or remove while dev runs goes through the configuration watcher, which restarts the project. `dev-modules-add-while-running` drives it. The formal model `formal-module-lifecycle` covers the orderings a journey cannot time.
+- Module add or remove while dev runs goes through the configuration watcher, which restarts the project. `dev-modules-add-while-running` drives it. The formal model `formal-module-lifecycle` covers the orderings a journey cannot time. The formal check `formal-watched-folders` covers the file watcher over any order of deletes, recreates, moves and watch failures; `dev-watch-recreated-src` drives one move and back.
 - `ajs project modules add --mode local` always writes `watchDir: ["src"]` (`add-action.ts`). For a module without `src/`, the watcher waits for the folder: once `src/` is created, edits in it reload the module.

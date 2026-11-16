@@ -22,6 +22,7 @@ docs:
 ## Sub-features
 
 - `init-flags`: every answer as a flag; the project, its installed module and its configuration exist; `ajs project modules list --json` reads the module back.
+- `init-workspace-template`: a template with a `pnpm-workspace.yaml`, a workspace package and an `antelopejs-sync` guardrail layer: every workspace package is installed, `Project guardrails synced` is reported, `antelopejs-sync --check` finds no drift, and the template's `dev` and `build` scripts pass.
 - `init-name-git`: `--name` lands in the configuration and `--git-init` creates a repository that `git status` reads.
 - `init-yes`: `--yes` takes every default.
 - `init-git-option`: `--git <repository>` reads the templates of that repository although the git setting points at a missing one.
@@ -49,6 +50,7 @@ Each journey's steps, checks and evidence are in `bin/journeys/` and under `$RUN
 
 ## Gotchas
 
+- The workspace template (`fixtures/template-verify-workspace`) stands in for DMS Adonis: its workspace package `demo` builds with a `verify-clean` binary from a `file:` dependency, as DMS Adonis builds with `rimraf`, and its `antelopejs-sync` is a stand-in that needs a git repository and reports drift in the same words as the real tool, so nothing reaches the registry.
 - The template source is the run's offline manifest repository; `ajs config set git` points the journey's HOME at it.
 - The fixture template carries its own lockfile and `typescript`, because a local module's install command is `npx tsc` and the store is offline.
 - A cancelled init leaves a half-written folder. The journey records the tree but does not judge it: no doc promises cleanup after SIGINT.
