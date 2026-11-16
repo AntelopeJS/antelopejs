@@ -80,7 +80,9 @@ const INSTALL_LIFECYCLE_SCRIPTS: readonly string[] = [
   "preprepare",
   "prepare",
   "postprepare",
+  "predependencies",
   "dependencies",
+  "postdependencies",
 ];
 
 /** What the downloader reads in the package.json of a packed package. */

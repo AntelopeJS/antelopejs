@@ -26,7 +26,9 @@ const FAILING_LIFECYCLE_SCRIPTS = {
   preprepare: "exit 7",
   prepare: "exit 8",
   postprepare: "exit 9",
-  dependencies: "exit 10",
+  predependencies: "exit 10",
+  dependencies: "exit 11",
+  postdependencies: "exit 12",
 };
 
 const SOURCE: ModuleSourcePackage = {
