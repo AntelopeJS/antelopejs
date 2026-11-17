@@ -1,3 +1,4 @@
+import { internal } from "@antelopejs/interface-core/internal";
 import { expect } from "chai";
 import sinon from "sinon";
 
@@ -23,7 +24,12 @@ describe("ModuleManager drain", () => {
     drain: () => void | Promise<void>,
   ) {
     const module = new CoreModule(
-      manifestFixture({ name: id, version: "1.0.0", main: `/${id}/index.js` }),
+      manifestFixture({
+        name: id,
+        version: "1.0.0",
+        main: `/${id}/index.js`,
+        folder: `/${id}`,
+      }),
       sinon.stub().resolves({
         drain,
         stop: () => calls.push(`stop:${id}`),
@@ -48,6 +54,38 @@ describe("ModuleManager drain", () => {
     await manager.stopAll();
 
     expect(calls).to.deep.equal(["drain:started", "stop:started"]);
+  });
+
+  it("leaves no owner token for a module never constructed when a teardown drains (fails if drain enters a loaded module's context)", async () => {
+    const manager = new ModuleManager();
+    const started = await addConstructedModule(manager, "started", () => {
+      calls.push("drain:started");
+    });
+    const neverConstructed = new CoreModule(
+      manifestFixture({
+        name: "never-constructed",
+        version: "1.0.0",
+        main: "/never-constructed/index.js",
+        folder: "/never-constructed",
+      }),
+      sinon.stub().resolves({
+        drain: () => calls.push("drain:never-constructed"),
+      }),
+    );
+    manager["loaded"].set("never-constructed", {
+      module: neverConstructed,
+      config: {},
+    });
+
+    await manager.startModules([started]);
+    await manager.destroyAll();
+
+    expect(calls).to.deep.equal(["drain:started", "stop:started"]);
+    expect(
+      [...internal.activeOwnerTokens.keys()].filter((owner) =>
+        owner.startsWith("never-constructed"),
+      ),
+    ).to.deep.equal([]);
   });
 
   it("starts every drain before any of them settles (fails if drains run one after another)", async () => {
