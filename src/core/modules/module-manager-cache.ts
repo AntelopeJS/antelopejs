@@ -5,6 +5,7 @@ import {
   clearPathResolutionCache,
   createLoadedFileMatcher,
   createPathWithinMatcher,
+  isPathWithin,
   normalizeExistingPath,
   type PathMatcher,
 } from "../../utils";
@@ -70,21 +71,16 @@ function matchAny(matchers: readonly PathMatcher[]): PathMatcher {
 }
 
 /**
- * The folder of a module and the real target of each symbolic link inside it,
- * outside its `node_modules`. The module loader names a file by its real
- * path, so a module whose code folder links to a checkout elsewhere has its
- * files cached under that checkout's paths, not under its own folder.
+ * The folder of a module and the real target of each symbolic link in its
+ * own tree, outside its `node_modules`. The module loader names a file by its
+ * real path, so a module whose code folder links to a checkout elsewhere has
+ * its files cached under that checkout's paths, not under its own folder. A
+ * link to a folder that holds the module, such as `..`, adds nothing.
  */
 function collectModuleRoots(moduleFolder: string): string[] {
   const roots = [moduleFolder];
   const pending = [moduleFolder];
-  const visited = new Set<string>();
   for (let folder = pending.pop(); folder; folder = pending.pop()) {
-    const realFolder = normalizeExistingPath(folder);
-    if (visited.has(realFolder)) {
-      continue;
-    }
-    visited.add(realFolder);
     for (const child of readFolder(folder)) {
       if (child.name === NODE_MODULES) {
         continue;
@@ -94,8 +90,9 @@ function collectModuleRoots(moduleFolder: string): string[] {
         pending.push(childPath);
       } else if (child.isSymbolicLink()) {
         const target = normalizeExistingPath(childPath);
-        roots.push(target);
-        pending.push(target);
+        if (!isPathWithin(moduleFolder, target)) {
+          roots.push(target);
+        }
       }
     }
   }
