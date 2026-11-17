@@ -6,7 +6,7 @@ import { freePort } from "../lib/evidence.mts";
 import type { HttpResult } from "../lib/evidence.mts";
 import { field } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, FIXTURE_MODULE, installFixture, listModules } from "../lib/project.mts";
+import { copyGreeter, FIXTURE_MODULE, installFixture, listModules, listConsumerFirst } from "../lib/project.mts";
 import { useProject } from "../lib/shared-project.mts";
 import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
@@ -72,6 +72,25 @@ export const journeys: Journey[] = [
       context.expect(ready.folder, [answers(ready, "message", FIXTURE_MESSAGE), has("stderr", readStderr(dev.folder), /Loaded 3 modules/)], { critical: true });
       const stop = await context.stop("stop with SIGINT", dev);
       context.expect(stop.folder, [exitIs(stop, 130), has("stdout", stop.stdout, /drain done[\s\S]*stop B/), lacks("stdout", stop.stdout, /stop B[\s\S]*drain done/), has("stderr", stop.stderr, /Stopped the project/)]);
+    },
+  },
+  {
+    id: "dev-stop-consumer-first",
+    title: "SIGINT stops a consumer listed before its provider first, while the provider still runs",
+    entryPoint: "ajs project dev with greeter-consumer listed before greeter-provider, then SIGINT",
+    async run(context) {
+      const greeter = copyGreeter(context);
+      listConsumerFirst(greeter);
+      const dev = await context.background("project dev", ["project", "dev"], { cwd: greeter });
+      const ready = await context.waitReady("ready", dev);
+      context.expect(ready.folder, [answers(ready, "greeting", "Hello, verifier")], { critical: true });
+      const stop = await context.stop("stop with SIGINT", dev);
+      const consumer = stop.stdout.indexOf("greeter-consumer stopped");
+      const provider = stop.stdout.indexOf("greeter-provider stopped");
+      context.expect(stop.folder, [
+        exitIs(stop, 130),
+        { name: "consumer stops before its provider", pass: consumer >= 0 && provider > consumer, detail: `consumer at ${consumer}, provider at ${provider}` },
+      ]);
     },
   },
   {
