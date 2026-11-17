@@ -14,5 +14,6 @@ exports.start = function start() {
 };
 exports.stop = function stop() {
   server?.close();
+  console.log("greeter-consumer stopped");
 };
 exports.destroy = function destroy() {};
