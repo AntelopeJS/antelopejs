@@ -140,7 +140,7 @@ export interface ManagerMethods {
   ): void;
   collectAvoidedFolders(
     moduleId: string,
-    moduleFolder: string,
+    moduleRoots: readonly string[],
     isInModule: PathMatcher,
   ): string[];
   belongsToInterfacePackageTree(
