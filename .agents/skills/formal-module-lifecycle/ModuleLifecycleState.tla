@@ -91,7 +91,7 @@ HeldGens(L) == {loaded[L][m] : m \in Held(L)}
 
 (* stopAll closes the manager before its first await, and waits for the   *)
 (* constructs already past the check, which ConstructApply makes atomic.  *)
-Closed(L) == sd[L] /= "none"                                \* module-manager-lifecycle.ts:142
+Closed(L) == sd[L] /= "none"                                \* module-manager-lifecycle.ts:184
 
 Init ==
   /\ declared = InitialModules
@@ -138,7 +138,7 @@ Init ==
 BeginShutdown(L) ==
   IF sd[L] = "none"                                      \* shutdown-manager.ts:126
   THEN /\ sd' = [sd EXCEPT ![L] = "stopAll"]             \* shutdown-manager.ts:131-132
-       /\ sdLeft' = [sdLeft EXCEPT ![L] = Held(L)]       \* module-manager-lifecycle.ts:149
+       /\ sdLeft' = [sdLeft EXCEPT ![L] = Held(L)]       \* module-manager-lifecycle.ts:192
   ELSE UNCHANGED <<sd, sdLeft>>
 
 Stopping(L) == sd[L] /= "none"
