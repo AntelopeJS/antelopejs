@@ -1,9 +1,12 @@
+import { type Dirent, readdirSync } from "node:fs";
 import * as path from "node:path";
 
 import {
   clearPathResolutionCache,
   createLoadedFileMatcher,
   createPathWithinMatcher,
+  isPathWithin,
+  normalizeExistingPath,
   type PathMatcher,
 } from "../../utils";
 import { INTERFACE_CORE_PACKAGE } from "./module-manager-bindings";
@@ -12,6 +15,8 @@ import {
   type ManagerContext,
 } from "./module-manager-context";
 import { resolveManifestEntryFile } from "./module-manifest";
+
+const NODE_MODULES = "node_modules";
 
 export function unrequireModuleFiles(
   this: ManagerContext,
@@ -32,13 +37,15 @@ export function evictModuleFiles(
     return;
   }
 
-  const moduleFolder = path.resolve(entry.module.manifest.folder);
+  const moduleRoots = collectModuleRoots(
+    path.resolve(entry.module.manifest.folder),
+  );
   const moduleEntryFile = resolveManifestEntryFile(entry.module.manifest);
-  const isInModule = createPathWithinMatcher(moduleFolder);
-  const isLoadedInModule = createLoadedFileMatcher(moduleFolder);
+  const isInModule = matchAny(moduleRoots.map(createPathWithinMatcher));
+  const isLoadedInModule = matchAny(moduleRoots.map(createLoadedFileMatcher));
   const avoidedMatchers = this.collectAvoidedFolders(
     moduleId,
-    moduleFolder,
+    moduleRoots,
     isInModule,
   ).map((folder) => createLoadedFileMatcher(folder));
 
@@ -59,15 +66,56 @@ export function evictModuleFiles(
   }
 }
 
+function matchAny(matchers: readonly PathMatcher[]): PathMatcher {
+  return (filePath) => matchers.some((matches) => matches(filePath));
+}
+
+/**
+ * The folder of a module and the real target of each symbolic link in its
+ * own tree, outside its `node_modules`. The module loader names a file by its
+ * real path, so a module whose code folder links to a checkout elsewhere has
+ * its files cached under that checkout's paths, not under its own folder. A
+ * link to a folder that holds the module, such as `..`, adds nothing.
+ */
+function collectModuleRoots(moduleFolder: string): string[] {
+  const roots = [moduleFolder];
+  const pending = [moduleFolder];
+  for (let folder = pending.pop(); folder; folder = pending.pop()) {
+    for (const child of readFolder(folder)) {
+      if (child.name === NODE_MODULES) {
+        continue;
+      }
+      const childPath = path.join(folder, child.name);
+      if (child.isDirectory()) {
+        pending.push(childPath);
+      } else if (child.isSymbolicLink()) {
+        const target = normalizeExistingPath(childPath);
+        if (!isPathWithin(moduleFolder, target)) {
+          roots.push(target);
+        }
+      }
+    }
+  }
+  return roots;
+}
+
+function readFolder(folder: string): Dirent[] {
+  try {
+    return readdirSync(folder, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+}
+
 export function collectAvoidedFolders(
   this: ManagerContext,
   moduleId: string,
-  moduleFolder: string,
+  moduleRoots: readonly string[],
   isInModule: PathMatcher,
 ): string[] {
-  const avoidedFolders = new Set<string>([
-    path.join(moduleFolder, "node_modules"),
-  ]);
+  const avoidedFolders = new Set<string>(
+    moduleRoots.map((root) => path.join(root, NODE_MODULES)),
+  );
   for (const [id, other] of this.loaded) {
     if (id !== moduleId && isInModule(other.module.manifest.folder)) {
       avoidedFolders.add(path.resolve(other.module.manifest.folder));
