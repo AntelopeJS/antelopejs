@@ -85,11 +85,19 @@ interface ManagerFields {
   configVars: ConfigVarStore;
   pendingCleanup: ManagedModule[];
   /**
-   * Set once `stopAll` or `destroyAll` begins. A closed manager provides and
-   * constructs nothing more: a module it constructed then would outlive
-   * every destroy.
+   * True once `stopAll` or `destroyAll` begins, which sets `closing`. A
+   * closed manager provides and constructs nothing more: a module it
+   * constructed then would outlive every destroy.
    */
   closed: boolean;
+  /**
+   * The close of the manager: it waits for the constructs already under way,
+   * then drains the modules. The first `stopAll` or `destroyAll` sets it, once
+   * per manager, and every `stopAll` and `destroyAll` awaits this same close
+   * before its first stop or destroy, those that run at the same time
+   * included.
+   */
+  closing: Promise<void> | undefined;
   /** Constructs that passed the `closed` check and have not settled. */
   constructing: Set<Promise<void>>;
   bindingGraph: BindingGraph | undefined;
@@ -326,7 +334,7 @@ interface FieldWriters {
   pendingCleanup: (value: ManagerFields["pendingCleanup"]) => void;
   bindingGraph: (value: ManagerFields["bindingGraph"]) => void;
   startupOrder: (value: ManagerFields["startupOrder"]) => void;
-  closed: (value: ManagerFields["closed"]) => void;
+  closing: (value: ManagerFields["closing"]) => void;
 }
 interface ManagerContextParts {
   fields: FieldReaders;
@@ -400,8 +408,11 @@ function createContext({
     get closed() {
       return fields.closed();
     },
-    set closed(value) {
-      writers.closed(value);
+    get closing() {
+      return fields.closing();
+    },
+    set closing(value) {
+      writers.closing(value);
     },
     get constructing() {
       return fields.constructing();

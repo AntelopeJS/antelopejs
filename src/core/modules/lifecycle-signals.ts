@@ -30,16 +30,12 @@ export function beginModulesStart(): () => void {
  * It is announced once a start has begun, so work a `start` awaits can stop,
  * and only once per start, so a `stopAll` followed by `destroyAll` is a single
  * "stopping".
- *
- * @returns whether this call announced it, so the caller that did drains the
- * modules once before they stop.
  */
-export function announceModulesStopping(): boolean {
+export function announceModulesStopping(): void {
   if (!isProjectActive) {
-    return false;
+    return;
   }
   isProjectActive = false;
   stopCount += 1;
   Events.ModulesStopping.emit();
-  return true;
 }

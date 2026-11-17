@@ -67,10 +67,10 @@ function loggedText(stub: sinon.SinonStub): string {
   return stub.args.flat().map(String).join("\n");
 }
 
-describe("Shutdown drain", () => {
-  let folder: string;
-  let manager: ModuleManager | undefined;
+let folder = "";
+let manager: ModuleManager | undefined;
 
+function useDrainFolder(): void {
   beforeEach(() => {
     folder = makeTempDir("ajs-shutdown-drain-");
     manager = undefined;
@@ -81,6 +81,10 @@ describe("Shutdown drain", () => {
     await manager?.destroyAll();
     cleanupTempDir(folder);
   });
+}
+
+describe("Shutdown drain", () => {
+  useDrainFolder();
 
   it("finishes a slow drain before the first stop of any module, those started before and after it included (fails if the drain is not awaited, or runs inside its own module's stop)", async () => {
     const project = createDrainProject(folder, {
@@ -143,6 +147,26 @@ describe("Shutdown drain", () => {
     expect(warning).to.not.contain("quick");
   });
 
+  it("logs a drain that throws and still stops every module (fails if a failed drain rejects stopAll or skips a stop)", async () => {
+    const project = createDrainProject(folder, {
+      broken: 'exports.drain = () => { throw new Error("drain broke"); };',
+      healthy: "",
+    });
+    manager = await project.launch();
+    const error = sinon.stub(Logging.Channel.prototype, "Error");
+
+    await manager.stopAll();
+
+    expect(project.log()).to.include.members(["stop:broken", "stop:healthy"]);
+    const logged = loggedText(error);
+    expect(logged).to.contain("broken");
+    expect(logged).to.contain("drain broke");
+  });
+});
+
+describe("Shutdown drain across stopAll and destroyAll", () => {
+  useDrainFolder();
+
   it("drains once when the project stops then is destroyed, a module still active after its stop failed included (fails if destroyAll drains again)", async () => {
     const project = createDrainProject(folder, {
       stopped: 'exports.drain = () => log("drain:stopped");',
@@ -168,19 +192,37 @@ exports.stop = () => {
     ).to.have.members(["drain:stopped", "drain:unstoppable"]);
   });
 
-  it("logs a drain that throws and still stops every module (fails if a failed drain rejects stopAll or skips a stop)", async () => {
+  it("drains once and stops or destroys nothing before the drain ends when stopAll and destroyAll run at once (fails if the second caller skips the drain without waiting for it, or drains again)", async () => {
     const project = createDrainProject(folder, {
-      broken: 'exports.drain = () => { throw new Error("drain broke"); };',
-      healthy: "",
+      first: 'exports.destroy = () => log("destroy:first");',
+      drainer: `exports.drain = async () => {
+  log("drain:drainer");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  log("drain-done");
+};
+exports.destroy = () => log("destroy:drainer");`,
     });
-    manager = await project.launch();
-    const error = sinon.stub(Logging.Channel.prototype, "Error");
+    const started = await project.launch();
+    manager = started;
 
-    await manager.stopAll();
+    await Promise.allSettled([started.stopAll(), started.destroyAll()]);
+    manager = undefined;
 
-    expect(project.log()).to.include.members(["stop:broken", "stop:healthy"]);
-    const logged = loggedText(error);
-    expect(logged).to.contain("broken");
-    expect(logged).to.contain("drain broke");
+    const log = project.log();
+    expect(log.slice(0, 4)).to.deep.equal([
+      "start:first",
+      "start:drainer",
+      "drain:drainer",
+      "drain-done",
+    ]);
+    expect(log.slice(4)).to.include.members([
+      "stop:first",
+      "stop:drainer",
+      "destroy:first",
+      "destroy:drainer",
+    ]);
+    expect(
+      log.slice(4).filter((entry) => entry.startsWith("drain")),
+    ).to.deep.equal([]);
   });
 });

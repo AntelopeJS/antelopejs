@@ -7,39 +7,39 @@ import { manifestFixture } from "../helpers/module-fixtures";
 
 const DRAIN_TIMEOUT_MS = 5000;
 
-describe("ModuleManager drain", () => {
-  let calls: string[];
+const calls: string[] = [];
 
+async function addConstructedModule(
+  manager: ModuleManager,
+  id: string,
+  drain: () => void | Promise<void>,
+) {
+  const module = new CoreModule(
+    manifestFixture({
+      name: id,
+      version: "1.0.0",
+      main: `/${id}/index.js`,
+      folder: `/${id}`,
+    }),
+    sinon.stub().resolves({
+      drain,
+      stop: () => calls.push(`stop:${id}`),
+    }),
+  );
+  await module.construct({});
+  const entry = { module, config: {} };
+  manager["loaded"].set(id, entry);
+  return entry;
+}
+
+describe("ModuleManager drain", () => {
   beforeEach(() => {
-    calls = [];
+    calls.length = 0;
   });
 
   afterEach(() => {
     sinon.restore();
   });
-
-  async function addConstructedModule(
-    manager: ModuleManager,
-    id: string,
-    drain: () => void | Promise<void>,
-  ) {
-    const module = new CoreModule(
-      manifestFixture({
-        name: id,
-        version: "1.0.0",
-        main: `/${id}/index.js`,
-        folder: `/${id}`,
-      }),
-      sinon.stub().resolves({
-        drain,
-        stop: () => calls.push(`stop:${id}`),
-      }),
-    );
-    await module.construct({});
-    const entry = { module, config: {} };
-    manager["loaded"].set(id, entry);
-    return entry;
-  }
 
   it("drains only the started modules, not one that is only constructed (fails if drain ignores the module's state)", async () => {
     const manager = new ModuleManager();
@@ -86,6 +86,36 @@ describe("ModuleManager drain", () => {
         owner.startsWith("never-constructed"),
       ),
     ).to.deep.equal([]);
+  });
+
+  it("drains a manager stopped after another manager stopped (fails if whether a manager drains depends on another manager's stop)", async () => {
+    const first = new ModuleManager();
+    const second = new ModuleManager();
+    const a = await addConstructedModule(first, "a", () => {
+      calls.push("drain:a");
+    });
+    const b = await addConstructedModule(second, "b", () => {
+      calls.push("drain:b");
+    });
+    await first.startModules([a]);
+    await second.startModules([b]);
+
+    await first.stopAll();
+    await second.stopAll();
+
+    expect(calls).to.deep.equal(["drain:a", "stop:a", "drain:b", "stop:b"]);
+  });
+
+  it("leaves no drain deadline pending once a manager that never started stopped (fails if the deadline timer outlives the drain)", async () => {
+    const manager = new ModuleManager();
+    await addConstructedModule(manager, "constructed", () => undefined);
+    const clock = sinon.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout"],
+    });
+
+    await manager.stopAll();
+
+    expect(clock.countTimers()).to.equal(0);
   });
 
   it("starts every drain before any of them settles (fails if drains run one after another)", async () => {
