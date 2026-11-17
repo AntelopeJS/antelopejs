@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.24.4
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.3...v1.24.4)
+
+### 🚀 Enhancements
+
+- **modules:** Drain every started module before the project stops ([#529](https://github.com/AntelopeJS/antelopejs/pull/529))
+
+### 🩹 Fixes
+
+- **cli:** Leave the template repository's own workflows out of scaffolds ([#527](https://github.com/AntelopeJS/antelopejs/pull/527))
+- **modules:** Stop consumers before the providers they are bound to ([#530](https://github.com/AntelopeJS/antelopejs/pull/530))
+
+### 📖 Documentation
+
+- **changelog:** Drop the cancelled #516 and #522 from v1.24.3 ([#526](https://github.com/AntelopeJS/antelopejs/pull/526))
+
+### 🤖 CI
+
+- Pick the tier with the shared ci-tier action ([#528](https://github.com/AntelopeJS/antelopejs/pull/528))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.3
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.2...v1.24.3)
