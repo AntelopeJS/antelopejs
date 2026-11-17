@@ -32,7 +32,7 @@
       "prompt": "How do I install the AntelopeJS skills in Claude Code?",
       "expect": {
         "skills": ["antelopejs"],
-        "acceptable": ["ajs-cli", "dms", "dms-ai"]
+        "acceptable": ["ajs-cli", "dms", "dms-assistant"]
       }
     },
     {
@@ -42,7 +42,7 @@
       "prompt": "the dms skills dont show up in codex",
       "expect": {
         "skills": ["antelopejs"],
-        "acceptable": ["dms", "ajs-cli", "dms-ai"]
+        "acceptable": ["dms", "ajs-cli", "dms-assistant"]
       }
     },
     {
