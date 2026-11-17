@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.24.5
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.4...v1.24.5)
+
+### 🩹 Fixes
+
+- **modules:** Evict a module's files reached through links outside its folder ([#532](https://github.com/AntelopeJS/antelopejs/pull/532))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.4
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.3...v1.24.4)
