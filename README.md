@@ -84,7 +84,7 @@ When a plugin is missing, `ajs` offers to install it with the package manager th
 
 ### Agent skills
 
-`@antelopejs/core` ships the framework's agent skills in `skills/`, declared under `antelopeJs.skills`: `antelopejs` (the mental model and router), `ajs-cli`, `ajs-consume-interface`, and `ajs-author-interface`. Each project gets the skills of the core version it installs. The [AntelopeJS agent skills](https://github.com/AntelopeJS/agent-skills) sync links them into a project's `.claude/skills/` and `.agents/skills/`, as it does for every skill a package ships. The DMS assistant (`@antelopejs/dms-ai`) loads them on its own.
+`@antelopejs/core` ships the framework's agent skills in `skills/`, declared under `antelopeJs.skills`: `antelopejs` (the mental model and router), `ajs-cli`, `ajs-consume-interface`, and `ajs-author-interface`. Each project gets the skills of the core version it installs. The [AntelopeJS agent skills](https://github.com/AntelopeJS/agent-skills) sync links them into a project's `.claude/skills/` and `.agents/skills/`, as it does for every skill a package ships. The DMS assistant (`@antelopejs/dms-assistant`) loads them on its own.
 
 </details>
 
