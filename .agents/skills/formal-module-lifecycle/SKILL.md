@@ -74,14 +74,14 @@ Replay the counterexample against the code, one action per step, with the covera
 | `RestartRequested`, `RestartLaunches` | `restartUnlessOwnWrite`, `restartProject`, `isRestarting` (project-launch.ts), `getActiveShutdownManager` (src/core/runtime/process-claim.ts), `ShutdownManager.active`, `runLaunchSequence` / `armShutdown` (launch-sequence.ts) |
 | `RestartInterrupted` | the `catch` and `finally` of `restartProject`, `LaunchInterruptedError` (launch-steps.ts), `cleanupFailedLaunch` (launch-sequence.ts) |
 | `Sigint`, `BeginShutdown` | `ShutdownManager.handleSignal`, `shutdown` (src/core/runtime/shutdown/shutdown-manager.ts) |
-| `SdStop`, `SdStopDone`, `SdDestroy`, `SdClear` | `shutdownModules`, `registerModuleShutdownHandler` (process-claim.ts), `stopAll`, `destroyAll`, `getReverseLifecycleModules`, `clearManagedState` (module-manager-lifecycle.ts), `Module.stop`, `Module.destroy`, `ModuleLifecycle.stop`, `destroy` |
+| `SdStop`, `SdStopDone`, `SdDestroy`, `SdClear` | `shutdownModules`, `registerModuleShutdownHandler` (process-claim.ts), `stopAll`, `destroyAll`, `closeManager`, `drainModules`, `getReverseLifecycleModules`, `clearManagedState` (module-manager-lifecycle.ts), `Module.drain`, `Module.stop`, `Module.destroy`, `ModuleLifecycle.drain`, `stop`, `destroy` |
 | `SdWatcher` | the priority-20 handler in `setupWatching`, `HotReload.clear`, `FileWatcher.stopWatching` |
 | `SdRelease`, `SdTolerance`, `SdExit` | `claimProcess`, `releaseActiveShutdownManager` (process-claim.ts), the tolerance handler in `keepRunningThroughFailedReloads`, `executeShutdown` |
 | `StaleWorkFails` | `setupProcessHandlers`, `isInvalidatedModuleWork`, `shutdownProcess` (runtime-bootstrap.ts) |
 | `SourceEdit`, `FlushStarts`, `ReloadBegins`, `BatchEnds` | `FileWatcher.notifyModuleChange`, `HotReload.queue`, `scheduleFlush`, `flush`, `reloadOne` (src/core/runtime/watch/hot-reload.ts), the reload handler in `setupWatching` |
 | `RlManifestLoaded` .. `RlRecovered` | `reloadLoadedModuleFromSource`, `activateReplacement`, `cleanupReplacement`, `recoverPreviousModule` (src/core/runtime/module-reloading.ts), `placeModule`, `replaceLoadedModule` (module-manager-records.ts), `checkReplacement` (module-manager-bindings.ts), `unrequireModuleFiles` (module-manager-cache.ts) |
 
-The sync commit is `4299737` on AntelopeJS/antelopejs `main`. Every `\* file.ts:NN` comment cites the code at that commit.
+The sync commit is `4299737` on AntelopeJS/antelopejs `main`. Every `\* file.ts:NN` comment cites the code at that commit, except the `module-manager-lifecycle.ts` ones, which cite that file with the shutdown drain phase.
 
 ## Bounds and what is left out
 
@@ -91,8 +91,9 @@ The model leaves out:
 
 - the module interfaces `LoadModule`, `ReloadModule`, `SaveModuleDeclaration` and `RemoveModuleDeclaration`, which a module calls from inside the project;
 - `ajs project start`, the REPL, optional modules, and every failure of a first launch (construct, start, download);
-- the `destroyAll` of `cleanupFailedLaunch`, which only repeats the shutdown's own `destroyAll`;
+- the `destroyAll` of `cleanupFailedLaunch`, which waits for the shutdown's drain, then only repeats the shutdown's own `destroyAll`;
 - a destroy that fails during shutdown, `pendingCleanup`, start failures and the 120 s start deadline, and a second Ctrl+C;
+- the drain that a manager runs once, and that each of its `stopAll` and `destroyAll` awaits before its first stop or destroy. It changes no module state, and it is an await like any other between `BeginShutdown` and `SdStop`;
 - the reload's signature check, which skips a reload when no file changed, and directories added or removed under a module;
 - files that antelope.config.ts imports: jiti's module cache is off for the config, but Node's own loader still caches an imported `.json`, `.cjs`, CommonJS `.js` or `.mjs` file across restarts, and the watcher does not watch them;
 - `FileWatcher.scanModule` on a missing watch dir, such as the `src` that `ajs project modules add --mode local` writes for a module with no `src/`. The scan skips it and watches the module's other watch dirs, outside the lifecycle orders the model checks.

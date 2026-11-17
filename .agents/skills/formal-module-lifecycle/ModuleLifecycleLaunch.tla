@@ -74,7 +74,7 @@ LaunchStart(L) ==
   /\ ~exited /\ lpc[L] = "start"
   /\ IF Stopping(L)                                       \* launch-steps.ts:60
      THEN Interrupt(L)
-     ELSE /\ startPending' = startPending \cup HeldGens(L) \* module-manager-lifecycle.ts:104
+     ELSE /\ startPending' = startPending \cup HeldGens(L) \* module-manager-lifecycle.ts:146
           /\ awaiting' = [awaiting EXCEPT ![L] = HeldGens(L)]
           /\ lateStart' = (lateStart \/ Stopping(L))
           /\ lpc' = [lpc EXCEPT ![L] = "starting"]
@@ -251,7 +251,7 @@ SdStop(L, m) ==
 SdStopDone(L) ==
   /\ ~exited /\ sd[L] = "stopAll" /\ sdLeft[L] = {}
   /\ sd' = [sd EXCEPT ![L] = "destroyAll"]
-  /\ sdLeft' = [sdLeft EXCEPT ![L] = Held(L)]             \* module-manager-lifecycle.ts:160
+  /\ sdLeft' = [sdLeft EXCEPT ![L] = Held(L)]             \* module-manager-lifecycle.ts:206
   /\ UNCHANGED <<editVars, genVars, launchVars, exitReq, armed, watchVars, restartVars,
                  hrVars, procVars>>
 
@@ -271,7 +271,7 @@ SdDestroy(L, m) ==
 (* clearManagedState empties ModuleManager.loaded. *)
 SdClear(L) ==
   /\ ~exited /\ sd[L] = "destroyAll" /\ sdLeft[L] = {}
-  /\ loaded' = [loaded EXCEPT ![L] = [m \in Modules |-> None]] \* module-manager-lifecycle.ts:175, :203
+  /\ loaded' = [loaded EXCEPT ![L] = [m \in Modules |-> None]] \* module-manager-lifecycle.ts:221, :249
   /\ sd' = [sd EXCEPT ![L] = "watcher"]
   /\ UNCHANGED <<editVars, genVars, launch, lpc, cfgSeen, awaiting, lateStart, sdLeft,
                  exitReq, armed, watchVars, restartVars, hrVars, procVars>>

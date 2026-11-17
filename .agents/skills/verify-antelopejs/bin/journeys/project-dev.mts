@@ -1,12 +1,12 @@
 import { readFileSync, renameSync } from "node:fs";
 import path from "node:path";
 
-import { answers, exitIs, has, lacks, refused } from "../lib/checks.mts";
+import { answers, equal, exitIs, has, lacks, refused } from "../lib/checks.mts";
 import { freePort } from "../lib/evidence.mts";
 import type { HttpResult } from "../lib/evidence.mts";
 import { field } from "../lib/json.mts";
 import type { Journey, JourneyContext } from "../lib/journey.mts";
-import { copyGreeter, FIXTURE_MODULE, installFixture } from "../lib/project.mts";
+import { copyGreeter, FIXTURE_MODULE, installFixture, listModules } from "../lib/project.mts";
 import { useProject } from "../lib/shared-project.mts";
 import { FIXTURE_MESSAGE } from "../lib/sources.mts";
 
@@ -48,6 +48,30 @@ export const journeys: Journey[] = [
       context.expect(stop.folder, [exitIs(stop, 130), has("stderr", stop.stderr, /Stopped the project/), has("stderr", stop.stderr, /Watch mode\s+disabled/)]);
       const after = await context.http("fixture after stop", dev);
       context.expect(after.folder, [refused(after)]);
+    },
+  },
+  {
+    id: "dev-drain-before-stop",
+    title: "SIGINT waits for a module's drain to end before any module stops",
+    entryPoint: "ajs project dev with a module that exports drain, then SIGINT",
+    async run(context) {
+      const project = await useProject(context);
+      const modules = { "drain-a": `export async function drain(): Promise<void> {\n  await new Promise((resolve) => setTimeout(resolve, 600));\n  console.log("drain done");\n}\n`, "stop-b": `export function stop(): void {\n  console.log("stop B");\n}\n` };
+      for (const [name, main] of Object.entries(modules)) {
+        const folder = path.join(context.work, name);
+        context.edit(`write ${name}`, path.join(folder, "package.json"), `${JSON.stringify({ name, version: "1.0.0", main: "dist/index.js" })}\n`);
+        context.edit(`write ${name} tsconfig`, path.join(folder, "tsconfig.json"), `${JSON.stringify({ compilerOptions: { module: "commonjs", target: "es2022", rootDir: "src", outDir: "dist", strict: true }, include: ["src"] })}\n`);
+        context.edit(`write ${name} main`, path.join(folder, "src", "index.ts"), main);
+        const add = await context.ajs(`modules add ${name}`, ["project", "modules", "add", folder, "--mode", "local"], { cwd: project });
+        context.expect(add.folder, [exitIs(add, 0)], { critical: true });
+      }
+      const listed = await listModules(context, project);
+      context.expect(listed.folder, [equal("modules read back", listed.names, ["drain-a", "stop-b", FIXTURE_MODULE])], { critical: true });
+      const dev = await context.background("project dev", ["project", "dev"], { cwd: project });
+      const ready = await context.waitReady("ready", dev);
+      context.expect(ready.folder, [answers(ready, "message", FIXTURE_MESSAGE), has("stderr", readStderr(dev.folder), /Loaded 3 modules/)], { critical: true });
+      const stop = await context.stop("stop with SIGINT", dev);
+      context.expect(stop.folder, [exitIs(stop, 130), has("stdout", stop.stdout, /drain done[\s\S]*stop B/), lacks("stdout", stop.stdout, /stop B[\s\S]*drain done/), has("stderr", stop.stderr, /Stopped the project/)]);
     },
   },
   {

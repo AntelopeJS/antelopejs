@@ -87,6 +87,21 @@ export class ModuleLifecycle {
     this._state = ModuleState.Active;
   }
 
+  /**
+   * Runs the module's `drain` callback when the module is active, and changes
+   * no state.
+   *
+   * It does not go through the transition queue: the core stops waiting for
+   * a drain at its deadline, and a drain still running then must never hold
+   * the `stop` queued after it.
+   */
+  async drain(): Promise<void> {
+    if (this._state !== ModuleState.Active) {
+      return;
+    }
+    await this.callbacks?.drain?.();
+  }
+
   stop(): Promise<void> {
     return this.enqueue(() => this.runStop());
   }

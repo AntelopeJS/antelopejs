@@ -40,6 +40,7 @@ type LifecycleCallback<Name extends keyof ModuleCallbacks> = NonNullable<
 interface ModuleMain {
   readonly construct?: unknown;
   readonly destroy?: unknown;
+  readonly drain?: unknown;
   readonly provide?: unknown;
   readonly start?: unknown;
   readonly stop?: unknown;
@@ -63,6 +64,7 @@ interface LifecycleCallSite {
 const LIFECYCLE_CALL_SITES = {
   construct: { skips: "nullish", callee: "this.callbacks?.construct" },
   destroy: { skips: "nullish", callee: "this.callbacks?.destroy" },
+  drain: { skips: "nullish", callee: "this.callbacks?.drain" },
   provide: { skips: "nullish", callee: "this.callbacks?.provide" },
   start: { skips: "nullish", callee: "this.callbacks?.start" },
   stop: { skips: "falsy", callee: "this.callbacks.stop" },
@@ -102,6 +104,9 @@ function moduleMainCallbacks(main: ModuleMain): ModuleCallbacks {
     },
     get destroy() {
       return lifecycleCallback(main, "destroy");
+    },
+    get drain() {
+      return lifecycleCallback(main, "drain");
     },
     get provide() {
       return lifecycleCallback(main, "provide");
@@ -226,6 +231,18 @@ export class Module {
   start(): Promise<void> {
     return RunWithModuleContext(this.executionContext, () =>
       this.lifecycle.start(),
+    );
+  }
+
+  /**
+   * Runs the module's `drain` callback while the whole project still runs.
+   * A module still in the `Loaded` state has nothing in flight and no context
+   * token, so it is skipped without entering its context.
+   */
+  async drain(): Promise<void> {
+    if (this.lifecycle.state === ModuleState.Loaded) return;
+    await RunWithModuleContext(this.executionContext, () =>
+      this.lifecycle.drain(),
     );
   }
 
