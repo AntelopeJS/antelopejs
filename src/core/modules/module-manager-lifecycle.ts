@@ -1,6 +1,6 @@
 import { ModuleState } from "../../types";
 import { clearPathResolutionCache } from "../../utils";
-import { clearStubInterfaceWarnings } from "../resolution";
+import { clearStubInterfaceWarnings, orderComponents } from "../resolution";
 import {
   announceModulesStopping,
   beginModulesStart,
@@ -30,6 +30,12 @@ const START_TIMEOUT_MS = 120 * MS_PER_SECOND;
 const DESTROY_TIMEOUT_MS = 10 * MS_PER_SECOND;
 
 /**
+ * Half of the default 10 s shutdown timeout (`DEFAULT_SHUTDOWN_TIMEOUT_MS`),
+ * which leaves the other half to stop and destroy the modules.
+ */
+const DRAIN_TIMEOUT_MS = 5 * MS_PER_SECOND;
+
+/**
  * Starts a module, warning once it is slow and failing it once it is late.
  * The module's own `start` keeps running: its lifecycle queue holds any later
  * transition until it settles.
@@ -53,6 +59,42 @@ function startWithinDeadline(module: Module): Promise<void> {
     );
   });
   return Promise.race([module.start(), deadline]).finally(() => {
+    timers.forEach(clearTimeout);
+  });
+}
+
+/**
+ * Runs every module's `drain` at once, and returns once they all settled or
+ * `DRAIN_TIMEOUT_MS` passed. It logs each drain that fails, warns at the
+ * deadline about the modules still draining, and never throws, so the stop
+ * that follows always runs.
+ */
+async function drainModules(modules: ManagedModule[]): Promise<void> {
+  const draining = new Set(modules.map(({ module }) => module));
+  const drains = Promise.all(
+    modules.map(async ({ module }) => {
+      try {
+        await module.drain();
+      } catch (error) {
+        Logger.Error(`Module '${module.id}' failed to drain`, error);
+      } finally {
+        draining.delete(module);
+      }
+    }),
+  );
+  const timers: NodeJS.Timeout[] = [];
+  const deadline = new Promise<void>((resolve) => {
+    timers.push(
+      setTimeout(() => {
+        const late = [...draining].map(({ id }) => `'${id}'`).join(", ");
+        Logger.Warn(
+          `Stopping the modules although ${late} did not drain within ${DRAIN_TIMEOUT_MS / MS_PER_SECOND} s`,
+        );
+        resolve();
+      }, DRAIN_TIMEOUT_MS),
+    );
+  });
+  await Promise.race([drains, deadline]).finally(() => {
     timers.forEach(clearTimeout);
   });
 }
@@ -136,11 +178,15 @@ export async function startModules(
 
 /**
  * Closes the manager, then waits for the constructs already under way, so
- * the shutdown finds every module they construct.
+ * the shutdown finds every module they construct, then drains the modules.
+ * The first call closes it, and every call returns that same close.
  */
-async function closeManager(context: ManagerContext): Promise<void> {
-  context.closed = true;
-  await Promise.allSettled(context.constructing);
+function closeManager(context: ManagerContext): Promise<void> {
+  context.closing ??= (async () => {
+    await Promise.allSettled(context.constructing);
+    await drainModules(context.getReverseLifecycleModules());
+  })();
+  return context.closing;
 }
 
 export async function stopAll(this: ManagerContext): Promise<void> {
@@ -193,10 +239,80 @@ export function getReverseLifecycleModules(
     return entry ? [entry] : [];
   });
   const loadedInstances = new Set(loadedModules.map(({ module }) => module));
-  return [
-    ...loadedModules,
-    ...this.pendingCleanup.filter(({ module }) => !loadedInstances.has(module)),
-  ];
+  return consumersBeforeProviders(
+    [
+      ...loadedModules,
+      ...this.pendingCleanup.filter(
+        ({ module }) => !loadedInstances.has(module),
+      ),
+    ],
+    this.bindingGraph?.edges ?? new Map(),
+  );
+}
+
+interface StopGroup {
+  entries: ManagedModule[];
+  /** Position of the group's first entry in the given order. */
+  first: number;
+  providers: Set<StopGroup>;
+  /** Groups still to stop that are bound to this one. */
+  consumers: number;
+}
+
+/**
+ * Reorders `entries` so that each module comes before every provider it is
+ * bound to, keeping the given order between modules the bindings do not
+ * order. The modules of a binding cycle come out together, in their given
+ * order, after every module bound to one of them.
+ */
+function consumersBeforeProviders(
+  entries: readonly ManagedModule[],
+  edges: ReadonlyMap<string, ReadonlySet<string>>,
+): ManagedModule[] {
+  const ids = [...new Set(entries.map(({ module }) => module.id))];
+  const groupOf = new Map<string, StopGroup>();
+  for (const component of orderComponents(ids, edges)) {
+    const group: StopGroup = {
+      entries: [],
+      first: Infinity,
+      providers: new Set(),
+      consumers: 0,
+    };
+    component.forEach((id) => groupOf.set(id, group));
+  }
+  entries.forEach((entry, index) => {
+    const group = groupOf.get(entry.module.id)!;
+    group.entries.push(entry);
+    group.first = Math.min(group.first, index);
+  });
+  for (const [consumerId, group] of groupOf) {
+    for (const providerId of edges.get(consumerId) ?? []) {
+      const provider = groupOf.get(providerId);
+      if (provider && provider !== group && !group.providers.has(provider)) {
+        group.providers.add(provider);
+        provider.consumers += 1;
+      }
+    }
+  }
+  const ready = [...new Set(groupOf.values())].filter(
+    ({ consumers }) => consumers === 0,
+  );
+  const ordered: ManagedModule[] = [];
+  while (ready.length > 0) {
+    const next = ready.reduce(
+      (best, group, index) => (group.first < ready[best].first ? index : best),
+      0,
+    );
+    const [group] = ready.splice(next, 1);
+    ordered.push(...group.entries);
+    for (const provider of group.providers) {
+      provider.consumers -= 1;
+      if (provider.consumers === 0) {
+        ready.push(provider);
+      }
+    }
+  }
+  return ordered;
 }
 
 export function clearManagedState(this: ManagerContext): unknown[] {

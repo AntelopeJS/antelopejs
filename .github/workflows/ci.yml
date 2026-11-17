@@ -38,36 +38,7 @@ jobs:
     steps:
       - name: Pick the tier from the event, the target branch and the draft flag
         id: tier
-        env:
-          EVENT: ${{ github.event_name }}
-          REF_NAME: ${{ github.ref_name }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-          REPOSITORY: ${{ github.repository }}
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_REF: ${{ github.head_ref }}
-          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-          DRAFT: ${{ github.event.pull_request.draft }}
-        run: |
-          case "$EVENT" in
-            pull_request)
-              if [[ "$BASE_REF" == "$DEFAULT_BRANCH" && "$HEAD_REPOSITORY" == "$REPOSITORY" && "$HEAD_REF" =~ ^(next|develop)$ ]]; then
-                tier=none
-              elif [[ "$DRAFT" == true ]]; then
-                tier=draft
-              elif [[ "$BASE_REF" == "$DEFAULT_BRANCH" ]]; then
-                tier=full
-              else
-                tier=fast
-              fi
-              ;;
-            push)
-              if [[ "$REF_NAME" == "$DEFAULT_BRANCH" ]]; then tier=none; else tier=full; fi
-              ;;
-            schedule) tier=nightly ;;
-            *) tier=full ;;
-          esac
-          echo "tier=${tier}" >> "$GITHUB_OUTPUT"
-          echo "Tier \`${tier}\`" >> "$GITHUB_STEP_SUMMARY"
+        uses: AntelopeJS/.github/.github/actions/ci-tier@v2
 
   verify-map:
     needs: select
