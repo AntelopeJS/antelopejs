@@ -30,6 +30,12 @@ const START_TIMEOUT_MS = 120 * MS_PER_SECOND;
 const DESTROY_TIMEOUT_MS = 10 * MS_PER_SECOND;
 
 /**
+ * Half of the default 10 s shutdown timeout (`DEFAULT_SHUTDOWN_TIMEOUT_MS`),
+ * which leaves the other half to stop and destroy the modules.
+ */
+const DRAIN_TIMEOUT_MS = 5 * MS_PER_SECOND;
+
+/**
  * Starts a module, warning once it is slow and failing it once it is late.
  * The module's own `start` keeps running: its lifecycle queue holds any later
  * transition until it settles.
@@ -53,6 +59,42 @@ function startWithinDeadline(module: Module): Promise<void> {
     );
   });
   return Promise.race([module.start(), deadline]).finally(() => {
+    timers.forEach(clearTimeout);
+  });
+}
+
+/**
+ * Runs every module's `drain` at once, and returns once they all settled or
+ * `DRAIN_TIMEOUT_MS` passed. It logs each drain that fails, warns at the
+ * deadline about the modules still draining, and never throws, so the stop
+ * that follows always runs.
+ */
+async function drainModules(modules: ManagedModule[]): Promise<void> {
+  const draining = new Set(modules.map(({ module }) => module));
+  const drains = Promise.all(
+    modules.map(async ({ module }) => {
+      try {
+        await module.drain();
+      } catch (error) {
+        Logger.Error(`Module '${module.id}' failed to drain`, error);
+      } finally {
+        draining.delete(module);
+      }
+    }),
+  );
+  const timers: NodeJS.Timeout[] = [];
+  const deadline = new Promise<void>((resolve) => {
+    timers.push(
+      setTimeout(() => {
+        const late = [...draining].map(({ id }) => `'${id}'`).join(", ");
+        Logger.Warn(
+          `Stopping the modules although ${late} did not drain within ${DRAIN_TIMEOUT_MS / MS_PER_SECOND} s`,
+        );
+        resolve();
+      }, DRAIN_TIMEOUT_MS),
+    );
+  });
+  await Promise.race([drains, deadline]).finally(() => {
     timers.forEach(clearTimeout);
   });
 }
@@ -144,8 +186,9 @@ async function closeManager(context: ManagerContext): Promise<void> {
 }
 
 export async function stopAll(this: ManagerContext): Promise<void> {
-  announceModulesStopping();
+  const isStopping = announceModulesStopping();
   await closeManager(this);
+  if (isStopping) await drainModules(this.getReverseLifecycleModules());
   const modules = this.getReverseLifecycleModules();
   const errors = await runModuleOperations(modules, (module) => module.stop());
   this.startupOrder = [];
@@ -155,8 +198,9 @@ export async function stopAll(this: ManagerContext): Promise<void> {
 }
 
 export async function destroyAll(this: ManagerContext): Promise<void> {
-  announceModulesStopping();
+  const isStopping = announceModulesStopping();
   await closeManager(this);
+  if (isStopping) await drainModules(this.getReverseLifecycleModules());
   const modules = this.getReverseLifecycleModules();
   const results = await runTrackedModuleOperations(
     modules,
