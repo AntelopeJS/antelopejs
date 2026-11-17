@@ -89,7 +89,7 @@ interface ManagerFields {
    * closed manager provides and constructs nothing more: a module it
    * constructed then would outlive every destroy.
    */
-  closed: boolean;
+  readonly closed: boolean;
   /**
    * The close of the manager: it waits for the constructs already under way,
    * then drains the modules. The first `stopAll` or `destroyAll` sets it, once
