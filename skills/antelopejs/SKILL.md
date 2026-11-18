@@ -63,7 +63,7 @@ this skill and the `ajs-*` skills come from `@antelopejs/core` that way. Two mec
   `node_modules`, and `.antelope/cache`. Run `/antelopejs:skills` (anywhere else:
   `npx -y github:AntelopeJS/agent-skills list`) to see which skills are synced and which package
   ships each one.
-- **dms-ai** (the DMS assistant) loads the skills of every loaded module, of their dependencies,
+- **dms-assistant** (the DMS assistant) loads the skills of every loaded module, of their dependencies,
   and of the project's own dependencies by itself.
 
 **DMS projects** get the DMS suite this way: `dms` (the DMS router; start there), `dms-project`,

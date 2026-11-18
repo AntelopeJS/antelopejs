@@ -18,7 +18,7 @@ npx -y github:AntelopeJS/agent-skills interface contract <name> [sub]  # full TS
 
 Each `import "@antelopejs/interface-<name>/<sub>"` line in the output is a literal import you can paste.
 
-**Package-shipped skills first, for installed interfaces.** Interface packages may ship their own skill (declared via `antelopeJs.skills`), synced into the project's `.claude/skills/` (`.agents/skills/` in Codex) as `<package-short-name>--<skill>` and loaded by dms-ai. For an interface that is already **installed**, prefer that skill plus the installed package's own `dist/*.d.ts` and `docs/` directory — that is exactly the version the project compiles against. Use the resolver for interfaces **not yet installed**, for discovering what exists (`list`), and for comparing versions (`versions`, `show <name>@<version>`).
+**Package-shipped skills first, for installed interfaces.** Interface packages may ship their own skill (declared via `antelopeJs.skills`), synced into the project's `.claude/skills/` (`.agents/skills/` in Codex) as `<package-short-name>--<skill>` and loaded by dms-assistant. For an interface that is already **installed**, prefer that skill plus the installed package's own `dist/*.d.ts` and `docs/` directory — that is exactly the version the project compiles against. Use the resolver for interfaces **not yet installed**, for discovering what exists (`list`), and for comparing versions (`versions`, `show <name>@<version>`).
 
 **The one hard rule:** a module never imports another module's files — only interfaces. Every cross-module link is an attachment onto an interface proxy point, so the core can detach and reattach it on reload. If you're tempted to `import` something from a sibling module, the thing you need belongs in an interface instead.
 

@@ -4,7 +4,8 @@ import type {
 } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import assert from "node:assert/strict";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import sinon from "sinon";
 
@@ -215,6 +216,42 @@ describe("project modules update behavior: interface bumps with --fix", () => {
       `${JSON.stringify({ name: "app", dependencies: { [DATA_API]: "^0.1.9" } }, null, "\t")}\n`,
     );
     expect(execute.lastCall.args[1]).to.deep.equal({ cwd: env.project });
+  });
+
+  it("with --fix passes when the install relinks a copy the check already loaded to the target", async () => {
+    await writeFile(
+      path.join(env.project, "package.json"),
+      JSON.stringify({ name: "app", dependencies: { [DATA_API]: "^0.1.8" } }),
+    );
+    const link = path.join(env.project, "node_modules", DATA_API);
+    const linkTo = async (version: string) => {
+      const store = path.join(
+        env.project,
+        "node_modules",
+        ".pnpm",
+        version,
+        "node_modules",
+        DATA_API,
+      );
+      await writeInterfacePackage(store, DATA_API, version);
+      await rm(link, { force: true });
+      await mkdir(path.dirname(link), { recursive: true });
+      await symlink(store, link, "dir");
+    };
+    await linkTo("0.1.8");
+    const interfaceCheck = stubInterfaceCheck().callsFake(async () => {
+      createRequire(path.join(env.project, "package.json"))(DATA_API);
+      return check([rangeBump(env.project, true)]);
+    });
+    interfaceCheck.onSecondCall().resolves(check([]));
+    sinon.stub(command, "ExecuteCMD").callsFake(async () => {
+      await linkTo("0.1.9");
+      return { code: 0, stdout: "", stderr: "" };
+    });
+
+    await env.update("--fix");
+
+    expect(interfaceCheck.callCount).to.equal(2);
   });
 
   it("with --fix fails when the install leaves the local module without the target copy", async () => {
