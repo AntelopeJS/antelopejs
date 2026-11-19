@@ -2,7 +2,9 @@ name: Release
 
 on:
   push:
-    branches: [next]
+    branches: [main]
+  pull_request:
+    types: [labeled, synchronize, reopened]
   workflow_dispatch:
     inputs:
       release-version:
