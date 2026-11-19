@@ -2,9 +2,10 @@ name: CI
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  merge_group:
   push:
-    branches: [next]
+    branches: [main]
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch:
@@ -26,8 +27,12 @@ jobs:
       windows-pull-requests: true
       extra-commands: pnpm run test:cli-smoke
       extra-commands-job: true
+      single-job: false
+      affected-tests: true
     permissions:
       contents: read
+    secrets:
+      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
 
   select:
     runs-on: ubuntu-latest
@@ -125,14 +130,12 @@ jobs:
   checks:
     if: always()
     needs:
-      [
-        select,
-        ci,
-        verify-map,
-        formal-module-lifecycle,
-        formal-module-cache-lock,
-        formal-build-start,
-      ]
+      - select
+      - ci
+      - verify-map
+      - formal-module-lifecycle
+      - formal-module-cache-lock
+      - formal-build-start
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -149,4 +152,5 @@ jobs:
     permissions:
       contents: write
       actions: write
+      statuses: write
     uses: AntelopeJS/.github/.github/workflows/ci-renovate-sync.yml@v2
