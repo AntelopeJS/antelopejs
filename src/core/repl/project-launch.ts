@@ -26,6 +26,7 @@ import {
   prepareFromArtifact,
   prepareFromConfig,
   prepareFromRefreshedArtifact,
+  reloadHolds,
   runLaunchSequence,
   runLaunchSteps,
   type RuntimePolicy,
@@ -38,6 +39,7 @@ const MAX_STREAM_LISTENERS = 20;
 const INTERACTIVE_PROMPT = "> ";
 const SHUTDOWN_PRIORITY_RESOURCES = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
+const RELEASE_QUIET_MS = 500;
 const UNSUPPORTED_ARTIFACT_OPTIONS_WARNING =
   "Watch and interactive modes are only available when launching from configuration; ignoring them for this build artifact launch.";
 
@@ -81,16 +83,60 @@ async function setupWatching(
   const watcher = new FileWatcher(fs);
   excludeProjectState(watcher, projectFolder, loaderContext);
   const loadedSignatures = new Map<string, string>();
-  const hotReload = new HotReload(async (moduleId) => {
-    const signature = watcher.getModuleSignature(moduleId);
-    if (loadedSignatures.get(moduleId) === signature) {
+  const hotReload = new HotReload(
+    async (moduleId) => {
+      const signature = watcher.getModuleSignature(moduleId);
+      if (loadedSignatures.get(moduleId) === signature) {
+        return;
+      }
+      await moduleLoading.reloadWatchedModule(manager, moduleId, loaderContext);
+      loadedSignatures.set(moduleId, signature);
+    },
+    () => holding(),
+  );
+  let restartHeld = false;
+  let releasing = 0;
+  let lastChangeAt = 0;
+  const holding = (): boolean => reloadHolds.held || releasing > 0;
+  const restart = async (): Promise<void> => {
+    lastChangeAt = Date.now();
+    if (holding()) {
+      restartHeld = true;
       return;
     }
-    await moduleLoading.reloadWatchedModule(manager, moduleId, loaderContext);
-    loadedSignatures.set(moduleId, signature);
+    await restartProject(projectFolder, env, options);
+  };
+  const untilWatcherQuiet = async (): Promise<void> => {
+    const releasedAt = Date.now();
+    releasing += 1;
+    try {
+      for (
+        let wait = RELEASE_QUIET_MS;
+        wait > 0;
+        wait =
+          Math.max(releasedAt, lastChangeAt) + RELEASE_QUIET_MS - Date.now()
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+    } finally {
+      releasing -= 1;
+    }
+  };
+  const unwatchHolds = reloadHolds.watch(async () => {
+    await untilWatcherQuiet();
+    if (shutdownManager.active || reloadHolds.held) {
+      return;
+    }
+    if (restartHeld) {
+      restartHeld = false;
+      await restartProject(projectFolder, env, options);
+      return;
+    }
+    await hotReload.settle();
   });
 
   shutdownManager.register(async () => {
+    unwatchHolds();
     hotReload.clear();
     watcher.stopWatching();
   }, SHUTDOWN_PRIORITY_RESOURCES);
@@ -109,9 +155,7 @@ async function setupWatching(
     await watcher.watchFile(
       configPath,
       (_, change) => {
-        void restartUnlessOwnWrite(configPath, change, () =>
-          restartProject(projectFolder, env, options),
-        );
+        void restartUnlessOwnWrite(configPath, change, restart);
       },
       { readHashes },
     );
@@ -119,13 +163,16 @@ async function setupWatching(
       getProjectEnvPath(projectFolder),
       () => {
         Logger.Info("Project .env changed, restarting project...");
-        void restartProject(projectFolder, env, options);
+        void restart();
       },
       { optional: true, readHashes },
     );
   }
 
-  watcher.onModuleChanged((id) => hotReload.queue(id));
+  watcher.onModuleChanged((id) => {
+    lastChangeAt = Date.now();
+    hotReload.queue(id);
+  });
   watcher.startWatching();
 }
 

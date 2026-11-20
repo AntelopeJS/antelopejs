@@ -3,7 +3,7 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 
 const PINNED_VERSION = process.argv[2] ?? "";
-const REQUIRED_RANGE = ">=0.5.1 <0.6.0";
+const REQUIRED_RANGE = process.argv[3] ?? "";
 
 /** @param {string} root */
 async function createProject(root) {
@@ -35,8 +35,10 @@ function describe(error) {
 }
 
 async function main() {
-  if (!PINNED_VERSION) {
-    throw new Error("Pass the pinned interface-core version as an argument.");
+  if (!PINNED_VERSION || !REQUIRED_RANGE) {
+    throw new Error(
+      "Pass the pinned interface-core version and the core's range as arguments.",
+    );
   }
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "ajs-pinned-core-"));
   let manager;
