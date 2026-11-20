@@ -56,7 +56,10 @@ async function writeModule(
   return sourcePath;
 }
 
-async function writeHeldProject(folder: string): Promise<HeldProject> {
+async function writeHeldProject(
+  folder: string,
+  withHolder = true,
+): Promise<HeldProject> {
   const startsPath = path.join(folder, "starts.log");
   const holdPath = path.join(folder, "hold.txt");
   const sourcePath = await writeModule(
@@ -64,19 +67,20 @@ async function writeHeldProject(folder: string): Promise<HeldProject> {
     "mod",
     COUNTING_MODULE,
   );
-  await writeModule(path.join(folder, "holder"), "holder", HOLDING_MODULE);
+  const mod = {
+    source: { type: "local", path: "./mod", main: "index.js" },
+    config: { startsPath, value: "unset" },
+  };
+  const holder = {
+    source: { type: "local", path: "./holder", main: "index.js" },
+    config: { holdPath },
+  };
+  if (withHolder) {
+    await writeModule(path.join(folder, "holder"), "holder", HOLDING_MODULE);
+  }
   const config = {
     name: "reload-holds",
-    modules: {
-      mod: {
-        source: { type: "local", path: "./mod", main: "index.js" },
-        config: { startsPath, value: "unset" },
-      },
-      holder: {
-        source: { type: "local", path: "./holder", main: "index.js" },
-        config: { holdPath },
-      },
-    },
+    modules: withHolder ? { mod, holder } : { mod },
     envOverrides: { [VALUE_VARIABLE]: "modules.mod.config.value" },
   };
   await fs.writeFile(
@@ -236,6 +240,20 @@ describe("reload holds in watch mode", function () {
     });
   });
 
+  it("resolves overlapping releases only once the due restart finished", async () => {
+    const holdA = await launchHeld(project);
+    await fs.writeFile(project.envPath, `${VALUE_VARIABLE}=late\n`);
+    await new Promise((resolve) => setTimeout(resolve, EDIT_INTERVAL_MS));
+
+    const releaseA = ReleaseReloads(holdA);
+    const holdB = await HoldReloads();
+    await ReleaseReloads(holdB);
+    const startsWhenBResolved = await readStarts(project.startsPath);
+    await releaseA;
+
+    expect(startsWhenBResolved).to.deep.equal(["unset", "late"]);
+  });
+
   it("ends a hold when the module that took it is destroyed", async () => {
     const manager = await launch(project.folder, "default", { watch: true });
     await waitFor(
@@ -254,5 +272,34 @@ describe("reload holds in watch mode", function () {
       duringHold: startsDuringHold.length,
       afterDestroy: (await readStarts(project.startsPath)).length,
     }).to.deep.equal({ duringHold: 1, afterDestroy: 2 });
+  });
+});
+
+describe("a reload hold taken outside watch mode", function () {
+  this.timeout(30000);
+  let project: HeldProject;
+
+  beforeEach(async () => {
+    project = await writeHeldProject(
+      await fs.mkdtemp(path.join(os.tmpdir(), "ajs-reload-holds-")),
+      false,
+    );
+  });
+
+  afterEach(async () => {
+    await stopProjects();
+    await fs.rm(project.folder, { recursive: true, force: true });
+  });
+
+  it("does not stop a later watch launch from reloading", async () => {
+    await HoldReloads();
+    await launch(project.folder, "default", { watch: true });
+    await waitFor(
+      async () => (await readStarts(project.startsPath)).length > 0,
+    );
+
+    await editModuleRepeatedly(project);
+
+    expect((await readStarts(project.startsPath)).length).to.be.greaterThan(1);
   });
 });
