@@ -21,6 +21,7 @@ import type {
   ModuleOverrideMap,
   ModuleOverrideRef,
 } from "./runtime-types";
+import { reloadHolds } from "./watch/reload-holds";
 
 const CORE_MODULE_ID = "antelopejs";
 
@@ -116,12 +117,33 @@ async function retireReplacedModules(
   }
 }
 
+/**
+ * Implements the hold functions outside any module context, so that each runs
+ * in its caller's: the hold belongs to the module generation that took it.
+ */
+function registerReloadHolds(): void {
+  coreInterfaceBeta.ImplementInterface(
+    {
+      HoldReloads: moduleInterfaceBeta.HoldReloads,
+      ReleaseReloads: moduleInterfaceBeta.ReleaseReloads,
+    },
+    {
+      HoldReloads: async () =>
+        reloadHolds.take(moduleInterfaceBeta.GetModuleContext()?.module),
+      ReleaseReloads: async (holdId: string) => reloadHolds.release(holdId),
+    },
+  );
+}
+
 export function registerCoreModuleInterface(
   manager: ModuleManager,
   loadContext: LoaderContextProvider,
 ): void {
+  const { HoldReloads, ReleaseReloads, ...moduleFunctions } =
+    moduleInterfaceBeta;
+  registerReloadHolds();
   moduleInterfaceBeta.RunWithModuleContext({ module: CORE_MODULE_ID }, () =>
-    coreInterfaceBeta.ImplementInterface(moduleInterfaceBeta, {
+    coreInterfaceBeta.ImplementInterface(moduleFunctions, {
       ListModules: async () => manager.listModules(),
       GetModuleInfo: async (moduleId: string) => {
         const entry = manager.getModuleEntry(moduleId);

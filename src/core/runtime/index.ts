@@ -20,4 +20,5 @@ export * from "./watch/file-watcher";
 export * as watchFileWatcherModule from "./watch/file-watcher";
 export * from "./watch/hot-reload";
 export * as watchHotReloadModule from "./watch/hot-reload";
+export * from "./watch/reload-holds";
 export * from "./watch/missing-folders";

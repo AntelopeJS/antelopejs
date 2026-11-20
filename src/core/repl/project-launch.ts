@@ -26,6 +26,7 @@ import {
   prepareFromArtifact,
   prepareFromConfig,
   prepareFromRefreshedArtifact,
+  reloadHolds,
   runLaunchSequence,
   runLaunchSteps,
   type RuntimePolicy,
@@ -81,16 +82,39 @@ async function setupWatching(
   const watcher = new FileWatcher(fs);
   excludeProjectState(watcher, projectFolder, loaderContext);
   const loadedSignatures = new Map<string, string>();
-  const hotReload = new HotReload(async (moduleId) => {
-    const signature = watcher.getModuleSignature(moduleId);
-    if (loadedSignatures.get(moduleId) === signature) {
+  const hotReload = new HotReload(
+    async (moduleId) => {
+      const signature = watcher.getModuleSignature(moduleId);
+      if (loadedSignatures.get(moduleId) === signature) {
+        return;
+      }
+      await moduleLoading.reloadWatchedModule(manager, moduleId, loaderContext);
+      loadedSignatures.set(moduleId, signature);
+    },
+    () => reloadHolds.held,
+  );
+  let restartHeld = false;
+  const restart = async (): Promise<void> => {
+    if (reloadHolds.held) {
+      restartHeld = true;
       return;
     }
-    await moduleLoading.reloadWatchedModule(manager, moduleId, loaderContext);
-    loadedSignatures.set(moduleId, signature);
+    await restartProject(projectFolder, env, options);
+  };
+  const unwatchHolds = reloadHolds.watch(async () => {
+    if (shutdownManager.active) {
+      return;
+    }
+    if (restartHeld) {
+      restartHeld = false;
+      await restartProject(projectFolder, env, options);
+      return;
+    }
+    await hotReload.settle();
   });
 
   shutdownManager.register(async () => {
+    unwatchHolds();
     hotReload.clear();
     watcher.stopWatching();
   }, SHUTDOWN_PRIORITY_RESOURCES);
@@ -109,9 +133,7 @@ async function setupWatching(
     await watcher.watchFile(
       configPath,
       (_, change) => {
-        void restartUnlessOwnWrite(configPath, change, () =>
-          restartProject(projectFolder, env, options),
-        );
+        void restartUnlessOwnWrite(configPath, change, restart);
       },
       { readHashes },
     );
@@ -119,7 +141,7 @@ async function setupWatching(
       getProjectEnvPath(projectFolder),
       () => {
         Logger.Info("Project .env changed, restarting project...");
-        void restartProject(projectFolder, env, options);
+        void restart();
       },
       { optional: true, readHashes },
     );

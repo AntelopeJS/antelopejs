@@ -78,7 +78,7 @@ Replay the counterexample against the code, one action per step, with the covera
 | `SdWatcher` | the priority-20 handler in `setupWatching`, `HotReload.clear`, `FileWatcher.stopWatching` |
 | `SdRelease`, `SdTolerance`, `SdExit` | `claimProcess`, `releaseActiveShutdownManager` (process-claim.ts), the tolerance handler in `keepRunningThroughFailedReloads`, `executeShutdown` |
 | `StaleWorkFails` | `setupProcessHandlers`, `isInvalidatedModuleWork`, `shutdownProcess` (runtime-bootstrap.ts) |
-| `SourceEdit`, `FlushStarts`, `ReloadBegins`, `BatchEnds` | `FileWatcher.notifyModuleChange`, `HotReload.queue`, `scheduleFlush`, `flush`, `reloadOne` (src/core/runtime/watch/hot-reload.ts), the reload handler in `setupWatching` |
+| `SourceEdit`, `FlushStarts`, `ReloadBegins`, `BatchEnds` | `FileWatcher.notifyModuleChange`, `HotReload.queue`, `scheduleFlush`, `flush`, `reloadPending`, `reloadOne` (src/core/runtime/watch/hot-reload.ts), the reload handler in `setupWatching` |
 | `RlManifestLoaded` .. `RlRecovered` | `reloadLoadedModuleFromSource`, `activateReplacement`, `cleanupReplacement`, `recoverPreviousModule` (src/core/runtime/module-reloading.ts), `placeModule`, `replaceLoadedModule` (module-manager-records.ts), `checkReplacement` (module-manager-bindings.ts), `unrequireModuleFiles` (module-manager-cache.ts) |
 
 The sync commit is `4299737` on AntelopeJS/antelopejs `main`. Every `\* file.ts:NN` comment cites the code at that commit, except the `module-manager-lifecycle.ts` ones, which cite that file with the shutdown drain phase.
@@ -90,6 +90,7 @@ The check runs with modules `a` and `b` (`a` declared at start), at most 2 confi
 The model leaves out:
 
 - the module interfaces `LoadModule`, `ReloadModule`, `SaveModuleDeclaration` and `RemoveModuleDeclaration`, which a module calls from inside the project;
+- the reload holds of `HoldReloads` and `ReleaseReloads` (`ReloadHolds`, src/core/runtime/watch/reload-holds.ts), so `HotReload.isHeld` always answers false;
 - `ajs project start`, the REPL, optional modules, and every failure of a first launch (construct, start, download);
 - the `destroyAll` of `cleanupFailedLaunch`, which waits for the shutdown's drain, then only repeats the shutdown's own `destroyAll`;
 - a destroy that fails during shutdown, `pendingCleanup`, start failures and the 120 s start deadline, and a second Ctrl+C;
