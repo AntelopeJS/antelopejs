@@ -39,6 +39,7 @@ const MAX_STREAM_LISTENERS = 20;
 const INTERACTIVE_PROMPT = "> ";
 const SHUTDOWN_PRIORITY_RESOURCES = 20;
 const SHUTDOWN_PRIORITY_CLEANUP = 10;
+const RELEASE_QUIET_MS = 500;
 const UNSUPPORTED_ARTIFACT_OPTIONS_WARNING =
   "Watch and interactive modes are only available when launching from configuration; ignoring them for this build artifact launch.";
 
@@ -91,17 +92,38 @@ async function setupWatching(
       await moduleLoading.reloadWatchedModule(manager, moduleId, loaderContext);
       loadedSignatures.set(moduleId, signature);
     },
-    () => reloadHolds.held,
+    () => holding(),
   );
   let restartHeld = false;
+  let releasing = 0;
+  let lastChangeAt = 0;
+  const holding = (): boolean => reloadHolds.held || releasing > 0;
   const restart = async (): Promise<void> => {
-    if (reloadHolds.held) {
+    lastChangeAt = Date.now();
+    if (holding()) {
       restartHeld = true;
       return;
     }
     await restartProject(projectFolder, env, options);
   };
+  const untilWatcherQuiet = async (): Promise<void> => {
+    const releasedAt = Date.now();
+    releasing += 1;
+    try {
+      for (
+        let wait = RELEASE_QUIET_MS;
+        wait > 0;
+        wait =
+          Math.max(releasedAt, lastChangeAt) + RELEASE_QUIET_MS - Date.now()
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+    } finally {
+      releasing -= 1;
+    }
+  };
   const unwatchHolds = reloadHolds.watch(async () => {
+    await untilWatcherQuiet();
     if (shutdownManager.active) {
       return;
     }
@@ -147,7 +169,10 @@ async function setupWatching(
     );
   }
 
-  watcher.onModuleChanged((id) => hotReload.queue(id));
+  watcher.onModuleChanged((id) => {
+    lastChangeAt = Date.now();
+    hotReload.queue(id);
+  });
   watcher.startWatching();
 }
 

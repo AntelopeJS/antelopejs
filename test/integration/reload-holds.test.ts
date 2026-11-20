@@ -163,6 +163,37 @@ describe("reload holds in watch mode", function () {
     }).to.deep.equal({ duringHold: 1, afterRelease: 2 });
   });
 
+  it("reloads once for writes the watcher has not reported when the release comes", async () => {
+    const holdId = await launchHeld(project);
+
+    for (let edit = 1; edit <= 10; edit += 1) {
+      await fs.writeFile(
+        project.sourcePath,
+        `${COUNTING_MODULE}exports.edit = ${edit};\n`,
+      );
+    }
+    await ReleaseReloads(holdId);
+    const afterRelease = (await readStarts(project.startsPath)).length;
+    await new Promise((resolve) => setTimeout(resolve, EDIT_INTERVAL_MS * 2));
+
+    expect({
+      afterRelease,
+      later: (await readStarts(project.startsPath)).length,
+    }).to.deep.equal({ afterRelease: 2, later: 2 });
+  });
+
+  it("restarts the project at release for a .env write the watcher has not reported", async () => {
+    const holdId = await launchHeld(project);
+
+    await fs.writeFile(project.envPath, `${VALUE_VARIABLE}=late\n`);
+    await ReleaseReloads(holdId);
+
+    expect(await readStarts(project.startsPath)).to.deep.equal([
+      "unset",
+      "late",
+    ]);
+  });
+
   it("restarts the project once at release for .env changes during a hold", async () => {
     const holdId = await launchHeld(project);
 
