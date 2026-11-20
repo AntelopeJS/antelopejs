@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@antelopejs/interface-core':
-        specifier: 0.5.2-next.117.gae930be
+        specifier: '>=0.5.2-next.117.gae930be <0.6.0'
         version: 0.5.2-next.117.gae930be
       '@clack/prompts':
         specifier: ^1.8.1
