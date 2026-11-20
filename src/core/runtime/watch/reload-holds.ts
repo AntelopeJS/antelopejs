@@ -45,6 +45,13 @@ export class ReloadHolds {
     }
   }
 
+  /** Drops every hold while no watcher runs: such holds never hold anything. */
+  dropUnwatched(): void {
+    if (this.runHeld === undefined) {
+      this.holders.clear();
+    }
+  }
+
   /** Ends every hold `module` took. */
   async releaseModule(module: string): Promise<void> {
     const ids = [...this.holders]

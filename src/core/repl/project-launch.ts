@@ -122,7 +122,7 @@ async function setupWatching(
       releasing -= 1;
     }
   };
-  const unwatchHolds = reloadHolds.watch(async () => {
+  const runHeldReloads = async (): Promise<void> => {
     await untilWatcherQuiet();
     if (shutdownManager.active || reloadHolds.held) {
       return;
@@ -133,6 +133,12 @@ async function setupWatching(
       return;
     }
     await hotReload.settle();
+  };
+  let lastHeldRun: Promise<void> = Promise.resolve();
+  const unwatchHolds = reloadHolds.watch(() => {
+    const run = lastHeldRun.then(runHeldReloads);
+    lastHeldRun = run.catch(() => undefined);
+    return run;
   });
 
   shutdownManager.register(async () => {
@@ -235,6 +241,7 @@ export async function startProject(
   options: LaunchOptions,
   policy: RuntimePolicy = DEFAULT_RUNTIME_POLICY,
 ): Promise<StartedProject> {
+  reloadHolds.dropUnwatched();
   const started = await runLaunchSequence(
     prepare,
     projectFolder,
