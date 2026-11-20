@@ -24,7 +24,7 @@ jobs:
       renovate-sync: false
       test-job: true
       windows: true
-      windows-pull-requests: true
+      windows-merge-queue: true
       extra-commands: pnpm run test:cli-smoke
       extra-commands-job: true
       single-job: false
