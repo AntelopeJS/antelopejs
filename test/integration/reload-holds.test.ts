@@ -1,4 +1,7 @@
-import { ReleaseReloads } from "@antelopejs/interface-core/modules";
+import {
+  HoldReloads,
+  ReleaseReloads,
+} from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -192,6 +195,26 @@ describe("reload holds in watch mode", function () {
       "unset",
       "late",
     ]);
+  });
+
+  it("keeps a due restart for a hold taken while the release waits for the watcher", async () => {
+    const holdId = await launchHeld(project);
+    await fs.writeFile(project.envPath, `${VALUE_VARIABLE}=late\n`);
+    await new Promise((resolve) => setTimeout(resolve, EDIT_INTERVAL_MS));
+
+    const release = ReleaseReloads(holdId);
+    const nextHold = await HoldReloads();
+    await release;
+    const startsDuringNextHold = await readStarts(project.startsPath);
+    await ReleaseReloads(nextHold);
+
+    expect({
+      duringNextHold: startsDuringNextHold,
+      afterRelease: await readStarts(project.startsPath),
+    }).to.deep.equal({
+      duringNextHold: ["unset"],
+      afterRelease: ["unset", "late"],
+    });
   });
 
   it("restarts the project once at release for .env changes during a hold", async () => {

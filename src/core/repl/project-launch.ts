@@ -124,7 +124,7 @@ async function setupWatching(
   };
   const unwatchHolds = reloadHolds.watch(async () => {
     await untilWatcherQuiet();
-    if (shutdownManager.active) {
+    if (shutdownManager.active || reloadHolds.held) {
       return;
     }
     if (restartHeld) {
