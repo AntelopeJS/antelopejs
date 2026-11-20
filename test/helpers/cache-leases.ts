@@ -101,17 +101,22 @@ export function leaseNames(cachePath: string): string[] {
   return cacheFolderNames(cachePath, LEASES_FOLDER);
 }
 
-/** The parsed lease files of the cache at `cachePath`. */
+/**
+ * The parsed lease files of the cache at `cachePath`. Like the core, it skips
+ * a lease staged under another extension while a run writes it.
+ */
 export function readLeases(cachePath: string): ParsedJson[] {
-  return leaseNames(cachePath).map((name) => {
-    const lease: unknown = JSON.parse(
-      readText(path.join(cachePath, LEASES_FOLDER, name)),
-    );
-    if (!isParsedJson(lease)) {
-      throw new Error(`Lease ${name} is not JSON`);
-    }
-    return lease;
-  });
+  return leaseNames(cachePath)
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => {
+      const lease: unknown = JSON.parse(
+        readText(path.join(cachePath, LEASES_FOLDER, name)),
+      );
+      if (!isParsedJson(lease)) {
+        throw new Error(`Lease ${name} is not JSON`);
+      }
+      return lease;
+    });
 }
 
 /** Writes `content` as the lease file `name` of the cache at `cachePath`. */

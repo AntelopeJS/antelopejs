@@ -16,7 +16,11 @@ import {
   prepareFromArtifact,
   prepareFromRefreshedArtifact,
 } from "../../../src/core/runtime";
-import { openGate, pruneInChild } from "../../helpers/cache-children";
+import {
+  CHILD_TIMEOUT_MS,
+  openGate,
+  pruneInChild,
+} from "../../helpers/cache-children";
 import {
   holdPruneLock,
   pruneLockPath,
@@ -91,7 +95,9 @@ async function leased(cachePath: string, entry: string): Promise<void> {
 
 type Prepare = typeof prepareFromArtifact;
 
-describe("ajs project start while another run rebuilds and prunes", () => {
+describe("ajs project start while another run rebuilds and prunes", function () {
+  this.timeout(CHILD_TIMEOUT_MS + 5000);
+
   let root: string;
   let cachePath: string;
   let project: string;
