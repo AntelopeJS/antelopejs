@@ -5,10 +5,15 @@ import path from "node:path";
 
 import { buildProcessInvocation } from "../../src/core/output";
 import { isObject } from "../../src/utils";
-import { overriddenInterfaceCore } from "../helpers/interface-core-override";
+import {
+  declaredInterfaceCoreRange,
+  overriddenInterfaceCore,
+  repositoryInterfaceCoreRange,
+} from "../helpers/interface-core-override";
 import { listDirectory } from "../helpers/temp";
 
 const root = path.resolve(__dirname, "../..");
+const interfaceCoreRange = repositoryInterfaceCoreRange(root);
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), "ajs-package-consumer-"));
 const packFolder = path.join(temp, "pack");
 const consumerFolder = path.join(temp, "consumer");
@@ -91,12 +96,7 @@ function readFromTarball(tarball: string, args: string[]): string {
 
 function inspectManifest(tarball: string): void {
   const content = readFromTarball(tarball, ["-xOf", "package/package.json"]);
-  const manifest: unknown = JSON.parse(content);
-  const dependencies = isObject(manifest) ? manifest.dependencies : undefined;
-  const interfaceCoreRange = isObject(dependencies)
-    ? dependencies["@antelopejs/interface-core"]
-    : undefined;
-  if (interfaceCoreRange !== ">=0.5.2-next.117.gae930be <0.6.0") {
+  if (declaredInterfaceCoreRange(content) !== interfaceCoreRange) {
     throw new Error(
       "Packed core does not pin interface-core to the minor it implements.",
     );
@@ -224,7 +224,10 @@ function verifyPinnedConsumer(tarball: string, version: string): void {
     `overrides:\n  "@antelopejs/interface-core": "${version}"\n`,
   );
   run(pnpm, ["install"], pinnedFolder);
-  verifyConsumer("verify-pinned-interface-core.cjs", pinnedFolder, [version]);
+  verifyConsumer("verify-pinned-interface-core.cjs", pinnedFolder, [
+    version,
+    interfaceCoreRange,
+  ]);
 }
 
 try {
