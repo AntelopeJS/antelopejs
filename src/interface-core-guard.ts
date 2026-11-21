@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+import { compare, parse } from "semver";
+
 import {
   isObject,
   isString,
@@ -35,8 +37,27 @@ function readInterfaceCoreCopy(): InterfaceCoreCopy {
 }
 
 /**
+ * Whether `version` is `pin` or a later preview of its line: the same
+ * `major.minor.patch` and the same leading prerelease tag. A `-next` core
+ * pins the exact interface-core preview it was built with, and a project on
+ * previews loads whichever preview of that line is newest.
+ */
+function isPreviewOfPinnedLine(version: string, pin: string): boolean {
+  const pinned = parse(pin);
+  const loaded = parse(version);
+  return (
+    pinned !== null &&
+    loaded !== null &&
+    loaded.compareMain(pinned) === 0 &&
+    loaded.prerelease[0] === pinned.prerelease[0] &&
+    compare(loaded, pinned) >= 0
+  );
+}
+
+/**
  * Throws when the core's own copy of `@antelopejs/interface-core` falls
- * outside the range the core declares. A package manager override or
+ * outside the range the core declares, or, when the core pins a preview,
+ * outside that preview's line from the pin on. A package manager override or
  * resolution can replace that copy without a warning at install, and the
  * core would then fail on a subpath or function the old copy lacks. Every
  * entry imports this module before anything that loads interface-core, so
@@ -47,7 +68,11 @@ export function assertInterfaceCoreCopy(
 ): void {
   const { coreVersion, requiredRange, installed } = copy;
   const version = installed?.version;
-  if (version !== undefined && satisfiesRange(version, requiredRange)) {
+  if (
+    version !== undefined &&
+    (satisfiesRange(version, requiredRange) ||
+      isPreviewOfPinnedLine(version, requiredRange))
+  ) {
     return;
   }
   throw new CliError({
