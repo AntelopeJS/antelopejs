@@ -77,6 +77,46 @@ describe("assertInterfaceCoreCopy", () => {
     expect(thrownBy(copyAt("0.6.0")).problem.title).to.include("0.6.0");
   });
 
+  describe("under a preview's exact pin", () => {
+    const PIN = "0.5.2-next.117.gae930be";
+    const pinnedAt = (version: string): InterfaceCoreCopy => ({
+      ...copyAt(version),
+      coreVersion: "1.22.0-next.40.gabcdef0",
+      requiredRange: PIN,
+    });
+
+    it("accepts a newer preview of the pinned line", () => {
+      expect(() =>
+        assertInterfaceCoreCopy(pinnedAt("0.5.2-next.118.g51a2e95")),
+      ).not.to.throw();
+    });
+
+    it("accepts the pinned preview itself", () => {
+      expect(() => assertInterfaceCoreCopy(pinnedAt(PIN))).not.to.throw();
+    });
+
+    for (const version of [
+      "0.5.2-next.116.g0000000",
+      "0.5.3-next.1.g0000000",
+      "0.6.0-next.1.g0000000",
+      "0.5.2-rc.1",
+      "0.5.2",
+    ]) {
+      it(`refuses ${version}, outside the pinned line or older`, () => {
+        expect(thrownBy(pinnedAt(version)).problem.title).to.include(PIN);
+      });
+    }
+  });
+
+  it("keeps an exact stable pin exact", () => {
+    const { problem } = thrownBy({
+      ...copyAt("0.5.2"),
+      requiredRange: "0.5.1",
+    });
+
+    expect(problem.title).to.include("0.5.2");
+  });
+
   it("rejects a copy whose version it cannot find", () => {
     expect(thrownBy(copyAt(undefined)).problem.title).to.include(
       "an unknown version",
