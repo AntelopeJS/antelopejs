@@ -48,10 +48,7 @@ function isPreviewOfPinnedLine(version: string, pin: string): boolean {
   return (
     pinned !== null &&
     loaded !== null &&
-    pinned.prerelease.length > 0 &&
-    loaded.major === pinned.major &&
-    loaded.minor === pinned.minor &&
-    loaded.patch === pinned.patch &&
+    loaded.compareMain(pinned) === 0 &&
     loaded.prerelease[0] === pinned.prerelease[0] &&
     compare(loaded, pinned) >= 0
   );

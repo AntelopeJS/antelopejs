@@ -95,8 +95,18 @@ describe("assertInterfaceCoreCopy", () => {
       expect(() => assertInterfaceCoreCopy(pinnedAt(PIN))).not.to.throw();
     });
 
+    it("orders preview counters as numbers", () => {
+      expect(() =>
+        assertInterfaceCoreCopy({
+          ...pinnedAt("0.5.2-next.100.g0000000"),
+          requiredRange: "0.5.2-next.99.g0000000",
+        }),
+      ).not.to.throw();
+    });
+
     for (const version of [
       "0.5.2-next.116.g0000000",
+      "1.5.2-next.200.g0000000",
       "0.5.3-next.1.g0000000",
       "0.6.0-next.1.g0000000",
       "0.5.2-rc.1",
@@ -108,13 +118,13 @@ describe("assertInterfaceCoreCopy", () => {
     }
   });
 
-  it("keeps an exact stable pin exact", () => {
+  it("refuses a preview under an exact stable pin", () => {
     const { problem } = thrownBy({
-      ...copyAt("0.5.2"),
+      ...copyAt("0.5.1-next.1"),
       requiredRange: "0.5.1",
     });
 
-    expect(problem.title).to.include("0.5.2");
+    expect(problem.title).to.include("0.5.1-next.1");
   });
 
   it("rejects a copy whose version it cannot find", () => {
