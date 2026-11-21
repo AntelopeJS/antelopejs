@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.24.6
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.5...v1.24.6)
+
+### 🚀 Enhancements
+
+- **watch:** Hold hot reloads and restarts until released ([#538](https://github.com/AntelopeJS/antelopejs/pull/538))
+
+### 🩹 Fixes
+
+- **watch:** Honour the ReleaseReloads contract for overlapping releases and unwatched holds ([#539](https://github.com/AntelopeJS/antelopejs/pull/539))
+- **guard:** Accept a newer interface-core preview of the line a -next core pins ([#542](https://github.com/AntelopeJS/antelopejs/pull/542))
+- **deps:** Depend on the stable @antelopejs/interface-core
+
+### 🏡 Chore
+
+- Promote next to main ([#536](https://github.com/AntelopeJS/antelopejs/pull/536))
+
+### ✅ Tests
+
+- **runtime:** Bound the start-build race on its child process, not mocha's 5 s default ([#541](https://github.com/AntelopeJS/antelopejs/pull/541))
+
+### 🤖 CI
+
+- Roll out the trunk CI with the merge queue ([#537](https://github.com/AntelopeJS/antelopejs/pull/537))
+- Pass windows-merge-queue to the trunk CI ([#540](https://github.com/AntelopeJS/antelopejs/pull/540))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.5
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.4...v1.24.5)
