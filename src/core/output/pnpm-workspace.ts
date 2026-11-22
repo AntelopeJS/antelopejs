@@ -4,44 +4,22 @@ import type { IFileSystem } from "../../types";
 
 const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
 
-const PACKAGES_KEY_PATTERN = /^packages:\s*(?:#.*)?$/;
-const INLINE_PACKAGES_PATTERN = /^packages:\s*\[([^\]]*)\]\s*(?:#.*)?$/;
-const PACKAGE_ENTRY_PATTERN = /^\s*-\s*(['"]?)([^'"#\s]+)\1\s*(?:#.*)?$/;
-const QUOTES_PATTERN = /^(['"]?)(.*)\1$/;
-const BLANK_LINE_PATTERN = /^\s*(?:#.*)?$/;
 const EXCLUDE_PREFIX = "!";
 
 /**
- * The glob patterns of the `packages` list of a `pnpm-workspace.yaml`, as a
- * block list or a flow list such as `packages: [modules/*]`.
+ * The glob patterns of the `packages` list of a `pnpm-workspace.yaml`, in any
+ * YAML form pnpm accepts. An unparsable file lists nothing.
  */
-function parseWorkspacePackages(yaml: string): string[] {
-  const lines = yaml.split(/\r?\n/);
-  const inline = lines
-    .map((line) => INLINE_PACKAGES_PATTERN.exec(line))
-    .find((match) => match !== null);
-  if (inline) {
-    return inline[1]
-      .split(",")
-      .map((entry) => entry.trim().replace(QUOTES_PATTERN, "$2"))
-      .filter((entry) => entry !== "");
-  }
-  const start = lines.findIndex((line) => PACKAGES_KEY_PATTERN.test(line));
-  if (start === -1) {
+async function parseWorkspacePackages(yaml: string): Promise<string[]> {
+  const { isMap, isScalar, isSeq, parseDocument } = await import("yaml");
+  const document = parseDocument(yaml);
+  if (document.errors.length > 0 || !isMap(document.contents)) {
     return [];
   }
-  const patterns: string[] = [];
-  for (const line of lines.slice(start + 1)) {
-    if (BLANK_LINE_PATTERN.test(line)) {
-      continue;
-    }
-    const entry = PACKAGE_ENTRY_PATTERN.exec(line);
-    if (!entry) {
-      break;
-    }
-    patterns.push(entry[2]);
-  }
-  return patterns;
+  const packages = document.contents.get("packages", true);
+  return isSeq(packages)
+    ? packages.items.filter(isScalar).map((entry) => String(entry.value))
+    : [];
 }
 
 /** Whether the `/`-separated `relativePath` matches the pnpm glob `pattern`. */
@@ -100,7 +78,7 @@ export async function findPnpmWorkspaceRoot(
         .relative(root, member)
         .split(path.sep)
         .join("/");
-      const patterns = parseWorkspacePackages(
+      const patterns = await parseWorkspacePackages(
         await fileSystem.readFileString(manifest),
       );
       return isListed(relativePath, patterns) ? root : undefined;
