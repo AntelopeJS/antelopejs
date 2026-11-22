@@ -118,7 +118,7 @@ export function prepareEmbedded(
     const cacheFolder = path.join(projectFolder, ...EMBEDDED_CACHE_SEGMENTS);
     return {
       fs,
-      dev: false,
+      dev: options.dev ?? false,
       logging: options.logging,
       loadContext: memoizeLoaderContext(() =>
         createLoaderContext(

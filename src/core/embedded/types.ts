@@ -28,6 +28,8 @@ export interface EmbeddedRuntimeOptions {
   provides?: string[];
   /** Supplying this turns the `logging` policy on. Leave unset to keep the host's logger. */
   logging?: AntelopeLogging;
+  /** Runs the runtime in development mode, so modules that gate dev-only behaviour see it. Defaults to `false`. */
+  dev?: boolean;
   /** Process responsibilities to reclaim from the host. All default to off. */
   policy?: Partial<RuntimePolicy>;
 }
