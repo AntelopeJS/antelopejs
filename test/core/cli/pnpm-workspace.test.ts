@@ -41,6 +41,20 @@ describe("getInstallCommand in a pnpm workspace", () => {
     ).to.match(/^pnpm install (?!.*--ignore-workspace)/);
   });
 
+  for (const packages of [
+    "packages:\n- modules/*\n",
+    "packages: [modules/*]\n",
+    "packages: ['other/*', \"modules/*\"] # flow list\n",
+  ]) {
+    it(`installs a member that ${JSON.stringify(packages)} lists through its workspace`, async () => {
+      const fs = await workspace(packages);
+
+      expect(
+        await getInstallCommand("/repo/modules/app", false, fs, "update"),
+      ).to.match(/^pnpm install (?!.*--ignore-workspace)/);
+    });
+  }
+
   it("installs a folder the workspace does not list alone", async () => {
     const fs = await workspace("packages:\n  - packages/**\n");
 

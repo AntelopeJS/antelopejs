@@ -374,6 +374,17 @@ import { useAsciiSymbols } from "../helpers/ascii-symbols";
         expect(isUpToDate("^1.0.0", "2.0.0")).to.equal(false);
       });
 
+      it("moves short caret and tilde ranges past their bound", () => {
+        expect(isUpToDate("^1", "3.0.0")).to.equal(false);
+        expect(isUpToDate("~1.2", "1.3.0")).to.equal(false);
+        expect(isUpToDate("=1.0.0", "3.0.0")).to.equal(false);
+      });
+
+      it("keeps a range whose bound the configuration sets", () => {
+        expect(isUpToDate(">=0.20.2 <0.21.0", "0.22.0")).to.equal(true);
+        expect(isUpToDate("1.x", "2.0.0")).to.equal(true);
+      });
+
       it("treats dist-tags as always up to date since the loader floats them", () => {
         expect(isUpToDate("latest", "1.0.0")).to.equal(true);
         expect(isUpToDate("next", "2.0.0")).to.equal(true);

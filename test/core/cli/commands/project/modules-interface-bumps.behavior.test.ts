@@ -311,5 +311,6 @@ describe("project modules update behavior: --fix in a pnpm workspace", () => {
       "pnpm install --no-frozen-lockfile",
     );
     expect(execute.lastCall.args[1]).to.deep.equal({ cwd: member });
+    expect(process.exitCode).to.equal(undefined);
   });
 });
