@@ -1,7 +1,5 @@
 import path from "node:path";
 
-import { isMap, isScalar, isSeq, parseDocument } from "yaml";
-
 import type { IFileSystem } from "../../types";
 
 const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
@@ -12,7 +10,8 @@ const EXCLUDE_PREFIX = "!";
  * The glob patterns of the `packages` list of a `pnpm-workspace.yaml`, in any
  * YAML form pnpm accepts. An unparsable file lists nothing.
  */
-function parseWorkspacePackages(yaml: string): string[] {
+async function parseWorkspacePackages(yaml: string): Promise<string[]> {
+  const { isMap, isScalar, isSeq, parseDocument } = await import("yaml");
   const document = parseDocument(yaml);
   if (document.errors.length > 0 || !isMap(document.contents)) {
     return [];
@@ -79,7 +78,7 @@ export async function findPnpmWorkspaceRoot(
         .relative(root, member)
         .split(path.sep)
         .join("/");
-      const patterns = parseWorkspacePackages(
+      const patterns = await parseWorkspacePackages(
         await fileSystem.readFileString(manifest),
       );
       return isListed(relativePath, patterns) ? root : undefined;
