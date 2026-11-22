@@ -276,3 +276,40 @@ describe("project modules update behavior: interface bumps with --fix", () => {
     expect(interfaceCheck.callCount).to.equal(1);
   });
 });
+
+describe("project modules update behavior: --fix in a pnpm workspace", () => {
+  const env = useUpdateProject();
+
+  it("with --fix installs a local module that a pnpm workspace lists through that workspace", async () => {
+    const member = path.join(env.project, "modules", "app");
+    await mkdir(member, { recursive: true });
+    await writeFile(
+      path.join(env.project, "pnpm-workspace.yaml"),
+      "packages:\n  - modules/*\n",
+    );
+    await writeFile(
+      path.join(member, "package.json"),
+      JSON.stringify({
+        name: "app",
+        dependencies: { [DATA_API]: "^0.1.8", lib: "workspace:*" },
+      }),
+    );
+    const interfaceCheck = stubInterfaceCheck(check([rangeBump(member, true)]));
+    interfaceCheck.onSecondCall().resolves(check([]));
+    const execute = sinon.stub(command, "ExecuteCMD").callsFake(async () => {
+      await writeInterfacePackage(
+        path.join(member, "node_modules", DATA_API),
+        DATA_API,
+        "0.1.9",
+      );
+      return { code: 0, stdout: "", stderr: "" };
+    });
+
+    await env.update("--fix");
+
+    expect(execute.lastCall.args[0]).to.equal(
+      "pnpm install --no-frozen-lockfile",
+    );
+    expect(execute.lastCall.args[1]).to.deep.equal({ cwd: member });
+  });
+});

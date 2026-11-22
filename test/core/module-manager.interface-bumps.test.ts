@@ -1,6 +1,7 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import path from "node:path";
+import { inc } from "semver";
 
 import {
   ModuleManager,
@@ -8,6 +9,7 @@ import {
   raiseRangeFloor,
 } from "../../src/core/modules";
 import { planInterfacePackages } from "../../src/core/runtime";
+import { resolvePackage } from "../../src/utils";
 import {
   INCIDENT_INTERFACE,
   writeIncidentProject,
@@ -33,8 +35,12 @@ function cleanupProjects() {
  * Loads every module of an incident project in the order given, as local
  * folders, except the ones named in `fromNpm`, which keep an npm source.
  */
-async function plan(modules: IncidentModules, fromNpm: string[]) {
-  const folder = await writeIncidentProject(modules);
+async function plan(
+  modules: IncidentModules,
+  fromNpm: string[],
+  interfaceName = INCIDENT_INTERFACE,
+) {
+  const folder = await writeIncidentProject(modules, interfaceName);
   projects.push(folder);
   const manager = new ModuleManager();
   const manifests = await Promise.all(
@@ -128,6 +134,62 @@ describe("ModuleManager interface bumps of a stubbed preview", () => {
         from: ">=0.5.1 <0.6.0",
         to: "0.5.2-next.113.g5abe1f0",
       },
+    ]);
+  });
+});
+
+describe("ModuleManager interface bumps of @antelopejs/interface-core", () => {
+  cleanupProjects();
+
+  const INTERFACE_CORE = "@antelopejs/interface-core";
+  const coreCopy = resolvePackage(INTERFACE_CORE, __dirname)?.version ?? "";
+
+  it("never raises a module past the copy the running core implements", async () => {
+    const { bumps } = await plan(
+      [
+        {
+          name: "app",
+          range: `>=${coreCopy} <1.0.0`,
+          copy: coreCopy,
+          optional: true,
+        },
+        {
+          name: "cms",
+          range: `>=${coreCopy} <1.0.0`,
+          copy: `${inc(coreCopy, "patch")}-next.121.g0d40689`,
+          optional: true,
+        },
+      ],
+      ["cms"],
+      INTERFACE_CORE,
+    );
+
+    expect(bumps).to.deep.equal([]);
+  });
+
+  it("raises a module older than the core's copy to that copy", async () => {
+    const older = "0.0.1";
+    const { bumps } = await plan(
+      [
+        {
+          name: "app",
+          range: `>=${older} <1.0.0`,
+          copy: older,
+          optional: true,
+        },
+        {
+          name: "cms",
+          range: `>=${older} <1.0.0`,
+          copy: `${inc(coreCopy, "patch")}-next.121.g0d40689`,
+          optional: true,
+        },
+      ],
+      ["cms"],
+      INTERFACE_CORE,
+    );
+
+    expect(bumps.map((bump) => [bump.moduleId, bump.target])).to.deep.equal([
+      ["app", coreCopy],
     ]);
   });
 });

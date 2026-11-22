@@ -35,6 +35,7 @@ export const INCIDENT_MODULES: IncidentModule[] = [
 async function writeIncidentModule(
   projectFolder: string,
   module: IncidentModule,
+  interfaceName: string,
 ): Promise<void> {
   const folder = path.join(projectFolder, "modules", module.name);
   await mkdir(folder, { recursive: true });
@@ -45,10 +46,10 @@ async function writeIncidentModule(
       version: "1.0.0",
       main: "index.js",
       [module.optional ? "optionalDependencies" : "dependencies"]: {
-        [INCIDENT_INTERFACE]: module.range,
+        [interfaceName]: module.range,
       },
       antelopeJs: module.implementsInterface
-        ? { implements: [INCIDENT_INTERFACE] }
+        ? { implements: [interfaceName] }
         : {},
     }),
   );
@@ -58,8 +59,8 @@ async function writeIncidentModule(
   );
   if (module.copy) {
     await writeInterfacePackage(
-      path.join(folder, "node_modules", INCIDENT_INTERFACE),
-      INCIDENT_INTERFACE,
+      path.join(folder, "node_modules", interfaceName),
+      interfaceName,
       module.copy,
     );
   }
@@ -86,10 +87,11 @@ function moduleConfig(module: IncidentModule): IncidentModuleConfig {
  */
 export async function writeIncidentProject(
   modules: IncidentModule[] = INCIDENT_MODULES,
+  interfaceName: string = INCIDENT_INTERFACE,
 ): Promise<string> {
   const projectFolder = makeTempDir("antelope-interface-ranges-");
   for (const module of modules) {
-    await writeIncidentModule(projectFolder, module);
+    await writeIncidentModule(projectFolder, module, interfaceName);
   }
   const config = {
     name: "incident",
