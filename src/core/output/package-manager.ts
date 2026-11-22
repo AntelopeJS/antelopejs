@@ -11,9 +11,9 @@ import {
   PACKAGE_MANAGER_NAMES,
   type PackageManagerName,
 } from "./package-manager-name";
+import { findPnpmWorkspaceRoot } from "./pnpm-workspace";
 import { getProcessPalette } from "./tasks";
 import { isObject, isString } from "../../utils";
-const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
 const PACKAGE_MANAGER_PATTERN = /^(npm|yarn|pnpm)@([0-9A-Za-z._+-]+)$/;
 const LOCKFILES: Record<PackageManagerName, string[]> = {
   npm: ["npm-shrinkwrap.json", "package-lock.json"],
@@ -302,6 +302,8 @@ interface InstallCommandOptions {
   useLegacyPeerDeps: boolean;
   /** Whether pnpm installs the folder alone, ignoring a workspace it is part of. */
   ignoreWorkspace: boolean;
+  /** The package manager of a folder whose package.json names none. */
+  fallbackPackageManager?: PackageManagerName;
 }
 
 async function installDependenciesCommand(
@@ -310,7 +312,8 @@ async function installDependenciesCommand(
   options: InstallCommandOptions,
 ): Promise<string> {
   const packageManager = resolvePackageManager(
-    await getModulePackageManager(directory, fileSystem),
+    (await getModulePackageManager(directory, fileSystem)) ??
+      options.fallbackPackageManager,
   );
   const hasLockfile = await hasPackageManagerLockfile(
     directory,
@@ -330,9 +333,11 @@ async function installDependenciesCommand(
 
 /**
  * The command that installs the dependencies of the project or module in
- * `directory`. A folder that holds a `pnpm-workspace.yaml` is the root of its
- * own workspace, and pnpm installs every package of that workspace; any
- * other folder is installed alone, ignoring a workspace that encloses it.
+ * `directory`. A folder that holds a `pnpm-workspace.yaml`, or that an
+ * enclosing workspace lists in its `packages`, is installed through that
+ * workspace, with its package manager and lockfile, so `workspace:`
+ * dependencies resolve; any other folder is installed alone, ignoring a
+ * workspace that encloses it.
  */
 export async function getInstallCommand(
   directory: string = ".",
@@ -341,14 +346,13 @@ export async function getInstallCommand(
   lockfileMode: LockfileMode = "frozen",
   useLegacyPeerDeps = false,
 ): Promise<string> {
-  const ownsWorkspace = await fileSystem.exists(
-    path.join(directory, PNPM_WORKSPACE_FILE),
-  );
-  return installDependenciesCommand(directory, fileSystem, {
+  const workspaceRoot = await findPnpmWorkspaceRoot(directory, fileSystem);
+  return installDependenciesCommand(workspaceRoot ?? directory, fileSystem, {
     isProduction,
     lockfileMode,
     useLegacyPeerDeps,
-    ignoreWorkspace: !ownsWorkspace,
+    ignoreWorkspace: workspaceRoot === undefined,
+    fallbackPackageManager: workspaceRoot === undefined ? undefined : "pnpm",
   });
 }
 

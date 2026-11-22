@@ -1,5 +1,5 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
-import { satisfies, validRange } from "semver";
+import { satisfies, valid, validRange } from "semver";
 
 import { isObject, isString } from "../../utils";
 import type { ExpandedModuleConfig } from "../config";
@@ -35,13 +35,20 @@ const SLOW_CHECK_THRESHOLD_MS = 15_000;
 const MAX_REASON_LENGTH = 200;
 
 const RANGE_PREFIX_PATTERN = /^[\^~]/;
+const BUMPABLE_SPEC_PATTERN = /^[\^~]?(\S+)$/;
 
+/**
+ * Whether `modules update` leaves `currentSpec` as it is for `latest`: it
+ * already accepts `latest`, or it is a range other than an exact, `^` or `~`
+ * version, such as `>=0.20.2 <0.21.0`, whose bound the configuration sets.
+ */
 export function isUpToDate(currentSpec: string, latest: string): boolean {
   if (currentSpec === latest) {
     return true;
   }
   const range = validRange(currentSpec);
-  if (range === null) {
+  const version = BUMPABLE_SPEC_PATTERN.exec(currentSpec.trim())?.[1];
+  if (range === null || valid(version) === null) {
     return true;
   }
   return satisfies(latest, range);

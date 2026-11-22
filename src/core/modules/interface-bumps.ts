@@ -4,9 +4,10 @@ import type {
 } from "@antelopejs/interface-core/config";
 import { lt, prerelease, valid, validRange } from "semver";
 
-import { isString } from "../../utils";
+import { isString, resolvePackage } from "../../utils";
 import { satisfiesRange } from "../../version-ranges";
 
+import { INTERFACE_CORE_PACKAGE } from "./module-manager-bindings";
 import type {
   InterfacePackageConsumer,
   InterfacePackagePlan,
@@ -63,6 +64,10 @@ const LOCAL_SOURCE_TYPES: ReadonlySet<string> = new Set([
 ]);
 const FLOOR_RANGE_PATTERN = /^>=\s*(\S+)(\s+<\s*\S+)?$/;
 const PREFIX_RANGE_PATTERN = /^([\^~]?)(\S+)$/;
+const CORE_INTERFACE_COPY = resolvePackage(
+  INTERFACE_CORE_PACKAGE,
+  __dirname,
+)?.version;
 
 function packageSource(source: ModuleSource): ModuleSourcePackage | undefined {
   if (
@@ -116,14 +121,32 @@ export function raiseRangeFloor(
 }
 
 /**
- * The highest version among the installed copies of an interface package
- * that every consumer's range accepts.
+ * The installed versions of `packageName` a module may be raised to. Every
+ * module loads the core's own copy of `@antelopejs/interface-core`, so that
+ * copy is its only candidate: a newer one declares handlers the core lacks.
  */
-function findTargetVersion(plan: InterfacePackagePlan): string | undefined {
-  const versions = [
+function candidateVersions(
+  packageName: string,
+  plan: InterfacePackagePlan,
+): (string | undefined)[] {
+  if (packageName === INTERFACE_CORE_PACKAGE) {
+    return [CORE_INTERFACE_COPY];
+  }
+  return [
     plan.canonicalPackage.version,
     ...plan.consumers.map((consumer) => consumer.resolvedPackage?.version),
-  ].flatMap((version) => {
+  ];
+}
+
+/**
+ * The highest candidate version of an interface package that every
+ * consumer's range accepts.
+ */
+function findTargetVersion(
+  packageName: string,
+  plan: InterfacePackagePlan,
+): string | undefined {
+  const versions = candidateVersions(packageName, plan).flatMap((version) => {
     const parsed = valid(version);
     return parsed ? [parsed] : [];
   });
@@ -229,7 +252,7 @@ function findInterfaceBumps(
   plan: InterfacePackagePlan,
   modules: ReadonlyMap<string, ModuleManifest>,
 ): InterfaceBump[] {
-  const target = findTargetVersion(plan);
+  const target = findTargetVersion(packageName, plan);
   if (!target) {
     return [];
   }
