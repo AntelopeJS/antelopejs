@@ -1,4 +1,7 @@
-import type { AntelopeConfig } from "@antelopejs/interface-core/config";
+import type {
+  AntelopeConfig,
+  ModuleSourcePackage,
+} from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import path from "node:path";
 import sinon from "sinon";
@@ -30,8 +33,9 @@ describe("project modules behavior: update-versions", () => {
     process.exitCode = undefined;
   });
 
+  let refresh: sinon.SinonStub;
   beforeEach(() => {
-    sinon.stub(moduleLocks, "refreshModuleLocks").resolves([]);
+    refresh = sinon.stub(moduleLocks, "refreshModuleLocks").resolves([]);
     sinon.stub(moduleLocks, "pruneModuleLocks").resolves([]);
   });
 
@@ -106,6 +110,29 @@ describe("project modules behavior: update-versions", () => {
         },
       ],
     });
+  });
+
+  it("keeps a module on the range the configuration gives and relocks it inside that range", async () => {
+    const source: ModuleSourcePackage = {
+      type: "package",
+      package: "@antelopejs/dms",
+      version: ">=0.20.2 <0.21.0",
+    };
+    sinon
+      .stub(common, "readConfig")
+      .resolves({ name: "proj", modules: { dms: { source } } });
+    const writeStub = sinon.stub(common, "writeConfig").resolves();
+    stubLoadedConfig({ modules: { dms: { source } } });
+    sinon
+      .stub(command, "ExecuteFile")
+      .resolves({ code: 0, stdout: "0.22.0", stderr: "" });
+    sinon.stub(getProcessUi(), "message");
+    sinon.stub(getProcessUi(), "summary");
+
+    await cmdUpdate().parseAsync(["node", "test", "--project", "project"]);
+
+    expect(writeStub.called).to.equal(false);
+    expect(refresh.firstCall.args[2]).to.deep.equal([{ id: "dms", source }]);
   });
 });
 
