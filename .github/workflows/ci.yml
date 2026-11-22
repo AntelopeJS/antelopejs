@@ -31,8 +31,6 @@ jobs:
       affected-tests: true
     permissions:
       contents: read
-    secrets:
-      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
 
   select:
     runs-on: ubuntu-latest

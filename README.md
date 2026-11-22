@@ -116,9 +116,9 @@ If AntelopeJS saves you work, a ⭐ helps other developers find it.
 
 <!-- antelopejs-docs-compat:start -->
 
-| Package                      | Supported                 | Tested with               |
-| ---------------------------- | ------------------------- | ------------------------- |
-| `@antelopejs/interface-core` | `0.5.2-next.117.gae930be` | `0.5.2-next.117.gae930be` |
+| Package                      | Supported        | Tested with |
+| ---------------------------- | ---------------- | ----------- |
+| `@antelopejs/interface-core` | `>=0.5.2 <0.6.0` | `0.5.2`     |
 
 <!-- antelopejs-docs-compat:end -->
 
