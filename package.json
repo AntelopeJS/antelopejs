@@ -83,7 +83,8 @@
     "proper-lockfile": "^4.1.2",
     "reflect-metadata": "^0.2.2",
     "semver": "^7.7.4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@antelopejs/core": "link:.",

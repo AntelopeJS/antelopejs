@@ -45,6 +45,8 @@ describe("getInstallCommand in a pnpm workspace", () => {
     "packages:\n- modules/*\n",
     "packages: [modules/*]\n",
     "packages: ['other/*', \"modules/*\"] # flow list\n",
+    "packages: [\n  other/*,\n  modules/*\n]\n",
+    "packages:\n  - 'my mods/*'\n  - modules/*\n",
   ]) {
     it(`installs a member that ${JSON.stringify(packages)} lists through its workspace`, async () => {
       const fs = await workspace(packages);
@@ -54,6 +56,18 @@ describe("getInstallCommand in a pnpm workspace", () => {
       ).to.match(/^pnpm install (?!.*--ignore-workspace)/);
     });
   }
+
+  it("installs a member that a quoted entry with a space lists through its workspace", async () => {
+    const fs = await workspace("packages:\n  - 'my mods/*'\n");
+    await fs.writeFile(
+      "/repo/my mods/app/package.json",
+      JSON.stringify({ name: "app" }),
+    );
+
+    expect(
+      await getInstallCommand("/repo/my mods/app", false, fs, "update"),
+    ).to.match(/^pnpm install (?!.*--ignore-workspace)/);
+  });
 
   it("installs a folder the workspace does not list alone", async () => {
     const fs = await workspace("packages:\n  - packages/**\n");
