@@ -1,6 +1,6 @@
 import {
   type CarriedBinding,
-  describeDiamond,
+  describeDiamondAt,
   describeImplementedPin,
   describePinWithoutProvider,
   describeRunningProviderGone,
@@ -8,6 +8,7 @@ import {
   describeUnprovidedCycle,
   describeUnsettledCycle,
 } from "./binding-diagnostics";
+import { connectionOverrides } from "./binding-connections";
 import { InstanceTable } from "./binding-graph-instances";
 import { orderComponents } from "./binding-graph-order";
 import type {
@@ -29,13 +30,21 @@ const MAX_CYCLE_ROUNDS = 10;
 type Scope = Map<string, InterfaceBinding>;
 type Pins = ReadonlyMap<string, string>;
 
+interface ModuleNode {
+  id: string;
+  module: BindingModule;
+  pins: Pins;
+}
+
 interface ResolutionTarget {
+  node: ModuleNode;
   scope: Scope;
   keys: Map<string, string>;
   /** Interfaces being keyed, outermost first. */
   keying: Set<string>;
   overrides?: Pins;
-  recordsEdges: boolean;
+  /** Where a provider the module binds is recorded; absent when none is. */
+  edges?: Set<string>;
   /** Records a problem met while keying, where the graph's errors read it. */
   report: (problem: string) => void;
 }
@@ -49,6 +58,8 @@ function carriedKey(carried: CarriedBinding): string {
 }
 
 class BindingGraphBuilder {
+  private readonly nodes: ModuleNode[];
+  private readonly nodeById = new Map<string, ModuleNode>();
   private readonly moduleIds: string[];
   private readonly providers: ProviderTable;
   private readonly pins = new Map<string, Pins>();
@@ -61,11 +72,15 @@ class BindingGraphBuilder {
   private readonly errors = new Set<string>();
 
   constructor(private readonly input: BindingGraphInput) {
-    this.moduleIds = [...input.modules.keys()].sort(compareIds);
+    this.nodes = [...input.modules]
+      .sort(([left], [right]) => compareIds(left, right))
+      .map(([id, module]) => ({ id, module, pins: this.readPins(module) }));
+    this.moduleIds = this.nodes.map(({ id }) => id);
     this.providers = new ProviderTable(input.modules);
     this.instances = new InstanceTable(input, this.providers);
-    for (const id of this.moduleIds) {
-      this.pins.set(id, this.readPins(input.modules.get(id)!));
+    for (const node of this.nodes) {
+      this.pins.set(node.id, node.pins);
+      this.nodeById.set(node.id, node);
     }
   }
 
@@ -111,9 +126,8 @@ class BindingGraphBuilder {
   }
 
   private validatePins(): void {
-    for (const id of this.moduleIds) {
-      const module = this.input.modules.get(id)!;
-      for (const [interfaceName, pinned] of this.pins.get(id)!) {
+    for (const { id, module, pins } of this.nodes) {
+      for (const [interfaceName, pinned] of pins) {
         if (module.implements.includes(interfaceName) && pinned !== id) {
           this.errors.add(describeImplementedPin(id, interfaceName, pinned));
         }
@@ -125,19 +139,21 @@ class BindingGraphBuilder {
     return this.instances.dependenciesOf(interfaceName);
   }
 
-  private importsOf(moduleId: string): string[] {
-    const module = this.input.modules.get(moduleId)!;
+  private importsOf(module: BindingModule): string[] {
     return [
       ...module.uses,
       ...module.implements.flatMap((name) => this.dependenciesOf(name)),
     ];
   }
 
-  private closureOf(moduleId: string): Set<string> {
+  private closureOf(module: BindingModule): Set<string> {
     const closure = new Set<string>();
-    const pending = this.importsOf(moduleId);
-    while (pending.length > 0) {
-      const interfaceName = pending.pop()!;
+    const pending = this.importsOf(module);
+    for (
+      let interfaceName = pending.pop();
+      interfaceName !== undefined;
+      interfaceName = pending.pop()
+    ) {
       if (closure.has(interfaceName)) {
         continue;
       }
@@ -151,8 +167,8 @@ class BindingGraphBuilder {
 
   private candidateEdges(): Map<string, Set<string>> {
     const candidates = new Map<string, Set<string>>();
-    for (const id of this.moduleIds) {
-      const reachable = [...this.closureOf(id)]
+    for (const { id, module } of this.nodes) {
+      const reachable = [...this.closureOf(module)]
         .flatMap((interfaceName) => this.providers.providersOf(interfaceName))
         .filter((provider) => provider !== id);
       candidates.set(id, new Set(reachable));
@@ -163,13 +179,25 @@ class BindingGraphBuilder {
   private settle(component: readonly string[]): void {
     for (let round = 0; round < MAX_CYCLE_ROUNDS; round += 1) {
       const before = this.snapshot(component);
-      component.forEach((id) => this.resolveModule(id));
-      component.forEach((id) => this.pushDown(id));
+      const nodes = this.nodesOf(component);
+      nodes.forEach((node) => this.resolveModule(node));
+      nodes.forEach((node) => this.pushDown(node));
       if (this.snapshot(component) === before) {
         return;
       }
     }
     this.errors.add(describeUnsettledCycle(component));
+  }
+
+  private nodesOf(component: readonly string[]): ModuleNode[] {
+    const nodes: ModuleNode[] = [];
+    for (const id of component) {
+      const node = this.nodeById.get(id);
+      if (node) {
+        nodes.push(node);
+      }
+    }
+    return nodes;
   }
 
   private snapshot(component: readonly string[]): string {
@@ -181,19 +209,21 @@ class BindingGraphBuilder {
     );
   }
 
-  private resolveModule(moduleId: string): void {
-    const module = this.input.modules.get(moduleId)!;
+  private resolveModule(node: ModuleNode): void {
+    const { id: moduleId, module } = node;
+    const edges = new Set<string>();
     const target: ResolutionTarget = {
+      node,
       scope: new Map(),
       keys: new Map(),
       keying: new Set(),
-      recordsEdges: true,
+      edges,
       report: (problem) => this.addModuleError(moduleId, problem),
     };
-    this.edges.set(moduleId, new Set());
+    this.edges.set(moduleId, edges);
     this.moduleErrors.delete(moduleId);
     for (const interfaceName of [
-      ...this.importsOf(moduleId),
+      ...this.importsOf(module),
       ...module.implements,
     ]) {
       this.keyOf(moduleId, interfaceName, target);
@@ -217,7 +247,7 @@ class BindingGraphBuilder {
     target.keying.add(interfaceName);
     const binding =
       target.scope.get(interfaceName) ??
-      this.bind(moduleId, interfaceName, target.overrides);
+      this.bind(moduleId, interfaceName, target);
     target.scope.set(interfaceName, binding);
     const key = binding.provider
       ? this.providedInstance(moduleId, interfaceName, binding.provider, target)
@@ -252,8 +282,8 @@ class BindingGraphBuilder {
     provider: string,
     target: ResolutionTarget,
   ): string {
-    if (target.recordsEdges && provider !== moduleId) {
-      this.edges.get(moduleId)!.add(provider);
+    if (provider !== moduleId) {
+      target.edges?.add(provider);
     }
     return this.instances.provided(interfaceName, provider);
   }
@@ -272,14 +302,14 @@ class BindingGraphBuilder {
   private bind(
     moduleId: string,
     interfaceName: string,
-    overrides?: Pins,
+    target: ResolutionTarget,
   ): InterfaceBinding {
-    const module = this.input.modules.get(moduleId)!;
-    const override = overrides?.get(interfaceName);
+    const { module, pins } = target.node;
+    const override = target.overrides?.get(interfaceName);
     if (override === undefined && module.implements.includes(interfaceName)) {
       return { provider: moduleId, reason: "implements" };
     }
-    const pinned = override ?? this.pins.get(moduleId)!.get(interfaceName);
+    const pinned = override ?? pins.get(interfaceName);
     if (pinned) {
       if (!this.providers.providersOf(interfaceName).includes(pinned)) {
         this.addModuleError(
@@ -305,8 +335,13 @@ class BindingGraphBuilder {
     if (carried.length === 0) {
       return this.bindDefault(interfaceName);
     }
-    if (new Set(carried.map(({ value }) => value)).size > 1) {
-      this.reportDiamond(moduleId, interfaceName, carried);
+    const first = carried[0];
+    const second = carried.find(({ value }) => value !== first.value);
+    if (second) {
+      this.addModuleError(
+        moduleId,
+        describeDiamondAt(moduleId, interfaceName, first, second),
+      );
     }
     const chosen = carried.find(({ source }) => source) ?? carried[0];
     return chosen.source
@@ -348,45 +383,18 @@ class BindingGraphBuilder {
     }
   }
 
-  private reportDiamond(
-    moduleId: string,
-    interfaceName: string,
-    carried: readonly CarriedBinding[],
-  ): void {
-    const first = carried[0];
-    const second = carried.find(({ value }) => value !== first.value)!;
-    const firstPath = [...first.path, moduleId];
-    const secondPath = [...second.path, moduleId];
-    const merge =
-      firstPath.find(
-        (node, index) =>
-          index > 0 &&
-          secondPath.includes(node) &&
-          node !== firstPath[0] &&
-          node !== secondPath[0],
-      ) ?? moduleId;
-    const upToMerge = (path: string[]) =>
-      path.slice(0, path.indexOf(merge) + 1);
-    this.addModuleError(
-      moduleId,
-      describeDiamond(
-        merge,
-        interfaceName,
-        { carried: first, path: upToMerge(firstPath) },
-        { carried: second, path: upToMerge(secondPath) },
-      ),
-    );
-  }
-
-  private outgoingBindings(moduleId: string): Map<string, CarriedBinding[]> {
-    const module = this.input.modules.get(moduleId)!;
+  private outgoingBindings({
+    id: moduleId,
+    module,
+    pins,
+  }: ModuleNode): Map<string, CarriedBinding[]> {
     const running = this.input.running?.get(moduleId);
     const outgoing = new Map<string, CarriedBinding[]>();
     const setOwn = (interfaceName: string, value: string) =>
       outgoing.set(interfaceName, [
         { value, source: moduleId, path: [moduleId] },
       ]);
-    this.pins.get(moduleId)!.forEach((value, name) => setOwn(name, value));
+    pins.forEach((value, name) => setOwn(name, value));
     running?.forEach((value, name) => {
       if (!outgoing.has(name) && !module.implements.includes(name)) {
         setOwn(name, value);
@@ -414,20 +422,16 @@ class BindingGraphBuilder {
     outgoing: Map<string, CarriedBinding[]>,
   ): void {
     for (const interfaceName of this.providers.sharedInterfaces()) {
-      if (!outgoing.has(interfaceName)) {
-        outgoing.set(interfaceName, [
-          {
-            value: this.providers.defaultProvider(interfaceName)!,
-            path: [moduleId],
-          },
-        ]);
+      const value = this.providers.defaultProvider(interfaceName);
+      if (value !== undefined && !outgoing.has(interfaceName)) {
+        outgoing.set(interfaceName, [{ value, path: [moduleId] }]);
       }
     }
   }
 
-  private pushDown(moduleId: string): void {
-    const outgoing = this.outgoingBindings(moduleId);
-    for (const provider of this.edges.get(moduleId) ?? []) {
+  private pushDown(node: ModuleNode): void {
+    const outgoing = this.outgoingBindings(node);
+    for (const provider of this.edges.get(node.id) ?? []) {
       for (const [interfaceName, list] of outgoing) {
         list
           .filter(({ path }) => !path.includes(provider))
@@ -453,65 +457,44 @@ class BindingGraphBuilder {
     this.carried.set(moduleId, received);
   }
 
-  private connectionKeys(moduleId: string): Map<string, string[]> {
-    const module = this.input.modules.get(moduleId)!;
+  private connectionKeys(node: ModuleNode): Map<string, string[]> {
+    const { module } = node;
     const keys = new Map<string, string[]>();
     const listed = module.listedConnections ?? module.connections;
     for (const [interfaceName, connections] of listed) {
       keys.set(
         interfaceName,
         connections.map((connection) =>
-          this.connectionKey(moduleId, interfaceName, connection),
+          this.connectionKey(node, interfaceName, connection),
         ),
       );
     }
     return keys;
   }
 
-  private connectionScope(
-    moduleId: string,
-    interfaceName: string,
-    connection: BindingConnection,
-  ): Map<string, string> {
-    const module = this.input.modules.get(moduleId)!;
-    const overrides = new Map<string, string>();
-    if (connection.id === undefined) {
-      if (connection.source) {
-        overrides.set(interfaceName, connection.source);
-      }
-      return overrides;
-    }
-    for (const [name, entries] of module.connections) {
-      const entry = entries.find(({ id }) => id === connection.id);
-      if (entry?.source) {
-        overrides.set(name, entry.source);
-      }
-    }
-    return overrides;
-  }
-
   private connectionKey(
-    moduleId: string,
+    node: ModuleNode,
     interfaceName: string,
     connection: BindingConnection,
   ): string {
-    return this.keyOf(moduleId, interfaceName, {
+    return this.keyOf(node.id, interfaceName, {
+      node,
       scope: new Map(),
       keys: new Map(),
       keying: new Set(),
-      overrides: this.connectionScope(moduleId, interfaceName, connection),
-      recordsEdges: false,
+      overrides: connectionOverrides(node.module, interfaceName, connection),
       report: (problem) => this.errors.add(problem),
     });
   }
 
   private collectModuleBindings(): Map<string, ModuleBindings> {
     const modules = new Map<string, ModuleBindings>();
-    for (const id of this.moduleIds) {
+    for (const node of this.nodes) {
+      const { id } = node;
       modules.set(id, {
         scope: this.scopes.get(id) ?? new Map(),
         keys: this.keys.get(id) ?? new Map(),
-        connectionKeys: this.connectionKeys(id),
+        connectionKeys: this.connectionKeys(node),
       });
     }
     return modules;

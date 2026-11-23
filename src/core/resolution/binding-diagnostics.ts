@@ -12,7 +12,7 @@ export interface CarriedBinding {
 }
 
 /** One of the two paths that meet at a diamond, cut at the module where they meet. */
-export interface DiamondSide {
+interface DiamondSide {
   carried: CarriedBinding;
   path: readonly string[];
 }
@@ -23,13 +23,42 @@ function describeSide({ carried, path }: DiamondSide): string {
 }
 
 /** A module reached through two paths carrying different bindings for one interface. */
-export function describeDiamond(
+function describeDiamond(
   merge: string,
   interfaceName: string,
   first: DiamondSide,
   second: DiamondSide,
 ): string {
   return `${merge} is reached with two bindings for ${interfaceName}: ${describeSide(first)}, ${describeSide(second)}. Pin ${interfaceName} on ${merge} to choose.`;
+}
+
+/**
+ * The diamond a module closes when two of its paths carry different bindings
+ * for one interface, described at the module where the paths first meet.
+ */
+export function describeDiamondAt(
+  moduleId: string,
+  interfaceName: string,
+  first: CarriedBinding,
+  second: CarriedBinding,
+): string {
+  const firstPath = [...first.path, moduleId];
+  const secondPath = [...second.path, moduleId];
+  const merge =
+    firstPath.find(
+      (node, index) =>
+        index > 0 &&
+        secondPath.includes(node) &&
+        node !== firstPath[0] &&
+        node !== secondPath[0],
+    ) ?? moduleId;
+  const upToMerge = (path: string[]) => path.slice(0, path.indexOf(merge) + 1);
+  return describeDiamond(
+    merge,
+    interfaceName,
+    { carried: first, path: upToMerge(firstPath) },
+    { carried: second, path: upToMerge(secondPath) },
+  );
 }
 
 /** A module loaded at runtime would change the binding of a running one. */

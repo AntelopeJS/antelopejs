@@ -35,28 +35,29 @@ function pinTargets(view: BindingWarningView, moduleId: string): string[] {
   return [...roots].sort();
 }
 
-function isAmbiguous(
+function ambiguousDefault(
   view: BindingWarningView,
   interfaceName: string,
   binding: InterfaceBinding,
-): boolean {
-  return (
+): string | undefined {
+  const ambiguous =
     binding.reason === "default" &&
     view.providers.providersOf(interfaceName).length > 1 &&
-    view.providers.defaultCandidates(interfaceName).length > 1
-  );
+    view.providers.defaultCandidates(interfaceName).length > 1;
+  return ambiguous ? view.providers.defaultProvider(interfaceName) : undefined;
 }
 
 function ambiguityWarning(
   view: BindingWarningView,
   moduleId: string,
   interfaceName: string,
+  chosen: string,
 ): string {
   const providers = view.providers.providersOf(interfaceName);
   return describeAmbiguousDefault({
     moduleId,
     interfaceName,
-    chosen: view.providers.defaultProvider(interfaceName)!,
+    chosen,
     providers,
     priorities: new Map(
       providers.map((provider) => [
@@ -70,13 +71,12 @@ function ambiguityWarning(
 
 function ambiguityWarnings(view: BindingWarningView): string[] {
   return [...view.scopes].flatMap(([moduleId, scope]) =>
-    [...scope]
-      .filter(([interfaceName, binding]) =>
-        isAmbiguous(view, interfaceName, binding),
-      )
-      .map(([interfaceName]) =>
-        ambiguityWarning(view, moduleId, interfaceName),
-      ),
+    [...scope].flatMap(([interfaceName, binding]) => {
+      const chosen = ambiguousDefault(view, interfaceName, binding);
+      return chosen === undefined
+        ? []
+        : [ambiguityWarning(view, moduleId, interfaceName, chosen)];
+    }),
   );
 }
 
