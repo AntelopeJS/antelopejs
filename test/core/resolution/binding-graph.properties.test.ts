@@ -8,6 +8,7 @@ import type {
   BindingModule,
 } from "../../../src/core/resolution";
 import { buildBindingGraph } from "../../../src/core/resolution";
+import { defined } from "../../helpers/defined";
 
 const INTERFACES = ["i0", "i1", "i2", "i3"];
 const MODULES = ["m0", "m1", "m2", "m3"];
@@ -213,7 +214,7 @@ function checkDisabledExports(spec: Project, graph: BindingGraph): void {
         `${privateKey} must be private`,
       );
       for (const id of MODULES.filter((other) => other !== disabler)) {
-        const bindings = graph.modules.get(id)!;
+        const bindings = defined(graph.modules.get(id));
         const reaching = [
           bindings.keys.get(name),
           ...(bindings.connectionKeys.get(name) ?? []),
@@ -231,8 +232,10 @@ function checkDisabledExports(spec: Project, graph: BindingGraph): void {
 
 function checkConnections(spec: Project, graph: BindingGraph): void {
   for (const id of MODULES) {
-    const bindings = graph.modules.get(id)!;
-    const listed = bindingModules(spec).get(id)!.listedConnections!;
+    const bindings = defined(graph.modules.get(id));
+    const listed = defined(
+      defined(bindingModules(spec).get(id)).listedConnections,
+    );
     for (const [name, entries] of listed) {
       const keys = bindings.connectionKeys.get(name) ?? [];
       assert.equal(keys.length, entries.length, `${id} lists ${name}`);
@@ -253,7 +256,7 @@ function checkConnections(spec: Project, graph: BindingGraph): void {
 
 function checkInstances(spec: Project, graph: BindingGraph): void {
   for (const id of MODULES) {
-    const bindings = graph.modules.get(id)!;
+    const bindings = defined(graph.modules.get(id));
     const bound = [
       ...bindings.keys.values(),
       ...[...bindings.connectionKeys.values()].flat(),

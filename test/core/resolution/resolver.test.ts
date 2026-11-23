@@ -9,6 +9,7 @@ import { PathMapper, Resolver } from "../../../src/core/modules";
 import type { BindingModule } from "../../../src/core/resolution";
 import { buildBindingGraph } from "../../../src/core/resolution";
 import { clearPathResolutionCache } from "../../../src/utils";
+import { defined } from "../../helpers/defined";
 import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 
 const CORE_PKG = "@antelopejs/interface-core";
@@ -342,8 +343,8 @@ describe("Resolver interface instances", () => {
     const canonicalQuery = fs.realpathSync(
       path.join(fixture.packageRoot, "query.js"),
     );
-    const first = resolveFrom("consumer-a", `${DATABASE}/query`)!;
-    const second = resolveFrom("consumer-b", `${DATABASE}/query`)!;
+    const first = defined(resolveFrom("consumer-a", `${DATABASE}/query`));
+    const second = defined(resolveFrom("consumer-b", `${DATABASE}/query`));
 
     const firstPath = fixture.resolver.locate(first, canonicalQuery);
     const secondPath = fixture.resolver.locate(second, canonicalQuery);
@@ -379,7 +380,7 @@ describe("Resolver interface instances", () => {
   });
 
   it("loads an instance's own relative requests in that instance", () => {
-    const second = resolveFrom("consumer-b", DATABASE)!;
+    const second = defined(resolveFrom("consumer-b", DATABASE));
     const secondEntry = fixture.resolver.locate(
       second,
       fs.realpathSync(path.join(fixture.packageRoot, "index.js")),
@@ -391,7 +392,7 @@ describe("Resolver interface instances", () => {
   });
 
   it("deletes the instance copies it created", () => {
-    const second = resolveFrom("consumer-b", DATABASE)!;
+    const second = defined(resolveFrom("consumer-b", DATABASE));
     const secondEntry = fixture.resolver.locate(
       second,
       fs.realpathSync(path.join(fixture.packageRoot, "index.js")),

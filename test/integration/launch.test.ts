@@ -21,14 +21,7 @@ async function writeProjectConfig(projectFolder: string, config: JsonValue) {
   );
 }
 describe("Launch Function", () => {
-  /**
-   * The shape that used to deadlock: the config variable graph and the
-   * interface graph order the same modules in opposite directions. `dms`
-   * reads a variable from `api`, but `dms-api` awaits, during its own
-   * construct, an interface `dms` only serves once constructed. Staging
-   * construction on the variable graph made the two wait on each other.
-   */
-  it("boots when a variable consumer serves an interface awaited during construct", async () => {
+  it("boots when a variable consumer serves an interface awaited during construct, so construction does not wait on the variable graph", async () => {
     const projectFolder = await fs.mkdtemp(
       path.join(os.tmpdir(), "ajs-config-vars-graph-"),
     );

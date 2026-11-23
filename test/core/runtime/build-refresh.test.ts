@@ -88,9 +88,14 @@ function createArtifact(): BuildArtifact {
   };
 }
 
+/** A configuration whose `modules` record is always present. */
+type RuntimeConfig = AntelopeConfig & {
+  modules: NonNullable<AntelopeConfig["modules"]>;
+};
+
 function runtimeConfig(
-  overrides: Partial<AntelopeConfig> = {},
-): AntelopeConfig {
+  overrides: Omit<Partial<AntelopeConfig>, "modules"> = {},
+): RuntimeConfig {
   return {
     name: "sample",
     modules: {
@@ -207,7 +212,7 @@ async function refreshError(
 
       it("refreshes import overrides and disabled exports from the configuration", async () => {
         const config = runtimeConfig();
-        config.modules!.api = {
+        config.modules.api = {
           source: { type: "local", path: "./modules/api" },
           importOverrides: { "@example/cache": "database" },
           disabledExports: ["@example/metrics"],
@@ -225,7 +230,7 @@ async function refreshError(
 
       it("matches a relative local module path with the resolved path of the build", async () => {
         const config = runtimeConfig();
-        config.modules!.api = {
+        config.modules.api = {
           source: { type: "local", path: "modules/../modules/api" },
         };
 
@@ -236,7 +241,7 @@ async function refreshError(
 
       it("rejects a local module loaded from another path", async () => {
         const config = runtimeConfig();
-        config.modules!.api = {
+        config.modules.api = {
           source: { type: "local", path: "./other/api" },
         };
 
@@ -249,7 +254,7 @@ async function refreshError(
 
       it("rejects a module the build does not contain", async () => {
         const config = runtimeConfig();
-        config.modules!.cache = "2.0.0";
+        config.modules.cache = "2.0.0";
 
         const error = await refreshError(config);
 
@@ -259,7 +264,7 @@ async function refreshError(
 
       it("rejects a build module the configuration no longer loads", async () => {
         const config = runtimeConfig();
-        delete config.modules!.database;
+        delete config.modules.database;
 
         const error = await refreshError(config);
 
@@ -272,7 +277,7 @@ async function refreshError(
     function () {
       it("rejects a module requested at another version", async () => {
         const config = runtimeConfig();
-        config.modules!.database = "2.0.0";
+        config.modules.database = "2.0.0";
 
         const error = await refreshError(config);
 
@@ -282,8 +287,8 @@ async function refreshError(
 
       it("rejects a local folder source, whose modules the build does not trace back to it", async () => {
         const config = runtimeConfig();
-        delete config.modules!.api;
-        config.modules!.modules = {
+        delete config.modules.api;
+        config.modules.modules = {
           source: { type: "local-folder", path: "./modules" },
         };
 
@@ -295,7 +300,7 @@ async function refreshError(
 
       it("keeps configuration values out of the module set error", async () => {
         const config = runtimeConfig();
-        config.modules!.database = {
+        config.modules.database = {
           version: "2.0.0",
           config: { password: SECRET },
         };

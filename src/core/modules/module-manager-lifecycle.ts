@@ -272,19 +272,18 @@ function consumersBeforeProviders(
   const ids = [...new Set(entries.map(({ module }) => module.id))];
   const groupOf = new Map<string, StopGroup>();
   for (const component of orderComponents(ids, edges)) {
+    const members = new Set(component);
+    const isMember = ({ module }: ManagedModule) => members.has(module.id);
     const group: StopGroup = {
-      entries: [],
-      first: Infinity,
+      entries: entries.filter(isMember),
+      first: Math.min(
+        ...entries.flatMap((entry, index) => (isMember(entry) ? [index] : [])),
+      ),
       providers: new Set(),
       consumers: 0,
     };
     component.forEach((id) => groupOf.set(id, group));
   }
-  entries.forEach((entry, index) => {
-    const group = groupOf.get(entry.module.id)!;
-    group.entries.push(entry);
-    group.first = Math.min(group.first, index);
-  });
   for (const [consumerId, group] of groupOf) {
     for (const providerId of edges.get(consumerId) ?? []) {
       const provider = groupOf.get(providerId);

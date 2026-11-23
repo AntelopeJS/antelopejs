@@ -98,8 +98,7 @@ export class InstanceTable {
   private closure(keys: readonly string[]): Map<string, InstanceDescriptor> {
     const pending = [...keys];
     const referenced = new Map<string, InstanceDescriptor>();
-    while (pending.length > 0) {
-      const key = pending.pop()!;
+    for (let key = pending.pop(); key !== undefined; key = pending.pop()) {
       const descriptor = this.instances.get(key);
       if (descriptor && !referenced.has(key)) {
         referenced.set(key, descriptor);

@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import sinon from "sinon";
 import { Module as CoreModule, ModuleManager } from "../../src/core/modules";
+import { defined } from "../helpers/defined";
 import { manifestFixture, moduleFixture } from "../helpers/module-fixtures";
 import nodeModule from "node:module";
 import { trackInstanceFiles } from "./module-manager.fixtures";
@@ -287,7 +288,7 @@ describe("ModuleManager lifecycle signals", () => {
 
     await manager.startAll();
     await reloaded.stop();
-    await manager.startModules([manager.getModuleEntry("reloaded")!]);
+    await manager.startModules([defined(manager.getModuleEntry("reloaded"))]);
     await removed.destroy();
     expect(calls).to.not.include("stopping");
 

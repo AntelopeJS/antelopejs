@@ -7,6 +7,8 @@
  * `FINDINGS`, which must break with a shortest counterexample of exactly the
  * recorded number of states. Exits 0 when TLC agrees, 1 when a rule changed,
  * and 2 when TLC could not run.
+ *
+ * @packageDocumentation
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";

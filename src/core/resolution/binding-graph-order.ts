@@ -1,47 +1,46 @@
 type Successors = ReadonlyMap<string, ReadonlySet<string>>;
 
+interface Vertex {
+  index: number;
+  lowLink: number;
+}
+
 interface TarjanState {
   index: number;
-  indices: Map<string, number>;
-  lowLinks: Map<string, number>;
+  vertices: Map<string, Vertex>;
   stack: string[];
   onStack: Set<string>;
   components: string[][];
 }
 
-function visit(node: string, successors: Successors, state: TarjanState) {
-  state.indices.set(node, state.index);
-  state.lowLinks.set(node, state.index);
+function visit(
+  node: string,
+  successors: Successors,
+  state: TarjanState,
+): Vertex {
+  const vertex = { index: state.index, lowLink: state.index };
+  state.vertices.set(node, vertex);
   state.index += 1;
   state.stack.push(node);
   state.onStack.add(node);
   for (const next of successors.get(node) ?? []) {
-    if (!state.indices.has(next)) {
-      visit(next, successors, state);
-      state.lowLinks.set(
-        node,
-        Math.min(state.lowLinks.get(node)!, state.lowLinks.get(next)!),
-      );
+    const seen = state.vertices.get(next);
+    if (!seen) {
+      const child = visit(next, successors, state);
+      vertex.lowLink = Math.min(vertex.lowLink, child.lowLink);
     } else if (state.onStack.has(next)) {
-      state.lowLinks.set(
-        node,
-        Math.min(state.lowLinks.get(node)!, state.indices.get(next)!),
-      );
+      vertex.lowLink = Math.min(vertex.lowLink, seen.index);
     }
   }
-  if (state.lowLinks.get(node) === state.indices.get(node)) {
+  if (vertex.lowLink === vertex.index) {
     state.components.push(popComponent(node, state));
   }
+  return vertex;
 }
 
 function popComponent(root: string, state: TarjanState): string[] {
-  const component: string[] = [];
-  let member: string | undefined;
-  do {
-    member = state.stack.pop()!;
-    state.onStack.delete(member);
-    component.push(member);
-  } while (member !== root);
+  const component = state.stack.splice(state.stack.lastIndexOf(root));
+  component.forEach((member) => state.onStack.delete(member));
   return component.sort();
 }
 
@@ -55,14 +54,13 @@ export function orderComponents(
 ): string[][] {
   const state: TarjanState = {
     index: 0,
-    indices: new Map(),
-    lowLinks: new Map(),
+    vertices: new Map(),
     stack: [],
     onStack: new Set(),
     components: [],
   };
   for (const node of nodes) {
-    if (!state.indices.has(node)) {
+    if (!state.vertices.has(node)) {
       visit(node, successors, state);
     }
   }

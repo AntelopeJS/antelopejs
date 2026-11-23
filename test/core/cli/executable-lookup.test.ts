@@ -227,7 +227,7 @@ describe("Project-local executable resolution", () => {
     });
 
     expect(resolved).to.deep.equal({ path: shim, source: "local" });
-    expect(requiresShell(resolved!.path, "win32")).to.equal(true);
+    expect(requiresShell(shim, "win32")).to.equal(true);
   });
 
   it("keeps the project-local shim ahead of the one in PATH on Windows", async () => {

@@ -61,7 +61,6 @@ describe("Two runs loading the same package version into one cache", function ()
     return child;
   }
 
-  /** Seeds a complete `pkg@1.0.0` and starts run A, which loads it and holds its lease until the test ends. */
   async function startDevRun(): Promise<ChildRun> {
     seedCache(base.cachePath, [ENTRY]);
     writeFileSync(

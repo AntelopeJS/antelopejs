@@ -3,6 +3,7 @@ import sinon from "sinon";
 
 import { handlers } from "../../../../../src/cli";
 import { commandModule as command } from "../../../../../src/core/output";
+import { defined } from "../../../../helpers/defined";
 describe("project modules behavior: package-versions", () => {
   afterEach(() => {
     sinon.restore();
@@ -13,7 +14,7 @@ describe("project modules behavior: package-versions", () => {
     const execStub = sinon
       .stub(command, "ExecuteFile")
       .resolves({ code: 0, stdout: "1.2.3", stderr: "" });
-    const handler = handlers.get("package")!;
+    const handler = defined(handlers.get("package"));
     const [name, config] = await handler("pkg", {
       mode: "package",
       project: "/tmp/project",
@@ -26,7 +27,7 @@ describe("project modules behavior: package-versions", () => {
 
   it("package handler keeps an explicit semver range without registry lookup", async () => {
     const execStub = sinon.stub(command, "ExecuteFile");
-    const handler = handlers.get("package")!;
+    const handler = defined(handlers.get("package"));
     const [name, config] = await handler("pkg@^2.0.0", {
       mode: "package",
       project: "/tmp/project",
@@ -43,7 +44,7 @@ describe("project modules behavior: package-versions", () => {
       stdout: '{"latest":"1.0.0","beta":"2.0.0-beta.1"}',
       stderr: "",
     });
-    const handler = handlers.get("package")!;
+    const handler = defined(handlers.get("package"));
     const [name, config] = await handler("pkg@beta", {
       mode: "package",
       project: "/tmp/project",
@@ -60,7 +61,7 @@ describe("project modules behavior: package-versions", () => {
       stdout: '{"latest":"1.0.0"}',
       stderr: "",
     });
-    const handler = handlers.get("package")!;
+    const handler = defined(handlers.get("package"));
     let caught: unknown;
     try {
       await handler("pkg@lastest", {
@@ -79,7 +80,7 @@ describe("project modules behavior: package-versions", () => {
     sinon
       .stub(command, "ExecuteFile")
       .resolves({ code: 1, stdout: "", stderr: "oops" });
-    const handler = handlers.get("package")!;
+    const handler = defined(handlers.get("package"));
     let caught: unknown;
     try {
       await handler("pkg", { mode: "package", project: "/tmp/project" });

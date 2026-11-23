@@ -11,9 +11,10 @@ export class ProviderTable {
   private readonly providers = new Map<string, string[]>();
 
   constructor(private readonly modules: ReadonlyMap<string, BindingModule>) {
-    const ids = [...modules.keys()].sort(compareIds);
-    for (const id of ids) {
-      const module = modules.get(id)!;
+    const sorted = [...modules].sort(([left], [right]) =>
+      compareIds(left, right),
+    );
+    for (const [id, module] of sorted) {
       for (const interfaceName of module.implements) {
         if (module.disabledExports?.has(interfaceName)) {
           continue;
@@ -54,10 +55,18 @@ export class ProviderTable {
     return this.defaultCandidates(interfaceName)[0];
   }
 
-  /** Interfaces more than one module provides. */
-  sharedInterfaces(): string[] {
+  /** Each interface more than one module provides, with its default provider. */
+  sharedDefaults(): [string, string][] {
     return [...this.providers]
       .filter(([, providers]) => providers.length > 1)
-      .map(([interfaceName]) => interfaceName);
+      .map(([interfaceName, providers]) => [
+        interfaceName,
+        providers.reduce((best, provider) =>
+          this.priorityOf(provider, interfaceName) >
+          this.priorityOf(best, interfaceName)
+            ? provider
+            : best,
+        ),
+      ]);
   }
 }

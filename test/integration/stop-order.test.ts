@@ -2,6 +2,7 @@ import { expect } from "chai";
 import fs from "node:fs/promises";
 
 import launch, { type ModuleManager } from "../../src";
+import { defined } from "../helpers/defined";
 import {
   CORE_INTERFACE_NAME,
   createProject,
@@ -66,10 +67,11 @@ describe("module stop order", () => {
   });
 
   async function stopAndDestroy(): Promise<string[]> {
-    await manager!.stopAll();
-    await manager!.destroyAll();
+    const running = defined(manager, "manager");
+    await running.stopAll();
+    await running.destroyAll();
     manager = undefined;
-    return testGlobals[CALLS_KEY]!;
+    return defined(testGlobals[CALLS_KEY], "recorded calls");
   }
 
   it("stops and destroys a consumer listed before its provider first", async function () {

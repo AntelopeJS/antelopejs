@@ -32,7 +32,7 @@ import {
   textOrList,
   texts,
 } from "../../utils";
-import type { ExpandedModuleConfig } from "./config-parser";
+import type { DraftModuleConfig, ExpandedModuleConfig } from "./config-parser";
 import type { ModuleEntryConfig } from "./module-entry";
 
 /** The project configuration once templates and environment overrides ran. */
@@ -43,6 +43,11 @@ export interface LoadedConfig {
   logging?: AntelopeLogging;
   envOverrides: Record<string, string | string[]>;
   test?: AntelopeTestConfig;
+}
+
+/** A {@link LoadedConfig} before the check that every module has a source. */
+export interface DraftLoadedConfig extends Omit<LoadedConfig, "modules"> {
+  modules: Record<string, DraftModuleConfig>;
 }
 
 const sourceFields = { id: optional(text), ignoreCache: optional(flag) };
@@ -182,7 +187,7 @@ function testSection(
   };
 }
 
-function projectFields(loaded: LoadedConfig): FieldChecks<LoadedConfig> {
+function projectFields(loaded: DraftLoadedConfig): FieldChecks<LoadedConfig> {
   return {
     name: text,
     cacheFolder: text,
@@ -211,7 +216,7 @@ const LOADER_CHANGE: ConfigChange = "templates and environment overrides";
  */
 export function assertLoadedConfig(
   value: unknown,
-  loaded: LoadedConfig,
+  loaded: DraftLoadedConfig,
   change: ConfigChange = LOADER_CHANGE,
 ): asserts value is LoadedConfig {
   reportFieldErrors(change, () => {
@@ -296,7 +301,7 @@ export function decodeOverride(path: string, text: string): OverrideValue {
 
 function checkProjectFields(
   value: unknown,
-  loaded: LoadedConfig,
+  loaded: DraftLoadedConfig,
 ): asserts value is LoadedConfig {
   if (!isObject(value))
     throw new FieldError("project", "a project configuration");

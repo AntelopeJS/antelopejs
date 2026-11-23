@@ -35,6 +35,23 @@ export interface ExpandedModuleConfig {
   optional?: boolean;
 }
 
+/**
+ * An expanded module entry whose `source` the configuration file left out.
+ * An environment override can still set it, so the loader's check is what
+ * refuses an entry that ends without one.
+ */
+export interface DraftModuleConfig extends Omit<
+  ExpandedModuleConfig,
+  "source"
+> {
+  source?: ModuleSource;
+}
+
+/** A project configuration whose expanded modules may lack a source. */
+export interface DraftProjectConfig extends Omit<AntelopeConfig, "modules"> {
+  modules: Record<string, DraftModuleConfig>;
+}
+
 function readExportPriority(name: string, priorities: Record<string, number>) {
   for (const [interfaceName, priority] of Object.entries(priorities)) {
     if (!Number.isInteger(priority)) {
@@ -155,7 +172,7 @@ export class ConfigParser {
    * fields it reads.
    */
   applyEnvOverrides(
-    config: ProjectConfig,
+    config: DraftProjectConfig,
     overrides: Record<string, string | string[]>,
     readOverride: (path: string, text: string) => string | number | boolean = (
       _path,
@@ -185,7 +202,7 @@ export class ConfigParser {
   expandModuleShorthand(
     modules: Record<string, string | AntelopeModuleConfig>,
   ) {
-    const result: Record<string, ExpandedModuleConfig> = {};
+    const result: Record<string, DraftModuleConfig> = {};
 
     for (const [name, entry] of Object.entries(modules)) {
       const config: string | ModuleEntryConfig = entry;
@@ -214,8 +231,8 @@ export class ConfigParser {
           } satisfies ModuleSourcePackage;
         }
 
-        const expanded: ExpandedModuleConfig = {
-          source: source!,
+        const expanded: DraftModuleConfig = {
+          source,
           config: config.config ?? {},
           importOverrides: expandImportOverrides(config.importOverrides),
           disabledExports: config.disabledExports ?? [],

@@ -343,18 +343,18 @@ interface ManagerContextParts {
 }
 type ContextPartsReader = (manager: ModuleManager) => ManagerContextParts;
 const implementations = new WeakMap<ModuleManager, ManagerMethods>();
-let readContextParts: ContextPartsReader | undefined;
-export function defineManagerContext(reader: ContextPartsReader): void {
-  readContextParts = reader;
-}
-export function operations(manager: ModuleManager): ManagerMethods {
-  const existing = implementations.get(manager);
-  if (existing) {
-    return existing;
-  }
-  const created = bindOperations(createContext(readContextParts!(manager)));
-  implementations.set(manager, created);
-  return created;
+export function defineManagerContext(
+  reader: ContextPartsReader,
+): (manager: ModuleManager) => ManagerMethods {
+  return (manager) => {
+    const existing = implementations.get(manager);
+    if (existing) {
+      return existing;
+    }
+    const created = bindOperations(createContext(reader(manager)));
+    implementations.set(manager, created);
+    return created;
+  };
 }
 function createContext({
   fields,

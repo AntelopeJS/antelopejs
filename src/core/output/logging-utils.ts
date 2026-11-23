@@ -140,9 +140,10 @@ export function stringVisualWidth(str: string): number {
   const ansiFree = stripAnsiCodes(str);
 
   return Array.from(ansiFree).reduce((acc, c) => {
-    const cp = c.codePointAt(0)!;
+    const cp = c.codePointAt(0);
 
     const isWide =
+      cp !== undefined &&
       cp > LAST_ASCII &&
       (SINGLE_WIDE_CHARS.has(c) ||
         WIDE_RANGES.some(([min, max]) => cp >= min && cp <= max));

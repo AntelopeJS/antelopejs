@@ -131,24 +131,28 @@ export async function runProvidePhase(
   const failed = new Set<string>();
 
   for (const stage of plan.stages) {
-    const runnable = stage.filter((id) => {
+    const runnable: ManagedModule[] = [];
+    for (const id of stage) {
       const blocker = this.findFailedProvider(plan, id, failed);
+      const entry = entries.get(id);
       if (!blocker) {
-        return true;
+        if (entry) {
+          runnable.push(entry);
+        }
+        continue;
       }
       failed.add(id);
       const message = `Module '${id}' did not provide its config variables: provider '${blocker}' failed.`;
       Logger.Error(message);
       errors.push(new Error(message));
-      return false;
-    });
+    }
 
     const results = await Promise.allSettled(
-      runnable.map((id) => this.provideEntry(entries.get(id)!)),
+      runnable.map((entry) => this.provideEntry(entry)),
     );
     results.forEach((result, index) => {
       if (result.status === "rejected") {
-        failed.add(runnable[index]);
+        failed.add(runnable[index].module.id);
         errors.push(result.reason);
       }
     });
