@@ -22,9 +22,13 @@ async function parseWorkspacePackages(yaml: string): Promise<string[]> {
   if (document.errors.length > 0) {
     return [];
   }
-  const manifest: unknown = document.toJS();
-  const packages = isObject(manifest) ? manifest.packages : undefined;
-  return Array.isArray(packages) ? packages.filter(isString) : [];
+  try {
+    const manifest: unknown = document.toJS();
+    const packages = isObject(manifest) ? manifest.packages : undefined;
+    return Array.isArray(packages) ? packages.filter(isString) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** The glob pnpm searches for the `package.json` of each member `pattern` names. */
@@ -48,9 +52,10 @@ async function isListed(
   const excluded = patterns
     .filter((pattern) => pattern.startsWith(EXCLUDE_PREFIX))
     .map((pattern) => memberManifestGlob(pattern.slice(EXCLUDE_PREFIX.length)));
-  return picomatch(included, { ignore: [...excluded, ...IGNORED_FOLDERS] })(
-    `${relativePath}/${MEMBER_MANIFEST}`,
-  );
+  return picomatch(included, {
+    ignore: [...excluded, ...IGNORED_FOLDERS],
+    posix: true,
+  })(`${relativePath}/${MEMBER_MANIFEST}`);
 }
 
 /**

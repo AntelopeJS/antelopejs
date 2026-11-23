@@ -85,6 +85,7 @@ describe("getInstallCommand in a pnpm workspace", () => {
   for (const pattern of [
     "modules/{app,lib}",
     "modules/[ab]pp",
+    "modules/[!b]pp",
     "modules/ap?",
   ]) {
     it(`installs a member the glob ${pattern} lists through its workspace`, async () => {
@@ -107,6 +108,19 @@ describe("getInstallCommand in a pnpm workspace", () => {
       expect(await getInstallCommand(member, false, fs, "update")).to.equal(
         "npm install",
       );
+    });
+  }
+
+  for (const packages of [
+    "packages: *missing\n",
+    "<<: [1]\npackages: [modules/*]\n",
+  ]) {
+    it(`installs a folder alone when ${JSON.stringify(packages)} cannot be resolved`, async () => {
+      const fs = await workspace(packages);
+
+      expect(
+        await getInstallCommand("/repo/modules/app", false, fs, "update"),
+      ).to.equal("npm install");
     });
   }
 
