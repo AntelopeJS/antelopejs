@@ -112,28 +112,35 @@ describe("project modules behavior: update-versions", () => {
     });
   });
 
-  it("keeps a module on the range the configuration gives and relocks it inside that range", async () => {
-    const source: ModuleSourcePackage = {
-      type: "package",
-      package: "@antelopejs/dms",
-      version: ">=0.20.2 <0.21.0",
-    };
-    sinon
-      .stub(common, "readConfig")
-      .resolves({ name: "proj", modules: { dms: { source } } });
-    const writeStub = sinon.stub(common, "writeConfig").resolves();
-    stubLoadedConfig({ modules: { dms: { source } } });
-    sinon
-      .stub(command, "ExecuteFile")
-      .resolves({ code: 0, stdout: "0.22.0", stderr: "" });
-    sinon.stub(getProcessUi(), "message");
-    sinon.stub(getProcessUi(), "summary");
+  for (const [version, latest] of [
+    [">=0.20.2 <0.21.0", "0.22.0"],
+    ["0.20", "0.22.0"],
+    ["0", "1.0.0"],
+    [" ^0.20.2 ", "1.0.0"],
+  ]) {
+    it(`keeps a module on the range ${JSON.stringify(version)} past ${latest} and relocks it inside that range`, async () => {
+      const source: ModuleSourcePackage = {
+        type: "package",
+        package: "@antelopejs/dms",
+        version,
+      };
+      sinon
+        .stub(common, "readConfig")
+        .resolves({ name: "proj", modules: { dms: { source } } });
+      const writeStub = sinon.stub(common, "writeConfig").resolves();
+      stubLoadedConfig({ modules: { dms: { source } } });
+      sinon
+        .stub(command, "ExecuteFile")
+        .resolves({ code: 0, stdout: latest, stderr: "" });
+      sinon.stub(getProcessUi(), "message");
+      sinon.stub(getProcessUi(), "summary");
 
-    await cmdUpdate().parseAsync(["node", "test", "--project", "project"]);
+      await cmdUpdate().parseAsync(["node", "test", "--project", "project"]);
 
-    expect(writeStub.called).to.equal(false);
-    expect(refresh.firstCall.args[2]).to.deep.equal([{ id: "dms", source }]);
-  });
+      expect(writeStub.called).to.equal(false);
+      expect(refresh.firstCall.args[2]).to.deep.equal([{ id: "dms", source }]);
+    });
+  }
 });
 
 async function updateInProduction(
