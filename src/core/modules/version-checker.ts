@@ -35,19 +35,21 @@ const SLOW_CHECK_THRESHOLD_MS = 15_000;
 const MAX_REASON_LENGTH = 200;
 
 const RANGE_PREFIX_PATTERN = /^[\^~]/;
-const BUMPABLE_SPEC_PATTERN = /^[\^~]?=?v?\d+(?:\.\d+){0,2}(?:[-+][\w.+-]+)?$/;
+const BUMPABLE_SPEC_PATTERN =
+  /^(?:[\^~]=?v?\d+(?:\.\d+){0,2}|=?v?\d+\.\d+\.\d+)(?:[-+][\w.+-]+)?$/;
 
 /**
  * Whether `modules update` leaves `currentSpec` as it is for `latest`: it
  * already accepts `latest`, or it is a range other than an exact, `^` or `~`
- * version, such as `>=0.20.2 <0.21.0`, whose bound the configuration sets.
+ * version, such as `>=0.20.2 <0.21.0` or the partial `1.2`, whose bound the
+ * configuration sets.
  */
 export function isUpToDate(currentSpec: string, latest: string): boolean {
   if (currentSpec === latest) {
     return true;
   }
   const range = validRange(currentSpec);
-  if (range === null || !BUMPABLE_SPEC_PATTERN.test(currentSpec.trim())) {
+  if (range === null || !BUMPABLE_SPEC_PATTERN.test(currentSpec)) {
     return true;
   }
   return satisfies(latest, range);

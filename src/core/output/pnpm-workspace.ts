@@ -1,56 +1,55 @@
 import path from "node:path";
 
 import type { IFileSystem } from "../../types";
+import { isObject, isString } from "../../utils";
 
 const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
 
 const EXCLUDE_PREFIX = "!";
 
+const MEMBER_MANIFEST = "package.json";
+
+const IGNORED_FOLDERS = ["**/node_modules/**", "**/bower_components/**"];
+
 /**
  * The glob patterns of the `packages` list of a `pnpm-workspace.yaml`, in any
- * YAML form pnpm accepts. An unparsable file lists nothing.
+ * YAML form pnpm accepts, aliases and merge keys resolved. An unparsable file
+ * lists nothing.
  */
 async function parseWorkspacePackages(yaml: string): Promise<string[]> {
-  const { isMap, isScalar, isSeq, parseDocument } = await import("yaml");
-  const document = parseDocument(yaml);
-  if (document.errors.length > 0 || !isMap(document.contents)) {
+  const { parseDocument } = await import("yaml");
+  const document = parseDocument(yaml, { merge: true });
+  if (document.errors.length > 0) {
     return [];
   }
-  const packages = document.contents.get("packages", true);
-  return isSeq(packages)
-    ? packages.items.filter(isScalar).map((entry) => String(entry.value))
-    : [];
+  const manifest: unknown = document.toJS();
+  const packages = isObject(manifest) ? manifest.packages : undefined;
+  return Array.isArray(packages) ? packages.filter(isString) : [];
 }
 
-/** Whether the `/`-separated `relativePath` matches the pnpm glob `pattern`. */
-function matchesGlob(relativePath: string, pattern: string): boolean {
-  const source = pattern
-    .replace(/^\.\//, "")
-    .replace(/\/+$/, "")
-    .split("/")
-    .map((segment) =>
-      segment === "**"
-        ? "(?:[^/]+/)*"
-        : `${segment
-            .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-            .replace(/\*/g, "[^/]*")
-            .replace(/\?/g, "[^/]")}/`,
-    )
-    .join("");
-  return new RegExp(`^${source}$`).test(`${relativePath}/`);
+/** The glob pnpm searches for the `package.json` of each member `pattern` names. */
+function memberManifestGlob(pattern: string): string {
+  return pattern.replace(/\/?$/, `/${MEMBER_MANIFEST}`);
 }
 
-function isListed(relativePath: string, patterns: string[]): boolean {
+/**
+ * Whether the `/`-separated `relativePath` is a member of a workspace listing
+ * `patterns`, matched with the picomatch options pnpm's workspace search runs
+ * tinyglobby with.
+ */
+async function isListed(
+  relativePath: string,
+  patterns: string[],
+): Promise<boolean> {
+  const { default: picomatch } = await import("picomatch");
+  const included = patterns
+    .filter((pattern) => !pattern.startsWith(EXCLUDE_PREFIX))
+    .map(memberManifestGlob);
   const excluded = patterns
     .filter((pattern) => pattern.startsWith(EXCLUDE_PREFIX))
-    .some((pattern) =>
-      matchesGlob(relativePath, pattern.slice(EXCLUDE_PREFIX.length)),
-    );
-  return (
-    !excluded &&
-    patterns
-      .filter((pattern) => !pattern.startsWith(EXCLUDE_PREFIX))
-      .some((pattern) => matchesGlob(relativePath, pattern))
+    .map((pattern) => memberManifestGlob(pattern.slice(EXCLUDE_PREFIX.length)));
+  return picomatch(included, { ignore: [...excluded, ...IGNORED_FOLDERS] })(
+    `${relativePath}/${MEMBER_MANIFEST}`,
   );
 }
 
@@ -81,7 +80,7 @@ export async function findPnpmWorkspaceRoot(
       const patterns = await parseWorkspacePackages(
         await fileSystem.readFileString(manifest),
       );
-      return isListed(relativePath, patterns) ? root : undefined;
+      return (await isListed(relativePath, patterns)) ? root : undefined;
     }
     if (path.dirname(root) === root) {
       return undefined;

@@ -69,6 +69,47 @@ describe("getInstallCommand in a pnpm workspace", () => {
     ).to.match(/^pnpm install (?!.*--ignore-workspace)/);
   });
 
+  for (const packages of [
+    "base: &modules\n  - modules/*\npackages: *modules\n",
+    "base: &globs\n  packages: [modules/*]\n<<: *globs\n",
+  ]) {
+    it(`installs a member that ${JSON.stringify(packages)} lists through an alias`, async () => {
+      const fs = await workspace(packages);
+
+      expect(
+        await getInstallCommand("/repo/modules/app", false, fs, "update"),
+      ).to.match(/^pnpm install (?!.*--ignore-workspace)/);
+    });
+  }
+
+  for (const pattern of [
+    "modules/{app,lib}",
+    "modules/[ab]pp",
+    "modules/ap?",
+  ]) {
+    it(`installs a member the glob ${pattern} lists through its workspace`, async () => {
+      const fs = await workspace(`packages:\n  - '${pattern}'\n`);
+
+      expect(
+        await getInstallCommand("/repo/modules/app", false, fs, "update"),
+      ).to.match(/^pnpm install (?!.*--ignore-workspace)/);
+    });
+  }
+
+  for (const member of ["/repo/.hidden/app", "/repo/vendor/node_modules/app"]) {
+    it(`installs ${member}, which pnpm's ** search skips, alone`, async () => {
+      const fs = await workspace("packages:\n  - '**'\n");
+      await fs.writeFile(
+        `${member}/package.json`,
+        JSON.stringify({ name: "app" }),
+      );
+
+      expect(await getInstallCommand(member, false, fs, "update")).to.equal(
+        "npm install",
+      );
+    });
+  }
+
   it("installs a folder the workspace does not list alone", async () => {
     const fs = await workspace("packages:\n  - packages/**\n");
 
