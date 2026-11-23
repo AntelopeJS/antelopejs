@@ -2,6 +2,7 @@ import { expect } from "chai";
 import sinon from "sinon";
 
 import { handlers } from "../../../../../src/cli";
+import { defined } from "../../../../helpers/defined";
 import type { JsonValue } from "../../../../helpers/json";
 import {
   cleanupTempDir,
@@ -20,7 +21,7 @@ describe("project modules behavior: local-paths", () => {
       const pkgDir = `${tempDir}/moduleA`;
       writeJson(`${pkgDir}/package.json`, { name: "moduleA" });
 
-      const localHandler = handlers.get("local")!;
+      const localHandler = defined(handlers.get("local"));
       const [localName, localConfig] = await localHandler(pkgDir, {
         mode: "local",
         project: tempDir,
@@ -34,7 +35,7 @@ describe("project modules behavior: local-paths", () => {
         "npx tsc",
       ]);
 
-      const dirHandler = handlers.get("dir")!;
+      const dirHandler = defined(handlers.get("dir"));
       const [dirName, dirConfig] = await dirHandler(pkgDir, {
         mode: "dir",
         project: tempDir,
@@ -59,7 +60,7 @@ describe("project modules behavior: local-paths", () => {
       writeJson(`${pkgDir}/package.json`, { name: "moduleA" });
       writeJson(`${tempDir}/package.json`, { name: "root-module" });
 
-      const localHandler = handlers.get("local")!;
+      const localHandler = defined(handlers.get("local"));
       const [localName, localConfig] = await localHandler("moduleA", {
         mode: "local",
         project: tempDir,
@@ -74,7 +75,7 @@ describe("project modules behavior: local-paths", () => {
       expect(rootName).to.equal("root-module");
       expect(rootConfig).to.have.nested.property("source.path", ".");
 
-      const dirHandler = handlers.get("dir")!;
+      const dirHandler = defined(handlers.get("dir"));
       const [dirName, dirConfig] = await dirHandler("moduleA", {
         mode: "dir",
         project: tempDir,
@@ -98,7 +99,7 @@ describe("project modules behavior: local-paths", () => {
     try {
       writeJson(`${tempDir}/moduleA/package.json`, manifest);
 
-      return await handlers.get("local")!(`${tempDir}/moduleA`, {
+      return await defined(handlers.get("local"))(`${tempDir}/moduleA`, {
         mode: "local",
         project: tempDir,
       });

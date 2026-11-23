@@ -2,6 +2,7 @@ import { expect } from "chai";
 import sinon from "sinon";
 
 import { handlers } from "../../../../../src/cli";
+import { defined } from "../../../../helpers/defined";
 describe("project modules behavior: git-handler", () => {
   afterEach(() => {
     sinon.restore();
@@ -9,7 +10,7 @@ describe("project modules behavior: git-handler", () => {
   });
 
   it("git handler validates url format", async () => {
-    const handler = handlers.get("git")!;
+    const handler = defined(handlers.get("git"));
     let caught: unknown;
     try {
       await handler("not-a-url", {
