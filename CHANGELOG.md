@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.24.7
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.6...v1.24.7)
+
+### 🚀 Enhancements
+
+- **embedded:** Accept a dev option in createRuntime ([#546](https://github.com/AntelopeJS/antelopejs/pull/546))
+
+### 🩹 Fixes
+
+- **cli:** Keep modules update --fix within the core's interface-core, workspaces and configured ranges ([#547](https://github.com/AntelopeJS/antelopejs/pull/547))
+- **cli:** Read pnpm-workspace.yaml packages with a YAML parser ([#549](https://github.com/AntelopeJS/antelopejs/pull/549))
+- **cli:** Match pnpm workspace globs with picomatch and keep partial version ranges ([#553](https://github.com/AntelopeJS/antelopejs/pull/553))
+
+### 📖 Documentation
+
+- **embedded:** Describe the dev option of createRuntime ([#548](https://github.com/AntelopeJS/antelopejs/pull/548))
+- **embedded:** Document the dev option in the runtime and options tables ([#552](https://github.com/AntelopeJS/antelopejs/pull/552))
+
+### 🏡 Chore
+
+- **deps:** Update dependency fast-check to v4.10.3 ([#551](https://github.com/AntelopeJS/antelopejs/pull/551))
+- **deps:** Update dependency oxlint-tsgolint to v7.0.2007 ([#554](https://github.com/AntelopeJS/antelopejs/pull/554))
+- **deps:** Update dependency rimraf to v6.1.4 ([#555](https://github.com/AntelopeJS/antelopejs/pull/555))
+
+### 🤖 CI
+
+- Re-sync the AntelopeJS pack for the release app ([#544](https://github.com/AntelopeJS/antelopejs/pull/544))
+- Stop forwarding the retired RELEASE_GITHUB_TOKEN ([#545](https://github.com/AntelopeJS/antelopejs/pull/545))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.6
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.5...v1.24.6)
