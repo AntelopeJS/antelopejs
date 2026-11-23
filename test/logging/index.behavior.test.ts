@@ -188,14 +188,7 @@ function countOccurrences(output: string, needle: string): number {
           expect(output.stdout).to.not.contain("(core)");
         });
 
-        /**
-         * Asking for the responsible module from a timer callback makes
-         * `GetResponsibleModule` warn through this very logger, and handling that
-         * warning used to ask for the responsible module again: a single call
-         * emitted the warning over and over, never emitted the line that asked
-         * for it, and ran the process out of memory.
-         */
-        it("emits one line for a log raised from a timer callback", async () => {
+        it("emits one line for a log raised from a timer callback, without asking again for the module of its own GetResponsibleModule warning", async () => {
           setupAntelopeProjectLogging({
             enabled: true,
             moduleTracking: { enabled: true, includes: [], excludes: [] },

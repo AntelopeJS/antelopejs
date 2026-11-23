@@ -95,6 +95,43 @@ async function leased(cachePath: string, entry: string): Promise<void> {
 
 type Prepare = typeof prepareFromArtifact;
 
+/**
+ * Prepares `start` in the project under `root` with `prepare` from a `build.json` of {@link FIRST},
+ * then, while a prune in a child process has read the leases and waits,
+ * lets `start` claim, rewrites `build.json` to {@link REBUILT} and lets
+ * the prune remove {@link FIRST}. The rebuilt module loads `rebuiltSource`.
+ * The lease of this test keeps {@link REBUILT} from that prune, as the
+ * lease of the build would.
+ *
+ * @returns the module folders `start` then loads.
+ */
+async function startWhileRebuilt(
+  root: string,
+  prepare: Prepare,
+  rebuiltSource: Source = SOURCE,
+): Promise<string[]> {
+  const cachePath = path.join(root, "cache");
+  const project = path.join(root, "project");
+  await writeBuild(project, cachePath, FIRST);
+  await new ModuleCache(cachePath).claimFolder(path.join(cachePath, REBUILT));
+  const gate = path.join(root, "prune-go");
+  const pruning = pruneInChild(cachePath, gate);
+  await pruning.printed("ready");
+
+  const prepared = await prepare(project, "default");
+  const verified = prepared.verify(new AbortController().signal);
+  await leased(cachePath, FIRST);
+  await writeBuild(project, cachePath, REBUILT, rebuiltSource);
+  openGate(gate);
+  await pruning.exited;
+  await verified;
+  const entries = await prepared.createEntries();
+
+  expect(existsSync(path.join(cachePath, FIRST))).to.equal(false);
+  expect(leasesNaming(cachePath, REBUILT)).to.equal(2);
+  return entries.map(({ manifest }) => manifest.folder);
+}
+
 describe("ajs project start while another run rebuilds and prunes", function () {
   this.timeout(CHILD_TIMEOUT_MS + 5000);
 
@@ -115,42 +152,8 @@ describe("ajs project start while another run rebuilds and prunes", function () 
     cleanupTempDir(root);
   });
 
-  /**
-   * Prepares `start` with `prepare` from a `build.json` of {@link FIRST},
-   * then, while a prune in a child process has read the leases and waits,
-   * lets `start` claim, rewrites `build.json` to {@link REBUILT} and lets
-   * the prune remove {@link FIRST}. The rebuilt module loads `rebuiltSource`.
-   * The lease of this test keeps {@link REBUILT} from that prune, as the
-   * lease of the build would.
-   *
-   * @returns the module folders `start` then loads.
-   */
-  async function startWhileRebuilt(
-    prepare: Prepare,
-    rebuiltSource: Source = SOURCE,
-  ): Promise<string[]> {
-    await writeBuild(project, cachePath, FIRST);
-    await new ModuleCache(cachePath).claimFolder(path.join(cachePath, REBUILT));
-    const gate = path.join(root, "prune-go");
-    const pruning = pruneInChild(cachePath, gate);
-    await pruning.printed("ready");
-
-    const prepared = await prepare(project, "default");
-    const verified = prepared.verify(new AbortController().signal);
-    await leased(cachePath, FIRST);
-    await writeBuild(project, cachePath, REBUILT, rebuiltSource);
-    openGate(gate);
-    await pruning.exited;
-    await verified;
-    const entries = await prepared.createEntries();
-
-    expect(existsSync(path.join(cachePath, FIRST))).to.equal(false);
-    expect(leasesNaming(cachePath, REBUILT)).to.equal(2);
-    return entries.map(({ manifest }) => manifest.folder);
-  }
-
   it("starts the new build when a prune removes the folders of the build.json it read before it claimed them", async () => {
-    expect(await startWhileRebuilt(prepareFromArtifact)).to.deep.equal([
+    expect(await startWhileRebuilt(root, prepareFromArtifact)).to.deep.equal([
       path.join(cachePath, REBUILT),
     ]);
   });
@@ -161,9 +164,9 @@ describe("ajs project start while another run rebuilds and prunes", function () 
       .stub(tsConfigFile, "loadTsConfigFile")
       .resolves(configLoading(SOURCE));
 
-    expect(await startWhileRebuilt(prepareFromRefreshedArtifact)).to.deep.equal(
-      [path.join(cachePath, REBUILT)],
-    );
+    expect(
+      await startWhileRebuilt(root, prepareFromRefreshedArtifact),
+    ).to.deep.equal([path.join(cachePath, REBUILT)]);
     expect(evaluate.callCount).to.equal(1);
   });
 
@@ -174,7 +177,7 @@ describe("ajs project start while another run rebuilds and prunes", function () 
     evaluate.resolves(configLoading(MOVED_SOURCE));
 
     expect(
-      await startWhileRebuilt(prepareFromRefreshedArtifact, MOVED_SOURCE),
+      await startWhileRebuilt(root, prepareFromRefreshedArtifact, MOVED_SOURCE),
     ).to.deep.equal([path.join(cachePath, REBUILT)]);
   });
 
