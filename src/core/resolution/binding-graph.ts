@@ -421,9 +421,8 @@ class BindingGraphBuilder {
     moduleId: string,
     outgoing: Map<string, CarriedBinding[]>,
   ): void {
-    for (const interfaceName of this.providers.sharedInterfaces()) {
-      const value = this.providers.defaultProvider(interfaceName);
-      if (value !== undefined && !outgoing.has(interfaceName)) {
+    for (const [interfaceName, value] of this.providers.sharedDefaults()) {
+      if (!outgoing.has(interfaceName)) {
         outgoing.set(interfaceName, [{ value, path: [moduleId] }]);
       }
     }

@@ -276,7 +276,9 @@ function consumersBeforeProviders(
     const isMember = ({ module }: ManagedModule) => members.has(module.id);
     const group: StopGroup = {
       entries: entries.filter(isMember),
-      first: entries.findIndex(isMember),
+      first: Math.min(
+        ...entries.flatMap((entry, index) => (isMember(entry) ? [index] : [])),
+      ),
       providers: new Set(),
       consumers: 0,
     };
