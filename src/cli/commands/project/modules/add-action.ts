@@ -69,11 +69,13 @@ export interface AddCommandResult {
 
 type AddStatus = keyof AddCommandResult;
 
-interface ModuleAddOutcome {
-  status: AddStatus;
-  moduleName: string;
-  moduleConfig?: AntelopeModuleConfig | string;
-}
+type ModuleAddOutcome =
+  | {
+      status: "added";
+      moduleName: string;
+      moduleConfig: AntelopeModuleConfig | string;
+    }
+  | { status: Exclude<AddStatus, "added">; moduleName: string };
 
 interface AddContext {
   options: AddOptions;
@@ -215,11 +217,11 @@ export async function addModules(
     modules.map((module) => addModule(module, context)),
   );
   const envModules = (environmentConfig.modules ??= {});
-  outcomes
-    .filter((outcome) => outcome.status === "added")
-    .forEach((outcome) => {
-      envModules[outcome.moduleName] = outcome.moduleConfig!;
-    });
+  for (const outcome of outcomes) {
+    if (outcome.status === "added") {
+      envModules[outcome.moduleName] = outcome.moduleConfig;
+    }
+  }
   const result = groupOutcomes(outcomes);
   if (result.failed.length > 0) {
     process.exitCode = FAILURE_EXIT_CODE;
