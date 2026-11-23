@@ -12,7 +12,6 @@ import {
   type ManagerMethods,
   type ModuleConfig,
   type StubbedInterfacePackage,
-  operations,
   defineManagerContext,
 } from "./module-manager-context";
 import { MANAGER_OPERATIONS } from "./module-manager-operations";
@@ -85,175 +84,178 @@ export class ModuleManager {
 
   static {
     preserveDelegateLengths(ModuleManager.prototype);
-    defineManagerContext((manager) => ({
-      fields: {
-        registry: () => manager.registry,
-        resolver: () => manager.resolver,
-        interfaceRegistry: () => manager.interfaceRegistry,
-        moduleTracker: () => manager.moduleTracker,
-        resolverDetour: () => manager.resolverDetour,
-        resolvedAssociations: () => manager.resolvedAssociations,
-        resolvedConnections: () => manager.resolvedConnections,
-        staticModules: () => manager.staticModules,
-        loaded: () => manager.loaded,
-        stubbedInterfacePackages: () => manager.stubbedInterfacePackages,
-        interfacePackagePlans: () => manager.interfacePackagePlans,
-        configVars: () => manager.configVars,
-        pendingCleanup: () => manager.pendingCleanup,
-        closed: () => manager.closing !== undefined,
-        closing: () => manager.closing,
-        constructing: () => manager.constructing,
-        bindingGraph: () => manager.bindingGraph,
-        isolation: () => manager.isolation,
-        startupOrder: () => manager.startupOrder,
+  }
+
+  private static readonly operationsOf = defineManagerContext((manager) => ({
+    fields: {
+      registry: () => manager.registry,
+      resolver: () => manager.resolver,
+      interfaceRegistry: () => manager.interfaceRegistry,
+      moduleTracker: () => manager.moduleTracker,
+      resolverDetour: () => manager.resolverDetour,
+      resolvedAssociations: () => manager.resolvedAssociations,
+      resolvedConnections: () => manager.resolvedConnections,
+      staticModules: () => manager.staticModules,
+      loaded: () => manager.loaded,
+      stubbedInterfacePackages: () => manager.stubbedInterfacePackages,
+      interfacePackagePlans: () => manager.interfacePackagePlans,
+      configVars: () => manager.configVars,
+      pendingCleanup: () => manager.pendingCleanup,
+      closed: () => manager.closing !== undefined,
+      closing: () => manager.closing,
+      constructing: () => manager.constructing,
+      bindingGraph: () => manager.bindingGraph,
+      isolation: () => manager.isolation,
+      startupOrder: () => manager.startupOrder,
+    },
+    writers: {
+      pendingCleanup: (value) => {
+        manager.pendingCleanup = value;
       },
-      writers: {
-        pendingCleanup: (value) => {
-          manager.pendingCleanup = value;
-        },
-        bindingGraph: (value) => {
-          manager.bindingGraph = value;
-        },
-        startupOrder: (value) => {
-          manager.startupOrder = value;
-        },
-        closing: (value) => {
-          manager.closing = value;
-        },
+      bindingGraph: (value) => {
+        manager.bindingGraph = value;
       },
-      methods: {
-        restoreModules: (...args) => manager.restoreModules(...args),
-        getModuleEntry: (...args) => manager.getModuleEntry(...args),
-        getAllManagedModules: (...args) =>
-          manager.getAllManagedModules(...args),
-        evictModuleFiles: (...args) => manager.evictModuleFiles(...args),
-        collectAvoidedFolders: (...args) =>
-          manager.collectAvoidedFolders(...args),
-        belongsToInterfacePackageTree: (...args) =>
-          manager.belongsToInterfacePackageTree(...args),
-        placeModule: (...args) => manager.placeModule(...args),
-        registerStubbedInterfacePackage: (...args) =>
-          manager.registerStubbedInterfacePackage(...args),
-        applyInterfaceStubs: (...args) => manager.applyInterfaceStubs(...args),
-        neutralizeInstances: (...args) => manager.neutralizeInstances(...args),
-        collectImplementedInterfaces: (...args) =>
-          manager.collectImplementedInterfaces(...args),
-        startModules: (...args) => manager.startModules(...args),
-        destroyAll: (...args) => manager.destroyAll(...args),
-        constructModule: (...args) => manager.constructModule(...args),
-        planConfigVars: (...args) => manager.planConfigVars(...args),
-        runProvidePhase: (...args) => manager.runProvidePhase(...args),
-        constructReadyModules: (...args) =>
-          manager.constructReadyModules(...args),
-        constructOrDisable: (...args) => manager.constructOrDisable(...args),
-        rejectCallsIntoDeadModules: (...args) =>
-          manager.rejectCallsIntoDeadModules(...args),
-        orphanedInterfaces: (...args) => manager.orphanedInterfaces(...args),
-        hasLiveImplementer: (...args) => manager.hasLiveImplementer(...args),
-        rejectCallsInto: (...args) => manager.rejectCallsInto(...args),
-        findFailedProvider: (...args) => manager.findFailedProvider(...args),
-        provideEntry: (...args) => manager.provideEntry(...args),
-        provideModule: (...args) => manager.provideModule(...args),
-        constructEntry: (...args) => manager.constructEntry(...args),
-        getReverseLifecycleModules: (...args) =>
-          manager.getReverseLifecycleModules(...args),
-        clearManagedState: (...args) => manager.clearManagedState(...args),
-        releaseRuntimeState: (...args) => manager.releaseRuntimeState(...args),
-        trackModuleStart: (...args) => manager.trackModuleStart(...args),
-        rebuildAssociations: (...args) => manager.rebuildAssociations(...args),
-        buildBindings: (...args) => manager.buildBindings(...args),
-        runningBindings: (...args) => manager.runningBindings(...args),
-        logBindingWarnings: (...args) => manager.logBindingWarnings(...args),
-        bindablePackages: (...args) => manager.bindablePackages(...args),
-        collectBindingInterfaces: (...args) =>
-          manager.collectBindingInterfaces(...args),
-        collectBindingModules: (...args) =>
-          manager.collectBindingModules(...args),
-        collectInterfaceSources: (...args) =>
-          manager.collectInterfaceSources(...args),
-        resolveInterfacePackagePaths: (...args) =>
-          manager.resolveInterfacePackagePaths(...args),
-        resolveImplementedPackage: (...args) =>
-          manager.resolveImplementedPackage(...args),
-        collectInterfacePackageConsumers: (...args) =>
-          manager.collectInterfacePackageConsumers(...args),
-        registerInterfacePackage: (...args) =>
-          manager.registerInterfacePackage(...args),
-        validateInterfacePackages: (...args) =>
-          manager.validateInterfacePackages(...args),
-        findInterfaceRangeConflicts: (...args) =>
-          manager.findInterfaceRangeConflicts(...args),
-        findRangeConflicts: (...args) => manager.findRangeConflicts(...args),
-        findPreloadedCopies: (...args) => manager.findPreloadedCopies(...args),
-        buildModuleAssociations: (...args) =>
-          manager.buildModuleAssociations(...args),
-        addDefaultAssociations: (...args) =>
-          manager.addDefaultAssociations(...args),
-        applyImportOverrides: (...args) =>
-          manager.applyImportOverrides(...args),
-        addInterfaceSource: (...args) => manager.addInterfaceSource(...args),
-        validateImportOverrides: (...args) =>
-          manager.validateImportOverrides(...args),
-        validateOverrideSource: (...args) =>
-          manager.validateOverrideSource(...args),
-        validateSelfHostedConnection: (...args) =>
-          manager.validateSelfHostedConnection(...args),
+      startupOrder: (value) => {
+        manager.startupOrder = value;
       },
-    }));
+      closing: (value) => {
+        manager.closing = value;
+      },
+    },
+    methods: {
+      restoreModules: (...args) => manager.restoreModules(...args),
+      getModuleEntry: (...args) => manager.getModuleEntry(...args),
+      getAllManagedModules: (...args) => manager.getAllManagedModules(...args),
+      evictModuleFiles: (...args) => manager.evictModuleFiles(...args),
+      collectAvoidedFolders: (...args) =>
+        manager.collectAvoidedFolders(...args),
+      belongsToInterfacePackageTree: (...args) =>
+        manager.belongsToInterfacePackageTree(...args),
+      placeModule: (...args) => manager.placeModule(...args),
+      registerStubbedInterfacePackage: (...args) =>
+        manager.registerStubbedInterfacePackage(...args),
+      applyInterfaceStubs: (...args) => manager.applyInterfaceStubs(...args),
+      neutralizeInstances: (...args) => manager.neutralizeInstances(...args),
+      collectImplementedInterfaces: (...args) =>
+        manager.collectImplementedInterfaces(...args),
+      startModules: (...args) => manager.startModules(...args),
+      destroyAll: (...args) => manager.destroyAll(...args),
+      constructModule: (...args) => manager.constructModule(...args),
+      planConfigVars: (...args) => manager.planConfigVars(...args),
+      runProvidePhase: (...args) => manager.runProvidePhase(...args),
+      constructReadyModules: (...args) =>
+        manager.constructReadyModules(...args),
+      constructOrDisable: (...args) => manager.constructOrDisable(...args),
+      rejectCallsIntoDeadModules: (...args) =>
+        manager.rejectCallsIntoDeadModules(...args),
+      orphanedInterfaces: (...args) => manager.orphanedInterfaces(...args),
+      hasLiveImplementer: (...args) => manager.hasLiveImplementer(...args),
+      rejectCallsInto: (...args) => manager.rejectCallsInto(...args),
+      findFailedProvider: (...args) => manager.findFailedProvider(...args),
+      provideEntry: (...args) => manager.provideEntry(...args),
+      provideModule: (...args) => manager.provideModule(...args),
+      constructEntry: (...args) => manager.constructEntry(...args),
+      getReverseLifecycleModules: (...args) =>
+        manager.getReverseLifecycleModules(...args),
+      clearManagedState: (...args) => manager.clearManagedState(...args),
+      releaseRuntimeState: (...args) => manager.releaseRuntimeState(...args),
+      trackModuleStart: (...args) => manager.trackModuleStart(...args),
+      rebuildAssociations: (...args) => manager.rebuildAssociations(...args),
+      buildBindings: (...args) => manager.buildBindings(...args),
+      runningBindings: (...args) => manager.runningBindings(...args),
+      logBindingWarnings: (...args) => manager.logBindingWarnings(...args),
+      bindablePackages: (...args) => manager.bindablePackages(...args),
+      collectBindingInterfaces: (...args) =>
+        manager.collectBindingInterfaces(...args),
+      collectBindingModules: (...args) =>
+        manager.collectBindingModules(...args),
+      collectInterfaceSources: (...args) =>
+        manager.collectInterfaceSources(...args),
+      resolveInterfacePackagePaths: (...args) =>
+        manager.resolveInterfacePackagePaths(...args),
+      resolveImplementedPackage: (...args) =>
+        manager.resolveImplementedPackage(...args),
+      collectInterfacePackageConsumers: (...args) =>
+        manager.collectInterfacePackageConsumers(...args),
+      registerInterfacePackage: (...args) =>
+        manager.registerInterfacePackage(...args),
+      validateInterfacePackages: (...args) =>
+        manager.validateInterfacePackages(...args),
+      findInterfaceRangeConflicts: (...args) =>
+        manager.findInterfaceRangeConflicts(...args),
+      findRangeConflicts: (...args) => manager.findRangeConflicts(...args),
+      findPreloadedCopies: (...args) => manager.findPreloadedCopies(...args),
+      buildModuleAssociations: (...args) =>
+        manager.buildModuleAssociations(...args),
+      addDefaultAssociations: (...args) =>
+        manager.addDefaultAssociations(...args),
+      applyImportOverrides: (...args) => manager.applyImportOverrides(...args),
+      addInterfaceSource: (...args) => manager.addInterfaceSource(...args),
+      validateImportOverrides: (...args) =>
+        manager.validateImportOverrides(...args),
+      validateOverrideSource: (...args) =>
+        manager.validateOverrideSource(...args),
+      validateSelfHostedConnection: (...args) =>
+        manager.validateSelfHostedConnection(...args),
+    },
+  }));
+
+  private get ops(): ManagerMethods {
+    return ModuleManager.operationsOf(this);
   }
 
   addStaticModule(entry: {
     manifest: ModuleManifest;
     config?: ModuleConfig;
   }): void {
-    return operations(this).addStaticModule(entry);
+    return this.ops.addStaticModule(entry);
   }
 
   addModules(
     entries: Array<{ manifest: ModuleManifest; config?: ModuleConfig }>,
   ): ManagedModule[] {
-    return operations(this).addModules(entries);
+    return this.ops.addModules(entries);
   }
 
   private restoreModules(
     ...args: Parameters<ManagerMethods["restoreModules"]>
   ) {
-    return operations(this).restoreModules(...args);
+    return this.ops.restoreModules(...args);
   }
 
   discardModules(ids: readonly string[]): void {
-    return operations(this).discardModules(ids);
+    return this.ops.discardModules(ids);
   }
 
   listModules(): string[] {
-    return operations(this).listModules();
+    return this.ops.listModules();
   }
 
   getModule(id: string): Module | undefined {
-    return operations(this).getModule(id);
+    return this.ops.getModule(id);
   }
 
   getModuleEntry(id: string): ManagedModule | undefined {
-    return operations(this).getModuleEntry(id);
+    return this.ops.getModuleEntry(id);
   }
 
   getLoadedModuleEntry(id: string): ManagedModule | undefined {
-    return operations(this).getLoadedModuleEntry(id);
+    return this.ops.getLoadedModuleEntry(id);
   }
 
   getLoadedModules(): IterableIterator<ManagedModule> {
-    return operations(this).getLoadedModules();
+    return this.ops.getLoadedModules();
   }
 
   getAllManagedModules(): ManagedModule[] {
-    return operations(this).getAllManagedModules();
+    return this.ops.getAllManagedModules();
   }
 
   unrequireModuleFiles(
     moduleId: string,
     shouldPreserveInterfaceGraph = true,
   ): void {
-    return operations(this).unrequireModuleFiles(
+    return this.ops.unrequireModuleFiles(
       moduleId,
       shouldPreserveInterfaceGraph,
     );
@@ -262,227 +264,227 @@ export class ModuleManager {
   private evictModuleFiles(
     ...args: Parameters<ManagerMethods["evictModuleFiles"]>
   ) {
-    return operations(this).evictModuleFiles(...args);
+    return this.ops.evictModuleFiles(...args);
   }
 
   private collectAvoidedFolders(
     ...args: Parameters<ManagerMethods["collectAvoidedFolders"]>
   ) {
-    return operations(this).collectAvoidedFolders(...args);
+    return this.ops.collectAvoidedFolders(...args);
   }
 
   private belongsToInterfacePackageTree(
     ...args: Parameters<ManagerMethods["belongsToInterfacePackageTree"]>
   ) {
-    return operations(this).belongsToInterfacePackageTree(...args);
+    return this.ops.belongsToInterfacePackageTree(...args);
   }
 
   setInstanceRoot(root: string): void {
-    return operations(this).setInstanceRoot(root);
+    return this.ops.setInstanceRoot(root);
   }
 
   placeModule(moduleId: string, manifest: ModuleManifest): ModuleManifest {
-    return operations(this).placeModule(moduleId, manifest);
+    return this.ops.placeModule(moduleId, manifest);
   }
 
   checkReplacement(moduleId: string, replacement: Module): void {
-    return operations(this).checkReplacement(moduleId, replacement);
+    return this.ops.checkReplacement(moduleId, replacement);
   }
 
   discardPlacedModule(manifest: ModuleManifest): void {
-    return operations(this).discardPlacedModule(manifest);
+    return this.ops.discardPlacedModule(manifest);
   }
 
   replaceLoadedModule(id: string, module: Module): ManagedModule | undefined {
-    return operations(this).replaceLoadedModule(id, module);
+    return this.ops.replaceLoadedModule(id, module);
   }
 
   refreshAssociations(): void {
-    return operations(this).refreshAssociations();
+    return this.ops.refreshAssociations();
   }
 
   hasResolvedInterface(moduleId: string, interfaceName: string): boolean {
-    return operations(this).hasResolvedInterface(moduleId, interfaceName);
+    return this.ops.hasResolvedInterface(moduleId, interfaceName);
   }
 
   registerStubbedInterfaces(stubbed: UnresolvedInterface[]): void {
-    return operations(this).registerStubbedInterfaces(stubbed);
+    return this.ops.registerStubbedInterfaces(stubbed);
   }
 
   private registerStubbedInterfacePackage(
     ...args: Parameters<ManagerMethods["registerStubbedInterfacePackage"]>
   ) {
-    return operations(this).registerStubbedInterfacePackage(...args);
+    return this.ops.registerStubbedInterfacePackage(...args);
   }
 
   private applyInterfaceStubs() {
-    return operations(this).applyInterfaceStubs();
+    return this.ops.applyInterfaceStubs();
   }
 
   private neutralizeInstances(
     ...args: Parameters<ManagerMethods["neutralizeInstances"]>
   ) {
-    return operations(this).neutralizeInstances(...args);
+    return this.ops.neutralizeInstances(...args);
   }
 
   private collectImplementedInterfaces() {
-    return operations(this).collectImplementedInterfaces();
+    return this.ops.collectImplementedInterfaces();
   }
 
   async constructAll(): Promise<void> {
-    return operations(this).constructAll();
+    return this.ops.constructAll();
   }
 
   async constructModules(modules: ManagedModule[]): Promise<void> {
-    return operations(this).constructModules(modules);
+    return this.ops.constructModules(modules);
   }
 
   async startAll(): Promise<void> {
-    return operations(this).startAll();
+    return this.ops.startAll();
   }
 
   async startModules(modules: ManagedModule[]): Promise<void> {
-    return operations(this).startModules(modules);
+    return this.ops.startModules(modules);
   }
 
   async stopAll(): Promise<void> {
-    return operations(this).stopAll();
+    return this.ops.stopAll();
   }
 
   async destroyAll(): Promise<void> {
-    return operations(this).destroyAll();
+    return this.ops.destroyAll();
   }
 
   private async constructModule(
     ...args: Parameters<ManagerMethods["constructModule"]>
   ) {
-    return operations(this).constructModule(...args);
+    return this.ops.constructModule(...args);
   }
 
   private planConfigVars(
     ...args: Parameters<ManagerMethods["planConfigVars"]>
   ) {
-    return operations(this).planConfigVars(...args);
+    return this.ops.planConfigVars(...args);
   }
 
   private async runProvidePhase(
     ...args: Parameters<ManagerMethods["runProvidePhase"]>
   ) {
-    return operations(this).runProvidePhase(...args);
+    return this.ops.runProvidePhase(...args);
   }
 
   private async constructReadyModules(
     ...args: Parameters<ManagerMethods["constructReadyModules"]>
   ) {
-    return operations(this).constructReadyModules(...args);
+    return this.ops.constructReadyModules(...args);
   }
 
   private async constructOrDisable(
     ...args: Parameters<ManagerMethods["constructOrDisable"]>
   ) {
-    return operations(this).constructOrDisable(...args);
+    return this.ops.constructOrDisable(...args);
   }
 
   private rejectCallsIntoDeadModules(
     ...args: Parameters<ManagerMethods["rejectCallsIntoDeadModules"]>
   ) {
-    return operations(this).rejectCallsIntoDeadModules(...args);
+    return this.ops.rejectCallsIntoDeadModules(...args);
   }
 
   private orphanedInterfaces(
     ...args: Parameters<ManagerMethods["orphanedInterfaces"]>
   ) {
-    return operations(this).orphanedInterfaces(...args);
+    return this.ops.orphanedInterfaces(...args);
   }
 
   private hasLiveImplementer(
     ...args: Parameters<ManagerMethods["hasLiveImplementer"]>
   ) {
-    return operations(this).hasLiveImplementer(...args);
+    return this.ops.hasLiveImplementer(...args);
   }
 
   private rejectCallsInto(
     ...args: Parameters<ManagerMethods["rejectCallsInto"]>
   ) {
-    return operations(this).rejectCallsInto(...args);
+    return this.ops.rejectCallsInto(...args);
   }
 
   private findFailedProvider(
     ...args: Parameters<ManagerMethods["findFailedProvider"]>
   ) {
-    return operations(this).findFailedProvider(...args);
+    return this.ops.findFailedProvider(...args);
   }
 
   private async provideEntry(
     ...args: Parameters<ManagerMethods["provideEntry"]>
   ) {
-    return operations(this).provideEntry(...args);
+    return this.ops.provideEntry(...args);
   }
 
   private async provideModule(
     ...args: Parameters<ManagerMethods["provideModule"]>
   ) {
-    return operations(this).provideModule(...args);
+    return this.ops.provideModule(...args);
   }
 
   private async constructEntry(
     ...args: Parameters<ManagerMethods["constructEntry"]>
   ) {
-    return operations(this).constructEntry(...args);
+    return this.ops.constructEntry(...args);
   }
 
   private getReverseLifecycleModules() {
-    return operations(this).getReverseLifecycleModules();
+    return this.ops.getReverseLifecycleModules();
   }
 
   private clearManagedState() {
-    return operations(this).clearManagedState();
+    return this.ops.clearManagedState();
   }
 
   private releaseRuntimeState() {
-    return operations(this).releaseRuntimeState();
+    return this.ops.releaseRuntimeState();
   }
 
   private trackModuleStart(
     ...args: Parameters<ManagerMethods["trackModuleStart"]>
   ) {
-    return operations(this).trackModuleStart(...args);
+    return this.ops.trackModuleStart(...args);
   }
 
   getBindingGraph(): BindingGraph | undefined {
-    return operations(this).getBindingGraph();
+    return this.ops.getBindingGraph();
   }
 
   private rebuildAssociations() {
-    return operations(this).rebuildAssociations();
+    return this.ops.rebuildAssociations();
   }
 
   private buildBindings() {
-    return operations(this).buildBindings();
+    return this.ops.buildBindings();
   }
 
   private runningBindings() {
-    return operations(this).runningBindings();
+    return this.ops.runningBindings();
   }
 
   private logBindingWarnings() {
-    return operations(this).logBindingWarnings();
+    return this.ops.logBindingWarnings();
   }
 
   private bindablePackages() {
-    return operations(this).bindablePackages();
+    return this.ops.bindablePackages();
   }
 
   private collectBindingInterfaces() {
-    return operations(this).collectBindingInterfaces();
+    return this.ops.collectBindingInterfaces();
   }
 
   private collectBindingModules() {
-    return operations(this).collectBindingModules();
+    return this.ops.collectBindingModules();
   }
 
   private collectInterfaceSources() {
-    return operations(this).collectInterfaceSources();
+    return this.ops.collectInterfaceSources();
   }
 
   private resolveInterfacePackagePaths(
@@ -490,13 +492,13 @@ export class ModuleManager {
       ManagerMethods["resolveInterfacePackagePaths"]
     >[0],
   ) {
-    return operations(this).resolveInterfacePackagePaths(interfaceSources);
+    return this.ops.resolveInterfacePackagePaths(interfaceSources);
   }
 
   private resolveImplementedPackage(
     ...args: Parameters<ManagerMethods["resolveImplementedPackage"]>
   ) {
-    return operations(this).resolveImplementedPackage(...args);
+    return this.ops.resolveImplementedPackage(...args);
   }
 
   private collectInterfacePackageConsumers(
@@ -504,17 +506,17 @@ export class ModuleManager {
       ManagerMethods["collectInterfacePackageConsumers"]
     >[0],
   ) {
-    return operations(this).collectInterfacePackageConsumers(packageName);
+    return this.ops.collectInterfacePackageConsumers(packageName);
   }
 
   private registerInterfacePackage(
     ...args: Parameters<ManagerMethods["registerInterfacePackage"]>
   ) {
-    return operations(this).registerInterfacePackage(...args);
+    return this.ops.registerInterfacePackage(...args);
   }
 
   private validateInterfacePackages() {
-    return operations(this).validateInterfacePackages();
+    return this.ops.validateInterfacePackages();
   }
 
   /**
@@ -523,7 +525,7 @@ export class ModuleManager {
    * files, so it runs before any module code is loaded.
    */
   findInterfaceRangeConflicts() {
-    return operations(this).findInterfaceRangeConflicts();
+    return this.ops.findInterfaceRangeConflicts();
   }
 
   /**
@@ -532,61 +534,61 @@ export class ModuleManager {
    * files, like {@link findInterfaceRangeConflicts}.
    */
   findInterfaceBumps() {
-    return operations(this).findInterfaceBumps();
+    return this.ops.findInterfaceBumps();
   }
 
   private findRangeConflicts(
     ...args: Parameters<ManagerMethods["findRangeConflicts"]>
   ) {
-    return operations(this).findRangeConflicts(...args);
+    return this.ops.findRangeConflicts(...args);
   }
 
   private findPreloadedCopies(
     ...args: Parameters<ManagerMethods["findPreloadedCopies"]>
   ) {
-    return operations(this).findPreloadedCopies(...args);
+    return this.ops.findPreloadedCopies(...args);
   }
 
   private buildModuleAssociations(
     ...args: Parameters<ManagerMethods["buildModuleAssociations"]>
   ) {
-    return operations(this).buildModuleAssociations(...args);
+    return this.ops.buildModuleAssociations(...args);
   }
 
   private addDefaultAssociations(
     ...args: Parameters<ManagerMethods["addDefaultAssociations"]>
   ) {
-    return operations(this).addDefaultAssociations(...args);
+    return this.ops.addDefaultAssociations(...args);
   }
 
   private applyImportOverrides(
     ...args: Parameters<ManagerMethods["applyImportOverrides"]>
   ) {
-    return operations(this).applyImportOverrides(...args);
+    return this.ops.applyImportOverrides(...args);
   }
 
   private addInterfaceSource(
     ...args: Parameters<ManagerMethods["addInterfaceSource"]>
   ) {
-    return operations(this).addInterfaceSource(...args);
+    return this.ops.addInterfaceSource(...args);
   }
 
   private validateImportOverrides(
     ...args: Parameters<ManagerMethods["validateImportOverrides"]>
   ) {
-    return operations(this).validateImportOverrides(...args);
+    return this.ops.validateImportOverrides(...args);
   }
 
   private validateOverrideSource(
     ...args: Parameters<ManagerMethods["validateOverrideSource"]>
   ) {
-    return operations(this).validateOverrideSource(...args);
+    return this.ops.validateOverrideSource(...args);
   }
 
   private validateSelfHostedConnection(
     ...args: Parameters<ManagerMethods["validateSelfHostedConnection"]>
   ) {
-    return operations(this).validateSelfHostedConnection(...args);
+    return this.ops.validateSelfHostedConnection(...args);
   }
 }
 

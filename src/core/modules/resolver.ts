@@ -329,8 +329,8 @@ export class Resolver {
   ): ResolveResult | undefined {
     const connection = parseConnection(request);
     const target = connection?.request ?? request;
-    const packageName = this.findInterfacePackage(target);
-    if (!packageName) {
+    const found = this.findInterfacePackage(target);
+    if (!found) {
       if (connection) {
         throw new Error(
           `Connection path '${request}' does not name an interface package.`,
@@ -338,17 +338,21 @@ export class Resolver {
       }
       return undefined;
     }
+    const [packageName, root] = found;
     const instance = connection
       ? this.connectionInstance(owner, packageName, connection.index)
       : this.instanceFor(owner, packageName);
-    return { ...this.canonicalRequest(packageName, target), instance };
+    return {
+      ...this.canonicalRequest(packageName, root, target),
+      instance,
+    };
   }
 
   private canonicalRequest(
     packageName: string,
+    root: string,
     request: string,
   ): ResolveResult {
-    const root = this.interfacePackages.get(packageName)!;
     if (request === packageName) {
       return {
         resolvedPath: this.interfacePackageEntries.get(packageName) ?? root,
@@ -360,9 +364,11 @@ export class Resolver {
     };
   }
 
-  private findInterfacePackage(request: string): string | undefined {
-    return [...this.interfacePackages.keys()].find(
-      (packageName) =>
+  private findInterfacePackage(
+    request: string,
+  ): [packageName: string, root: string] | undefined {
+    return [...this.interfacePackages].find(
+      ([packageName]) =>
         packageName !== CORE_PKG &&
         (request === packageName || request.startsWith(`${packageName}/`)),
     );

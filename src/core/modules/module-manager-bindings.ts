@@ -196,8 +196,10 @@ export function collectBindingInterfaces(
 ): Map<string, BindingInterface> {
   const packages = this.bindablePackages();
   const interfaces = new Map<string, BindingInterface>();
-  for (const name of packages) {
-    const root = this.resolver.interfacePackages.get(name)!;
+  for (const [name, root] of this.resolver.interfacePackages) {
+    if (!packages.has(name)) {
+      continue;
+    }
     interfaces.set(name, {
       name,
       dependencies: readInterfaceDependencies(name, root, packages),
