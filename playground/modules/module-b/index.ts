@@ -20,5 +20,4 @@ export function stop() {
 
 export async function destroy() {
   console.log("[module-b] Destroyed");
-  config = undefined!;
 }
