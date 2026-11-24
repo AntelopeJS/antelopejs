@@ -2,6 +2,7 @@ import { internal } from "@antelopejs/interface-core/internal";
 import { Logging } from "@antelopejs/interface-core/logging";
 import { Events } from "@antelopejs/interface-core/modules";
 import { expect } from "chai";
+import fc from "fast-check";
 import assert from "node:assert/strict";
 import path from "node:path";
 import sinon from "sinon";
@@ -443,5 +444,110 @@ describe("ModuleManager lifecycle signals", () => {
     ]);
     expect(calls).to.include("destroy:punctual");
     await starting;
+  });
+});
+
+describe("ModuleManager announcements", () => {
+  let calls: string[];
+
+  const onStarted = () => calls.push("started");
+
+  const onStopping = () => calls.push("stopping");
+
+  beforeEach(() => {
+    calls = [];
+    Events.ModulesStarted.register(onStarted);
+    Events.ModulesStopping.register(onStopping);
+  });
+
+  afterEach(() => {
+    Events.ModulesStarted.unregister(onStarted);
+    Events.ModulesStopping.unregister(onStopping);
+    sinon.restore();
+  });
+
+  async function addConstructedModule(
+    manager: ModuleManager,
+    id: string,
+    start: (() => void) | (() => Promise<void>),
+  ): Promise<CoreModule> {
+    const module = new CoreModule(
+      manifestFixture({ name: id, version: "1.0.0", main: `/${id}/index.js` }),
+      sinon.stub().resolves({
+        start,
+        stop: () => calls.push(`stop:${id}`),
+      }),
+    );
+    await module.construct({});
+    manager["loaded"].set(id, { module, config: {} });
+    return module;
+  }
+
+  it("a stop after a start began announces stopping before any stop, and nothing starts after it", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          ticks: fc.integer({ min: 0, max: 4 }),
+          oneModuleStep: fc.constantFrom("none", "stop", "reload"),
+          settlesBeforeStop: fc.boolean(),
+          throws: fc.boolean(),
+        }),
+        async ({ ticks, oneModuleStep, settlesBeforeStop, throws }) => {
+          calls = [];
+          const manager = new ModuleManager();
+          let settleSlow: () => void = () => undefined;
+          const fast = await addConstructedModule(manager, "fast", () =>
+            calls.push("start:fast"),
+          );
+          await addConstructedModule(manager, "slow", async () => {
+            calls.push("start:slow");
+            await new Promise<void>((resolve, reject) => {
+              settleSlow = throws
+                ? () => reject(new Error("slow start failed"))
+                : resolve;
+            });
+            calls.push("started:slow");
+          });
+
+          const starting = manager.startAll().catch(() => undefined);
+          for (let tick = 0; tick < ticks + 1; tick += 1) {
+            await new Promise((resolve) => setImmediate(resolve));
+          }
+          calls.push("step");
+          if (oneModuleStep !== "none") {
+            await fast.stop();
+          }
+          if (oneModuleStep === "reload") {
+            await manager.startModules([
+              defined(manager.getModuleEntry("fast")),
+            ]);
+          }
+          calls.push("stepped");
+          if (settlesBeforeStop) {
+            settleSlow();
+            await starting;
+          }
+          calls.push("stopAll");
+          const stopping = manager.stopAll();
+          settleSlow();
+          await starting;
+          await stopping;
+
+          const stoppingAt = calls.indexOf("stopping");
+          const stopAllAt = calls.indexOf("stopAll");
+          const steppedAt = calls.indexOf("stepped");
+          const firstStopAt = calls.findIndex(
+            (call, index) => index > steppedAt && call.startsWith("stop:"),
+          );
+          expect(calls.filter((call) => call === "stopping")).to.have.length(1);
+          expect(firstStopAt === -1 || stoppingAt < firstStopAt).to.equal(true);
+          expect(calls.lastIndexOf("started")).to.be.lessThan(stoppingAt);
+          if (!(throws && settlesBeforeStop)) {
+            expect(stoppingAt).to.be.greaterThan(stopAllAt);
+          }
+        },
+      ),
+      { numRuns: 200 },
+    );
   });
 });
