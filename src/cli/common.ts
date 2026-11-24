@@ -64,6 +64,20 @@ export function displayNonDefaultGitWarning(gitUrl: string): void {
   }
 }
 
+/** `data` with the keys of its dependency maps in the order the formatter keeps. */
+function withSortedDependencies(data: ModulePackageJson): ModulePackageJson {
+  const sorted = { ...data };
+  for (const field of ["dependencies", "optionalDependencies"] as const) {
+    const map = data[field];
+    if (map) {
+      sorted[field] = Object.fromEntries(
+        Object.entries(map).sort(([a], [b]) => Number(a > b) - Number(a < b)),
+      );
+    }
+  }
+  return sorted;
+}
+
 async function writeJsonFile(
   filePath: string,
   data: ModulePackageJson,
@@ -72,7 +86,7 @@ async function writeJsonFile(
   const indentation = await detectIndentation(filePath, fileSystem);
   await fileSystem.writeFile(
     filePath,
-    `${JSON.stringify(data, null, indentation)}\n`,
+    `${JSON.stringify(withSortedDependencies(data), null, indentation)}\n`,
   );
 }
 

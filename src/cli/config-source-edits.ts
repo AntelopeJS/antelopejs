@@ -232,6 +232,26 @@ export function insertionEdit(
 }
 
 /**
+ * The edit that turns `object` into `{}` when removing its only property,
+ * from `from` to `to`, leaves nothing but whitespace between the braces; the
+ * formatter lays such an object out on one line.
+ */
+function emptiedObjectEdit(
+  layout: SourceLayout,
+  object: TypeScript.ObjectLiteralExpression,
+  from: number,
+  to: number,
+): SourceEdit | undefined {
+  const text = layout.sourceFile.text;
+  const open = object.getStart(layout.sourceFile) + 1;
+  const close = object.end - 1;
+  const rest = `${text.slice(open, from)}${text.slice(to, close)}`;
+  return object.properties.length === 1 && rest.trim() === ""
+    ? { start: open, end: close, text: "" }
+    : undefined;
+}
+
+/**
  * Deletes `property` from `object`. A property alone on its line goes with
  * that line, the comment lines above it and the comments after it; one that
  * shares its line with other code leaves the line break in place.
@@ -251,6 +271,10 @@ export function removalEdit(
     leading.find((comment) => startsOwnLine(text, comment.pos))?.pos ??
     (startsOwnLine(text, start) ? start : undefined);
   if (firstOwn !== undefined) {
+    const emptied = emptiedObjectEdit(layout, object, firstOwn, afterComma);
+    if (emptied) {
+      return emptied;
+    }
     const lineEnd = clearLineEnd(layout, afterComma);
     if (lineEnd === undefined) {
       const blanks = text.slice(afterComma).match(/^[\t ]*/)?.[0].length ?? 0;
