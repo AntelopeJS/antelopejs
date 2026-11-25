@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.24.8
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.7...v1.24.8)
+
+### 🩹 Fixes
+
+- **cli:** Write config and package.json layouts oxfmt keeps ([#561](https://github.com/AntelopeJS/antelopejs/pull/561))
+- **modules:** Look up dist-tags and dependencies by own key ([#565](https://github.com/AntelopeJS/antelopejs/pull/565))
+- **cli:** Look up modules, environments and interfaces by own key ([#568](https://github.com/AntelopeJS/antelopejs/pull/568))
+- **cli:** Collapse an emptied inline modules map to {} ([#569](https://github.com/AntelopeJS/antelopejs/pull/569))
+- **cli:** Look up removed modules and manifest dependencies by own key ([#574](https://github.com/AntelopeJS/antelopejs/pull/574))
+- **core:** Pin own-key lookups with prototype-named tests ([#575](https://github.com/AntelopeJS/antelopejs/pull/575))
+- **cache:** Retry the lock mkdir that Windows refuses while the folder is removed ([#576](https://github.com/AntelopeJS/antelopejs/pull/576))
+- **cli:** Pin the own-key lookup of modules remove with a folder entry named like a prototype key ([#577](https://github.com/AntelopeJS/antelopejs/pull/577))
+
+### 📖 Documentation
+
+- **embedded:** Fix dev mode wording and test dev through createRuntime ([#557](https://github.com/AntelopeJS/antelopejs/pull/557))
+- **cli:** Describe modules update ranges and dev registry as the code does ([#558](https://github.com/AntelopeJS/antelopejs/pull/558))
+
+### 📦 Build
+
+- **deps:** Adopt @antelopejs/tooling-configs 0.10 and its comment rule ([#556](https://github.com/AntelopeJS/antelopejs/pull/556))
+
+### 🏡 Chore
+
+- **deps:** Update dependency @types/node to v22.20.5 ([#564](https://github.com/AntelopeJS/antelopejs/pull/564))
+- **deps:** Update dependency oxlint-tsgolint to v7.0.2008 ([#563](https://github.com/AntelopeJS/antelopejs/pull/563))
+- **deps:** Pin dependencies ([#550](https://github.com/AntelopeJS/antelopejs/pull/550))
+- **deps:** Update dependency @types/node to v22.20.5 ([#566](https://github.com/AntelopeJS/antelopejs/pull/566))
+- **deps:** Update dependency dependency-cruiser to v18.8.0 ([#567](https://github.com/AntelopeJS/antelopejs/pull/567))
+- **deps:** Update dependency eslint-plugin-perfectionist to v5.14.0 ([#570](https://github.com/AntelopeJS/antelopejs/pull/570))
+- **deps:** Update dependency fast-check to v4.11.0 ([#571](https://github.com/AntelopeJS/antelopejs/pull/571))
+
+### ✅ Tests
+
+- **modules:** Replay the ModulesStopping announcement incidents as a property ([#562](https://github.com/AntelopeJS/antelopejs/pull/562))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.7
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.6...v1.24.7)
