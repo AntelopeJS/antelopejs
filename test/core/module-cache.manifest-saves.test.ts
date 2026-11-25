@@ -89,6 +89,32 @@ class TakenOverFileSystem extends NodeFileSystem {
   }
 }
 
+/**
+ * The real file system, except that the first `failures` creations of the
+ * manifest lock folder fail with `EPERM`, as on Windows while another
+ * process still removes that folder.
+ */
+class PendingRemovalFileSystem extends NodeFileSystem {
+  constructor(
+    private readonly lockFolder: string,
+    private failures: number,
+  ) {
+    super();
+  }
+
+  override mkdir(file: string, options?: { recursive?: boolean }) {
+    if (file === this.lockFolder && this.failures > 0) {
+      this.failures -= 1;
+      return Promise.reject(
+        Object.assign(new Error("EPERM: operation not permitted"), {
+          code: "EPERM",
+        }),
+      );
+    }
+    return super.mkdir(file, options);
+  }
+}
+
 describe("ModuleCache manifest saved by several runs", () => {
   let root: string;
   let cachePath: string;
@@ -124,6 +150,34 @@ describe("ModuleCache manifest saved by several runs", () => {
     }
 
     expect(manifestKeys(cachePath)).to.deep.equal(expected.sort());
+  });
+
+  it("commits once the manifest lock folder that another process was removing is gone", async () => {
+    const lockFolder = path.join(cachePath, ".manifest.lock");
+    const cache = new ModuleCache(
+      cachePath,
+      new PendingRemovalFileSystem(lockFolder, 3),
+    );
+    await cache.load();
+
+    await cache.commitVersion("mine@1.0.0", "1.0.0");
+
+    expect(manifestKeys(cachePath)).to.deep.equal(["mine@1.0.0"]);
+  });
+
+  it("fails with EPERM when the manifest lock folder can never be created", async () => {
+    const lockFolder = path.join(cachePath, ".manifest.lock");
+    const cache = new ModuleCache(
+      cachePath,
+      new PendingRemovalFileSystem(lockFolder, Number.POSITIVE_INFINITY),
+    );
+    await cache.load();
+
+    const failure = await cache
+      .commitVersion("mine@1.0.0", "1.0.0")
+      .catch((error: unknown) => error);
+
+    expect(failure).to.have.property("code", "EPERM");
   });
 
   it("saves again, renaming nothing, when another process took the manifest lock over during the save", async () => {

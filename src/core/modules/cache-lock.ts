@@ -24,7 +24,7 @@ const SILENT_AFTER_MS = 60_000;
  */
 const CREATION_WINDOW_MS = SILENT_AFTER_MS;
 const POLL_INTERVAL_MS = 25;
-const REMOVE_ATTEMPTS = 10;
+const BUSY_ATTEMPTS = 10;
 const DOWNLOADS_FOLDER = ".downloads";
 const LOCK_EXTENSION = ".lock";
 const MAX_ENCODED_LENGTH = 200;
@@ -148,7 +148,7 @@ async function removeLockFolder(
   lockFolder: string,
   fs: IFileSystem,
 ): Promise<void> {
-  for (let attempt = 1; attempt < REMOVE_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt < BUSY_ATTEMPTS; attempt += 1) {
     try {
       await fs.rm(lockFolder, { recursive: true, force: true });
       return;
@@ -157,6 +157,30 @@ async function removeLockFolder(
     }
   }
   await fs.rm(lockFolder, { recursive: true, force: true });
+}
+
+/**
+ * Creates the lock folder `lockFolder`. On Windows a folder that another
+ * process removes stays until the last handle on it closes, and creating it
+ * meanwhile fails with `EPERM`, so that failure is tried again after a pause,
+ * up to ten times.
+ */
+async function makeLockFolder(
+  lockFolder: string,
+  fs: IFileSystem,
+): Promise<void> {
+  for (let attempt = 1; attempt < BUSY_ATTEMPTS; attempt += 1) {
+    try {
+      await fs.mkdir(lockFolder);
+      return;
+    } catch (error) {
+      if (!(error instanceof Error && hasErrorCode(error, "EPERM"))) {
+        throw error;
+      }
+      await delay(POLL_INTERVAL_MS);
+    }
+  }
+  await fs.mkdir(lockFolder);
 }
 
 /**
@@ -308,7 +332,7 @@ async function createLockFolder(
       throw error;
     }
     try {
-      await fs.mkdir(lockFolder);
+      await makeLockFolder(lockFolder, fs);
     } catch (error) {
       if (error instanceof Error && hasErrorCode(error, "EEXIST")) {
         return false;
