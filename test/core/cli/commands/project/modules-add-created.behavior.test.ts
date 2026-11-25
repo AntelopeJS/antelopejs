@@ -115,4 +115,33 @@ describe("project modules behavior: add-created", () => {
       ],
     });
   });
+
+  it("adds a local module named after an Object.prototype key", async () => {
+    const config: AntelopeConfig = { name: "proj", modules: {} };
+    sinon.stub(common, "readConfig").resolves(config);
+    stubLoadedConfig();
+    sinon.stub(ModuleCache.prototype, "load").resolves();
+    sinon.stub(common, "writeConfig").resolves();
+
+    const messageStub = sinon.stub(getProcessUi(), "message");
+    sinon.stub(getProcessUi(), "summary");
+
+    const originalHandler = handlers.get("local");
+    handlers.set("local", async () => ["constructor", "local-src"]);
+
+    try {
+      await projectModulesAddCommand(["./constructor"], {
+        mode: "local",
+        project: "/work/project",
+      });
+    } finally {
+      if (originalHandler) {
+        handlers.set("local", originalHandler);
+      }
+    }
+
+    expect(messageLines(messageStub)).to.deep.equal([
+      "success Added constructor local-src",
+    ]);
+  });
 });

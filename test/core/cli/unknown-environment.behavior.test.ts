@@ -131,6 +131,20 @@ describe("unknown --env", () => {
     });
   });
 
+  it("refuses an Object.prototype key as an environment", async () => {
+    const code = await runCommand(projectDir, [
+      "project",
+      "build",
+      "--env",
+      "toString",
+    ]);
+
+    expect(code).to.equal(USAGE_EXIT_CODE);
+    expect(reportedLines(stderr)).to.include(
+      `${getProcessUi().symbols.levels.error} Unknown environment 'toString'`,
+    );
+  });
+
   it("names ANTELOPEJS_LAUNCH_ENV when it sets the unknown environment", async () => {
     sinon
       .stub(process, "env")

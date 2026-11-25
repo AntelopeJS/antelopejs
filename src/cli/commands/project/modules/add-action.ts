@@ -152,7 +152,7 @@ async function addResolvedModule(
 ): Promise<ModuleAddOutcome> {
   const palette = getProcessPalette();
   const name = palette.bold(moduleName);
-  if (context.existingModules[moduleName]) {
+  if (Object.hasOwn(context.existingModules, moduleName)) {
     task.skip(`Skipped ${name}: already in the project`);
     return { status: "skipped", moduleName };
   }
