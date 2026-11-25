@@ -69,9 +69,11 @@ export function installFixture() {
 
   const ifaceName2 = "test-iface2";
 
+  const prototypeIfaceName = "constructor";
+
   before(async () => {
     tempModuleDir = await mkdtemp(path.join(tmpdir(), "ajs-install-test-"));
-    for (const name of [ifaceName, ifaceName2]) {
+    for (const name of [ifaceName, ifaceName2, prototypeIfaceName]) {
       const pkgDir = path.join(tempModuleDir, "node_modules", name);
       await mkdir(pkgDir, { recursive: true });
       await writeFile(
@@ -107,7 +109,11 @@ export function installFixture() {
     process.exitCode = undefined;
   });
 
-  function stubUnresolvedImport(modules: gitOps.ModuleInterfaceInfo[]) {
+  function stubUnresolvedImport(
+    modules: gitOps.ModuleInterfaceInfo[],
+    imported = ifaceName,
+    catalog: Record<string, string> = { [ifaceName]: "test-iface" },
+  ) {
     const appModules = {
       app: { source: { type: "package", package: "app", version: "1.0.0" } },
     } satisfies Record<string, AntelopeModuleConfig>;
@@ -118,7 +124,7 @@ export function installFixture() {
       .resolves({ git: common.DEFAULT_GIT_REPO });
     sinon.stub(common, "displayNonDefaultGitWarning").returns();
     sinon.stub(gitOps, "loadManifestFromGit").resolves({
-      interfaces: { [ifaceName]: "test-iface" },
+      interfaces: catalog,
       starredInterfaces: [],
       templates: [],
     });
@@ -126,7 +132,7 @@ export function installFixture() {
     sinon.stub(ModuleCache.prototype, "load").resolves();
     sinon.stub(DownloaderRegistry.prototype, "load").resolves([
       moduleManifest({
-        manifest: { dependencies: { [ifaceName]: "^1.0.0" } },
+        manifest: { dependencies: { [imported]: "^1.0.0" } },
         implements: [],
         folder: tempModuleDir,
       }),
@@ -160,6 +166,7 @@ export function installFixture() {
     },
     ifaceName,
     ifaceName2,
+    prototypeIfaceName,
     stubUnresolvedImport,
   };
 }
