@@ -474,6 +474,22 @@ import { useAsciiSymbols } from "../helpers/ascii-symbols";
         expect(execStub.calledOnce).to.equal(true);
       });
 
+      it("rejects an inherited property name as a dist-tag", async () => {
+        sinon.stub(command, "ExecuteFile").resolves({
+          code: 0,
+          stdout: '{"latest":"1.0.0"}',
+          stderr: "",
+        });
+
+        let thrown: unknown;
+        try {
+          await validateVersionSpec("some-package", "constructor");
+        } catch (err) {
+          thrown = err;
+        }
+        expect(thrown).to.be.instanceOf(CliError);
+      });
+
       it("rejects a spec that is neither range nor dist-tag", async () => {
         sinon.stub(command, "ExecuteFile").resolves({
           code: 0,

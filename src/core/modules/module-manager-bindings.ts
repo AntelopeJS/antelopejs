@@ -292,7 +292,10 @@ export function addDefaultAssociations(
   const optionalDependencies =
     module.manifest.manifest.optionalDependencies ?? {};
   for (const [iface, providers] of interfaceSources) {
-    if (iface in dependencies || iface in optionalDependencies) {
+    if (
+      Object.hasOwn(dependencies, iface) ||
+      Object.hasOwn(optionalDependencies, iface)
+    ) {
       const providerIds = providers.map(({ id }) => id).sort();
       if (providerIds.length > 0) {
         connections.set(

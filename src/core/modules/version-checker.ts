@@ -105,7 +105,7 @@ export async function validateVersionSpec(
     return;
   }
   const distTags = await fetchDistTags(packageName);
-  if (spec in distTags) {
+  if (Object.hasOwn(distTags, spec)) {
     return;
   }
   throw new CliError({

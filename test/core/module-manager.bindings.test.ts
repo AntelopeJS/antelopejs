@@ -6,8 +6,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import type { InterfaceConnectionRef } from "../../src/core/modules";
+import { addDefaultAssociations } from "../../src/core/modules/module-manager-bindings";
 import { ModuleManager, ModuleManifest } from "../../src/core/modules";
 import { InterfaceBindingError } from "../../src/core/resolution";
+import { manifestFixture, moduleFixture } from "../helpers/module-fixtures";
 import type { JsonValue } from "../helpers/json";
 
 const DATABASE = "@bindings/interface-database";
@@ -154,5 +156,28 @@ describe("ModuleManager interface bindings", () => {
     expect(thrown.message).to.equal(
       `Module 'consumer' declares a '${DATABASE}' connection without a source, but loaded modules provide that interface; name the provider.`,
     );
+  });
+});
+
+describe("addDefaultAssociations", () => {
+  it("does not treat an inherited property name as a declared dependency", () => {
+    const module = moduleFixture({
+      id: "consumer",
+      manifest: manifestFixture({
+        manifest: { dependencies: {}, optionalDependencies: {} },
+      }),
+    });
+    const provider = moduleFixture({ id: "provider" });
+    const connections = new Map<string, InterfaceConnectionRef[]>();
+
+    addDefaultAssociations.call(
+      // SAFETY: addDefaultAssociations never touches its context.
+      undefined as never,
+      module,
+      connections,
+      new Map([["constructor", [provider]]]),
+    );
+
+    expect([...connections.keys()]).to.deep.equal([]);
   });
 });
