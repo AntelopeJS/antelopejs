@@ -24,7 +24,9 @@ function removeModule(
   envModules: NonNullable<AntelopeConfig["modules"]>,
   module: string,
 ): string {
-  const key = envModules[module] ? module : `${FOLDER_MODULE_PREFIX}${module}`;
+  const key = Object.hasOwn(envModules, module)
+    ? module
+    : `${FOLDER_MODULE_PREFIX}${module}`;
   delete envModules[key];
   getProcessUi().message(
     "success",
@@ -112,7 +114,8 @@ export async function projectModulesRemoveCommand(
   const requested = [...new Set(modules)];
   const missingModules = requested.filter(
     (module) =>
-      !envModules[module] && !envModules[`${FOLDER_MODULE_PREFIX}${module}`],
+      !Object.hasOwn(envModules, module) &&
+      !Object.hasOwn(envModules, `${FOLDER_MODULE_PREFIX}${module}`),
   );
   if (rejectMissingModules(missingModules, requested, envModules, options)) {
     process.exitCode = FAILURE_EXIT_CODE;

@@ -225,6 +225,15 @@ export function resolveImplementedPackage(
   };
 }
 
+function ownRange(
+  dependencies: Record<string, string> | undefined,
+  packageName: string,
+): string | undefined {
+  return dependencies && Object.hasOwn(dependencies, packageName)
+    ? dependencies[packageName]
+    : undefined;
+}
+
 export function collectInterfacePackageConsumers(
   this: ManagerContext,
   packageName: string,
@@ -233,8 +242,8 @@ export function collectInterfacePackageConsumers(
   for (const { module } of this.loaded.values()) {
     const manifest = module.manifest.manifest;
     const range =
-      manifest.dependencies?.[packageName] ??
-      manifest.optionalDependencies?.[packageName];
+      ownRange(manifest.dependencies, packageName) ??
+      ownRange(manifest.optionalDependencies, packageName);
     if (!range) {
       continue;
     }
