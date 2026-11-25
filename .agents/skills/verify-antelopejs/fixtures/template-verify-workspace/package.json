@@ -13,7 +13,7 @@
     "@antelopejs/interface-core": ">=0.5.2 <0.6.0"
   },
   "devDependencies": {
-    "@types/node": "22.19.15",
+    "@types/node": "22.20.5",
     "antelopejs-sync": "file:tools/sync",
     "typescript": "5.9.3"
   },

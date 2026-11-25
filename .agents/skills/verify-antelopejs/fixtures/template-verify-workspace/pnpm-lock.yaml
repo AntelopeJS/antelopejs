@@ -13,8 +13,8 @@ importers:
         version: 0.5.2
     devDependencies:
       '@types/node':
-        specifier: 22.19.15
-        version: 22.19.15
+        specifier: 22.20.5
+        version: 22.20.5
       antelopejs-sync:
         specifier: file:tools/sync
         version: file:tools/sync
@@ -33,8 +33,8 @@ packages:
   '@antelopejs/interface-core@0.5.2':
     resolution: {integrity: sha512-5rmFLzHH8x8SCMK3KEm7L4DdRaLXjKKMWS/5ektDz5C2P/mAmaG++JAe1+09RBFNWWe0LER56vz9AVIeqVQoMA==}
 
-  '@types/node@22.19.15':
-    resolution: {integrity: sha512-F0R/h2+dsy5wJAUe3tAU6oqa2qbWY5TpNfL/RGmo1y38hiyO1w3x2jPtt76wmuaJI4DQnOBu21cNXQ2STIUUWg==}
+  '@types/node@22.20.5':
+    resolution: {integrity: sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA==}
 
   antelopejs-sync@file:tools/sync:
     resolution: {directory: tools/sync, type: directory}
@@ -61,7 +61,7 @@ snapshots:
     dependencies:
       reflect-metadata: 0.2.2
 
-  '@types/node@22.19.15':
+  '@types/node@22.20.5':
     dependencies:
       undici-types: 6.21.0
 
