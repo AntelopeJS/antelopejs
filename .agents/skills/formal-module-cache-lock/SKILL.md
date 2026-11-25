@@ -92,4 +92,4 @@ The model leaves out:
 - the clock: `Lapse` stands for 60 s of silence, or a folder with no owner that the file system dates past the creation window, and a lock owned by another host is never taken over;
 - the three lock names, the wait for another process's download in `claim`, the lease of a run, and the manifest save: one lock, one guarded folder;
 - a rename that fails for a reason other than a missing folder, and a release or a removal that fails;
-- the 3 retries of `ensureDownloadLockHeld` and the 10 retries of `removeLockFolder`, which only repeat a step.
+- the 3 retries of `ensureDownloadLockHeld`, the 10 retries of `removeLockFolder`, and the 10 retries of `makeLockFolder` while Windows refuses with `EPERM` a folder another process still removes, which only repeat a step.
