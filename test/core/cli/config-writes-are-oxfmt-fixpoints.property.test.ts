@@ -122,6 +122,22 @@ describe("CLI writers emit what oxfmt keeps", () => {
     );
   });
 
+  it("an inline modules map emptied to {} is an oxfmt fixpoint", async () => {
+    const folder = makeTempDir("antelopejs-fixpoint-");
+    try {
+      const file = path.join(folder, "antelope.config.ts");
+      writeFileSync(
+        file,
+        'export default {\n  name: "shop",\n  modules: { api: "^1.0.0" },\n};\n',
+      );
+      await writeConfig(folder, { name: "shop", modules: {} });
+      const written = readText(file);
+      assert.equal(written, oxfmt(written, file));
+    } finally {
+      cleanupTempDir(folder);
+    }
+  });
+
   it("writeModuleManifest output is an oxfmt fixpoint", async function () {
     this.timeout(60000);
     await fc.assert(
