@@ -371,11 +371,14 @@ async function findImplementations(
   context: InstallContext,
   interfaceName: string,
 ): Promise<ModuleInterfaceInfo[]> {
-  const interfaceDirName = requireCatalogMember(
+  const interfaces = requireCatalogMember(
     context.gitManifest,
     "interfaces",
     context.git,
-  )[interfaceName];
+  );
+  const interfaceDirName = Object.hasOwn(interfaces, interfaceName)
+    ? interfaces[interfaceName]
+    : undefined;
   if (!interfaceDirName) {
     return [];
   }

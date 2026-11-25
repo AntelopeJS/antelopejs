@@ -51,8 +51,14 @@ export class ConfigLoader {
     );
 
     let config = { ...rawConfig };
-    if (environment && rawConfig.environments?.[environment]) {
-      config = mergeDeep(config, rawConfig.environments[environment]);
+    const environmentConfig =
+      environment &&
+      rawConfig.environments &&
+      Object.hasOwn(rawConfig.environments, environment)
+        ? rawConfig.environments[environment]
+        : undefined;
+    if (environmentConfig) {
+      config = mergeDeep(config, environmentConfig);
     }
 
     config.cacheFolder = config.cacheFolder ?? DEFAULT_CACHE_DIR;

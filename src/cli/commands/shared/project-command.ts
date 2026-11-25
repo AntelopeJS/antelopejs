@@ -82,7 +82,9 @@ function findEnvironmentConfig(
 ): Partial<AntelopeConfig> | undefined {
   return environment === DEFAULT_ENV
     ? config
-    : config.environments?.[environment];
+    : config.environments && Object.hasOwn(config.environments, environment)
+      ? config.environments[environment]
+      : undefined;
 }
 
 function resolveEnvironmentConfig(
