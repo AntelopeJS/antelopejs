@@ -121,6 +121,19 @@ describe("ModuleManager interface bindings", () => {
     );
   });
 
+  it("does not bind an interface named like an inherited property to a module that never declared it", async () => {
+    await writeInterface(root, "constructor");
+
+    const manager = await createModules(root, {
+      provider: { implements: ["constructor"] },
+      consumer: {},
+    });
+
+    expect(manager.hasResolvedInterface("consumer", "constructor")).to.equal(
+      false,
+    );
+  });
+
   it("binds the modules below a pin to the pinned provider", async () => {
     const manager = await createModules(
       root,
