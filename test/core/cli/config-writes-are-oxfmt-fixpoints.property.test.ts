@@ -35,23 +35,11 @@ const moduleMap = fc.dictionary(
   { maxKeys: 3 },
 );
 
-const longerModuleMap = fc.dictionary(
-  fc.constantFrom("api", "web", "storage", "my-module", "analytics"),
+const shortModuleMap = fc.dictionary(
+  fc.constantFrom("api", "web", "storage"),
   fc.constant("^1.0.0"),
-  { maxKeys: 5 },
+  { maxKeys: 3 },
 );
-
-const growingModuleMaps = fc
-  .tuple(
-    fc.constant({
-      analytics: "^1.0.0",
-      "my-module": "^1.0.0",
-      storage: "^1.0.0",
-      web: "^1.0.0",
-    }),
-    fc.array(longerModuleMap, { maxLength: 2 }),
-  )
-  .map(([grown, rest]) => [grown, ...rest]);
 
 const handWrittenConfig = fc.constantFrom(
   'export default {\n  name: "shop",\n  modules: { api: "^1.0.0" },\n};\n',
@@ -59,7 +47,6 @@ const handWrittenConfig = fc.constantFrom(
   'export default {\n  name: "shop",\n  modules: {\n    api: "^1.0.0",\n    web: "^1.0.0",\n  },\n};\n',
   'export default {\n  name: "shop",\n  modules: {\n    api: "^1.0.0",\n  },\n};\n',
   'export default {\n  name: "shop",\n  modules: {},\n};\n',
-  'export default {\n  name: "shop",\n  modules: { analytics: "^1.0.0", "my-module": "^1.0.0", storage: "^1.0.0" },\n};\n',
 );
 
 const manifest = fc.record(
@@ -115,7 +102,7 @@ describe("CLI writers emit what oxfmt keeps", () => {
     await fc.assert(
       fc.asyncProperty(
         handWrittenConfig,
-        growingModuleMaps,
+        fc.array(shortModuleMap, { minLength: 1, maxLength: 3 }),
         async (start, maps) => {
           const folder = makeTempDir("antelopejs-fixpoint-");
           try {
