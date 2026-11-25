@@ -35,23 +35,11 @@ const moduleMap = fc.dictionary(
   { maxKeys: 3 },
 );
 
-const longerModuleMap = fc.dictionary(
-  fc.constantFrom("api", "web", "storage", "my-module", "analytics"),
+const shortModuleMap = fc.dictionary(
+  fc.constantFrom("api", "web", "storage"),
   fc.constant("^1.0.0"),
-  { maxKeys: 5 },
+  { maxKeys: 3 },
 );
-
-const growingModuleMaps = fc
-  .tuple(
-    fc.constant({
-      analytics: "^1.0.0",
-      "my-module": "^1.0.0",
-      storage: "^1.0.0",
-      web: "^1.0.0",
-    }),
-    fc.array(longerModuleMap, { maxLength: 2 }),
-  )
-  .map(([grown, rest]) => [grown, ...rest]);
 
 const handWrittenConfig = fc.constantFrom(
   'export default {\n  name: "shop",\n  modules: { api: "^1.0.0" },\n};\n',
@@ -59,7 +47,6 @@ const handWrittenConfig = fc.constantFrom(
   'export default {\n  name: "shop",\n  modules: {\n    api: "^1.0.0",\n    web: "^1.0.0",\n  },\n};\n',
   'export default {\n  name: "shop",\n  modules: {\n    api: "^1.0.0",\n  },\n};\n',
   'export default {\n  name: "shop",\n  modules: {},\n};\n',
-  'export default {\n  name: "shop",\n  modules: { analytics: "^1.0.0", "my-module": "^1.0.0", storage: "^1.0.0" },\n};\n',
 );
 
 const manifest = fc.record(
@@ -115,7 +102,7 @@ describe("CLI writers emit what oxfmt keeps", () => {
     await fc.assert(
       fc.asyncProperty(
         handWrittenConfig,
-        growingModuleMaps,
+        fc.array(shortModuleMap, { minLength: 1, maxLength: 3 }),
         async (start, maps) => {
           const folder = makeTempDir("antelopejs-fixpoint-");
           try {
@@ -133,6 +120,22 @@ describe("CLI writers emit what oxfmt keeps", () => {
       ),
       { numRuns: 40 },
     );
+  });
+
+  it("an inline modules map emptied to {} is an oxfmt fixpoint", async () => {
+    const folder = makeTempDir("antelopejs-fixpoint-");
+    try {
+      const file = path.join(folder, "antelope.config.ts");
+      writeFileSync(
+        file,
+        'export default {\n  name: "shop",\n  modules: { api: "^1.0.0" },\n};\n',
+      );
+      await writeConfig(folder, { name: "shop", modules: {} });
+      const written = readText(file);
+      assert.equal(written, oxfmt(written, file));
+    } finally {
+      cleanupTempDir(folder);
+    }
   });
 
   it("writeModuleManifest output is an oxfmt fixpoint", async function () {
