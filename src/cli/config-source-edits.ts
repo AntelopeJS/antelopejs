@@ -292,5 +292,11 @@ export function removalEdit(
   if (index > 0) {
     return { start: properties[index - 1].end, end: property.end, text: "" };
   }
-  return { start, end: afterComma, text: "" };
+  return (
+    emptiedObjectEdit(layout, object, start, afterComma) ?? {
+      start,
+      end: afterComma,
+      text: "",
+    }
+  );
 }
