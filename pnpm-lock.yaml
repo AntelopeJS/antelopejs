@@ -25,7 +25,7 @@ importers:
         version: 5.0.1
       jiti:
         specifier: ^2.6.1
-        version: 2.6.1
+        version: 2.7.0
       mocha:
         specifier: ^12.0.3
         version: 12.0.3
@@ -74,7 +74,7 @@ importers:
         version: 0.2.0(@antelopejs/interface-core@0.5.2)
       '@antelopejs/tooling-configs':
         specifier: '>=0.10.0 <0.11.0'
-        version: 0.10.0(eslint-plugin-perfectionist@5.14.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2008))
+        version: 0.10.0(eslint-plugin-perfectionist@5.14.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2008))
       '@types/chai':
         specifier: ^4.3.20
         version: 4.3.20
@@ -104,7 +104,7 @@ importers:
         version: 18.8.0
       eslint-plugin-perfectionist:
         specifier: ^5.11.0
-        version: 5.14.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3)
+        version: 5.14.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3)
       fast-check:
         specifier: 4.11.0
         version: 4.11.0
@@ -1052,8 +1052,8 @@ packages:
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
 
-  '@types/estree@1.0.10':
-    resolution: {integrity: sha512-lTyOMnOcmRBzdCv6/4zUZCrEhV0xrqQiUZBZtVcbmLHBXKLnN8q89v/wKRF/Q0HbwVsqbIG3o5HDoFl9sduM+g==}
+  '@types/estree@1.0.11':
+    resolution: {integrity: sha512-YBdNe5JcjYR0sPhJW1QIeRCmI11YhYvaRuGCs9+WCeTTb+Yhb2BE2XMe5/wAqF10FK5g3+q1PDhQABfT7aX0gg==}
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
@@ -2026,10 +2026,6 @@ packages:
   jaguar@6.0.1:
     resolution: {integrity: sha512-WrJrwHHl4lHQa4dVG4fJTLxca19It/pTwtr5cnnUlY0MvWO0y1Y4dWn3ABVCEZzfd5gDbverVqin3tiZ/YloIQ==}
     engines: {node: '>=10.0.0'}
-    hasBin: true
-
-  jiti@2.6.1:
-    resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
     hasBin: true
 
   jiti@2.7.0:
@@ -3007,7 +3003,7 @@ snapshots:
     dependencies:
       '@antelopejs/interface-core': 0.5.2
 
-  '@antelopejs/tooling-configs@0.10.0(eslint-plugin-perfectionist@5.14.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2008))':
+  '@antelopejs/tooling-configs@0.10.0(eslint-plugin-perfectionist@5.14.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3))(knip@6.34.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2008))':
     dependencies:
       '@oxlint/plugins': 1.94.0
       dts-bundle-generator: 9.5.1
@@ -3036,7 +3032,7 @@ snapshots:
       '@typescript/typescript-sunos-x64': 7.0.2
       '@typescript/typescript-win32-arm64': 7.0.2
       '@typescript/typescript-win32-x64': 7.0.2
-      eslint-plugin-perfectionist: 5.14.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3)
+      eslint-plugin-perfectionist: 5.14.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3)
       knip: 6.34.0
       oxfmt: 0.66.0
       oxlint: 1.81.0(oxlint-tsgolint@7.0.2008)
@@ -3087,9 +3083,9 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@eslint-community/eslint-utils@4.10.1(eslint@10.10.0(jiti@2.6.1))':
+  '@eslint-community/eslint-utils@4.10.1(eslint@10.10.0(jiti@2.7.0))':
     dependencies:
-      eslint: 10.10.0(jiti@2.6.1)
+      eslint: 10.10.0(jiti@2.7.0)
       eslint-visitor-keys: 3.4.3
 
   '@eslint-community/regexpp@4.12.3': {}
@@ -3660,7 +3656,7 @@ snapshots:
 
   '@types/esrecurse@4.3.1': {}
 
-  '@types/estree@1.0.10': {}
+  '@types/estree@1.0.11': {}
 
   '@types/istanbul-lib-coverage@2.0.6': {}
 
@@ -3727,13 +3723,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.74.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3)':
+  '@typescript-eslint/utils@8.74.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3)':
     dependencies:
-      '@eslint-community/eslint-utils': 4.10.1(eslint@10.10.0(jiti@2.6.1))
+      '@eslint-community/eslint-utils': 4.10.1(eslint@10.10.0(jiti@2.7.0))
       '@typescript-eslint/scope-manager': 8.74.0
       '@typescript-eslint/types': 8.74.0
       '@typescript-eslint/typescript-estree': 8.74.0(typescript@5.9.3)
-      eslint: 10.10.0(jiti@2.6.1)
+      eslint: 10.10.0(jiti@2.7.0)
       typescript: 5.9.3
     transitivePeerDependencies:
       - '@typescript/native'
@@ -3935,7 +3931,7 @@ snapshots:
       dotenv: 17.3.1
       exsolve: 1.0.8
       giget: 2.0.0
-      jiti: 2.6.1
+      jiti: 2.7.0
       ohash: 2.0.11
       pathe: 2.0.3
       perfect-debounce: 2.1.0
@@ -4191,13 +4187,13 @@ snapshots:
     optionalDependencies:
       source-map: 0.6.1
 
-  eslint-plugin-perfectionist@5.14.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3):
+  eslint-plugin-perfectionist@5.14.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3):
     dependencies:
       '@typescript-eslint/types': 8.74.0
-      '@typescript-eslint/utils': 8.74.0(eslint@10.10.0(jiti@2.6.1))(typescript@5.9.3)
+      '@typescript-eslint/utils': 8.74.0(eslint@10.10.0(jiti@2.7.0))(typescript@5.9.3)
       natural-orderby: 5.0.0
     optionalDependencies:
-      eslint: 10.10.0(jiti@2.6.1)
+      eslint: 10.10.0(jiti@2.7.0)
     transitivePeerDependencies:
       - '@typescript/native'
       - supports-color
@@ -4206,7 +4202,7 @@ snapshots:
   eslint-scope@9.1.2:
     dependencies:
       '@types/esrecurse': 4.3.1
-      '@types/estree': 1.0.10
+      '@types/estree': 1.0.11
       esrecurse: 4.3.0
       estraverse: 5.3.0
 
@@ -4214,9 +4210,9 @@ snapshots:
 
   eslint-visitor-keys@5.0.1: {}
 
-  eslint@10.10.0(jiti@2.6.1):
+  eslint@10.10.0(jiti@2.7.0):
     dependencies:
-      '@eslint-community/eslint-utils': 4.10.1(eslint@10.10.0(jiti@2.6.1))
+      '@eslint-community/eslint-utils': 4.10.1(eslint@10.10.0(jiti@2.7.0))
       '@eslint-community/regexpp': 4.12.3
       '@eslint/config-array': 0.23.6
       '@eslint/config-helpers': 0.7.0
@@ -4225,7 +4221,7 @@ snapshots:
       '@humanfs/node': 0.16.8
       '@humanwhocodes/module-importer': 1.0.1
       '@humanwhocodes/retry': 0.4.3
-      '@types/estree': 1.0.10
+      '@types/estree': 1.0.11
       ajv: 6.15.0
       cross-spawn: 7.0.6
       debug: 4.4.3(supports-color@8.1.1)
@@ -4247,7 +4243,7 @@ snapshots:
       natural-compare: 1.4.0
       optionator: 0.9.4
     optionalDependencies:
-      jiti: 2.6.1
+      jiti: 2.7.0
     transitivePeerDependencies:
       - supports-color
 
@@ -4616,8 +4612,6 @@ snapshots:
       tar-fs: 2.1.4
       tar-stream: 2.2.0
       try-to-catch: 3.0.1
-
-  jiti@2.6.1: {}
 
   jiti@2.7.0: {}
 
