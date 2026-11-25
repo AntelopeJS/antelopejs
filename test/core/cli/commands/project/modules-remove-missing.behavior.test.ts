@@ -31,6 +31,27 @@ describe("project modules behavior: remove-missing", () => {
     expect(process.exitCode).to.equal(1);
   });
 
+  it("answers a name that only exists on Object.prototype as not installed", async () => {
+    sinon
+      .stub(common, "readConfig")
+      .resolves({ name: "proj", modules: { foo: {} } });
+    stubLoadedConfig({ modules: { foo: {} } });
+    const errorStub = sinon.stub(cliUi, "error");
+    sinon.stub(cliUi, "info");
+    const writeStub = sinon.stub(common, "writeConfig").resolves();
+
+    await projectModulesRemoveCommand(["constructor"], {
+      project: "/work/project",
+      force: false,
+    });
+
+    expect(errorStub.firstCall.args[0]).to.equal(
+      "None of the specified modules are installed in this project.",
+    );
+    expect(writeStub.called).to.equal(false);
+    expect(process.exitCode).to.equal(1);
+  });
+
   it("errors when some modules are missing without force", async () => {
     const config: AntelopeConfig = {
       name: "proj",
