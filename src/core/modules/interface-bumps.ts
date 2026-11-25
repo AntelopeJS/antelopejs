@@ -167,7 +167,8 @@ function dependencyField(
   manifest: ModuleManifest,
   packageName: string,
 ): DependencyField {
-  return manifest.manifest.dependencies?.[packageName] !== undefined
+  const dependencies = manifest.manifest.dependencies;
+  return dependencies && Object.hasOwn(dependencies, packageName)
     ? "dependencies"
     : "optionalDependencies";
 }

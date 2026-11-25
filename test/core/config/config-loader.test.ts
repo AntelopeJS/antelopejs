@@ -53,6 +53,25 @@ const MODULE_DOCUMENTS = [
 
   let registerLoad: (this: Mocha.Suite) => void;
   {
+    const checkIgnoresInheritedEnvironment: (this: Mocha.Suite) => void =
+      function () {
+        it("ignores an environment name that only exists on the prototype of environments", async () => {
+          const environments: Record<string, { cacheFolder: string }> = {};
+          Object.setPrototypeOf(environments, {
+            constructor: { cacheFolder: "/inherited" },
+          });
+          await mockTsConfig({
+            name: "test-project",
+            cacheFolder: ".cache",
+            environments,
+          });
+
+          const config = await loader.load("/project", "constructor");
+
+          expect(config.cacheFolder).to.equal(".cache");
+        });
+      };
+
     const checkLoadsBasicConfig: (this: Mocha.Suite) => void = function () {
       it("loads basic config", async () => {
         await mockTsConfig({
@@ -414,6 +433,7 @@ const MODULE_DOCUMENTS = [
     registerLoad = () => {
       describe("loads basic config", function () {
         checkLoadsBasicConfig.call(this);
+        checkIgnoresInheritedEnvironment.call(this);
         checkMergesIntoDeclaredConfig.call(this);
       });
 

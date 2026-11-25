@@ -99,6 +99,46 @@ describe("ModuleManager interface bumps of a stubbed interface", () => {
   }
 });
 
+describe("ModuleManager interface bumps of an interface named like an Object.prototype member", () => {
+  cleanupProjects();
+
+  it("names optionalDependencies as the field of a range bump on an optional-only interface", async () => {
+    const { bumps } = await plan(
+      [
+        { name: "app", range: "^0.1.8", copy: "0.1.8", optional: true },
+        { name: "cms", range: ">=0.1.9 <1.0.0", copy: "0.1.9", optional: true },
+      ],
+      ["cms"],
+      "constructor",
+    );
+
+    expect(
+      bumps.map((bump) => bump.kind === "range" && bump.field),
+    ).to.deep.equal(["optionalDependencies"]);
+  });
+
+  it("names optionalDependencies as the field when the module also declares unrelated dependencies", async () => {
+    const { bumps } = await plan(
+      [
+        {
+          name: "app",
+          range: "^0.1.8",
+          copy: "0.1.8",
+          optional: true,
+          unrelatedDependency: true,
+        },
+        { name: "cms", range: ">=0.1.9 <1.0.0", copy: "0.1.9", optional: true },
+      ],
+      ["cms"],
+      "constructor",
+    );
+
+    expect(
+      bumps.map((bump) => bump.kind === "range" && bump.field),
+    ).to.deep.equal(["optionalDependencies"]);
+  });
+});
+
 describe("ModuleManager interface bumps of a stubbed preview", () => {
   cleanupProjects();
 

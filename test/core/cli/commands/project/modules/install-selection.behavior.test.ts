@@ -81,3 +81,25 @@ describe("project modules install behavior: selects the only implementation with
     expect(addStub.called).to.equal(false);
   });
 });
+
+describe("project modules install behavior: an interface named like an Object.prototype member", () => {
+  const fixture = installFixture();
+
+  it("adds no module for an interface the catalog does not list", async () => {
+    const { addStub } = fixture.stubUnresolvedImport(
+      [MOD_A],
+      fixture.prototypeIfaceName,
+      {},
+    );
+    fakePrompts({ isInteractive: false });
+
+    await cmdInstall().parseAsync([
+      "node",
+      "test",
+      "--project",
+      "/work/project",
+    ]);
+
+    expect(addStub.called).to.equal(false);
+  });
+});

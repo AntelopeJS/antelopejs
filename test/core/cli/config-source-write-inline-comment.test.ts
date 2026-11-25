@@ -60,4 +60,18 @@ describe("writeConfig on an inline map holding a comment", () => {
 
     expect(readText(project.configPath)).to.include("/* keep */");
   });
+
+  it("keeps the comment when adding a module takes the map past the line width", async () => {
+    const wide = `export default {
+  name: "shop",
+  modules: { /* keep */ api: "1.0.0", web: "1.0.0", worker: "1.0.0" },
+};
+`;
+    const config = await writeSourceAndRead(project, wide);
+    config.modules = { ...config.modules, mail: "1.0.0" };
+
+    await writeConfig(project.folder, config);
+
+    expect(readText(project.configPath)).to.include("/* keep */");
+  });
 });

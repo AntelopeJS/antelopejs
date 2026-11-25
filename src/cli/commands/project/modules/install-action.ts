@@ -269,9 +269,18 @@ async function analyzeConfig(
     unresolvedImports: unresolved.map((u) => ({
       interfacePackage: u.interfacePackage,
       moduleId: u.moduleId,
-      version: requiredVersions.get(u.moduleId)?.[u.interfacePackage],
+      version: ownVersion(requiredVersions.get(u.moduleId), u.interfacePackage),
     })),
   };
+}
+
+function ownVersion(
+  versions: Record<string, string> | undefined,
+  packageName: string,
+): string | undefined {
+  return versions && Object.hasOwn(versions, packageName)
+    ? versions[packageName]
+    : undefined;
 }
 
 interface InstallContext {

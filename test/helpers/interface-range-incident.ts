@@ -15,6 +15,8 @@ interface IncidentModule {
   /** Marks the module `optional: true` in `antelope.config`. */
   configOptional?: boolean;
   implementsInterface?: boolean;
+  /** Also declares an unrelated package under `dependencies`. */
+  unrelatedDependency?: boolean;
 }
 
 /**
@@ -39,15 +41,21 @@ async function writeIncidentModule(
 ): Promise<void> {
   const folder = path.join(projectFolder, "modules", module.name);
   await mkdir(folder, { recursive: true });
+  const dependencies: Record<string, string> = {};
+  const optionalDependencies: Record<string, string> = {};
+  if (module.unrelatedDependency) {
+    dependencies["unrelated-package"] = "1.0.0";
+  }
+  (module.optional ? optionalDependencies : dependencies)[interfaceName] =
+    module.range;
   await writeFile(
     path.join(folder, "package.json"),
     JSON.stringify({
       name: module.name,
       version: "1.0.0",
       main: "index.js",
-      [module.optional ? "optionalDependencies" : "dependencies"]: {
-        [interfaceName]: module.range,
-      },
+      dependencies,
+      optionalDependencies,
       antelopeJs: module.implementsInterface
         ? { implements: [interfaceName] }
         : {},
