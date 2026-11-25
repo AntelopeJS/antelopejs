@@ -2,6 +2,9 @@ import type * as TypeScript from "typescript";
 
 const SAFE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
+/** The line width the house formatter wraps at. */
+const PRINT_WIDTH = 80;
+
 /** A replacement of the source between `start` and `end` by `text`. */
 export interface SourceEdit {
   start: number;
@@ -159,6 +162,57 @@ export function replacementEdit(
   return { start, end: node.end, text };
 }
 
+function objectSpansLines(
+  text: string,
+  object: TypeScript.ObjectLiteralExpression,
+): boolean {
+  return text.slice(object.pos, object.end).includes("\n");
+}
+
+/**
+ * The edit that applies `insertion` inside `object`, a single-line object whose
+ * line would pass the print width, then breaks the outermost single-line object
+ * holding it into one property per line, as the formatter does.
+ */
+function rewrapEdit(
+  layout: SourceLayout,
+  object: TypeScript.ObjectLiteralExpression,
+  insertion: { at: number; text: string },
+): SourceEdit {
+  const { ts, sourceFile, indentation } = layout;
+  const text = sourceFile.text;
+  let outer = object;
+  for (let node = object.parent; node; node = node.parent) {
+    if (ts.isObjectLiteralExpression(node)) {
+      if (objectSpansLines(text, node)) {
+        break;
+      }
+      outer = node;
+    }
+  }
+  const outerStart = outer.getStart(sourceFile);
+  const outerIndent = lineIndentAt(text, outerStart);
+  const inner = outerIndent + indentation;
+  const lineBreak = lineBreakOf(layout, outerStart);
+  const lines = outer.properties.map((property) => {
+    const start = property.getStart(sourceFile);
+    const spliced =
+      outer !== object && insertion.at > start && insertion.at <= property.end
+        ? `${text.slice(start, insertion.at)}${insertion.text}${text.slice(insertion.at, property.end)}`
+        : property.getText(sourceFile);
+    return `${inner}${spliced},`;
+  });
+  const tail =
+    outer === object
+      ? [`${inner}${insertion.text.replace(/^,?\s*/, "")},`]
+      : [];
+  return {
+    start: outerStart,
+    end: outer.end,
+    text: `{${lineBreak}${[...lines, ...tail].join(lineBreak)}${lineBreak}${outerIndent}}`,
+  };
+}
+
 /**
  * Adds `key: value` after the last property of `object`, on its own line when
  * the object spans lines. A property on its own line ends with a comma when
@@ -214,6 +268,17 @@ export function insertionEdit(
   if (!multiline) {
     const inline = inlineValue(value);
     const separator = trailingComma ? " " : ", ";
+    const addition = `${separator}${formatKey(key)}: ${inline}`;
+    const lineStart = text.lastIndexOf("\n", object.end - 1) + 1;
+    const newlineAfter = text.indexOf("\n", object.end);
+    const lineEnd = newlineAfter < 0 ? text.length : newlineAfter;
+    const lineWidth = text.slice(lineStart, lineEnd).replace(/\r$/, "").length;
+    if (
+      lineWidth + addition.length > PRINT_WIDTH &&
+      !objectSpansLines(text, object)
+    ) {
+      return rewrapEdit(layout, object, { at: anchor, text: addition });
+    }
     return {
       start: anchor,
       end: anchor,

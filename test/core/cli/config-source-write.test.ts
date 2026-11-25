@@ -341,8 +341,8 @@ describe("writeConfig around evaluated values and inline objects", () => {
 
     expect(readText(project.configPath)).to.equal(
       source.replace(
-        '{ a: "1.0.0" } } },',
-        '{ a: "1.0.0" }, logging: { enabled: true } } },',
+        '{ prod: { modules: { a: "1.0.0" } } },',
+        '{\n    prod: { modules: { a: "1.0.0" }, logging: { enabled: true } },\n  },',
       ),
     );
   });
