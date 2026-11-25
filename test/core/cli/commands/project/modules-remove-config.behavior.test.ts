@@ -62,6 +62,26 @@ describe("project modules behavior: remove-config", () => {
     expect(config.modules).to.deep.equal({});
   });
 
+  it("removes the folder entry of a module named like an Object.prototype key", async () => {
+    const config: AntelopeConfig = {
+      name: "proj",
+      modules: { ":constructor": { source: { type: "local", path: "./c" } } },
+    };
+    sinon.stub(common, "readConfig").resolves(config);
+    stubLoadedConfig({ modules: { ":constructor": {} } });
+    const writeStub = sinon.stub(common, "writeConfig").resolves();
+    sinon.stub(cliUi, "info");
+    sinon.stub(cliUi, "success");
+
+    await projectModulesRemoveCommand(["constructor"], {
+      project: "/work/project",
+      force: false,
+    });
+
+    expect(writeStub.calledOnce).to.equal(true);
+    expect(config.modules).to.deep.equal({});
+  });
+
   it("errors when project config is missing for removal", async () => {
     sinon.stub(common, "readConfig").resolves(undefined);
     sinon.stub(cliUi, "info");
