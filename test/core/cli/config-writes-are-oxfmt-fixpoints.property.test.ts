@@ -1,6 +1,7 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 import fc from "fast-check";
 import assert from "node:assert/strict";
+import { writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { writeConfig, writeModuleManifest } from "../../../src/cli";
@@ -32,6 +33,20 @@ const moduleMap = fc.dictionary(
   fc.constantFrom("api", "web", "storage", "my-module"),
   moduleEntry,
   { maxKeys: 3 },
+);
+
+const shortModuleMap = fc.dictionary(
+  fc.constantFrom("api", "web", "storage"),
+  fc.constant("^1.0.0"),
+  { maxKeys: 3 },
+);
+
+const handWrittenConfig = fc.constantFrom(
+  'export default {\n  name: "shop",\n  modules: { api: "^1.0.0" },\n};\n',
+  'export default {\n  name: "shop",\n  modules: { api: "^1.0.0", web: "^1.0.0" },\n};\n',
+  'export default {\n  name: "shop",\n  modules: {\n    api: "^1.0.0",\n    web: "^1.0.0",\n  },\n};\n',
+  'export default {\n  name: "shop",\n  modules: {\n    api: "^1.0.0",\n  },\n};\n',
+  'export default {\n  name: "shop",\n  modules: {},\n};\n',
 );
 
 const manifest = fc.record(
@@ -79,6 +94,31 @@ describe("CLI writers emit what oxfmt keeps", () => {
         },
       ),
       { numRuns: 20 },
+    );
+  });
+
+  it("writes and removals on a hand-written config end on an oxfmt fixpoint", async function () {
+    this.timeout(60000);
+    await fc.assert(
+      fc.asyncProperty(
+        handWrittenConfig,
+        fc.array(shortModuleMap, { minLength: 1, maxLength: 3 }),
+        async (start, maps) => {
+          const folder = makeTempDir("antelopejs-fixpoint-");
+          try {
+            const file = path.join(folder, "antelope.config.ts");
+            writeFileSync(file, start);
+            for (const modules of maps) {
+              await writeConfig(folder, { name: "shop", modules });
+              const written = readText(file);
+              assert.equal(written, oxfmt(written, file));
+            }
+          } finally {
+            cleanupTempDir(folder);
+          }
+        },
+      ),
+      { numRuns: 40 },
     );
   });
 
