@@ -104,8 +104,7 @@ export function set(
 
   for (let i = 0; i < keys.length - 1; i++) {
     const key = keys[i];
-    const present =
-      key === "__proto__" ? Object.hasOwn(current, key) : key in current;
+    const present = key !== "__proto__" || Object.hasOwn(current, key);
     const existing = current[key];
     if (present && isObject(existing)) {
       current = existing;

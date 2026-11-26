@@ -29,9 +29,18 @@ interface ModuleSpec {
 }
 
 interface Project {
-  dependencies: Record<string, string[]>;
-  modules: Record<string, ModuleSpec>;
+  dependencies: ReadonlyMap<string, string[]>;
+  modules: ReadonlyMap<string, ModuleSpec>;
 }
+
+const moduleOf = (spec: Project, id: string): ModuleSpec =>
+  defined(spec.modules.get(id), `module ${id}`);
+
+const dependenciesOf = (spec: Project, name: string): string[] =>
+  defined(spec.dependencies.get(name), `interface ${name}`);
+
+const tableOf = <Value>(record: Record<string, Value>): Map<string, Value> =>
+  new Map(Object.entries(record));
 
 const subsetOf = (items: string[], maxLength: number) =>
   fc.uniqueArray(fc.constantFrom(...items), { maxLength });
@@ -63,25 +72,29 @@ const moduleSpec = fc
   }));
 
 const project: fc.Arbitrary<Project> = fc.record({
-  dependencies: fc.record(
-    Object.fromEntries(
-      INTERFACES.map((name) => [
-        name,
-        subsetOf(
-          INTERFACES.filter((other) => other !== name),
-          2,
-        ),
-      ]),
-    ),
-  ),
-  modules: fc.record(Object.fromEntries(MODULES.map((id) => [id, moduleSpec]))),
+  dependencies: fc
+    .record(
+      Object.fromEntries(
+        INTERFACES.map((name) => [
+          name,
+          subsetOf(
+            INTERFACES.filter((other) => other !== name),
+            2,
+          ),
+        ]),
+      ),
+    )
+    .map(tableOf),
+  modules: fc
+    .record(Object.fromEntries(MODULES.map((id) => [id, moduleSpec])))
+    .map(tableOf),
 });
 
 function providersOf(spec: Project, name: string): string[] {
   return MODULES.filter(
     (id) =>
-      spec.modules[id].implemented.includes(name) &&
-      !spec.modules[id].disabled.includes(name),
+      moduleOf(spec, id).implemented.includes(name) &&
+      !moduleOf(spec, id).disabled.includes(name),
   );
 }
 
@@ -94,7 +107,7 @@ function connectionsOf(
   id: string,
 ): Map<string, BindingConnection[]> {
   return new Map(
-    Object.entries(spec.modules[id].entries)
+    Object.entries(moduleOf(spec, id).entries)
       .filter(([, entries]) => entries.length > 0)
       .map(([name, entries]) => {
         const providers = providersOf(spec, name);
@@ -115,7 +128,7 @@ function connectionsOf(
 function bindingModules(spec: Project): Map<string, BindingModule> {
   return new Map(
     MODULES.map((id) => {
-      const own = spec.modules[id];
+      const own = moduleOf(spec, id);
       const connections = connectionsOf(spec, id);
       const listed = new Map(connections);
       for (const name of own.uses) {
@@ -147,7 +160,7 @@ function bindingInterfaces(spec: Project): Map<string, BindingInterface> {
   return new Map(
     INTERFACES.map((name) => [
       name,
-      { name, dependencies: spec.dependencies[name] },
+      { name, dependencies: dependenciesOf(spec, name) },
     ]),
   );
 }
@@ -161,7 +174,7 @@ function reachesUnprovidedCycle(spec: Project, name: string): boolean {
     if (path.includes(current)) {
       return true;
     }
-    return spec.dependencies[current].some((next) =>
+    return dependenciesOf(spec, current).some((next) =>
       visit(next, [...path, current]),
     );
   };
@@ -178,7 +191,7 @@ function firstSource(
 
 function checkPlainBindings(spec: Project, graph: BindingGraph): void {
   for (const id of MODULES) {
-    const own = spec.modules[id];
+    const own = moduleOf(spec, id);
     const bindings = graph.modules.get(id);
     assert.ok(bindings, `no bindings for ${id}`);
     for (const [name, key] of bindings.keys) {
@@ -206,7 +219,7 @@ function checkPlainBindings(spec: Project, graph: BindingGraph): void {
 
 function checkDisabledExports(spec: Project, graph: BindingGraph): void {
   for (const disabler of MODULES) {
-    for (const name of spec.modules[disabler].disabled) {
+    for (const name of moduleOf(spec, disabler).disabled) {
       const privateKey = `${name}@${disabler}`;
       const instance = graph.instances.get(privateKey);
       assert.ok(
@@ -310,8 +323,8 @@ describe("buildBindingGraph over generated module graphs", function () {
 
   it("reports a dependency cycle no module provides instead of overflowing the stack", () => {
     const spec: Project = {
-      dependencies: { i0: ["i1"], i1: ["i0"], i2: [], i3: [] },
-      modules: Object.fromEntries(
+      dependencies: tableOf({ i0: ["i1"], i1: ["i0"], i2: [], i3: [] }),
+      modules: new Map(
         MODULES.map((id) => [
           id,
           {

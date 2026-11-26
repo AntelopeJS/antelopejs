@@ -1,4 +1,5 @@
 packages:
   - demo
 minimumReleaseAgeExclude:
-  - "@antelopejs/interface-*"
+  - "@antelopejs/*"
+minimumReleaseAge: 1440

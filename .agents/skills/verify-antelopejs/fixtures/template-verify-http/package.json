@@ -10,7 +10,7 @@
     "@types/node": "22.20.5",
     "typescript": "5.9.3"
   },
-  "packageManager": "pnpm@10.6.5",
+  "packageManager": "pnpm@10.34.9",
   "antelopeJs": {
     "test": "antelope.test.ts"
   }

@@ -15,15 +15,20 @@ import { findPnpmWorkspaceRoot } from "./pnpm-workspace";
 import { getProcessPalette } from "./tasks";
 import { isObject, isString } from "../../utils";
 const PACKAGE_MANAGER_PATTERN = /^(npm|yarn|pnpm)@([0-9A-Za-z._+-]+)$/;
-const LOCKFILES: Record<PackageManagerName, string[]> = {
-  npm: ["npm-shrinkwrap.json", "package-lock.json"],
-  yarn: ["yarn.lock"],
-  pnpm: ["pnpm-lock.yaml"],
-};
+function lockfilesOf(packageManager: PackageManagerName): readonly string[] {
+  switch (packageManager) {
+    case "npm":
+      return ["npm-shrinkwrap.json", "package-lock.json"];
+    case "yarn":
+      return ["yarn.lock"];
+    case "pnpm":
+      return ["pnpm-lock.yaml"];
+  }
+}
 
 /** Every lockfile name a module's package manager can write, npm, yarn or pnpm. */
 export const MODULE_LOCKFILE_NAMES: readonly string[] =
-  Object.values(LOCKFILES).flat();
+  PACKAGE_MANAGER_NAMES.flatMap(lockfilesOf);
 
 const FALLBACK_VERSIONS: Record<PackageManagerName, string> = {
   npm: "npm@10.2.4",
@@ -161,7 +166,7 @@ async function hasPackageManagerLockfile(
   packageManager: PackageManagerName,
   fileSystem: IFileSystem,
 ): Promise<boolean> {
-  const lockfiles = LOCKFILES[packageManager];
+  const lockfiles = lockfilesOf(packageManager);
   const matches = await Promise.all(
     lockfiles.map((lockfile) =>
       fileSystem.exists(path.join(directory, lockfile)),
@@ -178,10 +183,9 @@ export async function findModuleLockfile(
   directory: string,
   fileSystem: IFileSystem = new NodeFileSystem(),
 ): Promise<string | undefined> {
-  const lockfiles =
-    LOCKFILES[
-      packageManagerName(await getModulePackageManager(directory, fileSystem))
-    ];
+  const lockfiles = lockfilesOf(
+    packageManagerName(await getModulePackageManager(directory, fileSystem)),
+  );
   const matches = await Promise.all(
     lockfiles.map((lockfile) =>
       fileSystem.exists(path.join(directory, lockfile)),

@@ -42,12 +42,12 @@ describe("project modules install behavior: uses absolute cache folder when conf
     stubLoadedConfig();
 
     let capturedPath = "";
-    sinon
-      .stub(ModuleCache.prototype, "load")
-      .callsFake(function (this: ModuleCache) {
-        capturedPath = this.path;
-        return Promise.resolve();
-      });
+    sinon.stub(ModuleCache.prototype, "load").callsFake(function (
+      this: ModuleCache,
+    ) {
+      capturedPath = this.path;
+      return Promise.resolve();
+    });
 
     sinon.stub(ModuleManifest, "create").rejects(new Error("skip core"));
 

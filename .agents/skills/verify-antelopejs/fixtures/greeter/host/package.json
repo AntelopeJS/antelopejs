@@ -5,5 +5,5 @@
   "dependencies": {
     "verify-greeter": "file:../verify-greeter"
   },
-  "packageManager": "pnpm@10.6.5"
+  "packageManager": "pnpm@10.34.9"
 }

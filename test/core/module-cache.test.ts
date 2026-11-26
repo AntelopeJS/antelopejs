@@ -5,11 +5,6 @@ import path from "node:path";
 import { ModuleCache } from "../../src/core/modules";
 import { InMemoryFileSystem } from "../helpers/in-memory-filesystem";
 
-/**
- * An in-memory file system whose next write of a `manifest.json` file, once
- * armed, lands half its text, signals `torn`, and lands the rest once `finish`
- * is called, as a write that another process reads halfway.
- */
 /** An in-memory file system whose next read of `manifest.json` fails with `EIO`, once armed. */
 class FailingReadFileSystem extends InMemoryFileSystem {
   private failing = false;
@@ -27,6 +22,11 @@ class FailingReadFileSystem extends InMemoryFileSystem {
   }
 }
 
+/**
+ * An in-memory file system whose next write of a `manifest.json` file, once
+ * armed, lands half its text, signals `torn`, and lands the rest once `finish`
+ * is called, as a write that another process reads halfway.
+ */
 class TearingFileSystem extends InMemoryFileSystem {
   private armed = false;
   private tear: () => void = () => undefined;

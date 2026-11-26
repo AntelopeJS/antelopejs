@@ -5,6 +5,7 @@ import path from "node:path";
 import sinon from "sinon";
 import { ModuleManager, ModuleManifest } from "../../src/core/modules";
 import { buildBindingGraph } from "../../src/core/resolution";
+import { defined } from "../helpers/defined";
 
 export function trackInstanceFiles(
   manager: ModuleManager,
@@ -299,8 +300,8 @@ export async function createNestedInterfaceFixture(): Promise<NestedInterfaceFix
 interface StubbedConsumersFixture {
   root: string;
   packageName: string;
-  moduleFolders: Record<string, string>;
-  packageRoots: Record<string, string>;
+  moduleFolders: ReadonlyMap<string, string>;
+  packageRoots: ReadonlyMap<string, string>;
 }
 
 const STUBBED_CONSUMER_NAMES = ["alpha-consumer", "zeta-consumer"];
@@ -308,13 +309,13 @@ const STUBBED_CONSUMER_NAMES = ["alpha-consumer", "zeta-consumer"];
 export async function createStubbedConsumersFixture(): Promise<StubbedConsumersFixture> {
   const root = await mkdtemp(path.join(tmpdir(), "ajs-interface-stubbed-"));
   const packageName = "interface-stubbed";
-  const moduleFolders: Record<string, string> = {};
-  const packageRoots: Record<string, string> = {};
+  const moduleFolders = new Map<string, string>();
+  const packageRoots = new Map<string, string>();
   for (const name of STUBBED_CONSUMER_NAMES) {
     const folder = path.join(root, name);
     const packageRoot = path.join(folder, "node_modules", packageName);
-    moduleFolders[name] = folder;
-    packageRoots[name] = packageRoot;
+    moduleFolders.set(name, folder);
+    packageRoots.set(name, packageRoot);
     await mkdir(folder, { recursive: true });
     await writeFile(
       path.join(folder, "package.json"),
@@ -335,7 +336,7 @@ export async function resolveStubbedCanonicalRoot(
 ): Promise<string | undefined> {
   const manifests = await Promise.all(
     declarationOrder.map((name) =>
-      createLocalManifest(fixture.moduleFolders[name]),
+      createLocalManifest(defined(fixture.moduleFolders.get(name), name)),
     ),
   );
   const manager = new ModuleManager();

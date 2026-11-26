@@ -37,22 +37,23 @@ interface GlobalLocationMarker {
   pattern: RegExp;
 }
 
-type GlobalInstallArgsBuilder = (packageSpec: string) => string[];
+function globalInstallArgs(
+  packageManager: PackageManagerName,
+  packageSpec: string,
+): string[] {
+  switch (packageManager) {
+    case "npm":
+      return ["install", "-g", packageSpec];
+    case "pnpm":
+      return ["add", "-g", packageSpec];
+    case "yarn":
+      return ["global", "add", packageSpec];
+  }
+}
 
-const GLOBAL_INSTALL_ARGS: Record<
-  PackageManagerName,
-  GlobalInstallArgsBuilder
-> = {
-  npm: (packageSpec) => ["install", "-g", packageSpec],
-  pnpm: (packageSpec) => ["add", "-g", packageSpec],
-  yarn: (packageSpec) => ["global", "add", packageSpec],
-};
-
-const GLOBAL_ROOT_ARGS: Record<PackageManagerName, string[]> = {
-  npm: ["root", "-g"],
-  pnpm: ["root", "-g"],
-  yarn: ["global", "dir"],
-};
+function globalRootArgs(packageManager: PackageManagerName): string[] {
+  return packageManager === "yarn" ? ["global", "dir"] : ["root", "-g"];
+}
 
 const GLOBAL_ROOT_SEGMENTS: Record<PackageManagerName, string[]> = {
   npm: [],
@@ -113,7 +114,7 @@ export function getGlobalInstallCommand(
 ): GlobalCommand {
   return {
     executable: packageManagerExecutable(packageManager, platform),
-    args: GLOBAL_INSTALL_ARGS[packageManager](packageSpec),
+    args: globalInstallArgs(packageManager, packageSpec),
   };
 }
 
@@ -127,7 +128,7 @@ export function getGlobalRootCommand(
 ): GlobalCommand {
   return {
     executable: packageManagerExecutable(packageManager, platform),
-    args: GLOBAL_ROOT_ARGS[packageManager],
+    args: globalRootArgs(packageManager),
   };
 }
 
