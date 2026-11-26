@@ -117,7 +117,7 @@ describe("ModuleManager", () => {
         "alpha-consumer",
       ]);
 
-      expect(forward).to.equal(fixture.packageRoots["alpha-consumer"]);
+      expect(forward).to.equal(fixture.packageRoots.get("alpha-consumer"));
       expect(reversed).to.equal(forward);
     } finally {
       await rm(fixture.root, { recursive: true, force: true });

@@ -1,6 +1,6 @@
 import {
   AsyncProxy,
-  EventProxy,
+  IsInterfaceProxy,
   RegisteringProxy,
 } from "@antelopejs/interface-core";
 import { Logging } from "@antelopejs/interface-core/logging";
@@ -95,7 +95,7 @@ function walk(
       neutralizeRegisteringProxy(value, interfaceName, reason);
       continue;
     }
-    if (value instanceof EventProxy) {
+    if (IsInterfaceProxy(value, "event")) {
       continue;
     }
 

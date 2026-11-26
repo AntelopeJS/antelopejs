@@ -147,10 +147,10 @@ function printProperty(
 ): string {
   const identifier = SAFE_KEY_RE.test(key);
   const printedKey = identifier ? key : quote(key);
-  const keyLength = identifier ? Array.from(key).length : textWidth(printedKey);
-  const column = indentWidth(unit, depth) + textWidth(printedKey) + 2;
+  const keyWidth = textWidth(printedKey);
+  const column = indentWidth(unit, depth) + keyWidth + 2;
   const keepsLine =
-    keyLength < SHORT_KEY_LENGTH ||
+    keyWidth < SHORT_KEY_LENGTH ||
     (value.kind === "literal" && value.keepsKeyLine) ||
     column + textWidth(head(value)) <= PRINT_WIDTH;
   if (keepsLine) {

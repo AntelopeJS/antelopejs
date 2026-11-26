@@ -283,7 +283,7 @@ const CASES = {
     name: "app",
     modules: { app: { config: { rows: [[1], [2]], deep: nested(38) } } },
   },
-  "short keys counted in code points, or in columns when quoted": {
+  "short keys counted in columns": {
     name: "app",
     modules: {
       app: {

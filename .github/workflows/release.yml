@@ -1,8 +1,6 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
   pull_request:
     types: [labeled, synchronize, reopened]
   workflow_dispatch:
@@ -20,6 +18,11 @@ on:
         required: false
         default: "{}"
         type: string
+      preview:
+        description: Publish a preview under the npm dist-tag next from the default branch or a work/* branch
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -32,6 +35,7 @@ jobs:
       release-version: ${{ inputs.release-version }}
       release-commit: ${{ inputs.release-commit }}
       dependency-ranges: ${{ inputs.dependency-ranges }}
+      preview: ${{ inputs.preview == true }}
     secrets:
       RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
       RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}

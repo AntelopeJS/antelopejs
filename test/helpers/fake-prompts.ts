@@ -9,7 +9,7 @@ type PromptKind = "text" | "confirm" | "select" | "multiselect";
 
 interface AskedOptions {
   message: string;
-  options?: Array<{
+  options?: ReadonlyArray<{
     value: unknown;
     label?: string;
     hint?: string;

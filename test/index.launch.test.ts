@@ -187,12 +187,12 @@ function stubWatchedModuleDownloads() {
         );
         sinon.stub(ModuleCache.prototype, "load").resolves();
 
-        sinon
-          .stub(ModuleManager.prototype, "addModules")
-          .callsFake(function (this: any) {
-            this.loaded = undefined;
-            return [];
-          });
+        sinon.stub(ModuleManager.prototype, "addModules").callsFake(function (
+          this: any,
+        ) {
+          this.loaded = undefined;
+          return [];
+        });
         sinon.stub(ModuleManager.prototype, "getAllManagedModules").returns([]);
         sinon.stub(ModuleManager.prototype, "constructAll").resolves();
         sinon.stub(ModuleManager.prototype, "startAll");
