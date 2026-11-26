@@ -80,6 +80,12 @@ export interface PackageRun {
   packLog: string;
   mode?: ModuleLockMode;
   ignoreCache?: boolean;
+  /**
+   * A file the child waits for once it has loaded the core, before it loads
+   * the cache: a child started beside another boots at the same time as that
+   * one, yet loads after it.
+   */
+  startGate?: string;
   /** A file the install double waits for after printing `installing`. */
   installGate?: string;
   /** A file the child waits for after printing `loaded`, so that its lease lives until then. */
@@ -124,6 +130,7 @@ export function loadPackageInChild(run: PackageRun): ChildRun {
       `  lock: run.mode ? { store: new ModuleLockStore(run.project), mode: run.mode } : undefined,`,
       `});`,
       `(async () => {`,
+      `  await waitFor(run.startGate);`,
       `  const cache = new ModuleCache(run.cachePath);`,
       `  await cache.load();`,
       `  process.stdout.write("loading\\n");`,
