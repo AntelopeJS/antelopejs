@@ -5,8 +5,7 @@ import type {
 import path from "node:path";
 import { lt, prerelease, valid, validRange } from "semver";
 
-import { isString, resolvePackage } from "../../utils";
-import { normalizeExistingPath } from "../../utils/package-resolution";
+import { isString, normalizeExistingPath, resolvePackage } from "../../utils";
 import { satisfiesRange } from "../../version-ranges";
 
 import { INTERFACE_CORE_PACKAGE } from "./module-manager-bindings";
