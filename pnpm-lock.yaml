@@ -82,7 +82,7 @@ importers:
         specifier: ^10.0.10
         version: 10.0.10
       '@types/node':
-        specifier: ^22.19.15
+        specifier: ^22.20.5
         version: 22.20.5
       '@types/picomatch':
         specifier: ^4.0.3
