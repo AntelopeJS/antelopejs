@@ -27,7 +27,7 @@ const USAGE = `Usage: node .agents/skills/verify-antelopejs/bin/verify-ajs.mts <
   journey <run> <feature> [ids...] run a feature's journeys and record evidence
   journeys <run> <feature>... [--jobs <n>]
                                    run the journeys of the features at once, <n> at a time
-                                   (default: a quarter of the cores, 2 to 8); results print
+                                   (default: a quarter of the cores, 2 to 4); results print
                                    per feature
   clean <run>                      stop recorded processes, keep only the evidence
   doors [patch] [--base <ref>]     print the One-way-door line for a patch, or for the diff
