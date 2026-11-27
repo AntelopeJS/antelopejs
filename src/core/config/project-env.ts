@@ -1,4 +1,5 @@
 import { Logging } from "@antelopejs/interface-core/logging";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { parseEnv } from "node:util";
@@ -11,17 +12,31 @@ const MISSING_FILE_ERROR_CODE = "ENOENT";
 
 const Logger = new Logging.Channel("loader.env");
 
-/** What the last load of one `.env` did to `process.env`. */
+/** What one load of a `.env` did to `process.env`. */
 interface ProjectEnvLoad {
-  /** The variables it set, with the value it set each to. */
-  loaded: Map<string, string>;
+  /** The loads of the same file, this one among them while it counts. */
+  readonly fileLoads: ProjectEnvLoad[];
+  /**
+   * The variables it set that nothing has changed since, with the value it
+   * set each to: those it holds while it is in effect.
+   */
+  readonly loaded: Map<string, string>;
   /** The names it declares that the process environment already held. */
-  kept: string[];
+  readonly kept: string[];
   /** Whether {@link logProjectEnv} has logged it. */
   logged: boolean;
+  /** Whether the launch that made it may still withdraw it. */
+  withdrawable: boolean;
 }
 
-const loadsByEnvFile = new Map<string, ProjectEnvLoad>();
+/**
+ * The loads of each `.env` file, oldest first, from the last one no launch
+ * may withdraw: `process.env` holds what the last of them set, and a load
+ * withdrawn while in effect gives way to the one before it.
+ */
+const loadsByEnvFile = new Map<string, ProjectEnvLoad[]>();
+
+const recordedLoads = new AsyncLocalStorage<ProjectEnvLoad[]>();
 
 function readEnvFile(filePath: string): string | undefined {
   try {
@@ -37,54 +52,86 @@ function readEnvFile(filePath: string): string | undefined {
   }
 }
 
-function forgetPreviousLoad(envPath: string): void {
-  for (const [name, value] of loadsByEnvFile.get(envPath)?.loaded ?? []) {
+function putOutOfEffect(load: ProjectEnvLoad): void {
+  for (const [name, value] of load.loaded) {
     if (process.env[name] === value) {
       delete process.env[name];
+    } else {
+      load.loaded.delete(name);
     }
   }
-  loadsByEnvFile.delete(envPath);
+}
+
+function putBackInEffect(load: ProjectEnvLoad): void {
+  for (const [name, value] of load.loaded) {
+    if (process.env[name] === undefined) {
+      process.env[name] = value;
+    } else {
+      load.loaded.delete(name);
+    }
+  }
+}
+
+function dropSupersededLoads(loads: ProjectEnvLoad[]): void {
+  let lastKept = loads.length - 1;
+  while (lastKept > 0 && loads[lastKept].withdrawable) {
+    lastKept -= 1;
+  }
+  loads.splice(0, lastKept);
+}
+
+function withdrawLoad(load: ProjectEnvLoad): void {
+  const loads = load.fileLoads;
+  const index = loads.indexOf(load);
+  if (index === -1) {
+    return;
+  }
+  loads.splice(index, 1);
+  if (index === loads.length) {
+    putOutOfEffect(load);
+    const previous = loads.at(-1);
+    if (previous !== undefined) {
+      putBackInEffect(previous);
+    }
+  }
 }
 
 export function getProjectEnvPath(projectFolder: string): string {
   return path.join(path.resolve(projectFolder), PROJECT_ENV_FILE);
 }
 
-/** The last {@link loadProjectEnv} of one project at a given time. */
-export interface ProjectEnvSnapshot {
-  readonly envPath: string;
-  readonly load: ProjectEnvLoad | undefined;
-}
-
 /**
- * Records the last {@link loadProjectEnv} of the project, for a later
- * {@link restoreProjectEnv}.
- *
- * @param projectFolder The folder that holds `antelope.config.ts`
+ * The loads of project `.env` files one launch makes while it prepares, so
+ * that a launch interrupted meanwhile undoes them without touching what
+ * another launch of the same project loaded.
  */
-export function snapshotProjectEnv(projectFolder: string): ProjectEnvSnapshot {
-  const envPath = getProjectEnvPath(projectFolder);
-  return { envPath, load: loadsByEnvFile.get(envPath) };
-}
+export class LaunchEnvLoads {
+  private readonly loads: ProjectEnvLoad[] = [];
 
-/**
- * Undoes the loads of the project `.env` made since `snapshot`: removes the
- * variables the last of them set, then sets again those the snapshot load set,
- * each only where nothing else has changed it since.
- */
-export function restoreProjectEnv({ envPath, load }: ProjectEnvSnapshot): void {
-  forgetPreviousLoad(envPath);
-  if (load === undefined) {
-    return;
+  /** Runs `prepare`, recording the {@link loadProjectEnv} calls it makes. */
+  record<Result>(prepare: () => Result): Result {
+    return recordedLoads.run(this.loads, prepare);
   }
-  const restored: ProjectEnvLoad = { ...load, loaded: new Map() };
-  for (const [name, value] of load.loaded) {
-    if (process.env[name] === undefined) {
-      process.env[name] = value;
-      restored.loaded.set(name, value);
+
+  /**
+   * Undoes the recorded loads. A load still in effect removes the variables
+   * it set and nothing has changed since, then gives way to the load it
+   * replaced, which sets again those of its variables it removed and nothing
+   * has set since. A load another has replaced is only forgotten.
+   */
+  withdraw(): void {
+    for (const load of this.loads) {
+      withdrawLoad(load);
     }
   }
-  loadsByEnvFile.set(envPath, restored);
+
+  /** Makes the recorded loads permanent: {@link withdraw} no longer applies. */
+  keep(): void {
+    for (const load of this.loads) {
+      load.withdrawable = false;
+      dropSupersededLoads(load.fileLoads);
+    }
+  }
 }
 
 /**
@@ -97,9 +144,23 @@ export function restoreProjectEnv({ envPath, load }: ProjectEnvSnapshot): void {
  */
 export function loadProjectEnv(projectFolder: string): void {
   const envPath = getProjectEnvPath(projectFolder);
-  forgetPreviousLoad(envPath);
-  const load: ProjectEnvLoad = { loaded: new Map(), kept: [], logged: false };
-  loadsByEnvFile.set(envPath, load);
+  const loads = loadsByEnvFile.get(envPath) ?? [];
+  loadsByEnvFile.set(envPath, loads);
+  const previous = loads.at(-1);
+  if (previous !== undefined) {
+    putOutOfEffect(previous);
+  }
+  const recording = recordedLoads.getStore();
+  const load: ProjectEnvLoad = {
+    fileLoads: loads,
+    loaded: new Map(),
+    kept: [],
+    logged: false,
+    withdrawable: recording !== undefined,
+  };
+  recording?.push(load);
+  loads.push(load);
+  dropSupersededLoads(loads);
   const content = readEnvFile(envPath);
   if (content === undefined) {
     return;
@@ -129,7 +190,7 @@ export function loadProjectEnv(projectFolder: string): void {
  */
 export function logProjectEnv(projectFolder: string): void {
   const envPath = getProjectEnvPath(projectFolder);
-  const load = loadsByEnvFile.get(envPath);
+  const load = loadsByEnvFile.get(envPath)?.at(-1);
   if (load === undefined || load.logged) {
     return;
   }
@@ -153,8 +214,8 @@ export function logProjectEnv(projectFolder: string): void {
  */
 export function withoutProjectEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const filtered = { ...env };
-  for (const { loaded } of loadsByEnvFile.values()) {
-    for (const [name, value] of loaded) {
+  for (const loads of loadsByEnvFile.values()) {
+    for (const [name, value] of loads.at(-1)?.loaded ?? []) {
       if (filtered[name] === value) {
         delete filtered[name];
       }
