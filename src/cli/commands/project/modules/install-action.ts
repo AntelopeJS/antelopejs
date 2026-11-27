@@ -50,6 +50,8 @@ import { requireCatalogMember } from "../../../catalog-manifest";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
 import { addModules, type AddCommandResult } from "./add-action";
+import { ownVersion } from "./own-version";
+import { assertRunningCoreMatchesProject } from "./fix-core-guard";
 import { checkInterfaceVersions } from "./interface-check";
 import { createModuleRegistry, openModuleCache } from "./module-locks";
 
@@ -272,15 +274,6 @@ async function analyzeConfig(
       version: ownVersion(requiredVersions.get(u.moduleId), u.interfacePackage),
     })),
   };
-}
-
-function ownVersion(
-  versions: Record<string, string> | undefined,
-  packageName: string,
-): string | undefined {
-  return versions && Object.hasOwn(versions, packageName)
-    ? versions[packageName]
-    : undefined;
 }
 
 interface InstallContext {
@@ -520,6 +513,7 @@ function installNextSteps(
 }
 
 export async function installModules(options: InstallOptions): Promise<void> {
+  assertRunningCoreMatchesProject(options.project, options.fix);
   const startedAt = Date.now();
   const { config: baseConfig, environment } = await resolveProjectContext(
     options.project,
