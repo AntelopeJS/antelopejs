@@ -11,6 +11,20 @@ const SIGNALS: SignalName[] = ["SIGINT", "SIGTERM"];
 const FAILING_EXIT_CODE = 1;
 const FS_WATCH_RESOURCE = "FSEventWrap";
 
+/**
+ * The variables `hasUnicodeSupport` reads, pinned to a terminal that draws the
+ * Unicode symbol set. `TERM=xterm-256color` is the one Windows detection also
+ * accepts, and `LC_ALL` outranks `LC_CTYPE` and `LANG` on Linux and macOS, so
+ * the tests that assert on `→`, `·` and `✔` pass whatever the runner exports.
+ * Tests of the ASCII fallback pass their own environment to the detector.
+ */
+const UNICODE_TERMINAL_ENV = {
+  TERM: "xterm-256color",
+  LC_ALL: "C.UTF-8",
+} as const;
+
+Object.assign(process.env, UNICODE_TERMINAL_ENV);
+
 const baseline = new Map<SignalName, Set<SignalListener>>();
 let runFinished = false;
 let isExitGuardInstalled = false;
