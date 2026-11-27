@@ -322,7 +322,7 @@ describe("project modules update behavior: --fix on a module under node_modules"
       "file-storage-local installs @antelopejs/interface-data-api 0.1.8 from the @antelopejs/file-storage-local dependency; 0.1.9 is required by cms@0.6.6",
     ]);
     expect(problem.fixes).to.deep.equal([
-      `Raise @antelopejs/file-storage-local in ${displayPath(path.join(env.project, "package.json"))} to a release that depends on @antelopejs/interface-data-api 0.1.9, then install the dependencies of ${displayPath(env.project)} again`,
+      `Raise @antelopejs/file-storage-local in ${displayPath(path.join(env.project, "package.json"))} to a release that depends on @antelopejs/interface-data-api 0.1.9, then install the dependencies of ${path.dirname(displayPath(path.join(env.project, "package.json")))} again`,
     ]);
   });
 });

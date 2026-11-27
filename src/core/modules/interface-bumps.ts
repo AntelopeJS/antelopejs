@@ -5,7 +5,7 @@ import type {
 import path from "node:path";
 import { lt, prerelease, valid, validRange } from "semver";
 
-import { isString, resolvePackage } from "../../utils";
+import { isString, normalizeExistingPath, resolvePackage } from "../../utils";
 import { satisfiesRange } from "../../version-ranges";
 
 import { INTERFACE_CORE_PACKAGE } from "./module-manager-bindings";
@@ -102,24 +102,30 @@ function packageSource(source: ModuleSource): ModuleSourcePackage | undefined {
 }
 
 /**
- * The project and the dependency under its outermost `node_modules` that
- * hold `folder`.
+ * The project and the dependency that install `folder`, read from its real
+ * path: a folder whose real path lies outside every `node_modules` (a
+ * workspace package linked into one) belongs to the project. The project is
+ * the folder holding the outermost `node_modules`; the dependency is the
+ * package under the innermost one, which names the real package inside a
+ * `.pnpm` store.
  *
- * @returns undefined when `folder` lies under no `node_modules`.
+ * @returns undefined when the real path of `folder` lies under no
+ * `node_modules`.
  */
 function installingDependency(
   folder: string,
 ): { project: string; dependency: string } | undefined {
-  const segments = folder.split(path.sep);
-  const index = segments.indexOf(NODE_MODULES);
-  if (index < 0) {
+  const segments = normalizeExistingPath(folder).split(path.sep);
+  const first = segments.indexOf(NODE_MODULES);
+  const last = segments.lastIndexOf(NODE_MODULES);
+  if (first < 0 || last + 1 >= segments.length) {
     return undefined;
   }
-  const nameLength = segments[index + 1]?.startsWith("@") ? 2 : 1;
+  const nameLength = segments[last + 1]?.startsWith("@") ? 2 : 1;
   return {
-    project: segments.slice(0, index).join(path.sep) || path.sep,
+    project: segments.slice(0, first).join(path.sep) || path.sep,
     dependency: segments
-      .slice(index + 1, index + 1 + nameLength)
+      .slice(last + 1, last + 1 + nameLength)
       .join(path.posix.sep),
   };
 }
@@ -269,7 +275,7 @@ function bumpConsumer(
           {
             ...base,
             kind: "range",
-            folder: manifest.folder,
+            folder: normalizeExistingPath(manifest.folder),
             field: dependencyField(manifest, context.packageName),
             from: consumer.range,
             to,

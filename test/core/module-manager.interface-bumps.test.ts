@@ -1,6 +1,7 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
-import { mkdir, rename } from "node:fs/promises";
+import { realpathSync } from "node:fs";
+import { mkdir, rename, symlink } from "node:fs/promises";
 import path from "node:path";
 import { inc } from "semver";
 
@@ -43,6 +44,7 @@ async function plan(
   fromNpm: string[],
   interfaceName = INCIDENT_INTERFACE,
   movedTo: ReadonlyMap<string, string> = new Map(),
+  linkedAs: ReadonlyMap<string, string> = new Map(),
 ) {
   const folder = await writeIncidentProject(modules, interfaceName);
   projects.push(folder);
@@ -50,12 +52,20 @@ async function plan(
     await mkdir(path.dirname(path.join(folder, target)), { recursive: true });
     await rename(path.join(folder, "modules", name), path.join(folder, target));
   }
+  for (const [name, link] of linkedAs) {
+    await mkdir(path.dirname(path.join(folder, link)), { recursive: true });
+    await symlink(
+      path.join(folder, "modules", name),
+      path.join(folder, link),
+      "dir",
+    );
+  }
   const manager = new ModuleManager();
   const manifests = await Promise.all(
     (modules ?? []).map(({ name }) => {
       const moduleFolder = path.join(
         folder,
-        movedTo.get(name) ?? path.join("modules", name),
+        linkedAs.get(name) ?? movedTo.get(name) ?? path.join("modules", name),
       );
       return fromNpm.includes(name)
         ? ModuleManifest.create(moduleFolder, npmSource(name), name)
@@ -382,6 +392,62 @@ describe("ModuleManager interface bumps of a module under node_modules", () => {
         project: folder,
       },
     ]);
+  });
+});
+
+describe("ModuleManager interface bumps of a workspace package linked under node_modules", () => {
+  cleanupProjects();
+
+  const modules = [
+    { name: "app", range: ">=0.3.1 <1.0.0", copy: "0.3.1" },
+    {
+      name: "storage",
+      range: ">=0.3.0 <0.4.0",
+      copy: "0.3.0",
+      implementsInterface: true,
+    },
+  ];
+
+  it("raises the range of the project's own package that node_modules/<name> links to", async () => {
+    const link = path.join("node_modules", "storage");
+    const { folder, bumps } = await plan(
+      modules,
+      [],
+      INCIDENT_INTERFACE,
+      new Map(),
+      new Map([["storage", link]]),
+    );
+
+    expect(
+      bumps.map((bump) => [
+        bump.kind,
+        bump.kind === "range" ? bump.folder : undefined,
+      ]),
+    ).to.deep.equal([
+      ["range", realpathSync(path.join(folder, "modules", "storage"))],
+    ]);
+  });
+
+  it("names the package, not .pnpm, for a copy that lives in the pnpm store", async () => {
+    const stored = path.join(
+      "node_modules",
+      ".pnpm",
+      "storage@1.0.0",
+      "node_modules",
+      "storage",
+    );
+    const { folder, bumps } = await plan(
+      modules,
+      [],
+      INCIDENT_INTERFACE,
+      new Map([["storage", stored]]),
+    );
+
+    expect(
+      bumps.map((bump) =>
+        bump.kind === "dependency" ? [bump.dependency, bump.project] : [],
+      ),
+    ).to.deep.equal([["storage", realpathSync(folder)]]);
   });
 });
 
