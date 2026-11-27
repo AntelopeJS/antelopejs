@@ -57,22 +57,19 @@ function gate(): Gate {
   return { opened, open };
 }
 
-describe("runtime launch-sequence interrupted while it prepares the project", () => {
-  let project: string;
-  let shutdownManagers: ShutdownManager[];
+let project: string;
+let shutdownManagers: ShutdownManager[];
 
-  function shutdownsOfLaunchesInOrder(count: number): ShutdownManager[] {
-    shutdownManagers = Array.from(
-      { length: count },
-      () => new ShutdownManager(),
-    );
-    const create = sinon.stub(processClaim, "createShutdownManager");
-    shutdownManagers.forEach((manager, index) =>
-      create.onCall(index).returns(manager),
-    );
-    return shutdownManagers;
-  }
+function shutdownsOfLaunchesInOrder(count: number): ShutdownManager[] {
+  shutdownManagers = Array.from({ length: count }, () => new ShutdownManager());
+  const create = sinon.stub(processClaim, "createShutdownManager");
+  shutdownManagers.forEach((manager, index) =>
+    create.onCall(index).returns(manager),
+  );
+  return shutdownManagers;
+}
 
+function withProject(): void {
   beforeEach(() => {
     project = makeTempDir("ajs-launch-interrupted-env-");
     shutdownManagers = [];
@@ -89,6 +86,10 @@ describe("runtime launch-sequence interrupted while it prepares the project", ()
     delete process.env[ENV_NAME];
     cleanupTempDir(project);
   });
+}
+
+describe("runtime launch-sequence interrupted while it prepares the project", () => {
+  withProject();
 
   it("leaves process.env as it found it once the shutdown resolved", async () => {
     const [interrupted] = shutdownsOfLaunchesInOrder(1);
@@ -117,6 +118,33 @@ describe("runtime launch-sequence interrupted while it prepares the project", ()
     expect(process.env[ENV_NAME]).to.equal("loaded");
   });
 
+  for (const deletesFirst of [true, false]) {
+    it(`never sets again a variable deleted ${deletesFirst ? "before" : "after"} an interrupted launch loaded it`, async () => {
+      const [, interrupted] = shutdownsOfLaunchesInOrder(2);
+      await launch(project);
+      if (deletesFirst) {
+        delete process.env[ENV_NAME];
+      }
+
+      const launched = launch(
+        project,
+        shuttingDown(interrupted, async (folder, env) => {
+          const loaded = await prepareFromConfig(folder, env);
+          delete process.env[ENV_NAME];
+          return loaded;
+        }),
+      );
+      await interrupted.shutdown();
+      await settled(launched);
+
+      expect(process.env[ENV_NAME]).to.equal(undefined);
+    });
+  }
+});
+
+describe("runtime launch-sequence interrupted while another launch of the project prepares", () => {
+  withProject();
+
   for (const loadsFirst of [true, false]) {
     it(`keeps the .env of a launch that completed while it prepared, loading ${loadsFirst ? "before" : "after"} that launch`, async () => {
       const [interrupted] = shutdownsOfLaunchesInOrder(2);
@@ -144,15 +172,31 @@ describe("runtime launch-sequence interrupted while it prepares the project", ()
     });
   }
 
-  it("never sets again a variable deleted after a completed launch loaded it", async () => {
-    const [, interrupted] = shutdownsOfLaunchesInOrder(2);
-    await launch(project);
-    delete process.env[ENV_NAME];
+  it("keeps the .env of a launch still preparing when an earlier one is interrupted", async () => {
+    const [interrupted] = shutdownsOfLaunchesInOrder(2);
+    const firstLoaded = gate();
+    const secondLoaded = gate();
+    const firstSettled = gate();
+    const launched = launch(project, async (folder, env) => {
+      const loaded = await prepareFromConfig(folder, env);
+      firstLoaded.open();
+      await secondLoaded.opened;
+      return shuttingDown(interrupted, async () => loaded)(folder, env);
+    });
+    const preparing = launch(project, async (folder, env) => {
+      await firstLoaded.opened;
+      const loaded = await prepareFromConfig(folder, env);
+      secondLoaded.open();
+      await firstSettled.opened;
+      return loaded;
+    });
 
-    const launched = launch(project, shuttingDown(interrupted));
+    await once(interrupted.stopping, "abort");
     await interrupted.shutdown();
     await settled(launched);
-
-    expect(process.env[ENV_NAME]).to.equal(undefined);
+    expect(process.env[ENV_NAME]).to.equal("loaded");
+    firstSettled.open();
+    await preparing;
+    expect(process.env[ENV_NAME]).to.equal("loaded");
   });
 });
