@@ -7,8 +7,9 @@ import {
   getProjectEnvPath,
   loadProjectEnv,
   logProjectEnv,
+  restoreProjectEnv,
+  snapshotProjectEnv,
   tryFindConfigPath,
-  unloadProjectEnv,
 } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { BuildArtifact } from "../modules";
@@ -552,30 +553,32 @@ const LAUNCH_STEPS: readonly LaunchStep<ProjectLaunch>[] = [
 
 /**
  * Prepares the project. A shutdown that starts meanwhile first waits for the
- * preparation to settle, then removes the project `.env` it loaded, so that
- * `process.env` is left as the launch found it once the shutdown resolves.
- * `prepare` starts once that wait is registered, so a shutdown it starts
- * itself waits for it too.
+ * preparation to settle, then undoes the loads of the project `.env` it made,
+ * so that `process.env` is left as the launch found it once the shutdown
+ * resolves, with what an earlier launch of the project loaded. `prepare`
+ * starts once that wait is registered, so a shutdown it starts itself waits
+ * for it too.
  */
 async function prepareProject(
   request: LaunchRequest,
   shutdownManager: ShutdownManager,
 ): Promise<PreparedProject> {
+  const envBefore = snapshotProjectEnv(request.projectFolder);
   const preparing = Promise.resolve().then(() =>
     runInterruptibly(
       () => request.prepare(request.projectFolder, request.env),
       shutdownManager.stopping,
     ),
   );
-  const unloadEnv = async () => {
+  const restoreEnv = async () => {
     await preparing.catch(() => undefined);
-    unloadProjectEnv(request.projectFolder);
+    restoreProjectEnv(envBefore);
   };
-  shutdownManager.register(unloadEnv, SHUTDOWN_PRIORITY_PREPARATION);
+  shutdownManager.register(restoreEnv, SHUTDOWN_PRIORITY_PREPARATION);
   try {
     return await preparing;
   } finally {
-    shutdownManager.unregister(unloadEnv);
+    shutdownManager.unregister(restoreEnv);
   }
 }
 

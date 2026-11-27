@@ -50,14 +50,41 @@ export function getProjectEnvPath(projectFolder: string): string {
   return path.join(path.resolve(projectFolder), PROJECT_ENV_FILE);
 }
 
+/** The last {@link loadProjectEnv} of one project at a given time. */
+export interface ProjectEnvSnapshot {
+  readonly envPath: string;
+  readonly load: ProjectEnvLoad | undefined;
+}
+
 /**
- * Removes from `process.env` the variables the last {@link loadProjectEnv} of
- * the project set, unless something else has changed them since.
+ * Records the last {@link loadProjectEnv} of the project, for a later
+ * {@link restoreProjectEnv}.
  *
  * @param projectFolder The folder that holds `antelope.config.ts`
  */
-export function unloadProjectEnv(projectFolder: string): void {
-  forgetPreviousLoad(getProjectEnvPath(projectFolder));
+export function snapshotProjectEnv(projectFolder: string): ProjectEnvSnapshot {
+  const envPath = getProjectEnvPath(projectFolder);
+  return { envPath, load: loadsByEnvFile.get(envPath) };
+}
+
+/**
+ * Undoes the loads of the project `.env` made since `snapshot`: removes the
+ * variables the last of them set, then sets again those the snapshot load set,
+ * each only where nothing else has changed it since.
+ */
+export function restoreProjectEnv({ envPath, load }: ProjectEnvSnapshot): void {
+  forgetPreviousLoad(envPath);
+  if (load === undefined) {
+    return;
+  }
+  const restored: ProjectEnvLoad = { ...load, loaded: new Map() };
+  for (const [name, value] of load.loaded) {
+    if (process.env[name] === undefined) {
+      process.env[name] = value;
+      restored.loaded.set(name, value);
+    }
+  }
+  loadsByEnvFile.set(envPath, restored);
 }
 
 /**
