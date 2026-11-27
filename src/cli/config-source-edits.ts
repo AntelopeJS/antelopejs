@@ -1,6 +1,6 @@
 import type * as TypeScript from "typescript";
 
-import { isIdentifierKey } from "./config-layout";
+import { isIdentifierKey } from "../utils";
 
 /** A replacement of the source between `start` and `end` by `text`. */
 export interface SourceEdit {

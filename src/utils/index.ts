@@ -1,5 +1,6 @@
 export * from "./environment";
 export * from "./field-checks";
+export * from "./identifier-key";
 export * from "./json";
 export * from "./object";
 export * from "./package-resolution";

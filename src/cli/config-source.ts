@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import type * as TypeScript from "typescript";
 
 import { CliError } from "../core/output";
-import { isIdentifierKey, printNode, toNode } from "./config-layout";
+import { printNode, toNode } from "./config-layout";
 import {
   insertionEdit,
   removalEdit,
@@ -14,6 +14,7 @@ import {
 } from "./config-source-edits";
 import {
   isFunction,
+  isIdentifierKey,
   isPlainObject,
   isString,
   type UnknownDictionary,
