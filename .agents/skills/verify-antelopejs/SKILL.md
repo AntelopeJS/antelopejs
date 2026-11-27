@@ -14,7 +14,6 @@ Node 24 (`.nvmrc`) and pnpm 10.34.9 (`packageManager`, through corepack), once p
 ```bash
 corepack enable
 pnpm install --frozen-lockfile
-export TERM=xterm-256color   # the CLI output tests expect Unicode symbols; TERM=dumb fails eight of them
 VERIFY=".agents/skills/verify-antelopejs/bin/verify-ajs.mts"
 ```
 
