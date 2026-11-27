@@ -56,8 +56,11 @@ function putOutOfEffect(load: ProjectEnvLoad): void {
   for (const [name, value] of load.loaded) {
     if (process.env[name] === value) {
       delete process.env[name];
-    } else {
-      load.loaded.delete(name);
+      continue;
+    }
+    load.loaded.delete(name);
+    for (const fileLoad of load.fileLoads) {
+      fileLoad.loaded.delete(name);
     }
   }
 }
