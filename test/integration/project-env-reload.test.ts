@@ -13,7 +13,7 @@ import {
   type ShutdownManager,
 } from "../../src/core/runtime";
 
-const VALUE_VARIABLE = "AJS_ENV_RELOAD_VALUE";
+const VALUE_VARIABLE_PREFIX = "AJS_ENV_RELOAD_VALUE_";
 const MARKER_TIMEOUT_MS = 8000;
 const MARKER_POLL_MS = 50;
 const SHUTDOWN_PRIORITY_FIRST = 100;
@@ -52,6 +52,15 @@ interface EnvProject {
   envPath: string;
 }
 
+/**
+ * The variable the project in `projectFolder` reads its value from, its own
+ * so that a launch of another test still loading its `.env` sets nothing
+ * this project reads.
+ */
+function valueVariable(projectFolder: string): string {
+  return `${VALUE_VARIABLE_PREFIX}${path.basename(projectFolder).replace(/\W/g, "_")}`;
+}
+
 async function writeEnvProject(projectFolder: string): Promise<EnvProject> {
   const modulePath = path.join(projectFolder, "mod");
   const markerPath = path.join(projectFolder, "marker.txt");
@@ -69,7 +78,9 @@ async function writeEnvProject(projectFolder: string): Promise<EnvProject> {
         config: { markerPath, value: "unset" },
       },
     },
-    envOverrides: { [VALUE_VARIABLE]: "modules.mod.config.value" },
+    envOverrides: {
+      [valueVariable(projectFolder)]: "modules.mod.config.value",
+    },
   };
   await fs.writeFile(
     path.join(projectFolder, "antelope.config.ts"),
@@ -127,7 +138,7 @@ describe("project .env in watch mode", () => {
 
   afterEach(async () => {
     await stopProjects();
-    delete process.env[VALUE_VARIABLE];
+    delete process.env[valueVariable(projectFolder)];
     await fs.rm(projectFolder, { recursive: true, force: true });
   });
 
@@ -138,13 +149,13 @@ describe("project .env in watch mode", () => {
     await launch(projectFolder, "default", { watch: true });
     await waitForMarker(markerPath, "unset");
 
-    await fs.writeFile(envPath, `${VALUE_VARIABLE}=created\n`);
+    await fs.writeFile(envPath, `${valueVariable(projectFolder)}=created\n`);
     await waitForMarker(markerPath, "created");
 
-    await fs.writeFile(envPath, `${VALUE_VARIABLE}=edited\n`);
+    await fs.writeFile(envPath, `${valueVariable(projectFolder)}=edited\n`);
     await waitForMarker(markerPath, "edited");
 
-    expect(process.env[VALUE_VARIABLE]).to.equal("edited");
+    expect(process.env[valueVariable(projectFolder)]).to.equal("edited");
   });
 
   it("ends a restart that a shutdown interrupts without exiting the process", async function () {
@@ -157,7 +168,10 @@ describe("project .env in watch mode", () => {
     process.on("unhandledRejection", recordRejection);
     try {
       const running = getActiveShutdownManager();
-      await fs.writeFile(envPath, `${VALUE_VARIABLE}=interrupted\n`);
+      await fs.writeFile(
+        envPath,
+        `${valueVariable(projectFolder)}=interrupted\n`,
+      );
       await (await waitForNextLaunch(running)).shutdown();
       await new Promise((resolve) => setTimeout(resolve, MARKER_POLL_MS));
     } finally {
@@ -183,7 +197,7 @@ describe("project .env in watch mode", () => {
     assert.ok(running);
     const lookups = sinon.spy(processClaim, "getActiveShutdownManager");
     running.register(async () => {
-      await fs.writeFile(envPath, `${VALUE_VARIABLE}=late\n`);
+      await fs.writeFile(envPath, `${valueVariable(projectFolder)}=late\n`);
       await waitUntil(() => lookups.called);
     }, SHUTDOWN_PRIORITY_FIRST);
     try {
