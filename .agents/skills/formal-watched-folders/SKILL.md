@@ -12,11 +12,10 @@ Run this check for changes to the covered functions below, their callers, or the
 Use Node 24 from `.nvmrc` and install the pinned lockfile dependencies. From the repository root, run this command.
 
 ```sh
-TERM=xterm-256color FC_SEED=20261116 pnpm exec mocha --no-config --require ts-node/register --require test/setup.ts test/core/watch/file-watcher.folders.property.test.ts --exit
+TERM=xterm-256color FC_SEED=20261116 pnpm exec mocha --require ts-node/register --require test/setup.ts test/core/watch/file-watcher.folders.property.test.ts --exit
 ```
 
 Expect `7 passing` and exit code 0: three incident examples, one property and three open findings. All of them also run in `pnpm test`.
-`--no-config` prevents `.mocharc.json` from adding every unit test to this focused run.
 Change `FC_SEED` to explore another sample. Keep the failing seed and printed counterexample when reporting a failure. Rerunning the same command with the failing seed reproduces the same generation and shrinking with the pinned dependency version.
 
 ## Judge the result

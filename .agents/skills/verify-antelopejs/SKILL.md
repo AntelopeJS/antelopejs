@@ -1,9 +1,78 @@
 ---
 name: verify-antelopejs
-description: "Drive the ajs CLI and the @antelopejs/core runtime (createRuntime, launch) the way an app developer does, in an isolated HOME with an offline template source, and report the result with evidence. Use to prove a change to antelopejs works before merge, or to verify a PR."
+description: "Check a change to antelopejs before pushing: the scoped command for each kind of change (one test file, one suite, the changed files), what CI and the merge queue run instead, then drive the ajs CLI and the @antelopejs/core runtime (createRuntime, launch) the way an app developer does, in an isolated HOME with an offline template source, and report the result with evidence. Use to prove a change to antelopejs works before merge, or to verify a PR."
 ---
 
 # Verify antelopejs
+
+CI and the merge queue run every suite. You run the checks for what your change touched ([What to run for your change](#what-to-run-for-your-change)), then drive the CLI through the journeys ([Drive the CLI like a user](#drive-the-cli-like-a-user)), which no CI job runs.
+
+## Setup
+
+Node 24 (`.nvmrc`) and pnpm 10.34.9 (`packageManager`, through corepack), once per checkout:
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+export TERM=xterm-256color   # the CLI output tests expect Unicode symbols; TERM=dumb fails eight of them
+```
+
+The TLA+ formal checks also need Java 21. Without it, leave them to their CI jobs.
+
+## What to run for your change
+
+Run every row your diff touches, from the repository root. Each test command runs only the files it names: `.mocharc.json` sets no `spec`, so mocha adds nothing to them, and it caps workers at `jobs: 4`. Never add `--no-config`: it also drops the 5000 ms timeout and the `.ts` extension. Tests do not mirror `src/` paths (`src/core/runtime/watch/file-watcher.ts` is tested in `test/core/watch/`), so find them with `git grep -l <module file name> test`.
+
+| Change | Command |
+| --- | --- |
+| A `src/**` file | Its tests: `pnpm exec mocha --require ts-node/register --require test/setup.ts <test files>`. Add `--grep <title>` for one test. Then run the journeys `plan` selects. |
+| A `test/**/*.test.ts` file | The same command on that file. |
+| Types or signatures, in any `.ts` or `.mts` file | `pnpm run typecheck` (about 17 s, all eight projects). It cannot be scoped and is fast enough to run whole. |
+| Any file | `pnpm exec oxlint <files>` and `pnpm exec oxfmt <files>`. Add `pnpm run deps` (dependency-cruiser over `src` and `test`, about 1 s) when imports change. The commit hook runs the same lint and format on the staged files. |
+| `src/core/embedded/**`, `createRuntime` | `pnpm run test:embedded` (builds `dist`, then runs the one embedded suite). |
+| `package.json` `exports`, `files` or `bin`, `src/index.ts` | `pnpm run test:package-consumer` (builds and packs, then installs the package as a consumer). |
+| `src/core/cli/**` | `pnpm run test:cli-smoke` (builds, then runs the CLI smoke suite). |
+| `playground/**` | `pnpm run test:playground` (builds, installs the playground's own lockfile, runs it). |
+| `.agents/skills/verify-antelopejs/bin/**` | `node --test --test-concurrency=4 .agents/skills/verify-antelopejs/bin/lib/<name>.test.mts`, then `node "$VERIFY" map`. |
+| A file a formal check covers (`verify.config.ts`) | `node "$VERIFY" formal "$RUN"`, or the command in that check's own skill. |
+| `docs/**`, `README.md` | No local command: CI's documentation check needs Vale. Judge the page against the journeys ([What to run and judge](#what-to-run-and-judge), step 4). |
+| `skills/**` (ships in the package) | Format only. CI runs the skill eval. |
+| `.github/workflows/**`, `pnpm-lock.yaml`, dependency ranges | CI only. These files also move the pull request to the full tier. |
+
+A one-file run executes that file alone:
+
+```console
+$ pnpm exec mocha --require ts-node/register --require test/setup.ts test/engines.test.ts
+  ...
+  15 passing (681ms)
+```
+
+## Services
+
+None. No test needs a database or a container, and the repository has no `.github/compose.yml`. The journeys start and stop their own `ajs project dev` and `ajs project start` ([Launch](#launch)).
+
+## Left to CI
+
+`.github/workflows/ci.yml` runs these, most of them through `AntelopeJS/.github/.github/workflows/ci-node.yml@v2`. Read their results with `gh pr view <pr> --json statusCheckRollup`, and rerun none locally, apart from the scoped row of a failing check to reproduce it.
+
+| Check | What it runs | When |
+| --- | --- | --- |
+| `ci / Node .nvmrc` | The documentation check (Vale, and the code blocks of `README.md` and `docs/` against `docs/tsconfig.json`). `pnpm run checks` without `test`: typecheck, lint, format, knip, size, suppressions, sync, lockfile and dependency checks. The skill eval when `skills/` changed. | Every pull request. The registry steps (`lockfile:module-peers`, `dependency:ranges`, `readme:version`, `published:types`) run only in the merge queue and nightly. |
+| `ci / Test .nvmrc` | `pnpm run test`: the whole unit suite under c8 with the 90% gates, the build, `test/embedded`, `test/package-consumer` and `playground/`. | Every pull request that changes more than `README.md` and `docs/`. The merge queue reruns a failure once and marks a pass as flaky. |
+| `ci / Extra .nvmrc` | `pnpm run test:cli-smoke`. | Every pull request. |
+| The same three, `on Windows` | The same commands on Windows. | The merge queue and nightly. |
+| `ci / Stress` | The tests repeated beside busy loops on every CPU. | Nightly. |
+| `verify-map` | `verify-ajs map` and every `bin/lib/*.test.mts`. | Every pull request. |
+| `formal-module-lifecycle`, `formal-module-cache-lock`, `formal-build-start` | TLC on each model, through its skill's `check.mjs`. | Every pull request. |
+| `ci / checks`, `gate` | The pull request title follows Conventional Commits, and every job above passed. | Every pull request. |
+
+A pull request runs the fast tier. It runs the full tier when it changes a top-level file that is not Markdown, `pnpm-lock.yaml` or a workflow, or carries the `ci:full` label. No CI job drives the CLI through the journeys, and the repository has no browser suite.
+
+## Done
+
+The change is checked when every row its diff touches passed, with each command and its output shown, and the journeys `plan` selects passed and were judged ([What to run and judge](#what-to-run-and-judge)). A row that cannot run, such as a TLA+ check without Java, says why in the report.
+
+## Drive the CLI like a user
 
 Every deterministic step is a `verify-ajs` command. You choose which journeys to run and judge what they show; you never write a multi-step shell recipe. When a journey you need does not exist, add it to `bin/journeys/` and name it in its feature file, then run it.
 
@@ -45,7 +114,7 @@ node "$VERIFY" journeys "$RUN" smoke cli-shell project-dev   # every journey of 
 node "$VERIFY" journey "$RUN" project-dev [journey-id...]    # one feature, or chosen journeys
 ```
 
-- Run the plan's `run` list in one command: `plan` prints it as `command`, so substitute your run for `$RUN` and run that. `journeys` runs the journeys of all the features at the same time, `--jobs <n>` journeys at once (default a quarter of the cores, 2 to 8; 4 on 16 cores), and prints each feature's `PASS`/`FAIL` lines together, in the order given. It writes each feature's `feature.json` when that feature's last journey ends, and exits non-zero when any journey failed. Journeys share nothing but the run folder: each has its own `HOME`, work folder, evidence folder and port, and each background process is recorded in its own `$RUN/processes/<pid>.json`. A feature that must not overlap its own journeys is declared in `SERIAL_FEATURES` of `bin/journeys/index.mts` with the reason; none is. `journey` runs one feature's journeys one after another, so use it only to rerun one feature or chosen journeys.
+- Run the plan's `run` list in one command: `plan` prints it as `command`, so substitute your run for `$RUN` and run that. `journeys` runs the journeys of all the features at the same time, `--jobs <n>` journeys at once (default a quarter of the cores, 2 to 4), and prints each feature's `PASS`/`FAIL` lines together, in the order given. It writes each feature's `feature.json` when that feature's last journey ends, and exits non-zero when any journey failed. Journeys share nothing but the run folder: each has its own `HOME`, work folder, evidence folder and port, and each background process is recorded in its own `$RUN/processes/<pid>.json`. A feature that must not overlap its own journeys is declared in `SERIAL_FEATURES` of `bin/journeys/index.mts` with the reason; none is. `journey` runs one feature's journeys one after another, so use it only to rerun one feature or chosen journeys.
 - Each feature file in [features/](features/README.md) lists its journeys, its source globs (`covers:`) and its docs pages (`docs:`).
 - `ajs project dev` and `ajs project start` run in the background. The harness records their PID, waits for the fixture module's HTTP endpoint to answer, and stops them with SIGINT by recorded PID. A stop that does not exit within the timeout fails the journey.
 - A run runs `ajs project init` for real in two places only: the `smoke` and `project-init` journeys, and one shared init, `shared/project-init`, that the first journey needing a project triggers. Every other journey copies that project into its own work folder, sets the offline manifest in its own `HOME` and reads the project back with `ajs project modules list`. Its step `project copied from the shared init` names the init's evidence, `$RUN/evidence/shared/project-init/`. If that init fails, it stays failed for the rest of the run: every journey that needs a project fails on its first step and names `$RUN/evidence/shared/project-init/result.json`, which keeps the real cause. Fix the cause, then start a new run with `verify-ajs new`; rerunning the journeys in the same run does not retry the init. A run that Ctrl-C stopped during the init leaves no result, and the next journey runs the init again.

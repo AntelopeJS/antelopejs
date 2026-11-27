@@ -12,11 +12,10 @@ The checks use fast-check 4.10.2 to drive the real TypeScript implementation, no
 Use Node 24 from `.nvmrc` and install the pinned lockfile dependencies. From the repository root, run this command.
 
 ```sh
-TERM=xterm-256color FC_SEED=20261116 pnpm exec mocha --no-config --require ts-node/register --require test/setup.ts test/core/resolution/binding-graph.properties.test.ts test/integration/interface-binding.properties.test.ts --exit
+TERM=xterm-256color FC_SEED=20261116 pnpm exec mocha --require ts-node/register --require test/setup.ts test/core/resolution/binding-graph.properties.test.ts test/integration/interface-binding.properties.test.ts --exit
 ```
 
 Expect `3 passing`: the graph property, the unprovided cycle example, and the launched-project property. All of them also run in `pnpm test`.
-`--no-config` prevents `.mocharc.json` from adding every unit test to this focused run.
 Change `FC_SEED` to explore another sample. Keep the failing seed and printed counterexample when reporting a failure. The same seed reproduces the same generation and shrinking with the pinned dependency version.
 
 ## Judge the result

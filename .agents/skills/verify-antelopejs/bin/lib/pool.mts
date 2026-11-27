@@ -1,7 +1,7 @@
 import { availableParallelism } from "node:os";
 
 /** The most journeys one `journeys` command runs at once, whatever the host offers. */
-export const MAX_JOBS = 8;
+export const MAX_JOBS = 4;
 
 /**
  * How many journeys run at once when `--jobs` is not given: a quarter of the

@@ -12,11 +12,10 @@ Run this check for changes to the covered functions below, their callers, `semve
 Use Node 24 from `.nvmrc` and install the pinned lockfile dependencies. From the repository root, run this command.
 
 ```sh
-TERM=xterm-256color FC_SEED=20261028 pnpm exec mocha --no-config --require ts-node/register --require test/setup.ts test/core/module-manager.interface-ranges.test.ts --exit
+TERM=xterm-256color FC_SEED=20261028 pnpm exec mocha --require ts-node/register --require test/setup.ts test/core/module-manager.interface-ranges.test.ts --exit
 ```
 
 Expect `5 passing` and exit code 0: the two properties and three preview-version examples. All of them also run in `pnpm test`.
-`--no-config` prevents `.mocharc.json` from adding every unit test to this focused run.
 Change `FC_SEED` to explore another sample. Keep the failing seed and printed counterexample when reporting a failure.
 Rerunning the same command with the failing seed reproduces the same generation and shrinking with the pinned dependency version.
 
