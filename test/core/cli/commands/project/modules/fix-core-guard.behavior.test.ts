@@ -12,7 +12,7 @@ import {
   getCoreVersion,
 } from "../../../../../../src/cli";
 import { CliError } from "../../../../../../src/core/output";
-import { rejectionOf, stubLoadedConfig } from "../../../fixtures";
+import { rejectionOf } from "../../../fixtures";
 
 function projectWithCore(version: string): string {
   const project = mkdtempSync(path.join(tmpdir(), "ajs-fix-guard-"));
@@ -59,11 +59,11 @@ describe("project modules --fix: running core guard", () => {
 
     it(`${name} goes on when the running core is the project's`, async () => {
       const project = projectWithCore(getCoreVersion());
-      const read = sinon.stub(common, "readConfig").resolves({ name: "p" });
-      stubLoadedConfig({ modules: {} });
+      const read = sinon.stub(common, "readConfig").rejects(new Error("read"));
 
-      await run(project).catch(() => undefined);
+      const error = await rejectionOf(run(project));
 
+      expect(error.message).to.not.include("running ajs");
       expect(read.called).to.equal(true);
     });
   }
