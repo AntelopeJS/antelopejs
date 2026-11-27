@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   ci:
     uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v2
@@ -39,13 +43,13 @@ jobs:
     outputs:
       tier: ${{ steps.tier.outputs.tier }}
     steps:
-      - name: Pick the tier from the event, the target branch and the draft flag
+      - name: Pick the tier from the event and the target branch
         id: tier
         uses: AntelopeJS/.github/.github/actions/ci-tier@v2
 
   verify-map:
     needs: select
-    if: needs.select.outputs.tier != 'draft' && needs.select.outputs.tier != 'none'
+    if: needs.select.outputs.tier != 'none'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -60,7 +64,7 @@ jobs:
 
   formal-module-lifecycle:
     needs: select
-    if: needs.select.outputs.tier != 'draft' && needs.select.outputs.tier != 'none'
+    if: needs.select.outputs.tier != 'none'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -83,7 +87,7 @@ jobs:
 
   formal-module-cache-lock:
     needs: select
-    if: needs.select.outputs.tier != 'draft' && needs.select.outputs.tier != 'none'
+    if: needs.select.outputs.tier != 'none'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -105,7 +109,7 @@ jobs:
 
   formal-build-start:
     needs: select
-    if: needs.select.outputs.tier != 'draft' && needs.select.outputs.tier != 'none'
+    if: needs.select.outputs.tier != 'none'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -138,12 +142,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - if: >-
-          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.tier != 'draft' && needs.select.outputs.tier != 'none' && (needs.verify-map.result == 'skipped' || needs.formal-module-lifecycle.result == 'skipped' || needs.formal-module-cache-lock.result == 'skipped' || needs.formal-build-start.result == 'skipped'))
+          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.tier != 'none' && (needs.verify-map.result == 'skipped' || needs.formal-module-lifecycle.result == 'skipped' || needs.formal-module-cache-lock.result == 'skipped' || needs.formal-build-start.result == 'skipped'))
         run: exit 1
-      - if: needs.select.outputs.tier == 'draft'
-        run: |
-          echo "::error::Draft pull request: only lint and typecheck ran. Mark it ready for review to run the tests."
-          exit 1
   renovate-sync:
     if: >-
       github.event_name == 'pull_request' && startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository
