@@ -15,7 +15,10 @@ Node 24 (`.nvmrc`) and pnpm 10.34.9 (`packageManager`, through corepack), once p
 corepack enable
 pnpm install --frozen-lockfile
 export TERM=xterm-256color   # the CLI output tests expect Unicode symbols; TERM=dumb fails eight of them
+VERIFY=".agents/skills/verify-antelopejs/bin/verify-ajs.mts"
 ```
+
+`$RUN` in the rows below is a run folder that [Launch](#launch) creates.
 
 The TLA+ formal checks also need Java 21. Without it, leave them to their CI jobs.
 
@@ -77,11 +80,10 @@ The change is checked when every row its diff touches passed, with each command 
 Every deterministic step is a `verify-ajs` command. You choose which journeys to run and judge what they show; you never write a multi-step shell recipe. When a journey you need does not exist, add it to `bin/journeys/` and name it in its feature file, then run it.
 
 ```bash
-VERIFY=".agents/skills/verify-antelopejs/bin/verify-ajs.mts"
 node "$VERIFY"            # lists every command
 ```
 
-Node 24 runs the `.mts` files directly. Run from the repository root after `pnpm install --frozen-lockfile`.
+Node 24 runs the `.mts` files directly, from the repository root after [Setup](#setup).
 
 ## Launch
 
