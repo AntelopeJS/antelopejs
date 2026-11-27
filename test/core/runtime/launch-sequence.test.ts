@@ -348,6 +348,43 @@ describe("runtime launch-sequence interrupted while it prepares the project", ()
     await launched.catch(() => undefined);
     expect(changedNames()).to.deep.equal([]);
   });
+
+  it("keeps the .env a completed launch of the same project loaded", async () => {
+    const completedShutdown = new ShutdownManager();
+    const interruptedShutdown = new ShutdownManager();
+    sinon
+      .stub(processClaim, "createShutdownManager")
+      .onFirstCall()
+      .returns(completedShutdown)
+      .onSecondCall()
+      .returns(interruptedShutdown);
+    await runLaunchSequence(
+      prepareFromConfig,
+      project,
+      "test",
+      {},
+      EMBEDDED_RUNTIME_POLICY,
+    );
+
+    try {
+      const interrupted = runLaunchSequence(
+        (folder, env) => {
+          void interruptedShutdown.shutdown();
+          return prepareFromConfig(folder, env);
+        },
+        project,
+        "test",
+        {},
+        EMBEDDED_RUNTIME_POLICY,
+      );
+      await interruptedShutdown.shutdown();
+      await interrupted.catch(() => undefined);
+
+      expect(process.env[ENV_NAME]).to.equal("loaded");
+    } finally {
+      await completedShutdown.shutdown();
+    }
+  });
 });
 
 describe("runtime launch steps", () => {
