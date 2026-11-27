@@ -14,7 +14,7 @@ const RUN_VARIABLE = "AJS_CACHE_CHILD_RUN";
  * before it is killed. Its boot through ts-node, which a loaded host slows
  * down without bound, is not counted.
  */
-export const CHILD_TIMEOUT_MS = 30_000;
+const CHILD_TIMEOUT_MS = 30_000;
 
 const BOOTED = "booted";
 
