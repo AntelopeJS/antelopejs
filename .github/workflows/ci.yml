@@ -125,7 +125,7 @@ jobs:
           key: tla2tools-1.7.4
       - run: node .agents/skills/formal-build-start/check.mjs
 
-  checks:
+  gate:
     if: always()
     needs:
       - select
