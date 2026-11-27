@@ -15,6 +15,7 @@ import {
   commonModule as common,
 } from "../../../../../src/cli";
 import type {
+  DependencyBump,
   InterfaceBump,
   RangeBump,
   RelockBump,
@@ -67,6 +68,26 @@ function rangeBump(folder: string, required: boolean): RangeBump {
     field: "dependencies",
     from: "^0.1.8",
     to: "^0.1.9",
+  };
+}
+
+function dependencyBump(project: string): DependencyBump {
+  return {
+    kind: "dependency",
+    moduleId: "file-storage-local",
+    packageName: DATA_API,
+    current: "0.1.8",
+    target: "0.1.9",
+    requiredBy: ["cms@0.6.6"],
+    required: true,
+    folder: path.join(
+      project,
+      "node_modules",
+      "@antelopejs",
+      "file-storage-local",
+    ),
+    dependency: "@antelopejs/file-storage-local",
+    project,
   };
 }
 
@@ -274,6 +295,35 @@ describe("project modules update behavior: interface bumps with --fix", () => {
       "Could not install @antelopejs/interface-data-api 0.1.9 for app",
     );
     expect(interfaceCheck.callCount).to.equal(1);
+  });
+});
+
+describe("project modules update behavior: --fix on a module under node_modules", () => {
+  const env = useUpdateProject();
+
+  it("with --fix leaves a module under node_modules alone and names the project dependency to raise", async () => {
+    const bump = dependencyBump(env.project);
+    const manifest = `${JSON.stringify({ name: bump.dependency, dependencies: { [DATA_API]: "^0.1.8" } })}\n`;
+    await mkdir(bump.folder, { recursive: true });
+    await writeFile(path.join(bump.folder, "package.json"), manifest);
+    const interfaceCheck = stubInterfaceCheck(check([bump]));
+    const execute = sinon.stub(command, "ExecuteCMD");
+
+    const failure = await rejectionOf(env.update("--fix"));
+
+    expect(
+      await readFile(path.join(bump.folder, "package.json"), "utf8"),
+    ).to.equal(manifest);
+    expect(execute.callCount).to.equal(0);
+    expect(interfaceCheck.callCount).to.equal(1);
+    assert.ok(failure instanceof CliError);
+    const problem = describeFailure(failure, false);
+    expect(problem.details).to.deep.equal([
+      "file-storage-local installs @antelopejs/interface-data-api 0.1.8 from the @antelopejs/file-storage-local dependency; 0.1.9 is required by cms@0.6.6",
+    ]);
+    expect(problem.fixes).to.deep.equal([
+      `Raise @antelopejs/file-storage-local in ${displayPath(path.join(env.project, "package.json"))} to a release that depends on @antelopejs/interface-data-api 0.1.9, then install the dependencies of ${displayPath(env.project)} again`,
+    ]);
   });
 });
 

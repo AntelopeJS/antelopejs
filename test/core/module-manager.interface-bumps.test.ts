@@ -1,5 +1,6 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
+import { mkdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { inc } from "semver";
 
@@ -34,18 +35,28 @@ function cleanupProjects() {
 /**
  * Loads every module of an incident project in the order given, as local
  * folders, except the ones named in `fromNpm`, which keep an npm source.
+ *
+ * @param movedTo the folder, relative to the project, a module is moved to.
  */
 async function plan(
   modules: IncidentModules,
   fromNpm: string[],
   interfaceName = INCIDENT_INTERFACE,
+  movedTo: ReadonlyMap<string, string> = new Map(),
 ) {
   const folder = await writeIncidentProject(modules, interfaceName);
   projects.push(folder);
+  for (const [name, target] of movedTo) {
+    await mkdir(path.dirname(path.join(folder, target)), { recursive: true });
+    await rename(path.join(folder, "modules", name), path.join(folder, target));
+  }
   const manager = new ModuleManager();
   const manifests = await Promise.all(
     (modules ?? []).map(({ name }) => {
-      const moduleFolder = path.join(folder, "modules", name);
+      const moduleFolder = path.join(
+        folder,
+        movedTo.get(name) ?? path.join("modules", name),
+      );
       return fromNpm.includes(name)
         ? ModuleManifest.create(moduleFolder, npmSource(name), name)
         : createLocalManifest(moduleFolder);
@@ -334,6 +345,43 @@ describe("ModuleManager interface bumps of an implemented interface", () => {
     );
 
     expect(bumps).to.deep.equal([]);
+  });
+});
+
+describe("ModuleManager interface bumps of a module under node_modules", () => {
+  cleanupProjects();
+
+  it("names the project dependency to raise for a local module installed under node_modules", async () => {
+    const installed = path.join("node_modules", "@test-scope", "storage");
+    const { folder, bumps } = await plan(
+      [
+        { name: "app", range: ">=0.3.1 <1.0.0", copy: "0.3.1" },
+        {
+          name: "storage",
+          range: ">=0.3.0 <0.4.0",
+          copy: "0.3.0",
+          implementsInterface: true,
+        },
+      ],
+      [],
+      INCIDENT_INTERFACE,
+      new Map([["storage", installed]]),
+    );
+
+    expect(bumps).to.deep.equal([
+      {
+        kind: "dependency",
+        moduleId: "storage",
+        packageName: INCIDENT_INTERFACE,
+        current: "0.3.0",
+        target: "0.3.1",
+        requiredBy: ["app@1.0.0"],
+        required: true,
+        folder: path.join(folder, installed),
+        dependency: "@test-scope/storage",
+        project: folder,
+      },
+    ]);
   });
 });
 

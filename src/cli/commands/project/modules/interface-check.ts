@@ -7,6 +7,7 @@ import {
   type ProjectInterfaceCheck,
 } from "../../../../core/build";
 import type {
+  DependencyBump,
   InterfaceBump,
   RangeBump,
   RelockBump,
@@ -99,22 +100,36 @@ function requiredByText(bump: InterfaceBump): string {
     : `to match the shared copy ${bump.target}`;
 }
 
-/** One line naming a bump: the module, the package and the exact change. */
-function manifestPath(bump: RangeBump): string {
-  return displayPath(path.join(bump.folder, "package.json"));
+function manifestPath(folder: string): string {
+  return displayPath(path.join(folder, "package.json"));
 }
 
+/** One line naming a bump: the module, the package and the exact change. */
 function describeBump(bump: InterfaceBump): string {
   const { arrow } = getProcessUi().symbols;
   if (bump.kind === "range") {
-    const manifest = manifestPath(bump);
+    const manifest = manifestPath(bump.folder);
     return `${bump.packageName}: ${bump.from} ${arrow} ${bump.to} in ${manifest}, ${requiredByText(bump)}`;
+  }
+  if (bump.kind === "dependency") {
+    return `${bump.moduleId} installs ${bump.packageName} ${bump.current} from the ${bump.dependency} dependency; ${bump.target} is ${requiredByText(bump)}`;
   }
   return `${bump.moduleId} installs ${bump.packageName} ${bump.current}; resolving its dependencies again gives ${bump.target}, ${requiredByText(bump)}`;
 }
 
 function fixHint(options: InterfaceCheckOptions): string {
   return `Run ${scopedCommand(`${options.command} ${FIX_FLAG}`, options)} to apply the changes`;
+}
+
+/** The bumps `--fix` applies: never a package.json under `node_modules`. */
+function isFixable(
+  bump: InterfaceBump,
+): bump is Exclude<InterfaceBump, DependencyBump> {
+  return bump.kind !== "dependency";
+}
+
+function dependencyFix(bump: DependencyBump): string {
+  return `Raise ${bump.dependency} in ${manifestPath(bump.project)} to a release that depends on ${bump.packageName} ${bump.target}, then install the dependencies of ${displayPath(bump.project)} again`;
 }
 
 function bumpFixes(
@@ -126,12 +141,16 @@ function bumpFixes(
       bumps.filter((bump) => bump.kind === "relock").map((b) => b.moduleId),
     ),
   ];
+  const dependencies = bumps.filter(
+    (bump): bump is DependencyBump => bump.kind === "dependency",
+  );
   return [
-    fixHint(options),
+    ...(bumps.some(isFixable) ? [fixHint(options)] : []),
     ...relocked.map(
       (moduleId) =>
         `Or run ${scopedCommand(`${UPDATE_COMMAND} ${moduleId}`, options)}`,
     ),
+    ...new Set(dependencies.map(dependencyFix)),
   ];
 }
 
@@ -150,7 +169,7 @@ async function applyRangeBumps(folder: string, bumps: RangeBump[]) {
   bumps.forEach((bump) =>
     getProcessUi().message(
       "success",
-      `Raised ${bump.packageName} to ${bump.to} in ${manifestPath(bump)}`,
+      `Raised ${bump.packageName} to ${bump.to} in ${manifestPath(bump.folder)}`,
     ),
   );
   const command = await getInstallCommand(folder, false, undefined, "update");
@@ -178,7 +197,7 @@ function ensureTargetInstalled(bump: RangeBump): void {
   }
   throw new CliError({
     title: `Could not install ${bump.packageName} ${bump.target} for ${bump.moduleId}`,
-    reason: `${manifestPath(bump)} now asks for ${bump.to}, but its dependencies hold ${installed ?? "no copy"} of ${bump.packageName}.`,
+    reason: `${manifestPath(bump.folder)} now asks for ${bump.to}, but its dependencies hold ${installed ?? "no copy"} of ${bump.packageName}.`,
     fixes: [
       `Check that the registry serves ${bump.packageName} ${bump.target}, then install the dependencies of ${displayPath(bump.folder)} again`,
     ],
@@ -186,7 +205,7 @@ function ensureTargetInstalled(bump: RangeBump): void {
 }
 
 async function applyBumps(
-  bumps: InterfaceBump[],
+  bumps: Exclude<InterfaceBump, DependencyBump>[],
   options: InterfaceCheckOptions,
 ): Promise<void> {
   const ranges = new Map<string, RangeBump[]>();
@@ -219,7 +238,7 @@ function warnDrift(bumps: InterfaceBump[], options: InterfaceCheckOptions) {
     "warn",
     "Modules compile against an older interface copy than the shared one:",
     {
-      details: [...bumps.map(describeBump), fixHint(options)],
+      details: [...bumps.map(describeBump), ...bumpFixes(bumps, options)],
     },
   );
 }
@@ -236,10 +255,14 @@ function unreachedProblem(bumps: InterfaceBump[]): CliProblem {
       (bump) =>
         `${bump.moduleId} still installs ${bump.packageName} ${bump.current}, and ${bump.target} is ${requiredByText(bump)}`,
     ),
-    fixes: bumps.flatMap((bump) => [
-      `Check that the registry serves ${bump.packageName} ${bump.target} to ${bump.moduleId}`,
-      `Or update ${bump.moduleId} to a release that depends on ${bump.packageName} ${bump.target}`,
-    ]),
+    fixes: bumps.flatMap((bump) =>
+      bump.kind === "dependency"
+        ? [dependencyFix(bump)]
+        : [
+            `Check that the registry serves ${bump.packageName} ${bump.target} to ${bump.moduleId}`,
+            `Or update ${bump.moduleId} to a release that depends on ${bump.packageName} ${bump.target}`,
+          ],
+    ),
   };
 }
 
@@ -247,7 +270,9 @@ function unreachedProblem(bumps: InterfaceBump[]): CliProblem {
  * Checks, for every environment in `options`, that each interface package
  * has one installed copy every module accepts, and that the project's own
  * modules and the shared copy use it. With `fix`, applies the bumps first and
- * checks again. A bump that only aligns a local module's copy is a warning.
+ * checks again; a module under `node_modules` is never edited, its failure
+ * names the project dependency to raise. A bump that only aligns a local
+ * module's copy is a warning.
  *
  * @returns the failure to throw once the command has reported its summary:
  * the bumps a launch needs, or the range conflicts no installed copy solves.
@@ -256,8 +281,9 @@ export async function checkInterfaceVersions(
   options: InterfaceCheckOptions,
 ): Promise<Error | undefined> {
   let result = await checkEnvironments(options);
-  if (options.fix && result.bumps.length > 0) {
-    await applyBumps(result.bumps, options);
+  const fixable = result.bumps.filter(isFixable);
+  if (options.fix && fixable.length > 0) {
+    await applyBumps(fixable, options);
     result = await checkEnvironments({ ...options, installCommands: true });
   }
   warnDrift(
@@ -265,7 +291,7 @@ export async function checkInterfaceVersions(
     options,
   );
   const required = result.bumps.filter((bump) => bump.required);
-  if (required.length > 0 && options.fix) {
+  if (options.fix && required.some(isFixable)) {
     return new CliError(unreachedProblem(required));
   }
   if (required.length > 0) {
