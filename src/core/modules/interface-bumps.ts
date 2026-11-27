@@ -78,6 +78,7 @@ const LOCAL_SOURCE_TYPES: ReadonlySet<string> = new Set([
   "local-folder",
 ]);
 const NODE_MODULES = "node_modules";
+const PNPM_STORE = ".pnpm";
 const FLOOR_RANGE_PATTERN = /^>=\s*(\S+)(\s+<\s*\S+)?$/;
 const PREFIX_RANGE_PATTERN = /^([\^~]?)(\S+)$/;
 const CORE_INTERFACE_COPY = resolvePackage(
@@ -106,8 +107,9 @@ function packageSource(source: ModuleSource): ModuleSourcePackage | undefined {
  * path: a folder whose real path lies outside every `node_modules` (a
  * workspace package linked into one) belongs to the project. The project is
  * the folder holding the outermost `node_modules`; the dependency is the
- * package under the innermost one, which names the real package inside a
- * `.pnpm` store.
+ * package directly under it, which the project depends on. Inside a `.pnpm`
+ * store the path does not name the direct dependency, so the dependency is
+ * the real package under the innermost `node_modules`.
  *
  * @returns undefined when the real path of `folder` lies under no
  * `node_modules`.
@@ -117,15 +119,19 @@ function installingDependency(
 ): { project: string; dependency: string } | undefined {
   const segments = normalizeExistingPath(folder).split(path.sep);
   const first = segments.indexOf(NODE_MODULES);
-  const last = segments.lastIndexOf(NODE_MODULES);
-  if (first < 0 || last + 1 >= segments.length) {
+  if (first < 0 || first + 1 >= segments.length) {
     return undefined;
   }
-  const nameLength = segments[last + 1]?.startsWith("@") ? 2 : 1;
+  const inPnpmStore = segments[first + 1] === PNPM_STORE;
+  const named = inPnpmStore ? segments.lastIndexOf(NODE_MODULES) : first;
+  if (named + 1 >= segments.length) {
+    return undefined;
+  }
+  const nameLength = segments[named + 1]?.startsWith("@") ? 2 : 1;
   return {
     project: segments.slice(0, first).join(path.sep) || path.sep,
     dependency: segments
-      .slice(last + 1, last + 1 + nameLength)
+      .slice(named + 1, named + 1 + nameLength)
       .join(path.posix.sep),
   };
 }
