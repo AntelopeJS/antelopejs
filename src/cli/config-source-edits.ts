@@ -1,6 +1,6 @@
 import type * as TypeScript from "typescript";
 
-const SAFE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+import { isIdentifierKey } from "./config-layout";
 
 /** A replacement of the source between `start` and `end` by `text`. */
 export interface SourceEdit {
@@ -19,7 +19,7 @@ export interface SourceLayout {
 
 /** `key` as an object literal key: bare when it is an identifier, quoted otherwise. */
 function formatKey(key: string): string {
-  return SAFE_KEY_RE.test(key) ? key : JSON.stringify(key);
+  return isIdentifierKey(key) ? key : JSON.stringify(key);
 }
 
 function lineIndentAt(text: string, position: number): string {

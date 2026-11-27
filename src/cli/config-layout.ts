@@ -8,7 +8,7 @@ const PRINT_WIDTH = 80;
 const TAB_WIDTH = 2;
 const SHORT_KEY_LENGTH = 5;
 const TAB = "\t";
-const SAFE_KEY_RE = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u;
+const IDENTIFIER_KEY_RE = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u;
 const ESCAPE_OR_SINGLE_QUOTE_RE = /\\.|'/g;
 
 interface LiteralNode {
@@ -47,6 +47,11 @@ function quote(text: string): string {
       match === '\\"' ? '"' : match === "'" ? "\\'" : match,
     );
   return `'${body}'`;
+}
+
+/** Whether `key` is an identifier, which an object literal writes without quotes, as oxfmt does. */
+export function isIdentifierKey(key: string): boolean {
+  return IDENTIFIER_KEY_RE.test(key);
 }
 
 function literal(text: string, numeric = false, keepsKeyLine = false) {
@@ -145,8 +150,7 @@ function printProperty(
   unit: string,
   depth: number,
 ): string {
-  const identifier = SAFE_KEY_RE.test(key);
-  const printedKey = identifier ? key : quote(key);
+  const printedKey = isIdentifierKey(key) ? key : quote(key);
   const keyWidth = textWidth(printedKey);
   const column = indentWidth(unit, depth) + keyWidth + 2;
   const keepsLine =

@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import type * as TypeScript from "typescript";
 
 import { CliError } from "../core/output";
-import { printNode, toNode } from "./config-layout";
+import { isIdentifierKey, printNode, toNode } from "./config-layout";
 import {
   insertionEdit,
   removalEdit,
@@ -23,7 +23,6 @@ const FUNCTION_BASED_TS_CONFIG_ERROR =
   "Cannot update antelope.config.ts automatically when default export is function-based.";
 const NOT_A_LITERAL_REASON =
   "The value there is not a plain literal, so the command cannot change it without replacing source code with evaluated values.";
-const SAFE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
 type ConfigPath = readonly string[];
 
@@ -40,7 +39,7 @@ interface SourceContext extends SourceLayout {
 function formatPath(path: ConfigPath): string {
   return path
     .map((key, index) => {
-      if (!SAFE_KEY_RE.test(key)) return `[${JSON.stringify(key)}]`;
+      if (!isIdentifierKey(key)) return `[${JSON.stringify(key)}]`;
       return index === 0 ? key : `.${key}`;
     })
     .join("");
