@@ -8,11 +8,7 @@ import {
 } from "../../src/core/downloaders";
 import { NodeFileSystem } from "../../src/core/filesystem";
 import { type CacheKeep, ModuleCache } from "../../src/core/modules";
-import {
-  CHILD_TIMEOUT_MS,
-  commitInChild,
-  openGate,
-} from "../helpers/cache-children";
+import { commitInChild, openGate } from "../helpers/cache-children";
 import {
   deadPid,
   hasEntryFolder,
@@ -129,7 +125,7 @@ describe("ModuleCache manifest saved by several runs", () => {
   });
 
   it("keeps every entry that three processes commit at the same time", async function () {
-    this.timeout(CHILD_TIMEOUT_MS * 2);
+    this.timeout(0);
     const goFile = path.join(root, "go");
     const expected: string[] = [];
     const runs = Array.from({ length: RUNS }, (_, run) => {

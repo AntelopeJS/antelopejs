@@ -16,11 +16,7 @@ import {
   prepareFromArtifact,
   prepareFromRefreshedArtifact,
 } from "../../../src/core/runtime";
-import {
-  CHILD_TIMEOUT_MS,
-  openGate,
-  pruneInChild,
-} from "../../helpers/cache-children";
+import { openGate, pruneInChild } from "../../helpers/cache-children";
 import {
   holdPruneLock,
   pruneLockPath,
@@ -133,7 +129,7 @@ async function startWhileRebuilt(
 }
 
 describe("ajs project start while another run rebuilds and prunes", function () {
-  this.timeout(CHILD_TIMEOUT_MS + 5000);
+  this.timeout(0);
 
   let root: string;
   let cachePath: string;

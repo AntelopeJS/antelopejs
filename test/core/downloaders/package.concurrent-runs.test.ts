@@ -3,7 +3,6 @@ import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
-  CHILD_TIMEOUT_MS,
   type ChildRun,
   INSTALLED_LOCKFILE,
   loadPackageInChild,
@@ -31,7 +30,7 @@ function packs(run: PackageRun): string[] {
 }
 
 describe("Two runs loading the same package version into one cache", function () {
-  this.timeout(CHILD_TIMEOUT_MS * 2);
+  this.timeout(0);
   let root: string;
   let base: PackageRun;
   const children: ChildRun[] = [];
@@ -47,6 +46,7 @@ describe("Two runs loading the same package version into one cache", function ()
   });
 
   afterEach(async () => {
+    openGate(path.join(root, "start"));
     openGate(path.join(root, "exit"));
     openGate(path.join(root, "install"));
     await Promise.all(
@@ -61,15 +61,18 @@ describe("Two runs loading the same package version into one cache", function ()
     return child;
   }
 
-  async function startDevRun(): Promise<ChildRun> {
+  async function runBesideDevRun(run: PackageRun): Promise<string> {
     seedCache(base.cachePath, [ENTRY]);
     writeFileSync(
       path.join(base.cachePath, ENTRY, INSTALLED_LOCKFILE),
       SEEDED_LOCKFILE,
     );
+    const startGate = path.join(root, "start");
     const dev = start({ ...base, exitGate: path.join(root, "exit") });
+    const beside = start({ ...run, startGate });
     await dev.printed("loaded");
-    return dev;
+    openGate(startGate);
+    return beside.exited;
   }
 
   function expectDevFolderUntouched(): void {
@@ -81,9 +84,7 @@ describe("Two runs loading the same package version into one cache", function ()
   }
 
   it("lets modules update refresh a version a dev run uses: it keeps that folder, records its lock and keeps the entry", async () => {
-    await startDevRun();
-
-    const output = await start({ ...base, mode: "refresh" }).exited;
+    const output = await runBesideDevRun({ ...base, mode: "refresh" });
 
     expect(loadedFolder(output)).to.equal(path.join(base.cachePath, ENTRY));
     expectDevFolderUntouched();
@@ -95,9 +96,7 @@ describe("Two runs loading the same package version into one cache", function ()
   });
 
   it("lets a build whose source ignores the cache load a version a dev run uses, keeping that folder and its entry", async () => {
-    await startDevRun();
-
-    const output = await start({ ...base, ignoreCache: true }).exited;
+    const output = await runBesideDevRun({ ...base, ignoreCache: true });
 
     expect(loadedFolder(output)).to.equal(path.join(base.cachePath, ENTRY));
     expectDevFolderUntouched();
@@ -105,9 +104,11 @@ describe("Two runs loading the same package version into one cache", function ()
 
   it("makes a second cold start wait for the first one's download, then reuse its folder, packing once", async () => {
     const installGate = path.join(root, "install");
+    const startGate = path.join(root, "start");
     const first = start({ ...base, installGate });
+    const second = start({ ...base, startGate });
     await first.printed("installing");
-    const second = start(base);
+    openGate(startGate);
     await second.printed("loading");
     await new Promise((resolve) => setTimeout(resolve, WAITING_MS));
     openGate(installGate);

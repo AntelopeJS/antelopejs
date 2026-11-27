@@ -9,8 +9,14 @@ const MODULES_SOURCE = path.join(REPO_ROOT, "src/core/modules");
 const DOWNLOADERS_SOURCE = path.join(REPO_ROOT, "src/core/downloaders");
 const RUN_VARIABLE = "AJS_CACHE_CHILD_RUN";
 
-/** How long a child of these tests may run before it is killed. */
-export const CHILD_TIMEOUT_MS = 30_000;
+/**
+ * How long a child of these tests may run once it has loaded its script,
+ * before it is killed. Its boot through ts-node, which a loaded host slows
+ * down without bound, is not counted.
+ */
+const CHILD_TIMEOUT_MS = 30_000;
+
+const BOOTED = "booted";
 
 const quoted = JSON.stringify;
 
@@ -29,7 +35,12 @@ export interface ChildRun {
 export function runInChild(script: string, runJson = "{}"): ChildRun {
   const child = spawn(
     process.execPath,
-    ["-r", "ts-node/register", "-e", script],
+    [
+      "-r",
+      "ts-node/register",
+      "-e",
+      `${script}\nprocess.send(${quoted(BOOTED)}, () => process.disconnect());`,
+    ],
     {
       cwd: REPO_ROOT,
       env: {
@@ -37,22 +48,35 @@ export function runInChild(script: string, runJson = "{}"): ChildRun {
         TS_NODE_TRANSPILE_ONLY: "true",
         [RUN_VARIABLE]: runJson,
       },
-      timeout: CHILD_TIMEOUT_MS,
+      stdio: ["ignore", "pipe", "pipe", "ipc"],
     },
   );
+  const { stdout, stderr } = child;
+  if (stdout === null || stderr === null) {
+    throw new Error("The child was spawned without stdout and stderr pipes");
+  }
   let output = "";
-  child.stdout.on("data", (chunk) => (output += String(chunk)));
-  child.stderr.on("data", (chunk) => (output += String(chunk)));
+  stdout.on("data", (chunk) => (output += String(chunk)));
+  stderr.on("data", (chunk) => (output += String(chunk)));
+  let deadline: NodeJS.Timeout | undefined;
+  child.once("message", () => {
+    deadline = setTimeout(() => child.kill(), CHILD_TIMEOUT_MS);
+  });
   const exited = new Promise<string>((resolve, reject) => {
     child.on("error", reject);
-    child.on("close", (code) =>
-      code === 0 ? resolve(output) : reject(new Error(output)),
-    );
+    child.on("close", (code) => {
+      clearTimeout(deadline);
+      if (code === 0) {
+        resolve(output);
+      } else {
+        reject(new Error(output));
+      }
+    });
   });
   const printed = (text: string) =>
     new Promise<void>((resolve, reject) => {
       const check = () => output.includes(text) && resolve();
-      child.stdout.on("data", check);
+      stdout.on("data", check);
       exited.then(
         () => reject(new Error(`Exited without printing ${text}: ${output}`)),
         reject,
@@ -80,6 +104,12 @@ export interface PackageRun {
   packLog: string;
   mode?: ModuleLockMode;
   ignoreCache?: boolean;
+  /**
+   * A file the child waits for once it has loaded the core, before it loads
+   * the cache: a child started beside another boots at the same time as that
+   * one, yet loads after it.
+   */
+  startGate?: string;
   /** A file the install double waits for after printing `installing`. */
   installGate?: string;
   /** A file the child waits for after printing `loaded`, so that its lease lives until then. */
@@ -124,6 +154,7 @@ export function loadPackageInChild(run: PackageRun): ChildRun {
       `  lock: run.mode ? { store: new ModuleLockStore(run.project), mode: run.mode } : undefined,`,
       `});`,
       `(async () => {`,
+      `  await waitFor(run.startGate);`,
       `  const cache = new ModuleCache(run.cachePath);`,
       `  await cache.load();`,
       `  process.stdout.write("loading\\n");`,

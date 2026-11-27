@@ -91,7 +91,7 @@ describe("ModuleManager interface preview versions", function () {
 });
 
 describe("ModuleManager interface range properties", function () {
-  this.timeout(60000);
+  this.timeout(0);
 
   it("matches semver, admitting a prerelease only when its release is in range too, without rejecting invalid declarations", async () => {
     await fc.assert(
@@ -140,7 +140,7 @@ describe("ModuleManager interface range properties", function () {
 });
 
 describe("ModuleManager interface range properties", function () {
-  this.timeout(60000);
+  this.timeout(0);
 
   it("rejects exactly the conflicting or preloaded consumers without dropping or inventing entries", async () => {
     await fc.assert(

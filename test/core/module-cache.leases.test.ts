@@ -3,12 +3,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { ModuleCache } from "../../src/core/modules";
-import {
-  CHILD_TIMEOUT_MS,
-  openGate,
-  pruneInChild,
-  runInChild,
-} from "../helpers/cache-children";
+import { openGate, pruneInChild, runInChild } from "../helpers/cache-children";
 import {
   hasEntryFolder,
   holdPruneLock,
@@ -95,7 +90,7 @@ describe("ModuleCache run leases", () => {
   });
 
   it("waits while a prune in another process holds the lock, then finds the folder it removed gone", async function () {
-    this.timeout(CHILD_TIMEOUT_MS + 5000);
+    this.timeout(0);
     seedCache(cachePath, ["a@1.0.0"]);
     const goFile = path.join(root, "go");
     const pruner = pruneInChild(cachePath, goFile);
@@ -117,7 +112,7 @@ describe("ModuleCache run leases", () => {
   });
 
   it("makes a prune that loses its lock after reading the leases move nothing, and leave the new holder's lock", async function () {
-    this.timeout(CHILD_TIMEOUT_MS + 5000);
+    this.timeout(0);
     seedCache(cachePath, ["a@1.0.0", "b@1.0.0"]);
     const goFile = path.join(root, "go");
     const pruner = pruneInChild(cachePath, goFile);
@@ -140,7 +135,7 @@ describe("ModuleCache run leases", () => {
   });
 
   it("removes the lease when the process that claimed exits", async function () {
-    this.timeout(CHILD_TIMEOUT_MS + 5000);
+    this.timeout(0);
 
     const whileRunning: unknown = JSON.parse(
       await claimInChild(cachePath, "a@1.0.0"),

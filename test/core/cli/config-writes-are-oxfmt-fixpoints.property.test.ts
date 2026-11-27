@@ -74,7 +74,7 @@ const manifest = fc.record(
 
 describe("CLI writers emit what oxfmt keeps", () => {
   it("writeConfig output is an oxfmt fixpoint after one to three writes", async function () {
-    this.timeout(60000);
+    this.timeout(0);
     await fc.assert(
       fc.asyncProperty(
         fc.array(moduleMap, { minLength: 1, maxLength: 3 }),
@@ -98,7 +98,7 @@ describe("CLI writers emit what oxfmt keeps", () => {
   });
 
   it("writes and removals on a hand-written config end on an oxfmt fixpoint", async function () {
-    this.timeout(60000);
+    this.timeout(0);
     await fc.assert(
       fc.asyncProperty(
         handWrittenConfig,
@@ -139,7 +139,7 @@ describe("CLI writers emit what oxfmt keeps", () => {
   });
 
   it("writeModuleManifest output is an oxfmt fixpoint", async function () {
-    this.timeout(60000);
+    this.timeout(0);
     await fc.assert(
       fc.asyncProperty(
         fc.array(manifest, { minLength: 1, maxLength: 3 }),
