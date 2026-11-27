@@ -2,6 +2,7 @@ import type {
   ModuleSource,
   ModuleSourcePackage,
 } from "@antelopejs/interface-core/config";
+import path from "node:path";
 import { lt, prerelease, valid, validRange } from "semver";
 
 import { isString, resolvePackage } from "../../utils";
@@ -53,15 +54,30 @@ export interface RelockBump extends BumpBase {
 }
 
 /**
+ * A local module the project installs under `node_modules`: its package.json
+ * belongs to a dependency of the project, which the next install overwrites,
+ * so the project raises that dependency to a release on the target instead.
+ */
+export interface DependencyBump extends BumpBase {
+  kind: "dependency";
+  folder: string;
+  /** The package under the outermost `node_modules` holding the module. */
+  dependency: string;
+  /** The folder whose `node_modules` holds `dependency`. */
+  project: string;
+}
+
+/**
  * A change that gives a module the copy of an interface package every module
  * accepts.
  */
-export type InterfaceBump = RangeBump | RelockBump;
+export type InterfaceBump = RangeBump | RelockBump | DependencyBump;
 
 const LOCAL_SOURCE_TYPES: ReadonlySet<string> = new Set([
   "local",
   "local-folder",
 ]);
+const NODE_MODULES = "node_modules";
 const FLOOR_RANGE_PATTERN = /^>=\s*(\S+)(\s+<\s*\S+)?$/;
 const PREFIX_RANGE_PATTERN = /^([\^~]?)(\S+)$/;
 const CORE_INTERFACE_COPY = resolvePackage(
@@ -82,6 +98,29 @@ function packageSource(source: ModuleSource): ModuleSourcePackage | undefined {
     type: "package",
     package: source.package,
     version: source.version,
+  };
+}
+
+/**
+ * The project and the dependency under its outermost `node_modules` that
+ * hold `folder`.
+ *
+ * @returns undefined when `folder` lies under no `node_modules`.
+ */
+function installingDependency(
+  folder: string,
+): { project: string; dependency: string } | undefined {
+  const segments = folder.split(path.sep);
+  const index = segments.indexOf(NODE_MODULES);
+  if (index < 0) {
+    return undefined;
+  }
+  const nameLength = segments[index + 1]?.startsWith("@") ? 2 : 1;
+  return {
+    project: segments.slice(0, index).join(path.sep) || path.sep,
+    dependency: segments
+      .slice(index + 1, index + 1 + nameLength)
+      .join(path.posix.sep),
   };
 }
 
@@ -217,6 +256,12 @@ function bumpConsumer(
     required: context.required,
   };
   if (LOCAL_SOURCE_TYPES.has(manifest.source.type)) {
+    const installed = installingDependency(manifest.folder);
+    if (installed) {
+      return [
+        { ...base, kind: "dependency", folder: manifest.folder, ...installed },
+      ];
+    }
     const to = raiseRangeFloor(consumer.range, context.target);
     return to === undefined
       ? []
@@ -241,8 +286,9 @@ function bumpConsumer(
 /**
  * Lists the changes that give every module the copy of `packageName` that
  * all their ranges accept. A module the project owns (a local folder) whose
- * copy is older raises its range; an npm module whose older copy is the
- * shared one resolves its dependencies again. Other npm modules are left
+ * copy is older raises its range; one whose folder lies under `node_modules`
+ * names the project dependency to raise instead. An npm module whose older
+ * copy is the shared one resolves its dependencies again. Other npm modules are left
  * alone: a launch redirects them to the shared copy. Nothing is listed when
  * no installed copy satisfies every range.
  *
