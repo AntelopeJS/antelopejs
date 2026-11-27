@@ -428,6 +428,22 @@ describe("ModuleManager interface bumps of a workspace package linked under node
     ]);
   });
 
+  it("names the project's direct dependency for a module nested under another package's node_modules", async () => {
+    const nested = path.join("node_modules", "a", "node_modules", "storage");
+    const { folder, bumps } = await plan(
+      modules,
+      [],
+      INCIDENT_INTERFACE,
+      new Map([["storage", nested]]),
+    );
+
+    expect(
+      bumps.map((bump) =>
+        bump.kind === "dependency" ? [bump.dependency, bump.project] : [],
+      ),
+    ).to.deep.equal([["a", realpathSync(folder)]]);
+  });
+
   it("names the package, not .pnpm, for a copy that lives in the pnpm store", async () => {
     const stored = path.join(
       "node_modules",
