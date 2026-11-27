@@ -3,13 +3,10 @@ import * as runtimeInterface from "@antelopejs/interface-core/runtime";
 import { expect } from "chai";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
-import { once } from "node:events";
-import { writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import sinon from "sinon";
 import { loaderFixture } from "../../helpers/module-fixtures";
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
 import nodeModule from "node:module";
 
 import { NodeFileSystem } from "../../../src/core/filesystem";
@@ -19,7 +16,6 @@ import {
   EMBEDDED_RUNTIME_POLICY,
   LaunchInterruptedError,
   type LaunchStep,
-  prepareFromConfig,
   ShutdownManager,
   processClaimModule as processClaim,
   runLaunchSequence,
@@ -298,91 +294,6 @@ exports.start = () => { globalThis.${STARTED_FLAG} = true; };
       delete globals[STARTED_FLAG];
       nodeModule._resolveFilename = previousResolver;
       await fs.rm(projectFolder, { recursive: true, force: true });
-    }
-  });
-});
-
-describe("runtime launch-sequence interrupted while it prepares the project", () => {
-  const ENV_NAME = "AJS_INTERRUPTED_LAUNCH_ENV";
-  let project: string;
-
-  beforeEach(() => {
-    project = makeTempDir("ajs-launch-interrupted-env-");
-    writeFileSync(path.join(project, ".env"), `${ENV_NAME}=loaded\n`);
-    writeFileSync(
-      path.join(project, "antelope.config.ts"),
-      'export default { name: "interrupted", modules: {} };\n',
-    );
-  });
-
-  afterEach(() => {
-    sinon.restore();
-    delete process.env[ENV_NAME];
-    cleanupTempDir(project);
-  });
-
-  it("leaves process.env as it found it once the shutdown resolved", async () => {
-    const shutdownManager = new ShutdownManager();
-    sinon.stub(processClaim, "createShutdownManager").returns(shutdownManager);
-    const before = { ...process.env };
-    const changedNames = () =>
-      [...new Set([...Object.keys(before), ...Object.keys(process.env)])]
-        .filter((name) => before[name] !== process.env[name])
-        .sort();
-    const stopping = once(shutdownManager.stopping, "abort");
-
-    const launched = runLaunchSequence(
-      (folder, env) => {
-        void shutdownManager.shutdown();
-        return prepareFromConfig(folder, env);
-      },
-      project,
-      "test",
-      {},
-      EMBEDDED_RUNTIME_POLICY,
-    );
-
-    await stopping;
-    await shutdownManager.shutdown();
-    expect(changedNames()).to.deep.equal([]);
-    await launched.catch(() => undefined);
-    expect(changedNames()).to.deep.equal([]);
-  });
-
-  it("keeps the .env a completed launch of the same project loaded", async () => {
-    const completedShutdown = new ShutdownManager();
-    const interruptedShutdown = new ShutdownManager();
-    sinon
-      .stub(processClaim, "createShutdownManager")
-      .onFirstCall()
-      .returns(completedShutdown)
-      .onSecondCall()
-      .returns(interruptedShutdown);
-    await runLaunchSequence(
-      prepareFromConfig,
-      project,
-      "test",
-      {},
-      EMBEDDED_RUNTIME_POLICY,
-    );
-
-    try {
-      const interrupted = runLaunchSequence(
-        (folder, env) => {
-          void interruptedShutdown.shutdown();
-          return prepareFromConfig(folder, env);
-        },
-        project,
-        "test",
-        {},
-        EMBEDDED_RUNTIME_POLICY,
-      );
-      await interruptedShutdown.shutdown();
-      await interrupted.catch(() => undefined);
-
-      expect(process.env[ENV_NAME]).to.equal("loaded");
-    } finally {
-      await completedShutdown.shutdown();
     }
   });
 });

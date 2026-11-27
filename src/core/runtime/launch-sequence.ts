@@ -5,10 +5,9 @@ import { setLogAudience, setupAntelopeProjectLogging } from "../../logging";
 import type { LaunchOptions } from "../../types";
 import {
   getProjectEnvPath,
+  LaunchEnvLoads,
   loadProjectEnv,
   logProjectEnv,
-  restoreProjectEnv,
-  snapshotProjectEnv,
   tryFindConfigPath,
 } from "../config";
 import { NodeFileSystem } from "../filesystem";
@@ -553,32 +552,34 @@ const LAUNCH_STEPS: readonly LaunchStep<ProjectLaunch>[] = [
 
 /**
  * Prepares the project. A shutdown that starts meanwhile first waits for the
- * preparation to settle, then undoes the loads of the project `.env` it made,
- * so that `process.env` is left as the launch found it once the shutdown
- * resolves, with what an earlier launch of the project loaded. `prepare`
- * starts once that wait is registered, so a shutdown it starts itself waits
- * for it too.
+ * preparation to settle, then withdraws the loads of the project `.env` it
+ * made, so that `process.env` is left as the launch found it once the
+ * shutdown resolves, with what any other launch of the project loaded,
+ * before or meanwhile. `prepare` starts once that wait is registered, so a
+ * shutdown it starts itself waits for it too. A preparation no shutdown
+ * interrupted keeps its loads.
  */
 async function prepareProject(
   request: LaunchRequest,
   shutdownManager: ShutdownManager,
 ): Promise<PreparedProject> {
-  const envBefore = snapshotProjectEnv(request.projectFolder);
+  const envLoads = new LaunchEnvLoads();
+  const prepare = () => request.prepare(request.projectFolder, request.env);
   const preparing = Promise.resolve().then(() =>
-    runInterruptibly(
-      () => request.prepare(request.projectFolder, request.env),
-      shutdownManager.stopping,
-    ),
+    envLoads.record(() => runInterruptibly(prepare, shutdownManager.stopping)),
   );
-  const restoreEnv = async () => {
+  const withdrawEnv = async () => {
     await preparing.catch(() => undefined);
-    restoreProjectEnv(envBefore);
+    envLoads.withdraw();
   };
-  shutdownManager.register(restoreEnv, SHUTDOWN_PRIORITY_PREPARATION);
+  shutdownManager.register(withdrawEnv, SHUTDOWN_PRIORITY_PREPARATION);
   try {
     return await preparing;
   } finally {
-    shutdownManager.unregister(restoreEnv);
+    shutdownManager.unregister(withdrawEnv);
+    if (!shutdownManager.stopping.aborted) {
+      envLoads.keep();
+    }
   }
 }
 
