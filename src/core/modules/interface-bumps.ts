@@ -16,7 +16,7 @@ import type {
 import type { ModuleManifest } from "./module-manifest";
 
 /** The package.json field a module declares an interface package in. */
-export type DependencyField = "dependencies" | "optionalDependencies";
+type DependencyField = "dependencies" | "optionalDependencies";
 
 interface BumpBase {
   moduleId: string;

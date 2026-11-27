@@ -58,7 +58,7 @@ export interface BuildImportOverride {
   id?: string;
 }
 
-export interface BuildArtifactConfig {
+interface BuildArtifactConfig {
   name: string;
   cacheFolder: string;
   projectFolder: string;
