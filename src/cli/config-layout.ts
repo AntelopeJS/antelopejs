@@ -1,14 +1,19 @@
 import type { AntelopeConfig } from "@antelopejs/interface-core/config";
 
 import type { ConfigValue } from "../types";
-import { isBoolean, isNumber, isObject, isString } from "../utils";
+import {
+  isBoolean,
+  isIdentifierKey,
+  isNumber,
+  isObject,
+  isString,
+} from "../utils";
 import { textWidth } from "./text-width";
 
 const PRINT_WIDTH = 80;
 const TAB_WIDTH = 2;
 const SHORT_KEY_LENGTH = 5;
 const TAB = "\t";
-const SAFE_KEY_RE = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u;
 const ESCAPE_OR_SINGLE_QUOTE_RE = /\\.|'/g;
 
 interface LiteralNode {
@@ -145,8 +150,7 @@ function printProperty(
   unit: string,
   depth: number,
 ): string {
-  const identifier = SAFE_KEY_RE.test(key);
-  const printedKey = identifier ? key : quote(key);
+  const printedKey = isIdentifierKey(key) ? key : quote(key);
   const keyWidth = textWidth(printedKey);
   const column = indentWidth(unit, depth) + keyWidth + 2;
   const keepsLine =

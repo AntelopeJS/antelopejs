@@ -58,6 +58,17 @@ describe("config editor", () => {
     expect(edited.startsWith(untouchedHead)).to.equal(true);
   });
 
+  it("writes a non-ASCII identifier key bare and a dashed key quoted", () => {
+    const withCafe = setModuleEntry(ts, FILE, CONFIG, "café", {
+      source: LANG_SOURCE,
+    });
+    const edited = setModuleEntry(ts, FILE, withCafe, "my-module", {
+      source: LANG_SOURCE,
+    });
+    expect(edited).to.contain("\n    café: {\n");
+    expect(edited).to.contain('\n    "my-module": {\n');
+  });
+
   it("rewrites, adds and removes single fields of an existing entry", () => {
     const added = setModuleEntry(ts, FILE, CONFIG, "@antelopejs/dms-lang", {
       source: LANG_SOURCE,

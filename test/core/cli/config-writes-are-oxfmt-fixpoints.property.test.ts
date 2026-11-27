@@ -36,7 +36,7 @@ const moduleMap = fc.dictionary(
 );
 
 const shortModuleMap = fc.dictionary(
-  fc.constantFrom("api", "web", "storage"),
+  fc.constantFrom("api", "web", "storage", "café", "模块", "my-module"),
   fc.constant("^1.0.0"),
   { maxKeys: 3 },
 );

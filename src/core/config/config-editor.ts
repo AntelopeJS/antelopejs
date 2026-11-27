@@ -1,6 +1,6 @@
 import type * as TypeScript from "typescript";
 import type { ConfigValue } from "../../types";
-import { isObjectOrNull } from "../../utils";
+import { isIdentifierKey, isObjectOrNull } from "../../utils";
 import type { ModuleDeclarationChanges } from "./module-entry";
 
 type TS = typeof TypeScript;
@@ -21,7 +21,6 @@ interface TextEdit {
 const MODULES_KEY = "modules";
 const DEFINE_CONFIG = "defineConfig";
 const PACKAGE_SOURCE = "package";
-const SAFE_KEY = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 const NEWLINE = "\n";
 const FIRST_INDENT = /\n([\t ]+)\S/;
 const TAB = "\t";
@@ -126,7 +125,7 @@ function serializeAt(value: ConfigValue, unit: string, depth: number): string {
 }
 
 function formatKey(key: string): string {
-  return SAFE_KEY.test(key) ? key : JSON.stringify(key);
+  return isIdentifierKey(key) ? key : JSON.stringify(key);
 }
 
 function closingBrace(object: TypeScript.ObjectLiteralExpression): number {
