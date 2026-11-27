@@ -172,23 +172,23 @@ describe("runtime launch-sequence interrupted while another launch of the projec
     });
   }
 
-  it("keeps the .env of a launch still preparing when an earlier one is interrupted", async () => {
-    const [interrupted] = shutdownsOfLaunchesInOrder(2);
+  it("keeps the .env of a launch still preparing when one that loaded before it is interrupted", async () => {
+    const [, interrupted] = shutdownsOfLaunchesInOrder(2);
     const firstLoaded = gate();
     const secondLoaded = gate();
     const firstSettled = gate();
-    const launched = launch(project, async (folder, env) => {
-      const loaded = await prepareFromConfig(folder, env);
-      firstLoaded.open();
-      await secondLoaded.opened;
-      return shuttingDown(interrupted, async () => loaded)(folder, env);
-    });
     const preparing = launch(project, async (folder, env) => {
       await firstLoaded.opened;
       const loaded = await prepareFromConfig(folder, env);
       secondLoaded.open();
       await firstSettled.opened;
       return loaded;
+    });
+    const launched = launch(project, async (folder, env) => {
+      const loaded = await prepareFromConfig(folder, env);
+      firstLoaded.open();
+      await secondLoaded.opened;
+      return shuttingDown(interrupted, async () => loaded)(folder, env);
     });
 
     await once(interrupted.stopping, "abort");
