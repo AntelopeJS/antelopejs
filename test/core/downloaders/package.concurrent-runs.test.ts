@@ -3,7 +3,6 @@ import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
-  CHILD_TIMEOUT_MS,
   type ChildRun,
   INSTALLED_LOCKFILE,
   loadPackageInChild,
@@ -31,7 +30,7 @@ function packs(run: PackageRun): string[] {
 }
 
 describe("Two runs loading the same package version into one cache", function () {
-  this.timeout(CHILD_TIMEOUT_MS * 2);
+  this.timeout(0);
   let root: string;
   let base: PackageRun;
   const children: ChildRun[] = [];

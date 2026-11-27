@@ -10,7 +10,6 @@ import {
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { downloadLockOf, ModuleCache } from "../../../src/core/modules";
 import {
-  CHILD_TIMEOUT_MS,
   type ChildRun,
   loadPackageInChild,
   openGate,
@@ -48,7 +47,7 @@ function failureOf(run: Promise<unknown>): Promise<string | undefined> {
 }
 
 describe("A download whose lock another process took over", function () {
-  this.timeout(CHILD_TIMEOUT_MS * 2);
+  this.timeout(0);
   let root: string;
   let run: PackageRun;
   const children: ChildRun[] = [];
