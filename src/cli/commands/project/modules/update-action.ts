@@ -30,6 +30,7 @@ import {
   pruneModuleLocks,
   refreshModuleLocks,
 } from "./module-locks";
+import { assertRunningCoreMatchesProject } from "./fix-core-guard";
 import { checkInterfaceVersions } from "./interface-check";
 import { scopedCommand } from "../../shared/next-steps";
 import { resolveProjectContext } from "../../shared/project-command";
@@ -235,6 +236,7 @@ export async function updateModules(
   modules: string[],
   options: UpdateOptions,
 ): Promise<void> {
+  assertRunningCoreMatchesProject(options.project, options.fix);
   const startedAt = Date.now();
   const {
     config,
