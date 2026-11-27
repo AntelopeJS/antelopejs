@@ -129,7 +129,8 @@ function isFixable(
 }
 
 function dependencyFix(bump: DependencyBump): string {
-  return `Raise ${bump.dependency} in ${manifestPath(bump.project)} to a release that depends on ${bump.packageName} ${bump.target}, then install the dependencies of ${displayPath(bump.project)} again`;
+  const manifest = manifestPath(bump.project);
+  return `Raise ${bump.dependency} in ${manifest} to a release that depends on ${bump.packageName} ${bump.target}, then install the dependencies of ${path.dirname(manifest)} again`;
 }
 
 function bumpFixes(
