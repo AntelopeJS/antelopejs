@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.24.9
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.8...v1.24.9)
+
+### 🩹 Fixes
+
+- **deps:** Land oxfmt 0.80, oxlint 1.95 and @clack/prompts 1.9 ([#580](https://github.com/AntelopeJS/antelopejs/pull/580))
+- **runtime:** Unload the project .env of a launch interrupted while it prepares ([#588](https://github.com/AntelopeJS/antelopejs/pull/588))
+- **cli:** Leave non-ASCII identifier keys unquoted when editing antelope.config.ts ([#590](https://github.com/AntelopeJS/antelopejs/pull/590))
+- **cli:** Never raise interface ranges in a package.json under node_modules ([#592](https://github.com/AntelopeJS/antelopejs/pull/592))
+- **runtime:** Keep the .env an earlier launch loaded when a launch is interrupted while it prepares ([#594](https://github.com/AntelopeJS/antelopejs/pull/594))
+- **cli:** Classify a module's interface bump by its real path ([#593](https://github.com/AntelopeJS/antelopejs/pull/593))
+- **cli:** Name the project's direct dependency for a nested node_modules module ([#595](https://github.com/AntelopeJS/antelopejs/pull/595))
+- **runtime:** Withdraw only the .env loads of the launch a shutdown interrupts while it prepares ([#596](https://github.com/AntelopeJS/antelopejs/pull/596))
+
+### 🏡 Chore
+
+- **deps:** Update dependency jiti to v2.7.0 ([#579](https://github.com/AntelopeJS/antelopejs/pull/579))
+- **deps:** Update dependency dependency-cruiser to v18.9.0 ([#578](https://github.com/AntelopeJS/antelopejs/pull/578))
+- **deps:** Update dependency semver to v7.8.6 ([#582](https://github.com/AntelopeJS/antelopejs/pull/582))
+- **deps:** Land the open Renovate updates before the release round ([#589](https://github.com/AntelopeJS/antelopejs/pull/589))
+
+### ✅ Tests
+
+- Keep the cache child and interface range tests off load-bound clocks ([#583](https://github.com/AntelopeJS/antelopejs/pull/583))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.8
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.7...v1.24.8)
