@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch:
+    inputs:
+      nightly:
+        description: Run the nightly tier, with Windows and Stress, instead of full
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,6 +34,7 @@ jobs:
       extra-commands-job: true
       single-job: false
       affected-tests: true
+      nightly: ${{ inputs.nightly == true }}
     permissions:
       contents: read
 
