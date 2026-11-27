@@ -37,19 +37,27 @@ function readEnvFile(filePath: string): string | undefined {
   }
 }
 
-function forgetPreviousLoad(envPath: string): ProjectEnvLoad {
+function forgetPreviousLoad(envPath: string): void {
   for (const [name, value] of loadsByEnvFile.get(envPath)?.loaded ?? []) {
     if (process.env[name] === value) {
       delete process.env[name];
     }
   }
-  const load: ProjectEnvLoad = { loaded: new Map(), kept: [], logged: false };
-  loadsByEnvFile.set(envPath, load);
-  return load;
+  loadsByEnvFile.delete(envPath);
 }
 
 export function getProjectEnvPath(projectFolder: string): string {
   return path.join(path.resolve(projectFolder), PROJECT_ENV_FILE);
+}
+
+/**
+ * Removes from `process.env` the variables the last {@link loadProjectEnv} of
+ * the project set, unless something else has changed them since.
+ *
+ * @param projectFolder The folder that holds `antelope.config.ts`
+ */
+export function unloadProjectEnv(projectFolder: string): void {
+  forgetPreviousLoad(getProjectEnvPath(projectFolder));
 }
 
 /**
@@ -62,7 +70,9 @@ export function getProjectEnvPath(projectFolder: string): string {
  */
 export function loadProjectEnv(projectFolder: string): void {
   const envPath = getProjectEnvPath(projectFolder);
-  const load = forgetPreviousLoad(envPath);
+  forgetPreviousLoad(envPath);
+  const load: ProjectEnvLoad = { loaded: new Map(), kept: [], logged: false };
+  loadsByEnvFile.set(envPath, load);
   const content = readEnvFile(envPath);
   if (content === undefined) {
     return;
