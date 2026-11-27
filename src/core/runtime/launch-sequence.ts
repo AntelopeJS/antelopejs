@@ -8,6 +8,7 @@ import {
   loadProjectEnv,
   logProjectEnv,
   tryFindConfigPath,
+  unloadProjectEnv,
 } from "../config";
 import { NodeFileSystem } from "../filesystem";
 import type { BuildArtifact } from "../modules";
@@ -87,6 +88,8 @@ interface LaunchRequest {
 }
 
 const Logger = new Logging.Channel("loader");
+
+const SHUTDOWN_PRIORITY_PREPARATION = 40;
 
 interface ProjectLaunch {
   request: LaunchRequest;
@@ -547,15 +550,41 @@ const LAUNCH_STEPS: readonly LaunchStep<ProjectLaunch>[] = [
   loadProjectModules,
 ];
 
+/**
+ * Prepares the project. A shutdown that starts meanwhile first waits for the
+ * preparation to settle, then removes the project `.env` it loaded, so that
+ * `process.env` is left as the launch found it once the shutdown resolves.
+ * `prepare` starts once that wait is registered, so a shutdown it starts
+ * itself waits for it too.
+ */
+async function prepareProject(
+  request: LaunchRequest,
+  shutdownManager: ShutdownManager,
+): Promise<PreparedProject> {
+  const preparing = Promise.resolve().then(() =>
+    runInterruptibly(
+      () => request.prepare(request.projectFolder, request.env),
+      shutdownManager.stopping,
+    ),
+  );
+  const unloadEnv = async () => {
+    await preparing.catch(() => undefined);
+    unloadProjectEnv(request.projectFolder);
+  };
+  shutdownManager.register(unloadEnv, SHUTDOWN_PRIORITY_PREPARATION);
+  try {
+    return await preparing;
+  } finally {
+    shutdownManager.unregister(unloadEnv);
+  }
+}
+
 async function completeLaunchSequence(
   request: LaunchRequest,
   shutdownManager: ShutdownManager,
   manager: ModuleManager,
 ): Promise<StartedProject> {
-  const project = await runInterruptibly(
-    () => request.prepare(request.projectFolder, request.env),
-    shutdownManager.stopping,
-  );
+  const project = await prepareProject(request, shutdownManager);
   const launch: ProjectLaunch = {
     request,
     project,
