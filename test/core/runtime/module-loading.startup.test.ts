@@ -132,6 +132,51 @@ describe("runtime module-loading", () => {
     sinon.restore();
   });
 
+  it("reports the modules as started once startAll settles, and their failure to start", async () => {
+    const messageStub = sinon.stub(getProcessTasks().ui, "message");
+    let settleStart: () => void = () => undefined;
+    const manager = managerFixture({
+      constructAll: sinon.stub().resolves(),
+      startAll: sinon.stub().callsFake(
+        () =>
+          new Promise<void>((resolve) => {
+            settleStart = resolve;
+          }),
+      ),
+    });
+
+    const pending = constructAndStartModules(manager);
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+    expect(messageStub.calledWith("success", "Started modules")).to.equal(
+      false,
+    );
+
+    settleStart();
+    await pending;
+    expect(messageStub.calledWith("success", "Started modules")).to.equal(true);
+
+    const startFailingManager = managerFixture({
+      constructAll: sinon.stub().resolves(),
+      startAll: sinon.stub().rejects(new Error("start failed")),
+    });
+    await constructAndStartModules(startFailingManager).catch(() => undefined);
+
+    expect(messageStub.calledWith("error", "Failed to start modules")).to.equal(
+      true,
+    );
+    expect(
+      messageStub.withArgs("success", "Started modules").callCount,
+    ).to.equal(1);
+  });
+});
+
+describe("runtime module-loading", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
   it("takes the running generation down before LoadModule replaces it", async () => {
     const calls: string[] = [];
     const previous = {

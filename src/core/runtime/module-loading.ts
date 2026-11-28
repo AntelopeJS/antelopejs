@@ -283,11 +283,19 @@ export async function constructModules(manager: ModuleManager): Promise<void> {
   });
 }
 
+export async function startModules(manager: ModuleManager): Promise<void> {
+  Logger.Trace(`Starting modules`);
+  await runTask("Starting modules", () => manager.startAll(), {
+    done: "Started modules",
+    failed: "Failed to start modules",
+  });
+}
+
 export async function constructAndStartModules(
   manager: ModuleManager,
 ): Promise<void> {
   await constructModules(manager);
-  await manager.startAll();
+  await startModules(manager);
 }
 
 export async function destroyModulesAfterFailure(

@@ -42,6 +42,7 @@ import {
   ensureGraphIsValid,
   registerCoreInterfaces,
   registerCoreModuleInterface,
+  startModules,
 } from "./module-loading";
 import { partitionModuleEntries } from "./module-interfaces";
 import {
@@ -492,8 +493,8 @@ function constructProjectModules({ manager }: ProjectLaunch): Promise<void> {
   return constructModules(manager);
 }
 
-function startModules({ manager }: ProjectLaunch): Promise<void> {
-  return manager.startAll();
+function startProjectModules({ manager }: ProjectLaunch): Promise<void> {
+  return startModules(manager);
 }
 
 /**
@@ -528,7 +529,7 @@ const MODULE_STEPS: readonly LaunchStep<ProjectLaunch>[] = [
   createModuleEntries,
   addModules,
   constructProjectModules,
-  startModules,
+  startProjectModules,
   startOptionalModules,
 ];
 
