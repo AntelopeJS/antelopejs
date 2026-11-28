@@ -343,14 +343,32 @@ export class TaskList {
  */
 export class TerminalDisplay {
   private readonly started: TaskHandle[] = [];
+  private silenceHolds = 0;
 
   constructor(private readonly tasks: () => TaskList = getProcessTasks) {}
 
-  setSilent(silent: boolean): void {
-    this.tasks().setSilent(silent);
-    if (silent) {
+  /**
+   * Silences the display until the returned release runs. Holds stack: the
+   * display stays silent while any hold is unreleased, whichever order the
+   * holders release in, and a second call of a release does nothing.
+   */
+  silence(): () => void {
+    this.silenceHolds += 1;
+    if (this.silenceHolds === 1) {
+      this.tasks().setSilent(true);
       this.started.length = 0;
     }
+    let isHeld = true;
+    return () => {
+      if (!isHeld) {
+        return;
+      }
+      isHeld = false;
+      this.silenceHolds -= 1;
+      if (this.silenceHolds === 0) {
+        this.tasks().setSilent(false);
+      }
+    };
   }
 
   isSilent(): boolean {
