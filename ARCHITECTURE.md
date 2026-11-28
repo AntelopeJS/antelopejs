@@ -84,7 +84,7 @@ Outside `src/`:
 | Lint and types     | `oxlint.config.ts`, `.dependency-cruiser.cjs`     | `pnpm lint` (oxlint, then `depcruise src test`), `pnpm typecheck` (the root, `test`, `playground` and the skill tsconfigs) |
 | Formal             | `.agents/skills/formal-*/`                        | `node .agents/skills/<check>/check.mjs`, needs Java 21                                                                   |
 
-`.github/workflows/ci.yml` calls the shared `ci-node.yml` (`pnpm run checks`, the test job, Windows, `test:cli-smoke` as an extra command) and adds `verify-map`, the three `formal-*` jobs, `gate`, `renovate-sync` and `verdict`. Locally, scope to what you changed as [verify-antelopejs](.agents/skills/verify-antelopejs/SKILL.md) says: `TERM=xterm-256color`, never `--no-config`.
+`.github/workflows/ci.yml` calls the shared `ci-node.yml` (`pnpm run checks`, the test job, Windows, `test:cli-smoke` as an extra command) and adds `select`, `verify-map`, the three `formal-*` jobs, `gate`, `renovate-sync` and `verdict`. Locally, scope to what you changed as [verify-antelopejs](.agents/skills/verify-antelopejs/SKILL.md) says: `TERM=xterm-256color`, never `--no-config`.
 
 ## Invariants
 
