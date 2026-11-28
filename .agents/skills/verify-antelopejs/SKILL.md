@@ -66,7 +66,7 @@ None. No test needs a database or a container, and the repository has no `.githu
 | `ci / Stress` | The tests repeated beside busy loops on every CPU. | Nightly. |
 | `verify-map` | `verify-ajs map` and every `bin/lib/*.test.mts`. | Every pull request. |
 | `formal-module-lifecycle`, `formal-module-cache-lock`, `formal-build-start` | TLC on each model, through its skill's `check.mjs`. | Every pull request. |
-| `ci / checks`, `gate` | The pull request title follows Conventional Commits, and every job above passed. | Every pull request. |
+| `ci / checks`, `verdict` | The pull request title follows Conventional Commits, and every job above passed or was skipped. | Every pull request. |
 
 A pull request runs the fast tier. It runs the full tier when it changes a top-level file that is not Markdown, `pnpm-lock.yaml` or a workflow, or carries the `ci:full` label. No CI job drives the CLI through the journeys, and the repository has no browser suite.
 

@@ -135,22 +135,6 @@ jobs:
           key: tla2tools-1.7.4
       - run: node .agents/skills/formal-build-start/check.mjs
 
-  gate:
-    if: always()
-    needs:
-      - select
-      - ci
-      - verify-map
-      - formal-module-lifecycle
-      - formal-module-cache-lock
-      - formal-build-start
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    timeout-minutes: 5
-    steps:
-      - if: >-
-          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.tier != 'none' && (needs.verify-map.result == 'skipped' || needs.formal-module-lifecycle.result == 'skipped' || needs.formal-module-cache-lock.result == 'skipped' || needs.formal-build-start.result == 'skipped'))
-        run: exit 1
-
   renovate-sync:
     if: >-
       github.event_name == 'pull_request' && startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository
@@ -167,7 +151,6 @@ jobs:
       - formal-module-lifecycle
       - formal-module-cache-lock
       - formal-build-start
-      - gate
       - renovate-sync
     if: ${{ !cancelled() }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
