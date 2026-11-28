@@ -1,8 +1,8 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
-import inly = require("inly");
 import * as path from "node:path";
 import { maxSatisfying, sort, valid, validRange } from "semver";
+import { extract as extractTarball } from "tar";
 
 import type { IFileSystem } from "../../types";
 import { isObject, isString } from "../../utils";
@@ -48,11 +48,7 @@ const Logger = new Logging.Channel("loader.package");
 const PACKAGE_JSON = "package.json";
 
 function defaultExtract(from: string, to: string): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const instance = inly(from, to);
-    instance.on("error", reject);
-    instance.on("end", resolve);
-  });
+  return extractTarball({ file: from, cwd: to });
 }
 
 function isExactVersion(spec: string): boolean {

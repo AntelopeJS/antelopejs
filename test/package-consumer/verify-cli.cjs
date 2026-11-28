@@ -3,7 +3,7 @@ const path = require("node:path");
 const fs = require("node:fs");
 const { execFileSync, spawnSync } = require("node:child_process");
 
-const HEAVY_PACKAGES = ["typescript", "@clack", "rxjs", "inly"];
+const HEAVY_PACKAGES = ["typescript", "@clack", "rxjs", "tar"];
 const HEAVY_MODULE_PATTERN = new RegExp(
   `[\\\\/]node_modules[\\\\/](${HEAVY_PACKAGES.join("|")})[\\\\/]`,
 );
