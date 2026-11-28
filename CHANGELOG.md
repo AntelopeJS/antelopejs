@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.24.11
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.10...v1.24.11)
+
+### 🩹 Fixes
+
+- **downloaders:** Refuse a module whose tarball holds an entry tar rejects ([#616](https://github.com/AntelopeJS/antelopejs/pull/616))
+
+### ✅ Tests
+
+- **cli:** Shadow any ancestor core in the fix-guard no-core tests ([#617](https://github.com/AntelopeJS/antelopejs/pull/617))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.10
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.9...v1.24.10)
