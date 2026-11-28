@@ -11,6 +11,7 @@ import nodeModule from "node:module";
 
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { ModuleManifest } from "../../../src/core/modules";
+import { getProcessTasks } from "../../../src/core/output";
 import {
   type ProjectPreparer,
   EMBEDDED_RUNTIME_POLICY,
@@ -176,6 +177,66 @@ exports.start = () => Promise.reject(new Error("startup failed"));
       expect(await nodeFileSystem.exists(registryPath)).to.equal(false);
       expect(nodeModule._resolveFilename).to.equal(previousResolver);
     } finally {
+      nodeModule._resolveFilename = previousResolver;
+      await fs.rm(projectFolder, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("runtime launch-sequence reporting the start", () => {
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("prints that the modules started once every start hook settled", async () => {
+    const projectFolder = await fs.mkdtemp(
+      path.join(os.tmpdir(), "ajs-launch-started-"),
+    );
+    const globals: typeof globalThis & LaunchGlobals = globalThis;
+    const previousResolver = nodeModule._resolveFilename;
+    const printed: string[] = [];
+    let startedWhenPrinted: boolean | undefined;
+    sinon
+      .stub(getProcessTasks().ui, "message")
+      .callsFake((level: string, text: string) => {
+        if (level !== "success") return;
+        printed.push(text.split(" ").slice(0, 2).join(" "));
+        if (text.startsWith("Started modules")) {
+          startedWhenPrinted = globals[STARTED_FLAG];
+        }
+      });
+    let started: { shutdownManager: ShutdownManager } | undefined;
+
+    try {
+      const manifest = await writeLocalModule(
+        path.join(projectFolder, "listener"),
+        "listener",
+        `exports.construct = () => undefined;
+exports.start = () => new Promise((resolve) => setImmediate(() => {
+  globalThis.${STARTED_FLAG} = true;
+  resolve();
+}));
+`,
+      );
+      started = await runLaunchSequence(
+        async () => ({
+          fs: new NodeFileSystem(),
+          dev: true,
+          loadContext: async () => loaderFixture({}),
+          verify: async () => undefined,
+          createEntries: async () => [{ manifest, config: {} }],
+        }),
+        projectFolder,
+        "test",
+        {},
+        { ...EMBEDDED_RUNTIME_POLICY, terminal: true },
+      );
+
+      expect(printed).to.deep.equal(["Constructed modules", "Started modules"]);
+      expect(startedWhenPrinted).to.equal(true);
+    } finally {
+      await started?.shutdownManager.shutdown();
+      delete globals[STARTED_FLAG];
       nodeModule._resolveFilename = previousResolver;
       await fs.rm(projectFolder, { recursive: true, force: true });
     }
