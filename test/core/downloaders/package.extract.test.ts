@@ -135,6 +135,11 @@ const HOSTILE_TARBALLS: [string, string, Record<string, string | TarLink>][] = [
     },
   ],
   [
+    "a symlink that does not resolve",
+    "package/dangling",
+    { "package/dangling": { link: "symlink", linkpath: "./missing.js" } },
+  ],
+  [
     "a hardlink to a file beside the package folder",
     "package/h",
     {

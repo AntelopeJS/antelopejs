@@ -1,5 +1,6 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { lstat, readdir, realpath, stat } from "node:fs/promises";
 import * as path from "node:path";
 import { maxSatisfying, sort, valid, validRange } from "semver";
 import { extract as extractTarball } from "tar";
@@ -51,7 +52,9 @@ const PACKAGE_JSON = "package.json";
  * Unpacks the tarball `from` into `to`, then rejects when tar refused or
  * rewrote any entry (a `..` path, an absolute path or link, a link that leaves
  * `to`), naming the first. tar skips such an entry and goes on, so the
- * rejection comes only once nothing writes into `to` any more.
+ * rejection comes only once nothing writes into `to` any more. It then rejects
+ * a `package` folder that is not self-contained, as {@link assertSelfContained}
+ * checks.
  */
 async function defaultExtract(from: string, to: string): Promise<void> {
   const refused: string[] = [];
@@ -64,6 +67,92 @@ async function defaultExtract(from: string, to: string): Promise<void> {
   });
   if (refused.length > 0) {
     throw new Error(refused[0]);
+  }
+  await assertSelfContained(to);
+}
+
+const PACKAGE_FOLDER = "package";
+
+function entryError(entry: string, reason: string): Error {
+  return new Error(`entry ${entry}: ${reason}`);
+}
+
+function isInside(folder: string, target: string): boolean {
+  const relative = path.relative(folder, target);
+  return (
+    relative !== "" &&
+    !path.isAbsolute(relative) &&
+    relative.split(path.sep)[0] !== ".."
+  );
+}
+
+async function assertLinkStaysInside(
+  absolute: string,
+  entry: string,
+  realRoot: string,
+): Promise<void> {
+  let target: string;
+  try {
+    target = await realpath(absolute);
+  } catch (error) {
+    const code = isObject(error) && isString(error.code) ? error.code : "";
+    throw entryError(entry, `is a symlink that does not resolve (${code})`);
+  }
+  if (!isInside(realRoot, target)) {
+    throw entryError(entry, "is a symlink whose real path leaves the package");
+  }
+  if ((await stat(target)).isDirectory()) {
+    throw entryError(entry, "is a symlink to a folder");
+  }
+}
+
+/**
+ * Rejects when the extracted `package` folder under `to` holds an entry that
+ * would bring a file from outside it into the module cache, whose copy follows
+ * every link: a symlink that does not resolve, whose real path leaves the
+ * folder, or that names a folder (a followed folder link can loop), and a hard
+ * link with a name outside the folder. tar writes only files, folders,
+ * symlinks and hard links, and warns on any other entry type.
+ */
+async function assertSelfContained(to: string): Promise<void> {
+  const root = path.join(to, PACKAGE_FOLDER);
+  const rootStat = await lstat(root).catch(() => undefined);
+  if (rootStat === undefined) {
+    return;
+  }
+  if (!rootStat.isDirectory()) {
+    throw entryError(PACKAGE_FOLDER, "is not a folder");
+  }
+  const realRoot = await realpath(root);
+  const hardLinks = new Map<
+    string,
+    { entry: string; nlink: bigint; names: number }
+  >();
+  const folders = [PACKAGE_FOLDER];
+  for (
+    let folder = folders.pop();
+    folder !== undefined;
+    folder = folders.pop()
+  ) {
+    for (const name of (await readdir(path.join(to, folder))).sort()) {
+      const entry = path.posix.join(folder, name);
+      const absolute = path.join(to, entry);
+      const entryStat = await lstat(absolute, { bigint: true });
+      if (entryStat.isDirectory()) {
+        folders.push(entry);
+      } else if (entryStat.isSymbolicLink()) {
+        await assertLinkStaysInside(absolute, entry, realRoot);
+      } else if (entryStat.nlink > 1n) {
+        const key = `${entryStat.dev}:${entryStat.ino}`;
+        const names = (hardLinks.get(key)?.names ?? 0) + 1;
+        hardLinks.set(key, { entry, nlink: entryStat.nlink, names });
+      }
+    }
+  }
+  for (const { entry, nlink, names } of hardLinks.values()) {
+    if (BigInt(names) < nlink) {
+      throw entryError(entry, "is a hard link to a file outside the package");
+    }
   }
 }
 
