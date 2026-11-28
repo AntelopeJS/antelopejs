@@ -47,8 +47,34 @@ const Logger = new Logging.Channel("loader.package");
 
 const PACKAGE_JSON = "package.json";
 
-function defaultExtract(from: string, to: string): Promise<void> {
-  return extractTarball({ file: from, cwd: to });
+/**
+ * Unpacks the tarball `from` into `to`, then rejects when tar refused or
+ * rewrote any entry (a `..` path, an absolute path or link, a link that leaves
+ * `to`), naming the first. tar skips such an entry and goes on, so the
+ * rejection comes only once nothing writes into `to` any more.
+ */
+async function defaultExtract(from: string, to: string): Promise<void> {
+  const refused: string[] = [];
+  await extractTarball({
+    file: from,
+    cwd: to,
+    onwarn: (code, message, data) => {
+      refused.push(`entry ${refusedEntryPath(data)}: ${code}: ${message}`);
+    },
+  });
+  if (refused.length > 0) {
+    throw new Error(refused[0]);
+  }
+}
+
+/** The path of the entry a tar warning is about, as the archive holds it when tar rewrote it. */
+function refusedEntryPath(data: unknown): string {
+  const warning = isObject(data) ? data : {};
+  if (isString(warning.path)) {
+    return warning.path;
+  }
+  const entry = isObject(warning.entry) ? warning.entry : {};
+  return isString(entry.path) ? entry.path : "(unnamed)";
 }
 
 function isExactVersion(spec: string): boolean {
@@ -273,7 +299,15 @@ async function downloadPackage(
   const filename = packOutput[packOutput.length - 1].trim();
 
   Logger.Debug(`Extracting ${filename} for ${source.package}@${version}`);
-  await ctx.extract(path.join(tmp, filename), tmp);
+  try {
+    await ctx.extract(path.join(tmp, filename), tmp);
+  } catch (error) {
+    await ctx.fs.rm(tmp, { recursive: true, force: true });
+    throw new Error(
+      `Refused to unpack ${filename} of ${source.package}@${version}, ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
 
   const tmpPackage = path.join(tmp, "package");
   const packageJsonPath = path.join(tmpPackage, PACKAGE_JSON);

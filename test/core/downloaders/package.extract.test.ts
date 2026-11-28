@@ -1,7 +1,13 @@
 import type { ModuleSourcePackage } from "@antelopejs/interface-core/config";
 import { expect } from "chai";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 
 import {
@@ -11,7 +17,9 @@ import {
 import { NodeFileSystem } from "../../../src/core/filesystem";
 import { ModuleCache } from "../../../src/core/modules";
 import { describeTree } from "../../helpers/file-tree";
-import { cleanupTempDir, makeTempDir } from "../../helpers/temp";
+import { type TarLink, writeTarball } from "../../helpers/tarball";
+import { cleanupTempDir, listDirectory, makeTempDir } from "../../helpers/temp";
+import { rejectionOf } from "../cli/fixtures";
 
 const PACK_TIMEOUT_MS = 60_000;
 const TARBALL = "fixture-1.0.0.tgz";
@@ -63,9 +71,7 @@ describe("PackageDownloader unpacking a tarball pnpm packed", function () {
     cleanupTempDir(root);
   });
 
-  it("writes the tree inly wrote: nested folders, the bin's mode, no symlink", async () => {
-    const pack = path.join(root, "pack");
-    packFixture(root, pack);
+  async function loadPack(pack: string) {
     const fs = new NodeFileSystem();
     const cache = new ModuleCache(path.join(root, "cache"), fs);
     await cache.load();
@@ -82,11 +88,14 @@ describe("PackageDownloader unpacking a tarball pnpm packed", function () {
       getTemp: async () => pack,
     });
 
-    const [loaded] = await registry.load(
-      path.join(root, "project"),
-      cache,
-      SOURCE,
-    );
+    return registry.load(path.join(root, "project"), cache, SOURCE);
+  }
+
+  it("writes the tree inly wrote: nested folders, the bin's mode, no symlink", async () => {
+    const pack = path.join(root, "pack");
+    packFixture(root, pack);
+
+    const [loaded] = await loadPack(pack);
 
     expect(describeTree(loaded.folder)).to.deep.equal([
       `${IS_WINDOWS ? "file" : "file x"} bin.sh #!/bin/sh\n`,
@@ -96,4 +105,46 @@ describe("PackageDownloader unpacking a tarball pnpm packed", function () {
       `file package.json ${MANIFEST}`,
     ]);
   });
+
+  const HOSTILE_ENTRIES: [string, string, string | TarLink][] = [
+    ["a .. path", "package/../../escape.txt", "escaped\n"],
+    ["an absolute path", "/escape-absolute.txt", "escaped\n"],
+    [
+      "an absolute symlink",
+      "package/evil-link",
+      { link: "symlink", linkpath: "/" },
+    ],
+    [
+      "a symlink that escapes",
+      "package/evil-link",
+      { link: "symlink", linkpath: "../../outside" },
+    ],
+    [
+      "a hardlink that escapes",
+      "package/hard",
+      { link: "hardlink", linkpath: "../victim.txt" },
+    ],
+  ];
+
+  for (const [name, entry, content] of HOSTILE_ENTRIES) {
+    it(`refuses a tarball with ${name}, naming the entry and the package, and keeps nothing`, async () => {
+      const pack = path.join(root, "pack");
+      mkdirSync(pack, { recursive: true });
+      writeTarball(path.join(pack, TARBALL), {
+        "package/package.json": MANIFEST,
+        [entry]: content,
+      });
+
+      const error = await rejectionOf(loadPack(pack));
+
+      expect(error.message).to.include("fixture@1.0.0");
+      expect(error.message).to.include(`entry ${entry}`);
+      expect(existsSync(pack)).to.equal(false);
+      expect(
+        listDirectory(path.join(root, "cache")).filter(
+          (child) => !child.startsWith("."),
+        ),
+      ).to.deep.equal([]);
+    });
+  }
 });
