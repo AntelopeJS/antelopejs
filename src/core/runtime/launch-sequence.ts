@@ -415,8 +415,7 @@ export async function runLaunchSequence(
   };
   const moduleShutdown = armShutdown(shutdownManager, manager, policy);
 
-  const previouslySilent = terminalDisplay.isSilent();
-  terminalDisplay.setSilent(!policy.terminal);
+  const unsilence = policy.terminal ? undefined : terminalDisplay.silence();
   try {
     return await completeLaunchSequence(request, shutdownManager, manager);
   } catch (error) {
@@ -431,7 +430,7 @@ export async function runLaunchSequence(
       "Failed to launch project",
     );
   } finally {
-    terminalDisplay.setSilent(previouslySilent);
+    unsilence?.();
   }
 }
 

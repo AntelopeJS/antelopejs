@@ -124,14 +124,28 @@ describe("TerminalDisplay", () => {
     const { display, feedback } = createDisplay();
 
     await display.startSpinner("Before");
-    display.setSilent(true);
+    const release = display.silence();
     await display.startSpinner("Ignored");
 
     expect(display.isSilent()).to.equal(true);
     expect(display.isSpinnerActive()).to.equal(false);
-    display.setSilent(false);
+    release();
     expect(display.isSilent()).to.equal(false);
     expect(feedback.text).to.equal("");
+  });
+
+  it("stays silent while any hold is unreleased and ignores a repeated release", () => {
+    const { display } = createDisplay();
+
+    const first = display.silence();
+    const second = display.silence();
+    first();
+    first();
+    const silentWithSecondHeld = display.isSilent();
+    second();
+
+    expect(silentWithSecondHeld).to.equal(true);
+    expect(display.isSilent()).to.equal(false);
   });
 
   it("clears the live spinner line on demand", async () => {
