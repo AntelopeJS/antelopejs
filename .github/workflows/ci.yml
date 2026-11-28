@@ -135,6 +135,29 @@ jobs:
           key: tla2tools-1.7.4
       - run: node .agents/skills/formal-build-start/check.mjs
 
+  formal-project-env:
+    needs: select
+    if: needs.select.outputs.tier != 'none'
+    runs-on: ${{ vars.RUNNER_CI || (github.event.repository.visibility == 'public' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2404') }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/antelopejs-formal
+          key: tla2tools-1.7.4
+      - run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test .agents/skills/formal-project-env/*.test.mjs
+      - run: node .agents/skills/formal-project-env/check.mjs
+
   renovate-sync:
     if: >-
       github.event_name == 'pull_request' && startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository
@@ -154,6 +177,7 @@ jobs:
       - formal-module-lifecycle
       - formal-module-cache-lock
       - formal-build-start
+      - formal-project-env
       - renovate-sync
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.RUNNER_CI || (github.event.repository.visibility == 'public' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2404') }}

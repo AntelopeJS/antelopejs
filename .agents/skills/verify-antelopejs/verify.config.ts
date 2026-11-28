@@ -158,6 +158,16 @@ const config: VerifyConfig = {
       violation: /^(?:finding|BROKEN) (\w+)/gm,
     },
     {
+      name: "formal-project-env",
+      covers: [
+        "src/core/config/project-env.ts",
+        "src/core/runtime/launch-sequence.ts",
+      ],
+      files: [".agents/skills/formal-project-env/**"],
+      command: ["node", ".agents/skills/formal-project-env/check.mjs"],
+      violation: /^(?:finding|BROKEN) (\w+)/gm,
+    },
+    {
       name: "formal-binding-graph",
       covers: [
         "src/core/modules/interface-registry.ts",
