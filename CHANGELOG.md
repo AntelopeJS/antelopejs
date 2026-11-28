@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.24.10
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.9...v1.24.10)
+
+### 🩹 Fixes
+
+- **ci:** Name the top-level gate job gate so its check-run does not clash with ci / checks ([#597](https://github.com/AntelopeJS/antelopejs/pull/597))
+- **cli:** Refuse modules --fix when the running ajs is not the project's core ([#599](https://github.com/AntelopeJS/antelopejs/pull/599))
+- **downloaders:** Unpack modules with tar, dropping inly and its minimatch 9 and 3 ([#614](https://github.com/AntelopeJS/antelopejs/pull/614))
+
+### 📖 Documentation
+
+- **verify:** Give verify-antelopejs a scoped check per change and a Left to CI section ([#600](https://github.com/AntelopeJS/antelopejs/pull/600))
+- **agents:** Drop the TERM=xterm-256color advice test/setup.ts made moot ([#613](https://github.com/AntelopeJS/antelopejs/pull/613))
+
+### 📦 Build
+
+- **deps:** Move @antelopejs/tooling-configs to 0.10.14 ([#615](https://github.com/AntelopeJS/antelopejs/pull/615))
+
+### 🏡 Chore
+
+- **ci:** Cancel superseded pull request runs and drop the unreachable draft tier ([#598](https://github.com/AntelopeJS/antelopejs/pull/598))
+- **deps:** Update dependency @types/node to ^22.20.5 ([#602](https://github.com/AntelopeJS/antelopejs/pull/602))
+- **deps:** Update actions/stale action to v11 ([#603](https://github.com/AntelopeJS/antelopejs/pull/603))
+- **deps:** Update dependency @types/chai to v5 ([#606](https://github.com/AntelopeJS/antelopejs/pull/606))
+- **deps:** Update dependency @antelopejs/tooling-configs to v0.10.12 ([#605](https://github.com/AntelopeJS/antelopejs/pull/605))
+- **deps:** Update dependency chai to v6 ([#608](https://github.com/AntelopeJS/antelopejs/pull/608))
+- **deps:** Update dependency c8 to v12 ([#607](https://github.com/AntelopeJS/antelopejs/pull/607))
+
+### ✅ Tests
+
+- Pin the terminal capabilities the CLI output tests assert on ([#601](https://github.com/AntelopeJS/antelopejs/pull/601))
+- **cli:** Make the fix-core guard tests fail on the three surviving mutants ([#612](https://github.com/AntelopeJS/antelopejs/pull/612))
+
+### 🤖 CI
+
+- Bump tooling-configs to 0.10.11, sync and drop the gate job ([#604](https://github.com/AntelopeJS/antelopejs/pull/604))
+- Drop the gate job, verdict aggregates the hand-written jobs ([#611](https://github.com/AntelopeJS/antelopejs/pull/611))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.9
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.8...v1.24.9)
