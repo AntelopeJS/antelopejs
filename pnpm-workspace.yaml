@@ -3,3 +3,5 @@ minimumReleaseAgeExclude:
   - "@antelopejs/*"
 allowBuilds:
   lefthook: false
+overrides:
+  minimatch@<11.0.1: ^11.0.1
