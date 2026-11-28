@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.24.12
+
+[compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.11...v1.24.12)
+
+### 🩹 Fixes
+
+- **downloaders:** Refuse a module whose links leave its package folder ([#618](https://github.com/AntelopeJS/antelopejs/pull/618))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v1.24.11
 
 [compare changes](https://github.com/AntelopeJS/antelopejs/compare/v1.24.10...v1.24.11)
