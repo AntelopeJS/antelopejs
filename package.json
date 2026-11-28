@@ -76,7 +76,6 @@
     "@clack/prompts": "^1.9.0",
     "@types/proper-lockfile": "^4.1.4",
     "commander": "^13.1.0",
-    "inly": "^5.0.1",
     "jiti": "^2.6.1",
     "mocha": "^12.0.3",
     "picocolors": "^1.1.1",
@@ -84,6 +83,7 @@
     "proper-lockfile": "^4.1.2",
     "reflect-metadata": "^0.2.2",
     "semver": "^7.7.4",
+    "tar": "^7.5.24",
     "typescript": "^5.9.3",
     "yaml": "^2.9.1"
   },
