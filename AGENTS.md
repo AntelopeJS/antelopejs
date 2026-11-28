@@ -2,6 +2,8 @@
 
 The AntelopeJS core: the runtime that loads modules and wires their interfaces, the `ajs` CLI (`src/core/cli`), and the embedded runtime (`createRuntime`). It is published as `@antelopejs/core`.
 
+Read [ARCHITECTURE.md](ARCHITECTURE.md) first: the runtime pieces, the `src/` layers, the launch and build flows, the test tiers and the invariants the checks hold.
+
 ## Versioning of @antelopejs/interface-core
 
 The core implements `@antelopejs/interface-core`, and `ImplementInterface` refuses a provider that lacks a declared function. A new interface-core minor may add functions, so the range stays capped below the next minor. To move to a new minor, implement what it adds and raise both bounds in the same release.
