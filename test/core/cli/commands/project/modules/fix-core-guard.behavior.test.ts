@@ -14,11 +14,11 @@ import {
 import { CliError } from "../../../../../../src/core/output";
 import { rejectionOf } from "../../../fixtures";
 
-function projectWithoutCore(): string {
+function emptyProject(): string {
   return mkdtempSync(path.join(tmpdir(), "ajs-fix-guard-"));
 }
 
-function writeCore(core: string, version: string): void {
+function writeCore(core: string, version: string | undefined): void {
   mkdirSync(core, { recursive: true });
   writeFileSync(
     path.join(core, "package.json"),
@@ -27,14 +27,23 @@ function writeCore(core: string, version: string): void {
   writeFileSync(path.join(core, "index.js"), "");
 }
 
-function projectWithCore(version: string): string {
-  const project = projectWithoutCore();
+function projectWithCore(version: string | undefined): string {
+  const project = emptyProject();
   writeCore(path.join(project, "node_modules", "@antelopejs", "core"), version);
   return project;
 }
 
+/**
+ * A project in which no core version resolves, whatever an ancestor of
+ * `tmpdir()` installs: its own `@antelopejs/core` declares no version, and
+ * Node resolution stops at the nearest `node_modules` that holds the package.
+ */
+function projectWithoutCoreVersion(): string {
+  return projectWithCore(undefined);
+}
+
 function projectWithPnpmCore(version: string): string {
-  const project = projectWithoutCore();
+  const project = emptyProject();
   const store = path.join(
     project,
     "node_modules",
@@ -107,8 +116,8 @@ describe("project modules: running core guard", () => {
       expect(read.called).to.equal(false);
     });
 
-    it(`${name} goes on when the project installs no core`, async () => {
-      const project = projectWithoutCore();
+    it(`${name} goes on when no core version resolves from the project`, async () => {
+      const project = projectWithoutCoreVersion();
       const read = sinon.stub(common, "readConfig").rejects(new Error("read"));
 
       const error = await rejectionOf(run(project));
