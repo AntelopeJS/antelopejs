@@ -62,8 +62,8 @@ A counterexample of `EnvLoads` is a modeling error when the map test passes on t
 | Model action | Code |
 | --- | --- |
 | `Start` | `prepareProject` (src/core/runtime/launch-sequence.ts): `new LaunchEnvLoads()` |
-| `Load` | `LaunchEnvLoads.record` around `loadProjectEnv` (src/core/config/project-env.ts), `dropSupersededLoads` |
-| `Complete` | `LaunchEnvLoads.keep`, `dropSupersededLoads` |
+| `Load` | `LaunchEnvLoads.record` around `loadProjectEnv` (src/core/config/project-env.ts) |
+| `Complete` | `LaunchEnvLoads.keep` |
 | `Interrupt` | `LaunchEnvLoads.withdraw`, `withdrawLoad`, `putOutOfEffect`, `putBackInEffect` |
 | `UserDelete` | `delete process.env[name]` by anything outside the launches |
 
@@ -75,7 +75,8 @@ Two launches, one load each, one variable with one value. A pass covers these bo
 
 The model leaves out:
 
+- `dropSupersededLoads` and the `withdrawable` flag that `keep` clears: with two launches of one load each, a model and a code without them reach the same states, so neither check sees a regression in them;
 - a launch that loads the `.env` more than once, such as the config reload of `ts-config-file.ts`;
-- a `.env` edited between loads, so that two loads set different values, and a variable that something else sets;
+- a `.env` edited between loads, so that two loads set different values, and a variable that the shell or something else sets, so a withdrawal that deletes a variable the process started with passes both checks;
 - a load made outside `LaunchEnvLoads.record`, which no launch may withdraw;
 - the wait of the shutdown for the preparation to settle: `Interrupt` stands for the withdrawal that runs once it has.

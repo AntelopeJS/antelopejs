@@ -153,7 +153,7 @@ function explore(prefix) {
   return enabled(w).flatMap((step) => explore([...prefix, step]));
 }
 
-await test("every order of two launches keeps the rules of EnvLoads.tla", () => {
+await test("no order of two launches lets a withdrawal unload another launch's .env, revive a deleted variable or leave its own", () => {
   assert.deepEqual(explore([]), []);
   assert.equal(replays, 1161);
 });
