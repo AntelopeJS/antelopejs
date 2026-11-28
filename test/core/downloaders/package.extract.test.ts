@@ -59,6 +59,96 @@ function packFixture(root: string, pack: string): void {
   });
 }
 
+/** Loads the `fixture@1.0.0` tarball in `pack` through the package downloader, with its cache under `root`. */
+async function loadPack(root: string, pack: string) {
+  const fs = new NodeFileSystem();
+  const cache = new ModuleCache(path.join(root, "cache"), fs);
+  await cache.load();
+  const registry = new DownloaderRegistry();
+  registerPackageDownloader(registry, {
+    fs,
+    exec: (command) =>
+      Promise.resolve({
+        stdout: command.startsWith("npm pack") ? TARBALL : "",
+        stderr: "",
+        code: 0,
+      }),
+    getInstallCommand: async () => "install",
+    getTemp: async () => pack,
+  });
+
+  return registry.load(path.join(root, "project"), cache, SOURCE);
+}
+
+const HOSTILE_TARBALLS: [string, string, Record<string, string | TarLink>][] = [
+  [
+    "a .. path",
+    "package/../../escape.txt",
+    { "package/../../escape.txt": "escaped\n" },
+  ],
+  [
+    "an absolute path",
+    "/escape-absolute.txt",
+    { "/escape-absolute.txt": "escaped\n" },
+  ],
+  [
+    "an absolute symlink",
+    "package/evil-link",
+    { "package/evil-link": { link: "symlink", linkpath: "/" } },
+  ],
+  [
+    "a symlink that escapes",
+    "package/evil-link",
+    { "package/evil-link": { link: "symlink", linkpath: "../../outside" } },
+  ],
+  [
+    "a hardlink that escapes",
+    "package/hard",
+    { "package/hard": { link: "hardlink", linkpath: "../victim.txt" } },
+  ],
+  [
+    "a chained symlink whose real path leaves the temp folder",
+    "package/esc",
+    {
+      "other/x/keep.txt": "k",
+      "package/a/b/c/d/o": {
+        link: "symlink",
+        linkpath: "../../../../../other/x",
+      },
+      "package/esc": {
+        link: "symlink",
+        linkpath: "a/b/c/d/o/../../../outside-canary",
+      },
+    },
+  ],
+  [
+    "a symlink to the folder above the package",
+    "package/up",
+    { "package/up": { link: "symlink", linkpath: ".." } },
+  ],
+  [
+    "a symlink to a folder in the package",
+    "package/libs",
+    {
+      "package/lib/index.js": "lib\n",
+      "package/libs": { link: "symlink", linkpath: "lib" },
+    },
+  ],
+  [
+    "a symlink that does not resolve",
+    "package/dangling",
+    { "package/dangling": { link: "symlink", linkpath: "./missing.js" } },
+  ],
+  [
+    "a hardlink to a file beside the package folder",
+    "package/h",
+    {
+      "other/secret.txt": "secret\n",
+      "package/h": { link: "hardlink", linkpath: "other/secret.txt" },
+    },
+  ],
+];
+
 describe("PackageDownloader unpacking a tarball pnpm packed", function () {
   this.timeout(PACK_TIMEOUT_MS);
   let root: string;
@@ -71,31 +161,11 @@ describe("PackageDownloader unpacking a tarball pnpm packed", function () {
     cleanupTempDir(root);
   });
 
-  async function loadPack(pack: string) {
-    const fs = new NodeFileSystem();
-    const cache = new ModuleCache(path.join(root, "cache"), fs);
-    await cache.load();
-    const registry = new DownloaderRegistry();
-    registerPackageDownloader(registry, {
-      fs,
-      exec: (command) =>
-        Promise.resolve({
-          stdout: command.startsWith("npm pack") ? TARBALL : "",
-          stderr: "",
-          code: 0,
-        }),
-      getInstallCommand: async () => "install",
-      getTemp: async () => pack,
-    });
-
-    return registry.load(path.join(root, "project"), cache, SOURCE);
-  }
-
   it("writes the tree inly wrote: nested folders, the bin's mode, no symlink", async () => {
     const pack = path.join(root, "pack");
     packFixture(root, pack);
 
-    const [loaded] = await loadPack(pack);
+    const [loaded] = await loadPack(root, pack);
 
     expect(describeTree(loaded.folder)).to.deep.equal([
       `${IS_WINDOWS ? "file" : "file x"} bin.sh #!/bin/sh\n`,
@@ -106,39 +176,44 @@ describe("PackageDownloader unpacking a tarball pnpm packed", function () {
     ]);
   });
 
-  const HOSTILE_ENTRIES: [string, string, string | TarLink][] = [
-    ["a .. path", "package/../../escape.txt", "escaped\n"],
-    ["an absolute path", "/escape-absolute.txt", "escaped\n"],
-    [
-      "an absolute symlink",
-      "package/evil-link",
-      { link: "symlink", linkpath: "/" },
-    ],
-    [
-      "a symlink that escapes",
-      "package/evil-link",
-      { link: "symlink", linkpath: "../../outside" },
-    ],
-    [
-      "a hardlink that escapes",
-      "package/hard",
-      { link: "hardlink", linkpath: "../victim.txt" },
-    ],
-  ];
+  it("installs a symlink that stays in the package as a copy of its target", async () => {
+    const pack = path.join(root, "pack");
+    mkdirSync(pack, { recursive: true });
+    writeTarball(path.join(pack, TARBALL), {
+      "package/package.json": MANIFEST,
+      "package/index.js": "index\n",
+      "package/t": { link: "symlink", linkpath: "./index.js" },
+    });
 
-  for (const [name, entry, content] of HOSTILE_ENTRIES) {
+    const [loaded] = await loadPack(root, pack);
+
+    expect(describeTree(loaded.folder)).to.deep.equal([
+      "file index.js index\n",
+      `file package.json ${MANIFEST}`,
+      "file t index\n",
+    ]);
+  });
+
+  for (const [name, entry, files] of HOSTILE_TARBALLS) {
     it(`refuses a tarball with ${name}, naming the entry and the package, and keeps nothing`, async () => {
       const pack = path.join(root, "pack");
       mkdirSync(pack, { recursive: true });
+      mkdirSync(path.join(root, "outside-canary"));
+      writeFileSync(
+        path.join(root, "outside-canary", "canary.txt"),
+        "outside\n",
+      );
       writeTarball(path.join(pack, TARBALL), {
         "package/package.json": MANIFEST,
-        [entry]: content,
+        ...files,
       });
 
-      const error = await rejectionOf(loadPack(pack));
+      const error = await rejectionOf(loadPack(root, pack));
 
-      expect(error.message).to.include("fixture@1.0.0");
-      expect(error.message).to.include(`entry ${entry}`);
+      expect(error.message).to.include(
+        "Refused to unpack fixture-1.0.0.tgz of fixture@1.0.0",
+      );
+      expect(error.message).to.include(`entry ${entry}:`);
       expect(existsSync(pack)).to.equal(false);
       expect(
         listDirectory(path.join(root, "cache")).filter(
