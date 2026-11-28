@@ -43,7 +43,7 @@ jobs:
       contents: read
 
   select:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNNER_CI || (github.event.repository.visibility == 'public' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2404') }}
     timeout-minutes: 5
     permissions: {}
     outputs:
@@ -56,7 +56,7 @@ jobs:
   verify-map:
     needs: select
     if: needs.select.outputs.tier != 'none'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNNER_CI || (github.event.repository.visibility == 'public' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2404') }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,7 +71,7 @@ jobs:
   formal-module-lifecycle:
     needs: select
     if: needs.select.outputs.tier != 'none'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNNER_CI || (github.event.repository.visibility == 'public' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2404') }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -94,7 +94,7 @@ jobs:
   formal-module-cache-lock:
     needs: select
     if: needs.select.outputs.tier != 'none'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNNER_CI || (github.event.repository.visibility == 'public' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2404') }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -116,7 +116,7 @@ jobs:
   formal-build-start:
     needs: select
     if: needs.select.outputs.tier != 'none'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNNER_CI || (github.event.repository.visibility == 'public' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2404') }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -156,7 +156,7 @@ jobs:
       - formal-build-start
       - renovate-sync
     if: ${{ !cancelled() }}
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ vars.RUNNER_CI || (github.event.repository.visibility == 'public' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2404') }}
     timeout-minutes: 5
     permissions: {}
     steps:
